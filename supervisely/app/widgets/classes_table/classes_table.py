@@ -178,7 +178,7 @@ class ClassesTable(Widget):
             for obj_class in data_to_show:
                 obj_class["itemsCount"] = project_stats["items_count"][obj_class["title"]]
                 obj_class["objectsCount"] = project_stats["objects_count"][obj_class["title"]]
-                if not isinstance(self._project_fs, sly.Project):
+                if type(self._project_fs) is not sly.Project:
                     obj_class["figuresCount"] = project_stats["figures_count"][obj_class["title"]]
 
         columns = [col.upper() for col in columns]
