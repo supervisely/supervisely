@@ -163,22 +163,22 @@ class ClassesTable(Widget):
         elif self._project_fs is not None:
             project_stats = self._project_fs.get_classes_stats()
 
-            if type(self._project_fs) is sly.Project:
+            if type(self._project_fs) == sly.Project:
                 columns.extend(["images count", "labels count"])
 
-            elif type(self._project_fs) is sly.VideoProject:
+            elif type(self._project_fs) == sly.VideoProject:
                 columns.extend(["videos count", "objects count", "figures count"])
 
             elif type(self._project_fs) in [sly.PointcloudProject, sly.PointcloudEpisodeProject]:
                 columns.extend(["pointclouds count", "objects count", "figures count"])
 
-            elif type(self._project_fs) is sly.VolumeProject:
+            elif type(self._project_fs) == sly.VolumeProject:
                 columns.extend(["volumes count", "objects count", "figures count"])
 
             for obj_class in data_to_show:
                 obj_class["itemsCount"] = project_stats["items_count"][obj_class["title"]]
                 obj_class["objectsCount"] = project_stats["objects_count"][obj_class["title"]]
-                if type(self._project_fs) is not sly.Project:
+                if type(self._project_fs) != sly.Project:
                     obj_class["figuresCount"] = project_stats["figures_count"][obj_class["title"]]
 
         columns = [col.upper() for col in columns]
