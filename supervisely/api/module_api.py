@@ -613,6 +613,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             for page_idx in range(2, pages_count + 1):
                 temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
                 temp_items = temp_resp.json()["entities"]
+                results.extend(temp_items)
                 if progress_cb is not None:
                     progress_cb(len(temp_items))
                 if limit is not None and len(results) > limit:
