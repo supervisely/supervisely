@@ -366,11 +366,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     backup_archive={})
         """
         info = super().get_info_by_name(parent_id, name)
-        info_by_id = self.get_info_by_id(info.id)
+
         self._check_project_info(
-            info_by_id, name=name, expected_type=expected_type, raise_error=raise_error
+            info, name=name, expected_type=expected_type, raise_error=raise_error
         )
-        return info_by_id
+        return info
 
     def _check_project_info(
         self,
