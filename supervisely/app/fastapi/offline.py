@@ -78,13 +78,14 @@ def get_offline_session_files_path(task_id) -> pathlib.Path:
 
 
 def upload_to_supervisely(static_dir_path):
-    # api: sly.Api = sly.Api.from_env()
-    server_address = sly.env.server_address()
     api_token = sly.env.spawn_api_token() or sly.env.api_token()
-
-    print(server_address, api_token)
-
-    api = sly.Api(server_address, api_token)
+    # spawn_api_token - is a token of user, that spawned application.
+    # api_token - is a token of user for which application was spawned.
+    # It's important to use spawnApiToken, because the application can be spawned
+    # by user with higher permissions, than current user (e.g. annotator).
+    # For example, if we'lll use annotator's token, we'll get 403 error, when
+    # trying to upload files, because annotator doesn't have corresponding permissions.
+    api = sly.Api(sly.env.server_address(), api_token)
 
     team_id = sly.env.team_id()
     task_id = sly.env.task_id(raise_not_found=False)
