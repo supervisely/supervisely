@@ -78,7 +78,7 @@ def get_offline_session_files_path(task_id) -> pathlib.Path:
 
 
 def upload_to_supervisely(static_dir_path):
-    api_token = sly.env.spawn_api_token() or sly.env.api_token()
+    api_token = sly.env.spawn_api_token(raise_not_found=False) or sly.env.api_token()
     # spawn_api_token - is a token of user, that spawned application.
     # api_token - is a token of user for which application was spawned.
     # It's important to use spawnApiToken, because the application can be spawned
