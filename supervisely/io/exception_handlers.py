@@ -4,7 +4,7 @@ from functools import wraps
 from json import JSONDecodeError, loads
 from shutil import ReadError
 from tarfile import ReadError as TarReadError
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from requests.exceptions import HTTPError, RetryError
 from rich.console import Console
@@ -75,7 +75,7 @@ class HandleException:
         if has_ui:
             raise DialogWindowError(self.title, self.message)
         else:
-            raise self.exception.__class__(f"{self.title}. {self.message}")
+            raise self.exception.__class__(self.get_message_for_exception()) from self.exception
 
     def log_error_for_agent(self, main_name: str):
         logger.critical(
@@ -90,6 +90,9 @@ class HandleException:
 
     def get_message_for_modal_window(self):
         return f"{self.title}. \n{self.message}"
+
+    def get_message_for_exception(self):
+        return f"{self.title}. {self.message}"
 
 
 class ErrorHandler:
@@ -748,7 +751,7 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
                 return handler(exception, stack)
 
 
-def handle_exceptions(func: Callable = None, has_ui: bool = True) -> Callable:
+def handle_exceptions(func: Optional[Callable] = None, has_ui: bool = True) -> Callable:
     """Decorator for handling exceptions, which tries to find a matching pattern for known errors.
     If the pattern is found, the exception is handled according to the specified handler.
     Otherwise, the exception is raised as usual.
