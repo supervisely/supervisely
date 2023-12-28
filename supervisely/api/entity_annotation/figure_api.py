@@ -2,17 +2,19 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Optional, Dict
 
+from typing import Dict, List, NamedTuple, Optional
+
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely._utils import batched
 
 
 class FigureApi(RemoveableBulkModuleApi):
     """
     Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -33,17 +35,18 @@ class FigureApi(RemoveableBulkModuleApi):
                        geometry_type='bitmap',
                        geometry={'bitmap': {'data': 'eJwdlns8...Cgj4=', 'origin': [335, 205]}})
         """
-        return [ApiField.ID,
-                ApiField.UPDATED_AT,
-                ApiField.CREATED_AT,
-                ApiField.ENTITY_ID,
-                ApiField.OBJECT_ID,
-                ApiField.PROJECT_ID,
-                ApiField.DATASET_ID,
-                ApiField.FRAME_INDEX,
-                ApiField.GEOMETRY_TYPE,
-                ApiField.GEOMETRY
-                ]
+        return [
+            ApiField.ID,
+            ApiField.UPDATED_AT,
+            ApiField.CREATED_AT,
+            ApiField.ENTITY_ID,
+            ApiField.OBJECT_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.FRAME_INDEX,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY,
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -111,9 +114,17 @@ class FigureApi(RemoveableBulkModuleApi):
             #     }
             # ]
         """
-        return self._get_info_by_id(id, 'figures.info')
+        return self._get_info_by_id(id, "figures.info")
 
-    def create(self, entity_id: int, object_id: int, meta: Dict, geometry_json: Dict, geometry_type, track_id: int=None):
+    def create(
+        self,
+        entity_id: int,
+        object_id: int,
+        meta: Dict,
+        geometry_json: Dict,
+        geometry_type,
+        track_id: int = None,
+    ):
         """"""
         input_figure = {
             ApiField.META: meta,
@@ -265,7 +276,7 @@ class FigureApi(RemoveableBulkModuleApi):
         """"""
         if len(figures_json) == 0:
             return
-        for (batch_keys, batch_jsons) in zip(
+        for batch_keys, batch_jsons in zip(
             batched(figures_keys, batch_size=100), batched(figures_json, batch_size=100)
         ):
             resp = self._api.post(
@@ -275,3 +286,30 @@ class FigureApi(RemoveableBulkModuleApi):
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
+
+    def get_list(self, dataset_id: int) -> List[dict]:
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "priority",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometry",
+            "tags",
+            "meta",
+            "area",
+            "realArea",
+            "tool",
+            "instanceId",
+            "geometryType",
+            "description",
+            "createdBy",
+        ]
+        resp = self._api.post(
+            "figures.list", {ApiField.DATASET_ID: dataset_id, ApiField.FIELDS: fields}
+        )
+        return resp.json()

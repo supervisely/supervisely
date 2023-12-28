@@ -38,6 +38,8 @@ import supervisely.api.video.video_api as video_api
 import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
+import supervisely.api.entity_annotation.figure_api as figure_api
+import supervisely.api.entity_annotation.tag_api as tag_api
 import supervisely.io.env as sly_env
 from supervisely._utils import is_development
 from supervisely.io.network_exceptions import (
@@ -157,6 +159,9 @@ class Api:
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
+
+        self.figure = figure_api.FigureApi(self)
+        self.tag = tag_api.TagApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec

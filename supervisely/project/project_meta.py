@@ -1004,6 +1004,28 @@ class ProjectMeta(JsonSerializable):
         """
         return self._tag_metas.get(tag_name)
 
+    def get_tag_meta_by_id(self, tag_meta_id: int) -> TagMeta:
+        """
+        Get given TagMeta by name from ProjectMeta.
+
+        :param tag_meta_id: TagMeta id.
+        :type tag_meta_id: int
+        :return: TagMeta object
+        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+
+            tag_meta_id = 215
+        """
+        for tag_meta in self.tag_metas:
+            if tag_meta.sly_id == tag_meta_id:
+                return tag_meta
+
     @staticmethod
     def merge_list(metas: List[ProjectMeta]) -> ProjectMeta:
         """
