@@ -1,17 +1,17 @@
+import re
+import traceback
 from functools import wraps
 from json import JSONDecodeError, loads
-from requests.exceptions import HTTPError, RetryError
 from shutil import ReadError
 from tarfile import ReadError as TarReadError
-from typing import List, Union, Callable, Dict
+from typing import Callable, Dict, List, Optional, Union
+
+from requests.exceptions import HTTPError, RetryError
 from rich.console import Console
 
-from supervisely.sly_logger import logger, EventType
-from supervisely.app import DialogWindowError
 from supervisely import is_development
-
-import traceback
-import re
+from supervisely.app import DialogWindowError
+from supervisely.sly_logger import EventType, logger
 
 # TODO: Add correct doc link.
 # DOC_URL = "https://docs.supervisely.com/errors/"
@@ -71,8 +71,11 @@ class HandleException:
         # for i, trace in enumerate(traceback.format_list(self.stack)):
         #     console.print(f"{i + 1}. {trace}")
 
-    def raise_error(self):
-        raise DialogWindowError(self.title, self.message)
+    def raise_error(self, has_ui: bool = True):
+        if has_ui:
+            raise DialogWindowError(self.title, self.message)
+        else:
+            raise self.exception.__class__(self.get_message_for_exception()) from self.exception
 
     def log_error_for_agent(self, main_name: str):
         logger.critical(
@@ -87,6 +90,9 @@ class HandleException:
 
     def get_message_for_modal_window(self):
         return f"{self.title}. \n{self.message}"
+
+    def get_message_for_exception(self):
+        return f"{self.title}. {self.message}"
 
 
 class ErrorHandler:
@@ -745,7 +751,7 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
                 return handler(exception, stack)
 
 
-def handle_exceptions(func: Callable) -> Callable:
+def handle_exceptions(func: Optional[Callable] = None, has_ui: bool = True) -> Callable:
     """Decorator for handling exceptions, which tries to find a matching pattern for known errors.
     If the pattern is found, the exception is handled according to the specified handler.
     Otherwise, the exception is raised as usual.
@@ -763,20 +769,33 @@ def handle_exceptions(func: Callable) -> Callable:
         @sly.handle_exceptions
         def my_func():
             # Some code that may raise an exception.
+
+        # call with argument `has_ui=False` if you don't want to raise a DialogWindowError
+        @sly.handle_exceptions(has_ui=False)
+        def my_func():
+            # Some code that may raise an exception.
     """
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            exception_handler = handle_exception(e)
-            if exception_handler:
-                exception_handler.raise_error()
-            else:
-                raise
+    f = None
+    if func is None or callable(func):
+        # No argument provided or used as a decorator without arguments
+        f = func
 
-    return wrapper
+    def decorator(f) -> Callable:
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except Exception as e:
+                exception_handler = handle_exception(e)
+                if exception_handler:
+                    exception_handler.raise_error(has_ui=has_ui)
+                else:
+                    raise
+
+        return wrapper
+
+    return decorator if f is None else decorator(f)
 
 
 def handle_additional_exceptions(
