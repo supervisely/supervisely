@@ -38,6 +38,7 @@ from supervisely.api.module_api import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as PMJsonF
+from supervisely.project.project_settings import ProjectSettingsJsonFields as PSJsonF
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -461,11 +462,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
                         json_response[PMJsonF.PROJECT_SETTINGS] = {
-                            PMJsonF.MULTI_VIEW: {
-                                PMJsonF.ENABLED: json_settings["groupImages"],
-                                PMJsonF.TAG_ID: tag["id"],
-                                PMJsonF.TAG_NAME: tag["name"],  # necessary for identification
-                                PMJsonF.VIEWS_ARE_SYNCED: json_settings["groupImagesSync"],
+                            PSJsonF.MULTI_VIEW: {
+                                PSJsonF.ENABLED: json_settings["groupImages"],
+                                PSJsonF.TAG_ID: tag["id"],
+                                PSJsonF.TAG_NAME: tag["name"],  # necessary for identification
+                                PSJsonF.VIEWS_ARE_SYNCED: json_settings["groupImagesSync"],
                             }
                         }
                         break
@@ -644,16 +645,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if meta_json.get(PMJsonF.PROJECT_SETTINGS) is not None:
             meta_settings = meta_json[PMJsonF.PROJECT_SETTINGS]
             new_settings = {}
-            if meta_settings.get(PMJsonF.MULTI_VIEW) is not None:
+            if meta_settings.get(PSJsonF.MULTI_VIEW) is not None:
                 try:
-                    group_tag_name = meta_settings[PMJsonF.MULTI_VIEW][PMJsonF.TAG_NAME]
+                    group_tag_name = meta_settings[PSJsonF.MULTI_VIEW][PSJsonF.TAG_NAME]
                     for tag in self.get_meta(id)["tags"]:
                         if tag["name"] == group_tag_name:
                             tmp = {
-                                "groupImages": meta_settings[PMJsonF.MULTI_VIEW][PMJsonF.ENABLED],
+                                "groupImages": meta_settings[PSJsonF.MULTI_VIEW][PSJsonF.ENABLED],
                                 "groupImagesByTagId": tag["id"],
-                                "groupImagesSync": meta_settings[PMJsonF.MULTI_VIEW][
-                                    PMJsonF.VIEWS_ARE_SYNCED
+                                "groupImagesSync": meta_settings[PSJsonF.MULTI_VIEW][
+                                    PSJsonF.VIEWS_ARE_SYNCED
                                 ],
                             }
                             new_settings.update(tmp)

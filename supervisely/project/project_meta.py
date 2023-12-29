@@ -24,13 +24,7 @@ class ProjectMetaJsonFields:
     OBJ_TAGS = "tags_objects"
     TAGS = "tags"
     PROJECT_TYPE = "projectType"
-
     PROJECT_SETTINGS = "projectSettings"
-    MULTI_VIEW = "multiView"
-    ENABLED = "enabled"
-    TAG_ID = "tagId"
-    TAG_NAME = "tagName"
-    VIEWS_ARE_SYNCED = "viewsAreSynced"
 
 
 def _merge_img_obj_tag_metas(
@@ -162,7 +156,7 @@ class ProjectMeta(JsonSerializable):
 
         self._project_type = project_type
         if isinstance(project_settings, ProjectSettings):
-            self._project_settings = project_settings.to_json(ProjectMetaJsonFields)
+            self._project_settings = project_settings.to_json()
         else:
             self._project_settings = project_settings
 
