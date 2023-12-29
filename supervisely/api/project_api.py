@@ -633,6 +633,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_meta_json = load_json_file(path_to_meta)
             api.project.update_meta(kiwis_proj_id, project_meta)
         """
+
+        m = meta
+        if isinstance(meta, dict):
+            m = ProjectMeta.from_json(meta)
+
+        if m.project_settings is not None:
+            group_tag = m.get_tag_meta(m.project_settings.multiview_tag_name)
+            if group_tag is None:
+                raise RuntimeError("dsffsdf")
+
+        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
+
+        if m.project_settings is not None:
+            new_m = ProjectMeta.from_json(self.get_meta(id))
+            group_tag = new_m.get_tag_meta(m.project_settings.multiview_tag_name)
+            new_m.project_settings = m.project_settings.clone(multiview_tag_id=group_tag.sly_id)
+            self.update_settings(id, new_m.project_settings)
+
+        return new_m
+
         meta_json = None
         if isinstance(meta, ProjectMeta):
             meta_json = meta.to_json()
@@ -643,7 +663,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
         if meta.project_settings is not None:
-            s: ProjectSettings = meta.project_settings
+            s = meta.project_settings
             new_settings = {
                 "groupImages": s.multiview_enabled,
                 "groupImagesByTagId": s.multiview_tag_id,
