@@ -651,8 +651,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         logger.warn(
                             f"Oops! It seems like you have enabled the multi-view mode in meta.json, but forgotten to specify a tag. Adding it for you..."
                         )
-                        s.multiview_tag_name = tag["name"]
-                        s.multiview_tag_id = tag["id"]
+                        new_settings.update(
+                            {
+                                "groupImages": s.multiview_enabled,
+                                "groupImagesByTagId": tag["id"],
+                                "groupImagesSync": s.multiview_is_synced,
+                            }
+                        )
+                        logger.info(f"Multi-view mode has been enabled with '{tag['name']}' tag.")
+                        break
 
                     if tag["name"] == s.multiview_tag_name or tag["id"] == s.multiview_tag_id:
                         logger.info(f"Multi-view mode has been enabled with '{tag['name']}' tag.")

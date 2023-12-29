@@ -64,7 +64,7 @@ def validate_settings_schema(data: dict) -> None:
 
 class ProjectSettings(JsonSerializable):
     """
-    General information about :class:`<supervisely.project.project_settings.ProjectSettings>`.
+    General information about :class:`<supervisely.project.project_settings.ProjectSettings>`. The class is immutable.
 
     :param multiview_enabled: Enable multi-view mode.
     :type multiview_enabled: bool
@@ -108,22 +108,6 @@ class ProjectSettings(JsonSerializable):
         self._multiview_tag_name = multiview_tag_name
         self._multiview_tag_id = multiview_tag_id
         self.multiview_is_synced = multiview_is_synced
-
-    @property
-    def multiview_tag_name(self) -> str:
-        return self._multiview_tag_name
-
-    @multiview_tag_name.setter
-    def multiview_tag_name(self, new_value):
-        self._multiview_tag_name = new_value
-
-    @property
-    def multiview_tag_id(self) -> str:
-        return self._multiview_tag_id
-
-    @multiview_tag_id.setter
-    def multiview_tag_id(self, new_value):
-        self._multiview_tag_id = new_value
 
     def to_json(self) -> dict:
         data = {
