@@ -155,8 +155,8 @@ class ProjectMeta(JsonSerializable):
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
 
         self._project_type = project_type
-        if isinstance(project_settings, ProjectSettings):
-            self._project_settings = project_settings.to_json()
+        if isinstance(project_settings, dict):
+            self._project_settings = ProjectSettings().from_json(project_settings)
         else:
             self._project_settings = project_settings
 
@@ -280,14 +280,7 @@ class ProjectMeta(JsonSerializable):
             meta = sly.ProjectMeta(project_settings=s)
 
             print(meta.project_settings)
-            # Output: {
-            #   'multiView': {
-            #       'enabled': True,
-            #       'tagId': 27855,
-            #       'tagName': 'multi_tag',
-            #       'viewsAreSynced': False
-            #   }
-            #}
+            # Output: <class 'supervisely.project.project_settings.ProjectSettings'>
         """
         return self._project_settings
 
@@ -340,7 +333,7 @@ class ProjectMeta(JsonSerializable):
         if self._project_type is not None:
             res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
         if self._project_settings is not None:
-            res[ProjectMetaJsonFields.PROJECT_SETTINGS] = self._project_settings
+            res[ProjectMetaJsonFields.PROJECT_SETTINGS] = self._project_settings.to_json()
         return res
 
     @classmethod
@@ -1130,7 +1123,6 @@ class ProjectMeta(JsonSerializable):
         result = "ProjectMeta:\n"
         result += "Object Classes\n{}\n".format(str(self._obj_classes))
         result += "Tags\n{}\n".format(str(self._tag_metas))
-        result += "Settings\n{}\n".format(str(self._project_settings))
         return result
 
     def __eq__(self, other: ProjectMeta):

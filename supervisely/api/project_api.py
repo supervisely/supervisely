@@ -37,7 +37,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.project.project_meta import ProjectMetaJsonFields as PMJsonF
+from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import ProjectSettingsJsonFields as PSJsonF
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
@@ -461,12 +461,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             if json_settings.get("groupImagesByTagId") is not None:
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
-                        json_response[PMJsonF.PROJECT_SETTINGS] = {
+                        json_response[MetaJsonF.PROJECT_SETTINGS] = {
                             PSJsonF.MULTI_VIEW: {
                                 PSJsonF.ENABLED: json_settings["groupImages"],
                                 PSJsonF.TAG_ID: tag["id"],
                                 PSJsonF.TAG_NAME: tag["name"],  # necessary for identification
-                                PSJsonF.VIEWS_ARE_SYNCED: json_settings["groupImagesSync"],
+                                PSJsonF.IS_SYNCED: json_settings["groupImagesSync"],
                             }
                         }
                         break
@@ -642,8 +642,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
-        if meta_json.get(PMJsonF.PROJECT_SETTINGS) is not None:
-            meta_settings = meta_json[PMJsonF.PROJECT_SETTINGS]
+        if meta_json.get(MetaJsonF.PROJECT_SETTINGS) is not None:
+            meta_settings = meta_json[MetaJsonF.PROJECT_SETTINGS]
             new_settings = {}
             if meta_settings.get(PSJsonF.MULTI_VIEW) is not None:
                 try:
@@ -654,7 +654,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                                 "groupImages": meta_settings[PSJsonF.MULTI_VIEW][PSJsonF.ENABLED],
                                 "groupImagesByTagId": tag["id"],
                                 "groupImagesSync": meta_settings[PSJsonF.MULTI_VIEW][
-                                    PSJsonF.VIEWS_ARE_SYNCED
+                                    PSJsonF.IS_SYNCED
                                 ],
                             }
                             new_settings.update(tmp)
