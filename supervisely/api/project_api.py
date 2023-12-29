@@ -644,32 +644,29 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         if meta.project_settings is not None:
             s: ProjectSettings = meta.project_settings
-            new_settings = {}
+            new_settings = {
+                "groupImages": s.multiview_enabled,
+                "groupImagesByTagId": s.multiview_tag_id,
+                "groupImagesSync": s.multiview_is_synced,
+            }
+
             if s.multiview_enabled is True:
+                add_lacking_tag = False
                 for tag in self.get_meta(id)["tags"]:
                     if s.multiview_tag_name is None and s.multiview_tag_id is None:
                         logger.warn(
                             f"Oops! It seems like you have enabled the multi-view mode in meta.json, but forgotten to specify a tag. Adding it for you..."
                         )
-                        new_settings.update(
-                            {
-                                "groupImages": s.multiview_enabled,
-                                "groupImagesByTagId": tag["id"],
-                                "groupImagesSync": s.multiview_is_synced,
-                            }
-                        )
-                        logger.info(f"Multi-view mode has been enabled with '{tag['name']}' tag.")
-                        break
+                        add_lacking_tag = True
 
-                    if tag["name"] == s.multiview_tag_name or tag["id"] == s.multiview_tag_id:
+                    if (
+                        add_lacking_tag is True
+                        or tag["name"] == s.multiview_tag_name
+                        or tag["id"] == s.multiview_tag_id
+                    ):
                         logger.info(f"Multi-view mode has been enabled with '{tag['name']}' tag.")
-                        new_settings.update(
-                            {
-                                "groupImages": s.multiview_enabled,
-                                "groupImagesByTagId": tag["id"],
-                                "groupImagesSync": s.multiview_is_synced,
-                            }
-                        )
+                        new_settings["groupImagesByTagId"] = tag["id"]
+
                         break
 
             self.update_settings(id, new_settings)

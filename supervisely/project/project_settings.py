@@ -105,16 +105,16 @@ class ProjectSettings(JsonSerializable):
         multiview_is_synced: bool = False,
     ):
         self.multiview_enabled = multiview_enabled
-        self._multiview_tag_name = multiview_tag_name
-        self._multiview_tag_id = multiview_tag_id
+        self.multiview_tag_name = multiview_tag_name
+        self.multiview_tag_id = multiview_tag_id
         self.multiview_is_synced = multiview_is_synced
 
     def to_json(self) -> dict:
         data = {
             ProjectSettingsJsonFields.MULTI_VIEW: {
                 ProjectSettingsJsonFields.ENABLED: self.multiview_enabled,
-                ProjectSettingsJsonFields.TAG_NAME: self._multiview_tag_name,
-                ProjectSettingsJsonFields.TAG_ID: self._multiview_tag_id,
+                ProjectSettingsJsonFields.TAG_NAME: self.multiview_tag_name,
+                ProjectSettingsJsonFields.TAG_ID: self.multiview_tag_id,
                 ProjectSettingsJsonFields.IS_SYNCED: self.multiview_is_synced,
             }
         }
