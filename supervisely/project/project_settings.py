@@ -84,7 +84,6 @@ class ProjectSettings(JsonSerializable):
 
         import supervisely as sly
 
-
         Example 1: multiView Tag is known (by id or name)
         settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
 
