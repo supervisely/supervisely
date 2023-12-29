@@ -155,8 +155,9 @@ class ProjectMeta(JsonSerializable):
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
 
         self._project_type = project_type
+
         if isinstance(project_settings, dict):
-            self._project_settings = ProjectSettings().from_json(project_settings)
+            self._project_settings = ProjectSettings.from_json(project_settings)
         else:
             self._project_settings = project_settings
 
@@ -378,7 +379,6 @@ class ProjectMeta(JsonSerializable):
         img_tag_metas_json = data.get(ProjectMetaJsonFields.IMG_TAGS, [])
         obj_tag_metas_json = data.get(ProjectMetaJsonFields.OBJ_TAGS, [])
         project_type = data.get(ProjectMetaJsonFields.PROJECT_TYPE, None)
-        project_settings = data.get(ProjectMetaJsonFields.PROJECT_SETTINGS, None)
 
         if len(tag_metas_json) > 0:
             # New format - all project tags in a single collection.
@@ -414,6 +414,17 @@ class ProjectMeta(JsonSerializable):
                 "Check the annotation format documentation at: "
                 "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
             ) from e
+
+        project_settings_json = data.get(ProjectMetaJsonFields.PROJECT_SETTINGS, None)
+        if project_settings_json is not None:
+            try:
+                project_settings = ProjectSettings.from_json(project_settings_json)
+            except Exception as e:
+                raise Exception(
+                    f"Failed to deserialize settings from Project meta JSON. "
+                    "Check the annotation format documentation at: "  # TODO
+                    "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
+                ) from e
 
         return cls(
             obj_classes=obj_classes,

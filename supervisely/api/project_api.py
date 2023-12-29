@@ -38,6 +38,7 @@ from supervisely.api.module_api import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
+from supervisely.project.project_settings import ProjectSettings
 from supervisely.project.project_settings import ProjectSettingsJsonFields as PSJsonF
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
@@ -458,17 +459,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         if with_settings is True:
             json_settings = self.get_settings(id)
+
             if json_settings.get("groupImagesByTagId") is not None:
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
-                        json_response[MetaJsonF.PROJECT_SETTINGS] = {
-                            PSJsonF.MULTI_VIEW: {
-                                PSJsonF.ENABLED: json_settings["groupImages"],
-                                PSJsonF.TAG_ID: tag["id"],
-                                PSJsonF.TAG_NAME: tag["name"],  # necessary for identification
-                                PSJsonF.IS_SYNCED: json_settings["groupImagesSync"],
-                            }
-                        }
+                        json_response[MetaJsonF.PROJECT_SETTINGS] = ProjectSettings(
+                            multiview_enabled=json_settings["groupImages"],
+                            multiview_tag_name=tag["name"],
+                            multiview_tag_id=json_settings["groupImagesByTagId"],
+                            multiview_is_synced=json_settings["groupImagesSync"],
+                        ).to_json()
                         break
 
         return json_response
@@ -639,35 +639,32 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             meta_json = meta.to_json()
         else:
             meta_json = meta
+            meta = ProjectMeta.from_json(meta_json)
 
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
 
-        if meta_json.get(MetaJsonF.PROJECT_SETTINGS) is not None:
-            meta_settings = meta_json[MetaJsonF.PROJECT_SETTINGS]
+        if meta.project_settings is not None:
+            s: ProjectSettings = meta.project_settings
             new_settings = {}
-            if meta_settings.get(PSJsonF.MULTI_VIEW) is not None:
-                try:
-                    group_tag_name = meta_settings[PSJsonF.MULTI_VIEW][PSJsonF.TAG_NAME]
-                    for tag in self.get_meta(id)["tags"]:
-                        if tag["name"] == group_tag_name:
-                            tmp = {
-                                "groupImages": meta_settings[PSJsonF.MULTI_VIEW][PSJsonF.ENABLED],
-                                "groupImagesByTagId": tag["id"],
-                                "groupImagesSync": meta_settings[PSJsonF.MULTI_VIEW][
-                                    PSJsonF.IS_SYNCED
-                                ],
-                            }
-                            new_settings.update(tmp)
-                            break
-                except KeyError as e:
-                    logger.warn(f"The field {e} doesn't exist in the meta. Set default values.")
+            for tag in self.get_meta(id)["tags"]:
+                if s.multiview_enabled is True:
+                    if s._multiview_tag_id is None and s._multiview_tag_name is None:
+                        logger.warn(
+                            f"Oops! It seems that you have enabled the multi-view mode in meta.json, but forgotten to specify a tag. Adding it for you..."
+                        )
+                        s.multiview_tag_name = tag["name"]
+                        s.multiview_tag_id = tag["id"]
+
+                if tag["name"] == s._multiview_tag_name or tag["id"] == s._multiview_tag_id:
+                    logger.info(f"Multi-view mode has been enabled with {tag['name']} tag.")
                     new_settings.update(
                         {
-                            "groupImages": False,
-                            "groupImagesByTagId": None,
-                            "groupImagesSync": False,
+                            "groupImages": s.multiview_enabled,
+                            "groupImagesByTagId": tag["id"],
+                            "groupImagesSync": s.multiview_is_synced,
                         }
                     )
+                    break
 
             self.update_settings(id, new_settings)
 

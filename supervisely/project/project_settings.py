@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Union
 
 from jsonschema import ValidationError, validate
 
-from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.io.json import JsonSerializable
 
 
@@ -24,8 +23,8 @@ class ProjectSettingsRequiredSchema:
                 "type": "object",
                 "properties": {
                     ProjectSettingsJsonFields.ENABLED: {"type": "boolean"},
-                    ProjectSettingsJsonFields.TAG_ID: {"type": "integer"},
-                    ProjectSettingsJsonFields.TAG_NAME: {"type": "string"},
+                    ProjectSettingsJsonFields.TAG_ID: {"type": ["integer", "null"]},
+                    ProjectSettingsJsonFields.TAG_NAME: {"type": ["string", "null"]},
                     ProjectSettingsJsonFields.IS_SYNCED: {"type": "boolean"},
                 },
                 "required": [
@@ -42,10 +41,12 @@ class ProjectSettingsRequiredSchema:
     }
 
 
-def validate_settings_json(data: dict) -> None:
+def validate_settings_schema(data: dict) -> None:
     try:
         validate(instance=data, schema=ProjectSettingsRequiredSchema.SCHEMA)
     except ValidationError as e:
+        if e.json_path == "$":
+            raise ValidationError(f"The validation failed with the following message: {e.message}.")
         msg = f"The validation of the field {e.json_path} has failed with the following message: {e.message}."
         if e.validator == "required":
             raise ValidationError(
@@ -63,39 +64,72 @@ class ProjectSettings(JsonSerializable):
     def __init__(
         self,
         multiview_enabled: bool = False,
-        multiview_tag_name: str = None,
-        multiview_tag_id: int = None,
+        multiview_tag_name: Optional[str] = None,
+        multiview_tag_id: Optional[int] = None,
         multiview_is_synced: bool = False,
     ):
         self.multiview_enabled = multiview_enabled
-        self.multiview_tag_name = multiview_tag_name
-        self.multiview_tag_id = multiview_tag_id
+        self._multiview_tag_name = multiview_tag_name
+        self._multiview_tag_id = multiview_tag_id
         self.multiview_is_synced = multiview_is_synced
 
-        if multiview_enabled is True:
-            if multiview_tag_name is None and multiview_tag_id is None:
-                raise ValueError(
-                    "When multi-view mode is enabled, the value of multiview_tag_name or multiview_tag_id should be defined."
-                )
-            else:
-                if multiview_is_synced is None:
-                    raise ValueError(
-                        "When multi-view mode is enabled, the value of views_are_synced should be defined."
-                    )
+    @property
+    def multiview_tag_name(self) -> str:
+        """
+        Name.
+
+        :return: Name
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            print(class_lemon.name)
+            # Output: 'lemon'
+        """
+        return self._multiview_tag_name
+
+    @multiview_tag_name.setter
+    def multiview_tag_name(self, new_value):
+        self._multiview_tag_name = new_value
+
+    @property
+    def multiview_tag_id(self) -> str:
+        """
+        Name.
+
+        :return: Name
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            print(class_lemon.name)
+            # Output: 'lemon'
+        """
+        return self._multiview_tag_id
+
+    @multiview_tag_id.setter
+    def multiview_tag_id(self, new_value):
+        self._multiview_tag_id = new_value
 
     def to_json(self) -> dict:
-        return {
+        data = {
             ProjectSettingsJsonFields.MULTI_VIEW: {
                 ProjectSettingsJsonFields.ENABLED: self.multiview_enabled,
-                ProjectSettingsJsonFields.TAG_NAME: self.multiview_tag_name,
-                ProjectSettingsJsonFields.TAG_ID: self.multiview_tag_id,
+                ProjectSettingsJsonFields.TAG_NAME: self._multiview_tag_name,
+                ProjectSettingsJsonFields.TAG_ID: self._multiview_tag_id,
                 ProjectSettingsJsonFields.IS_SYNCED: self.multiview_is_synced,
             }
         }
+        validate_settings_schema(data)
+        return data
 
     @classmethod
     def from_json(cls, data: Dict) -> "ProjectSettings":
-        validate_settings_json(data)
+        validate_settings_schema(data)
 
         d_multiview = data[ProjectSettingsJsonFields.MULTI_VIEW]
 
