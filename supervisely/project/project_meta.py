@@ -111,16 +111,16 @@ class ProjectMeta(JsonSerializable):
         kiwi = sly.ObjClass('kiwi', sly.Polygon)
         tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
 
-        s = sly.ProjectSettings(
-            enable_multiview = True,
-            multiview_tag_name= tag_fruit.name,
-            views_are_synced=False,
+        settings = sly.ProjectSettings(
+            multiview_enabled=True,
+            multiview_tag_name=tag_fruit.name,
+            multiview_is_synced=False,
         )
         meta = sly.ProjectMeta(
             obj_classes=[lemon, kiwi],
             tag_metas=tag_fruit,
             project_type=sly.ProjectType.IMAGES,
-            project_settings=s
+            project_settings=settings
         )
 
         # Example 4: Custom color
@@ -241,7 +241,7 @@ class ProjectMeta(JsonSerializable):
         return self._tag_metas
 
     @property
-    def project_type(self):
+    def project_type(self) -> ProjectType:
         """
         Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
 
@@ -261,7 +261,7 @@ class ProjectMeta(JsonSerializable):
         return self._project_type
 
     @property
-    def project_settings(self) -> Dict[str, str]:
+    def project_settings(self) -> ProjectSettings:
         """
         Settings of the project. See possible values in :class: `ProjectSettings`.
 
@@ -274,9 +274,9 @@ class ProjectMeta(JsonSerializable):
             import supervisely as sly
 
             s = sly.ProjectSettings(
-                enable_multiview = True,
+                multiview_enabled=True,
                 multiview_tag_name='multi_tag',
-                views_are_synced=False,
+                multiview_is_synced=False,
             )
             meta = sly.ProjectMeta(project_settings=s)
 

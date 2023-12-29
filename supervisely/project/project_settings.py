@@ -46,7 +46,9 @@ def validate_settings_schema(data: dict) -> None:
         validate(instance=data, schema=ProjectSettingsRequiredSchema.SCHEMA)
     except ValidationError as e:
         if e.json_path == "$":
-            raise ValidationError(f"The validation failed with the following message: {e.message}.")
+            raise ValidationError(
+                f"The validation has failed with the following message: {e.message}."
+            )
         msg = f"The validation of the field {e.json_path} has failed with the following message: {e.message}."
         if e.validator == "required":
             raise ValidationError(
@@ -61,6 +63,40 @@ def validate_settings_schema(data: dict) -> None:
 
 
 class ProjectSettings(JsonSerializable):
+    """
+    General information about :class:`<supervisely.project.project_settings.ProjectSettings>`.
+
+    :param multiview_enabled: Enable multi-view mode.
+    :type multiview_enabled: bool
+    :param multiview_tag_name: The name of the tag which will be used as a group tag for multi-window mode.
+    :type multiview_tag_name: str, optional
+    :param multiview_tag_id: The id of the tag which will be used as a group tag for multi-window mode.
+    :type multiview_tag_id: str, optional
+    :param multiview_is_synced: Enable syncronization of views for the multi-view mode.
+    :type multiview_is_synced: bool
+
+    :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+
+        Example 1: multiView Tag is known (by id or name)
+        settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
+
+        Example 2: multiView Tag is unknown, but multiView is enabled. In this case, the tag will be chosen automatically.
+        settings_json = {"multiView": {"enabled": True, "tagName": None, "tagId": None, "areSynced": False}}
+
+        meta = sly.ProjectMeta(project_settings=sly.ProjectSettings.from_json(settings_json))
+        # or
+        meta = sly.ProjectMeta(project_settings=settings_json)
+
+        api.project.update_meta(project_id, meta)
+    """
+
     def __init__(
         self,
         multiview_enabled: bool = False,
@@ -75,19 +111,6 @@ class ProjectSettings(JsonSerializable):
 
     @property
     def multiview_tag_name(self) -> str:
-        """
-        Name.
-
-        :return: Name
-        :rtype: :class:`str`
-        :Usage example:
-
-         .. code-block:: python
-
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            print(class_lemon.name)
-            # Output: 'lemon'
-        """
         return self._multiview_tag_name
 
     @multiview_tag_name.setter
@@ -96,19 +119,6 @@ class ProjectSettings(JsonSerializable):
 
     @property
     def multiview_tag_id(self) -> str:
-        """
-        Name.
-
-        :return: Name
-        :rtype: :class:`str`
-        :Usage example:
-
-         .. code-block:: python
-
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            print(class_lemon.name)
-            # Output: 'lemon'
-        """
         return self._multiview_tag_id
 
     @multiview_tag_id.setter
