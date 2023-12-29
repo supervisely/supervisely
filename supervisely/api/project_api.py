@@ -909,9 +909,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
         return response.json()
 
-    def get_settings(self, id: int) -> ProjectSettings:
+    def get_settings(self, id: int) -> Dict[str, str]:
         info = self._get_info_by_id(id, "projects.info")
-        return ProjectSettings.from_json(info.settings)
+        return info.settings
 
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
         """
