@@ -1,0 +1,64 @@
+<div v-show="data.{{{widget.widget_id}}}.classes.length == 0">
+	{{{widget.empty_notification}}}
+</div>
+<div v-show="data.{{{widget.widget_id}}}.classes.length != 0">
+	<link
+		rel="stylesheet"
+		href="./sly/css/app/widgets/object_class_view/style.css"
+	/>
+    <div>
+        <span style="margin-right: 10px">{{{widget._select_all_btn}}}</span>
+        <span style="margin-right: 10px">{{{widget._deselect_all_btn}}}</span>
+    </div>
+	<table>
+		<tr>
+			<th style="padding: 3px"></th>
+			<th style="padding: 3px 20px">Class</th>
+			<th style="padding: 3px 20px">New name</th>
+		</tr>
+		<tr v-for="(obj_class, idx) in data.{{{widget.widget_id}}}.classes">
+			<td>
+				<el-checkbox
+					v-model="state.{{{widget.widget_id}}}.classes_values[idx].selected"
+				>
+				</el-checkbox>
+			</td>
+			<td
+				class="icon-text-line"
+				style="display: table-cell; vertical-align: middle; padding: 3px 20px"
+			>
+				<i
+					class="zmdi zmdi-circle"
+					style="margin-right: 5px"
+					:style="{color: obj_class.color}"
+				></i>
+				<b style="font-size: 16">{{obj_class.title}}</b>
+				<span
+					style="
+						margin-left: 5px;
+						font-size: 12px;
+						color: #8492a6;
+						line-height: initial;
+					"
+				>
+					{{obj_class.shape_text}}
+				</span>
+			</td>
+			<td
+				style="display: table-cell; vertical-align: middle; padding: 3px 20px"
+			>
+				<el-input
+					v-model="state.{{{widget.widget_id}}}.classes_values[idx].value"
+					size="mini"
+					maxlength="32"
+					style="width: 160px"
+					:disabled="!state.{{{widget.widget_id}}}.classes_values[idx].selected"
+					@change="
+                        state.{{{widget.widget_id}}}.classes_values[idx].default = $event == obj_class.default_value;
+                        state.{{{widget.widget_id}}}.classes_values[idx].ignore = $event == '';"
+				>
+				</el-input>
+			</td>
+		</tr>
+	</table>
+</div>

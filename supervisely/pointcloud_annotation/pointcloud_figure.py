@@ -1,31 +1,40 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import Optional, Dict
+
+from typing import Dict, Optional, Union
 from uuid import UUID
 
-from supervisely.geometry.geometry import Geometry
 from supervisely._utils import take_with_default
-from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.geometry.geometry import Geometry
+from supervisely.pointcloud_annotation.pointcloud_episode_object import (
+    PointcloudEpisodeObject,
+)
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
+    PointcloudEpisodeObjectCollection,
+)
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
-from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
 
 
 class PointcloudFigure(VideoFigure):
     """
-    PointcloudFigure object for :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>`. :class:`PointcloudFigure<PointcloudFigure>` object is immutable.
+    PointcloudFigure object for
+    :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` or :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`.
+    :class:`PointcloudFigure<PointcloudFigure>` objects is immutable.
 
-    :param parent_object: PointcloudObject object.
-    :type parent_object: PointcloudObject
+    :param parent_object: PointcloudObject or PointcloudObject object.
+    :type parent_object: Union[PointcloudObject, PointcloudEpisodeObject]
     :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
     :type geometry: Geometry
     :param frame_index: Index of Frame to which PointcloudFigure belongs.
     :type frame_index: int
     :param key: KeyIdMap object.
     :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`PointcloudObject<PointcloudObject>` to which PointcloudFigure belongs.
+    :param class_id: ID of :class:`PointcloudObject<PointcloudObject>` (or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`) to which PointcloudFigure belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created PointcloudFigure.
     :type labeler_login: str, optional
@@ -64,7 +73,7 @@ class PointcloudFigure(VideoFigure):
 
     def __init__(
         self,
-        parent_object: PointcloudObject,
+        parent_object: Union[PointcloudObject, PointcloudEpisodeObject],
         geometry: Geometry,
         frame_index: Optional[int] = None,
         key: Optional[UUID] = None,
@@ -86,14 +95,13 @@ class PointcloudFigure(VideoFigure):
         # @TODO: validate geometry - allowed: only cuboid_3d + point_cloud
 
     @property
-    def parent_object(self) -> PointcloudObject:
+    def parent_object(self) -> Union[PointcloudObject, PointcloudEpisodeObject]:
         """
         PointcloudObject of current PointcloudFigure.
 
-        :return: PointcloudObject object
-        :rtype: :class:`PointcloudObject<PointcloudObject>`
+        :return: PointcloudObject ot PointcloudEpisodeObject object
+        :rtype: :class:`PointcloudObject<PointcloudObject>` or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`
         :Usage example:
-
          .. code-block:: python
 
             pointcloud_obj_car = pointcloud_figure_car.parent_object
@@ -123,7 +131,7 @@ class PointcloudFigure(VideoFigure):
     def from_json(
         cls,
         data: Dict,
-        objects: PointcloudObjectCollection,
+        objects: Union[PointcloudObjectCollection, PointcloudEpisodeObjectCollection],
         frame_index: Optional[int] = None,
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudFigure:
@@ -132,8 +140,8 @@ class PointcloudFigure(VideoFigure):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: PointcloudObjectCollection object.
-        :type objects: PointcloudObjectCollection
+        :param objects: PointcloudObjectCollection or PointcloudEpisodeObjectCollection object.
+        :type objects: PointcloudObjectCollection or PointcloudEpisodeObjectCollection
         :param frame_index: Index of Frame to which PointcloudFigure belongs.
         :type frame_index: int
         :param key_id_map: KeyIdMap object.
@@ -158,7 +166,7 @@ class PointcloudFigure(VideoFigure):
             figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
             pointcloud_figure_json = figure.to_json(save_meta=True)
 
-            new_video_figure = sly.VideoFigure.from_json(
+            new_pointcloud_figure = sly.PointcloudFigure.from_json(
                 pointcloud_figure_json,
                 sly.PointcloudObjectCollection([pointcloud_obj_car]),
                 frame_index
@@ -169,7 +177,7 @@ class PointcloudFigure(VideoFigure):
 
     def clone(
         self,
-        parent_object: Optional[PointcloudObject] = None,
+        parent_object: Optional[Union[PointcloudObject, PointcloudEpisodeObject]] = None,
         geometry: Optional[Geometry] = None,
         frame_index: Optional[int] = None,
         key: Optional[UUID] = None,
@@ -181,8 +189,8 @@ class PointcloudFigure(VideoFigure):
         """
         Makes a copy of PointcloudFigure with new fields, if fields are given, otherwise it will use fields of the original PointcloudFigure.
 
-        :param parent_object: :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudObject>` object.
-        :type parent_object: PointcloudObject, optional
+        :param parent_object: :class:`PointcloudObject<PointcloudObject>` (or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`) object.
+        :type parent_object: PointcloudObject or PointcloudEpisodeObject, optional
         :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
         :type geometry: Geometry, optional
         :param frame_index: Index of Frame to which PointcloudFigure belongs.

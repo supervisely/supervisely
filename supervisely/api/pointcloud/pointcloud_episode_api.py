@@ -3,12 +3,15 @@
 # docs
 from typing import Dict
 
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
 from supervisely.api.pointcloud.pointcloud_api import PointcloudApi
 from supervisely.api.pointcloud.pointcloud_episode_annotation_api import (
     PointcloudEpisodeAnnotationAPI,
 )
-from supervisely.api.pointcloud.pointcloud_episode_object_api import PointcloudEpisodeObjectApi
+from supervisely.api.pointcloud.pointcloud_episode_object_api import (
+    PointcloudEpisodeObjectApi,
+)
 
 
 class PointcloudEpisodeApi(PointcloudApi):
@@ -129,3 +132,45 @@ class PointcloudEpisodeApi(PointcloudApi):
             },
         )
         return response.json()[ApiField.STOPPED]
+
+    def _upload_bulk_add(
+        self,
+        func_item_to_kv,
+        dataset_id,
+        names,
+        items,
+        metas=None,
+        progress_cb=None,
+    ):
+        if metas is None:
+            metas = [{"frame": i} for i in range(len(items))]
+
+        results = []
+        if len(names) == 0:
+            return results
+        if len(names) != len(items):
+            raise RuntimeError('Can not match "names" and "items" lists, len(names) != len(items)')
+
+        for batch in batched(list(zip(names, items, metas))):
+            images = []
+            for name, item, meta in batch:
+                item_tuple = func_item_to_kv(item)
+                images.append(
+                    {
+                        ApiField.NAME: name,
+                        item_tuple[0]: item_tuple[1],
+                        ApiField.META: meta if meta is not None else {},
+                    }
+                )
+            response = self._api.post(
+                "point-clouds.bulk.add",
+                {ApiField.DATASET_ID: dataset_id, ApiField.POINTCLOUDS: images},
+            )
+            if progress_cb is not None:
+                progress_cb(len(images))
+
+            results.extend([self._convert_json_info(item) for item in response.json()])
+        name_to_res = {img_info.name: img_info for img_info in results}
+        ordered_results = [name_to_res[name] for name in names]
+
+        return ordered_results

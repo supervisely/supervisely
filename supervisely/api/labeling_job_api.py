@@ -245,12 +245,14 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 elif (
                     field_name == ApiField.CLASSES_TO_LABEL or field_name == ApiField.TAGS_TO_LABEL
                 ):
-                    value = []
+                    new_value = []
                     for fv in value:
                         key = ApiField.NAME
                         if ApiField.NAME not in fv:
                             key = "title"
-                        value.append(fv[key])
+                        new_value.append(fv[key])
+                    field_values.append(new_value)
+                    continue
                 elif field_name == ApiField.IMAGES_RANGE:
                     value = (value["start"], value["end"])
 

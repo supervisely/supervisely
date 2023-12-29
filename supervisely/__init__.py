@@ -179,9 +179,13 @@ from supervisely.pointcloud_annotation.pointcloud_episode_frame import (
 from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
     PointcloudEpisodeFrameCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
-    PointcloudEpisodeTag,
+
+from supervisely.pointcloud_annotation.pointcloud_episode_object import PointcloudEpisodeObject
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
+    PointcloudEpisodeObjectCollection,
 )
+from supervisely.pointcloud_annotation.pointcloud_episode_tag import PointcloudEpisodeTag
+
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
     PointcloudEpisodeTagCollection,
 )

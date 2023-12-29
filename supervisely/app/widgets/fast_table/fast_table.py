@@ -1,20 +1,16 @@
 import copy
 import traceback
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
+
 import numpy as np
 import pandas as pd
-from typing import Optional, Union, List
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
 
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
-from supervisely.sly_logger import logger
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 
 class EventLinstenerError(Exception):
@@ -24,6 +20,57 @@ class EventLinstenerError(Exception):
 
 
 class FastTable(Widget):
+    """FastTable widget in Supervisely allows for displaying and manipulating data of various
+    dataset statistics and processing it on the server side.
+
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable>`_
+        (including screenshots and examples).
+
+    :param data: dataset or project data in different formats:
+    :type data: Union[pd.DataFrame, List]
+    :param columns: List of column names
+    :type columns: List, optional
+    :param columns_options: List of dicts with options for each column
+    :type columns_options: List[dict], optional
+    :param project_meta: Project meta information
+    :type project_meta: Union[ProjectMeta, dict], optional
+    :param fixed_columns: Number of fixed columns
+    :type fixed_columns: Literal[1], optional
+    :param page_size: Number of rows per page
+    :type page_size: int, optional
+    :param sort_column_idx: Index of the column to sort by
+    :type sort_column_idx: int, optional
+    :param sort_order: Sorting order
+    :type sort_order: Literal["asc", "desc"], optional
+    :param width: Width of the widget, e.g. "200px", or "100%"
+    :type width: str, optional
+    :param widget_id: Unique widget identifier.
+    :type widget_id: str, optional
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely.app.widgets import FastTable
+
+        data = [["apple", "21"], ["banana", "15"]]
+        columns = ["Class", "Items"]
+        dataframe = pd.DataFrame(data=data, columns=columns)
+        columns_options = [
+            { "type": "class"},
+            { "maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes" }
+        ]
+
+        meta_path = "meta.json"  # define file path
+        with open(meta_path, "r") as json_file:
+            meta = json.load(json_file)
+
+        fast_table = FastTable(
+            data=dataframe,
+            project_meta=meta,
+            columns_options=columns_options,
+        )
+    """
+
     class Routes:
         ROW_CLICKED = "row_clicked_cb"
         CELL_CLICKED = "cell_clicked_cb"
@@ -63,19 +110,9 @@ class FastTable(Widget):
         page_size: Optional[int] = 10,
         sort_column_idx: int = None,
         sort_order: Optional[Literal["asc", "desc"]] = None,
-        width: Optional[str] = "auto",  # "200px", or "100%"
+        width: Optional[str] = "auto",
         widget_id: Optional[str] = None,
     ):
-        """
-        :param data: dataset or project data in different formats:
-        1. Pandas Dataframe or pd.DataFrame(data=data, columns=columns)
-        2. Python list with structure [
-                                            ['row_1_column_1', 'row_1_column_2', ...],
-                                            ['row_2_column_1', 'row_2_column_2', ...],
-                                            ...
-                                        ]
-        """
-
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
         self._cell_click_handled = False
@@ -144,7 +181,23 @@ class FastTable(Widget):
                 logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
                 raise e
 
-    def get_json_data(self):
+    def get_json_data(self) -> Dict[str, Any]:
+        """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
+        Dictionary contains the following fields:
+            - data: table data
+            - columns: list of column names
+            - projectMeta: project meta information
+            - columnsOptions: list of dicts with options for each column
+            - total: total number of rows
+            - options: table options with the following fields:
+                - isRowClickable: whether rows are clickable
+                - isCellClickable: whether cells are clickable
+                - fixColumns: number of fixed columns
+            - pageSize: number of rows per page
+
+        :return: Dictionary with widget data
+        :rtype: Dict[str, Any]
+        """
         return {
             "data": self._parsed_active_data["data"],
             "columns": self._parsed_source_data["columns"],
@@ -159,7 +212,20 @@ class FastTable(Widget):
             "pageSize": self._page_size,
         }
 
-    def get_json_state(self):
+    def get_json_state(self) -> Dict[str, Any]:
+        """Returns dictionary with widget state.
+        Dictionary contains the following fields:
+            - search: search string
+            - selectedRow: selected row
+            - selectedCell: selected cell
+            - page: active page
+            - sort: sorting options with the following fields:
+                - column: index of the column to sort by
+                - order: sorting order
+
+        :return: Dictionary with widget state
+        :rtype: Dict[str, Any]
+        """
         return {
             "search": self._search_str,
             "selectedRow": self._selected_row,
@@ -173,19 +239,39 @@ class FastTable(Widget):
 
     @property
     def fixed_columns_num(self) -> int:
+        """Returns number of fixed columns.
+
+        :return: Number of fixed columns
+        :rtype: int
+        """
         return self._fix_columns
 
     @fixed_columns_num.setter
-    def fixed_columns_num(self, value: int):
+    def fixed_columns_num(self, value: int) -> None:
+        """Sets number of fixed columns.
+
+        :param value: Number of fixed columns
+        :type value: int
+        """
         self._fix_columns = self._validate_fix_columns_value(value)
         DataJson()[self.widget_id]["options"]["fixColumns"] = self._fix_columns
 
     @property
-    def project_meta(self) -> dict:
+    def project_meta(self) -> Dict[str, Any]:
+        """Returns project meta information.
+
+        :return: Project meta information
+        :rtype: Dict[str, Any]
+        """
         return self._project_meta
 
     @project_meta.setter
-    def project_meta(self, meta: Union[ProjectMeta, dict]):
+    def project_meta(self, meta: Union[ProjectMeta, Dict]) -> None:
+        """Sets project meta information.
+
+        :param meta: Project meta information
+        :type meta: Union[ProjectMeta, Dict]
+        """
         self._project_meta = self._unpack_project_meta(meta)
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
 
@@ -198,9 +284,13 @@ class FastTable(Widget):
         self._page_size = size
         DataJson()[self.widget_id]["pageSize"] = self._page_size
 
-    def read_json(self, data: dict, meta: dict = None) -> None:
-        """
-        Replace table data with options and project meta in the widget
+    def read_json(self, data: Dict, meta: Dict = None) -> None:
+        """Replace table data with options and project meta in the widget
+
+        :param data: Table data with options
+        :type data: dict
+        :param meta: Project meta information
+        :type meta: dict
         """
         self._columns_first_idx = self._prepare_json_data(data, "columns")
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
@@ -227,8 +317,10 @@ class FastTable(Widget):
         self.clear_selection()
 
     def read_pandas(self, data: pd.DataFrame) -> None:
-        """
-        Replace table data (rows and columns) in the widget
+        """Replace table data (rows and columns) in the widget.
+
+        :param data: Table data
+        :type data: pd.DataFrame
         """
         self._source_data = self._prepare_input_data(data)
         self._sorted_data = self._sort_table_data(self._source_data)
@@ -240,12 +332,11 @@ class FastTable(Widget):
         DataJson().send_changes()
         self.clear_selection()
 
-    def to_json(self, active_page=False) -> dict:
-        """
-        Export table data with current options as dict.
+    def to_json(self, active_page: Optional[bool] = False) -> Dict[str, Any]:
+        """Export table data with current options as dict.
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
-        :type active_page: bool
+        :type active_page: Optional[bool]
         :return: Table data with current options
         :rtype: dict
         """
@@ -265,8 +356,7 @@ class FastTable(Widget):
         return widget_data
 
     def to_pandas(self, active_page=False) -> pd.DataFrame:
-        """
-        Export only table data (rows and columns) as Pandas Dataframe.
+        """Export only table data (rows and columns) as Pandas Dataframe.
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: bool
@@ -280,12 +370,18 @@ class FastTable(Widget):
         packed_data = pd.DataFrame(data=temp_parsed_data, columns=self._columns_first_idx)
         return packed_data
 
-    def clear_selection(self):
+    def clear_selection(self) -> None:
+        """Clears the selection of the table."""
         StateJson()[self.widget_id]["selectedRow"] = None
         StateJson()[self.widget_id]["selectedCell"] = None
         StateJson().send_changes()
 
-    def get_selected_row(self):
+    def get_selected_row(self) -> ClickedRow:
+        """Returns the selected row.
+
+        :return: Selected row
+        :rtype: ClickedRow
+        """
         row_data = StateJson()[self.widget_id]["selectedRow"]
         row_index = row_data["idx"]
         row = row_data["row"]
@@ -293,7 +389,12 @@ class FastTable(Widget):
             return None
         return self.ClickedRow(row, row_index)
 
-    def get_selected_cell(self):
+    def get_selected_cell(self) -> ClickedCell:
+        """Returns the selected cell.
+
+        :return: Selected cell
+        :rtype: ClickedCell
+        """
         cell_data = StateJson()[self.widget_id]["selectedCell"]
         row_index = cell_data["idx"]
         row = cell_data["row"]
@@ -304,7 +405,14 @@ class FastTable(Widget):
             return None
         return self.ClickedCell(row, column_index, row_index, column_name, column_value)
 
-    def insert_row(self, row, index=-1):
+    def insert_row(self, row: List, index: Optional[int] = -1) -> None:
+        """Inserts a row into the table to the specified position.
+
+        :param row: Row to insert
+        :type row: List
+        :param index: Index of the row to insert
+        :type index: Optional[int]
+        """
         self._validate_table_sizes(row)
         self._validate_row_values_types(row)
         table_data = self._parsed_source_data
@@ -327,7 +435,14 @@ class FastTable(Widget):
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
 
-    def pop_row(self, index=-1):
+    def pop_row(self, index: Optional[int] = -1) -> List:
+        """Removes a row from the table at the specified position and returns it.
+
+        :param index: Index of the row to remove
+        :type index: Optional[int]
+        :return: Removed row
+        :rtype: List
+        """
         index = (
             len(self._parsed_source_data["data"]) - 1
             if index > len(self._parsed_source_data["data"]) or index < 0
@@ -348,7 +463,14 @@ class FastTable(Widget):
             DataJson().send_changes()
             return popped_row
 
-    def row_click(self, func):
+    def row_click(self, func: Callable[[ClickedRow], Any]) -> Callable[[], None]:
+        """Decorator for function that handles row click event.
+
+        :param func: Function that handles row click event
+        :type func: Callable[[ClickedRow], Any]
+        :return: Decorated function
+        :rtype: Callable[[], None]
+        """
         row_clicked_route_path = self.get_route_path(FastTable.Routes.ROW_CLICKED)
         server = self._sly_app.get_server()
 
@@ -374,7 +496,14 @@ class FastTable(Widget):
 
         return _click
 
-    def cell_click(self, func):
+    def cell_click(self, func: Callable[[ClickedCell], Any]) -> Callable[[], None]:
+        """Decorator for function that handles cell click event.
+
+        :param func: Function that handles cell click event
+        :type func: Callable[[ClickedCell], Any]
+        :return: Decorated function
+        :rtype: Callable[[], None]
+        """
         cell_clicked_route_path = self.get_route_path(FastTable.Routes.CELL_CLICKED)
         server = self._sly_app.get_server()
 
@@ -400,10 +529,13 @@ class FastTable(Widget):
 
         return _click
 
-    def search(self, search_value) -> pd.DataFrame:
-        """
-        Search source data for search_value
+    def search(self, search_value: str) -> pd.DataFrame:
+        """Search source data for search value.
 
+        :param search_value: Search value
+        :type search_value: str
+        :return: Filtered data
+        :rtype: pd.DataFrame
         """
         filtered_data = self._source_data.copy()
         if search_value == "":
@@ -419,7 +551,16 @@ class FastTable(Widget):
             self._search_str = search_value
         return filtered_data
 
-    def sort(self, column_idx: int = None, order: Optional[Literal["asc", "desc"]] = None):
+    def sort(
+        self, column_idx: Optional[int] = None, order: Optional[Literal["asc", "desc"]] = None
+    ) -> None:
+        """Sorts table data by column index and order.
+
+        :param column_idx: Index of the column to sort by
+        :type column_idx: Optional[int]
+        :param order: Sorting order
+        :type order: Optional[Literal["asc", "desc"]]
+        """
         self._sort_column_idx = column_idx
         self._sort_order = order
         self._validate_sort_attrs()
@@ -535,7 +676,7 @@ class FastTable(Widget):
 
     def _get_pandas_unpacked_data(self, data: pd.DataFrame) -> dict:
         if not isinstance(data, pd.DataFrame):
-            raise TypeError(f"Cannot parse input data, please use Pandas Dataframe as input data")
+            raise TypeError("Cannot parse input data, please use Pandas Dataframe as input data")
         data = data.replace({np.nan: None})
         # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
 
