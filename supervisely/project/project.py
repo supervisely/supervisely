@@ -1,48 +1,50 @@
 # coding: utf-8
 
 from __future__ import annotations
+
+import os
+import random
 import shutil
 from collections import namedtuple
-import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
-import random
+from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+
 import numpy as np
 from tqdm import tqdm
-import supervisely as sly
 
-from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
+import supervisely as sly
+from supervisely._utils import abs_url, batched, is_development
+from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
 )
-from supervisely.imaging import image as sly_image
-from supervisely.io.fs import (
-    list_files,
-    list_files_recursively,
-    list_dir_recursively,
-    get_file_name_with_ext,
-    mkdir,
-    copy_file,
-    get_subdirs,
-    dir_exists,
-    dir_empty,
-    silent_remove,
-    file_exists,
-)
-from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
-from supervisely._utils import batched, is_development, abs_url
-from supervisely.io.fs import ensure_base_path
-from supervisely.api.api import Api
-from supervisely.sly_logger import logger
-from supervisely.io.fs_cache import FileCache
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import (
+    copy_file,
+    dir_empty,
+    dir_exists,
+    ensure_base_path,
+    file_exists,
+    get_file_name_with_ext,
+    get_subdirs,
+    list_dir_recursively,
+    list_files,
+    list_files_recursively,
+    mkdir,
+    silent_remove,
+)
+from supervisely.io.fs_cache import FileCache
+from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
@@ -1899,7 +1901,7 @@ class Project:
         :type project_dir: :class:`str`
         :param classes_to_keep: Classes to keep in project.
         :type classes_to_keep: :class:`list` [ :class:`str` ], optional
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -1933,7 +1935,7 @@ class Project:
         :type project_dir: :class:`str`
         :param classes_to_remove: Classes to remove.
         :type classes_to_remove: :class:`list` [ :class:`str` ], optional
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2008,7 +2010,7 @@ class Project:
 
         :param project_dir: Path to project directory.
         :type project_dir: :class:`str`
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2028,7 +2030,7 @@ class Project:
 
         :param project_dir: Path to project directory.
         :type project_dir: :class:`str`
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2050,7 +2052,7 @@ class Project:
 
         :param project_dir: Path to project directory.
         :type project_dir: :class:`str`
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2604,7 +2606,9 @@ def upload_project(
             progress_cb = ds_progress.iters_done_report
 
         if len(img_paths) != 0:
-            uploaded_img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb, metas=metas)
+            uploaded_img_infos = api.image.upload_paths(
+                dataset.id, names, img_paths, progress_cb, metas=metas
+            )
         elif len(img_paths) == 0 and len(img_infos) != 0:
             # uploading links and hashes (the code from api.image.upload_ids)
             img_metas = [{}] * len(names)
