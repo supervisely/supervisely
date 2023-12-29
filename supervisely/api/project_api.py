@@ -39,7 +39,6 @@ from supervisely.api.module_api import (
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import ProjectSettings
-from supervisely.project.project_settings import ProjectSettingsJsonFields as PSJsonF
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -646,25 +645,25 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if meta.project_settings is not None:
             s: ProjectSettings = meta.project_settings
             new_settings = {}
-            for tag in self.get_meta(id)["tags"]:
-                if s.multiview_enabled is True:
-                    if s._multiview_tag_id is None and s._multiview_tag_name is None:
+            if s.multiview_enabled is True:
+                for tag in self.get_meta(id)["tags"]:
+                    if s.multiview_tag_name is None and s.multiview_tag_id is None:
                         logger.warn(
-                            f"Oops! It seems that you have enabled the multi-view mode in meta.json, but forgotten to specify a tag. Adding it for you..."
+                            f"Oops! It seems like you have enabled the multi-view mode in meta.json, but forgotten to specify a tag. Adding it for you..."
                         )
                         s.multiview_tag_name = tag["name"]
                         s.multiview_tag_id = tag["id"]
 
-                if tag["name"] == s._multiview_tag_name or tag["id"] == s._multiview_tag_id:
-                    logger.info(f"Multi-view mode has been enabled with {tag['name']} tag.")
-                    new_settings.update(
-                        {
-                            "groupImages": s.multiview_enabled,
-                            "groupImagesByTagId": tag["id"],
-                            "groupImagesSync": s.multiview_is_synced,
-                        }
-                    )
-                    break
+                    if tag["name"] == s.multiview_tag_name or tag["id"] == s.multiview_tag_id:
+                        logger.info(f"Multi-view mode has been enabled with '{tag['name']}' tag.")
+                        new_settings.update(
+                            {
+                                "groupImages": s.multiview_enabled,
+                                "groupImagesByTagId": tag["id"],
+                                "groupImagesSync": s.multiview_is_synced,
+                            }
+                        )
+                        break
 
             self.update_settings(id, new_settings)
 
