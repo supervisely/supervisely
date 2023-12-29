@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Union
 
 from jsonschema import ValidationError, validate
@@ -82,7 +84,6 @@ class ProjectSettings(JsonSerializable):
 
         import supervisely as sly
 
-        api = sly.Api.from_env()
 
         Example 1: multiView Tag is known (by id or name)
         settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
@@ -90,11 +91,7 @@ class ProjectSettings(JsonSerializable):
         Example 2: multiView Tag is unknown, but multiView is enabled. In this case, the tag will be chosen automatically.
         settings_json = {"multiView": {"enabled": True, "tagName": None, "tagId": None, "areSynced": False}}
 
-        meta = sly.ProjectMeta(project_settings=sly.ProjectSettings.from_json(settings_json))
-        # or
-        meta = sly.ProjectMeta(project_settings=settings_json)
-
-        api.project.update_meta(project_id, meta)
+        settings = sly.ProjectSettings.from_json(settings_json)
     """
 
     def __init__(
@@ -122,7 +119,7 @@ class ProjectSettings(JsonSerializable):
         return data
 
     @classmethod
-    def from_json(cls, data: Dict) -> "ProjectSettings":
+    def from_json(cls, data: Dict) -> ProjectSettings:
         validate_settings_schema(data)
 
         d_multiview = data[ProjectSettingsJsonFields.MULTI_VIEW]
