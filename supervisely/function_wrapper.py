@@ -10,12 +10,12 @@ SLY_DEBUG = "SLY_DEBUG"
 
 
 def main_wrapper(main_name, main_func, *args, **kwargs):
-    log_on_error = kwargs.pop("log_on_error", True)
+    log_for_agent = kwargs.pop("log_for_agent", True)
     try:
         logger.debug("Main started.", extra={"main_name": main_name})
         main_func(*args, **kwargs)
     except Exception as e:
-        if log_on_error:
+        if log_for_agent:
             logger.critical(
                 repr(e),
                 exc_info=True,
