@@ -92,7 +92,7 @@ class HandleException:
         return f"{self.title}. \n{self.message}"
 
     def get_message_for_exception(self):
-        return f"{self.title}. {self.message}"
+        return f"{self.title}. \n{self.message}"
 
 
 class ErrorHandler:
