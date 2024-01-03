@@ -1464,7 +1464,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             sync=False,
         )
 
-    def remove_permanently(self, ids: Union[int, List]) -> dict:
+    def remove_permanently(
+        self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
+    ) -> List[dict]:
         """
         Delete permanently projects with given IDs from the Supervisely server.
 
@@ -1473,23 +1475,35 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]
-        :return: Response content in JSON format
-        :rtype: dict
+        :param batch_size: The number of entities that will be deleted by a single API call. This value must be in the range 1-50 inclusive, if you set a value out of range it will automatically adjust to the boundary values.
+        :type batch_size: int, optional
+        :param progress_cb: Function for control delete progress.
+        :type progress_cb: Callable, optional
+        :return: A list of response content in JSON format for each API call.
+        :rtype: List[dict]
         """
+        if batch_size > 50:
+            batch_size = 50
+        elif batch_size < 1:
+            batch_size = 1
 
         if isinstance(ids, int):
-            projects = [{"id": ids}]
+            projects = [{ApiField.ID: ids}]
         else:
-            projects = [{"id": id} for id in ids]
+            projects = [{ApiField.ID: id} for id in ids]
 
-        request_body = {
-            ApiField.PROJECTS: projects,
-            ApiField.PRESERVE_PROJECT_CARD: False,
-        }
-
-        response = self._api.post("projects.remove.permanently", request_body)
-
-        return response.json()
+        batches = [projects[i : i + batch_size] for i in range(0, len(projects), batch_size)]
+        responses = []
+        for batch in batches:
+            request_body = {
+                ApiField.PROJECTS: batch,
+                ApiField.PRESERVE_PROJECT_CARD: False,
+            }
+            response = self._api.post("projects.remove.permanently", request_body)
+            if progress_cb is not None:
+                progress_cb(len(batch))
+            responses.append(response.json())
+        return responses
 
     def get_list_all(
         self,
