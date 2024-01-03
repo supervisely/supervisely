@@ -322,10 +322,13 @@ class AppService:
             exception_handler = handle_exception(e)
             if self._ignore_errors is False:
                 if exception_handler:
+                    modal_msg = exception_handler.get_message_for_modal_window()
                     # Logging the error and sets the output in Workspace Tasks.
                     exception_handler.log_error_for_agent(command)
 
                 else:
+                    modal_msg = "Oops! Something went wrong. Find more info in the app logs. "
+                    modal_msg += f"Error: {repr(e)}"
                     self.logger.error(
                         repr(e),
                         exc_info=True,
@@ -339,11 +342,7 @@ class AppService:
                 # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
                 if self.has_ui:
-                    if exception_handler:
-                        msg = exception_handler.get_message_for_modal_window()
-                    else:
-                        msg = repr(e)
-                    self.show_modal_window(msg, level="error", log_message=False)
+                    self.show_modal_window(modal_msg, level="error", log_message=False)
             else:
                 if exception_handler:
                     message = exception_handler.get_message_for_modal_window()
