@@ -324,9 +324,6 @@ class AppService:
             exception_handler = handle_exception(e)
             if self._ignore_errors is False:
                 if exception_handler:
-                    # Logging the error and sets the output in Workspace Tasks.
-                    exception_handler.log_error_for_agent(command)
-
                     if self.has_ui:
                         self.show_modal_window(
                             exception_handler.get_message_for_modal_window(),
@@ -334,6 +331,9 @@ class AppService:
                             log_message=False,
                         )
                         time.sleep(5)
+
+                    # Logging the error and sets the output in Workspace Tasks.
+                    exception_handler.log_error_for_agent(command)
 
                 else:
                     self.logger.error(
