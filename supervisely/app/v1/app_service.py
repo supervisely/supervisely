@@ -333,6 +333,7 @@ class AppService:
                             level="error",
                             log_message=False,
                         )
+                        time.sleep(5)
 
                 else:
                     self.logger.error(
