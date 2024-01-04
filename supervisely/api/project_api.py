@@ -660,7 +660,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_name=mtag_name,
                 multiview_tag_id=mtag_id,
             )
-            new_m = m.clone(project_settings=new_s)
+            m = m.clone(project_settings=new_s)
             self.update_settings(
                 id,
                 {
@@ -670,7 +670,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 },
             )
 
-        return new_m
+        return m
 
     def _clone_api_method_name(self):
         """ """
