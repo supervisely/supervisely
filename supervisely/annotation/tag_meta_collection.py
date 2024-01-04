@@ -299,7 +299,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         return None
 
     def get_tag_name_by_id(self, tag_meta_id: int) -> Optional[str]:
-        for tag_meta in self.tag_metas:
+        for tag_meta in self:
             if tag_meta.sly_id == tag_meta_id:
                 return tag_meta.name
         return None

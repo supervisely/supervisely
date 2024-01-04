@@ -155,9 +155,8 @@ class ProjectSettings(JsonSerializable):
     def validate(self, meta):
         if meta.project_settings.multiview_enabled is True:
             mtag_name = meta.project_settings.multiview_tag_name
-
             if mtag_name is None:
-                mtag_name = meta.get_tag_name(meta.project_settings.multiview_tag_id)
+                mtag_name = meta.get_tag_name_by_id(meta.project_settings.multiview_tag_id)
                 if mtag_name is None:
                     return  # (tag_name, tag_id) == (None, None) is OK
 
