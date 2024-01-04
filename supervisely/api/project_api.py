@@ -469,6 +469,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                             multiview_is_synced=json_settings["groupImagesSync"],
                         ).to_json()
                         break
+            else:
+                json_response[MetaJsonF.PROJECT_SETTINGS] = ProjectSettings(
+                    multiview_enabled=json_settings["groupImages"],
+                    multiview_tag_id=json_settings["groupImagesByTagId"],
+                    multiview_is_synced=json_settings["groupImagesSync"],
+                ).to_json()
 
         return json_response
 
@@ -657,7 +663,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_name=mtag_name,
                 multiview_tag_id=mtag_id,
             )
-            self.update_settings(id, new_s.to_json())
+            self.update_settings(
+                id,
+                {
+                    "groupImages": new_s.multiview_enabled,
+                    "groupImagesByTagId": new_s.multiview_tag_id,
+                    "groupImagesSync": new_s.multiview_is_synced,
+                },
+            )
 
         return new_m
 

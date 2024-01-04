@@ -159,9 +159,12 @@ class ProjectMeta(JsonSerializable):
 
         if isinstance(project_settings, dict):
             self._project_settings = ProjectSettings.from_json(project_settings)
-            self.validate_project_settings(add_multi_tag_meta=False)
         else:
             self._project_settings = project_settings
+            if project_settings is None:
+                self._project_settings = ProjectSettings()
+
+        self.validate_project_settings(add_multi_tag_meta=True)
 
     @property
     def obj_classes(self) -> ObjClassCollection:
@@ -1329,11 +1332,11 @@ class ProjectMeta(JsonSerializable):
         return res_meta, mapping
 
     def validate_project_settings(self, add_multi_tag_meta: bool = False) -> ProjectMeta:
-        if self.project_settings.multiview_enabled is True:
-            mtag_name = self.project_settings.multiview_tag_name
+        if self._project_settings.multiview_enabled is True:
+            mtag_name = self._project_settings.multiview_tag_name
 
             if mtag_name is None:
-                mtag_name = self.get_tag_name(self.project_settings.multiview_tag_id)
+                mtag_name = self.get_tag_name(self._project_settings.multiview_tag_id)
                 if mtag_name is None:
                     return self  # (tag_name, tag_id) == (None, None) is OK
 
