@@ -150,3 +150,37 @@ class ProjectSettings(JsonSerializable):
             multiview_tag_id=take_with_default(multiview_tag_id, self.multiview_tag_id),
             multiview_is_synced=take_with_default(multiview_is_synced, self.multiview_is_synced),
         )
+
+    # def validate_project_settings(self, add_multi_tag_meta: bool = False) -> ProjectMeta:
+    #     if self._project_settings.multiview_enabled is True:
+    #         mtag_name = self._project_settings.multiview_tag_name
+
+    #         if mtag_name is None:
+    #             mtag_name = self.get_tag_name(self._project_settings.multiview_tag_id)
+    #             if mtag_name is None:
+    #                 return self  # (tag_name, tag_id) == (None, None) is OK
+
+    #         multi_tag = self.get_tag_meta(mtag_name)
+    #         if multi_tag is None:
+    #             if add_multi_tag_meta is False:
+    #                 raise RuntimeError(
+    #                     f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
+    #                     "that will be used for image grouping for multi-view labeling interface."
+    #                 )
+    #             else:
+    #                 logger.warn(
+    #                     f"The multi-view tag '{mtag_name}' was not found in the project meta. "
+    #                     "Adding it to the project meta. By default, the tag value type is 'Text', "
+    #                     "but you can always change the value type at the 'Tags' tab of web-interface. "
+    #                     "See documentation for details: "
+    #                     "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/tags"
+    #                 )
+    #                 return self.add_tag_meta(TagMeta(mtag_name, TagValueType.ANY_STRING))
+
+    #         else:
+    #             if multi_tag.value_type == TagValueType.NONE:
+    #                 raise RuntimeError(
+    #                     f"The tag value type '{TagValueType.NONE}' is unsupported for the multi-view mode. "
+    #                     f"Please specify with the following types: '{TagValueType.ANY_STRING}', '{TagValueType.ANY_NUMBER}', or '{TagValueType.ONEOF_STRING}'"
+    #                 )
+    #     return self
