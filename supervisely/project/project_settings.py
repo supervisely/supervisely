@@ -9,6 +9,7 @@ from jsonschema import ValidationError, validate
 from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.io.json import JsonSerializable
+from supervisely.sly_logger import logger
 
 
 class ProjectSettingsJsonFields:
@@ -107,17 +108,10 @@ class ProjectSettings(JsonSerializable):
         self.multiview_tag_id = multiview_tag_id
         self.multiview_is_synced = multiview_is_synced
 
-    def to_json(self) -> dict:
-        data = {
-            ProjectSettingsJsonFields.MULTI_VIEW: {
-                ProjectSettingsJsonFields.ENABLED: self.multiview_enabled,
-                ProjectSettingsJsonFields.TAG_NAME: self.multiview_tag_name,
-                ProjectSettingsJsonFields.TAG_ID: self.multiview_tag_id,
-                ProjectSettingsJsonFields.IS_SYNCED: self.multiview_is_synced,
-            }
-        }
-        validate_settings_schema(data)
-        return data
+        if multiview_enabled is False and multiview_is_synced is True:
+            logger.warn(
+                "The 'Group Images sync mode' is enabled, but it won't effect while multi-view mode is disabled. Please enable the multi-view mode (a.k.a. 'Group Images mode')."
+            )
 
     @classmethod
     def from_json(cls, data: Dict) -> ProjectSettings:
@@ -131,6 +125,18 @@ class ProjectSettings(JsonSerializable):
             multiview_tag_id=d_multiview[ProjectSettingsJsonFields.TAG_ID],
             multiview_is_synced=d_multiview[ProjectSettingsJsonFields.IS_SYNCED],
         )
+
+    def to_json(self) -> dict:
+        data = {
+            ProjectSettingsJsonFields.MULTI_VIEW: {
+                ProjectSettingsJsonFields.ENABLED: self.multiview_enabled,
+                ProjectSettingsJsonFields.TAG_NAME: self.multiview_tag_name,
+                ProjectSettingsJsonFields.TAG_ID: self.multiview_tag_id,
+                ProjectSettingsJsonFields.IS_SYNCED: self.multiview_is_synced,
+            }
+        }
+        validate_settings_schema(data)
+        return data
 
     def clone(
         self,

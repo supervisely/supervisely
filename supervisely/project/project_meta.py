@@ -241,7 +241,7 @@ class ProjectMeta(JsonSerializable):
         return self._tag_metas
 
     @property
-    def project_type(self) -> ProjectType:
+    def project_type(self) -> str:
         """
         Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
 
@@ -1326,20 +1326,21 @@ class ProjectMeta(JsonSerializable):
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 
-    def validate_settings(self) -> None:
+    def validate_project_settings(self) -> None:
         if self.project_settings.multiview_enabled is True:
             mtag_name = self.project_settings.multiview_tag_name
 
             if mtag_name is None:
                 mtag_name = self.get_tag_name(self.project_settings.multiview_tag_id)
                 if mtag_name is None:
-                    return  # (tag_name,tag_id)==(None, None) is OK
+                    return None  # (tag_name,tag_id)==(None, None) is OK
 
             multi_tag = self.get_tag_meta(mtag_name)
             if multi_tag is None:
                 raise RuntimeError(
                     f"The multi-view tag '{mtag_name}' was not found in the 'tags' field. Please specify the matching tag in the 'meta.json' file."
                 )
+
             else:
                 if multi_tag.value_type == TagValueType.NONE:
                     raise RuntimeError(
