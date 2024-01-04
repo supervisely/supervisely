@@ -817,6 +817,10 @@ class ModuleApi(ModuleApiBase):
             print(info)
             # Output: ImageInfo(id=19369643, name='IMG_0315.jpeg', ...)
         """
+        fields = [
+            ApiField.ID,
+            ApiField.IMAGES_COUNT,
+        ]
 
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
@@ -825,9 +829,9 @@ class ModuleApi(ModuleApiBase):
             name=name,
         )
 
-    def _get_info_by_filters(self, parent_id, filters):
+    def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
-        items = self.get_list(parent_id, filters)
+        items = self.get_list(parent_id, filters, fields)
         return _get_single_item(items)
 
     def get_list(self, parent_id, filters=None):
