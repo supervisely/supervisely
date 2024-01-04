@@ -649,7 +649,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             mtag_name = s.multiview_tag_name
             mtag_id = s.multiview_tag_id
             if mtag_name is None:
-                mtag_name = m.get_tag_name(s.multiview_tag_id)
+                mtag_name = m.get_tag_name_by_id(s.multiview_tag_id)
 
             if mtag_name is not None:  # (tag_id, tag_name)==(None, None) is OK but no group
                 new_m = ProjectMeta.from_json(self.get_meta(id))
