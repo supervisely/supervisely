@@ -78,7 +78,7 @@ class TestRemoveProjectPermanently(unittest.TestCase):
         mock_callback.assert_called_with(len(project_ids))
 
     def test_multiple_responses(self):
-        # Testing deletion of multiple projects by a list of IDs in bathc size of 1
+        # Testing deletion of multiple projects by a list of IDs in batch size of 1
         multiple_ids = self.create_test_projects(3)
         response = self.project_instance.remove_permanently(multiple_ids, 1)
         # Checking for a responses

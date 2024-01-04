@@ -87,7 +87,7 @@ class TestRemoveDatasetPermanently(unittest.TestCase):
         mock_callback.assert_called_with(len(dataset_ids))
 
     def test_multiple_responses(self):
-        # Testing deletion of multiple datasets by a list of IDs in bathc size of 1
+        # Testing deletion of multiple datasets by a list of IDs in batch size of 1
         multiple_ids = self.create_test_datasets(3)
         response = self.dataset_instance.remove_permanently(multiple_ids, 1)
         # Checking for a responses
