@@ -152,7 +152,7 @@ class ProjectSettings(JsonSerializable):
             multiview_is_synced=take_with_default(multiview_is_synced, self.multiview_is_synced),
         )
 
-    def validate(self, meta, add_multi_tag_meta: bool = False):
+    def validate(self, meta, add_multi_tag_meta: bool = False, skip_warning=False):
         if meta.project_settings.multiview_enabled is True:
             mtag_name = meta.project_settings.multiview_tag_name
 
@@ -169,13 +169,14 @@ class ProjectSettings(JsonSerializable):
                         "that will be used for image grouping for multi-view labeling interface."
                     )
                 else:
-                    logger.warn(
-                        f"The multi-view tag '{mtag_name}' was not found in the project meta. "
-                        "Adding it automatically - it will be used for image grouping for multi-view labeling. "
-                        "Also, you can always change the value type at the 'Tags' tab of web-interface. "
-                        "See documentation for details: "
-                        "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/tags"
-                    )
+                    if skip_warning is False:
+                        logger.warn(
+                            f"The multi-view tag '{mtag_name}' was not found in the project meta. "
+                            "Adding it automatically - it will be used for image grouping for multi-view labeling. "
+                            "Also, you can always change the value type at the 'Tags' tab of web-interface. "
+                            "See documentation for details: "
+                            "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/tags"
+                        )
                     return meta.add_tag_meta(TagMeta(mtag_name, TagValueType.ANY_STRING))
 
             else:
