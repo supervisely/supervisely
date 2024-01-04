@@ -15,7 +15,7 @@ class TestRemoveDatasetPermanently(unittest.TestCase):
         with patch("builtins.input", return_value="user_input_value"):
             project = cls.api.project.create(
                 workspace_id=int(workspace_id),
-                name="unit tests remove_permanently",
+                name="[UT] Dataset remove permanently",
                 change_name_if_conflict=True,
             )
         cls.project_id = project.id
@@ -35,7 +35,7 @@ class TestRemoveDatasetPermanently(unittest.TestCase):
         for i in range(count):
             created_dataset = self.dataset_instance.create(
                 self.project_id,
-                name=f"unit tests remove_permanently {i+1}",
+                name=f"[UT] Dataset remove permanently {i+1}",
                 change_name_if_conflict=True,
             )
             created_dataset_ids.append(created_dataset.id)

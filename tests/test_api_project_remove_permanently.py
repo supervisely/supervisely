@@ -26,7 +26,7 @@ class TestRemoveProjectPermanently(unittest.TestCase):
         for i in range(count):
             created_project = self.project_instance.create(
                 self.workspace_id,
-                name=f"unit tests remove_permanently {i+1}",
+                name=f"[UT] Project remove permanently {i+1}",
                 change_name_if_conflict=True,
             )
             created_project_ids.append(created_project.id)
