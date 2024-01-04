@@ -1001,13 +1001,13 @@ class ProjectMeta(JsonSerializable):
         """
         return self._obj_classes.get(obj_class_name)
 
-    def get_obj_class_by_id(self, obj_class_id: int) -> ObjClass:
+    def get_obj_class_by_id(self, obj_class_id: int) -> Optional[ObjClass]:
         """
         Get given ObjClass by name from ProjectMeta.
 
         :param obj_class_id: ObjClass id.
         :type obj_class_id: int
-        :return: ObjClass object
+        :return: ObjClass object or None
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
         :Usage example:
 
@@ -1023,13 +1023,13 @@ class ProjectMeta(JsonSerializable):
             if obj_class.sly_id == obj_class_id:
                 return obj_class
 
-    def get_tag_meta(self, tag_name: str) -> TagMeta:
+    def get_tag_meta(self, tag_name: str) -> Optional[TagMeta]:
         """
         Get given TagMeta by name from ProjectMeta.
 
         :param tag_name: TagMeta name.
         :type tag_name: str
-        :return: TagMeta object.
+        :return: TagMeta object or None.
         :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
         :Usage example:
 
