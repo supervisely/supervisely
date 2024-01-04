@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from supervisely._utils import take_with_default
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -416,7 +416,9 @@ class ProjectMeta(JsonSerializable):
             ) from e
 
         project_settings_json = data.get(ProjectMetaJsonFields.PROJECT_SETTINGS, None)
-        if project_settings_json is not None:
+        if project_settings_json is None:
+            project_settings = None
+        else:
             try:
                 project_settings = ProjectSettings.from_json(project_settings_json)
             except Exception as e:
@@ -1074,6 +1076,16 @@ class ProjectMeta(JsonSerializable):
         """
         return self._tag_metas.get(tag_name)
 
+    def get_tag_meta_by_id(self, tag_id: int) -> Optional[TagMeta]:
+        tag_name = self.get_tag_name(tag_id)
+        return self.get_tag_meta(tag_name)
+
+    def get_tag_name(self, tag_id: int) -> Optional[str]:
+        for tag_meta in self.tag_metas:
+            if tag_meta.sly_id == tag_id:
+                return tag_meta.name
+        return None
+
     @staticmethod
     def merge_list(metas: List[ProjectMeta]) -> ProjectMeta:
         """
@@ -1313,3 +1325,23 @@ class ProjectMeta(JsonSerializable):
                     mapping[obj_class] = None
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
+
+    def validate_settings(self) -> None:
+        if self.project_settings.multiview_enabled is True:
+            mtag_name = self.project_settings.multiview_tag_name
+
+            if mtag_name is None:
+                mtag_name = self.get_tag_name(self.project_settings.multiview_tag_id)
+                if mtag_name is None:
+                    return  # (tag_name,tag_id)==(None, None) is OK
+
+            multi_tag = self.get_tag_meta(mtag_name)
+            if multi_tag is None:
+                raise RuntimeError(
+                    f"The multi-view tag '{mtag_name}' was not found in the 'tags' field. Please specify the matching tag in the 'meta.json' file."
+                )
+            else:
+                if multi_tag.value_type == TagValueType.NONE:
+                    raise RuntimeError(
+                        f"The tag value type '{TagValueType.NONE}' is unsupported for the multi-view mode. Please specify with the following types: '{TagValueType.ANY_STRING}', '{TagValueType.ANY_NUMBER}', or '{TagValueType.ONEOF_STRING}'"
+                    )

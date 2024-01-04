@@ -584,7 +584,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """ """
         return "projects.editInfo"
 
-    def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> None:
+    def update_meta(self, id: int, meta: Union[ProjectMeta, Dict]) -> ProjectMeta:
         """
         Updates given Project with given ProjectMeta.
 
@@ -593,8 +593,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param meta: ProjectMeta object or ProjectMeta in JSON format.
         :type meta: :class:`ProjectMeta` or dict
 
-        :return: None
-        :rtype: :class:`NoneType`
+        :return: ProjectMeta
+        :rtype: :class: `ProjectMeta`
         :Usage example:
 
          .. code-block:: python
@@ -638,58 +638,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if isinstance(meta, dict):
             m = ProjectMeta.from_json(meta)
 
-        if m.project_settings is not None:
-            group_tag = m.get_tag_meta(m.project_settings.multiview_tag_name)
-            if group_tag is None:
-                raise RuntimeError("dsffsdf")
-
+        m.validate_settings()
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
 
         if m.project_settings is not None:
-            new_m = ProjectMeta.from_json(self.get_meta(id))
-            group_tag = new_m.get_tag_meta(m.project_settings.multiview_tag_name)
-            new_m.project_settings = m.project_settings.clone(multiview_tag_id=group_tag.sly_id)
-            self.update_settings(id, new_m.project_settings)
+            s = m.project_settings
+            mtag_name = s.multiview_tag_name
+            mtag_id = s.multiview_tag_id
+            if mtag_name is None:
+                mtag_name = m.get_tag_name(s.multiview_tag_id)
+
+            if mtag_name is not None:  # (tag_id, tag_name)==(None, None) is OK but no group
+                new_m = ProjectMeta.from_json(self.get_meta(id))
+                group_tag = new_m.get_tag_meta(mtag_name)
+                mtag_id = None if group_tag is None else group_tag.sly_id
+
+            new_s = s.clone(
+                multiview_tag_name=mtag_name,
+                multiview_tag_id=mtag_id,
+            )
+            self.update_settings(id, new_s.to_json())
 
         return new_m
-
-        meta_json = None
-        if isinstance(meta, ProjectMeta):
-            meta_json = meta.to_json()
-        else:
-            meta_json = meta
-            meta = ProjectMeta.from_json(meta_json)
-
-        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
-
-        if meta.project_settings is not None:
-            s = meta.project_settings
-            new_settings = {
-                "groupImages": s.multiview_enabled,
-                "groupImagesByTagId": s.multiview_tag_id,
-                "groupImagesSync": s.multiview_is_synced,
-            }
-
-            if s.multiview_enabled is True:
-                add_lacking_tag = False
-                for tag in self.get_meta(id)["tags"]:
-                    if s.multiview_tag_name is None and s.multiview_tag_id is None:
-                        logger.warn(
-                            f"Oops! It seems like you have enabled the multi-view mode in meta.json, but forgotten to specify a tag. Adding it for you..."
-                        )
-                        add_lacking_tag = True
-
-                    if (
-                        add_lacking_tag is True
-                        or tag["name"] == s.multiview_tag_name
-                        or tag["id"] == s.multiview_tag_id
-                    ):
-                        logger.info(f"Multi-view mode has been enabled with '{tag['name']}' tag.")
-                        new_settings["groupImagesByTagId"] = tag["id"]
-
-                        break
-
-            self.update_settings(id, new_settings)
 
     def _clone_api_method_name(self):
         """ """

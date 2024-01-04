@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Union
 
 from jsonschema import ValidationError, validate
 
+from supervisely._utils import take_with_default
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.io.json import JsonSerializable
 
 
@@ -128,4 +130,18 @@ class ProjectSettings(JsonSerializable):
             multiview_tag_name=d_multiview[ProjectSettingsJsonFields.TAG_NAME],
             multiview_tag_id=d_multiview[ProjectSettingsJsonFields.TAG_ID],
             multiview_is_synced=d_multiview[ProjectSettingsJsonFields.IS_SYNCED],
+        )
+
+    def clone(
+        self,
+        multiview_enabled: bool = None,
+        multiview_tag_name: Optional[str] = None,
+        multiview_tag_id: Optional[int] = None,
+        multiview_is_synced: bool = None,
+    ):
+        return ProjectSettings(
+            multiview_enabled=take_with_default(multiview_enabled, self.multiview_enabled),
+            multiview_tag_name=take_with_default(multiview_tag_name, self.multiview_tag_name),
+            multiview_tag_id=take_with_default(multiview_tag_id, self.multiview_tag_id),
+            multiview_is_synced=take_with_default(multiview_is_synced, self.multiview_is_synced),
         )
