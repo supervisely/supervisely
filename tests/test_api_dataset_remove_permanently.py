@@ -51,6 +51,9 @@ class TestRemoveDatasetPermanently(unittest.TestCase):
         self.assertEqual(len(response), 1)
         # Verifying the response for a single dataset deletion
         self.assertIn("success", response[0])
+        # Verifying the dataset is really deleted
+        dataset_info = self.api.dataset.get_info_by_id(single_id)
+        self.assertIsNone(dataset_info)
 
     def test_multiple_ids_deletion(self):
         # Testing deletion of multiple datasets by a list of IDs

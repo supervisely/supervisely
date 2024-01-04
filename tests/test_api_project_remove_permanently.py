@@ -42,6 +42,9 @@ class TestRemoveProjectPermanently(unittest.TestCase):
         self.assertEqual(len(response), 1)
         # Verifying the response for a single project deletion
         self.assertIn("success", response[0])
+        # Verifying the project is really deleted
+        project_info = self.api.project.get_info_by_id(single_id)
+        self.assertIsNone(project_info)
 
     def test_multiple_ids_deletion(self):
         # Testing deletion of multiple projects by a list of IDs
