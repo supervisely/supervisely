@@ -141,6 +141,7 @@ from supervisely._utils import (
     get_readable_datetime,
     generate_free_name,
     setup_certificates,
+    is_community,
 )
 
 import supervisely._utils as utils
