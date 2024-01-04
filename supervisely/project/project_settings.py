@@ -171,8 +171,8 @@ class ProjectSettings(JsonSerializable):
                 else:
                     logger.warn(
                         f"The multi-view tag '{mtag_name}' was not found in the project meta. "
-                        "Adding it to the project meta. By default, the tag value type is 'Text', "
-                        "but you can always change the value type at the 'Tags' tab of web-interface. "
+                        "Adding it automatically - it will be used for image grouping for multi-view labeling. "
+                        "Also, you can always change the value type at the 'Tags' tab of web-interface. "
                         "See documentation for details: "
                         "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/tags"
                     )
