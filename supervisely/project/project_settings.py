@@ -159,7 +159,7 @@ class ProjectSettings(JsonSerializable):
             if mtag_name is None:
                 mtag_name = meta.get_tag_name(meta.project_settings.multiview_tag_id)
                 if mtag_name is None:
-                    return meta  # (tag_name, tag_id) == (None, None) is OK
+                    return  # (tag_name, tag_id) == (None, None) is OK
 
             multi_tag = meta.get_tag_meta(mtag_name)
             if multi_tag is None:
