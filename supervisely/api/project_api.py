@@ -641,7 +641,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if isinstance(meta, dict):
             m = ProjectMeta.from_json(meta)
 
-        m = m.validate_project_settings(add_multi_tag_meta=True)
+        m = m.project_settings.validate(m, add_multi_tag_meta=True)
         self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
 
         if m.project_settings is not None:
