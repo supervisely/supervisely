@@ -114,6 +114,7 @@ from supervisely.api.api import Api
 from supervisely.api import api
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
+from supervisely.project.project_settings import ProjectSettings
 from supervisely.api.report_api import NotificationType
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.dataset_api import DatasetInfo
