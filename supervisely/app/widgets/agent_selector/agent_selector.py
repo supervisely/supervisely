@@ -1,8 +1,8 @@
 from typing import Dict, List
 
-from supervisely.io.env import server_address
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
+from supervisely.io.env import server_address
 
 
 class AgentSelector(Widget):
@@ -30,7 +30,7 @@ class AgentSelector(Widget):
         if sly_url == "https://app.supervise.ly" or sly_url == "https://app.supervisely.com/":
             self._is_community = True
         else:
-            self._is_community = True
+            self._is_community = False
 
         self._changes_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
