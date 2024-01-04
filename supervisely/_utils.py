@@ -171,6 +171,22 @@ def is_production() -> bool:
     return not is_development()
 
 
+def is_community() -> bool:
+    from supervisely.api.api import SERVER_ADDRESS
+
+    server_address = os.environ.get(SERVER_ADDRESS, "")
+    if server_address == "":
+        logger.warn("SERVER_ADDRESS env variable is not defined")
+
+    if (
+        server_address == "https://app.supervise.ly"
+        or server_address == "https://app.supervisely.com/"
+    ):
+        return True
+    else:
+        return False
+
+
 def abs_url(relative_url: str) -> str:
     from supervisely.api.api import SERVER_ADDRESS
 
