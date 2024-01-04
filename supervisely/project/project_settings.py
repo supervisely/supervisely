@@ -152,7 +152,7 @@ class ProjectSettings(JsonSerializable):
             multiview_is_synced=take_with_default(multiview_is_synced, self.multiview_is_synced),
         )
 
-    def validate(self, meta, add_multi_tag_meta: bool = False, skip_warning=False):
+    def validate(self, meta):
         if meta.project_settings.multiview_enabled is True:
             mtag_name = meta.project_settings.multiview_tag_name
 
@@ -163,21 +163,10 @@ class ProjectSettings(JsonSerializable):
 
             multi_tag = meta.get_tag_meta(mtag_name)
             if multi_tag is None:
-                if add_multi_tag_meta is False:
-                    raise RuntimeError(
-                        f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
-                        "that will be used for image grouping for multi-view labeling interface."
-                    )
-                else:
-                    if skip_warning is False:
-                        logger.warn(
-                            f"The multi-view tag '{mtag_name}' was not found in the project meta. "
-                            "Adding it automatically - it will be used for image grouping for multi-view labeling. "
-                            "Also, you can always change the value type at the 'Tags' tab of web-interface. "
-                            "See documentation for details: "
-                            "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/tags"
-                        )
-                    return meta.add_tag_meta(TagMeta(mtag_name, TagValueType.ANY_STRING))
+                raise RuntimeError(
+                    f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
+                    "that will be used for image grouping for multi-view labeling interface."
+                )
 
             else:
                 if multi_tag.value_type == TagValueType.NONE:
@@ -185,4 +174,3 @@ class ProjectSettings(JsonSerializable):
                         f"The tag value type '{TagValueType.NONE}' is unsupported for the multi-view mode. "
                         f"Please specify with the following types: '{TagValueType.ANY_STRING}', '{TagValueType.ANY_NUMBER}', or '{TagValueType.ONEOF_STRING}'"
                     )
-        return meta

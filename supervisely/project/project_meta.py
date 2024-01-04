@@ -164,7 +164,7 @@ class ProjectMeta(JsonSerializable):
             if project_settings is None:
                 self._project_settings = ProjectSettings()
 
-        self = self._project_settings.validate(self, add_multi_tag_meta=True, skip_warning=True)
+        self._project_settings.validate(self)
 
     @property
     def obj_classes(self) -> ObjClassCollection:
