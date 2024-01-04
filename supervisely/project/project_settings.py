@@ -46,7 +46,7 @@ class ProjectSettingsRequiredSchema:
     }
 
 
-def validate_settings_schema(data: dict) -> None:
+def validate_project_settings_schema(data: dict) -> None:
     try:
         validate(instance=data, schema=ProjectSettingsRequiredSchema.SCHEMA)
     except ValidationError as e:
@@ -115,7 +115,7 @@ class ProjectSettings(JsonSerializable):
 
     @classmethod
     def from_json(cls, data: Dict) -> ProjectSettings:
-        validate_settings_schema(data)
+        validate_project_settings_schema(data)
 
         d_multiview = data[ProjectSettingsJsonFields.MULTI_VIEW]
 
@@ -135,7 +135,7 @@ class ProjectSettings(JsonSerializable):
                 ProjectSettingsJsonFields.IS_SYNCED: self.multiview_is_synced,
             }
         }
-        validate_settings_schema(data)
+        validate_project_settings_schema(data)
         return data
 
     def clone(

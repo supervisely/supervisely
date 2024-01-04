@@ -16,6 +16,7 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.json import JsonSerializable
 from supervisely.project.project_settings import ProjectSettings
 from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
 
 
 class ProjectMetaJsonFields:
@@ -158,6 +159,7 @@ class ProjectMeta(JsonSerializable):
 
         if isinstance(project_settings, dict):
             self._project_settings = ProjectSettings.from_json(project_settings)
+            self.validate_project_settings(add_multi_tag_meta=False)
         else:
             self._project_settings = project_settings
 
@@ -1326,23 +1328,32 @@ class ProjectMeta(JsonSerializable):
         res_meta = self.clone(obj_classes=ObjClassCollection(res_classes))
         return res_meta, mapping
 
-    def validate_project_settings(self) -> None:
+    def validate_project_settings(self, add_multi_tag_meta: bool = False) -> ProjectMeta:
         if self.project_settings.multiview_enabled is True:
             mtag_name = self.project_settings.multiview_tag_name
 
             if mtag_name is None:
                 mtag_name = self.get_tag_name(self.project_settings.multiview_tag_id)
                 if mtag_name is None:
-                    return None  # (tag_name,tag_id)==(None, None) is OK
+                    return self  # (tag_name, tag_id) == (None, None) is OK
 
             multi_tag = self.get_tag_meta(mtag_name)
             if multi_tag is None:
-                raise RuntimeError(
-                    f"The multi-view tag '{mtag_name}' was not found in the 'tags' field. Please specify the matching tag in the 'meta.json' file."
-                )
+                if add_multi_tag_meta is False:
+                    raise RuntimeError(
+                        f"The multi-view tag '{mtag_name}' was not found in the '{ProjectMetaJsonFields.TAGS}' field. Please specify the matching tag in the 'meta.json' file."
+                    )
+                else:
+                    logger.warn(
+                        f"The unexisted tag '{mtag_name}' was added to the '{ProjectMetaJsonFields.TAGS}' field in the 'meta.json' automatically with the type '{TagValueType.ANY_STRING}'."
+                        " You can always change the value type in the web-interface `Settings -> Visuals`. See documentation for details:"
+                        " https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
+                    )
+                    return self.add_tag_meta(TagMeta(mtag_name, TagValueType.ANY_STRING))
 
             else:
                 if multi_tag.value_type == TagValueType.NONE:
                     raise RuntimeError(
                         f"The tag value type '{TagValueType.NONE}' is unsupported for the multi-view mode. Please specify with the following types: '{TagValueType.ANY_STRING}', '{TagValueType.ANY_NUMBER}', or '{TagValueType.ONEOF_STRING}'"
                     )
+        return self
