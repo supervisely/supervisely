@@ -156,9 +156,14 @@ class ProjectSettings(JsonSerializable):
         if meta.project_settings.multiview_enabled is True:
             mtag_name = meta.project_settings.multiview_tag_name
             if mtag_name is None:
+                if meta.project_settings.multiview_tag_id is None:
+                    return  # (tag_name, tag_id) == (None, None) is OK
                 mtag_name = meta.get_tag_name_by_id(meta.project_settings.multiview_tag_id)
                 if mtag_name is None:
-                    return  # (tag_name, tag_id) == (None, None) is OK
+                    raise RuntimeError(
+                        f"The multi-view tag with ID={meta.project_settings.multiview_tag_id} was not found in the project meta. "
+                        "Please directly add the tag meta that will be used for image grouping for multi-view labeling interface."
+                    )
 
             multi_tag = meta.get_tag_meta(mtag_name)
             if multi_tag is None:
