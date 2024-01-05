@@ -18,6 +18,7 @@ from typing import List, Optional
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
+from supervisely.io import env as sly_env
 from supervisely.io import fs as sly_fs
 from supervisely.sly_logger import logger
 
@@ -169,6 +170,18 @@ def is_docker():
 
 def is_production() -> bool:
     return not is_development()
+
+
+def is_community() -> bool:
+    server_address = sly_env.server_address()
+
+    if (
+        server_address == "https://app.supervise.ly"
+        or server_address == "https://app.supervisely.com/"
+    ):
+        return True
+    else:
+        return False
 
 
 def abs_url(relative_url: str) -> str:

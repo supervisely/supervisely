@@ -1,0 +1,10 @@
+<sly-select-agent :value="state.{{{ widget.widget_id }}}.agentId"
+:group-id="data.{{{ widget.widget_id }}}.teamId"
+:options="state.{{{ widget.widget_id }}}.options"
+:is-community="data.{{{ widget.widget_id }}}.isCommunity"
+{% if
+    widget._changes_handled == true %}
+    @input="state.{{{ widget.widget_id }}}.agentId
+    = $event; post('/{{{ widget.widget_id }}}/value_changed')"
+{% endif %}
+/>
