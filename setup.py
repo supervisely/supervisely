@@ -1,8 +1,8 @@
 import os
 import re
+
 import requests
 from pkg_resources import DistributionNotFound, get_distribution
-
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -63,6 +63,7 @@ INSTALL_REQUIRES = [
     "imutils==0.5.4",
     "urllib3>=1.26.15, <2.0.0",
     "cacheout==0.14.1",
+    "jsonschema>=2.6.0,<3.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
