@@ -18,6 +18,7 @@ from typing import List, Optional
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
+from supervisely.io import env as sly_env
 from supervisely.io import fs as sly_fs
 from supervisely.sly_logger import logger
 
@@ -172,11 +173,7 @@ def is_production() -> bool:
 
 
 def is_community() -> bool:
-    from supervisely.api.api import SERVER_ADDRESS
-
-    server_address = os.environ.get(SERVER_ADDRESS, "")
-    if server_address == "":
-        logger.warn("SERVER_ADDRESS env variable is not defined")
+    server_address = sly_env.server_address()
 
     if (
         server_address == "https://app.supervise.ly"
