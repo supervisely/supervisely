@@ -652,7 +652,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Video name.
+        :param name: Video name. It is recommended to use a name with an extension.
         :type name: str
         :param hash: Video hash.
         :type hash: str
@@ -741,7 +741,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Videos names.
+        :param names: Videos names. It is recommended to use names with an extension.
         :type names: List[str]
         :param hashes: Videos hashes.
         :type hashes: List[str]
@@ -813,7 +813,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Destination dataset ID.
         :type dataset_id: int
-        :param name: Video name.
+        :param name: Video name. It is recommended to use a name with an extensio
         :type name: str
         :param id: Source video ID in Supervisely.
         :type id: int
@@ -853,7 +853,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Destination dataset ID.
         :type dataset_id: int
-        :param names: Videos names.
+        :param names: Videos names. It is recommended to use names with an extension.
         :type names: List[str]
         :param ids: Source videos IDs in Supervisely.
         :type ids: List[int]
@@ -1296,7 +1296,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: List of Videos names.
+        :param names: List of Videos names. It is recommended to use names with an extension.
         :type names: List[str]
         :param paths: List of local Videos paths.
         :type paths: List[str]
@@ -1413,7 +1413,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Video name.
+        :param name: Video name. It is recommended to use a name with an extension.
         :type name: str
         :param path: Local video path.
         :type path: str
@@ -1664,7 +1664,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param links: Videos links.
         :type links: List[str]
-        :param names: Videos names.
+        :param names: Videos names. It is recommended to use names with an extension.
         :type names: List[str]
         :param infos: Videos infos.
         :type infos: List[dict]
@@ -1766,7 +1766,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param link: Video link.
         :type link: str
-        :param name: Video name.
+        :param name: Video name. It is recommended to use a name with an extension.
         :type name: str, optional
         :param info: Video info.
         :type info: dict, optional

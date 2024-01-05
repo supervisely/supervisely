@@ -378,7 +378,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Volume name.
+        :param name: Volume name with extension.
         :type name: str
         :param hash: Volume hash.
         :type hash: str
@@ -472,7 +472,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Volumes names.
+        :param names: Volumes names with extension.
         :type names: List[str]
         :param hashes: Volumes hashes.
         :type hashes: List[str]
