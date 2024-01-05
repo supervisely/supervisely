@@ -3,7 +3,7 @@ from supervisely.app.widgets import Widget
 from typing import Optional, Union
 
 
-class PlotlyChart(Widget):
+class IFrame(Widget):
     def __init__(
         self,
         path_to_html: str = "",

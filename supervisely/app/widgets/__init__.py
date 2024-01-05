@@ -131,4 +131,4 @@ from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsList
 from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector
 from supervisely.app.widgets.members_list_preview.members_list_preview import MembersListPreview
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
-from supervisely.app.widgets.plotly_chart.plotly_chart import PlotlyChart
+from supervisely.app.widgets.iframe.iframe import IFrame
