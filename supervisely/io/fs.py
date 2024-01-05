@@ -710,7 +710,9 @@ def get_file_hash(path: str) -> str:
         from supervisely.io.fs import get_file_hash
         hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
-    return get_bytes_hash(open(path, "rb").read())
+    with open(path, "rb") as file:
+        file_bytes = file.read()
+        return get_bytes_hash(file_bytes)
 
 
 def tree(dir_path: str) -> str:
