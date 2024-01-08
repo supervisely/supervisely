@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, Optional, Dict, List
 from enum import Enum
+from typing import Dict, List, NamedTuple, Optional
+
 from supervisely.api.module_api import ApiField, ModuleApi, ModuleWithStatus
 
 
@@ -22,7 +23,6 @@ class AgentInfo(NamedTuple):
     capabilities: dict
     created_at: str
     updated_at: str
-    # host: dict
 
 
 class AgentNotFound(Exception):
@@ -94,7 +94,6 @@ class AgentApi(ModuleApi, ModuleWithStatus):
             ApiField.CAPABILITIES,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
-            # ApiField.HOST,
         ]
 
     @staticmethod
@@ -184,4 +183,5 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
     def raise_for_status(self, status):
         """raise_for_status"""
+        pass
         pass
