@@ -27,7 +27,7 @@ INSTALL_REQUIRES = [
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
-    "Shapely>=1.7.1, <2.0.0",
+    "Shapely>=1.7.1, <=2.0.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
     "python-dotenv>=0.19.2, <=1.0.0",
@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
     "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=1.5.2",  # For compatibility with Python3.7
+    "pandas>=1.1.3, <=2.1.4",  # For compatibility with Python3.7
     "async_asgi_testclient",
     "PyYAML",
     "distinctipy",
