@@ -79,7 +79,7 @@ class HandleException:
 
     def log_error_for_agent(self, main_name: str):
         logger.critical(
-            self.title,
+            self.get_message_for_exception(),
             exc_info=True,
             extra={
                 "main_name": main_name,
@@ -92,7 +92,7 @@ class HandleException:
         return f"{self.title}. \n{self.message}"
 
     def get_message_for_exception(self):
-        return f"{self.title}. {self.message}"
+        return f"{self.title}. \n{self.message}"
 
 
 class ErrorHandler:
