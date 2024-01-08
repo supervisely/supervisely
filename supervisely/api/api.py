@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
+from urllib.parse import urljoin, urlparse
 
+import jwt
 import requests
-from dotenv import load_dotenv
+from dotenv import get_key, load_dotenv
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -39,7 +42,7 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import is_development
+from supervisely._utils import camel_to_snake, is_development
 from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
@@ -52,6 +55,105 @@ SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC
 SERVER_ADDRESS = "SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
+SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
+
+class LoginInfo:
+    """
+    LoginInfo object contains login response info.
+
+    :param login: User login.
+    :type login: str
+    :param password: User password.
+    :type password: str
+    :param server: Server url.
+    :type server: str
+    :raises: :class:`RuntimeError`, if server url is invalid.
+    """
+
+    def __init__(self, server: str, login: str, password: str):
+        self.login = login
+        self.password = password
+        self.api_token = None
+        self.team_id = None
+        self.workspace_id = None
+
+        if not self._validate_server_url(server):
+            raise RuntimeError(f"Invalid server url: {server}")
+        self.server = server
+
+    def __str__(self):
+        return f"LoginInfo(login={self.log_in}, server={self.server})"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def _try_authenticate_with_api_token(self):
+        """
+        Try to authenticate with api token.
+
+        :return: True if authentication was successful, False otherwise.
+        """
+        user_info = Api(self.server, self.api_token, ignore_task_id=True).user.get_my_info()
+        if user_info.login == self.log_in:
+            return True
+        return False
+
+    @staticmethod
+    def _validate_server_url(server) -> bool:
+        """
+        Validate server url.
+
+        :return: True if server url is valid, False otherwise.
+        """
+        result = urlparse(server)
+        if all([result.scheme, result.netloc]):
+            try:
+                response = requests.get(server)
+                if response.status_code == 200:
+                    return True
+            except requests.RequestException:
+                pass
+        return False
+
+    def _add_dict_to_login_info(self, decoded_token):
+        """
+        Add decoded token to LoginInfo object.
+
+        :param decoded_token: Decoded token.
+        :type decoded_token: dict
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        for key, value in decoded_token.items():
+            if key == "group":
+                self.team = value
+                self.team_id = value["id"]
+            elif key == "workspace":
+                self.workspace = value
+                self.workspace_id = value["id"]
+            else:
+                key = camel_to_snake(key)
+                setattr(self, key, value)
+
+    def log_in(self) -> LoginInfo:
+        """
+        Authenticate user and return LoginInfo object with all user info.
+
+        :return: LoginInfo object
+        :rtype: :class:`LoginInfo`
+        """
+        login_url = urljoin(self.server, "api/account")
+        payload = {"login": self.login, "password": self.password}
+        response = requests.post(login_url, data=payload)
+        if response.status_code == 200:
+            data = response.json()
+            jwt_token = data.get("token", None)
+            decoded_token = jwt.decode(jwt_token, options={"verify_signature": False})
+            self._add_dict_to_login_info(decoded_token)
+            return self
+        else:
+            raise RuntimeError(f"Failed to authenticate user: status code {response.status_code}")
 
 
 class Api:
@@ -178,7 +280,7 @@ class Api:
         cls,
         retry_count: int = 10,
         ignore_task_id: bool = False,
-        env_file: str = "~/supervisely.env",
+        env_file: str = SUPERVISELY_ENV_FILE,
     ) -> Api:
         """
         Initialize API use environment variables.
@@ -290,7 +392,7 @@ class Api:
         :type data: dict
         :param retries: The number of attempts to connect to the server.
         :type retries: int, optional
-        :param stream: Define, if you’d like to get the raw socket response from the server.
+        :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
@@ -358,7 +460,7 @@ class Api:
         :type method: dict
         :param retries: The number of attempts to connect to the server.
         :type method: int, optional
-        :param stream: Define, if you’d like to get the raw socket response from the server.
+        :param stream: Define, if you'd like to get the raw socket response from the server.
         :type method: bool, optional
         :param use_public_api:
         :type method: bool, optional
@@ -491,3 +593,62 @@ class Api:
                 self.logger.warn(msg)
 
             self._require_https_redirect_check = False
+
+    @classmethod
+    def from_credentials(
+        cls, server: str, login: str, password: str, is_overwrite: bool = False
+    ) -> Api:
+        """
+        Create Api object using credentials.
+
+        :param server: Supervisely server url.
+        :type server: str
+        :param login: User login.
+        :type login: str
+        :param password: User password.
+        :type password: str
+        :param is_overwrite: Overwrite existing ".env" file. If True, ".bak" file will be created automatically.
+        :type is_overwrite: bool, optional
+        :return: Api object
+
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+
+                server_address = 'https://app.supervise.ly'
+                login = 'admin'
+                password = 'admin'
+
+                api = sly.Api.from_credentials(server_address, login, password)
+        """
+
+        login_info = LoginInfo(server, login, password).log_in()
+        if os.path.isfile(SUPERVISELY_ENV_FILE):
+            e_server = get_key(SUPERVISELY_ENV_FILE, "SERVER_ADDRESS")
+            e_token = get_key(SUPERVISELY_ENV_FILE, "API_TOKEN")
+            api = Api(e_server, e_token, ignore_task_id=True)
+            e_user_info = api.user.get_my_info()
+
+            if not is_overwrite:
+                if login_info.log_in != e_user_info.login:
+                    raise RuntimeError(
+                        f"File {SUPERVISELY_ENV_FILE} already exists, but for other user with login '{e_user_info.login}'. Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
+                    )
+                raise RuntimeError(
+                    f"File {SUPERVISELY_ENV_FILE} already exists. Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
+                )
+            else:
+                backup_name = SUPERVISELY_ENV_FILE + ".bak"
+                os.rename(SUPERVISELY_ENV_FILE, backup_name)
+
+        with open(SUPERVISELY_ENV_FILE, "w") as file:
+            file.write(f'SERVER_ADDRESS="{server}"\n')
+            file.write(f'API_TOKEN="{login_info.api_token}"\n')
+            if login_info.team_id:
+                file.write(f'INIT_GROUP_ID="{login_info.team_id}"\n')
+            if login_info.workspace_id:
+                file.write(f'INIT_WORKSPACE_ID="{login_info.workspace_id}"\n')
+            api = Api(server, login_info.api_token, ignore_task_id=True)
+        return api
