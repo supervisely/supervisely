@@ -1,33 +1,62 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Callable, Dict, List, Optional
 
-from supervisely.app.widgets import Widget
-from supervisely.app.widgets.widget import Disableable
 import supervisely as sly
-from supervisely.geometry.geometry import Geometry
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
-from supervisely.sly_logger import logger
+from supervisely.app.widgets import Widget
 from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.geometry.pointcloud import Pointcloud
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_3d import Point3d
+from supervisely.geometry.pointcloud import Pointcloud
+from supervisely.sly_logger import logger
 
 type_to_zmdi_icon = {
     sly.AnyGeometry: "zmdi zmdi-shape",
     sly.Rectangle: "zmdi zmdi-crop-din",  # "zmdi zmdi-square-o"
-    sly.Polygon: "icons8-polygon",  # "zmdi zmdi-edit"
+    # sly.Polygon: "icons8-polygon",  # "zmdi zmdi-edit"
+    sly.Polygon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAB6klEQVRYhe2Wuy8EURTGf+u5VESNXq2yhYZCoeBv8RcI1i6NVUpsoVCKkHjUGlFTiYb1mFmh2MiKjVXMudmb3cPOzB0VXzKZm5k53/nmvO6Ff4RHD5AD7gFP1l3Kd11AHvCBEpAVW2esAvWmK6t8l1O+W0lCQEnIJoAZxUnzNQNkZF36jrQjgoA+uaciCgc9VaExBOyh/6WWAi1VhbjOJ4FbIXkBtgkK0BNHnYqNKUIPeBPbKyDdzpld5T6wD9SE4AwYjfEDaXFeFzE/doUWuhqwiFsOCwqv2hV2lU/L+sHBscGTxdvSFVoXpAjCZdauMHVic6ndl6U1VBsJCFhTeNUU9IiIEo3qvQYGHAV0AyfC5wNLhKipXuBCjA5wT8WxcM1FMRoBymK44CjAE57hqIazwCfwQdARcXa3UXHuRXVucIjb7jYvNkdxBZg0TBFid7PQTRAtX2xOiXkuMAMqYwkIE848rZFbjyNAmw9bIeweaZ2A5TgC7PnwKkTPtN+cTOrsyN3FEWAjRTAX6sA5ek77gSL6+WHZVQDAIHAjhJtN78aAS3lXAXYIivBOnCdyOAUYB6o0xqsvziry7FLE/Cp20cNcJEjDr8MUmVOVRzkVN+Nd7vZGVXXgiwxtPiRS5WFhz4fEq/zv4AvToMn7vCn3eAAAAABJRU5ErkJggg==",
     sly.Bitmap: "zmdi zmdi-brush",
     sly.Polyline: "zmdi zmdi-gesture",
     sly.Point: "zmdi zmdi-dot-circle-alt",
     sly.Cuboid: "zmdi zmdi-ungroup",  #
     sly.GraphNodes: "zmdi zmdi-grain",
     Cuboid3d: "zmdi zmdi-codepen",
-    Pointcloud: "zmdi zmdi-cloud-outline",  #  # "zmdi zmdi-border-clear"
+    Pointcloud: "zmdi zmdi-cloud-outline",  # "zmdi zmdi-border-clear"
     sly.MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
 }
 
 
 class ClassesTable(Widget):
+    """ClassesTable widget in Supervisely allows users to display all classes from given project in a table format.
+
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/classestable>`_
+        (including screenshots and examples).
+
+    :param project_meta: Project meta object from which classes will be taken.
+    :type project_meta: sly.ProjectMeta
+    :param project_id: Project id from which classes will be taken.
+    :type project_id: int
+    :param project_fs: Project object from which classes will be taken.
+    :type project_fs: sly.Project
+    :param allowed_types: List of allowed geometry types to be displayed in table.
+    :type allowed_types: List[Geometry]
+    :param selectable: If True, user can select classes from table.
+    :type selectable: bool
+    :param disabled: If True, the elements in the table will be disabled.
+    :type disabled: bool
+    :param widget_id: Unique widget identifier.
+    :type widget_id: str
+    :raises ValueError: If both project_id and project_fs parameters are provided.
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely.app.widgets import ClassesTable
+
+        classes_table = ClassesTable(project_id=123, selectable=True)
+    """
+
     class Routes:
         CLASS_SELECTED = "class_selected_cb"
 
@@ -51,7 +80,7 @@ class ClassesTable(Widget):
         self._global_checkbox = False
         self._checkboxes = []
         self._selectable = selectable
-        self._disabled = disabled
+        self._selection_disabled = disabled
         self._loading = False
         self._allowed_types = allowed_types if allowed_types is not None else []
         if project_id is not None:
@@ -72,11 +101,20 @@ class ClassesTable(Widget):
                     "Both parameters project_fs and project_meta were provided to ClassesTable widget. Project meta classes taken from project_fs.meta and project_meta parameter is ignored."
                 )
             project_meta = project_fs.meta
+
+        self._project_meta = project_meta
         if project_meta is not None:
             self._update_meta(project_meta=project_meta)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def value_changed(self, func):
+    def value_changed(self, func: Callable[[List[str]], Any]) -> Callable[[], None]:
+        """Decorator for the function to be called when the value of the widget changes.
+
+        :param func: Function to be called when the value of the widget changes.
+        :type func: Callable[[List[str]], Any]
+        :return: Decorated function.
+        :rtype: Callable[[], None]
+        """
         route_path = self.get_route_path(ClassesTable.Routes.CLASS_SELECTED)
         server = self._sly_app.get_server()
         self._changes_handled = True
@@ -188,9 +226,15 @@ class ClassesTable(Widget):
             self._global_checkbox = False
 
     def read_meta(self, project_meta: sly.ProjectMeta) -> None:
+        """Read project meta and update table data.
+
+        :param project_meta: Project meta object from which classes will be taken.
+        :type project_meta: sly.ProjectMeta
+        """
         self.loading = True
         self._project_fs = None
         self._project_id = None
+        self._project_meta = project_meta
         self.clear_selection()
         self._update_meta(project_meta=project_meta)
 
@@ -203,9 +247,15 @@ class ClassesTable(Widget):
         self.loading = False
 
     def read_project(self, project_fs: sly.Project) -> None:
+        """Read local project and update table data.
+
+        :param project_fs: Project object from which classes will be taken.
+        :type project_fs: sly.Project
+        """
         self.loading = True
         self._project_fs = project_fs
         self._project_id = None
+        self._project_meta = project_fs.meta
         self.clear_selection()
         self._update_meta(project_meta=project_fs.meta)
 
@@ -218,12 +268,18 @@ class ClassesTable(Widget):
         self.loading = False
 
     def read_project_from_id(self, project_id: int) -> None:
+        """Read remote project by id and update table data.
+
+        :param project_id: Project id from which classes will be taken.
+        :type project_id: int
+        """
         self.loading = True
         self._project_fs = None
         self._project_id = project_id
         if self._api is None:
             self._api = sly.Api()
         project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
+        self._project_meta = project_meta
         self.clear_selection()
         self._update_meta(project_meta=project_meta)
 
@@ -236,59 +292,158 @@ class ClassesTable(Widget):
         self.loading = False
 
     def get_json_data(self) -> Dict[str, Any]:
+        """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
+
+        Dictionary contains the following fields:
+            - table_data: List of dictionaries with table data.
+            - columns: List of column names.
+            - loading: If True, the widget is in loading state.
+            - disabled: If True, the elements in the table will be disabled.
+            - selectable: If True, user can select classes from table.
+
+        :return: Dictionary with widget data.
+        :rtype: Dict[str, Any]
+        """
         return {
             "table_data": self._table_data,
             "columns": self._columns,
             "loading": self._loading,
-            "disabled": self._disabled,
+            "disabled": self._selection_disabled,
             "selectable": self._selectable,
         }
 
     @property
     def allowed_types(self) -> List[Geometry]:
+        """Returns list of allowed geometry types to be displayed in table.
+
+        :return: List of allowed geometry types to be displayed in table.
+        :rtype: List[Geometry]
+        """
         return self._allowed_types
 
     @property
     def project_id(self) -> int:
+        """Returns project id from which classes was taken.
+
+        :return: Project id from which classes was taken.
+        :rtype: int
+        """
         return self._project_id
 
     @property
     def project_fs(self) -> int:
+        """Returns project object from which classes was taken.
+
+        :return: Project object from which classes was taken.
+        :rtype: sly.Project
+        """
         return self._project_fs
 
     @property
     def loading(self) -> bool:
+        """Returns True if the widget is in loading state.
+
+        :return: True if the widget is in loading state.
+        :rtype: bool
+        """
         return self._loading
 
+    @property
+    def project_meta(self) -> bool:
+        """Returns project meta object from which classes was taken.
+
+        :return: Project meta object from which classes was taken.
+        :rtype: sly.ProjectMeta
+        """
+        return self._project_meta
+
     @loading.setter
-    def loading(self, value: bool):
+    def loading(self, value: bool) -> None:
+        """Sets loading state of the widget.
+
+        :param value: Loading state of the widget.
+        :type value: bool
+        """
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
 
     def get_json_state(self) -> Dict[str, Any]:
+        """Returns dictionary with widget state.
+
+        Dictionary contains the following fields:
+            - global_checkbox: State of global checkbox.
+            - checkboxes: List of checkboxes states.
+
+        :return: Dictionary with widget state.
+        :rtype: Dict[str, Any]
+        """
         return {
             "global_checkbox": self._global_checkbox,
             "checkboxes": self._checkboxes,
         }
 
     def get_selected_classes(self) -> List[str]:
+        """Returns list of selected classes.
+
+        :return: List of selected classes.
+        :rtype: List[str]
+        """
         classes = []
         for i, line in enumerate(self._table_data):
-            if StateJson()[self.widget_id]["checkboxes"][i]:
+            checkboxes = StateJson()[self.widget_id]["checkboxes"]
+            if len(checkboxes) == 0:
+                checkboxes = [False] * len(self._table_data)
+            if checkboxes[i]:
                 for col in line:
                     if col["name"] == "CLASS":
                         classes.append(col["data"])
         return classes
 
     def clear_selection(self) -> None:
+        """Clears selection of classes."""
         self._global_checkbox = False
         self._checkboxes = [False] * len(self._table_data)
         StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()
 
+    def set_project_meta(self, project_meta: sly.ProjectMeta) -> None:
+        """Sets project meta object from which classes will be taken.
+
+        :param project_meta: Project meta object from which classes will be taken.
+        :type project_meta: sly.ProjectMeta
+        """
+        self._update_meta(project_meta)
+        self._project_meta = project_meta
+        self.update_data()
+        DataJson().send_changes()
+
+    def select_classes(self, classes: List[str]) -> None:
+        """Selects classes in the table from given list.
+
+        :param classes: List of classes to be selected.
+        :type classes: List[str]
+        """
+        self._global_checkbox = False
+        self._checkboxes = [False] * len(self._table_data)
+
+        project_classes = []
+        for i, line in enumerate(self._table_data):
+            for col in line:
+                if col["name"] == "CLASS":
+                    project_classes.append(col["data"])
+
+        for i, cls_name in enumerate(project_classes):
+            if cls_name in classes:
+                self._checkboxes[i] = True
+        self._global_checkbox = all(self._checkboxes)
+        StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
+        StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
+        StateJson().send_changes()
+
     def select_all(self) -> None:
+        """Selects all classes in the table."""
         self._global_checkbox = True
         self._checkboxes = [True] * len(self._table_data)
         StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox

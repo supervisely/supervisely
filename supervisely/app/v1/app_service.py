@@ -110,6 +110,9 @@ class AppService:
         self.stop_event = asyncio.Event()
         self.has_ui = False
 
+    def is_stopped(self):
+        return self.stop_event.is_set()
+
     def _graceful_exit(self, sig, frame):
         asyncio.create_task(self._shutdown(signal=signal.Signals(sig)))
 
@@ -142,8 +145,11 @@ class AppService:
         else:
             self.logger.error("Caught exception: {}".format(msg))
 
-        self.logger.info("Shutting down...")
-        asyncio.create_task(self._shutdown())
+        if not self.stop_event.is_set():
+            self.logger.info("Shutting down...")
+            asyncio.create_task(self._shutdown())
+        else:
+            self.logger.error("Probably, exception was found in shutdown task. Contact support.")
 
     @property
     def session_dir(self):
@@ -199,12 +205,17 @@ class AppService:
                 self.logger.info("App will be stopped due to error")
 
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=ex), self.loop)
+                return
 
             elapsed = time.time() - then
 
             if (period - elapsed) > 0:
                 # await asyncio.sleep(period - elapsed)
                 time.sleep(period - elapsed)
+
+            if self.stop_event.is_set():
+                self.logger.debug("call_periodic_function_sync is finished")
+                return
 
     # async def call_periodic_function(self, period, f):
 
@@ -320,11 +331,12 @@ class AppService:
                         self.show_modal_window(
                             exception_handler.get_message_for_modal_window(),
                             level="error",
+                            log_message=False,
                         )
 
                 else:
                     self.logger.error(
-                        traceback.format_exc(),
+                        repr(e),
                         exc_info=True,
                         extra={
                             "main_name": command,
@@ -336,24 +348,33 @@ class AppService:
                 # asyncio.create_task(self._shutdown(error=e))
                 asyncio.run_coroutine_threadsafe(self._shutdown(error=e), self.loop)
             else:
-                self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": repr(e)})
+                if exception_handler:
+                    message = exception_handler.get_message_for_modal_window()
+                else:
+                    message = (
+                        "Oops! Something went wrong, please try again or contact tech support. "
+                        f"Find more info in the app logs. {repr(e)}"
+                    )
+                self.logger.error(message, exc_info=True, extra={"exc_str": str(e)})
                 if self.has_ui:
-                    if exception_handler:
-                        message = exception_handler.get_message_for_modal_window()
-                    else:
-                        message = (
-                            "Oops! Something went wrong, please try again or contact tech support. "
-                            "Find more info in the app logs."
-                        )
 
                     self.show_modal_window(
                         message,
                         level="error",
+                        log_message=False,
                     )
 
     def consume_sync(self):
         while True:
-            request_msg = self.processing_queue.get()
+            if self.stop_event.is_set():
+                self.logger.debug("consume_sync is finished")
+                return
+
+            try:
+                request_msg = self.processing_queue.get(timeout=1)
+            except queue.Empty:
+                continue
+
             to_log = _remove_sensitive_information(request_msg)
             self.logger.debug("FULL_TASK_MESSAGE", extra={"task_msg": to_log})
             # asyncio.run_coroutine_threadsafe(self.handle_message(request_msg), self.loop)
@@ -384,6 +405,11 @@ class AppService:
 
                 event_obj = {REQUEST_ID: gen_event.request_id, **data}
                 self.processing_queue.put(event_obj)
+
+                # crutch
+                if data.get("command", "") == "stop":
+                    self.logger.debug("publish_sync is finished")
+                    return
             except Exception as error:
                 self.logger.warning("App exception: ", extra={"error_message": repr(error)})
 
@@ -443,10 +469,14 @@ class AppService:
                 extra={"event_type": EventType.APP_FINISHED},
             )
             # asyncio.create_task(self._shutdown())
-            asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
+            if not self.stop_event.is_set():
+                asyncio.run_coroutine_threadsafe(self._shutdown(), self.loop)
 
     async def _shutdown(self, signal=None, error=None):
         """Cleanup tasks tied to the service's shutdown."""
+        self.logger.debug("SET STOP EVENT")
+        self.stop_event.set()
+
         if signal:
             self.logger.info(f"Received exit signal {signal.name}...")
         self.logger.info("Nacking outstanding messages")
@@ -458,6 +488,9 @@ class AppService:
         await asyncio.gather(*tasks, return_exceptions=True)
 
         self.logger.info("Shutting down ThreadPoolExecutor")
+
+        # wait for some threads to stop normally
+        await asyncio.sleep(5)
         self.executor.shutdown(wait=False)
 
         self.logger.info(f"Releasing {len(self.executor._threads)} threads from executor")
@@ -482,17 +515,18 @@ class AppService:
             addit_headers={"x-request-id": request_id},
         )
 
-    def show_modal_window(self, message, level="info"):
+    def show_modal_window(self, message, level="info", log_message=True):
         all_levels = ["warning", "info", "error"]
         if level not in all_levels:
             raise ValueError("Unknown level {!r}. Supported levels: {}".format(level, all_levels))
 
-        if level == "info":
-            self.logger.info(message)
-        elif level == "warning":
-            self.logger.warning(message)
-        elif level == "error":
-            self.logger.error(message, exc_info=True)
+        if log_message is True:
+            if level == "info":
+                self.logger.info(message)
+            elif level == "warning":
+                self.logger.warning(message)
+            elif level == "error":
+                self.logger.error(message, exc_info=True)
 
         self.public_api.app.set_field(
             self.task_id, "data.notifyDialog", {"type": level, "message": message}
@@ -551,7 +585,7 @@ class AppService:
                 try:
                     f(*args, **kwargs)
                 except Exception as e:
-                    from supervisely import handle_exception
+                    from supervisely.io.exception_handlers import handle_exception
 
                     exception_handler = handle_exception(e)
 
@@ -559,12 +593,12 @@ class AppService:
                         message = exception_handler.get_message_for_modal_window()
                     else:
                         message = (
-                            f"Oops! Something went wrong, please try again or contact tech support."
-                            f" Find more info in the app logs. Error: {repr(e)}",
+                            f"Oops! Something went wrong, please try again or contact tech support. "
+                            f"Find more info in the app logs. Error: {repr(e)}"
                         )
 
                     self.logger.error(
-                        f"please, contact support: task_id={self.task_id}, {repr(e)}",
+                        message,
                         exc_info=True,
                         extra={
                             "exc_str": str(e),
@@ -573,6 +607,7 @@ class AppService:
                     self.show_modal_window(
                         message,
                         level="error",
+                        log_message=False,
                     )
 
             return wrapper

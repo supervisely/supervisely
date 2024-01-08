@@ -13,12 +13,15 @@
   >Tag</label>
 
   <el-select
-    v-model="state.{{{widget.widget_id}}}.value"
+    v-model="state.{{{widget.widget_id}}}.tags"
     placeholder="Select tag"
     :multiple="data.{{{widget.widget_id}}}.options.multiple"
     :filterable="data.{{{widget.widget_id}}}.options.filterable"
     :size="data.{{{widget.widget_id}}}.options.size"
     :disabled="data.{{{widget.widget_id}}}.disabled"
+    {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
   >
     <el-option
       v-for="item in data.{{{widget.widget_id}}}.tags"

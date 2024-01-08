@@ -78,6 +78,9 @@ def is_valid_ext(ext: str) -> bool:
         sly.volume.is_valid_ext(".mp4") # False
     """
 
+    if type(ext) is not str:
+        return False
+
     return ext.lower() in ALLOWED_VOLUME_EXTENSIONS
 
 
@@ -276,7 +279,7 @@ def read_dicom_tags(
 ):
     """
     Read DICOM tags from a DICOM file.
-    
+
     :param path: Path to the DICOM file.
     :type path: str
     :param allowed_keys: List of allowed DICOM keywords to be extracted. Default is None, which means all keywords are allowed.
@@ -656,7 +659,7 @@ def inspect_nrrd_series(root_dir: str) -> List[str]:
     """
 
     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
-    logger.info(f"Total {len(nrrd_paths)} nnrd series in directory {root_dir}")
+    logger.info(f"Total {len(nrrd_paths)} NRRD series in directory {root_dir}")
     return nrrd_paths
 
 

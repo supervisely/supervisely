@@ -1,0 +1,43 @@
+<sly-timeline
+	:frames-count="data.{{{widget.widget_id}}}.framesCount"
+	:intervals="data.{{{widget.widget_id}}}.intervals"
+	:colors="data.{{{widget.widget_id}}}.colors"
+	:options="data.{{{widget.widget_id}}}.options"
+	:pointer="state.{{{widget.widget_id}}}.pointer"
+	{%
+	if
+	widget._click_handled
+	%}
+	@update:pointer="(val) => {
+        state.{{{widget.widget_id}}}.pointer = val; 
+        post('/{{{widget.widget_id}}}/click');
+    }"
+	{%
+	else
+	%}
+	@update:pointer="val => state.{{{widget.widget_id}}}.pointer = val"
+	{%
+	endif
+	%}
+	{%
+	if
+	widget._segment_selected_handled
+	%}
+	@segment-selected="(val) => {
+        state.{{{widget.widget_id}}}.selectedSegment = val;
+        post('/{{{widget.widget_id}}}/segment_selected_cb');
+    }"
+	{%
+	else
+	%}
+	@segment-selected="val => state.{{{widget.widget_id}}}.selectedSegment = val"
+	{%
+	endif
+	%}
+>
+	{% if widget._tooltip_content %}
+	<template slot-scope="{ activeInterval }">
+		<span v-if="activeInterval"> {{{widget._tooltip_content}}} </span>
+	</template>
+	{% endif %}
+</sly-timeline>

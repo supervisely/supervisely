@@ -1,9 +1,14 @@
+from functools import wraps
 from typing import List, Dict, Union, Optional, Callable
+
+import yaml
 import supervisely.app.widgets as Widgets
-from supervisely.task.progress import Progress
 import supervisely.io.env as env
-from supervisely.api.file_api import FileApi
+from supervisely.task.progress import Progress
 from supervisely import Api
+from supervisely.api.file_api import FileApi
+from supervisely.sly_logger import logger
+
 
 try:
     from typing import Literal
@@ -32,6 +37,9 @@ class BaseInferenceGUI:
     def get_ui(self) -> Widgets.Widget:
         # return Widgets.Container(widgets_list)
         raise NotImplementedError("Have to be implemented in child class")
+
+
+CallbackT = Callable[[BaseInferenceGUI], None]
 
 
 class InferenceGUI(BaseInferenceGUI):
@@ -75,7 +83,11 @@ class InferenceGUI(BaseInferenceGUI):
         device_values.append("cpu")
         device_names.append("CPU")
 
-        self._device_select = Widgets.SelectString(values=device_values, labels=device_names)
+        self._device_select = Widgets.SelectString(
+            values=device_values,
+            labels=device_names,
+            width_percent=30,
+        )
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
@@ -86,6 +98,56 @@ class InferenceGUI(BaseInferenceGUI):
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
         )
         self._change_model_button.hide()
+
+        self._model_inference_settings_widget = Widgets.Editor(
+            readonly=True, restore_default_button=False
+        )
+        self._model_inference_settings_container = Widgets.Field(
+            self._model_inference_settings_widget,
+            title="Inference settings",
+            description="Model allows user to configure the following parameters on prediction phase",
+        )
+
+        self._model_info_widget = Widgets.ModelInfo()
+        self._model_info_widget_container = Widgets.Field(
+            self._model_info_widget,
+            title="Session Info",
+            description="Basic information about the deployed model",
+        )
+
+        self._model_classes_widget = Widgets.ClassesTable(selectable=False)
+        self._model_classes_plug = Widgets.Text("No classes provided")
+        self._model_classes_widget_container = Widgets.Field(
+            content=Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
+            title="Model classes",
+            description="List of classes model predicts",
+        )
+
+        self._model_full_info = Widgets.Container(
+            [
+                self._model_info_widget_container,
+                self._model_inference_settings_container,
+                self._model_classes_widget_container,
+            ]
+        )
+        self._model_full_info.hide()
+        self._before_deploy_msg = Widgets.Text("Deploy model to see the information.")
+
+        self._model_full_info_card = Widgets.Card(
+            title="Full model info",
+            description="Inference settings, session parameters and model classes",
+            collapsable=True,
+            content=Widgets.Container(
+                [
+                    self._model_full_info,
+                    self._before_deploy_msg,
+                ]
+            ),
+        )
+
+        self._model_full_info_card.collapse()
+        self._additional_ui_content = []
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
 
         tabs_titles = []
         tabs_contents = []
@@ -192,9 +254,23 @@ class InferenceGUI(BaseInferenceGUI):
             descriptions=tabs_descriptions,
         )
 
+        self.on_change_model_callbacks: List[CallbackT] = [InferenceGUI._hide_info_after_change]
+        self.on_serve_callbacks: List[CallbackT] = []
+
+        @self.serve_button.click
+        def serve_model():
+            self.deploy_with_current_params()
+
         @self._change_model_button.click
         def change_model():
+            for cb in self.on_change_model_callbacks:
+                cb(self)
             self.change_model()
+
+    def deploy_with_current_params(self):
+        for cb in self.on_serve_callbacks:
+            cb(self)
+        self.set_deployed()
 
     def change_model(self):
         self._success_label.text = ""
@@ -207,6 +283,11 @@ class InferenceGUI(BaseInferenceGUI):
         if self._support_custom_models:
             self._model_path_input.enable()
         Progress("model deployment canceled", 1).iter_done_report()
+
+    def _hide_info_after_change(self):
+        self._model_full_info_card.collapse()
+        self._model_full_info.hide()
+        self._before_deploy_msg.show()
 
     def _set_pretrained_models(self, models):
         self._models = models
@@ -235,7 +316,7 @@ class InferenceGUI(BaseInferenceGUI):
             selected_model = self._model_select.get_value()
             cols = list(models[selected_model]["checkpoints"][0].keys())
             rows = [
-                [value for param_name, value in model.items()]
+                [value for _, value in model.items()]
                 for model in models[selected_model]["checkpoints"]
             ]
         else:
@@ -320,6 +401,78 @@ class InferenceGUI(BaseInferenceGUI):
             self._model_path_input.disable()
         Progress("Model deployed", 1).iter_done_report()
 
+    def show_deployed_model_info(self, inference):
+        self.set_inference_settings(inference)
+        self.set_project_meta(inference)
+        self.set_model_info(inference)
+        self._before_deploy_msg.hide()
+        self._model_full_info.show()
+        self._model_full_info_card.uncollapse()
+
+    def set_inference_settings(self, inference):
+        if len(inference.custom_inference_settings_dict.keys()) == 0:
+            inference_settings_str = "# inference settings dict is empty"
+        else:
+            inference_settings_str = yaml.dump(inference.custom_inference_settings_dict)
+        self._model_inference_settings_widget.set_text(inference_settings_str, "yaml")
+        self._model_inference_settings_widget.show()
+
+    def set_project_meta(self, inference):
+        if self._get_classes_from_inference(inference) is None:
+            logger.warn("Skip loading project meta.")
+            self._model_classes_widget.hide()
+            self._model_classes_plug.show()
+            return
+
+        # inference.update_model_meta()
+        # collapse all info
+        # self._model_info_collapse.set_active_panel([])
+        self._model_classes_widget.set_project_meta(inference.model_meta)
+        self._model_classes_plug.hide()
+        self._model_classes_widget.show()
+
+    def set_model_info(self, inference):
+        info = inference.get_human_readable_info(replace_none_with="Not provided")
+        self._model_info_widget.set_model_info(inference.task_id, info)
+
+    # def create_handler_on_model_changes(
+    #     self,
+    #     inference,
+    #     model_table: Optional[Widgets.RadioTable] = None,
+    # ):
+    #     self._model_full_info.show()
+    #     self._before_deploy_msg.hide()
+    #     self.show_deployed_model_info(inference)
+    #     if model_table is None:
+    #         model_table = self._models_table
+
+    #     if isinstance(model_table, Widgets.RadioTable):
+
+    #         @model_table.value_changed
+    #         def upd_models_info_if_possible(new_model):
+    #             logger.debug(f"Model changed: {new_model}")
+    #             self.show_deployed_model_info(inference)
+
+    #     else:
+    #         logger.warn("Failed to create handler for models table")
+
+    def _get_classes_from_inference(self, inference) -> Optional[List[str]]:
+        classes = None
+        try:
+            classes = inference.get_classes()
+        except NotImplementedError:
+            logger.warn(f"get_classes() function not implemented for {type(inference)} object.")
+        except AttributeError:
+            logger.warn("Probably, get_classes() function not working without model deploy.")
+        except Exception as exc:
+            logger.warn("Skip getting classes info due to exception")
+            logger.exception(exc)
+
+        if classes is None or len(classes) == 0:
+            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            return None
+        return classes
+
     def get_ui(self) -> Widgets.Widget:
         return Widgets.Container(
             [
@@ -332,3 +485,27 @@ class InferenceGUI(BaseInferenceGUI):
             ],
             gap=3,
         )
+
+    def add_content_to_default_ui(
+        self, widgets: Union[Widgets.Widget, List[Widgets.Widget]]
+    ) -> None:
+        if isinstance(widgets, List):
+            self._additional_ui_content.extend(widgets)
+        else:
+            self._additional_ui_content.append(widgets)
+
+    def __add_content_and_model_info_to_default_ui(
+        self,
+        model_info_widget: Widgets.Widget,
+    ) -> Callable:
+        def decorator(get_ui):
+            @wraps(get_ui)
+            def wrapper(*args, **kwargs):
+                ui = get_ui(*args, **kwargs)
+                content = [ui, *self._additional_ui_content, model_info_widget]
+                ui_with_info = Widgets.Container(content)
+                return ui_with_info
+
+            return wrapper
+
+        return decorator(self.get_ui)

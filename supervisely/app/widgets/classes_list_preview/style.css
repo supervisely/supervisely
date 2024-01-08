@@ -1,0 +1,8 @@
+.classes-list-preview {
+    width: 70%;
+}
+
+.classes-list-preview b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

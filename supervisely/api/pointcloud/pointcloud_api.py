@@ -704,7 +704,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
                     cam_info = json.load(f)
                 img_info = {
                     "entityId": pcd_infos[i].id,
-                    "name": f"img_{i}",
+                    "name": f"img_{i}.png",
                     "hash": img_hashes[i],
                     "meta": cam_info,
                 }
@@ -751,7 +751,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             pcd_file = "src/input/pcd/000000.pcd"
-            pcd_info = api.pointcloud.upload_path(dataset.id, name="pcd_0", path=pcd_file)
+            pcd_info = api.pointcloud.upload_path(dataset.id, name="pcd_0.pcd", path=pcd_file)
             print(f'Point cloud "{pcd_info.name}" uploaded to Supervisely with ID:{pcd_info.id}')
 
             # Output:
@@ -795,7 +795,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             paths = ["src/input/pcd/000001.pcd", "src/input/pcd/000002.pcd"]
-            pcd_infos = api.pointcloud.upload_paths(dataset.id, names=["pcd_1", "pcd_2"], paths=paths)
+            pcd_infos = api.pointcloud.upload_paths(dataset.id, names=["pcd_1.pcd", "pcd_2.pcd"], paths=paths)
             print(f'Point clouds uploaded to Supervisely with IDs: {[pcd_info.id for pcd_info in pcd_infos]}')
 
             # Output:

@@ -3,12 +3,13 @@
 
 # docs
 from __future__ import annotations
-from typing import NamedTuple, List, Dict, Optional, Callable, Union
-from supervisely.task.progress import Progress
+
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
+
+from tqdm import tqdm
 
 from supervisely.api.module_api import ApiField, ModuleNoParent, UpdateableModule
 from supervisely.sly_logger import logger
-from tqdm import tqdm
 
 
 # @TODO - umar will add meta with review status and duration
@@ -440,7 +441,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #     }
             # ]
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         filters = []
         if filter_user_id is not None:

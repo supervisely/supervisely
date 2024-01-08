@@ -1,0 +1,7 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/markdown/style.css" />
+<sly-markdown
+{% if not widget._show_border %}
+    class="markdown-no-border"
+{% endif %}
+:data="data.{{{ widget.widget_id }}}.content" :options="data.{{{ widget.widget_id }}}.options">
+</sly-markdown>

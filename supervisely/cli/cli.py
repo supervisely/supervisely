@@ -2,7 +2,7 @@ import sys
 import click
 
 
-from supervisely.cli.project import download_run, get_project_name_run
+from supervisely.cli.project import download_run, upload_run, get_project_name_run
 from supervisely.cli.task import set_output_directory_run
 from supervisely.cli.teamfiles import (
     remove_file_run,
@@ -74,7 +74,7 @@ def release(path, sub_app, slug, y, release_version, release_description, share)
 
 @cli.group()
 def project():
-    """Commands: download, get-name"""
+    """Commands: download, get-name, upload"""
     pass
 
 
@@ -123,6 +123,40 @@ def get_name(id: int) -> None:
             sys.exit(1)
     except KeyboardInterrupt:
         print("Getting project name directory aborted")
+        sys.exit(1)
+
+
+@project.command(help="Upload project data from local directory")
+@click.option(
+    "-s",
+    "--src",
+    required=True,
+    type=str,
+    help="Upload source directory",
+)
+@click.option(
+    "-id",
+    "--id",
+    required=True,
+    type=int,
+    help="Destination supervisely workspace ID",
+)
+@click.option(
+    "-n",
+    "--name",
+    required=False,
+    type=str,
+    help="Custom project name",
+)
+def upload(src: str, id: int, name: str) -> None:
+    try:
+        success = upload_run(src, id, name)
+        if success:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nDownload aborted\n")
         sys.exit(1)
 
 

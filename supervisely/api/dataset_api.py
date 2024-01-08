@@ -3,16 +3,16 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Optional, Dict
 
-import urllib
+from typing import Dict, List, Literal, NamedTuple, Optional, Union
+
+from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
-    UpdateableModule,
     RemoveableModuleApi,
+    UpdateableModule,
 )
-from supervisely._utils import is_development, abs_url, compress_image_url
 
 
 class DatasetInfo(NamedTuple):
@@ -28,6 +28,8 @@ class DatasetInfo(NamedTuple):
     created_at: str
     updated_at: str
     reference_image_url: str
+    team_id: int
+    workspace_id: int
 
     @property
     def image_preview_url(self):
@@ -84,7 +86,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         items_count=11,
                         created_at='2021-03-03T15:54:08.802Z',
                         updated_at='2021-03-16T09:31:37.063Z',
-                        reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png')
+                        reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
+                        team_id=1,
+                        workspace_id=2
         """
         return [
             ApiField.ID,
@@ -97,6 +101,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
             ApiField.REFERENCE_IMAGE_URL,
+            ApiField.TEAM_ID,
+            ApiField.WORKSPACE_ID,
         ]
 
     @staticmethod
@@ -519,3 +525,190 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
         return DatasetInfo(**res._asdict())
+
+    def remove_permanently(
+        self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
+    ) -> List[dict]:
+        """
+        Delete permanently datasets with given IDs from the Supervisely server.
+
+        !!! WARNING !!!
+        Be careful, this method deletes data from the database, recovery is not possible.
+
+        :param ids: IDs of datasets in Supervisely.
+        :type ids: Union[int, List]
+        :param batch_size: The number of entities that will be deleted by a single API call. This value must be in the range 1-50 inclusive, if you set a value out of range it will automatically adjust to the boundary values.
+        :type batch_size: int, optional
+        :param progress_cb: Function for control delete progress.
+        :type progress_cb: Callable, optional
+        :return: A list of response content in JSON format for each API call.
+        :rtype: List[dict]
+        """
+        if batch_size > 50:
+            batch_size = 50
+        elif batch_size < 1:
+            batch_size = 1
+
+        if isinstance(ids, int):
+            datasets = [{ApiField.ID: ids}]
+        else:
+            datasets = [{ApiField.ID: id} for id in ids]
+
+        batches = [datasets[i : i + batch_size] for i in range(0, len(datasets), batch_size)]
+        responses = []
+        for batch in batches:
+            response = self._api.post("datasets.remove.permanently", {ApiField.DATASETS: batch})
+            if progress_cb is not None:
+                progress_cb(len(batch))
+            responses.append(response.json())
+        return responses
+
+    def get_list_all(
+        self,
+        filters: Optional[List[Dict[str, str]]] = None,
+        sort: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        per_page: Optional[int] = None,
+        page: Union[int, Literal["all"]] = "all",
+    ) -> dict:
+        """
+        List all available datasets from all available teams for the user that match the specified filtering criteria.
+
+        :param filters: List of parameters for filtering the available Datasets.
+                        Every Dict must consist of keys:
+                        - 'field': Takes values 'id', 'projectId', 'workspaceId', 'groupId', 'createdAt', 'updatedAt'
+                        - 'operator': Takes values '=', 'eq', '!=', 'not', 'in', '!in', '>', 'gt', '>=', 'gte', '<', 'lt', '<=', 'lte'
+                        - 'value': Takes on values according to the meaning of 'field' or null
+        :type filters: List[Dict[str, str]], optional
+
+        :param sort: Specifies by which parameter to sort the project list.
+                        Takes values 'id', 'name', 'size', 'createdAt', 'updatedAt'
+        :type sort: str, optional
+
+        :param sort_order: Determines which value to list from.
+        :type sort_order: str, optional
+
+        :param per_page: Number of first items found to be returned.
+                        'None' will return the first page with a default size of 20000 datasets.
+        :type per_page: int, optional
+
+        :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
+                     The default value is 'all', which retrieves all available datasets.
+                     'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
+        :type page: Union[int, Literal["all"]], optional
+
+        :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
+        :rtype: dict
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            import os
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            filter_1 = {
+                "field": "updatedAt",
+                "operator": "<",
+                "value": "2023-12-03T14:53:00.952Z"
+            }
+            filter_2 = {
+                "field": "updatedAt",
+                "operator": ">",
+                "value": "2023-04-03T14:53:00.952Z"
+            }
+            filters = [filter_1, filter_2]
+            datasets = api.dataset.get_list_all(filters)
+            print(datasets)
+            # Output:
+            # {
+            #     "total": 2,
+            #     "perPage": 20000,
+            #     "pagesCount": 1,
+            #     "entities": [ DatasetInfo(id = 16,
+            #                       name = 'ds1',
+            #                       description = None,
+            #                       size = '861069',
+            #                       project_id = 22,
+            #                       images_count = None,
+            #                       items_count = None,
+            #                       created_at = '2020-04-03T13:43:24.000Z',
+            #                       updated_at = '2020-04-03T14:53:00.952Z',
+            #                       reference_image_url = None,
+            #                       team_id = 2,
+            #                       workspace_id = 2),
+            #                   DatasetInfo(id = 17,
+            #                       name = 'ds1',
+            #                       description = None,
+            #                       size = '1177212',
+            #                       project_id = 23,
+            #                       images_count = None,
+            #                       items_count = None,
+            #                       created_at = '2020-04-03T13:43:24.000Z',
+            #                       updated_at = '2020-04-03T14:53:00.952Z',
+            #                       reference_image_url = None,
+            #                       team_id = 2,
+            #                       workspace_id = 2
+            #                       )
+            #                 ]
+            # }
+
+        """
+
+        method = "datasets.list.all"
+
+        request_body = {}
+        if filters is not None:
+            request_body[ApiField.FILTER] = filters
+        if sort is not None:
+            request_body[ApiField.SORT] = sort
+        if sort_order is not None:
+            request_body[ApiField.SORT_ORDER] = sort_order
+        if per_page is not None:
+            request_body[ApiField.PER_PAGE] = per_page
+        if page is not None and page != "all":
+            request_body[ApiField.PAGE] = page
+
+        first_response = self._api.post(method, request_body).json()
+
+        total = first_response.get(ApiField.TOTAL)
+        per_page = first_response.get("perPage")
+        pages_count = first_response.get("pagesCount")
+
+        def _convert_entities(response_dict: dict):
+            """
+            Convert entities dict to DatasetInfo
+            """
+            response_dict[ApiField.ENTITIES] = [
+                self._convert_json_info(item) for item in response_dict[ApiField.ENTITIES]
+            ]
+
+        if page == "all":
+            results = first_response["entities"]
+            if pages_count == 1 and len(results) == total:
+                pass
+            else:
+                for page_idx in range(2, pages_count + 1):
+                    temp_resp = self._api.post(
+                        method, {**request_body, "page": page_idx, "per_page": per_page}
+                    )
+                    temp_items = temp_resp.json()["entities"]
+                    results.extend(temp_items)
+
+                if len(results) != total:
+                    raise RuntimeError(
+                        "Method {!r}: error during pagination, some items are missed".format(method)
+                    )
+            pass
+        elif page is None or page <= pages_count:
+            pass
+        else:
+            raise RuntimeError(
+                f"Method {method}: error during pagination, some items are missed. Number of total pages [{pages_count}] is less than the page number requested [{page}]."
+            )
+        _convert_entities(first_response)
+        return first_response

@@ -18,6 +18,9 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectProject(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         default_id: int = None,
@@ -37,6 +40,7 @@ class SelectProject(Widget):
         self._show_label = show_label
         self._size = size
         self._ws_selector = None
+        self._changes_handled = False
         self._disabled = False
 
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyProjectId")
@@ -93,6 +97,11 @@ class SelectProject(Widget):
     def get_selected_id(self):
         return StateJson()[self.widget_id]["projectId"]
 
+    def set_project_id(self, id: int):
+        self._default_id = id
+        StateJson()[self.widget_id]["projectId"] = self._default_id
+        StateJson().send_changes()
+
     def disable(self):
         if self._compact is False:
             self._ws_selector.disable()
@@ -106,3 +115,20 @@ class SelectProject(Widget):
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(SelectProject.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        def _process():
+            value = self.get_selected_id()
+            if value == "":
+                value = None
+            func(value)
+
+        @server.post(route_path)
+        def _click():
+            _process()
+
+        return _click

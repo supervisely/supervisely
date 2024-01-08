@@ -50,9 +50,7 @@ def open_image(path, verbose=True):
             print("{}: {!r}".format(k, hdr[k]))
 
     __check_data_kinds_in(hdr)
-    src_system = __world_coordinate_system_from(
-        hdr
-    )  # No fixed world coordinates for NRRD images!
+    src_system = __world_coordinate_system_from(hdr)  # No fixed world coordinates for NRRD images!
     mat = __matrix_from(hdr)  # Voxels to world coordinates
 
     # Create new ``Volume`` instance
@@ -77,7 +75,7 @@ def save_image(path, data, transformation, system="RAS", kinds=None):
     data : array_like
         Three-dimensional array that contains the voxels to be saved.
     transformation : array_like
-        :math:`4×4` transformation matrix that maps from ``data``'s voxel indices to the given ``system``'s anatomical
+        :math:`4x4` transformation matrix that maps from ``data``'s voxel indices to the given ``system``'s anatomical
         world coordinate system.
     system : str, optional
         The world coordinate system to which ``transformation`` maps the voxel data. Either "RAS" (default), "LAS", or
@@ -90,9 +88,7 @@ def save_image(path, data, transformation, system="RAS", kinds=None):
 
     """
     if data.ndim > 3:
-        raise RuntimeError(
-            "Currently, only supports saving NRRD files with scalar data only!"
-        )
+        raise RuntimeError("Currently, only supports saving NRRD files with scalar data only!")
 
     # Create the header entries from the transformation
     space = system.upper()
@@ -134,9 +130,7 @@ def save_volume(path, volume, src_order=True, src_system=True, kinds=None):
         or "space".
     """
     if volume.aligned_data.ndim > 3:
-        raise RuntimeError(
-            "Currently, only supports saving NRRD files with scalar data only!"
-        )
+        raise RuntimeError("Currently, only supports saving NRRD files with scalar data only!")
 
     system = volume.src_system if src_system else volume.system
     system = system if system in ["RAS", "LAS", "LPS"] else "RAS"
@@ -148,9 +142,7 @@ def save_volume(path, volume, src_order=True, src_system=True, kinds=None):
         data = volume.aligned_data
         transformation = volume.get_aligned_transformation(system)
 
-    save_image(
-        path, data=data, transformation=transformation, system=system, kinds=kinds
-    )
+    save_image(path, data=data, transformation=transformation, system=system, kinds=kinds)
 
 
 def __check_data_kinds_in(header):
@@ -240,7 +232,7 @@ def __matrix_from(header):
     Returns
     -------
     numpy.ndarray
-        The resulting :math:`4×4` transformation matrix.
+        The resulting :math:`4x4` transformation matrix.
     """
     try:
         space_directions = header["space directions"]

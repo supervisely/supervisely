@@ -1,0 +1,32 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/fast_table/style.css" />
+
+<fast-table
+  style="width: {{{widget._width}}}"
+  :page.sync="state.{{{widget.widget_id}}}.page"
+  :total="data.{{{widget.widget_id}}}.total"
+  :page-size="data.{{{widget.widget_id}}}.pageSize"
+  :options="data.{{{widget.widget_id}}}.options"
+  :columns="data.{{{widget.widget_id}}}.columns"
+  :columns-options="data.{{{widget.widget_id}}}.columnsOptions"
+  :project-meta="data.{{{widget.widget_id}}}.projectMeta"
+  :sort.sync="state.{{{widget.widget_id}}}.sort"
+  :search.sync="state.{{{widget.widget_id}}}.search"
+  :data="data.{{{widget.widget_id}}}.data"
+  {%
+  if
+  widget._row_click_handled
+  %}
+  @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
+  {%
+  endif
+  %}
+  {%
+  if
+  widget._cell_click_handled
+  %}
+  @cell-click="state.{{{widget.widget_id}}}.selectedCell = $event; post('/{{{widget.widget_id}}}/cell_clicked_cb')"
+  {%
+  endif
+  %}
+  @filters-changed="post('/{{{widget.widget_id}}}/update_data_cb')"
+/>

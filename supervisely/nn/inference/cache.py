@@ -4,6 +4,7 @@ import numpy as np
 
 from cacheout import Cache as CacheOut
 from cachetools import LRUCache, Cache, TTLCache
+from time import sleep
 from enum import Enum
 from fastapi import Request, FastAPI
 from logging import Logger
@@ -78,28 +79,24 @@ class PersistentImageTTLCache(TTLCache):
         sly.image.write(str(filepath), value)
 
     def __delitem__(self, key: Any) -> None:
-        cache_delitem = PersistentImageTTLCache.__delitem
-        return super().__delitem__(key, cache_delitem=cache_delitem)
+        self.__del_file(key)
+        return super().__delitem__(key)
 
-    def __delitem(self, key: Any):
-        Cache.__delitem__(self, key)
+    def __del_file(self, key: Any):
         filepath = self._base_dir / f"{str(key)}.png"
         silent_remove(filepath)
 
+    def __get_keys(self):
+        return self._TTLCache__links.keys()
+
     def expire(self, time=None):
-        """Remove expired items from the cache."""
-        if time is None:
-            time = self.timer()
-        root = self._TTLCache__root
-        curr = root.next
-        links = self._TTLCache__links
-        cache_delitem = PersistentImageTTLCache.__delitem
-        while curr is not root and not (time < curr.expires):
-            cache_delitem(self, curr.key)
-            del links[curr.key]
-            next = curr.next
-            curr.unlink()
-            curr = next
+        existing = set(self.__get_keys())
+        super().expire(time)
+        deleted = existing.difference(self.__get_keys())
+        sly.logger.debug(f"Deleted keys: {deleted}")
+
+        for key in deleted:
+            self.__del_file(key)
 
     def clear(self, rm_base_folder=True) -> None:
         while self.currsize > 0:
@@ -119,7 +116,7 @@ class InferenceImageCache:
         maxsize: int,
         ttl: int,
         is_persistent: bool = True,
-        base_folder: str = "/tmp/smart_cache",
+        base_folder: str = sly.env.smart_cache_container_dir(),
     ) -> None:
         self._is_persistent = is_persistent
         self._maxsize = maxsize
@@ -400,4 +397,5 @@ class InferenceImageCache:
 
         while name in self._load_queue:
             # TODO: sleep if slowdown
+            sleep(0.1)
             continue

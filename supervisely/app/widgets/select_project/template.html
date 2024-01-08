@@ -3,13 +3,16 @@
     {{{widget._ws_selector}}}
   {% endif %}
   <sly-select-project
-      {% if widget._compact == false %}
-      :workspace-id="state.{{{widget._ws_selector.widget_id}}}.workspaceId"
-      {% else %}
-      :workspace-id="data.{{{widget.widget_id}}}.workspaceId"
-      {% endif %}
-      :project-id.sync="state.{{{widget.widget_id}}}.projectId"
-      :disabled="data.{{{widget.widget_id}}}.disabled"
-      :options="data.{{{widget.widget_id}}}.options">
-  </sly-select-project> 
+    {% if widget._compact == false %}
+    :workspace-id="state.{{{widget._ws_selector.widget_id}}}.workspaceId"
+    {% else %}
+    :workspace-id="data.{{{widget.widget_id}}}.workspaceId"
+    {% endif %}
+    :project-id.sync="state.{{{widget.widget_id}}}.projectId"
+    :options="data.{{{widget.widget_id}}}.options"
+    {% if widget._changes_handled == true %}
+    @update:project-id="state.{{{widget.widget_id}}}.projectId = $event; post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+    :disabled="data.{{{widget.widget_id}}}.disabled"
+  ></sly-select-project> 
 </div>

@@ -3,9 +3,10 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional, NamedTuple
 
 from enum import IntEnum
+from typing import Dict, List, NamedTuple, Optional
+
 from supervisely.api.module_api import ApiField, ModuleApiBase
 
 

@@ -111,3 +111,21 @@ def get_hash_from_context(context: dict):
         return "_".join(map(str, [context["video"]["video_id"], context["video"]["frame_index"]]))
     else:
         raise Exception("Project type is not supported")
+
+
+def download_init_mask(api: sly.Api, figure_id, image_id) -> sly.Bitmap:
+    ann_json = api.annotation.download_json(image_id)
+    labels = [label for label in ann_json["objects"] if label["id"] == figure_id]
+    assert len(labels) > 0, f"Label with id {figure_id} not found in image {image_id}."
+    label = labels[0]
+    bitmap = sly.Bitmap.from_json(label)
+    return bitmap
+
+
+def bitmap_to_mask(api: sly.Api, bitmap: sly.Bitmap, image_id):
+    img_info = api.image.get_info_by_id(image_id)
+    h, w = img_info.height, img_info.width
+    mask = np.zeros((h, w), bool)
+    bitmap.to_bbox().get_cropped_numpy_slice(mask)[:] = bitmap.data
+    mask = (mask * 255).astype(np.uint8)
+    return mask

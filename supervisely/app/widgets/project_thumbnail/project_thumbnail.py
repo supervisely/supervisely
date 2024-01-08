@@ -5,13 +5,16 @@ from supervisely.project.project import Project
 
 
 class ProjectThumbnail(Widget):
-    def __init__(self, info: ProjectInfo = None, widget_id: str = None):
+    def __init__(
+        self, info: ProjectInfo = None, widget_id: str = None, remove_margins: bool = False
+    ):
         self._info: ProjectInfo = None
         self._id: int = None
         self._name: str = None
         self._description: str = None
         self._url: str = None
         self._image_preview_url: str = None
+        self._remove_margins: bool = remove_margins
         self._set_info(info)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -23,6 +26,7 @@ class ProjectThumbnail(Widget):
             "description": self._description,
             "url": self._url,
             "image_preview_url": self._image_preview_url,
+            "removeMargins": self._remove_margins,
         }
 
     def get_json_state(self):

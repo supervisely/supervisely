@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+from fastapi.responses import JSONResponse
 import requests
 from requests.structures import CaseInsensitiveDict
 import uuid
@@ -8,12 +10,14 @@ from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional, Any, Union
-from fastapi import Form, Response, UploadFile, status
+from fastapi import Form, HTTPException, Response, UploadFile, status
 from supervisely._utils import (
     is_debug_with_sly_net,
     rand_str,
     is_production,
+    add_callback,
 )
+from supervisely.app.exceptions import DialogWindowError
 from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -27,7 +31,7 @@ import supervisely.io.env as env
 import yaml
 
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application
+from supervisely.app.fastapi.subapp import Application, call_on_autostart
 from supervisely.app.content import get_data_dir, StateJson
 from fastapi import Request
 
@@ -64,6 +68,7 @@ class Inference:
             model_dir = os.path.join(get_data_dir(), "models")
             fs.mkdir(model_dir)
         self._model_dir = model_dir
+        self._model_served = False
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -84,20 +89,28 @@ class Inference:
         self._gui = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
+        self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
         if use_gui:
             self.initialize_gui()
 
-            @self.gui.serve_button.click
-            def load_model():
+            def on_serve_callback(gui: GUI.InferenceGUI):
                 Progress("Deploying model ...", 1)
-                device = self.gui.get_device()
+                device = gui.get_device()
                 self.load_on_device(self._model_dir, device)
-                self._on_model_deployed()
-                self.gui.set_deployed()
+                gui.show_deployed_model_info(self)
+
+            def on_change_model_callback(gui: GUI.InferenceGUI):
+                self._model_served = False
+
+            self.gui.on_change_model_callbacks.append(on_change_model_callback)
+            self.gui.on_serve_callbacks.append(on_serve_callback)
 
         self._inference_requests = {}
         self._executor = ThreadPoolExecutor()
+        self.predict = self._check_serve_before_call(self.predict)
+        self.predict_raw = self._check_serve_before_call(self.predict_raw)
+        self.get_info = self._check_serve_before_call(self.get_info)
 
     def _prepare_device(self, device):
         if device is None:
@@ -213,7 +226,7 @@ class Inference:
                     with progress(
                         message="Downloading file from Team Files...",
                         total=file_info.sizeb,
-                        unit="bytes",
+                        unit="B",
                         unit_scale=True,
                     ) as pbar:
                         download_file(team_id, src_path, dst_path, pbar.update)
@@ -240,7 +253,7 @@ class Inference:
                         with progress(
                             message="Downloading file from external URL",
                             total=total_size,
-                            unit="bytes",
+                            unit="B",
                             unit_scale=True,
                         ) as pbar:
                             download_content(save_path, pbar.update)
@@ -296,17 +309,46 @@ class Inference:
     def get_classes(self) -> List[str]:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def get_info(self) -> dict:
+    def get_info(self) -> Dict[str, Any]:
+        num_classes = None
+        classes = None
+        try:
+            classes = self.get_classes()
+            num_classes = len(classes)
+        except NotImplementedError:
+            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
+        except AttributeError:
+            logger.warn("Probably, get_classes() function not working without model deploy.")
+        except Exception as exc:
+            logger.warn("Unknown exception. Please, contact support")
+            logger.exception(exc)
+
+        if num_classes is None:
+            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
             "session_id": self.task_id,
-            "number_of_classes": len(self.get_classes()),
+            "number_of_classes": num_classes,
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
         }
+
+    def get_human_readable_info(self, replace_none_with: Optional[str] = None):
+        hr_info = {}
+        info = self.get_info()
+
+        for name, data in info.items():
+            hr_name = name.replace("_", " ").capitalize()
+            if data is None:
+                hr_info[hr_name] = replace_none_with
+            else:
+                hr_info[hr_name] = data
+
+        return hr_info
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -319,7 +361,7 @@ class Inference:
         return self._api
 
     @property
-    def gui(self) -> GUI.BaseInferenceGUI:
+    def gui(self) -> GUI.InferenceGUI:
         return self._gui
 
     def _get_obj_class_shape(self):
@@ -328,13 +370,20 @@ class Inference:
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
-            colors = get_predefined_colors(len(self.get_classes()))
-            classes = []
-            for name, rgb in zip(self.get_classes(), colors):
-                classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
-            self._model_meta = ProjectMeta(classes)
-            self._get_confidence_tag_meta()
+            self.update_model_meta()
         return self._model_meta
+
+    def update_model_meta(self):
+        """
+        Update model meta.
+        Make sure `self._get_obj_class_shape()` method returns the correct shape.
+        """
+        colors = get_predefined_colors(len(self.get_classes()))
+        classes = []
+        for name, rgb in zip(self.get_classes(), colors):
+            classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
+        self._model_meta = ProjectMeta(classes)
+        self._get_confidence_tag_meta()
 
     @property
     def task_id(self) -> int:
@@ -670,6 +719,25 @@ class Inference:
         if inference_request is not None:
             inference_request["is_inferring"] = False
 
+    def _check_serve_before_call(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if self._model_served is True:
+                return func(*args, **kwargs)
+            else:
+                msg = (
+                    "The model has not yet been deployed. "
+                    "Please select the appropriate model in the UI and press the 'Serve' button. "
+                    "If this app has no GUI, it signifies that 'load_on_device' was never called."
+                )
+                # raise DialogWindowError(title="Call undeployed model.", description=msg)
+                raise RuntimeError(msg)
+
+        return wrapper
+
+    def _set_served_callback(self):
+        self._model_served = True
+
     def serve(self):
         if not self._use_gui:
             Progress("Deploying model ...", 1)
@@ -690,12 +758,19 @@ class Inference:
         self._app = Application(layout=self.get_ui())
         server = self._app.get_server()
 
+        @call_on_autostart()
+        def autostart_func():
+            self.gui.deploy_with_current_params()
+
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
+        else:
+            autostart_func()
 
         @server.post(f"/get_session_info")
-        def get_session_info():
-            return self.get_info()
+        @self._check_serve_before_call
+        def get_session_info(response: Response):
+                return self.get_info()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():

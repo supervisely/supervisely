@@ -1,0 +1,20 @@
+<el-cascader
+
+  {% if widget._changes_handled == true %}
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {% endif %}
+
+
+  v-model="state.{{{widget.widget_id}}}.selectedItems"
+  :expand-trigger="data.{{{widget.widget_id}}}.expandTrigger"
+  :options="data.{{{widget.widget_id}}}.items"
+  :props="data.{{{widget.widget_id}}}.props"
+  :size="data.{{{widget.widget_id}}}.size"
+  :placeholder="data.{{{widget.widget_id}}}.placeholder"
+  :filterable="data.{{{widget.widget_id}}}.filterable"
+  :disabled="data.{{{widget.widget_id}}}.disabled"
+  :clearable="data.{{{widget.widget_id}}}.clearable"
+  :show-all-levels="data.{{{widget.widget_id}}}.showAllLevels"
+  :change-on-select="data.{{{widget.widget_id}}}.parentSelectable"
+>
+</el-cascader>

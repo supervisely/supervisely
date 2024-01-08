@@ -7,8 +7,8 @@ from typing import Optional, Dict, List
 from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
-from supervisely.pointcloud_annotation.pointcloud_object_collection import (
-    PointcloudObjectCollection,
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
+    PointcloudEpisodeObjectCollection,
 )
 from supervisely.video_annotation.constants import (
     FRAMES,
@@ -35,8 +35,8 @@ class PointcloudEpisodeAnnotation:
 
     :param frames_count: Number of PointcloudEpisodeFrame objects.
     :type frames_count: int, optional
-    :param objects: PointcloudObjectCollection object
-    :type objects: PointcloudObjectCollection, optional
+    :param objects: PointcloudEpisodeObjectCollection object
+    :type objects: PointcloudEpisodeObjectCollection, optional
     :param frames: PointcloudEpisodeFrameCollection object
     :type frames: PointcloudEpisodeFrameCollection, optional
     :param tags: PointcloudEpisodeTagCollection object
@@ -82,7 +82,7 @@ class PointcloudEpisodeAnnotation:
     def __init__(
         self,
         frames_count: Optional[int] = None,
-        objects: Optional[PointcloudObjectCollection] = None,
+        objects: Optional[PointcloudEpisodeObjectCollection] = None,
         frames: Optional[PointcloudEpisodeFrameCollection] = None,
         tags: Optional[PointcloudEpisodeTagCollection] = None,
         description: Optional[str] = "",
@@ -92,7 +92,7 @@ class PointcloudEpisodeAnnotation:
         self._description = description
         self._frames = take_with_default(frames, PointcloudEpisodeFrameCollection())
         self._tags = take_with_default(tags, PointcloudEpisodeTagCollection())
-        self._objects = take_with_default(objects, PointcloudObjectCollection())
+        self._objects = take_with_default(objects, PointcloudEpisodeObjectCollection())
         self._key = take_with_default(key, uuid.uuid4())
 
     def get_tags_on_frame(self, frame_index: int) -> PointcloudEpisodeTagCollection:
@@ -145,13 +145,13 @@ class PointcloudEpisodeAnnotation:
                 tags.append(tag)
         return PointcloudEpisodeTagCollection(tags)
 
-    def get_objects_on_frame(self, frame_index: int) -> PointcloudObjectCollection:
+    def get_objects_on_frame(self, frame_index: int) -> PointcloudEpisodeObjectCollection:
         """
         Retrieve objects associated with a specific frame in a PointcloudEpisodeAnnotation.
 
         :param frame_index: The index of the frame for which objects need to be retrieved.
         :type frame_index: int
-        :return: PointcloudObjectCollection containing the retrieved objects associated with the specified frame.
+        :return: PointcloudEpisodeObjectCollection containing the retrieved objects associated with the specified frame.
         :rtype:
         :raises ValueError: If no frame with the given frame_index exists in the annotation.
         :Usage example:
@@ -199,14 +199,14 @@ class PointcloudEpisodeAnnotation:
         frame = self._frames.get(frame_index, None)
         if frame is None:
             if frame_index < self.frames_count:
-                return PointcloudObjectCollection([])
+                return PointcloudEpisodeObjectCollection([])
             else:
                 raise ValueError(f"No frame with index {frame_index} in annotation.")
         frame_objects = {}
         for fig in frame.figures:
             if fig.parent_object.key() not in frame_objects.keys():
                 frame_objects[fig.parent_object.key()] = fig.parent_object
-        return PointcloudObjectCollection(list(frame_objects.values()))
+        return PointcloudEpisodeObjectCollection(list(frame_objects.values()))
 
     def get_figures_on_frame(self, frame_index: int) -> List[PointcloudFigure]:
         """
@@ -245,7 +245,7 @@ class PointcloudEpisodeAnnotation:
         frame = self._frames.get(frame_index, None)
         if frame is None:
             if frame_index < self.frames_count:
-                return PointcloudObjectCollection([])
+                return []
             else:
                 raise ValueError(f"No frame with index {frame_index} in annotation.")
         return frame.figures
@@ -379,7 +379,7 @@ class PointcloudEpisodeAnnotation:
         tags = PointcloudEpisodeTagCollection.from_json(
             data[TAGS], project_meta.tag_metas, key_id_map
         )
-        objects = PointcloudObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
+        objects = PointcloudEpisodeObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
         frames = PointcloudEpisodeFrameCollection.from_json(
             data[FRAMES], objects, key_id_map=key_id_map
         )
@@ -430,7 +430,7 @@ class PointcloudEpisodeAnnotation:
     def clone(
         self,
         frames_count: Optional[int] = None,
-        objects: Optional[PointcloudObjectCollection] = None,
+        objects: Optional[PointcloudEpisodeObjectCollection] = None,
         frames: Optional[PointcloudEpisodeFrameCollection] = None,
         tags: Optional[PointcloudEpisodeTagCollection] = None,
         description: Optional[str] = "",
@@ -440,8 +440,8 @@ class PointcloudEpisodeAnnotation:
 
         :param frames_count: Number of PointcloudEpisodeFrame objects
         :type frames_count: int, optional
-        :param objects: PointcloudObjectCollection object
-        :type objects: PointcloudObjectCollection, optional
+        :param objects: PointcloudEpisodeObjectCollection object
+        :type objects: PointcloudEpisodeObjectCollection, optional
         :param frames: PointcloudEpisodeFrameCollection object
         :type frames: PointcloudEpisodeFrameCollection, optional
         :param tags: PointcloudEpisodeTagCollection object
@@ -472,7 +472,7 @@ class PointcloudEpisodeAnnotation:
             )
 
             obj_class_car = sly.ObjClass('car', sly.Cuboid)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+            pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
             new_objects = ann.objects.add(pointcloud_obj_car)
 
             new_ann = ann.clone(objects=new_objects)
@@ -586,12 +586,12 @@ class PointcloudEpisodeAnnotation:
         return self._frames_count
 
     @property
-    def objects(self) -> PointcloudObjectCollection:
+    def objects(self) -> PointcloudEpisodeObjectCollection:
         """
-        PointcloudObject objects collection.
+        PointcloudEpisodeObject objects collection.
 
-        :returns: PointcloudObjectCollection object.
-        :rtype: PointcloudObjectCollection
+        :returns: PointcloudEpisodeObjectCollection object.
+        :rtype: PointcloudEpisodeObjectCollection
 
         :Usage example:
 
@@ -629,11 +629,11 @@ class PointcloudEpisodeAnnotation:
 
             import supervisely as sly
             from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-            from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+            from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
             obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-            objects = sly.PointcloudObjectCollection([pointcloud_obj_car])
+            pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+            objects = sly.PointcloudEpisodeObjectCollection([pointcloud_obj_car])
 
             position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
             cuboid = Cuboid3d(position, rotation, dimension)

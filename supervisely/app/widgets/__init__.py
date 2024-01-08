@@ -91,3 +91,44 @@ from supervisely.app.widgets.transfer.transfer import Transfer
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableArea
 from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence
+from supervisely.app.widgets.markdown.markdown import Markdown
+from supervisely.app.widgets.class_balance.class_balance import ClassBalance
+from supervisely.app.widgets.image_slider.image_slider import ImageSlider
+from supervisely.app.widgets.rate.rate import Rate
+from supervisely.app.widgets.carousel.carousel import Carousel
+from supervisely.app.widgets.dropdown.dropdown import Dropdown
+from supervisely.app.widgets.pie_chart.pie_chart import PieChart
+from supervisely.app.widgets.timeline.timeline import Timeline
+from supervisely.app.widgets.nodes_flow.nodes_flow import NodesFlow
+from supervisely.app.widgets.dialog.dialog import Dialog
+from supervisely.app.widgets.draggable.draggable import Draggable
+from supervisely.app.widgets.tooltip.tooltip import Tooltip
+from supervisely.app.widgets.image_annotation_preview.image_annotation_preview import (
+    ImageAnnotationPreview,
+)
+from supervisely.app.widgets.tag_meta_view.tag_meta_view import TagMetaView
+from supervisely.app.widgets.tag_metas_list.tag_metas_list import TagMetasList
+
+from supervisely.app.widgets.color_picker.color_picker import ColorPicker
+from supervisely.app.widgets.pagination.pagination import Pagination
+from supervisely.app.widgets.cascader.cascader import Cascader
+from supervisely.app.widgets.time_picker.time_picker import TimePicker
+from supervisely.app.widgets.fast_table.fast_table import FastTable
+from supervisely.app.widgets.element_tag.element_tag import ElementTag
+from supervisely.app.widgets.element_tags_list.element_tags_list import ElementTagsList
+from supervisely.app.widgets.compare_annotations.compare_annotations import CompareAnnotations
+
+from supervisely.app.widgets.circle_progress.circle_progress import CircleProgress
+from supervisely.app.widgets.classes_color_mapping.classes_color_mapping import ClassesColorMapping
+from supervisely.app.widgets.classes_mapping.classes_mapping import ClassesMapping
+from supervisely.app.widgets.classes_mapping_preview.classes_mapping_preview import (
+    ClassesMappingPreview,
+)
+from supervisely.app.widgets.classes_list_selector.classes_list_selector import ClassesListSelector
+from supervisely.app.widgets.classes_list_preview.classes_list_preview import ClassesListPreview
+from supervisely.app.widgets.tags_list_selector.tags_list_selector import TagsListSelector
+from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsListPreview
+from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector
+from supervisely.app.widgets.members_list_preview.members_list_preview import MembersListPreview
+from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
+from supervisely.app.widgets.iframe.iframe import IFrame

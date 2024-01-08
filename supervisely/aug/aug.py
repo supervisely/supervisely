@@ -2,6 +2,7 @@
 """Augmentations for images and annotations"""
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -9,16 +10,16 @@ if TYPE_CHECKING:
         import imgaug.augmenters.Sequential
     except:
         pass
-from typing import Tuple, List, Dict, Optional
-
 import random
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
-from supervisely.imaging import image as sly_image
+from supervisely._utils import take_with_default
 from supervisely.annotation.annotation import Annotation
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.rectangle import Rectangle
-from supervisely._utils import take_with_default
+from supervisely.imaging import image as sly_image
 from supervisely.sly_logger import logger
 
 
@@ -174,9 +175,7 @@ def crop(
     """
     _validate_image_annotation_shape(img, ann)
     height, width = img.shape[:2]
-    crop_rect = Rectangle(
-        top_pad, left_pad, height - bottom_pad - 1, width - right_pad - 1
-    )
+    crop_rect = Rectangle(top_pad, left_pad, height - bottom_pad - 1, width - right_pad - 1)
 
     res_img = sly_image.crop(img, crop_rect)
     res_ann = ann.relative_crop(crop_rect)
@@ -499,9 +498,7 @@ def instance_crop(
     img_rect = Rectangle.from_size(img.shape[:2])
 
     if save_other_classes_in_crop:
-        non_target_labels = [
-            label for label in ann.labels if label.obj_class.name != class_title
-        ]
+        non_target_labels = [label for label in ann.labels if label.obj_class.name != class_title]
     else:
         non_target_labels = []
 
@@ -529,9 +526,7 @@ def instance_crop(
 
 
 # Resize
-def resize(
-    img: np.ndarray, ann: Annotation, size: Tuple
-) -> Tuple[np.ndarray, Annotation]:
+def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, Annotation]:
     """
     Resizes an input Image and Annotation to a given size.
 
@@ -640,9 +635,7 @@ def scale(
         # Output: (560, 854, 3)
     """
     _validate_image_annotation_shape(img, ann)
-    new_size = sly_image.restore_proportional_size(
-        in_size=ann.img_size, frow=frow, fcol=fcol, f=f
-    )
+    new_size = sly_image.restore_proportional_size(in_size=ann.img_size, frow=frow, fcol=fcol, f=f)
     res_img = sly_image.resize(img, new_size)
     res_ann = ann.resize(new_size)
     return res_img, res_ann

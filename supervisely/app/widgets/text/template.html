@@ -6,6 +6,6 @@
     :style="{color: data.{{{widget.widget_id}}}.icon_color}"
   ></i>
   <span :style="{color: data.{{{widget.widget_id}}}.text_color}">
-    <span v-html="data.{{{widget.widget_id}}}.text"></span>
+    <span v-html="data.{{{widget.widget_id}}}.text" v-bind:style="{ fontSize: data.{{{widget.widget_id}}}.font_size }"></span>
   </span>
 </div>

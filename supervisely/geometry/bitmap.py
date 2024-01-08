@@ -2,26 +2,25 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional
-from supervisely.geometry.image_rotator import ImageRotator
 
 import base64
-from enum import Enum
-import zlib
 import io
+import zlib
+from distutils.version import StrictVersion
+from enum import Enum
+from typing import Dict, List, Optional, Tuple
+
 import cv2
 import numpy as np
-from distutils.version import StrictVersion
-
 from PIL import Image
 
 from supervisely.geometry.bitmap_base import BitmapBase, resize_origin_and_bitmap
+from supervisely.geometry.constants import BITMAP
+from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point_location import PointLocation, row_col_list_to_points
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.constants import BITMAP
 from supervisely.imaging.image import read
-
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
@@ -306,7 +305,7 @@ class Bitmap(BitmapBase):
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
         """
-        Convert base64 encoded string to numpy array.
+        Convert base64 encoded string to numpy array. Supports both compressed and uncompressed masks.
 
         :param s: Input base64 encoded string.
         :type s: str
@@ -324,8 +323,20 @@ class Bitmap(BitmapBase):
               #  [[ True  True  True]
               #   [ True False  True]
               #   [ True  True  True]]
+
+              uncompressed_string = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA'
+              boolean_mask = sly.Bitmap.base64_2_data(uncompressed_string)
+              print(boolean_mask)
+              #  [[ True  True  True]
+              #   [ True False  True]
+              #   [ True  True  True]]
         """
-        z = zlib.decompress(base64.b64decode(s))
+        try:
+            z = zlib.decompress(base64.b64decode(s))
+        except zlib.error:
+            # If the string is not compressed, we'll not use zlib.
+            img = Image.open(io.BytesIO(base64.b64decode(s)))
+            return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
 
         imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)

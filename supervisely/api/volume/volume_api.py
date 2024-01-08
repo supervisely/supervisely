@@ -1,27 +1,25 @@
-from typing import List, NamedTuple, Optional, Union, Callable
+from typing import Callable, List, NamedTuple, Optional, Union
+
 from tqdm import tqdm
 
+import supervisely.volume.nrrd_encoder as nrrd_encoder
+from supervisely import logger, volume
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
-from supervisely.api.volume.volume_object_api import VolumeObjectApi
 from supervisely.api.volume.volume_figure_api import VolumeFigureApi
+from supervisely.api.volume.volume_object_api import VolumeObjectApi
 
 # from supervisely.api.volume.video_frame_api import VolumeFrameAPI
 from supervisely.api.volume.volume_tag_api import VolumeTagApi
-
-from supervisely.io.fs import ensure_base_path
-
+from supervisely.imaging.image import read_bytes
 from supervisely.io.fs import (
+    ensure_base_path,
+    get_bytes_hash,
     get_file_ext,
     get_file_name,
-    get_bytes_hash,
 )
-from supervisely import volume
-import supervisely.volume.nrrd_encoder as nrrd_encoder
-from supervisely._utils import batched
-from supervisely import logger
 from supervisely.task.progress import Progress, tqdm_sly
-from supervisely.imaging.image import read_bytes
 from supervisely.volume_annotation.plane import Plane
 
 try:
@@ -906,8 +904,8 @@ class VolumeApi(RemoveableBulkModuleApi):
     def upload_nrrd_series_paths(
         self,
         dataset_id: int,
-        names: str,
-        paths: str,
+        names: List[str],
+        paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         log_progress: bool = True,
     ):

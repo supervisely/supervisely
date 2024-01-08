@@ -3,12 +3,11 @@
 
 # docs
 from __future__ import annotations
-from typing import Callable, Dict, List, NamedTuple, Optional, TYPE_CHECKING, Union
 
 from collections import namedtuple
+from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Union
 
 from supervisely.api.module_api import ApiField, ModuleApiBase, _get_single_item
-from supervisely.task.progress import Progress
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
@@ -500,7 +499,7 @@ class UserApi(ModuleApiBase):
             api.user.add_to_team(user_id, team_id, role_id)
         """
         user = self.get_info_by_id(user_id)
-        response = self._api.post(
+        self._api.post(
             "members.add",
             {
                 ApiField.LOGIN: user.login,
@@ -533,9 +532,7 @@ class UserApi(ModuleApiBase):
             team_id = 76
             api.user.remove_from_team(user_id, team_id)
         """
-        response = self._api.post(
-            "members.remove", {ApiField.ID: user_id, ApiField.TEAM_ID: team_id}
-        )
+        self._api.post("members.remove", {ApiField.ID: user_id, ApiField.TEAM_ID: team_id})
 
     def update(
         self, id: int, password: Optional[str] = None, name: Optional[str] = None
@@ -616,7 +613,7 @@ class UserApi(ModuleApiBase):
             new_role_id = 2
             api.user.change_team_role(user_id, team_id, new_role_id)
         """
-        response = self._api.post(
+        self._api.post(
             "members.editInfo",
             {
                 ApiField.ID: user_id,

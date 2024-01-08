@@ -1,36 +1,40 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple, NamedTuple, Dict, Optional, Callable, Union
-from requests import Response
+
 import datetime
-import os
 import json
+import os
 import urllib.parse
 from functools import partial
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
+from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple, Union
+
 from numerize.numerize import numerize
+from requests import Response
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
+import supervisely.io.fs as sly_fs
+from supervisely._utils import abs_url, batched, is_development, rand_str
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.video.video_annotation_api import VideoAnnotationAPI
-from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
+from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_tag_api import VideoTagApi
+from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_ext,
+    get_file_hash,
+    get_file_size,
+)
 from supervisely.sly_logger import logger
-from supervisely.io.fs import get_file_ext, get_file_hash, get_file_size
-import supervisely.io.fs as sly_fs
-
-from supervisely.io.fs import ensure_base_path
-from supervisely._utils import batched, is_development, abs_url, rand_str
+from supervisely.task.progress import Progress
 from supervisely.video.video import (
+    gen_video_stream_name,
     get_info,
     get_video_streams,
-    gen_video_stream_name,
     validate_ext,
 )
-
-from supervisely.task.progress import Progress
 
 
 class VideoInfo(NamedTuple):
@@ -134,6 +138,9 @@ class VideoInfo(NamedTuple):
 
     #: :class:`dict`: A dictionary containing metadata about the video file.
     file_meta: dict
+
+    #: :class:`dict`: Video object meta information.
+    meta: dict
 
     #: :class:`dict`: A dictionary containing custom data associated with the video.
     custom_data: dict
@@ -255,6 +262,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ApiField.UPDATED_AT,
             ApiField.TAGS,
             ApiField.FILE_META,
+            ApiField.META,
             ApiField.CUSTOM_DATA,
             ApiField.PROCESSING_PATH,
         ]
@@ -303,7 +311,10 @@ class VideoApi(RemoveableBulkModuleApi):
         return VideoInfo(**d)
 
     def get_list(
-        self, dataset_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self,
+        dataset_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        raw_video_meta: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
@@ -312,6 +323,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
+        :param raw_video_metadata: Get normalized metadata from server.
+        :type raw_video_metadata: bool
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -337,7 +350,43 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         return self.get_list_all_pages(
-            "videos.list", {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters or []}
+            "videos.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters or [],
+                ApiField.RAW_VIDEO_META: raw_video_meta,
+            },
+        )
+
+    def get_list_generator(
+        self,
+        dataset_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        sort: Optional[str] = "id",
+        sort_order: Optional[str] = "asc",
+        limit: Optional[int] = None,
+        raw_video_meta: Optional[bool] = False,
+        batch_size: Optional[int] = None,
+    ) -> Iterator[List[VideoInfo]]:
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order,
+            ApiField.RAW_VIDEO_META: raw_video_meta,
+            ApiField.PAGINATION_MODE: ApiField.TOKEN,
+        }
+        if batch_size is not None:
+            data[ApiField.PER_PAGE] = batch_size
+        else:
+            # use default value on instance (20k)
+            # #tag/Images/paths/~1images.list/get
+            pass
+        return self.get_list_all_pages_generator(
+            "videos.list",
+            data,
+            limit=limit,
+            return_first_response=False,
         )
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> VideoInfo:
@@ -408,6 +457,80 @@ class VideoApi(RemoveableBulkModuleApi):
         if info is None and raise_error is True:
             raise KeyError(f"Video with id={id} not found in your account")
         return info
+
+    def get_info_by_id_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links: Optional[bool] = False,
+    ) -> List[VideoInfo]:
+        """
+        Get Video information by ID.
+
+        :param ids: List of Video IDs in Supervisely, they must belong to the same dataset.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param force_metadata_for_links: Get normalized metadata from server.
+        :type force_metadata_for_links: bool
+        :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
+        :rtype: List[VideoInfo]
+        :Usage example:
+
+         .. code-block:: python
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_ids = [376728, 376729, 376730, 376731, 376732, 376733]
+
+            video_infos = api.video.get_info_by_id_batch(video_ids)
+        """
+        results = []
+        if len(ids) == 0:
+            return results
+
+        fields = [
+            "id",
+            "title",
+            "description",
+            "createdAt",
+            "updatedAt",
+            "dataId",
+            "remoteDataId",
+            "meta",
+            "pathOriginal",
+            "hash",
+            "groupId",
+            "projectId",
+            "datasetId",
+            "createdBy",
+            "customData",
+        ]
+
+        if force_metadata_for_links is True:
+            fields.append("videoMeta")
+
+        dataset_id = self.get_info_by_id(ids[0]).dataset_id
+        for batch in batched(ids):
+            filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+            results.extend(
+                self.get_list_all_pages(
+                    "videos.list",
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FILTER: filters,
+                        ApiField.FIELDS: fields,
+                        ApiField.RAW_VIDEO_META: True,
+                    },
+                )
+            )
+            if progress_cb is not None:
+                progress_cb(len(batch))
+        temp_map = {info.id: info for info in results}
+        ordered_results = [temp_map[id] for id in ids]
+        return ordered_results
 
     def get_json_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> Dict:
         """
@@ -593,6 +716,12 @@ class VideoApi(RemoveableBulkModuleApi):
             # )
         """
 
+        if hash is None:
+            raise ValueError(
+                "Video hash is None, it may occur when the video was uploaded as link. "
+                "Please, use upload_id() method instead."
+            )
+
         meta = {}
         if stream_index is not None and type(stream_index) is int:
             meta = {"videoStreamIndex": stream_index}
@@ -653,10 +782,164 @@ class VideoApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 2, "total": 2, "timestamp": "2021-03-24T10:18:57.304Z", "level": "info"}
         """
 
+        no_hash_names = []
+        for name, hash in zip(names, hashes):
+            if hash is None:
+                no_hash_names.append(name)
+
+        if len(no_hash_names) > 0:
+            raise ValueError(
+                f"Video hashes are None for the following videos: {no_hash_names}. "
+                "It may occur when the videos were uploaded as links. "
+                "Please, use upload_ids() method instead."
+            )
+
         results = self._upload_bulk_add(
-            lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
+            lambda item: (ApiField.HASH, item),
+            dataset_id,
+            names,
+            hashes,
+            metas,
+            progress_cb,
         )
         return results
+
+    def upload_id(
+        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
+    ) -> VideoInfo:
+        """
+        Uploads video from given id to Dataset.
+
+        :param dataset_id: Destination dataset ID.
+        :type dataset_id: int
+        :param name: Video name.
+        :type name: str
+        :param id: Source video ID in Supervisely.
+        :type id: int
+        :param meta: Video metadata.
+        :type meta: Optional[Dict]
+        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :rtype: VideoInfo
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_video_id = 186580617
+            dst_dataset_id = 468620
+
+            new_video_info = api.video.upload_id(dst_dataset_id, 'new_video_name.mp4', src_video_id)
+        """
+        metas = None if meta is None else [meta]
+        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
+
+    def upload_ids(
+        self,
+        dataset_id: int,
+        names: List[str],
+        ids: List[int],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        infos: Optional[List[VideoInfo]] = None,
+    ) -> List[VideoInfo]:
+        """
+        Uploads videos from given ids to Dataset.
+
+        :param dataset_id: Destination dataset ID.
+        :type dataset_id: int
+        :param names: Videos names.
+        :type names: List[str]
+        :param ids: Source videos IDs in Supervisely.
+        :type ids: List[int]
+        :param metas: Videos metadata.
+        :type metas: Optional[List[Dict]]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param infos: Videos information.
+        :type infos: Optional[List[VideoInfo]]
+        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :rtype: List[VideoInfo]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_dataset_id = 466639
+            dst_dataset_id = 468620
+
+            ids = []
+            names = []
+            metas = []
+
+            video_infos = api.video.get_list(src_dataset_id)
+            # Create lists of ids, videos names and meta information for each video
+            for video_info in video_infos:
+                ids.append(video_info.id)
+                # It is necessary to upload videos with the same names(extentions) as in src dataset
+                names.append(video_info.name)
+                metas.append({video_info.name: video_info.frame_height})
+
+            progress = sly.Progress("Videos upload: ", len(ids))
+            new_videos_info = api.video.upload_ids(dst_dataset_id, names, ids, metas, progress.iters_done_report)
+
+        """
+        if metas is None:
+            metas = [{}] * len(names)
+
+        if infos is None:
+            infos = self.get_info_by_id_batch(ids, progress_cb=progress_cb)
+
+        links, links_names, links_order, links_metas = [], [], [], []
+        hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+        for idx, (name, info, meta) in enumerate(zip(names, infos, metas)):
+            if info.link is not None:
+                links.append(info.link)
+                links_names.append(name)
+                links_order.append(idx)
+                links_metas.append(meta)
+            else:
+                hashes.append(info.hash)
+                hashes_names.append(name)
+                hashes_order.append(idx)
+                hashes_metas.append(meta)
+
+        result = [None] * len(names)
+
+        if len(links) > 0:
+            res_infos_links = self.upload_links(
+                dataset_id,
+                links,
+                links_names,
+                metas=links_metas,
+                skip_download=True,
+            )
+
+            for info, pos in zip(res_infos_links, links_order):
+                result[pos] = info
+
+        if len(hashes) > 0:
+            res_infos_hashes = self.upload_hashes(
+                dataset_id,
+                hashes_names,
+                hashes,
+                metas=hashes_metas,
+                progress_cb=progress_cb,
+            )
+
+            for info, pos in zip(res_infos_hashes, hashes_order):
+                result[pos] = info
+
+        return result
 
     def _upload_bulk_add(
         self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
@@ -685,7 +968,8 @@ class VideoApi(RemoveableBulkModuleApi):
                     }
                 )
             response = self._api.post(
-                "videos.bulk.add", {ApiField.DATASET_ID: dataset_id, ApiField.VIDEOS: images}
+                "videos.bulk.add",
+                {ApiField.DATASET_ID: dataset_id, ApiField.VIDEOS: images},
             )
             if progress_cb is not None:
                 progress_cb(len(images))
@@ -750,7 +1034,11 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(len(chunk))
 
     def download_range_by_id(
-        self, id: int, frame_start: int, frame_end: int, is_stream: Optional[bool] = True
+        self,
+        id: int,
+        frame_start: int,
+        frame_end: int,
+        is_stream: Optional[bool] = True,
     ) -> Response:
         """
         Downloads Video with given ID between given start and end frames.
@@ -902,7 +1190,10 @@ class VideoApi(RemoveableBulkModuleApi):
                     ApiField.TRACK_ID: track_id,
                     ApiField.VIDEO_ID: video_id,
                     ApiField.FRAME_RANGE: [frame_start, frame_end],
-                    ApiField.PROGRESS: {ApiField.CURRENT: current, ApiField.TOTAL: total},
+                    ApiField.PROGRESS: {
+                        ApiField.CURRENT: current,
+                        ApiField.TOTAL: total,
+                    },
                 },
             },
         )
@@ -1349,25 +1640,30 @@ class VideoApi(RemoveableBulkModuleApi):
     def upload_links(
         self,
         dataset_id: int,
-        names: List[str],
-        hashes: List[str],
         links: List[str],
-        infos: List[Dict],
+        names: List[str],
+        infos: List[Dict] = None,
+        hashes: List[str] = None,
         metas: Optional[List[Dict]] = None,
+        skip_download: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given links to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Videos names.
-        :type names: List[str]
         :param links: Videos links.
         :type links: List[str]
+        :param names: Videos names.
+        :type names: List[str]
         :param infos: Videos infos.
         :type infos: List[dict]
+        :param hashes: Videos hashes.
+        :type hashes: List[str]
         :param metas: Videos metadatas.
         :type metas: List[dict], optional
+        :param skip_download: Skip download videos to local storage.
+        :type skip_download: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -1387,19 +1683,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 "https://videos...040243048_main.mp4",
                 "https://videos...065451525_main.mp4"
             ]
-            names = ["dog1", "dog2", "dog3"]
-            hashes = []
-            infos = []
-
-            for i, l in enumerate(links):
-                local_path = os.path.join(os.getcwd(), names[i])
-                sly.fs.download(l, local_path)
-                info = get_info(local_path)
-                infos.append(info)
-                h = sly.io.fs.get_file_hash(local_path)
-                hashes.append(h)
-                sly.fs.silent_remove(local_path)
-            video_infos = api.video.upload_links(dataset_id, names, hashes, links, infos)
+            names = ["cars.mp4", "animals.mp4", "traffic.mp4"]
+            video_infos = api.video.upload_links(dataset_id, links, names)
             print(video_infos)
 
             # Output: [
@@ -1409,7 +1694,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ]
         """
 
-        if infos is not None:
+        if infos is not None and hashes is not None and not skip_download:
             self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
@@ -1459,7 +1744,10 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         link: str,
         name: Optional[str] = None,
+        info: Optional[Dict] = None,
+        hash: Optional[str] = None,
         meta: Optional[List[Dict]] = None,
+        skip_download: Optional[bool] = False,
     ):
         """
         Upload Video from given link to Dataset.
@@ -1470,8 +1758,14 @@ class VideoApi(RemoveableBulkModuleApi):
         :type link: str
         :param name: Video name.
         :type name: str, optional
+        :param info: Video info.
+        :type info: dict, optional
+        :param hash: Video hash.
+        :type hash: str, optional
         :param meta: Video metadata.
-        :type meta: List[dict], optional
+        :type meta: List[Dict], optional
+        :param skip_download: Skip download video to local storage.
+        :type skip_download: Optional[bool]
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
@@ -1486,7 +1780,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
             dataset_id = 55847
             link = "https://video...040243048_main.mp4"
-            name = "dog"
+            name = "cars.mp4"
 
             info = api.video.upload_link(dataset_id, link, name)
             print(info)
@@ -1494,7 +1788,7 @@ class VideoApi(RemoveableBulkModuleApi):
             # Output: [
             #     VideoInfo(
             #         id=19371139,
-            #         name='dog.mp4'
+            #         name='cars.mp4'
             #         hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
             #         link=None,
             #         team_id=435,
@@ -1533,20 +1827,39 @@ class VideoApi(RemoveableBulkModuleApi):
 
         if name is None:
             name = rand_str(10) + get_file_ext(link)
-        local_path = os.path.join(os.getcwd(), name)
 
-        try:
-            sly_fs.download(link, local_path)
-            video_info = get_info(local_path)
-            h = get_file_hash(local_path)
-            sly_fs.silent_remove(local_path)
-        except Exception as e:
-            sly_fs.silent_remove(local_path)
-            raise e
+        if not skip_download:
+            local_path = os.path.join(os.getcwd(), name)
+            try:
+                sly_fs.download(link, local_path)
+                video_info = get_info(local_path)
+                h = get_file_hash(local_path)
+                sly_fs.silent_remove(local_path)
+            except Exception as e:
+                sly_fs.silent_remove(local_path)
+                raise e
+        else:
+            video_info = info
+            h = hash
         name = self.get_free_name(dataset_id, name)
-        return self.upload_links(
-            dataset_id, names=[name], hashes=[h], links=[link], infos=[video_info], metas=[meta]
+        links = self.upload_links(
+            dataset_id,
+            links=[link],
+            names=[name],
+            infos=[video_info],
+            hashes=[h],
+            metas=[meta],
+            skip_download=skip_download,
         )
+        if len(links) != 1:
+            raise RuntimeError(
+                (
+                    f"API response: '{links}' (len > 1). "
+                    "Validation error. Only one item is allowed. "
+                    "Please, contact technical support."
+                )
+            )
+        return links[0]
 
     def add_existing(
         self,

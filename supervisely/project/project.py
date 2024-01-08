@@ -1,47 +1,50 @@
 # coding: utf-8
 
 from __future__ import annotations
+
+import os
+import random
 import shutil
 from collections import namedtuple
-import os
 from enum import Enum
-from typing import List, Dict, Optional, NamedTuple, Tuple, Union, Callable, Generator
-import random
+from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+
 import numpy as np
 from tqdm import tqdm
 
-from supervisely.annotation.annotation import Annotation, ANN_EXT, TagCollection
+import supervisely as sly
+from supervisely._utils import abs_url, batched, is_development
+from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
 )
-from supervisely.imaging import image as sly_image
-from supervisely.io.fs import (
-    list_files,
-    list_files_recursively,
-    list_dir_recursively,
-    get_file_name_with_ext,
-    mkdir,
-    copy_file,
-    get_subdirs,
-    dir_exists,
-    dir_empty,
-    silent_remove,
-    file_exists,
-)
-from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
-from supervisely._utils import batched, is_development, abs_url
-from supervisely.io.fs import ensure_base_path
-from supervisely.api.api import Api
-from supervisely.sly_logger import logger
-from supervisely.io.fs_cache import FileCache
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import (
+    copy_file,
+    dir_empty,
+    dir_exists,
+    ensure_base_path,
+    file_exists,
+    get_file_name_with_ext,
+    get_subdirs,
+    list_dir_recursively,
+    list_files,
+    list_files_recursively,
+    mkdir,
+    silent_remove,
+)
+from supervisely.io.fs_cache import FileCache
+from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
@@ -1898,7 +1901,7 @@ class Project:
         :type project_dir: :class:`str`
         :param classes_to_keep: Classes to keep in project.
         :type classes_to_keep: :class:`list` [ :class:`str` ], optional
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -1932,7 +1935,7 @@ class Project:
         :type project_dir: :class:`str`
         :param classes_to_remove: Classes to remove.
         :type classes_to_remove: :class:`list` [ :class:`str` ], optional
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2007,7 +2010,7 @@ class Project:
 
         :param project_dir: Path to project directory.
         :type project_dir: :class:`str`
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2027,7 +2030,7 @@ class Project:
 
         :param project_dir: Path to project directory.
         :type project_dir: :class:`str`
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2049,7 +2052,7 @@ class Project:
 
         :param project_dir: Path to project directory.
         :type project_dir: :class:`str`
-        :param inplace: Сheckbox that determines whether to change the source data in project or not.
+        :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: :class:`bool`, optional
         :return: None
         :rtype: NoneType
@@ -2240,12 +2243,13 @@ class Project:
         dest_dir: str,
         dataset_ids: Optional[List[int]] = None,
         log_progress: Optional[bool] = False,
-        batch_size: Optional[int] = 10,
+        batch_size: Optional[int] = 50,
         cache: Optional[FileCache] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         only_image_tags: Optional[bool] = False,
         save_image_info: Optional[bool] = False,
         save_images: bool = True,
+        save_image_meta: bool = False,
     ) -> None:
         """
         Download project from Supervisely to the given directory.
@@ -2272,6 +2276,8 @@ class Project:
         :type save_image_info: :class:`bool`, optional
         :param save_images: Download images or not.
         :type save_images: :class:`bool`, optional
+        :param save_image_meta: Download images metadata in JSON format or not.
+        :type save_image_meta: :class:`bool`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2308,6 +2314,7 @@ class Project:
             only_image_tags=only_image_tags,
             save_image_info=save_image_info,
             save_images=save_images,
+            save_image_meta=save_image_meta,
         )
 
     @staticmethod
@@ -2371,17 +2378,37 @@ class Project:
         )
 
 
-def read_single_project(dir: str, project_class: Optional[Project] = Project) -> Project:
+def read_single_project(
+    dir: str,
+    project_class: Optional[
+        Union[
+            Project,
+            sly.VideoProject,
+            sly.VolumeProject,
+            sly.PointcloudProject,
+            sly.PointcloudEpisodeProject,
+        ]
+    ] = Project,
+) -> Union[
+    Project,
+    sly.VideoProject,
+    sly.VolumeProject,
+    sly.PointcloudProject,
+    sly.PointcloudEpisodeProject,
+]:
     """
     Read project from given directory or tries to find project directory in subdirectories.
+
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: :class:`str`
-    :param project_class: Project object
-    :type project_class: :class:`Project<Project>`
-    :return: Project class object
-    :rtype: :class:`Project<Project>`
+    :param project_class: Project object of arbitrary modality
+    :type project_class: :class: `Project` or `VideoProject` or `VolumeProject` or `PointcloudProject` or `PointcloudEpisodeProject`, optional
+
+    :return: Project class object of arbitrary modality
+    :rtype: :class: `Project` or `VideoProject` or `VolumeProject` or `PointcloudProject` or `PointcloudEpisodeProject`
     :raises: RuntimeError if the given directory and it's subdirectories contains more than one valid project folder.
     :raises: FileNotFoundError if the given directory or any of it's subdirectories doesn't contain valid project folder.
+
     :Usage example:
      .. code-block:: python
         import supervisely as sly
@@ -2437,15 +2464,16 @@ def _download_project(
     dest_dir,
     dataset_ids=None,
     log_progress=False,
-    batch_size=10,
+    batch_size=50,
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
     progress_cb=None,
+    save_image_meta=False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
     if only_image_tags is True:
@@ -2458,6 +2486,13 @@ def _download_project(
 
         dataset_fs = project_fs.create_dataset(dataset_info.name)
         images = api.image.get_list(dataset_id)
+
+        if save_image_meta:
+            meta_dir = os.path.join(dest_dir, dataset_info.name, "meta")
+            sly.fs.mkdir(meta_dir)
+            for image_info in images:
+                meta_paths = os.path.join(meta_dir, image_info.name + ".json")
+                sly.json.dump_json_file(image_info.meta, meta_paths)
 
         ds_progress = None
         if log_progress:
@@ -2548,6 +2583,17 @@ def upload_project(
 
         img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
         ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
+        metas = [{} for _ in names]
+
+        meta_dir = os.path.join(dir, dataset_fs.name, "meta")
+        if os.path.isdir(meta_dir):
+            metas = []
+            for name in names:
+                meta_path = os.path.join(meta_dir, name + ".json")
+                if os.path.isfile(meta_path):
+                    metas.append(sly.json.load_json_file(meta_path))
+                else:
+                    metas.append({})
 
         if external_progress_cb is False:
             progress_cb = None
@@ -2560,7 +2606,9 @@ def upload_project(
             progress_cb = ds_progress.iters_done_report
 
         if len(img_paths) != 0:
-            uploaded_img_infos = api.image.upload_paths(dataset.id, names, img_paths, progress_cb)
+            uploaded_img_infos = api.image.upload_paths(
+                dataset.id, names, img_paths, progress_cb, metas=metas
+            )
         elif len(img_paths) == 0 and len(img_infos) != 0:
             # uploading links and hashes (the code from api.image.upload_ids)
             img_metas = [{}] * len(names)
@@ -2630,12 +2678,13 @@ def download_project(
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
     log_progress: Optional[bool] = False,
-    batch_size: Optional[int] = 10,
+    batch_size: Optional[int] = 50,
     cache: Optional[FileCache] = None,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
+    save_image_meta: bool = False,
 ) -> None:
     """
     Download image project to the local directory.
@@ -2662,6 +2711,8 @@ def download_project(
     :type save_image_info, bool, optional
     :param save_images: Include images in the download.
     :type save_images, bool, optional
+    :param save_image_meta: Include images metadata in JSON format in the download.
+    :type save_imgge_meta: bool, optional
 
     :return: None.
     :rtype: NoneType
@@ -2711,6 +2762,7 @@ def download_project(
             save_image_info=save_image_info,
             save_images=save_images,
             progress_cb=progress_cb,
+            save_image_meta=save_image_meta,
         )
     else:
         _download_project_optimized(
@@ -2741,7 +2793,7 @@ def _download_project_optimized(
     project_id = project_info.id
     logger.info(f"Annotations are not cached (always download latest version from server)")
     project_fs = Project(project_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
     for dataset_info in api.dataset.get_list(project_id):
         dataset_name = dataset_info.name

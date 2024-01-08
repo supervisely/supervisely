@@ -40,5 +40,9 @@ def GET_GEOMETRY_FROM_STR(figure_shape: str):
     """
     The function create geometry class object from given string
     """
+    if figure_shape not in _JSON_SHAPE_TO_GEOMETRY_TYPE.keys():
+        raise KeyError(
+            f"Unknown shape: '{figure_shape}'. Supported shapes: {list(_JSON_SHAPE_TO_GEOMETRY_TYPE.keys())}"
+        )
     geometry = _JSON_SHAPE_TO_GEOMETRY_TYPE[figure_shape]
     return geometry

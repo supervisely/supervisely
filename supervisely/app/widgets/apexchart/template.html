@@ -6,14 +6,14 @@
     :type="data.{{{ widget.widget_id }}}.type"
     :height="data.{{{ widget.widget_id }}}.height"
     :sly-options="data.{{{ widget.widget_id }}}.sly_options"
-    {%
-    if
-    widget._click_handled
-    %}
-    @click="state.{{{ widget.widget_id }}}.clicked_value = $event;
-            post('/{{{ widget.widget_id }}}/chart_clicked_cb')"
-    {%
-    endif
-    %}
+
+    {% if widget._click_handled and (widget._type == "pie" or widget._type == "donut") %}
+      @data-point-selection="state.{{{ widget.widget_id }}}.clicked_value = $event;
+              post('/{{{ widget.widget_id }}}/chart_clicked_cb')"
+
+    {% elif widget._click_handled %}
+      @click="state.{{{ widget.widget_id }}}.clicked_value = $event;
+              post('/{{{ widget.widget_id }}}/chart_clicked_cb')"
+    {% endif %}
   />
 </div>

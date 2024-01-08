@@ -1,19 +1,17 @@
 # coding: utf-8
 
 # docs
-from re import L
-from typing import Dict, List, Optional, Callable, Union, Literal, Generator
-
+import errno
+import mimetypes
 import os
 import re
 import shutil
-import errno
-import tarfile
 import subprocess
+import tarfile
+from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
+
 import requests
 from requests.structures import CaseInsensitiveDict
-from collections.abc import Mapping
-
 from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_string_hash
@@ -206,7 +204,12 @@ def list_files_recursively(
     ]
 
 
-def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None) -> List[str]:
+def list_files(
+    dir: str,
+    valid_extensions: Optional[List[str]] = None,
+    filter_fn=None,
+    ignore_valid_extensions_case: Optional[bool] = False,
+) -> List[str]:
     """
     Returns list with file paths presented in given directory.
 
@@ -216,6 +219,8 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
     :type valid_extensions: List[str]
     :param filter_fn: Function with a single argument that determines whether to keep a given file path.
     :type filter_fn:
+    :param ignore_valid_extensions_case: If True, valid extensions will be compared with file extensions in case-insensitive manner.
+    :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
     :Usage example:
@@ -230,12 +235,28 @@ def list_files(dir: str, valid_extensions: Optional[List[str]] = None, filter_fn
          # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
-    return [
-        file_path
-        for file_path in res
-        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
-        and (filter_fn is None or filter_fn(file_path))
-    ]
+
+    files = []
+    for file_path in res:
+        file_ext = get_file_ext(file_path)
+
+        if ignore_valid_extensions_case:
+            file_ext = file_ext.lower()
+            valid_extensions = [ext.lower() for ext in valid_extensions]
+
+        if (valid_extensions is None or file_ext in valid_extensions) and (
+            filter_fn is None or filter_fn(file_path)
+        ):
+            files.append(file_path)
+
+    return files
+
+    # return [
+    #     file_path
+    #     for file_path in res
+    #     if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
+    #     and (filter_fn is None or filter_fn(file_path))
+    # ]
 
 
 def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
@@ -926,14 +947,48 @@ def copy_dir_recursively(
                 progress_cb(get_file_size(src_file_path))
 
 
-def is_on_agent(remote_path: str):
+def is_on_agent(remote_path: str) -> bool:
+    """Check if remote_path starts is on agent (e.g. starts with 'agent://<agent-id>/').
+
+    :param remote_path: path to check
+    :type remote_path: str
+    :return: True if remote_path starts with 'agent://<agent-id>/' and False otherwise
+    :rtype: bool
+    """
     if remote_path.startswith("agent://"):
         return True
     else:
         return False
 
 
-def parse_agent_id_and_path(remote_path: str) -> int:
+def parse_agent_id_and_path(remote_path: str) -> Tuple[int, str]:
+    """Return agent id and path in agent folder from remote_path.
+
+    :param remote_path: path to parse
+    :type remote_path: str
+    :return: agent id and path in agent folder
+    :rtype: Tuple[int, str]
+    :raises ValueError: if remote_path doesn't start with 'agent://<agent-id>/'
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        # Parse agent id and path in agent folder from remote_path
+        remote_path = "agent://1/agent_folder/subfolder/file.txt"
+        agent_id, path_in_agent_folder = sly.fs.parse_agent_id_and_path(remote_path)
+        print(agent_id)  # 1
+        print(path_in_agent_folder)  # /agent_folder/subfolder/file.txt
+    """
     if is_on_agent(remote_path) is False:
         raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
     search = re.search("agent://(\d+)(.*)", remote_path)
@@ -1012,3 +1067,105 @@ def dirs_with_marker(
 
                 if check_function is None or check_function(markered_dir):
                     yield markered_dir
+
+
+def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, None, None]:
+    """
+    Generator that yields paths to directories that meet the requirements of the check_function.
+
+    :param input_path: path to the directory in which the search will be performed
+    :type input_path: str
+    :param check_function: function to check that directory meets the requirements and returns bool
+    :type check_function: Callable
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = '/home/admin/work/projects/examples'
+
+        # Prepare the check function.
+
+        def check_function(directory) -> bool:
+            images_dir = os.path.join(directory, "images")
+            annotations_dir = os.path.join(directory, "annotations")
+
+            return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
+
+        for directory in sly.fs.dirs(input_path, check_function):
+            # Now you can be sure that the directory meets the requirements.
+            # Do something with it.
+            print(directory)
+    """
+    paths = [os.path.abspath(input_path)]
+    paths.extend(list_dir_recursively(input_path, include_subdirs=True, use_global_paths=True))
+    for path in paths:
+        if os.path.isdir(path):
+            if check_function(path):
+                yield path
+
+
+def change_directory_at_index(path: str, dir_name: str, dir_index: int) -> str:
+    """
+    Change directory name in path by index.
+    If you use counting from the end, keep in mind that if the path ends with a file, the file will be assigned to the last index.
+
+    :param path: The original path
+    :type path: str
+    :param dir_name: Directory name
+    :type dir_name: str
+    :param dir_index: Index of the directory we want to change, negative values count from the end
+    :type dir_index: int
+    :return: New path
+    :rtype: str
+    :raises IndexError: If the catalog index is out of bounds for a given path
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        input_path = 'head/dir_1/file.txt'
+        new_path = sly.io.fs.change_directory_at_index(input_path, 'dir_2', -2)
+
+        print(new_path)
+
+    """
+    path_components = path.split(os.path.sep)
+    if -len(path_components) <= dir_index < len(path_components):
+        path_components[dir_index] = dir_name
+    else:
+        raise IndexError(
+            f"Path index '{dir_index}' is out of bounds 'path_components={len(path_components)}' for a given path"
+        )
+    return os.path.sep.join(path_components)
+
+
+def is_archive(file_path: str) -> bool:
+    """
+    Checks if the file is an archive by its mimetype using list of the most common archive mimetypes.
+
+    :param local_path: path to the local file
+    :type local_path: str
+    :return: True if the file is an archive, False otherwise
+    :rtype: bool
+    """
+    archive_mimetypes = [
+        "application/zip",
+        "application/x-tar",
+        "application/x-gzip",
+        "application/x-bzip2",
+        "application/x-7z-compressed",
+        "application/x-rar-compressed",
+        "application/x-xz",
+        "application/x-lzip",
+        "application/x-lzma",
+        "application/x-lzop",
+        "application/x-bzip",
+        "application/x-bzip2",
+        "application/x-compress",
+        "application/x-compressed",
+    ]
+
+    return mimetypes.guess_type(file_path)[0] in archive_mimetypes

@@ -3,39 +3,35 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Tuple, Optional, Dict, Union
-from supervisely.geometry.image_rotator import ImageRotator
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.tag import Tag
 
-import json
 import itertools
-import numpy as np
+import json
 import operator
-import cv2
-from copy import deepcopy
-from PIL import Image
-from supervisely.annotation.obj_class import ObjClass
 from collections import defaultdict
+from copy import deepcopy
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+import cv2
+import numpy as np
+from PIL import Image
 
 from supervisely import logger
-from supervisely.annotation.label import Label
-from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_collection import TagCollection
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.imaging import image as sly_image
-from supervisely.imaging import font as sly_font
 from supervisely._utils import take_with_default
-from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.polygon import Polygon
+from supervisely.annotation.label import Label
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_collection import TagCollection
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.image_rotator import ImageRotator
+from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import font as sly_font
+from supervisely.imaging import image as sly_image
 from supervisely.io.fs import ensure_base_path
-
-
-from typing import TYPE_CHECKING
+from supervisely.project.project_meta import ProjectMeta
 
 if TYPE_CHECKING:
     try:
@@ -396,12 +392,10 @@ class Annotation:
                 Label.from_json(label_json, project_meta)
                 for label_json in data[AnnotationJsonFields.LABELS]
             ]
-        except Exception:
-            logger.fatal(
-                "Failed to deserialize annotation from JSON format. One of the Label objects could not be "
-                "deserialized"
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
             )
-            raise
 
         custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {})
         prob_labels = None
@@ -409,7 +403,6 @@ class Annotation:
             AnnotationJsonFields.PROBABILITY_LABELS in custom_data
             and AnnotationJsonFields.PROBABILITY_CLASSES in custom_data
         ):
-
             prob_classes = ObjClassCollection.from_json(
                 custom_data[AnnotationJsonFields.PROBABILITY_CLASSES]
             )
@@ -1069,14 +1062,17 @@ class Annotation:
 
         return self.transform_labels(_rotate_label, tuple(rotator.new_imsize))
 
-    def resize(self, out_size: Tuple[int, int]) -> Annotation:
+    def resize(self, out_size: Tuple[int, int], skip_empty_masks: bool = False) -> Annotation:
         """
         Resizes current Annotation.
 
         :param out_size: Desired output image size (height, width).
         :type out_size: Tuple[int, int]
+        :param skip_empty_masks: Skip the raising of the error when you have got an empty label mask after a resizing procedure.
+        :type skip_empty_masks: bool
+
         :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class: Annotation
 
         :Usage Example:
 
@@ -1124,7 +1120,13 @@ class Annotation:
         """
 
         def _resize_label(label):
-            return [label.resize(self.img_size, out_size)]
+            try:
+                return [label.resize(self.img_size, out_size)]
+            except ValueError:
+                if skip_empty_masks is True:
+                    return []
+                else:
+                    raise
 
         return self.transform_labels(_resize_label, out_size)
 
@@ -2143,7 +2145,6 @@ class Annotation:
         # (unique, counts) = np.unique(common_img, return_counts=True)
         new_labels = []
         for idx, lbl in enumerate(self.labels, start=1):
-
             dest_class = mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
@@ -2626,7 +2627,9 @@ class Annotation:
         try:
             from imgaug.augmentables.segmaps import SegmentationMapsOnImage
         except ModuleNotFoundError as e:
-            logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+            logger.error(
+                f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"'
+            )
             raise e
 
         h = self.img_size[0]
@@ -2656,7 +2659,9 @@ class Annotation:
         try:
             from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
         except ModuleNotFoundError as e:
-            logger.error(f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"')
+            logger.error(
+                f'{e}. Try to install extra dependencies. Run "pip install supervisely[aug]"'
+            )
             raise e
 
         boxes = []
@@ -2883,13 +2888,19 @@ class Annotation:
                 new_labels.append(lbl.clone())
         return self.clone(labels=new_labels)
 
-    def get_bindings(self):
+    def get_bindings(self) -> Dict[str, List[Label]]:
+        """Returns dictionary with bindings keys as keys and list of labels as values.
+
+        :return: Dictionary with bindings keys as keys and list of labels as values.
+        :rtype: Dict[str, List[Label]]
+        """
         d = defaultdict(list)
         for label in self.labels:
             # if label.binding_key is not None:
             d[label.binding_key].append(label)
         return d
 
-    def discard_bindings(self):
+    def discard_bindings(self) -> None:
+        """Remove binding keys from all labels."""
         for label in self.labels:
             label.binding_key = None

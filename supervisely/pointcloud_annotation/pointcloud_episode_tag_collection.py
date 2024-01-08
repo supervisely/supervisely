@@ -1,10 +1,17 @@
 from __future__ import annotations
-from typing import List, Dict, Optional, Any, Iterator
-from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
-from supervisely.pointcloud_annotation.pointcloud_episode_tag import PointcloudEpisodeTag
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
+
+from typing import Any, Dict, Iterator, List, Optional
+
 from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
+    PointcloudEpisodeTag,
+)
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
+    PointcloudTagCollection,
+)
 from supervisely.video_annotation.key_id_map import KeyIdMap
+
 
 class PointcloudEpisodeTagCollection(PointcloudTagCollection):
     """
@@ -147,10 +154,10 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
 
     @classmethod
     def from_api_response(
-        cls, 
-        data: List[Dict], 
-        tag_meta_collection: TagMetaCollection, 
-        id_to_tagmeta: Optional[Dict[int, TagMeta]] = None
+        cls,
+        data: List[Dict],
+        tag_meta_collection: TagMetaCollection,
+        id_to_tagmeta: Optional[Dict[int, TagMeta]] = None,
     ) -> PointcloudEpisodeTagCollection:
         """
         Create a PointcloudEpisodeTagCollection object from API response data.
@@ -210,9 +217,9 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
 
     @classmethod
     def from_json(
-        cls, 
-        data: List[Dict], 
-        tag_meta_collection: TagMetaCollection, 
+        cls,
+        data: List[Dict],
+        tag_meta_collection: TagMetaCollection,
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudEpisodeTagCollection:
         """

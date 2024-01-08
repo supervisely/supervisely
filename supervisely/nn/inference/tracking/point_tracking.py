@@ -31,6 +31,7 @@ class PointTracking(Inference, InferenceImageCache):
             maxsize=sly.env.smart_cache_size(),
             ttl=sly.env.smart_cache_ttl(),
             is_persistent=True,
+            base_folder=sly.env.smart_cache_container_dir(),
         )
 
         try:
@@ -41,7 +42,11 @@ class PointTracking(Inference, InferenceImageCache):
 
         sly.logger.debug(
             "Smart cache params",
-            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
+            extra={
+                "ttl": sly.env.smart_cache_ttl(),
+                "maxsize": sly.env.smart_cache_size(),
+                "path": sly.env.smart_cache_container_dir(),
+            },
         )
 
     def get_info(self):
@@ -97,10 +102,14 @@ class PointTracking(Inference, InferenceImageCache):
             context = request.state.context
             api: sly.Api = request.state.api
 
+            if self.custom_inference_settings_dict.get("load_all_frames"):
+                load_all_frames = True
+            else:
+                load_all_frames = False
             video_interface = TrackerInterface(
                 context=context,
                 api=api,
-                load_all_frames=False,
+                load_all_frames=load_all_frames,
                 frame_loader=self.download_frame,
             )
 

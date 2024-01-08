@@ -1,8 +1,8 @@
 import os
 import re
+
 import requests
 from pkg_resources import DistributionNotFound, get_distribution
-
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -18,6 +18,7 @@ version = response.json()["tag_name"]
 
 
 INSTALL_REQUIRES = [
+    "cachetools<5.0.0",
     "numpy>=1.19, <2.0.0",
     "opencv-python>=4.5.5.62, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
@@ -29,16 +30,16 @@ INSTALL_REQUIRES = [
     "Shapely>=1.7.1, <2.0.0",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <1.0.0",
+    "python-dotenv>=0.19.2, <=1.0.0",
     "pynrrd>=0.4.2, <1.0.0",
     "SimpleITK>=2.1.1.2, <3.0.0.0",
     "pydicom>=2.3.0, <3.0.0",
     "stringcase>=1.2.0, <2.0.0",
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <4.0.0",
-    "scikit-video>=1.1.11, <2.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
     "pydantic>=1.7.4, <2.0.0",
+    "anyio>=3.7.1,<4.0.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "fastapi>=0.79.0, <0.100.0",
     "websockets>=10.3, <11.0",
     "jinja2>=3.0.3, <4.0.0",
@@ -60,9 +61,9 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3==1.26.15",
-    "cachetools==5.3.1",
+    "urllib3>=1.26.15, <2.0.0",
     "cacheout==0.14.1",
+    "jsonschema>=2.6.0,<3.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -132,16 +133,17 @@ setup(
             "supervisely=supervisely.cli.cli:cli",
         ]
     },
-    python_requires=">=3.7.1",
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
@@ -154,7 +156,6 @@ setup(
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
             "scipy>=1.5.2, <2.0.0",
-            "sk-video>=1.1.10, <2.0.0",
             "pandas>=1.1.3, <1.4.0",
             "ruamel.yaml==0.17.21",
         ],

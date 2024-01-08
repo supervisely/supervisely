@@ -29,16 +29,18 @@ class Field(str, enum.Enum):
 def get_data_dir():
     dir = None
 
-    task_id = os.environ.get("TASK_ID")
+    task_id = sly_env.task_id(raise_not_found=False)
     if task_id is not None:
         dir = f"/sessions/{task_id}"
 
+    # order matters
     keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+
     for key in keys:
         value = os.environ.get(key)
         if value is not None:
             dir = value
-            logger.debug(f"Load dir from evn {key}={value}")
+            logger.debug(f"Load dir from env {key}={value}")
             break
     if dir is None:
         raise ValueError(f"One of the env variables have to be defined: {[*keys, 'TASK_ID']}")
@@ -52,12 +54,14 @@ def get_data_dir():
 def get_synced_data_dir():
     dir = "/sly-app-data"
 
+    # order matters
     keys = ["SLY_APP_DATA_DIR", "DEBUG_APP_DIR"]
+
     for key in keys:
         value = os.environ.get(key)
         if value is not None:
             dir = value
-            logger.debug(f"Load dir from evn {key}={value}")
+            logger.debug(f"Load dir from env {key}={value}")
             break
 
     if dir_exists(dir) is False:
@@ -125,7 +129,7 @@ class StateJson(_PatchableJson, metaclass=Singleton):
 
         if content.get("context", {}).get("outside_request", False) is True:
             return None
-
+        # TODO: should we always replace STATE with {}?
         d = content.get(Field.STATE, {})
         await cls._replace_global(d)
         return cls(d, __local__=True)
@@ -134,7 +138,8 @@ class StateJson(_PatchableJson, metaclass=Singleton):
     async def _replace_global(cls, d: dict):
         async with cls._global_lock:
             global_state = cls()
-            global_state.clear()
+            # !!! May cause problems with some apps !!!
+            # global_state.clear()
             global_state.update(copy.deepcopy(d))
             global_state._last = copy.deepcopy(d)
             ContentOrigin().update(state=copy.deepcopy(d))
@@ -166,6 +171,8 @@ class ContentOrigin(metaclass=Singleton):
         if not self._loop_thread.is_alive():
             self._loop_thread.start()
             self._stop.clear()
+            DataJson().send_changes()
+            StateJson().send_changes()
 
     def stop(self):
         self._stop.set()

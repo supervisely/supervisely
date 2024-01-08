@@ -1,0 +1,41 @@
+<div>
+    <sly-nodes-flow
+        :flow="state.{{{widget.widget_id}}}.flow"
+        :flow-state="state.{{{widget.widget_id}}}.flowState"
+        :state="state"
+        :data="data"
+        :session="session"
+        :post="post"
+        :options="{
+            height: data.{{{widget.widget_id}}}.height,
+            colorTheme: data.{{{widget.widget_id}}}.colorTheme,
+            showDDArea: data.{{{widget.widget_id}}}.showDDArea, 
+            ddSectionWidth: data.{{{widget.widget_id}}}.ddSectionWidth,
+            showSave: data.{{{widget.widget_id}}}.showSave,
+        }"
+        :context-menu-items="data.{{{widget.widget_id}}}.contextMenuItems"
+        :node-type-list="data.{{{widget.widget_id}}}.nodeTypeList"
+        {% if widget._save_handled %}
+        @save="post('/{{{widget.widget_id}}}/save_cb')"
+        {% endif %}
+        {% if widget._flow_change_handled %}
+        @flow-changed="post('/{{{widget.widget_id}}}/flow_changed_cb')"
+        {% endif %}
+        {% if widget._flow_state_change_handled %}
+        @flow-state-changed="post('/{{{widget.widget_id}}}/flow_state_changed_cb')"
+        {% endif %}
+        {% if widget._contex_menu_item_click_handled %}
+        @context-menu-item-click="
+            state.{{{widget.widget_id}}}.selectedContextItem = $event;
+            post('/{{{widget.widget_id}}}/context_menu_item_click_cb');"
+        {% endif %}
+        {% if widget._sidebar_toggle_handled %}
+        @sidebar-toggled="post('/{{{widget.widget_id}}}/sidebar_toggled_cb')"
+        {% endif %}
+        {% if widget._item_dropped_handled %}
+        @item-dropped="
+            state.{{{widget.widget_id}}}.droppedItem = $event;
+            post('/{{{widget.widget_id}}}/item_dropped_cb');"
+        {% endif %}
+    />
+</div>

@@ -5,25 +5,30 @@ import struct
 import requests
 import traceback
 import time
+from logging import Logger
 
 from supervisely.worker_api.retriers import retriers_from_cfg
 from supervisely.io.network_exceptions import process_requests_exception, process_unhandled_request
 
 
 class AgentAPI:
-    def __init__(self, token, server_address, ext_logger, cfg_path=None):
+    def __init__(self, token, server_address: str, ext_logger: Logger, cfg_path=None):
         self.logger = ext_logger
-        self.server_address = server_address
-        if ('http://' not in self.server_address) and ('https://' not in self.server_address):
-            self.server_address = os.path.join('http://', self.server_address)
-        self.server_address = os.path.join(self.server_address, 'agent')
+        self._base_server_adress = server_address
+        if ("http://" not in self._base_server_adress) and (
+            "https://" not in self._base_server_adress
+        ):
+            self._base_server_adress = os.path.join("http://", self._base_server_adress)
+        self.server_address = os.path.join(self._base_server_adress, "agent")
         self.headers = {
-            'Content-type': 'application/octet-stream',
-            'Accept-Encoding': 'deflate',  # to override default 'Accept-Encoding': 'gzip, deflate'
+            "Content-type": "application/octet-stream",
+            "Accept-Encoding": "deflate",  # to override default 'Accept-Encoding': 'gzip, deflate'
         }
         if token is not None:
-            self.headers['x-token'] = token
+            self.headers["x-token"] = token
         self._retriers = retriers_from_cfg(cfg_path)
+
+        self._require_https_redirect_check = not self._base_server_adress.startswith("https://")
 
     def _get_retrier(self, api_method_name, common_selector):
         retrier = self._retriers.get(api_method_name)
@@ -38,18 +43,28 @@ class AgentAPI:
         self.headers.pop(key, None)
 
     def _send_request(self, api_method_name, request_data, timeout, in_stream, addit_headers):
+        self._check_https_redirect()
         url = os.path.join(self.server_address, api_method_name)
         if not addit_headers:
             addit_headers = {}
         cur_header = {**self.headers, **addit_headers}
-        not_log_request = api_method_name != 'Log'
+        not_log_request = api_method_name != "Log"
         server_reply = None
         try:
-            server_reply = requests.post(url, headers=cur_header, data=request_data, stream=in_stream, timeout=timeout)
+            server_reply = requests.post(
+                url, headers=cur_header, data=request_data, stream=in_stream, timeout=timeout
+            )
             server_reply.raise_for_status()
         except requests.RequestException as exc:
-            process_requests_exception(self.logger, exc, api_method_name, url,
-                                       verbose=not_log_request, swallow_exc=False, response=server_reply)
+            process_requests_exception(
+                self.logger,
+                exc,
+                api_method_name,
+                url,
+                verbose=not_log_request,
+                swallow_exc=False,
+                response=server_reply,
+            )
         except Exception as exc:
             process_unhandled_request(self.logger, exc)
 
@@ -58,9 +73,11 @@ class AgentAPI:
     # magic value 4 means four bytes for message length
     # http://www.sureshjoshi.com/development/streaming-protocol-buffers/
     # https://www.datadoghq.com/blog/engineering/protobuf-parsing-in-python/
-    def _get_input_stream(self, api_method_name, res_proto_fn, request_data, timeout, addit_headers):
+    def _get_input_stream(
+        self, api_method_name, res_proto_fn, request_data, timeout, addit_headers
+    ):
         def cut_len(msg_buff_):
-            cur_m_len = struct.unpack('>I', msg_buff_[0:4])[0]
+            cur_m_len = struct.unpack(">I", msg_buff_[0:4])[0]
             return cur_m_len, msg_buff_[4:]
 
         def append_to_msg_buffer(msg_len_, msg_buf_, rest_buf):
@@ -75,8 +92,9 @@ class AgentAPI:
 
         # request package crashes on empty chunks
         try:
-            with self._send_request(api_method_name, request_data, timeout,
-                                    in_stream=True, addit_headers=addit_headers) as reply:
+            with self._send_request(
+                api_method_name, request_data, timeout, in_stream=True, addit_headers=addit_headers
+            ) as reply:
                 msg_len = None
                 msg_buf = b""
                 for buffer in reply.iter_content(chunk_size=None):
@@ -98,24 +116,31 @@ class AgentAPI:
                             msg_len = None
                             msg_buf = b""
                 if msg_len is not None:
-                    raise RuntimeError('MISSED_STREAM_CHUNKS')
+                    raise RuntimeError("MISSED_STREAM_CHUNKS")
         except requests.exceptions.ChunkedEncodingError:
-            raise RuntimeError('Unknown error during stream. Please contact support.')
+            raise RuntimeError("Unknown error during stream. Please contact support.")
         except requests.RequestException:
             raise
         except Exception as e:
-            self.logger.error(traceback.format_exc(), exc_info=True, extra={'exc_str': str(e)})
+            self.logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
             raise e
 
-    def _put_out_stream(self, api_method_name, res_proto_fn, chunk_generator, timeout, addit_headers):
+    def _put_out_stream(
+        self, api_method_name, res_proto_fn, chunk_generator, timeout, addit_headers
+    ):
         def bindata_generator():
             for chunk in chunk_generator:
                 size = chunk.ByteSize()
-                res_bytes_with_len = struct.pack('>I', size) + chunk.SerializeToString()
+                res_bytes_with_len = struct.pack(">I", size) + chunk.SerializeToString()
                 yield res_bytes_with_len
 
-        resp = self._send_request(api_method_name, bindata_generator(), timeout,
-                                  in_stream=False, addit_headers=addit_headers)
+        resp = self._send_request(
+            api_method_name,
+            bindata_generator(),
+            timeout,
+            in_stream=False,
+            addit_headers=addit_headers,
+        )
         res_proto = res_proto_fn()
         res_proto.ParseFromString(resp.content)
         return res_proto
@@ -123,35 +148,67 @@ class AgentAPI:
     # will not log it now
     def simple_request(self, api_method_name, res_proto_fn, proto_request, addit_headers=None):
         data_to_send = proto_request.SerializeToString()
-        retrier = self._get_retrier(api_method_name, '__simple_request')
-        resp = retrier.request(self._send_request, api_method_name, data_to_send, in_stream=False, addit_headers=addit_headers)
+        retrier = self._get_retrier(api_method_name, "__simple_request")
+        resp = retrier.request(
+            self._send_request,
+            api_method_name,
+            data_to_send,
+            in_stream=False,
+            addit_headers=addit_headers,
+        )
         if resp is None:
             return None  # swallowed exception
         res_proto = res_proto_fn()
         res_proto.ParseFromString(resp.content)
         return res_proto
 
-    def get_stream_with_data(self, api_method_name, res_proto_fn, proto_request, addit_headers=None):
+    def get_stream_with_data(
+        self, api_method_name, res_proto_fn, proto_request, addit_headers=None
+    ):
         data_to_send = proto_request.SerializeToString()
-        retrier = self._get_retrier(api_method_name, '__data_stream_in')
-        yield from retrier.request(self._get_input_stream,
-                                   api_method_name, res_proto_fn, data_to_send, addit_headers=addit_headers)
+        retrier = self._get_retrier(api_method_name, "__data_stream_in")
+        yield from retrier.request(
+            self._get_input_stream,
+            api_method_name,
+            res_proto_fn,
+            data_to_send,
+            addit_headers=addit_headers,
+        )
 
-    def get_endless_stream(self, api_method_name, res_proto_fn, proto_request, addit_headers=None,
-                           server_fail_limit=10, wait_server_sec=10):
+    def get_endless_stream(
+        self,
+        api_method_name,
+        res_proto_fn,
+        proto_request,
+        addit_headers=None,
+        server_fail_limit=10,
+        wait_server_sec=10,
+    ):
         data_to_send = proto_request.SerializeToString()
         for attempt in range(server_fail_limit):
-            retrier = self._get_retrier(api_method_name, '__endless_stream_in')
-            yield from retrier.request(self._get_input_stream,
-                                       api_method_name, res_proto_fn, data_to_send, addit_headers=addit_headers)
-            self.logger.warn('Endless input stream end', extra={'method': api_method_name})
+            retrier = self._get_retrier(api_method_name, "__endless_stream_in")
+            yield from retrier.request(
+                self._get_input_stream,
+                api_method_name,
+                res_proto_fn,
+                data_to_send,
+                addit_headers=addit_headers,
+            )
+            self.logger.warn("Endless input stream end", extra={"method": api_method_name})
             if attempt != server_fail_limit - 1:
                 time.sleep(wait_server_sec)
 
-    def put_stream_with_data(self, api_method_name, res_proto_fn, chunk_generator, addit_headers=None):
-        retrier = self._get_retrier(api_method_name, '__data_stream_out')
-        res = retrier.request(self._put_out_stream,
-                              api_method_name, res_proto_fn, chunk_generator, addit_headers=addit_headers)
+    def put_stream_with_data(
+        self, api_method_name, res_proto_fn, chunk_generator, addit_headers=None
+    ):
+        retrier = self._get_retrier(api_method_name, "__data_stream_out")
+        res = retrier.request(
+            self._put_out_stream,
+            api_method_name,
+            res_proto_fn,
+            chunk_generator,
+            addit_headers=addit_headers,
+        )
         return res
 
     @classmethod
@@ -164,3 +221,20 @@ class AgentAPI:
             if res_code in code_list:
                 return None, res_code
             raise
+
+    def _check_https_redirect(self):
+        if self._require_https_redirect_check is True:
+            response = requests.get(self._base_server_adress, allow_redirects=False)
+            if (300 <= response.status_code < 400) or (
+                response.headers.get("Location", "").startswith("https://")
+            ):
+                self._base_server_adress = self._base_server_adress.replace("http://", "https://")
+                self.server_address = self.server_address.replace("http://", "https://")
+                msg = (
+                    "You're using HTTP server address on agent while the server requires HTTPS. "
+                    "Supervisely automatically changed the server address to HTTPS for you. "
+                    f"Consider updating your server address to {self._base_server_adress}"
+                )
+                self.logger.warn(msg)
+
+            self._require_https_redirect_check = False

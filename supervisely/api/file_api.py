@@ -3,37 +3,37 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, List, Dict, Optional, Callable, Union
-from typing_extensions import Literal
-
+import mimetypes
 import os
+import re
 import shutil
 import tarfile
-from pathlib import Path
 import urllib
-import re
+from pathlib import Path
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import batched, rand_str
-from supervisely.api.module_api import ModuleApiBase, ApiField
-import supervisely.io.fs as sly_fs
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-import mimetypes
-from supervisely.imaging.image import write_bytes, get_hash
-from supervisely.task.progress import Progress
-from supervisely.io.fs_cache import FileCache
+from tqdm import tqdm
+from typing_extensions import Literal
+
+import supervisely.io.env as env
+import supervisely.io.fs as sly_fs
+from supervisely._utils import batched, is_development, rand_str
+from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.imaging.image import get_hash, write_bytes
 from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_ext,
     get_file_hash,
     get_file_name,
-    get_file_ext,
+    get_file_name_with_ext,
     get_file_size,
     list_files_recursively,
     silent_remove,
-    ensure_base_path,
-    get_file_name_with_ext,
 )
+from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
-import supervisely.io.env as env
-from tqdm import tqdm
+from supervisely.task.progress import Progress
 
 
 class FileInfo(NamedTuple):
@@ -52,6 +52,7 @@ class FileInfo(NamedTuple):
     created_at: str
     updated_at: str
     full_storage_url: str
+    is_dir: bool
 
 
 class FileApi(ModuleApiBase):
@@ -120,6 +121,7 @@ class FileApi(ModuleApiBase):
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
             ApiField.FULL_STORAGE_URL,
+            ApiField.IS_DIR,
         ]
 
     @staticmethod
@@ -365,6 +367,7 @@ class FileApi(ModuleApiBase):
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
         Get directory size in the Team Files.
+        If directory is on local agent, then optimized method will be used (without api requests)
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -389,8 +392,19 @@ class FileApi(ModuleApiBase):
             print(size)
             # Output: 3478687
         """
+        if self.is_on_agent(path) is True:
+            agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
+            if (
+                agent_id == env.agent_id(raise_not_found=False)
+                and env.agent_storage(raise_not_found=False) is not None
+            ):
+                path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                logger.info(f"Optimized getting directory size from agent: {path_on_agent}")
+                dir_size = sly_fs.get_directory_size(path_on_agent)
+                return dir_size
+
         dir_size = 0
-        file_infos = self.list2(team_id, path)
+        file_infos = self.list(team_id=team_id, path=path, recursive=True, return_type="fileinfo")
         for file_info in file_infos:
             dir_size += file_info.sizeb
         return dir_size
@@ -558,6 +572,8 @@ class FileApi(ModuleApiBase):
                 dir_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
                 logger.info(f"Optimized download from agent: {dir_on_agent}")
                 sly_fs.copy_dir_recursively(dir_on_agent, local_save_path)
+                if progress_cb is not None:
+                    progress_cb(sly_fs.get_directory_size(dir_on_agent))
                 return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
@@ -572,6 +588,126 @@ class FileApi(ModuleApiBase):
         for file_name in file_names:
             shutil.move(os.path.join(temp_dir, file_name), local_save_path)
         shutil.rmtree(temp_dir)
+
+    def download_input(
+        self,
+        save_path: str,
+        unpack_if_archive: Optional[bool] = True,
+        remove_archive: Optional[bool] = True,
+        force: Optional[bool] = False,
+        log_progress: Optional[bool] = False,
+    ) -> None:
+        """Downloads data for application from input using environment variables.
+        Automatically detects is data is a file or a directory and saves it to the specified directory.
+        If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
+
+        :param save_path: path to a directory where data will be saved
+        :type save_path: str
+        :param unpack_if_archive: if True, archive will be unpacked to the specified directory
+        :type unpack_if_archive: Optional[bool]
+        :param remove_archive: if True, archive will be removed after unpacking
+        :type remove_archive: Optional[bool]
+        :param force: if True, data will be downloaded even if it already exists in the specified directory
+        :type force: Optional[bool]
+        :param log_progress: if True, progress bar will be displayed
+        :type log_progress: Optional[bool]
+        :raises RuntimeError: if both file and folder paths not found in environment variables
+        :raises RuntimeError: if both file and folder paths found in environment variables (debug)
+        :raises RuntimeError: if team id not found in environment variables
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Application is started...
+            save_path = "/my_app_data"
+            api.file.download_input(save_path)
+
+            # The data is downloaded to the specified directory.
+        """
+        remote_file_path = env.file(raise_not_found=False)
+        remote_folder_path = env.folder(raise_not_found=False)
+        team_id = env.team_id()
+
+        sly_fs.mkdir(save_path)
+
+        if remote_file_path is None and remote_folder_path is None:
+            raise RuntimeError(
+                "Both file and folder paths not found in environment variables. "
+                "Please, specify one of them."
+            )
+        elif remote_file_path is not None and remote_folder_path is not None:
+            raise RuntimeError(
+                "Both file and folder paths found in environment variables. "
+                "Please, specify only one of them."
+            )
+        if team_id is None:
+            raise RuntimeError("Team id not found in environment variables.")
+
+        if remote_file_path is not None:
+            file_name = sly_fs.get_file_name_with_ext(remote_file_path)
+            local_file_path = os.path.join(save_path, file_name)
+
+            if os.path.isfile(local_file_path) and not force:
+                logger.info(
+                    f"The file {local_file_path} already exists. "
+                    "Download is skipped, if you want to download it again, "
+                    "use force=True."
+                )
+                return
+
+            sly_fs.silent_remove(local_file_path)
+
+            progress_cb = None
+            file_info = self.get_info_by_path(team_id, remote_file_path)
+            if log_progress is True and file_info is not None:
+                progress = Progress(
+                    f"Downloading {remote_file_path}", file_info.sizeb, is_size=True
+                )
+                progress_cb = progress.iters_done_report
+            if self.is_on_agent(remote_file_path):
+                self.download_from_agent(remote_file_path, local_file_path, progress_cb=progress_cb)
+            else:
+                self.download(team_id, remote_file_path, local_file_path, progress_cb=progress_cb)
+            if unpack_if_archive and sly_fs.is_archive(local_file_path):
+                sly_fs.unpack_archive(local_file_path, save_path)
+                if remove_archive:
+                    sly_fs.silent_remove(local_file_path)
+                else:
+                    logger.info(
+                        f"Achive {local_file_path} was unpacked, but not removed. "
+                        "If you want to remove it, use remove_archive=True."
+                    )
+        elif remote_folder_path is not None:
+            folder_name = os.path.basename(os.path.normpath(remote_folder_path))
+            local_folder_path = os.path.join(save_path, folder_name)
+            if os.path.isdir(local_folder_path) and not force:
+                logger.info(
+                    f"The folder {folder_name} already exists. "
+                    "Download is skipped, if you want to download it again, "
+                    "use force=True."
+                )
+                return
+
+            sly_fs.remove_dir(local_folder_path)
+
+            progress_cb = None
+            if log_progress is True:
+                sizeb = self.get_directory_size(team_id, remote_folder_path)
+                progress = Progress(f"Downloading: {remote_folder_path}", sizeb, is_size=True)
+                progress_cb = progress.iters_done_report
+            self.download_directory(
+                team_id, remote_folder_path, local_folder_path, progress_cb=progress_cb
+            )
 
     def _upload_legacy(self, team_id, src, dst):
         """ """
@@ -1200,7 +1336,8 @@ class FileApi(ModuleApiBase):
 
         local_files = list_files_recursively(local_dir)
         remote_files = [
-            Path(file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/"))).as_posix() for file in local_files
+            Path(file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/"))).as_posix()
+            for file in local_files
         ]
 
         for local_paths_batch, remote_files_batch in zip(

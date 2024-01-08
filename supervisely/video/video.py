@@ -2,13 +2,13 @@
 """Functions for processing videos"""
 
 from __future__ import annotations
-from typing import Tuple, List, Dict, Optional
 
 import os
-from supervisely import logger as default_logger
-from supervisely.io.fs import get_file_name, get_file_ext
-from supervisely._utils import rand_str, is_development, abs_url
+from typing import Dict, List, Optional, Tuple
 
+from supervisely import logger as default_logger
+from supervisely._utils import abs_url, is_development, rand_str
+from supervisely.io.fs import get_file_ext, get_file_name
 
 # Do NOT use directly for video extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VIDEO_EXTENSIONS = [".avi", ".mp4", ".3gp", ".flv", ".webm", ".wmv", ".mov", ".mkv"]
@@ -116,12 +116,15 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
         print(video_info)
         # Output: ((720, 1280), 152)
     """
-    import skvideo.io
+    import cv2
 
-    vreader = skvideo.io.FFmpegReader(path)
-    vlength = vreader.getShape()[0]
-    img_height = vreader.getShape()[1]
-    img_width = vreader.getShape()[2]
+    img_height, img_width, vlength = None, None, None
+    vcap = cv2.VideoCapture(path)
+    if vcap.isOpened():
+        img_height = int(vcap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        img_width = int(vcap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        vlength = int(vcap.get(cv2.CAP_PROP_FRAME_COUNT))
+    vcap.release()
 
     img_size = (img_height, img_width)
 
@@ -306,8 +309,11 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
         #     "size": "61572600"
         # }
     """
+    import ast
+    import math
+    import os
     import pathlib
-    import subprocess, os, ast, math
+    import subprocess
     from subprocess import PIPE
 
     def rotate_dimensions(width, height, rotation):
@@ -338,23 +344,29 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
             "-show_streams",
             "-show_frames",
             "-show_entries",
-            "frame=stream_index,pkt_pts_time",
+            "frame=stream_index,pkt_pts_time,pts_time",
         ],
         stdout=PIPE,
         stderr=PIPE,
     )
     stdout, stderr = session.communicate()
     if len(stderr) != 0:
-        raise RuntimeError(stderr.decode("utf-8"))
+        default_logger.warning(stderr.decode("utf-8"))
+        # * Return error instead of warning if some problems will appear.
+        # raise RuntimeError(stderr.decode("utf-8"))
+
     video_meta = ast.literal_eval(stdout.decode("utf-8"))
 
     frames_to_timecodes = []
     has_video = False
-    audio_stream_info = None
+    # ? Assigned but never used, consider removing.
+    # audio_stream_info = None
 
     for frame in video_meta["frames"]:
         if frame["stream_index"] == 0:
-            frames_to_timecodes.append(float(frame.get("pkt_pts_time", frame.get("pts_time"))))
+            timecode = frame.get("pkt_pts_time", frame.get("pts_time"))
+            timecode = float(timecode) if timecode else None
+            frames_to_timecodes.append(timecode)
 
     stream_infos = []
     for stream in video_meta["streams"]:
@@ -413,12 +425,73 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     return result
 
 
-def get_labeling_tool_url(dataset_id, video_id):
-    res = f"/app/videos_v2/?datasetId={dataset_id}&videoId={video_id}&videoFrame=0"
+def get_labeling_tool_url(
+    dataset_id: int,
+    video_id: int,
+    frame: Optional[int] = 0,
+    link: Optional[bool] = False,
+    link_text: Optional[str] = "open in labeling tool",
+) -> str:
+    """Returns url to labeling tool for given video and frame.
+    If link is True, returns html link to labeling tool, which will be opened in new tab.
+    See usage example below.
+
+    :param dataset_id: ID of the dataset, where video is stored.
+    :type dataset_id: int
+    :param video_id: ID of the video to get labeling tool url for.
+    :type video_id: int
+    :param frame: Frame number to get labeling tool url for, defaults to 0.
+    :type frame: Optional[int]
+    :param link: If True, returns html link to labeling tool, defaults to False.
+    :type link: Optional[bool]
+    :param link_text: Text of the link, defaults to "open in labeling tool".
+    :type link_text: Optional[str]
+    :return: Labeling tool url or html link to labeling tool.
+    :rtype: str
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        import supervisely as sly
+
+        # Load secrets and create API object from .env file (recommended)
+        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+        load_dotenv(os.path.expanduser("~/supervisely.env"))
+        api = sly.Api.from_env()
+
+        dataset_id = 123
+        video_id = 456
+
+        # Get url to labeling tool for the 20 frame of the video
+        url = sly.video.get_labeling_tool_url(dataset_id, video_id, frame=20)
+        print(url)
+        # Output: http://your-supervisely-server.com/app/videos_v2/?datasetId=123&videoId=456&videoFrame=20
+
+        # Get html link to labeling tool for the 20 frame of the video
+        link = sly.video.get_labeling_tool_url(dataset_id, video_id, frame=20, link=True)
+        print(link)
+        # Output: <a href="http://your-supervisely-server.com/app/videos_v2/?datasetId=123&videoId=456&videoFrame=20"
+        # rel="noopener noreferrer" target="_blank">open in labeling tool<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>
+    """
+    res = f"/app/videos_v2/?datasetId={dataset_id}&videoId={video_id}&videoFrame={frame}"
     if is_development():
         res = abs_url(res)
+    if link:
+        res = get_labeling_tool_link(res, name=link_text)
     return res
 
 
-def get_labeling_tool_link(url, name="open in labeling tool"):
+def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling tool") -> str:
+    """Returns HTML link to labeling tool for given url which will be opened in new tab.
+
+    :param url: URL for the HTML link.
+    :type url: str
+    :param name: text of the link, defaults to "open in labeling tool".
+    :type name: Optional[str]
+    :return: HTML link to labeling tool.
+    :rtype: str
+    """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
