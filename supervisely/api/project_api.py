@@ -376,17 +376,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     backup_archive={})
         """
 
-        # "id"  "title" "description" "size" "readme" "workspaceId" "imagesCount" "datasetsCount" "type" "createdAt" "updatedAt" "customData" "groupId" "referenceImageUrl" "backupArchive"
-        # fields = json.dumps(self.info_sequence())
-        # fields = [str(elem) for elem in self.info_sequence()]
-
-        fields = ["title" if x == "name" else x for x in self.info_sequence()]
-        fields.pop(15)
-        # fields.pop(7)
-        fields = [x for x in fields if x != ApiField.ITEMS_COUNT]
+        fields = [x for x in self.info_sequence() if x != ApiField.ITEMS_COUNT]
 
         info = super().get_info_by_name(parent_id, name, fields)
-
         self._check_project_info(
             info, name=name, expected_type=expected_type, raise_error=raise_error
         )
