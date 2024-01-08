@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
     "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=2.1.4",  # For compatibility with Python3.7
+    "pandas>=1.1.3, <=2.1.4",
     "async_asgi_testclient",
     "PyYAML",
     "distinctipy",
