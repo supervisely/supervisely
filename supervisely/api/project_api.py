@@ -642,7 +642,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             m = ProjectMeta.from_json(meta)
 
         m.project_settings.validate(m)
-        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
+        response = self._api.post(
+            "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
+        )
+        tmp = ProjectMeta.from_json(data=response.json())
+        m = tmp.clone(project_settings=m.project_settings)
 
         if m.project_settings is not None:
             s = m.project_settings
