@@ -186,7 +186,7 @@ setup(
         ],
         # legacy dependencies
         "plugins": [
-            "jsonschema>=2.6.0,<3.0.0",
+            "jsonschema>=2.6.0,<=4.20.0",
         ],
         "sdk-nn-plugins": [
             "flask-restful>=0.3.7, <1.0.0",
