@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 from datetime import datetime, timedelta
 
+from supervisely import logger
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -36,6 +37,8 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
+from supervisely.project.project_settings import ProjectSettings
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -74,6 +77,7 @@ class ProjectInfo(NamedTuple):
     custom_data: dict
     backup_archive: dict
     team_id: int
+    settings: dict
 
     @property
     def image_preview_url(self):
@@ -165,6 +169,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.CUSTOM_DATA,
             ApiField.BACKUP_ARCHIVE,
             ApiField.TEAM_ID,
+            ApiField.SETTINGS,
         ]
 
     @staticmethod
@@ -405,12 +410,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 )
             )
 
-    def get_meta(self, id: int) -> Dict:
+    def get_meta(self, id: int, with_settings: bool = False) -> Dict:
         """
         Get ProjectMeta by Project ID.
 
         :param id: Project ID in Supervisely.
         :type id: int
+        :param with_settings: Add settings field to the meta. By default False.
+        :type with_settings: bool
+
         :return: ProjectMeta dict
         :rtype: :class:`dict`
         :Usage example:
@@ -446,8 +454,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #     "projectType":"images"
             # }
         """
-        response = self._api.post("projects.meta", {"id": id})
-        return response.json()
+        json_response = self._api.post("projects.meta", {"id": id}).json()
+
+        if with_settings is True:
+            json_settings = self.get_settings(id)
+            mtag_name = None
+
+            if json_settings["groupImagesByTagId"] is not None:
+                for tag in json_response["tags"]:
+                    if tag["id"] == json_settings["groupImagesByTagId"]:
+                        mtag_name = tag["name"]
+                        break
+
+            json_response[MetaJsonF.PROJECT_SETTINGS] = ProjectSettings(
+                multiview_enabled=json_settings["groupImages"],
+                multiview_tag_name=mtag_name,
+                multiview_tag_id=json_settings["groupImagesByTagId"],
+                multiview_is_synced=json_settings["groupImagesSync"],
+            ).to_json()
+
+        return json_response
 
     def clone_advanced(
         self,
@@ -561,7 +587,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """ """
         return "projects.editInfo"
 
-    def update_meta(self, id: int, meta: Union[Dict, ProjectMeta]) -> None:
+    def update_meta(self, id: int, meta: Union[ProjectMeta, Dict]) -> ProjectMeta:
         """
         Updates given Project with given ProjectMeta.
 
@@ -569,8 +595,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param meta: ProjectMeta object or ProjectMeta in JSON format.
         :type meta: :class:`ProjectMeta` or dict
-        :return: None
-        :rtype: :class:`NoneType`
+
+        :return: ProjectMeta
+        :rtype: :class: `ProjectMeta`
         :Usage example:
 
          .. code-block:: python
@@ -609,12 +636,41 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_meta_json = load_json_file(path_to_meta)
             api.project.update_meta(kiwis_proj_id, project_meta)
         """
-        meta_json = None
-        if isinstance(meta, ProjectMeta):
-            meta_json = meta.to_json()
-        else:
-            meta_json = meta
-        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: meta_json})
+
+        m = meta
+        if isinstance(meta, dict):
+            m = ProjectMeta.from_json(meta)
+
+        m.project_settings.validate(m)
+        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
+
+        if m.project_settings is not None:
+            s = m.project_settings
+            mtag_name = s.multiview_tag_name
+            mtag_id = s.multiview_tag_id
+            if mtag_name is None:
+                mtag_name = m.get_tag_name_by_id(s.multiview_tag_id)
+
+            if mtag_name is not None:  # (tag_id, tag_name)==(None, None) is OK but no group
+                new_m = ProjectMeta.from_json(self.get_meta(id))
+                group_tag = new_m.get_tag_meta(mtag_name)
+                mtag_id = None if group_tag is None else group_tag.sly_id
+
+            new_s = s.clone(
+                multiview_tag_name=mtag_name,
+                multiview_tag_id=mtag_id,
+            )
+            m = m.clone(project_settings=new_s)
+            self.update_settings(
+                id,
+                {
+                    "groupImages": new_s.multiview_enabled,
+                    "groupImagesByTagId": new_s.multiview_tag_id,
+                    "groupImagesSync": new_s.multiview_is_synced,
+                },
+            )
+
+        return m
 
     def _clone_api_method_name(self):
         """ """
@@ -853,6 +909,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ID: id, ApiField.CUSTOM_DATA: data, ApiField.SILENT: silent},
         )
         return response.json()
+
+    def get_settings(self, id: int) -> Dict[str, str]:
+        info = self._get_info_by_id(id, "projects.info")
+        return info.settings
 
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
         """
@@ -1464,7 +1524,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             sync=False,
         )
 
-    def remove_permanently(self, ids: Union[int, List]) -> dict:
+    def remove_permanently(
+        self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
+    ) -> List[dict]:
         """
         Delete permanently projects with given IDs from the Supervisely server.
 
@@ -1473,23 +1535,35 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]
-        :return: Response content in JSON format
-        :rtype: dict
+        :param batch_size: The number of entities that will be deleted by a single API call. This value must be in the range 1-50 inclusive, if you set a value out of range it will automatically adjust to the boundary values.
+        :type batch_size: int, optional
+        :param progress_cb: Function for control delete progress.
+        :type progress_cb: Callable, optional
+        :return: A list of response content in JSON format for each API call.
+        :rtype: List[dict]
         """
+        if batch_size > 50:
+            batch_size = 50
+        elif batch_size < 1:
+            batch_size = 1
 
         if isinstance(ids, int):
-            projects = [{"id": ids}]
+            projects = [{ApiField.ID: ids}]
         else:
-            projects = [{"id": id} for id in ids]
+            projects = [{ApiField.ID: id} for id in ids]
 
-        request_body = {
-            ApiField.PROJECTS: projects,
-            ApiField.PRESERVE_PROJECT_CARD: False,
-        }
-
-        response = self._api.post("projects.remove.permanently", request_body)
-
-        return response.json()
+        batches = [projects[i : i + batch_size] for i in range(0, len(projects), batch_size)]
+        responses = []
+        for batch in batches:
+            request_body = {
+                ApiField.PROJECTS: batch,
+                ApiField.PRESERVE_PROJECT_CARD: False,
+            }
+            response = self._api.post("projects.remove.permanently", request_body)
+            if progress_cb is not None:
+                progress_cb(len(batch))
+            responses.append(response.json())
+        return responses
 
     def get_list_all(
         self,

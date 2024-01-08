@@ -2473,7 +2473,7 @@ def _download_project(
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
     if only_image_tags is True:
@@ -2793,7 +2793,7 @@ def _download_project_optimized(
     project_id = project_info.id
     logger.info(f"Annotations are not cached (always download latest version from server)")
     project_fs = Project(project_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
     for dataset_info in api.dataset.get_list(project_id):
         dataset_name = dataset_info.name
