@@ -234,7 +234,6 @@ class VideoApi(RemoveableBulkModuleApi):
         self.frame = VideoFrameAPI(api)
         self.figure = VideoFigureApi(api)
         self.tag = VideoTagApi(api)
-        self._skip_name_validation = False
 
     @staticmethod
     def info_sequence():
@@ -954,9 +953,8 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(names) != len(items):
             raise RuntimeError('Can not match "names" and "items" lists, len(names) != len(items)')
 
-        if not self._skip_name_validation:
-            for name in names:
-                validate_ext(os.path.splitext(name)[1])
+        for name in names:
+            validate_ext(os.path.splitext(name)[1])
 
         for batch in batched(list(zip(names, items, metas))):
             images = []
@@ -1331,13 +1329,15 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         """
 
-        # -------------------------------------- Validation By Path -------------------------------------- #
-        self._skip_name_validation = True
+        for name, path in zip(names, paths):
+            file_ext = get_file_ext(path)
+            validate_ext(file_ext)
+            name_ext = os.path.splitext(name)[1]
+            if name_ext != file_ext:
+                raise ValueError(
+                    f"The name extension '{name_ext}' does not match the file extension '{file_ext}'"
+                )
 
-        for path in paths:
-            validate_ext(get_file_ext(path))
-
-        # ------------------------------------------------------------------------------------------------ #
         def path_to_bytes_stream(path):
             return open(path, "rb")
 
@@ -1397,7 +1397,6 @@ class VideoApi(RemoveableBulkModuleApi):
                 logger.warning(
                     "File skipped {!r}: error occurred during processing {!r}".format(name, str(e))
                 )
-        self._skip_name_validation = False
         return video_info_results
 
     def upload_path(

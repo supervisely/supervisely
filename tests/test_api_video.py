@@ -22,9 +22,12 @@ class TestVideoApi(unittest.TestCase):
         self.project_api = self.api.project
         self.dataset_api = self.api.dataset
         self.video_api = self.api.video
+        self.valid_name = "valid.mp4"
+        self.invalid_name_wo_ext = "invalid"
+        self.invalid_name_ext = "invalid.avi"
         # replace with paths for existing files
-        self.valid_ext = "/video.mp4"
-        self.invalid_ext = "/video.png"
+        self.path_valid_ext = "/video.mp4"
+        self.path_invalid_ext = "/video.png"
 
     def tearDown(self):
         self.api.project.remove(self.project_id)
@@ -61,23 +64,32 @@ class TestVideoApi(unittest.TestCase):
     def test_upload_paths(self):
         self.project_id = self.create_test_projects(1)[0]
         created_datase_id = self.create_test_datasets(1)[0]
+        # Verify if extension is supported (file path)
         with self.assertRaises(UnsupportedVideoFormat):
-            self.video_api.upload_paths(created_datase_id, ["invalid"], [self.invalid_ext])
+            self.video_api.upload_paths(
+                created_datase_id, [self.invalid_name_wo_ext], [self.path_invalid_ext]
+            )
+        # Verify if extensions in the file name and path match
+        with self.assertRaises(ValueError):
+            self.video_api.upload_paths(
+                created_datase_id, [self.invalid_name_ext], [self.path_valid_ext]
+            )
         self.assertIsNotNone(
-            self.video_api.upload_paths(created_datase_id, ["valid"], [self.valid_ext])
+            self.video_api.upload_paths(created_datase_id, [self.valid_name], [self.path_valid_ext])
         )
 
     def test_upload_links_with_valid_links(self):
         self.project_id = self.create_test_projects(1)[0]
         created_datase_id = self.create_test_datasets(1)[0]
-        video_info = self.video_api.upload_paths(created_datase_id, ["valid"], [self.valid_ext])[0]
+        video_info = self.video_api.upload_paths(
+            created_datase_id, [self.valid_name], [self.path_valid_ext]
+        )[0]
         hash = video_info.hash
-        name = "new_" + video_info.name + ".mp4"
+        name = "new_" + self.valid_name
         link_video_info = self.video_api.upload_hashes(created_datase_id, [name], [hash])[0]
         self.assertIsNotNone(link_video_info)
-        invalid_name = video_info.name + "_invalid"
         with self.assertRaises(UnsupportedVideoFormat):
-            self.video_api.upload_hashes(created_datase_id, [invalid_name], [hash])
+            self.video_api.upload_hashes(created_datase_id, [self.invalid_name_wo_ext], [hash])
 
 
 if __name__ == "__main__":
