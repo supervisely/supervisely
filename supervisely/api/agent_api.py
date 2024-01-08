@@ -184,4 +184,3 @@ class AgentApi(ModuleApi, ModuleWithStatus):
     def raise_for_status(self, status):
         """raise_for_status"""
         pass
-        pass
