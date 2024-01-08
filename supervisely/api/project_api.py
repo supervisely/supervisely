@@ -179,7 +179,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         UpdateableModule.__init__(self, api)
 
     def get_list(
-        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None, fields=[]
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -260,7 +260,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         return self.get_list_all_pages(
             "projects.list",
-            {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []},
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.FILTER: filters or [],
+                ApiField.FIELDS: fields,
+            },
         )
 
     def get_info_by_id(
@@ -365,7 +369,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     custom_data={},
             #                     backup_archive={})
         """
-        info = super().get_info_by_name(parent_id, name)
+
+        # "id"  "title" "description" "size" "readme" "workspaceId" "imagesCount" "datasetsCount" "type" "createdAt" "updatedAt" "customData" "groupId" "referenceImageUrl" "backupArchive"
+        # fields = json.dumps(self.info_sequence())
+        # fields = [str(elem) for elem in self.info_sequence()]
+
+        fields = ["title" if x == "name" else x for x in self.info_sequence()]
+        fields.pop(15)
+        # fields.pop(7)
+        fields = [x for x in fields if x != ApiField.ITEMS_COUNT]
+
+        info = super().get_info_by_name(parent_id, name, fields)
 
         self._check_project_info(
             info, name=name, expected_type=expected_type, raise_error=raise_error

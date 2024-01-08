@@ -786,7 +786,7 @@ class ModuleApi(ModuleApiBase):
         super().__init__(api)
         self._api = api
 
-    def get_info_by_name(self, parent_id, name):
+    def get_info_by_name(self, parent_id, name, fields=[]):
         """
         Get information about an entity by its name from the Supervisely server.
 
@@ -817,14 +817,10 @@ class ModuleApi(ModuleApiBase):
             print(info)
             # Output: ImageInfo(id=19369643, name='IMG_0315.jpeg', ...)
         """
-        fields = [
-            ApiField.ID,
-            ApiField.IMAGES_COUNT,
-        ]
 
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
-                parent_id, module_name
+                parent_id, module_name, fields
             ),
             name=name,
         )
