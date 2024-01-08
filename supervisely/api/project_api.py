@@ -179,7 +179,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         UpdateableModule.__init__(self, api)
 
     def get_list(
-        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None, fields=[]
+        self,
+        workspace_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        fields: List[str] = [],
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -188,8 +191,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
+        :param fields: The list of api fields which will be returned with the response.
+        :type fields: List[str]
+
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[ProjectInfo]`
+        :rtype: :class: `List[ProjectInfo]`
         :Usage example:
 
          .. code-block:: python

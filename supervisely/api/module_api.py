@@ -1,7 +1,7 @@
 # coding: utf-8
 from collections import namedtuple
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import requests
 
@@ -786,14 +786,17 @@ class ModuleApi(ModuleApiBase):
         super().__init__(api)
         self._api = api
 
-    def get_info_by_name(self, parent_id, name, fields=[]):
+    def get_info_by_name(self, parent_id: int, name: str, fields: List[str] = []):
         """
         Get information about an entity by its name from the Supervisely server.
 
         :param parent_id: ID of the parent entity.
         :type parent_id: int
-        :param name: Name of the entity for which the information is being retrieved
+        :param name: Name of the entity for which the information is being retrieved.
         :type name: str
+        :param fields: The list of api fields which will be returned with the response.
+        :type fields: List[str]
+
         :Usage example:
 
          .. code-block:: python
