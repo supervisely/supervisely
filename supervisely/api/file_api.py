@@ -842,10 +842,10 @@ class FileApi(ModuleApiBase):
         _progress_cb = progress_cb
         if progress_cb is not None and isinstance(progress_cb, tqdm):
             if not isinstance(progress_cb, tqdm_sly):
-                # progress_cb.close()
-                _progress_cb = tqdm_sly.from_original_tqdm(progress_cb).get_partial()
-                # progress_cb.close()
-                pass
+                progress_cb.clear()
+                new = tqdm_sly.from_original_tqdm(progress_cb)
+                _progress_cb = new.get_partial()
+                progress_cb.disable = True
             else:
                 _progress_cb = progress_cb.get_partial()
         if _progress_cb is None:
