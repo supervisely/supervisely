@@ -33,7 +33,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, tqdm_sly
 
 
 class FileInfo(NamedTuple):
@@ -841,7 +841,13 @@ class FileApi(ModuleApiBase):
 
         _progress_cb = progress_cb
         if progress_cb is not None and isinstance(progress_cb, tqdm):
-            _progress_cb = progress_cb.get_partial()
+            if not isinstance(progress_cb, tqdm_sly):
+                # progress_cb.close()
+                _progress_cb = tqdm_sly.from_original_tqdm(progress_cb).get_partial()
+                # progress_cb.close()
+                pass
+            else:
+                _progress_cb = progress_cb.get_partial()
         if _progress_cb is None:
             data = encoder
         else:

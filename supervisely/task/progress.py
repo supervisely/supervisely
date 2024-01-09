@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import inspect
+import io
 import math
 from functools import partial
-from typing import Optional
+from typing import Optional, Union
 
 from tqdm import tqdm
 
@@ -607,3 +608,47 @@ class tqdm_sly(tqdm, Progress):
             kwargs["total_cnt"] = None
 
         return kwargs
+
+    @classmethod
+    def from_original_tqdm(
+        cls,
+        orig_tqdm: tqdm,
+        file: Union[io.TextIOWrapper, io.StringIO] = None,
+        write_bytes: bool = False,
+        position: Optional[int] = None,
+    ):
+        # iterable=None, desc=None, total=None, leave=True, file=None,
+        #          ncols=None, mininterval=0.1, maxinterval=10.0, miniters=None,
+        #          ascii=None, disable=False, unit='it', unit_scale=False,
+        #          dynamic_ncols=False, smoothing=0.3, bar_format=None, initial=0,
+        #          position=None, postfix=None, unit_divisor=1000, write_bytes=False,
+        #          lock_args=None, nrows=None, colour=None, delay=0, gui=False,
+        kw = {
+            "iterable": orig_tqdm.iterable,
+            "desc": orig_tqdm.desc,
+            "total": orig_tqdm.total,
+            "leave": orig_tqdm.leave,
+            "file": file,
+            "ncols": orig_tqdm.ncols,
+            "mininterval": orig_tqdm.mininterval,
+            "maxinterval": orig_tqdm.maxinterval,
+            "miniters": orig_tqdm.miniters,
+            "ascii": orig_tqdm.ascii,
+            "disable": orig_tqdm.disable,
+            "unit": orig_tqdm.unit,
+            "unit_scale": orig_tqdm.unit_scale,
+            "dynamic_ncols": orig_tqdm.dynamic_ncols,
+            "smoothing": orig_tqdm.smoothing,
+            "bar_format": orig_tqdm.bar_format,
+            "initial": orig_tqdm.initial,
+            "position": position,
+            "postfix": orig_tqdm.postfix,
+            "unit_divisor": orig_tqdm.unit_divisor,
+            "write_bytes": write_bytes,
+            "lock_args": orig_tqdm.lock_args,
+            "nrows": orig_tqdm.nrows,
+            "colour": orig_tqdm.colour,
+            "delay": orig_tqdm.delay,
+            "gui": orig_tqdm.gui,
+        }
+        return cls(**kw)
