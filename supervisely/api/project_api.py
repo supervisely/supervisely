@@ -1528,10 +1528,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
     ) -> List[dict]:
         """
-        Delete permanently projects with given IDs from the Supervisely server.
-
         !!! WARNING !!!
         Be careful, this method deletes data from the database, recovery is not possible.
+
+        Delete permanently projects with given IDs from the Supervisely server.
+        All project IDs must belong to the same team.
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]

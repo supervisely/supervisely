@@ -530,10 +530,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
     ) -> List[dict]:
         """
-        Delete permanently datasets with given IDs from the Supervisely server.
-
         !!! WARNING !!!
         Be careful, this method deletes data from the database, recovery is not possible.
+
+        Delete permanently datasets with given IDs from the Supervisely server.
+        All dataset IDs must belong to the same team.
+        Therefore, it is necessary to sort IDs before calling this method.
+
 
         :param ids: IDs of datasets in Supervisely.
         :type ids: Union[int, List]
