@@ -646,7 +646,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
         )
         tmp = ProjectMeta.from_json(data=response.json())
-        m = tmp.clone(project_settings=m.project_settings)
+        m = tmp.clone(project_type=m.project_type, project_settings=m.project_settings)
 
         if m.project_settings is not None:
             s = m.project_settings
