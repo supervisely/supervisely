@@ -381,7 +381,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     backup_archive={})
         """
 
-        fields = [x for x in self.info_sequence() if x != ApiField.ITEMS_COUNT]
+        fields = [
+            x for x in self.info_sequence() if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS)
+        ]
 
         info = super().get_info_by_name(parent_id, name, fields)
         self._check_project_info(
