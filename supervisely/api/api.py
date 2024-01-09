@@ -83,21 +83,10 @@ class LoginInfo:
         self.server = server
 
     def __str__(self):
-        return f"LoginInfo(login={self.log_in}, server={self.server})"
+        return f"LoginInfo(login={self.login}, server={self.server})"
 
     def __repr__(self):
         return self.__str__()
-
-    def _try_authenticate_with_api_token(self):
-        """
-        Try to authenticate with api token.
-
-        :return: True if authentication was successful, False otherwise.
-        """
-        user_info = Api(self.server, self.api_token, ignore_task_id=True).user.get_my_info()
-        if user_info.login == self.log_in:
-            return True
-        return False
 
     @staticmethod
     def _validate_server_url(server) -> bool:
@@ -116,9 +105,9 @@ class LoginInfo:
                 pass
         return False
 
-    def _add_dict_to_login_info(self, decoded_token):
+    def _setattrs_login_info(self, decoded_token):
         """
-        Add decoded token to LoginInfo object.
+        Add decoded info to LoginInfo object.
 
         :param decoded_token: Decoded token.
         :type decoded_token: dict
@@ -150,7 +139,7 @@ class LoginInfo:
             data = response.json()
             jwt_token = data.get("token", None)
             decoded_token = jwt.decode(jwt_token, options={"verify_signature": False})
-            self._add_dict_to_login_info(decoded_token)
+            self._setattrs_login_info(decoded_token)
             return self
         else:
             raise RuntimeError(f"Failed to authenticate user: status code {response.status_code}")
@@ -626,15 +615,19 @@ class Api:
 
         login_info = LoginInfo(server, login, password).log_in()
         if os.path.isfile(SUPERVISELY_ENV_FILE):
-            e_server = get_key(SUPERVISELY_ENV_FILE, "SERVER_ADDRESS")
-            e_token = get_key(SUPERVISELY_ENV_FILE, "API_TOKEN")
-            api = Api(e_server, e_token, ignore_task_id=True)
-            e_user_info = api.user.get_my_info()
+            env_server = get_key(SUPERVISELY_ENV_FILE, "SERVER_ADDRESS")
+            env_token = get_key(SUPERVISELY_ENV_FILE, "API_TOKEN")
+            api = Api(env_server, env_token, ignore_task_id=True)
+            env_user_info = api.user.get_my_info()
 
             if not is_overwrite:
-                if login_info.log_in != e_user_info.login:
+                if (
+                    login_info.login != env_user_info.login
+                    and urlparse(server).netloc == urlparse(env_server).netloc
+                ):
                     raise RuntimeError(
-                        f"File {SUPERVISELY_ENV_FILE} already exists, but for other user with login '{e_user_info.login}'. Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
+                        f"File {SUPERVISELY_ENV_FILE} already exists, but for other user with login '{env_user_info.login}'. \
+Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
                     )
                 raise RuntimeError(
                     f"File {SUPERVISELY_ENV_FILE} already exists. Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
