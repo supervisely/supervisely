@@ -1,7 +1,7 @@
 # coding: utf-8
 from collections import namedtuple
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import requests
 
@@ -607,9 +607,7 @@ class ModuleApiBase(_JsonConvertibleModule):
 
         if progress_cb is not None:
             progress_cb(len(results))
-        if (
-            pages_count == 1 and len(first_response["entities"]) == total
-        ) or limit_exceeded is True:
+        if (pages_count == 1 and len(results) == total) or limit_exceeded is True:
             pass
         else:
             for page_idx in range(2, pages_count + 1):
@@ -788,14 +786,17 @@ class ModuleApi(ModuleApiBase):
         super().__init__(api)
         self._api = api
 
-    def get_info_by_name(self, parent_id, name):
+    def get_info_by_name(self, parent_id: int, name: str, fields: List[str] = []):
         """
         Get information about an entity by its name from the Supervisely server.
 
         :param parent_id: ID of the parent entity.
         :type parent_id: int
-        :param name: Name of the entity for which the information is being retrieved
+        :param name: Name of the entity for which the information is being retrieved.
         :type name: str
+        :param fields: The list of api fields which will be returned with the response.
+        :type fields: List[str]
+
         :Usage example:
 
          .. code-block:: python
@@ -822,14 +823,14 @@ class ModuleApi(ModuleApiBase):
 
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
-                parent_id, module_name
+                parent_id, module_name, fields
             ),
             name=name,
         )
 
-    def _get_info_by_filters(self, parent_id, filters):
+    def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
-        items = self.get_list(parent_id, filters)
+        items = self.get_list(parent_id, filters, fields)
         return _get_single_item(items)
 
     def get_list(self, parent_id, filters=None):
