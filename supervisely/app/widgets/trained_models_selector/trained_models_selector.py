@@ -7,6 +7,7 @@ import os
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.file_api import FileInfo
+from supervisely.nn.inference.checkpoints.checkpoint import CheckpointInfo
 
 WEIGHTS_DIR = "weights"
 
@@ -32,14 +33,16 @@ class TrainedModelsSelector(Widget):
             self,
             api: Api,
             team_id: int,
-            task_id: str,
-            task_path: str,
-            training_project_name: str,
-            artifacts_infos: List[FileInfo],
-            session_link: str,
+            checkpoint_info: CheckpointInfo,
         ):
             self._api = api
             self._team_id = team_id
+
+            task_id = checkpoint_info.session_id
+            task_path = checkpoint_info.session_path
+            training_project_name = checkpoint_info.training_project_name
+            artifacts = checkpoint_info.artifacts
+            session_link = checkpoint_info.session_link
 
             # col 1 task
             self._task_id = task_id
@@ -56,12 +59,18 @@ class TrainedModelsSelector(Widget):
             project_info_dummy = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
             )
-            self._training_project_info = self._api.project.get_info_by_id(project_info_dummy.id)
+
+            if project_info_dummy is not None:
+                self._training_project_info = self._api.project.get_info_by_id(
+                    project_info_dummy.id
+                )
+            else:
+                self._training_project_info = None
 
             # col 3 artifacts
-            self._artifacts_infos = artifacts_infos
-            self._artifacts_names = [artifact_info.name for artifact_info in self._artifacts_infos]
-            self._artifacts_paths = [artifact_info.path for artifact_info in self._artifacts_infos]
+            self._artifacts = artifacts
+            self._artifacts_names = [artifact_info["name"] for artifact_info in self._artifacts]
+            self._artifacts_paths = [artifact_info["path"] for artifact_info in self._artifacts]
 
             # col 4 session
             self._session_link = session_link
@@ -125,8 +134,11 @@ class TrainedModelsSelector(Widget):
 
         def _create_task_link(self) -> str:
             remote_path = os.path.join(self._task_path, "open_app.lnk")
-            task_file_id = self._api.file.get_info_by_path(self._team_id, remote_path).id
-            return f"{self._api.server_address}/files/{task_file_id}"
+            task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
+            if task_file is not None:
+                return f"{self._api.server_address}/files/{task_file.id}"
+            else:
+                return ""
 
         def _create_task_widget(self) -> Flexbox:
             task_widget = Container(
@@ -145,17 +157,24 @@ class TrainedModelsSelector(Widget):
             )
             return task_widget
 
-        def _create_training_project_widget(self) -> ProjectThumbnail:
-            training_project_widget = ProjectThumbnail(
-                self._training_project_info, remove_margins=True
-            )
+        def _create_training_project_widget(self) -> Union[ProjectThumbnail, Text]:
+            if self.training_project_info is not None:
+                training_project_widget = ProjectThumbnail(
+                    self._training_project_info, remove_margins=True
+                )
+            else:
+                training_project_widget = Text(
+                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was deleted</span>",
+                    "text",
+                    font_size=13,
+                )
             return training_project_widget
 
         def _create_artifacts_widget(self) -> Select:
             artifact_selector = Select(
                 [
-                    Select.Item(value=artifact_info.path, label=artifact_info.name)
-                    for artifact_info in self._artifacts_infos
+                    Select.Item(value=artifact_info["path"], label=artifact_info["name"])
+                    for artifact_info in self._artifacts
                 ]
             )
             return artifact_selector
@@ -169,16 +188,13 @@ class TrainedModelsSelector(Widget):
     def __init__(
         self,
         team_id: int,
-        training_app_directory: str,
-        task_type: str,
+        checkpoint_infos: List[CheckpointInfo],
         widget_id: str = None,
     ):
         self._api = Api.from_env()
 
         self._team_id = team_id
-        self._training_app_directory = training_app_directory
-        self._task_type = task_type
-        table_rows = self._generate_table_rows()
+        table_rows = self._generate_table_rows(checkpoint_infos)
 
         self._columns = columns
         self._rows = table_rows
@@ -204,39 +220,17 @@ class TrainedModelsSelector(Widget):
     def get_json_state(self) -> Dict:
         return {"selectedRow": 0}
 
-    def _generate_table_rows(self) -> List[Dict]:
+    def _generate_table_rows(self, checkpoint_infos: List[CheckpointInfo]) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
         table_rows = []
-        path_to_projects = os.path.join(self._training_app_directory, f"{self._task_type}")
-        project_files_infos = self._api.file.list(
-            self._team_id, path_to_projects, recursive=False, return_type="fileinfo"
-        )
-        for project_file_info in project_files_infos:
-            project_name = project_file_info.name
-            task_files_infos = self._api.file.list(
-                self._team_id, project_file_info.path, recursive=False, return_type="fileinfo"
+        for checkpoint_info in checkpoint_infos:
+            table_rows.append(
+                TrainedModelsSelector.ModelRow(
+                    api=self._api,
+                    team_id=self._team_id,
+                    checkpoint_info=checkpoint_info,
+                )
             )
-            for task_file_info in task_files_infos:
-                if task_file_info.name == "images":
-                    continue
-                task_id = task_file_info.name
-                session_link = f"{self._api.server_address}/apps/sessions/{task_id}"
-                paths_to_artifacts = os.path.join(task_file_info.path, WEIGHTS_DIR)
-                artifacts_infos = self._api.file.list(
-                    self._team_id, paths_to_artifacts, recursive=False, return_type="fileinfo"
-                )
-
-                table_rows.append(
-                    TrainedModelsSelector.ModelRow(
-                        api=self._api,
-                        team_id=self._team_id,
-                        task_id=task_id,
-                        task_path=task_file_info.path,
-                        training_project_name=project_name,
-                        artifacts_infos=artifacts_infos,
-                        session_link=session_link,
-                    )
-                )
         return table_rows
 
     def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
