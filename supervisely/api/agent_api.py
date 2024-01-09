@@ -134,7 +134,28 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
             filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
         """
-        return self.get_list_all_pages("agents.list", {"teamId": team_id, "filter": filters or []})
+        return self.get_list_all_pages(
+            "agents.list", {"teamId": team_id, "filter": filters or []}
+        )
+
+    def get_list_available(
+        self,
+        team_id,
+        show_public: bool = False,
+        show_only_running: bool = True,
+        has_gpu: bool = False,
+    ):
+        response = self._api.post(
+            "agents.available",
+            {
+                "teamId": team_id,
+                "withoutPublic": not show_public,
+                "anyStatus": not show_only_running,
+                "needGPU": has_gpu,
+            },
+        )
+        r = response.json()
+        return r
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """

@@ -1,22 +1,23 @@
 from __future__ import annotations
+
 import copy
 from typing import List, Literal, Optional
-from supervisely.app.widgets import Widget
-from supervisely.app.content import StateJson
 
+from supervisely.app.content import StateJson
+from supervisely.app.widgets import Widget
 from supervisely.app.widgets.nodes_flow.option_components import (
-    OptionComponent,
-    HtmlOptionComponent,
-    WidgetOptionComponent,
     ButtonOptionComponent,
     CheckboxOptionComponent,
+    HtmlOptionComponent,
     InputOptionComponent,
     IntegerOptionComponent,
     NumberOptionComponent,
+    OptionComponent,
     SelectOptionComponent,
+    SidebarNodeInfoOptionComponent,
     SliderOptionComponent,
     TextOptionComponent,
-    SidebarNodeInfoOptionComponent,
+    WidgetOptionComponent,
 )
 
 
@@ -129,7 +130,7 @@ class NodesFlow(Widget):
                     "icon": {
                         "backgroundColor": self._icon_background_color,
                         "class": self._icon,
-                    }
+                    },
                 },
             }
 
@@ -143,6 +144,7 @@ class NodesFlow(Widget):
         CONTEXT_MENU_CLICKED = "context_menu_item_click_cb"
         SIDEBAR_TOGGLED = "sidebar_toggled_cb"
         ITEM_DROPPED = "item_dropped_cb"
+        NODE_REMOVED = "node_removed_cb"
 
     def __init__(
         self,
@@ -294,6 +296,18 @@ class NodesFlow(Widget):
         @server.post(route_path)
         def _click():
             item = StateJson()[self.widget_id]["droppedItem"]
+            func(item)
+
+        return _click
+
+    def node_removed(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.NODE_REMOVED)
+        server = self._sly_app.get_server()
+        self._node_removed_handled = True
+
+        @server.post(route_path)
+        def _click():
+            item = StateJson()[self.widget_id]["removedNode"]
             func(item)
 
         return _click
