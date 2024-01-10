@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, List
 import requests
 
 from supervisely._utils import batched, camel_to_snake
-from supervisely.api.project_api import ProjectApi
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -831,6 +830,8 @@ class ModuleApi(ModuleApiBase):
 
     def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
+        from supervisely.api.project_api import ProjectApi
+
         if isinstance(self, ProjectApi):
             items = self.get_list(parent_id, filters, fields)
         else:
