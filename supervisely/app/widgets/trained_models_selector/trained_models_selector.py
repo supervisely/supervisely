@@ -1,12 +1,18 @@
-from datetime import datetime
-from typing import List, Dict, Union, Literal
-from supervisely.app.jinja2 import create_env
-from supervisely.app.content import DataJson, StateJson
-from supervisely.app.widgets import Widget, ProjectThumbnail, Select, Text, Container, Flexbox
 import os
+from datetime import datetime
+from typing import Dict, List, Union
+
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
-from supervisely.api.file_api import FileInfo
+from supervisely.app.content import DataJson, StateJson
+from supervisely.app.widgets import (
+    Container,
+    Flexbox,
+    ProjectThumbnail,
+    Select,
+    Text,
+    Widget,
+)
 from supervisely.nn.inference.checkpoints.checkpoint import CheckpointInfo
 
 WEIGHTS_DIR = "weights"
@@ -55,17 +61,10 @@ class TrainedModelsSelector(Widget):
             # col 2 project
             self._training_project_name = training_project_name
 
-            # need optimization
-            project_info_dummy = self._api.project.get_info_by_name(
+            project_info = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
             )
-
-            if project_info_dummy is not None:
-                self._training_project_info = self._api.project.get_info_by_id(
-                    project_info_dummy.id
-                )
-            else:
-                self._training_project_info = None
+            self._training_project_info = project_info
 
             # col 3 artifacts
             self._artifacts = artifacts
