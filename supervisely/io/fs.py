@@ -119,7 +119,7 @@ def remove_junk_from_dir(dir: str) -> List[str]:
 
 
 def list_dir_recursively(
-    dir: str, include_subdirs: bool = False, use_global_paths: bool = False
+    dir: str, include_subdirs: bool = False, use_global_paths: bool = False, filter_fn=None
 ) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
@@ -130,6 +130,8 @@ def list_dir_recursively(
     :type include_subdirs: bool
     :param use_global_paths: If True, absolute paths will be returned instead of relative ones.
     :type use_global_paths: bool
+    :param filter_fn: Function with a single argument that determines whether to keep a given file path. If None, all paths will be returned. Function must return bool value.
+    :type filter_fn:
     :returns: List containing file paths.
     :rtype: :class:`List[str]`
     :Usage example:
@@ -152,16 +154,18 @@ def list_dir_recursively(
                 if not use_global_paths
                 else os.path.abspath(file_path)
             )
-            all_files.append(file_path)
+            if filter_fn is None or filter_fn(file_path):
+                all_files.append(file_path)
         if include_subdirs:
             for name in dirs:
-                dir_path = os.path.join(root, name)
-                dir_path = (
-                    os.path.relpath(dir_path, dir)
+                subdir_file_path = os.path.join(root, name)
+                subdir_file_path = (
+                    os.path.relpath(subdir_file_path, dir)
                     if not use_global_paths
-                    else os.path.abspath(dir_path)
+                    else os.path.abspath(subdir_file_path)
                 )
-                all_files.append(dir_path)
+                if filter_fn is None or filter_fn(subdir_file_path):
+                    all_files.append(subdir_file_path)
     return all_files
 
 
@@ -710,7 +714,9 @@ def get_file_hash(path: str) -> str:
         from supervisely.io.fs import get_file_hash
         hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
-    return get_bytes_hash(open(path, "rb").read())
+    with open(path, "rb") as file:
+        file_bytes = file.read()
+        return get_bytes_hash(file_bytes)
 
 
 def tree(dir_path: str) -> str:
