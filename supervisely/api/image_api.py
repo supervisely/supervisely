@@ -46,6 +46,8 @@ from supervisely.io.fs import (
     get_file_ext,
     get_file_hash,
     get_file_name,
+    get_file_name_with_ext,
+    list_dir_recursively,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
@@ -889,23 +891,23 @@ class ImageApi(RemoveableBulkModuleApi):
         encoder = MultipartEncoder(fields=content_dict)
         resp = self._api.post("images.bulk.upload", encoder)
 
-        resp_list = json.loads(resp.text)
-        remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
-        if len(remote_hashes) != len(hashes_items_to_upload):
-            problem_items = [
-                (hsh, item, resp["errors"])
-                for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
-                if resp.get("errors")
-            ]
-            logger.warn(
-                "Not all images were uploaded within request.",
-                extra={
-                    "total_cnt": len(hashes_items_to_upload),
-                    "ok_cnt": len(remote_hashes),
-                    "items": problem_items,
-                },
-            )
-        return remote_hashes
+        with json.loads(resp.text) as resp_list:
+            remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
+            if len(remote_hashes) != len(hashes_items_to_upload):
+                problem_items = [
+                    (hsh, item, resp["errors"])
+                    for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
+                    if resp.get("errors")
+                ]
+                logger.warn(
+                    "Not all images were uploaded within request.",
+                    extra={
+                        "total_cnt": len(hashes_items_to_upload),
+                        "ok_cnt": len(remote_hashes),
+                        "items": problem_items,
+                    },
+                )
+            return remote_hashes
 
     def _upload_data_bulk(
         self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None
@@ -2775,9 +2777,84 @@ class ImageApi(RemoveableBulkModuleApi):
         """
 
         images_in_dataset = self.get_list(dataset_id)
-        used_names = [image_info.name for image_info in images_in_dataset]
+        used_names = {image_info.name for image_info in images_in_dataset}
         new_names = [
             generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
             for name in names
         ]
         return new_names
+
+    def upload_dir(
+        self,
+        dataset_id: int,
+        dir_path: str,
+        progress_cb: Optional[Callable] = None,
+        include_subdirs: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> List[ImageInfo]:
+        """
+        Uploads all images with supported extensions from given directory to Supervisely.
+        Optionally, uploads images from subdirectories of given directory.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_path: Path to directory with images.
+        :type dir_path: str
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param include_subdirs: If True uploads images from subdirectories of given directory, otherwise only images from given directory.
+        :type include_subdirs: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :return: List of uploaded images infos
+        :rtype: List[ImageInfo]
+        """
+
+        paths = list_dir_recursively(
+            dir_path, include_subdirs, True, filter_fn=sly_image.is_valid_format
+        )
+        names = [get_file_name_with_ext(path) for path in paths]
+
+        image_infos = self.upload_paths(
+            dataset_id,
+            names,
+            paths,
+            progress_cb=progress_cb,
+            change_name_if_conflict=change_name_if_conflict,
+        )
+        return image_infos
+
+    def upload_dirs(
+        self,
+        dirs: List[str],
+        dataset_id: int,
+        progress_cb: Optional[Callable] = None,
+        include_subdirs: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> List[ImageInfo]:
+        """
+        Uploads all images with supported extensions from given directories to Supervisely.
+        Optionally, uploads images from subdirectories of given directories.
+
+        :param dirs: List of paths to directories with images.
+        :type dirs: List[str]
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param include_subdirs: If True uploads images from subdirectories of given directories, otherwise only images from given directories.
+        :type include_subdirs: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :return: List of uploaded images infos
+        :rtype: List[ImageInfo]
+        """
+
+        image_infos = []
+        for dir_path in dirs:
+            image_infos.extend(
+                self.upload_dir(
+                    dataset_id, dir_path, progress_cb, include_subdirs, change_name_if_conflict
+                )
+            )
+        return image_infos

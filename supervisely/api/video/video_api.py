@@ -31,8 +31,9 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
-    get_file_name,
+    get_file_name_with_ext,
     get_file_size,
+    list_dir_recursively,
 )
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -40,6 +41,7 @@ from supervisely.video.video import (
     gen_video_stream_name,
     get_info,
     get_video_streams,
+    is_valid_format,
     validate_ext,
 )
 
@@ -1538,23 +1540,23 @@ class VideoApi(RemoveableBulkModuleApi):
         else:
             resp = self._api.post("videos.bulk.upload", encoder)
 
-        resp_list = json.loads(resp.text)
-        remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
-        if len(remote_hashes) != len(hashes_items_to_upload):
-            problem_items = [
-                (hsh, item, resp["errors"])
-                for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
-                if resp.get("errors")
-            ]
-            logger.warn(
-                "Not all images were uploaded within request.",
-                extra={
-                    "total_cnt": len(hashes_items_to_upload),
-                    "ok_cnt": len(remote_hashes),
-                    "items": problem_items,
-                },
-            )
-        return remote_hashes
+        with json.loads(resp.text) as resp_list:
+            remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
+            if len(remote_hashes) != len(hashes_items_to_upload):
+                problem_items = [
+                    (hsh, item, resp["errors"])
+                    for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
+                    if resp.get("errors")
+                ]
+                logger.warn(
+                    "Not all images were uploaded within request.",
+                    extra={
+                        "total_cnt": len(hashes_items_to_upload),
+                        "ok_cnt": len(remote_hashes),
+                        "items": problem_items,
+                    },
+                )
+            return remote_hashes
 
     def _upload_data_bulk(
         self,
@@ -2100,9 +2102,82 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         videos_in_dataset = self.get_list(dataset_id)
-        used_names = [video_info.name for video_info in videos_in_dataset]
+        used_names = {video_info.name for video_info in videos_in_dataset}
         new_names = [
             generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
             for name in names
         ]
         return new_names
+
+    def upload_dir(
+        self,
+        dataset_id: int,
+        dir_path: str,
+        progress_cb: Optional[Callable] = None,
+        include_subdirs: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> List[VideoInfo]:
+        """
+        Uploads all videos with supported extensions from given directory to Supervisely.
+        Optionally, uploads videos from subdirectories of given directory.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_path: Path to directory with videos.
+        :type dir_path: str
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param include_subdirs: If True, will upload videos from subdirectories of given directory. Otherwise, will upload videos only from given directory.
+        :type include_subdirs: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and videos with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :return: List of uploaded videos infos
+        :rtype: List[ImageInfo]
+        """
+
+        paths = list_dir_recursively(dir_path, include_subdirs, True, filter_fn=is_valid_format)
+        names = [get_file_name_with_ext(path) for path in paths]
+
+        image_infos = self.upload_paths(
+            dataset_id,
+            names,
+            paths,
+            progress_cb=progress_cb,
+            change_name_if_conflict=change_name_if_conflict,
+        )
+        return image_infos
+
+    def upload_dirs(
+        self,
+        dirs: List[str],
+        dataset_id: int,
+        progress_cb: Optional[Callable] = None,
+        include_subdirs: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
+    ) -> List[VideoInfo]:
+        """
+        Uploads all videos with supported extensions from given directories to Supervisely.
+        Optionally, uploads videos from subdirectories of given directories.
+
+        :param dirs: List of paths to directories with videos.
+        :type dirs: List[str]
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param include_subdirs: If True, will upload videos from subdirectories of given directories. Otherwise, will upload videos only from given directories.
+        :type include_subdirs: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and videos with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :return: List of uploaded videos infos
+        :rtype: List[ImageInfo]
+        """
+
+        image_infos = []
+        for dir_path in dirs:
+            image_infos.extend(
+                self.upload_dir(
+                    dataset_id, dir_path, progress_cb, include_subdirs, change_name_if_conflict
+                )
+            )
+        return image_infos
