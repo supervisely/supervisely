@@ -1168,7 +1168,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         job_meta = ProjectMeta(obj_classes=job_classes, tag_metas=job_tags)
         return job_meta
 
-    def get_annotation(self, id: int, image_id: int) -> Annotation:
+    def get_annotation_by_image_id(self, id: int, image_id: int) -> Annotation:
         """
         Returns annotation for given image id from labeling job with given id.
 
