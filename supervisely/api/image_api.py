@@ -978,7 +978,7 @@ class ImageApi(RemoveableBulkModuleApi):
         name: str,
         path: str,
         meta: Optional[Dict] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -991,8 +991,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str
         :param meta: Image metadata.
         :type meta: dict, optional
-        :param rename_if_exists: If True, will rename image if image with given name already exists in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename image if image with given name already exists in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1009,7 +1009,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         return self.upload_paths(
-            dataset_id, [name], [path], metas=metas, rename_if_exists=rename_if_exists
+            dataset_id, [name], [path], metas=metas, change_name_if_conflict=change_name_if_conflict
         )[0]
 
     def upload_paths(
@@ -1019,7 +1019,7 @@ class ImageApi(RemoveableBulkModuleApi):
         paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1034,8 +1034,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
-        :param rename_if_exists: If True, will rename images if images with given names already exist in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename images if images with given names already exist in dataset.
+        :type change_name_if_conflict: bool, optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1060,7 +1060,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, rename_if_exists=rename_if_exists
+            dataset_id, names, hashes, metas=metas, change_name_if_conflict=change_name_if_conflict
         )
 
     def upload_np(
@@ -1069,7 +1069,7 @@ class ImageApi(RemoveableBulkModuleApi):
         name: str,
         img: np.ndarray,
         meta: Optional[Dict] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Upload given Image in numpy format with given name to Dataset.
@@ -1082,8 +1082,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type img: np.ndarray
         :param meta: Image metadata.
         :type meta: dict, optional
-        :param rename_if_exists: If True, will rename image if image with given name already exists in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename image if image with given name already exists in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1101,7 +1101,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         return self.upload_nps(
-            dataset_id, [name], [img], metas=metas, rename_if_exists=rename_if_exists
+            dataset_id, [name], [img], metas=metas, change_name_if_conflict=change_name_if_conflict
         )[0]
 
     def upload_nps(
@@ -1111,7 +1111,7 @@ class ImageApi(RemoveableBulkModuleApi):
         imgs: List[np.ndarray],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1126,8 +1126,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
-        :param rename_if_exists: If True, will rename images if images with given names already exist in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename images if images with given names already exist in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1166,7 +1166,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, rename_if_exists=rename_if_exists
+            dataset_id, names, hashes, metas=metas, change_name_if_conflict=change_name_if_conflict
         )
 
     def upload_link(
@@ -1176,7 +1176,7 @@ class ImageApi(RemoveableBulkModuleApi):
         link: str,
         meta: Optional[Dict] = None,
         force_metadata_for_links=True,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Uploads Image from given link to Dataset.
@@ -1191,8 +1191,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
-        :param rename_if_exists: If True, will rename image if image with given name already exists in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename image if image with given name already exists in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1217,7 +1217,7 @@ class ImageApi(RemoveableBulkModuleApi):
             [link],
             metas=metas,
             force_metadata_for_links=force_metadata_for_links,
-            rename_if_exists=rename_if_exists,
+            change_name_if_conflict=change_name_if_conflict,
         )[0]
 
     def upload_links(
@@ -1230,7 +1230,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
         skip_validation: Optional[bool] = False,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1249,8 +1249,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
-        :param rename_if_exists: If True, will rename images if images with given names already exist in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename images if images with given names already exist in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1280,7 +1280,7 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
-            rename_if_exists=rename_if_exists,
+            change_name_if_conflict=change_name_if_conflict,
         )
 
     def upload_hash(
@@ -1289,7 +1289,7 @@ class ImageApi(RemoveableBulkModuleApi):
         name: str,
         hash: str,
         meta: Optional[Dict] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Upload Image from given hash to Dataset.
@@ -1302,8 +1302,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Image metadata.
         :type meta: dict, optional
-        :param rename_if_exists: If True, will rename image if image with given name already exists in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename image if image with given name already exists in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1347,7 +1347,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         return self.upload_hashes(
-            dataset_id, [name], [hash], metas=metas, rename_if_exists=rename_if_exists
+            dataset_id, [name], [hash], metas=metas, change_name_if_conflict=change_name_if_conflict
         )[0]
 
     def upload_hashes(
@@ -1359,7 +1359,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1378,8 +1378,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
-        :param rename_if_exists: If True, will rename images if images with given names already exist in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename images if images with given names already exist in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1420,7 +1420,7 @@ class ImageApi(RemoveableBulkModuleApi):
             metas=metas,
             batch_size=batch_size,
             skip_validation=skip_validation,
-            rename_if_exists=rename_if_exists,
+            change_name_if_conflict=change_name_if_conflict,
         )
 
     def upload_id(
@@ -1429,7 +1429,7 @@ class ImageApi(RemoveableBulkModuleApi):
         name: str,
         id: int,
         meta: Optional[Dict] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -1442,8 +1442,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Image metadata.
         :type meta: dict, optional
-        :param rename_if_exists: If True, will rename image if image with given name already exists in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename image if image with given name already exists in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1487,7 +1487,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         return self.upload_ids(
-            dataset_id, [name], [id], metas=metas, rename_if_exists=rename_if_exists
+            dataset_id, [name], [id], metas=metas, change_name_if_conflict=change_name_if_conflict
         )[0]
 
     def upload_ids(
@@ -1501,7 +1501,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: bool = True,
         infos: List[ImageInfo] = None,
         skip_validation: Optional[bool] = False,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1524,8 +1524,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type infos: List[ImageInfo], optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
-        :param rename_if_exists: If True, will rename images if images with given names already exist in dataset.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True, will rename images if images with given names already exist in dataset.
+        :type change_name_if_conflict: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1595,7 +1595,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 batch_size=batch_size,
                 force_metadata_for_links=force_metadata_for_links,
                 skip_validation=skip_validation,
-                rename_if_exists=rename_if_exists,
+                change_name_if_conflict=change_name_if_conflict,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1609,7 +1609,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 metas=hashes_metas,
                 batch_size=batch_size,
                 skip_validation=skip_validation,
-                rename_if_exists=rename_if_exists,
+                change_name_if_conflict=change_name_if_conflict,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1627,7 +1627,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size=50,
         force_metadata_for_links=True,
         skip_validation=False,
-        rename_if_exists=False,
+        change_name_if_conflict=False,
     ):
         """ """
         results = []
@@ -1637,20 +1637,8 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(names) != len(items):
             raise ValueError('Can not match "names" and "items" lists, len(names) != len(items)')
 
-        if rename_if_exists is True:
-            new_names = []
-            for name in names:
-                new_name = self.get_free_name(dataset_id, name)
-                if new_name != name:
-                    if new_name in names or new_name in new_names:
-                        file_name = get_file_name(new_name)
-                        file_ext = get_file_ext(new_name)
-                        file_name = file_name + "_deduplicated"
-                        new_name = file_name + file_ext
-                    new_names.append(new_name)
-                else:
-                    new_names.append(name)
-            names = new_names
+        if change_name_if_conflict is True:
+            names = self.get_free_names(dataset_id, names)
 
         if metas is None:
             metas = [{}] * len(names)
@@ -2578,6 +2566,8 @@ class ImageApi(RemoveableBulkModuleApi):
     def remove(self, image_id: int):
         """
         Remove image from supervisely by id.
+        All image IDs must belong to the same dataset.
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param image_id: Images ID in Supervisely.
         :type image_id: int
@@ -2615,7 +2605,7 @@ class ImageApi(RemoveableBulkModuleApi):
         image_name: str,
         channels: Optional[List[np.ndarray]] = None,
         rgb_images: Optional[List[str]] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """Uploads multispectral image to Supervisely, if channels are provided, they will
         be uploaded as separate images. If rgb_images are provided, they will be uploaded without
@@ -2629,8 +2619,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type channels: List[np.ndarray], optional
         :param rgb_images: list of paths to RGB images which will be uploaded as is
         :type rgb_images: List[str], optional
-        :param rename_if_exists: if True, will add suffix to the end of the image name if image with the same name already exists in the dataset
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: if True, will add suffix to the end of the image name if image with the same name already exists in the dataset
+        :type change_name_if_conflict: bool, optional
         :return: list of uploaded images infos
         :rtype: List[ImageInfo]
         :Usage example:
@@ -2678,7 +2668,7 @@ class ImageApi(RemoveableBulkModuleApi):
             names.append(f"{image_basename}_{i}.png")
 
         image_infos = self.upload_nps(
-            dataset_id, names, nps_for_upload, rename_if_exists=rename_if_exists
+            dataset_id, names, nps_for_upload, change_name_if_conflict=change_name_if_conflict
         )
         image_ids = [image_info.id for image_info in image_infos]
 
@@ -2693,7 +2683,7 @@ class ImageApi(RemoveableBulkModuleApi):
         paths: List[str],
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        rename_if_exists: Optional[bool] = False,
+        change_name_if_conflict: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
@@ -2712,8 +2702,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param rename_if_exists: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
-        :type rename_if_exists: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -2760,7 +2750,7 @@ class ImageApi(RemoveableBulkModuleApi):
             paths=paths,
             progress_cb=progress_cb,
             metas=metas,
-            rename_if_exists=rename_if_exists,
+            change_name_if_conflict=change_name_if_conflict,
         )
 
         anns = [Annotation((info.height, info.width)).add_tag(group_tag) for info in image_infos]
@@ -2771,3 +2761,23 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
         )
         return uploaded_image_infos
+
+    def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:
+        """
+        Returns list of free names for given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :return: List of free names.
+        :rtype: List[str]
+        """
+
+        images_in_dataset = self.get_list(dataset_id)
+        used_names = [image_info.name for image_info in images_in_dataset]
+        new_names = [
+            generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
+            for name in names
+        ]
+        return new_names
