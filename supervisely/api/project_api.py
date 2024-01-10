@@ -184,7 +184,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         UpdateableModule.__init__(self, api)
 
     def get_list(
-        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self,
+        workspace_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        fields: List[str] = [],
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -193,8 +196,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
+        :param fields: The list of api fields which will be returned with the response.
+        :type fields: List[str]
+
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[ProjectInfo]`
+        :rtype: :class: `List[ProjectInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -265,7 +271,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         return self.get_list_all_pages(
             "projects.list",
-            {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []},
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.FILTER: filters or [],
+                ApiField.FIELDS: fields,
+            },
         )
 
     def get_info_by_id(
@@ -370,7 +380,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     custom_data={},
             #                     backup_archive={})
         """
-        info = super().get_info_by_name(parent_id, name)
+
+        fields = [
+            x for x in self.info_sequence() if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS)
+        ]
+
+        info = super().get_info_by_name(parent_id, name, fields)
         self._check_project_info(
             info, name=name, expected_type=expected_type, raise_error=raise_error
         )
