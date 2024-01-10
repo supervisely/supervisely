@@ -189,6 +189,31 @@ def validate_format(path: str) -> None:
         )
 
 
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if a given file has a supported format.
+
+    :param path: Path to file.
+    :type path: str
+    :return: True if file format in list of supported images formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            sly.image.is_valid_format('/images/new_image.jpeg') # True
+            sly.image.is_valid_format('/images/016_img.py') # False
+    """
+
+    try:
+        validate_format(path)
+        return True
+    except (UnsupportedImageFormat, ImageReadException):
+        return False
+
+
 def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
     """
     Loads an image from the specified file and returns it in RGB format.
