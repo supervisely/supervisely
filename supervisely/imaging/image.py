@@ -25,7 +25,18 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = [".jpg", ".jpeg", ".mpo", ".bmp", ".png", ".webp", ".tiff", ".tif", ".nrrd"]
+SUPPORTED_IMG_EXTS = [
+    ".jpg",
+    ".jpeg",
+    ".mpo",
+    ".bmp",
+    ".png",
+    ".webp",
+    ".tiff",
+    ".tif",
+    ".nrrd",
+    ".jfif",
+]
 DEFAULT_IMG_EXT = ".png"
 
 
