@@ -3,15 +3,19 @@
 
 from __future__ import annotations
 
+import datetime
+import gc
+import glob
 import json
 import os
+import shutil
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, Optional
 from urllib.parse import urljoin, urlparse
 
 import jwt
 import requests
-from dotenv import get_key, load_dotenv
+from dotenv import load_dotenv, set_key
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -58,56 +62,50 @@ TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 
-class LoginInfo:
+class UserSession:
     """
-    LoginInfo object contains login response info.
+    UserSession object contains info that is returned after user authentication.
 
-    :param login: User login.
-    :type login: str
-    :param password: User password.
-    :type password: str
     :param server: Server url.
     :type server: str
     :raises: :class:`RuntimeError`, if server url is invalid.
     """
 
-    def __init__(self, server: str, login: str, password: str):
-        self.login = login
-        self.password = password
+    def __init__(self, server_address: str):
         self.api_token = None
         self.team_id = None
         self.workspace_id = None
 
-        if not self._validate_server_url(server):
-            raise RuntimeError(f"Invalid server url: {server}")
-        self.server = server
+        if not self._validate_server_url(server_address):
+            raise RuntimeError(f"Invalid server url: {server_address}")
+        self.server_address = server_address
 
     def __str__(self):
-        return f"LoginInfo(login={self.login}, server={self.server})"
+        return f"UserSession(server={self.server_address})"
 
     def __repr__(self):
         return self.__str__()
 
     @staticmethod
-    def _validate_server_url(server) -> bool:
+    def _validate_server_url(server_address) -> bool:
         """
         Validate server url.
 
         :return: True if server url is valid, False otherwise.
         """
-        result = urlparse(server)
+        result = urlparse(server_address)
         if all([result.scheme, result.netloc]):
             try:
-                response = requests.get(server)
+                response = requests.get(server_address)
                 if response.status_code == 200:
                     return True
             except requests.RequestException:
                 pass
         return False
 
-    def _setattrs_login_info(self, decoded_token):
+    def _setattrs_user_session(self, decoded_token):
         """
-        Add decoded info to LoginInfo object.
+        Add decoded info to UserSession object.
 
         :param decoded_token: Decoded token.
         :type decoded_token: dict
@@ -125,21 +123,27 @@ class LoginInfo:
                 key = camel_to_snake(key)
                 setattr(self, key, value)
 
-    def log_in(self) -> LoginInfo:
+    def log_in(self, login: str, password: str) -> UserSession:
         """
-        Authenticate user and return LoginInfo object with all user info.
+        Authenticate user and return UserSession object with decoded info from JWT token.
 
-        :return: LoginInfo object
-        :rtype: :class:`LoginInfo`
+        :param login: User login.
+        :type login: str
+        :param password: User password.
+        :type password: str
+        :return: UserSession object
+        :rtype: :class:`UserSession`
         """
-        login_url = urljoin(self.server, "api/account")
-        payload = {"login": self.login, "password": self.password}
+        login_url = urljoin(self.server_address, "api/account")
+        payload = {"login": login, "password": password}
         response = requests.post(login_url, data=payload)
+        del password
+        gc.collect()
         if response.status_code == 200:
             data = response.json()
             jwt_token = data.get("token", None)
             decoded_token = jwt.decode(jwt_token, options={"verify_signature": False})
-            self._setattrs_login_info(decoded_token)
+            self._setattrs_user_session(decoded_token)
             return self
         else:
             raise RuntimeError(f"Failed to authenticate user: status code {response.status_code}")
@@ -585,13 +589,17 @@ class Api:
 
     @classmethod
     def from_credentials(
-        cls, server: str, login: str, password: str, is_overwrite: bool = False
+        cls, server_address: str, login: str, password: str, is_overwrite: bool = False
     ) -> Api:
         """
-        Create Api object using credentials.
+        Create Api object using credentials and save them to ".env" file.
+        If ".env" file already exists, you can overwrite it. In this case, ".bak" file will be created automatically.
+        You can have only one ".env" file and not more than 5 backups.
+        This method can be used also to update ".env" file.
 
-        :param server: Supervisely server url.
-        :type server: str
+
+        :param server_address: Supervisely server url.
+        :type server_address: str
         :param login: User login.
         :type login: str
         :param password: User password.
@@ -613,35 +621,57 @@ class Api:
                 api = sly.Api.from_credentials(server_address, login, password)
         """
 
-        login_info = LoginInfo(server, login, password).log_in()
+        session = UserSession(server_address).log_in(login, password)
+        del password
+        gc.collect()
+
         if os.path.isfile(SUPERVISELY_ENV_FILE):
-            env_server = get_key(SUPERVISELY_ENV_FILE, "SERVER_ADDRESS")
-            env_token = get_key(SUPERVISELY_ENV_FILE, "API_TOKEN")
-            api = Api(env_server, env_token, ignore_task_id=True)
-            env_user_info = api.user.get_my_info()
+            load_dotenv(SUPERVISELY_ENV_FILE)
+            api = cls.from_env()
+            env_user_login = api.user.get_my_info().login
 
             if not is_overwrite:
+                prefix = f"File {SUPERVISELY_ENV_FILE} already exists, but for other"
+                postfix = (
+                    "Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
+                )
                 if (
-                    login_info.login != env_user_info.login
-                    and urlparse(server).netloc == urlparse(env_server).netloc
+                    login != env_user_login
+                    and urlparse(server_address).netloc == urlparse(api.server_address).netloc
+                ):
+                    raise RuntimeError(f"{prefix} user with login '{env_user_login}'. {postfix}")
+                elif (
+                    login == env_user_login
+                    and urlparse(server_address).netloc != urlparse(api.server_address).netloc
+                ):
+                    raise RuntimeError(f"{prefix} server '{api.server_address}'. {postfix}")
+                elif (
+                    login != env_user_login
+                    and urlparse(server_address).netloc != urlparse(api.server_address).netloc
                 ):
                     raise RuntimeError(
-                        f"File {SUPERVISELY_ENV_FILE} already exists, but for other user with login '{env_user_info.login}'. \
-Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
+                        f"{prefix} server '{api.server_address}' and user with login '{env_user_login}'. {postfix}"
                     )
-                raise RuntimeError(
-                    f"File {SUPERVISELY_ENV_FILE} already exists. Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
-                )
+                else:
+                    return api
             else:
-                backup_name = SUPERVISELY_ENV_FILE + ".bak"
-                os.rename(SUPERVISELY_ENV_FILE, backup_name)
-
-        with open(SUPERVISELY_ENV_FILE, "w") as file:
-            file.write(f'SERVER_ADDRESS="{server}"\n')
-            file.write(f'API_TOKEN="{login_info.api_token}"\n')
-            if login_info.team_id:
-                file.write(f'INIT_GROUP_ID="{login_info.team_id}"\n')
-            if login_info.workspace_id:
-                file.write(f'INIT_WORKSPACE_ID="{login_info.workspace_id}"\n')
-            api = Api(server, login_info.api_token, ignore_task_id=True)
-        return api
+                # create backup
+                timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                backup_file = f"{SUPERVISELY_ENV_FILE}_{timestamp}"
+                shutil.copy2(SUPERVISELY_ENV_FILE, backup_file)
+                os.remove(SUPERVISELY_ENV_FILE)
+                # remove old backups
+                all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
+                while len(all_backups) > 5:
+                    os.remove(all_backups.pop(0))
+        # create new file
+        Path(SUPERVISELY_ENV_FILE).touch()
+        set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, server_address)
+        set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
+        if session.team_id:
+            set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
+        if session.workspace_id:
+            set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
+        # load new file
+        load_dotenv(SUPERVISELY_ENV_FILE)
+        return cls.from_env()

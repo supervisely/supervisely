@@ -110,7 +110,7 @@ from supervisely.worker_api.chunking import (
 )
 import supervisely.worker_proto.worker_api_pb2 as api_proto
 
-from supervisely.api.api import Api, LoginInfo
+from supervisely.api.api import Api, UserSession
 from supervisely.api import api
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
