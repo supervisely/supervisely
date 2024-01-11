@@ -677,6 +677,7 @@ def handle_original_tqdm(func):
                 _progress_cb.close()
             raise e
 
+        # close progress bar
         if progress_cb is not None and isinstance(progress_cb, tqdm):
             if not type(progress_cb) == tqdm_sly:
                 progress_cb.close()

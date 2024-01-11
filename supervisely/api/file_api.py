@@ -33,7 +33,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import Progress, handle_original_tqdm, tqdm_sly
 
 
 class FileInfo(NamedTuple):
@@ -426,6 +426,7 @@ class FileApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
+    @handle_original_tqdm
     def download(
         self,
         team_id: int,
@@ -464,27 +465,22 @@ class FileApi(ModuleApiBase):
 
             api.file.download(8, path_to_file, local_save_path)
         """
-        _progress_cb = progress_cb
-        if isinstance(progress_cb, tqdm):
-            if not isinstance(progress_cb, tqdm_sly):
-                progress_cb.clear()
-                _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
 
         if self.is_on_agent(remote_path):
-            self.download_from_agent(remote_path, local_save_path, _progress_cb)
+            self.download_from_agent(remote_path, local_save_path, progress_cb)
             return
 
         if cache is None:
-            self._download(team_id, remote_path, local_save_path, _progress_cb)
+            self._download(team_id, remote_path, local_save_path, progress_cb)
         else:
             file_info = self.get_info_by_path(team_id, remote_path)
             if file_info.hash is None:
-                self._download(team_id, remote_path, local_save_path, _progress_cb)
+                self._download(team_id, remote_path, local_save_path, progress_cb)
             else:
                 cache_path = cache.check_storage_object(file_info.hash, get_file_ext(remote_path))
                 if cache_path is None:
                     # file not in cache
-                    self._download(team_id, remote_path, local_save_path, _progress_cb)
+                    self._download(team_id, remote_path, local_save_path, progress_cb)
                     if file_info.hash != get_file_hash(local_save_path):
                         raise KeyError(
                             f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})"
@@ -492,13 +488,8 @@ class FileApi(ModuleApiBase):
                     cache.write_object(local_save_path, file_info.hash)
                 else:
                     cache.read_object(file_info.hash, local_save_path)
-                    if _progress_cb is not None:
-                        _progress_cb(get_file_size(local_save_path))
-
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
-            if not isinstance(progress_cb, tqdm_sly):
-                progress_cb.close()
-        _progress_cb.close()
+                    if progress_cb is not None:
+                        progress_cb(get_file_size(local_save_path))
 
     def is_on_agent(self, remote_path: str):
         return sly_fs.is_on_agent(remote_path)
@@ -743,6 +734,7 @@ class FileApi(ModuleApiBase):
         resp = self._api.post("file-storage.upload?teamId={}".format(team_id), encoder)
         return resp.json()
 
+    @handle_original_tqdm
     def upload(
         self, team_id: int, src: str, dst: str, progress_cb: Optional[Union[tqdm, Callable]] = None
     ) -> FileInfo:
@@ -850,22 +842,13 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
-        _progress_cb = progress_cb
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
-            if not isinstance(progress_cb, tqdm_sly):
-                progress_cb.clear()
-                _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
-        if _progress_cb is None:
+        if progress_cb is None:
             data = encoder
         else:
-            data = MultipartEncoderMonitor(encoder, _progress_cb.get_partial())
+            data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
-            if not isinstance(progress_cb, tqdm_sly):
-                progress_cb.close()
-            _progress_cb.close()
         return results
 
     def rename(self, old_name: str, new_name: str) -> None:
