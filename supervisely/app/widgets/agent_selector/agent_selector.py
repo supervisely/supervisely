@@ -49,7 +49,7 @@ class AgentSelector(Widget):
 
     def get_value(self) -> int:
         return StateJson()[self.widget_id]["agentId"]
-    
+
     def value_changed(self, func):
         route_path = self.get_route_path(AgentSelector.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
