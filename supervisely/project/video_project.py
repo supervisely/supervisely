@@ -2,28 +2,26 @@
 
 # docs
 from __future__ import annotations
-from collections import namedtuple
+
 import os
+from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from tqdm import tqdm
+
+from supervisely._utils import batched
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import file_exists, touch, mkdir
+from supervisely.io.fs import file_exists, mkdir, touch
 from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project import (
-    Dataset,
-    OpenMode,
-    Project,
-    read_single_project as read_project_wrapper,
-)
+from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
-from supervisely._utils import batched
+from supervisely.task.progress import Progress, handle_original_tqdm
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -1149,6 +1147,7 @@ class VideoProject(Project):
         )
 
 
+@handle_original_tqdm
 def download_video_project(
     api: Api,
     project_id: int,

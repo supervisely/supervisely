@@ -44,7 +44,7 @@ from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, handle_original_tqdm
 
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
@@ -2671,7 +2671,7 @@ def upload_project(
 
     return project.id, project.name
 
-
+@handle_original_tqdm
 def download_project(
     api: Api,
     project_id: int,

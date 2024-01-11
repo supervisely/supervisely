@@ -652,3 +652,36 @@ class tqdm_sly(tqdm, Progress):
             "gui": orig_tqdm.gui,
         }
         return cls(**kw)
+
+
+def handle_original_tqdm(func):
+    def wrapper(*args, **kwargs):
+        progress_cb = kwargs.get("progress_cb")
+
+        _progress_cb = progress_cb
+
+        # Start progress bar setup
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
+            if not type(progress_cb) == tqdm_sly:
+                progress_cb.clear()
+                _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
+
+        kwargs["progress_cb"] = _progress_cb
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            # Ensure progress bar gets closed in case of an exception
+            if progress_cb is not None and isinstance(progress_cb, tqdm):
+                if not type(progress_cb) == tqdm_sly:
+                    progress_cb.close()
+                _progress_cb.close()
+            raise e
+
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
+            if not type(progress_cb) == tqdm_sly:
+                progress_cb.close()
+            _progress_cb.close()
+
+        return result
+
+    return wrapper
