@@ -1,52 +1,53 @@
 import json
 import os
 import sys
-import time
+from fastapi.responses import JSONResponse
+import requests
+from requests.structures import CaseInsensitiveDict
 import uuid
+import time
+import re
+import subprocess
+from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial, wraps
-from typing import Any, Dict, List, Optional, Union
-
-import requests
-import yaml
-from fastapi import Form, HTTPException, Request, Response, UploadFile, status
-from fastapi.responses import JSONResponse
-from requests.structures import CaseInsensitiveDict
-
-import supervisely.app.development as sly_app_development
-import supervisely.imaging.image as sly_image
-import supervisely.io.env as env
-import supervisely.io.fs as fs
-import supervisely.nn.inference.gui as GUI
+from typing import List, Dict, Optional, Any, Union
+from fastapi import Form, HTTPException, Response, UploadFile, status
 from supervisely._utils import (
-    add_callback,
     is_debug_with_sly_net,
-    is_production,
     rand_str,
+    is_production,
+    add_callback,
 )
-from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.fastapi.subapp import get_name_from_env
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
+import supervisely.imaging.image as sly_image
+import supervisely.io.fs as fs
+from supervisely.sly_logger import logger
+import supervisely.io.env as env
+import yaml
+
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.app.fastapi.subapp import Application, call_on_autostart
+from supervisely.app.content import get_data_dir, StateJson
+from fastapi import Request
+
 from supervisely.api.api import Api
-from supervisely.app.content import StateJson, get_data_dir
-from supervisely.app.exceptions import DialogWindowError
-from supervisely.app.fastapi.subapp import (
-    Application,
-    call_on_autostart,
-    get_name_from_env,
-)
 from supervisely.app.widgets import Widget
+from supervisely.nn.prediction_dto import Prediction
+import supervisely.app.development as sly_app_development
+from supervisely.imaging.color import get_predefined_colors
+from supervisely.task.progress import Progress
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
-from supervisely.imaging.color import get_predefined_colors
-from supervisely.nn.prediction_dto import Prediction
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+import supervisely.nn.inference.gui as GUI
 
 try:
     from typing import Literal

@@ -1,23 +1,22 @@
 from __future__ import annotations
-
 import copy
 from typing import List, Literal, Optional
-
-from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
+from supervisely.app.content import StateJson
+
 from supervisely.app.widgets.nodes_flow.option_components import (
+    OptionComponent,
+    HtmlOptionComponent,
+    WidgetOptionComponent,
     ButtonOptionComponent,
     CheckboxOptionComponent,
-    HtmlOptionComponent,
     InputOptionComponent,
     IntegerOptionComponent,
     NumberOptionComponent,
-    OptionComponent,
     SelectOptionComponent,
-    SidebarNodeInfoOptionComponent,
     SliderOptionComponent,
     TextOptionComponent,
-    WidgetOptionComponent,
+    SidebarNodeInfoOptionComponent,
 )
 
 
@@ -60,9 +59,7 @@ class NodesFlow(Widget):
 
     class Node:
         class Input:
-            def __init__(
-                self, name, label: Optional[str] = None, color: Optional[str] = None
-            ):
+            def __init__(self, name, label: Optional[str] = None, color: Optional[str] = None):
                 self.name = name
                 self.label = label
                 self.color = color
@@ -80,9 +77,7 @@ class NodesFlow(Widget):
 
         class Option:
             def __init__(self, name: str, option_component: OptionComponent):
-                if isinstance(
-                    option_component, NodesFlow.SidebarNodeInfoOptionComponent
-                ):
+                if isinstance(option_component, NodesFlow.SidebarNodeInfoOptionComponent):
                     name = "sidebarNodeInfo"
                 self.name = name
                 self.option_component = option_component
