@@ -158,14 +158,14 @@ def list_dir_recursively(
                 all_files.append(file_path)
         if include_subdirs:
             for name in dirs:
-                subdir_file_path = os.path.join(root, name)
-                subdir_file_path = (
-                    os.path.relpath(subdir_file_path, dir)
+                subdir_path = os.path.join(root, name)
+                subdir_path = (
+                    os.path.relpath(subdir_path, dir)
                     if not use_global_paths
-                    else os.path.abspath(subdir_file_path)
+                    else os.path.abspath(subdir_path)
                 )
-                if filter_fn is None or filter_fn(subdir_file_path):
-                    all_files.append(subdir_file_path)
+                if filter_fn is None or filter_fn(subdir_path):
+                    all_files.append(subdir_path)
     return all_files
 
 
