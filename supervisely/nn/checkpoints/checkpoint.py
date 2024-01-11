@@ -1,4 +1,5 @@
-from typing import NamedTuple, List, Literal
+from typing import List, Literal, NamedTuple
+
 from supervisely.api.file_api import FileInfo
 
 
@@ -12,17 +13,17 @@ class CheckpointInfo(NamedTuple):
     checkpoints: List[FileInfo]
 
 
-import supervisely.nn.checkpoints.yolov5 as yolov5
-import supervisely.nn.checkpoints.yolov5_v2 as yolov5_v2
-import supervisely.nn.checkpoints.yolov8 as yolov8
 import supervisely.nn.checkpoints.detectron2 as detectron2
+import supervisely.nn.checkpoints.hrda as hrda
+import supervisely.nn.checkpoints.mmclassification as mmclassification
 import supervisely.nn.checkpoints.mmdetection as mmdetection
 import supervisely.nn.checkpoints.mmdetection3 as mmdetection3
 import supervisely.nn.checkpoints.mmsegmentation as mmsegmentation
-import supervisely.nn.checkpoints.mmclassification as mmclassification
 import supervisely.nn.checkpoints.ritm as ritm
 import supervisely.nn.checkpoints.unet as unet
-import supervisely.nn.checkpoints.hrda as hrda
+import supervisely.nn.checkpoints.yolov5 as yolov5
+import supervisely.nn.checkpoints.yolov5_v2 as yolov5_v2
+import supervisely.nn.checkpoints.yolov8 as yolov8
 
 
 def get_list(
@@ -53,15 +54,15 @@ def get_list(
         checkpoints = mmdetection.get_list(team_id)
     elif framework == "mmdetection3":
         checkpoints = mmdetection3.get_list(team_id)
-    elif checkpoints == "mmsegmentation":
+    elif framework == "mmsegmentation":
         checkpoints = mmsegmentation.get_list(team_id)
-    elif checkpoints == "mmclassification":
+    elif framework == "mmclassification":
         checkpoints = mmclassification.get_list(team_id)
-    elif checkpoints == "ritm":
+    elif framework == "ritm":
         checkpoints = ritm.get_list(team_id)
-    elif checkpoints == "unet":
+    elif framework == "unet":
         checkpoints = unet.get_list(team_id)
-    elif checkpoints == "hrda":
+    elif framework == "hrda":
         checkpoints = hrda.get_list(team_id)
     else:
         raise NotImplementedError(f"Unknown framework: {framework}")
