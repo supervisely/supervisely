@@ -645,7 +645,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post(
             "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
         )
-        if response is not None:
+        if not response.text == '{"success":true}':  # handle old instances <6.8.69
             tmp = ProjectMeta.from_json(data=response.json())
             m = tmp.clone(project_type=m.project_type, project_settings=m.project_settings)
 
