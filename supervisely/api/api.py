@@ -614,9 +614,9 @@ class Api:
 
                 import supervisely as sly
 
-                server_address = 'https://app.supervise.ly'
-                login = 'admin'
-                password = 'admin'
+                server_address = 'https://app.supervisely.com'
+                login = 'user'
+                password = 'pass'
 
                 api = sly.Api.from_credentials(server_address, login, password)
         """

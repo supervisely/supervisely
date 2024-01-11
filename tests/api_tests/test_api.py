@@ -15,7 +15,7 @@ from supervisely.api.api import Api, UserSession
 
 class TestLoginInfo(unittest.TestCase):
     def setUp(self):
-        self.server = "https://dev.supervisely.com"
+        self.server = "https://app.supervisely.com"
         self.invalid_server = "invalid_server"
         self.login = "unit_tests"
         self.password = "xxxxxxxxxxxxxx"  # write your password here
@@ -47,7 +47,7 @@ class TestLoginInfo(unittest.TestCase):
 
 class TestApi(unittest.TestCase):
     def setUp(self):
-        self.server = "https://dev.supervisely.com"
+        self.server = "https://app.supervisely.com"
         self.login = "unit_tests"  # write your login here
         self.password = "xxxxxxxxxxxxxx"  # write your password here
         self.api_token = UserSession(self.server).log_in(self.login, self.password).api_token
