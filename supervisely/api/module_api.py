@@ -834,7 +834,12 @@ class ModuleApi(ModuleApiBase):
 
     def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
-        items = self.get_list(parent_id, filters, fields)
+        from supervisely.api.project_api import ProjectApi
+
+        if type(self) == ProjectApi:
+            items = self.get_list(parent_id, filters, fields)
+        else:
+            items = self.get_list(parent_id, filters)
         return _get_single_item(items)
 
     def get_list(self, parent_id, filters=None):
