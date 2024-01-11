@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
-from supervisely.io.fs import get_file_name_with_ext, list_files
+from supervisely.io.fs import get_file_name_with_ext, list_files, list_dir_recursively
 
 
 class TestImageApi(unittest.TestCase):
@@ -42,6 +42,7 @@ class TestImageApi(unittest.TestCase):
         self.files_path = "/test_assets/images_2"
         self.files_path_2 = "/test_assets/images_3"
         self.files_path_3 = "/test_assets/images"
+        self.all_paths = [self.files_path, self.files_path_2, self.files_path_3]
 
     def create_test_datasets(self, count):
         """
@@ -87,7 +88,7 @@ class TestImageApi(unittest.TestCase):
         self.image_api.upload_paths(dataset_id, names, image_paths, progress_cb)
 
         # Verify the method raises error
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             self.image_api.upload_paths(dataset_id, names, image_paths, progress_cb)
 
         images_info = self.image_api.upload_paths(
@@ -98,7 +99,9 @@ class TestImageApi(unittest.TestCase):
     def test_upload_dir(self):
         # Define test data
         dataset_id = self.create_test_datasets(1)[0]
-        progress_cb = tqdm(total=0, desc="Uploading images")
+        listed_images = list_dir_recursively(self.files_path, True, True, sly.image.is_valid_format)
+
+        progress_cb = tqdm(total=len(listed_images), desc="Uploading images")
 
         # Call the method being tested
         images_info = self.image_api.upload_dir(dataset_id, self.files_path, progress_cb)
@@ -106,7 +109,7 @@ class TestImageApi(unittest.TestCase):
         # Verify the method returns the correct value
         self.assertIsInstance(images_info, list)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             self.image_api.upload_dir(dataset_id, self.files_path, progress_cb)
 
         images_info = self.image_api.upload_dir(
@@ -119,11 +122,16 @@ class TestImageApi(unittest.TestCase):
     def test_upload_dirs(self):
         # Define test data
         dataset_id = self.create_test_datasets(1)[0]
-        progress_cb = tqdm(total=15, desc="Uploading images")
+        all_images = []
+        for path in self.all_paths:
+            listed_images = list_dir_recursively(path, True, True, sly.image.is_valid_format)
+            all_images.extend(listed_images)
+
+        progress_cb = tqdm(total=len(all_images), desc="Uploading images")
 
         # Call the method being tested
         images_info = self.image_api.upload_dirs(
-            [self.files_path, self.files_path_2, self.files_path_3],
+            self.all_paths,
             dataset_id,
             progress_cb,
             change_name_if_conflict=True,
@@ -132,10 +140,8 @@ class TestImageApi(unittest.TestCase):
         self.assertIsInstance(images_info, list)
         self.assertEqual(len(images_info), 15)
 
-        with self.assertRaises(Exception):
-            self.image_api.upload_dirs(
-                [self.files_path, self.files_path_2, self.files_path_3], dataset_id, progress_cb
-            )
+        with self.assertRaises(ValueError):
+            self.image_api.upload_dirs(self.all_paths, dataset_id, progress_cb)
 
 
 if __name__ == "__main__":
