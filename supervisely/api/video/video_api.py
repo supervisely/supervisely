@@ -332,8 +332,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
-        :param raw_video_metadata: Get normalized metadata from server.
-        :type raw_video_metadata: bool
+        :param raw_video_meta: Get normalized metadata from server if False.
+        :type raw_video_meta: bool
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -997,6 +997,9 @@ class VideoApi(RemoveableBulkModuleApi):
 
         if change_name_if_conflict is True:
             names = self.get_free_names(dataset_id, names)
+        else:
+            message = "Videos with the following names already exist in dataset:"
+            self.raise_name_intersections_if_exist(dataset_id, names, message)
 
         for name in names:
             validate_ext(os.path.splitext(name)[1])
@@ -2108,6 +2111,27 @@ class VideoApi(RemoveableBulkModuleApi):
             for name in names
         ]
         return new_names
+
+    def raise_name_intersections_if_exist(self, dataset_id: int, names: List[str], message: str):
+        """
+        Raises error if videos with given names already exist in dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :param message: Error message.
+        :type message: str
+        :return: None
+        :rtype: None
+        """
+        videos_in_dataset = self.get_list(dataset_id)
+        used_names = {image_info.name for image_info in videos_in_dataset}
+        name_intersections = used_names.intersection(set(names))
+        if len(name_intersections) > 0:
+            raise ValueError(
+                f"{message} {name_intersections}. Please, rename videos and try again or set change_name_if_conflict=True to rename videos automatically on upload."
+            )
 
     def upload_dir(
         self,

@@ -277,6 +277,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type sort_order: :class:`str`, optional
         :param limit: Max number of list elements. No limit if None (default).
         :type limit: :class:`int`, optional
+        :param force_metadata_for_links: If True, updates meta for images with remote storage links when listing.
+        :type force_metadata_for_links: bool, optional
+        :param return_first_response: If True, returns first response without waiting for all pages.
+        :type return_first_response: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -1641,6 +1645,9 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if change_name_if_conflict is True:
             names = self.get_free_names(dataset_id, names)
+        else:
+            message = "Images with the following names already exist in dataset:"
+            self.raise_name_intersections_if_exist(dataset_id, names, message)
 
         if metas is None:
             metas = [{}] * len(names)
@@ -2776,13 +2783,34 @@ class ImageApi(RemoveableBulkModuleApi):
         :rtype: List[str]
         """
 
-        images_in_dataset = self.get_list(dataset_id)
+        images_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
         used_names = {image_info.name for image_info in images_in_dataset}
         new_names = [
             generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
             for name in names
         ]
         return new_names
+
+    def raise_name_intersections_if_exist(self, dataset_id: int, names: List[str], message: str):
+        """
+        Raises error if images with given names already exist in dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :param message: Error message.
+        :type message: str
+        :return: None
+        :rtype: None
+        """
+        images_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
+        used_names = {image_info.name for image_info in images_in_dataset}
+        name_intersections = used_names.intersection(set(names))
+        if len(name_intersections) > 0:
+            raise ValueError(
+                f"{message} {name_intersections}. Please, rename images and try again or set change_name_if_conflict=True to rename images automatically on upload."
+            )
 
     def upload_dir(
         self,
