@@ -26,7 +26,7 @@ class TestImageApi(unittest.TestCase):
         with patch("builtins.input", return_value="user_input_value"):
             project = cls.api.project.create(
                 workspace_id=int(workspace_id),
-                name="[UT] Dataset image",
+                name="[UT] Image api",
                 change_name_if_conflict=True,
             )
         cls.project_id = project.id
@@ -46,13 +46,13 @@ class TestImageApi(unittest.TestCase):
 
     def create_test_datasets(self, count):
         """
-        Create test datasets for testing 'remove_permanently'.
+        Create test datasets for testing.
         """
         created_dataset_ids = []
         for i in range(count):
             created_dataset = self.dataset_instance.create(
                 self.project_id,
-                name=f"[UT] Dataset remove permanently {i+1}",
+                name=f"[UT] Dataset image {i+1}",
                 change_name_if_conflict=True,
             )
             created_dataset_ids.append(created_dataset.id)
@@ -115,9 +115,7 @@ class TestImageApi(unittest.TestCase):
         images_info = self.image_api.upload_dir(
             dataset_id, self.files_path, progress_cb, change_name_if_conflict=True
         )
-        self.assertEqual(
-            len(images_info), 5
-        )  # used 5 images from test_assets/images_2 as well known number of valid images
+        self.assertEqual(len(images_info), listed_images)
 
     def test_upload_dirs(self):
         # Define test data
@@ -138,7 +136,7 @@ class TestImageApi(unittest.TestCase):
         )
         # Verify the method returns the correct value
         self.assertIsInstance(images_info, list)
-        self.assertEqual(len(images_info), 15)
+        self.assertEqual(len(images_info), len(all_images))
 
         with self.assertRaises(ValueError):
             self.image_api.upload_dirs(self.all_paths, dataset_id, progress_cb)
