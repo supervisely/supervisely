@@ -60,7 +60,9 @@ class NodesFlow(Widget):
 
     class Node:
         class Input:
-            def __init__(self, name, label: Optional[str] = None, color: Optional[str] = None):
+            def __init__(
+                self, name, label: Optional[str] = None, color: Optional[str] = None
+            ):
                 self.name = name
                 self.label = label
                 self.color = color
@@ -78,7 +80,9 @@ class NodesFlow(Widget):
 
         class Option:
             def __init__(self, name: str, option_component: OptionComponent):
-                if isinstance(option_component, NodesFlow.SidebarNodeInfoOptionComponent):
+                if isinstance(
+                    option_component, NodesFlow.SidebarNodeInfoOptionComponent
+                ):
                     name = "sidebarNodeInfo"
                 self.name = name
                 self.option_component = option_component
@@ -167,6 +171,15 @@ class NodesFlow(Widget):
         self._show_save = show_save
         if self._dd_menu:
             self._show_dd_area = True
+
+        self._save_handled = False
+        self._flow_change_handled = False
+        self._flow_state_change_handled = False
+        self._contex_menu_item_click_handled = False
+        self._sidebar_toggle_handled = False
+        self._item_dropped_handled = False
+        self._node_removed_handled = False
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):

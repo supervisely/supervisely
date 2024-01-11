@@ -7,5 +7,5 @@ from supervisely.nn.prediction_dto import (
     PredictionKeypoints,
 )
 
-from supervisely.nn.inference.checkpoints.checkpoint import CheckpointInfo
-from supervisely.nn.inference import checkpoints
+import supervisely.nn.checkpoints as checkpoints
+from supervisely.nn.checkpoints.checkpoint import CheckpointInfo

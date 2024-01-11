@@ -13,19 +13,19 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
-from supervisely.nn.inference.checkpoints.checkpoint import CheckpointInfo
+from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 WEIGHTS_DIR = "weights"
 
 COL_ID = "task id".upper()
 COL_PROJECT = "training data".upper()
-COL_ARTIFACTS = "artifacts".upper()
+COL_CHECKPOINTS = "checkpoints".upper()
 COL_SESSION = "session".upper()
 
 columns = [
     COL_ID,
     COL_PROJECT,
-    COL_ARTIFACTS,
+    COL_CHECKPOINTS,
     COL_SESSION,
 ]
 
@@ -39,16 +39,16 @@ class TrainedModelsSelector(Widget):
             self,
             api: Api,
             team_id: int,
-            checkpoint_info: CheckpointInfo,
+            checkpoint: CheckpointInfo,
         ):
             self._api = api
             self._team_id = team_id
 
-            task_id = checkpoint_info.session_id
-            task_path = checkpoint_info.session_path
-            training_project_name = checkpoint_info.training_project_name
-            artifacts = checkpoint_info.artifacts
-            session_link = checkpoint_info.session_link
+            task_id = checkpoint.session_id
+            task_path = checkpoint.session_path
+            training_project_name = checkpoint.training_project_name
+            checkpoints = checkpoint.checkpoints
+            session_link = checkpoint.session_link
 
             # col 1 task
             self._task_id = task_id
@@ -66,10 +66,14 @@ class TrainedModelsSelector(Widget):
             )
             self._training_project_info = project_info
 
-            # col 3 artifacts
-            self._artifacts = artifacts
-            self._artifacts_names = [artifact_info["name"] for artifact_info in self._artifacts]
-            self._artifacts_paths = [artifact_info["path"] for artifact_info in self._artifacts]
+            # col 3 checkpoints
+            self._checkpoints = checkpoints
+            self._checkpoints_names = [
+                checkpoint_info["name"] for checkpoint_info in self._checkpoints
+            ]
+            self._checkpoints_paths = [
+                checkpoint_info["path"] for checkpoint_info in self._checkpoints
+            ]
 
             # col 4 session
             self._session_link = session_link
@@ -77,7 +81,7 @@ class TrainedModelsSelector(Widget):
             # widgets
             self._task_widget = self._create_task_widget()
             self._training_project_widget = self._create_training_project_widget()
-            self._artifacts_widget = self._create_artifacts_widget()
+            self._checkpoints_widget = self._create_checkpoints_widget()
             self._session_widget = self._create_session_widget()
 
         @property
@@ -97,32 +101,32 @@ class TrainedModelsSelector(Widget):
             return self._training_project_info
 
         @property
-        def artifacts_names(self) -> List[str]:
-            return self._artifacts_names
+        def checkpoints_names(self) -> List[str]:
+            return self._checkpoints_names
 
         @property
-        def artifacts_paths(self) -> List[str]:
-            return self._artifacts_paths
+        def checkpoints_paths(self) -> List[str]:
+            return self._checkpoints_paths
 
         @property
-        def artifacts_selector(self) -> Select:
-            return self._artifacts_widget
+        def checkpoints_selector(self) -> Select:
+            return self._checkpoints_widget
 
         @property
         def session_link(self) -> str:
             return self._session_link
 
-        def get_selected_artifact_path(self) -> str:
-            return self._artifacts_widget.get_value()
+        def get_selected_checkpoint_path(self) -> str:
+            return self._checkpoints_widget.get_value()
 
-        def get_selected_artifact_name(self) -> str:
-            return self._artifacts_widget.get_label()
+        def get_selected_checkpoint_name(self) -> str:
+            return self._checkpoints_widget.get_label()
 
         def to_html(self) -> List[str]:
             return [
                 self._task_widget.to_html(),
                 self._training_project_widget.to_html(),
-                self._artifacts_widget.to_html(),
+                self._checkpoints_widget.to_html(),
                 self._session_widget.to_html(),
             ]
 
@@ -169,31 +173,32 @@ class TrainedModelsSelector(Widget):
                 )
             return training_project_widget
 
-        def _create_artifacts_widget(self) -> Select:
-            artifact_selector = Select(
+        def _create_checkpoints_widget(self) -> Select:
+            checkpoint_selector = Select(
                 [
-                    Select.Item(value=artifact_info["path"], label=artifact_info["name"])
-                    for artifact_info in self._artifacts
+                    Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
+                    for checkpoint_info in self._checkpoints
                 ]
             )
-            return artifact_selector
+            return checkpoint_selector
 
         def _create_session_widget(self) -> Text:
             session_link_widget = Text(
-                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-link'></i>", "text"
+                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-link'></i>",
+                "text",
             )
             return session_link_widget
 
     def __init__(
         self,
         team_id: int,
-        checkpoint_infos: List[CheckpointInfo],
+        checkpoints: List[CheckpointInfo],
         widget_id: str = None,
     ):
         self._api = Api.from_env()
 
         self._team_id = team_id
-        table_rows = self._generate_table_rows(checkpoint_infos)
+        table_rows = self._generate_table_rows(checkpoints)
 
         self._columns = columns
         self._rows = table_rows
@@ -227,7 +232,7 @@ class TrainedModelsSelector(Widget):
                 TrainedModelsSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
-                    checkpoint_info=checkpoint_info,
+                    checkpoint=checkpoint_info,
                 )
             )
         return table_rows
@@ -257,7 +262,6 @@ class TrainedModelsSelector(Widget):
         route_path = self.get_route_path(TrainedModelsSelector.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
-        print(self._changes_handled)
 
         @server.post(route_path)
         def _value_changed():

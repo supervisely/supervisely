@@ -4,10 +4,10 @@ from typing import List
 from supervisely.api.api import Api
 from supervisely.io.fs import silent_remove
 from supervisely.io.json import load_json_file
-from supervisely.nn.inference.checkpoints.checkpoint import CheckpointInfo
+from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 
-def list_checkpoints(api: Api, team_id: int) -> List[CheckpointInfo]:
+def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
     checkpoints = []
     weights_dir_name = "checkpoints"
     training_app_directory = "/unet/"
@@ -23,18 +23,15 @@ def list_checkpoints(api: Api, team_id: int) -> List[CheckpointInfo]:
             team_id, join(task_file_info["path"], weights_dir_name), recursive=False
         )
         session_link = f"{api.server_address}/apps/sessions/{task_id}"
-        artifacts_infos = [file for file in session_dir_files if file["name"].endswith(".pth")]
-
+        checkpoints_infos = [file for file in session_dir_files if file["name"].endswith(".pth")]
         config_path = join(task_file_info["path"], weights_dir_name, "train_args.json")
         if not api.file.exists(team_id, config_path):
             continue
-
         api.file.download(team_id, config_path, "model_config.json")
         config = load_json_file("model_config.json")
         project_name = basename(config["project_dir"].split("_")[0])
         silent_remove("model_config.json")
-
-        if len(artifacts_infos) == 0:
+        if len(checkpoints_infos) == 0:
             continue
         checkpoint_info = CheckpointInfo(
             app_name="Train Unet",
@@ -43,7 +40,7 @@ def list_checkpoints(api: Api, team_id: int) -> List[CheckpointInfo]:
             session_link=session_link,
             task_type=task_type,
             training_project_name=project_name,
-            artifacts=artifacts_infos,
+            checkpoints=checkpoints_infos,
         )
         checkpoints.append(checkpoint_info)
     return checkpoints

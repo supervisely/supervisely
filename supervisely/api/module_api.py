@@ -499,6 +499,10 @@ class ApiField:
     PAGE = "page"
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
+    """"""
+    GPU_INFO = "gpuInfo"
+    """"""
+    IS_PUBLIC = "isPublic"
 
 
 def _get_single_item(items):
