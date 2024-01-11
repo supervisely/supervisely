@@ -5,7 +5,7 @@ from supervisely.api.api import Api
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 
-def get_list(api: Api, team_id) -> List[CheckpointInfo]:
+def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
     checkpoints = []
     weights_dir_name = "detectron_data"
     weights_subdir_name = "inference/main_validation"  # contain instance_predictions.pth
