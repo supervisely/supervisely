@@ -215,7 +215,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
                 plugin_version_id=1,
                 version="6.7.39",
                 envs=[{"field": "DOCKER_NET"}],
-                min_nvidia_driver_version=
+                min_nvidia_driver_version="546.33"
             )
         """
         data = {
