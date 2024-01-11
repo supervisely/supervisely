@@ -641,13 +641,23 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if isinstance(meta, dict):
             m = ProjectMeta.from_json(meta)
 
-        m.project_settings.validate(m)
+        # m.project_settings.validate(m)
+        # response = self._api.post(
+        #     "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
+        # )
+        project_settings = {
+            "groupImages": True,
+            "groupImagesByTagId": 463411,
+            "groupImagesSync": True,
+        }
         response = self._api.post(
-            "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
+            "projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: project_settings}
         )
-        if not response.text == '{"success":true}':  # handle old instances <6.8.69
+        try:
             tmp = ProjectMeta.from_json(data=response.json())
             m = tmp.clone(project_type=m.project_type, project_settings=m.project_settings)
+        except KeyError:
+            pass  # handle old instances <6.8.69: response.json()=={'success': True}
 
         if m.project_settings is not None:
             s = m.project_settings
