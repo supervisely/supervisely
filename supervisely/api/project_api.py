@@ -641,17 +641,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if isinstance(meta, dict):
             m = ProjectMeta.from_json(meta)
 
-        # m.project_settings.validate(m)
-        # response = self._api.post(
-        #     "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
-        # )
-        project_settings = {
-            "groupImages": True,
-            "groupImagesByTagId": 463411,
-            "groupImagesSync": True,
-        }
+        m.project_settings.validate(m)
         response = self._api.post(
-            "projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: project_settings}
+            "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
         )
         try:
             tmp = ProjectMeta.from_json(data=response.json())
