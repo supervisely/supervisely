@@ -593,10 +593,9 @@ class Api:
     ) -> Api:
         """
         Create Api object using credentials and save them to ".env" file.
-        If ".env" file already exists, you can overwrite it. In this case, ".bak" file will be created automatically.
-        You can have only one ".env" file and not more than 5 backups.
+        If ".env" file already exists, you can overwrite it. In this case, backup will be created automatically.
+        All backups will be stored in the same directory with postfix "_YYYYMMDDHHMMSS". You can have not more than 5 last backups.
         This method can be used also to update ".env" file.
-
 
         :param server_address: Supervisely server url.
         :type server_address: str
@@ -604,7 +603,7 @@ class Api:
         :type login: str
         :param password: User password.
         :type password: str
-        :param is_overwrite: Overwrite existing ".env" file. If True, ".bak" file will be created automatically.
+        :param is_overwrite: Overwrite existing ".env" file. If True, backup will be created automatically.
         :type is_overwrite: bool, optional
         :return: Api object
 
@@ -633,7 +632,7 @@ class Api:
             if not is_overwrite:
                 prefix = f"File {SUPERVISELY_ENV_FILE} already exists, but for other"
                 postfix = (
-                    "Set 'is_overwrite' to overwrite it, '.bak' file will be created automatically."
+                    "Set 'is_overwrite' to overwrite it, backup file will be created automatically."
                 )
                 if (
                     login != env_user_login
