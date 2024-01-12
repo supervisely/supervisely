@@ -527,6 +527,7 @@ class FileApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
+    @handle_original_tqdm
     def download_directory(
         self,
         team_id: int,
@@ -1284,6 +1285,7 @@ class FileApi(ModuleApiBase):
             suffix += 1
         return res_dir
 
+    @handle_original_tqdm
     def upload_directory(
         self,
         team_id: int,

@@ -656,7 +656,10 @@ class tqdm_sly(tqdm, Progress):
 
 def handle_original_tqdm(func):
     def wrapper_original_tqdm(*args, **kwargs):
-        progress_cb = kwargs.get("progress_cb")
+        p_name = (
+            "progress_size_cb" if func.__qualname__ == "FileApi.upload_directory" else "progress_cb"
+        )
+        progress_cb = kwargs.get(p_name)
 
         _progress_cb = progress_cb
 
@@ -666,7 +669,7 @@ def handle_original_tqdm(func):
                 progress_cb.clear()
                 _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
 
-        kwargs["progress_cb"] = _progress_cb
+        kwargs[p_name] = _progress_cb
         try:
             result = func(*args, **kwargs)
         except Exception as e:

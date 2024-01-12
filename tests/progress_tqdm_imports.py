@@ -28,7 +28,7 @@ api = sly.Api.from_env()
 # )
 # print("1")
 
-# TEAM_ID = 449
+TEAM_ID = 449
 # TF_FILEPATH = "/google-chrome-stable_current_amd64.deb"
 # p = tqdm(
 #     desc=f"download",
@@ -39,6 +39,14 @@ api = sly.Api.from_env()
 # api.file.download(449, TF_FILEPATH, "/tmp/google-chrome-stable_current_amd64.deb", progress_cb=p)
 # print("2")
 
+TF_DIRPATH = "/stats/"
+LOC_DIRPATH = "/tmp/stats/"
+# p = tqdm(
+#     desc=f"download_directory",
+#     total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
+#     unit="B",
+#     unit_scale=True,
+# )
 # api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
 
 # p = tqdm(
@@ -53,7 +61,7 @@ api = sly.Api.from_env()
 #     TF_DIRPATH,
 #     progress_size_cb=p,
 # )
-
+# print("2")
 
 # ##################################
 # # sly DOWNLOAD/UPLOAD
@@ -129,6 +137,7 @@ api = sly.Api.from_env()
 #     desc="upload",
 #     total=project.items_count,
 # )
+#! no progress_cb in sly.upload_volume_project
 # sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
 # print("10")
 

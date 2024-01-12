@@ -248,8 +248,8 @@ import supervisely.output as output
 import tqdm
 from supervisely.task.progress import tqdm_sly
 
-# _original_tqdm = tqdm.tqdm
-# tqdm.tqdm = tqdm_sly
+_original_tqdm = tqdm.tqdm
+tqdm.tqdm = tqdm_sly
 
 from supervisely.io.exception_handlers import handle_exceptions
 from supervisely.app.fastapi.subapp import Event
