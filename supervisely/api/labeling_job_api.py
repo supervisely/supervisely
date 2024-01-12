@@ -22,6 +22,7 @@ from supervisely.api.module_api import (
     RemoveableBulkModuleApi,
     WaitingTimeExceeded,
 )
+from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
@@ -1186,17 +1187,17 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             return tags
 
         def _create_labels_from_labeling_job(
-            figures_map: List[dict], project_meta: ProjectMeta
+            figures_map: List[FigureInfo], project_meta: ProjectMeta
         ) -> List[Label]:
             labels = []
             for figure in figures_map:
-                obj_class = project_meta.get_obj_class_by_id(figure["classId"])
+                obj_class = project_meta.get_obj_class_by_id(figure.class_id)
                 if obj_class is None:
                     continue
-                geometry = _get_geometry(figure["geometryType"], figure["geometry"])
+                geometry = _get_geometry(figure.geometry_type, figure.geometry)
                 if geometry is None:
                     continue
-                tags = _create_tags_from_labeling_job(figure["tags"], project_meta)
+                tags = _create_tags_from_labeling_job(figure.tags, project_meta)
                 label = Label(obj_class=obj_class, geometry=geometry, tags=tags)
                 labels.append(label)
             return labels
@@ -1205,8 +1206,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         job_info = self.get_info_by_id(id)
         figures = [
             figure
-            for figure in self._api.figure.get_list(job_info.dataset_id)["entities"]
-            if image_id == figure["entityId"]
+            for figure in self._api.figure.get_list(job_info.dataset_id)
+            if image_id == figure.entity_id
         ]
         image = self._api.image.get_info_by_id(image_id)
         self._api.pop_header("x-job-id")

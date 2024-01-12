@@ -21,6 +21,7 @@ class FigureInfo(NamedTuple):
     frame_index: int
     geometry_type: str
     geometry: dict
+    tags: list
 
 class FigureApi(RemoveableBulkModuleApi):
     """
@@ -59,6 +60,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.FRAME_INDEX,
             ApiField.GEOMETRY_TYPE,
             ApiField.GEOMETRY,
+            ApiField.TAGS
         ]
 
     @staticmethod
