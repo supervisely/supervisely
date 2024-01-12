@@ -1,8 +1,8 @@
-# case1
+# case1 # monkeypatchin not working in venv
 from tqdm import tqdm  # isort: skip
 import supervisely as sly  # isort: skip
 
-# case2 #works ok
+# case2 #works ok everywhere
 # import supervisely as sly  # isort: skip
 # from tqdm import tqdm  # isort: skip
 
@@ -45,11 +45,12 @@ TF_DIRPATH = "/stats/"
 LOC_DIRPATH = "/tmp/stats/"
 p = tqdm(
     desc=f"download_directory",
-    total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
     unit="B",
     unit_scale=True,
 )
+p.total = api.file.get_directory_size(TEAM_ID, TF_DIRPATH)
 api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
+print("2.1 total after __init__")
 
 p = tqdm(
     desc=f"upload_directory",
@@ -63,7 +64,7 @@ api.file.upload_directory(
     TF_DIRPATH,
     progress_size_cb=p,
 )
-print("2")
+print("2.2")
 
 ##################################
 # sly DOWNLOAD/UPLOAD
@@ -77,13 +78,11 @@ p = tqdm(
 sly.download(api, project.id, "/tmp/lemons/", progress_cb=p)
 print("3")
 
-# breakpoint()
 project_fs = sly.read_project("/tmp/lemons/")
 p = tqdm(
     desc="upload",
     total=project.items_count,
 )
-print(p)
 sly.upload("/tmp/lemons/", api, 691, progress_cb=p)
 print("4")
 
@@ -116,14 +115,14 @@ p = tqdm(
 sly.download_video_project(api, project.id, "/tmp/vid/", progress_cb=p)
 print("7")
 
-#! no progress_cb in sly.upload_video_project
-project_fs = sly.read_project("/tmp/vid/")
-p = tqdm(
-    desc="upload",
-    total=project.items_count,
-)
-sly.upload_video_project("/tmp/vid/", api, 691, progress_cb=p)
-print("8")
+# #! no progress_cb in sly.upload_video_project
+# project_fs = sly.read_project("/tmp/vid/")
+# p = tqdm(
+#     desc="upload",
+#     total=project.items_count,
+# )
+# sly.upload_video_project("/tmp/vid/", api, 691, progress_cb=p)
+# print("8")
 
 breakpoint()
 project = api.project.get_info_by_id(18594)
@@ -133,15 +132,14 @@ p = tqdm(
 )
 sly.download_volume_project(api, project.id, "/tmp/vol/", progress_cb=p)
 print("9")
-
-project_fs = sly.read_project("/tmp/vol/")
-p = tqdm(
-    desc="upload",
-    total=project.items_count,
-)
-#! no progress_cb in sly.upload_volume_project
-sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
-print("10")
+# #! no progress_cb in sly.upload_volume_project
+# project_fs = sly.read_project("/tmp/vol/")
+# p = tqdm(
+#     desc="upload",
+#     total=project.items_count,
+# )
+# sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
+# print("10")
 
 breakpoint()
 project = api.project.get_info_by_id(18592)

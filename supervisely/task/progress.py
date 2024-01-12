@@ -650,6 +650,8 @@ class tqdm_sly(tqdm, Progress):
                     except KeyError:
                         kw[name] = param.default
 
+        # legacy tqdm 'nested' in kwargs
+        kw.update({k: v for k, v in kwargs.items() if k not in kw})
         return cls(**kw)
 
 
