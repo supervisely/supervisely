@@ -3,17 +3,18 @@
 
 # docs
 from __future__ import annotations
-from copy import deepcopy
-from typing import List, Optional, Dict, Union
 
-from supervisely.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
-from supervisely.io.json import JsonSerializable
-from supervisely.collection.key_indexed_collection import KeyObject
-from supervisely.geometry.geometry import Geometry
-from supervisely.geometry.any_geometry import AnyGeometry
+from copy import deepcopy
+from typing import Dict, List, Optional, Union
+
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
+from supervisely.collection.key_indexed_collection import KeyObject
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
+from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
+from supervisely.io.json import JsonSerializable
 from supervisely.sly_logger import logger
 
 
@@ -31,6 +32,8 @@ class ObjClassJsonFields:
     GEOMETRY_CONFIG = "geometry_config"
     """"""
     HOTKEY = "hotkey"
+    """"""
+    DESCRIPTION = "description"
     """"""
 
 
@@ -72,6 +75,7 @@ class ObjClass(KeyObject, JsonSerializable):
         geometry_config: Optional[Union[Dict, KeypointsTemplate]] = None,
         sly_id: Optional[int] = None,
         hotkey: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         self._name = name
         self._geometry_type = geometry_type
@@ -85,6 +89,7 @@ class ObjClass(KeyObject, JsonSerializable):
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")
         _validate_color(self._color)
+        self._description = take_with_default(description, "")
 
     @property
     def name(self) -> str:
@@ -102,6 +107,23 @@ class ObjClass(KeyObject, JsonSerializable):
             # Output: 'lemon'
         """
         return self._name
+
+    @property
+    def description(self) -> str:
+        """
+        Description.
+
+        :return: Description
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            print(class_lemon.description)
+            # Output: 'lemon class description'
+        """
+        return self._description
 
     def key(self) -> str:
         """
@@ -217,6 +239,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         res = {
             ObjClassJsonFields.NAME: self.name,
+            ObjClassJsonFields.DESCRIPTION: self.description,
             ObjClassJsonFields.GEOMETRY_TYPE: self.geometry_type.geometry_name(),
             ObjClassJsonFields.COLOR: rgb2hex(self.color),
             ObjClassJsonFields.GEOMETRY_CONFIG: self.geometry_type.config_to_json(
@@ -236,6 +259,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param data: ObjClass in json format as a dict.
         :type data: dict
+
         :return: ObjClass object
         :rtype: :class:`ObjClass<ObjClass>`
         :Usage example:
@@ -271,6 +295,7 @@ class ObjClass(KeyObject, JsonSerializable):
         )
         sly_id = data.get(ObjClassJsonFields.ID, None)
         hotkey = data.get(ObjClassJsonFields.HOTKEY, "")
+        description = data.get(ObjClassJsonFields.DESCRIPTION, "")
         return cls(
             name=name,
             geometry_type=geometry_type,
@@ -278,6 +303,7 @@ class ObjClass(KeyObject, JsonSerializable):
             geometry_config=geometry_config,
             sly_id=sly_id,
             hotkey=hotkey,
+            description=description,
         )
 
     def __eq__(self, other: ObjClass) -> bool:
@@ -377,6 +403,7 @@ class ObjClass(KeyObject, JsonSerializable):
         geometry_config: Optional[Dict] = None,
         sly_id: Optional[int] = None,
         hotkey: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> ObjClass:
         """
         Makes a copy of ObjClass with new fields, if fields are given, otherwise it will use fields of the original ObjClass.
@@ -393,6 +420,9 @@ class ObjClass(KeyObject, JsonSerializable):
         :type sly_id: int, optional
         :param hotkey: Hotkey for ObjClass in annotation tool UI.
         :type hotkey: str, optional
+        :param description: Description of the class.
+        :type description: str, optional
+
         :return: New instance of ObjClass
         :rtype: :class:`ObjClass<ObjClass>`
         :Usage example:
@@ -421,6 +451,7 @@ class ObjClass(KeyObject, JsonSerializable):
             geometry_config=take_with_default(geometry_config, self.geometry_config),
             sly_id=take_with_default(sly_id, self.sly_id),
             hotkey=take_with_default(hotkey, self.hotkey),
+            description=take_with_default(description, self.description),
         )
 
     def __hash__(self):

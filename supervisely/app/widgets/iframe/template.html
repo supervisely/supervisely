@@ -1,0 +1,10 @@
+<div>
+  <iframe
+    v-if="data.{{{widget.widget_id}}}.pathToHtml != ''"
+    :src="data.{{{widget.widget_id}}}.pathToHtml"
+    :width="data.{{{widget.widget_id}}}.width"
+    :height="data.{{{widget.widget_id}}}.height"
+    style="border: none;"
+    >
+  </iframe>
+</div>
