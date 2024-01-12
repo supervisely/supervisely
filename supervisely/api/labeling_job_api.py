@@ -647,19 +647,11 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         filters = []
         if created_by_id is not None:
             filters.append(
-                {
-                    "field": ApiField.CREATED_BY_ID[0][0],
-                    "operator": "=",
-                    "value": created_by_id,
-                }
+                {"field": ApiField.CREATED_BY_ID[0][0], "operator": "=", "value": created_by_id}
             )
         if assigned_to_id is not None:
             filters.append(
-                {
-                    "field": ApiField.ASSIGNED_TO_ID[0][0],
-                    "operator": "=",
-                    "value": assigned_to_id,
-                }
+                {"field": ApiField.ASSIGNED_TO_ID[0][0], "operator": "=", "value": assigned_to_id,}
             )
         if project_id is not None:
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
@@ -667,11 +659,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
         return self.get_list_all_pages(
             "jobs.list",
-            {
-                ApiField.TEAM_ID: team_id,
-                "showDisabled": show_disabled,
-                ApiField.FILTER: filters,
-            },
+            {ApiField.TEAM_ID: team_id, "showDisabled": show_disabled, ApiField.FILTER: filters},
         )
 
     def stop(self, id: int) -> None:
@@ -1057,11 +1045,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return response.json()
 
     def get_activity(
-        self,
-        team_id: int,
-        job_id: int,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-    ) -> DataFrame:
+        self,team_id: int,job_id: int,progress_cb: Optional[Union[tqdm, Callable]] = None
+        ) -> DataFrame:
         import pandas as pd
 
         """
