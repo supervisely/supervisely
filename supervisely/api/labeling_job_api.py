@@ -651,7 +651,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             )
         if assigned_to_id is not None:
             filters.append(
-                {"field": ApiField.ASSIGNED_TO_ID[0][0], "operator": "=", "value": assigned_to_id,}
+                {"field": ApiField.ASSIGNED_TO_ID[0][0], "operator": "=", "value": assigned_to_id}
             )
         if project_id is not None:
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
@@ -1045,7 +1045,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return response.json()
 
     def get_activity(
-        self,team_id: int,job_id: int,progress_cb: Optional[Union[tqdm, Callable]] = None
+        self, team_id: int, job_id: int, progress_cb: Optional[Union[tqdm, Callable]] = None
         ) -> DataFrame:
         import pandas as pd
 
