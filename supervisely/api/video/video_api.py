@@ -36,6 +36,24 @@ from supervisely.video.video import (
     validate_ext,
 )
 
+DEFAULT_FIELDS = [
+    "id",
+    "title",
+    "description",
+    "createdAt",
+    "updatedAt",
+    "dataId",
+    "remoteDataId",
+    "meta",
+    "pathOriginal",
+    "hash",
+    "groupId",
+    "projectId",
+    "datasetId",
+    "createdBy",
+    "customData",
+]
+
 
 class VideoInfo(NamedTuple):
     """
@@ -315,6 +333,8 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         raw_video_meta: Optional[bool] = False,
+        include_video_meta: Optional[bool] = False,
+        include_frames_to_timecodes: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
@@ -325,6 +345,12 @@ class VideoApi(RemoveableBulkModuleApi):
         :type filters: List[Dict[str, str]], optional
         :param raw_video_metadata: Get normalized metadata from server.
         :type raw_video_metadata: bool
+        :param include_video_meta: Get video metadata from server, if set to True
+            file_meta parameter will contain more information.
+        :type include_video_meta: Optional[bool]
+        :param include_frames_to_timecodes: Get timecodes for each frame from server,
+            can be used only if include_video_meta is True, otherwise will be ignored.
+        :type include_frames_to_timecodes: Optional[bool]
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -349,10 +375,22 @@ class VideoApi(RemoveableBulkModuleApi):
             # Output: [VideoInfo(id=19371139, ...)]
         """
 
+        fields = DEFAULT_FIELDS.copy()
+
+        if include_video_meta:
+            fields.append("videoMeta")
+            if include_frames_to_timecodes:
+                fields.append("framesToTimecodes")
+        elif include_frames_to_timecodes:
+            logger.warning(
+                "Frames to timecodes are not available without video meta and will be ignored."
+            )
+
         return self.get_list_all_pages(
             "videos.list",
             {
                 ApiField.DATASET_ID: dataset_id,
+                ApiField.FIELDS: fields,
                 ApiField.FILTER: filters or [],
                 ApiField.RAW_VIDEO_META: raw_video_meta,
             },
@@ -367,9 +405,23 @@ class VideoApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         raw_video_meta: Optional[bool] = False,
         batch_size: Optional[int] = None,
+        include_video_meta: Optional[bool] = False,
+        include_frames_to_timecodes: Optional[bool] = False,
     ) -> Iterator[List[VideoInfo]]:
+        fields = DEFAULT_FIELDS.copy()
+
+        if include_video_meta:
+            fields.append("videoMeta")
+            if include_frames_to_timecodes:
+                fields.append("framesToTimecodes")
+        elif include_frames_to_timecodes:
+            logger.warning(
+                "Frames to timecodes are not available without video meta and will be ignored."
+            )
+
         data = {
             ApiField.DATASET_ID: dataset_id,
+            ApiField.FIELDS: fields,
             ApiField.FILTER: filters or [],
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
@@ -491,23 +543,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return results
 
-        fields = [
-            "id",
-            "title",
-            "description",
-            "createdAt",
-            "updatedAt",
-            "dataId",
-            "remoteDataId",
-            "meta",
-            "pathOriginal",
-            "hash",
-            "groupId",
-            "projectId",
-            "datasetId",
-            "createdBy",
-            "customData",
-        ]
+        fields = DEFAULT_FIELDS.copy()
 
         if force_metadata_for_links is True:
             fields.append("videoMeta")
