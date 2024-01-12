@@ -18,7 +18,7 @@ class TestLoginInfo(unittest.TestCase):
         self.server = "https://app.supervisely.com"
         self.invalid_server = "invalid_server"
         self.login = "unit_tests"
-        self.password = "xxxxxxxxxxxxxx"  # write your password here
+        self.password = ""  # write your password here
         self.session = UserSession(self.server)
 
     def test_validate_server_url(self):
@@ -49,7 +49,7 @@ class TestApi(unittest.TestCase):
     def setUp(self):
         self.server = "https://app.supervisely.com"
         self.login = "unit_tests"  # write your login here
-        self.password = "xxxxxxxxxxxxxx"  # write your password here
+        self.password = ""  # write your password here
         self.api_token = UserSession(self.server).log_in(self.login, self.password).api_token
         self.env_file = "./supervisely.env"
         with open(self.env_file, "w") as file:
@@ -61,9 +61,12 @@ class TestApi(unittest.TestCase):
         with patch("supervisely.api.SUPERVISELY_ENV_FILE", self.env_file):
             with self.assertRaises(RuntimeError):
                 login = "unit_tests_1"
-                password = "xxxxxxxxxxxxxx"  # write your password here
+                password = ""  # write your password here
                 Api.from_credentials(self.server, login, password)
-            api = Api.from_credentials(self.server, self.login, self.password, is_overwrite=True)
+            for _ in range(7):
+                api = Api.from_credentials(
+                    self.server, self.login, self.password, is_overwrite=True
+                )
             self.assertTrue(7 > len(glob.glob(f"{self.env_file}*")) > 1)
             self.assertEqual(api.user.get_my_info().login, self.login)
             self.assertEqual(get_key(self.env_file, "API_TOKEN"), self.api_token)
