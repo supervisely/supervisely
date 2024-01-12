@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from supervisely.api.api import Api
 from supervisely.api.video.video_api import VideoInfo
-from supervisely.io.fs import get_file_name_with_ext, list_files, list_dir_recursively
+from supervisely.io.fs import get_file_name_with_ext, list_files, list_files_recursively
 
 
 class TestImageApi(unittest.TestCase):
@@ -40,9 +40,9 @@ class TestImageApi(unittest.TestCase):
         # Set up any necessary test data or configurations
         self.video_api = self.api.video
         self.dataset_instance = self.api.dataset
-        self.files_path = "/home/ganpoweird/Work/test_assets/videos"
-        self.files_path_2 = "/home/ganpoweird/Work/test_assets/videos_2"
-        self.files_path_3 = "/home/ganpoweird/Work/test_assets/videos_3"
+        self.files_path = "/test_assets/videos"
+        self.files_path_2 = "/test_assets/videos_2"
+        self.files_path_3 = "/test_assets/videos_3"
         self.all_paths = [self.files_path, self.files_path_2, self.files_path_3]
 
     def create_test_datasets(self, count):
@@ -62,7 +62,7 @@ class TestImageApi(unittest.TestCase):
     def test_upload_paths(self):
         # Define test data
         dataset_id = self.create_test_datasets(1)[0]
-        video_paths = list_files(self.files_path)
+        video_paths = list_files(self.files_path, filter_fn=sly.video.is_valid_format)
         names = [get_file_name_with_ext(video_path) for video_path in video_paths]
         progress_cb = tqdm(total=len(video_paths), desc="Uploading videos")
 
@@ -81,7 +81,7 @@ class TestImageApi(unittest.TestCase):
     def test_upload_paths_duplicate_names(self):
         # Define test data
         dataset_id = self.create_test_datasets(1)[0]
-        video_paths = list_files(self.files_path)
+        video_paths = list_files(self.files_path, filter_fn=sly.video.is_valid_format)
         names = [get_file_name_with_ext(video_path) for video_path in video_paths]
         progress_cb = tqdm(total=len(video_paths), desc="Uploading videos")
 
@@ -100,7 +100,7 @@ class TestImageApi(unittest.TestCase):
     def test_upload_dir(self):
         # Define test data
         dataset_id = self.create_test_datasets(1)[0]
-        listed_videos = list_dir_recursively(self.files_path, True, True, sly.video.is_valid_format)
+        listed_videos = list_files(self.files_path, filter_fn=sly.video.is_valid_format)
 
         progress_cb = tqdm(total=len(listed_videos), desc="Uploading videos")
 
@@ -111,12 +111,11 @@ class TestImageApi(unittest.TestCase):
         self.assertIsInstance(videos_info, list)
 
         with self.assertRaises(ValueError):
-            self.video_api.upload_dir(
-                dataset_id, self.files_path, progress_cb, include_subdirs=True
-            )
+            self.video_api.upload_dir(dataset_id, self.files_path)
 
+        progress_cb_1 = tqdm(total=len(listed_videos), desc="Uploading videos")
         videos_info = self.video_api.upload_dir(
-            dataset_id, self.files_path, progress_cb, change_name_if_conflict=True
+            dataset_id, self.files_path, progress_cb_1, change_name_if_conflict=True
         )
         self.assertEqual(len(videos_info), len(listed_videos))
 
@@ -125,7 +124,7 @@ class TestImageApi(unittest.TestCase):
         dataset_id = self.create_test_datasets(1)[0]
         all_videos = []
         for path in self.all_paths:
-            listed_videos = list_dir_recursively(path, True, True, sly.video.is_valid_format)
+            listed_videos = list_files_recursively(path, filter_fn=sly.video.is_valid_format)
             all_videos.extend(listed_videos)
 
         progress_cb = tqdm(total=len(all_videos), desc="Uploading videos")
@@ -135,6 +134,7 @@ class TestImageApi(unittest.TestCase):
             self.all_paths,
             dataset_id,
             progress_cb,
+            include_subdirs=True,
             change_name_if_conflict=True,
         )
         # Verify the method returns the correct value
@@ -142,7 +142,12 @@ class TestImageApi(unittest.TestCase):
         self.assertEqual(len(videos_info), len(all_videos))
 
         with self.assertRaises(ValueError):
-            self.video_api.upload_dirs(self.all_paths, dataset_id, progress_cb)
+            self.video_api.upload_dirs(
+                self.all_paths,
+                dataset_id,
+                progress_cb,
+                include_subdirs=True,
+            )
 
 
 if __name__ == "__main__":

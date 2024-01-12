@@ -47,7 +47,8 @@ from supervisely.io.fs import (
     get_file_hash,
     get_file_name,
     get_file_name_with_ext,
-    list_dir_recursively,
+    list_files,
+    list_files_recursively,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
@@ -953,7 +954,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
-                if progress_cb.n != progress_cb.total:
+                if progress_cb is not None and progress_cb.n != progress_cb.total:
                     progress_cb(progress_cb.total - progress_cb.n)
                 return
 
@@ -1646,8 +1647,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if change_name_if_conflict is True:
             names = self.get_free_names(dataset_id, names)
         else:
-            message = "Images with the following names already exist in dataset:"
-            self.raise_name_intersections_if_exist(dataset_id, names, message)
+            self.raise_name_intersections_if_exist(dataset_id, names)
 
         if metas is None:
             metas = [{}] * len(names)
@@ -2791,26 +2791,31 @@ class ImageApi(RemoveableBulkModuleApi):
         ]
         return new_names
 
-    def raise_name_intersections_if_exist(self, dataset_id: int, names: List[str], message: str):
+    def raise_name_intersections_if_exist(
+        self, dataset_id: int, names: List[str], message: str = None
+    ):
         """
         Raises error if images with given names already exist in dataset.
+        Default error message:
+        "Images with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}.
+        Please, rename images and try again or set change_name_if_conflict=True to rename automatically on upload."
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
         :param message: Error message.
-        :type message: str
+        :type message: str, optional
         :return: None
         :rtype: None
         """
-        images_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
+        images_in_dataset = self.get_list(dataset_id)
         used_names = {image_info.name for image_info in images_in_dataset}
         name_intersections = used_names.intersection(set(names))
+        if message is None:
+            message = f"Images with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename images and try again or set change_name_if_conflict=True to rename automatically on upload."
         if len(name_intersections) > 0:
-            raise ValueError(
-                f"{message} {name_intersections}. Please, rename images and try again or set change_name_if_conflict=True to rename images automatically on upload."
-            )
+            raise ValueError(f"{message}")
 
     def upload_dir(
         self,
@@ -2838,9 +2843,11 @@ class ImageApi(RemoveableBulkModuleApi):
         :rtype: List[ImageInfo]
         """
 
-        paths = list_dir_recursively(
-            dir_path, include_subdirs, True, filter_fn=sly_image.is_valid_format
-        )
+        if include_subdirs:
+            paths = list_files_recursively(dir_path, filter_fn=sly_image.is_valid_format)
+        else:
+            paths = list_files(dir_path, filter_fn=sly_image.is_valid_format)
+
         names = [get_file_name_with_ext(path) for path in paths]
 
         image_infos = self.upload_paths(

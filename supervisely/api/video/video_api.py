@@ -33,7 +33,8 @@ from supervisely.io.fs import (
     get_file_hash,
     get_file_name_with_ext,
     get_file_size,
-    list_dir_recursively,
+    list_files,
+    list_files_recursively,
 )
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -998,8 +999,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if change_name_if_conflict is True:
             names = self.get_free_names(dataset_id, names)
         else:
-            message = "Videos with the following names already exist in dataset:"
-            self.raise_name_intersections_if_exist(dataset_id, names, message)
+            self.raise_name_intersections_if_exist(dataset_id, names)
 
         for name in names:
             validate_ext(os.path.splitext(name)[1])
@@ -1416,6 +1416,11 @@ class VideoApi(RemoveableBulkModuleApi):
 
         metas2 = [meta["meta"] for meta in metas]
 
+        if change_name_if_conflict is True:
+            names = self.get_free_names(dataset_id, names)
+        else:
+            self.raise_name_intersections_if_exist(dataset_id, names)
+
         for name, hash, meta in zip(names, hashes, metas2):
             try:
                 all_streams = meta["streams"]
@@ -1429,16 +1434,15 @@ class VideoApi(RemoveableBulkModuleApi):
                     #         warn_video_requires_processing(file_name)
                     #         continue
 
-                    item_name = name
-                    info = self._api.video.get_info_by_name(dataset_id, item_name)
-                    if info is not None:
-                        item_name = gen_video_stream_name(name, stream_index)
+                    # item_name = name
+                    # info = self._api.video.get_info_by_name(dataset_id, item_name)
+                    # if info is not None:
+                    #     item_name = gen_video_stream_name(name, stream_index)
                     res = self.upload_hash(
                         dataset_id,
-                        item_name,
+                        name,
                         hash,
                         stream_index,
-                        change_name_if_conflict=change_name_if_conflict,
                     )
                     video_info_results.append(res)
             except Exception as e:
@@ -1543,6 +1547,13 @@ class VideoApi(RemoveableBulkModuleApi):
         else:
             resp = self._api.post("videos.bulk.upload", encoder)
 
+        # close all opened files
+        for value in content_dict.values():
+            from io import BufferedReader
+
+            if isinstance(value[1], BufferedReader):
+                value[1].close()
+
         with json.loads(resp.text) as resp_list:
             remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
             if len(remote_hashes) != len(hashes_items_to_upload):
@@ -1599,7 +1610,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
-                if progress_cb.n != progress_cb.total:
+                if progress_cb is not None and progress_cb.n != progress_cb.total:
                     progress_cb(progress_cb.total - progress_cb.n)
                 return
 
@@ -2112,26 +2123,31 @@ class VideoApi(RemoveableBulkModuleApi):
         ]
         return new_names
 
-    def raise_name_intersections_if_exist(self, dataset_id: int, names: List[str], message: str):
+    def raise_name_intersections_if_exist(
+        self, dataset_id: int, names: List[str], message: str = None
+    ):
         """
         Raises error if videos with given names already exist in dataset.
+        Default error message:
+        "Videos with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}.
+        Please, rename videos and try again or set change_name_if_conflict=True to rename automatically on upload."
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
         :param message: Error message.
-        :type message: str
+        :type message: str, optional
         :return: None
         :rtype: None
         """
         videos_in_dataset = self.get_list(dataset_id)
         used_names = {image_info.name for image_info in videos_in_dataset}
         name_intersections = used_names.intersection(set(names))
+        if message is None:
+            message = f"Videos with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename videos and try again or set change_name_if_conflict=True to rename automatically on upload."
         if len(name_intersections) > 0:
-            raise ValueError(
-                f"{message} {name_intersections}. Please, rename videos and try again or set change_name_if_conflict=True to rename videos automatically on upload."
-            )
+            raise ValueError(f"{message}")
 
     def upload_dir(
         self,
@@ -2159,17 +2175,21 @@ class VideoApi(RemoveableBulkModuleApi):
         :rtype: List[ImageInfo]
         """
 
-        paths = list_dir_recursively(dir_path, include_subdirs, True, filter_fn=is_valid_format)
+        if include_subdirs:
+            paths = list_files_recursively(dir_path, filter_fn=is_valid_format)
+        else:
+            paths = list_files(dir_path, filter_fn=is_valid_format)
+
         names = [get_file_name_with_ext(path) for path in paths]
 
-        image_infos = self.upload_paths(
+        video_infos = self.upload_paths(
             dataset_id,
             names,
             paths,
             progress_cb=progress_cb,
             change_name_if_conflict=change_name_if_conflict,
         )
-        return image_infos
+        return video_infos
 
     def upload_dirs(
         self,
@@ -2197,11 +2217,11 @@ class VideoApi(RemoveableBulkModuleApi):
         :rtype: List[ImageInfo]
         """
 
-        image_infos = []
+        video_infos = []
         for dir_path in dirs:
-            image_infos.extend(
+            video_infos.extend(
                 self.upload_dir(
                     dataset_id, dir_path, progress_cb, include_subdirs, change_name_if_conflict
                 )
             )
-        return image_infos
+        return video_infos
