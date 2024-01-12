@@ -613,80 +613,79 @@ class tqdm_sly(tqdm, Progress):
     def from_original_tqdm(
         cls,
         orig_tqdm: tqdm,
-        file: Union[io.TextIOWrapper, io.StringIO] = None,
-        write_bytes: bool = False,
-        position: Optional[int] = None,
+        **kwargs,
     ):
-        # iterable=None, desc=None, total=None, leave=True, file=None,
-        #          ncols=None, mininterval=0.1, maxinterval=10.0, miniters=None,
-        #          ascii=None, disable=False, unit='it', unit_scale=False,
-        #          dynamic_ncols=False, smoothing=0.3, bar_format=None, initial=0,
-        #          position=None, postfix=None, unit_divisor=1000, write_bytes=False,
-        #          lock_args=None, nrows=None, colour=None, delay=0, gui=False,
-        kw = {
-            "iterable": orig_tqdm.iterable,
-            "desc": orig_tqdm.desc,
-            "total": orig_tqdm.total,
-            "leave": orig_tqdm.leave,
-            "file": file,
-            "ncols": orig_tqdm.ncols,
-            "mininterval": orig_tqdm.mininterval,
-            "maxinterval": orig_tqdm.maxinterval,
-            "miniters": orig_tqdm.miniters,
-            "ascii": orig_tqdm.ascii,
-            "disable": orig_tqdm.disable,
-            "unit": orig_tqdm.unit,
-            "unit_scale": orig_tqdm.unit_scale,
-            "dynamic_ncols": orig_tqdm.dynamic_ncols,
-            "smoothing": orig_tqdm.smoothing,
-            "bar_format": orig_tqdm.bar_format,
-            "initial": orig_tqdm.initial,
-            "position": position,
-            "postfix": orig_tqdm.postfix,
-            "unit_divisor": orig_tqdm.unit_divisor,
-            "write_bytes": write_bytes,
-            "lock_args": orig_tqdm.lock_args,
-            "nrows": orig_tqdm.nrows,
-            "colour": orig_tqdm.colour,
-            "delay": orig_tqdm.delay,
-            "gui": orig_tqdm.gui,
-        }
+        """
+        iterable=None, desc=None, total=None, leave=True, file=None,
+                 ncols=None, mininterval=0.1, maxinterval=10.0, miniters=None,
+                 ascii=None, disable=False, unit='it', unit_scale=False,
+                 dynamic_ncols=False, smoothing=0.3, bar_format=None, initial=0,
+                 position=None, postfix=None, unit_divisor=1000, write_bytes=False,
+                 lock_args=None, nrows=None, colour=None, delay=0, gui=False,
+        """
+        vrs = vars(orig_tqdm).copy()
+        sgn = inspect.signature(orig_tqdm.__init__)
+
+        kw = {}
+        kwargs_tqdm = {}
+
+        non_idempotent_args = ["miniters", "position"]
+
+        def _handle_ni_args(name, vrs):
+            if name == "miniters":
+                return None if vrs[name] == 0 else vrs[name]
+            if name == "position":
+                return None if vrs["pos"] == 0 else -vrs["pos"]
+
+        for name, param in sgn.parameters.items():
+            if name in kwargs:
+                kw[name] = kwargs[name]
+            elif name in non_idempotent_args:
+                kw[name] = _handle_ni_args(name, vrs)
+            else:
+                if name == "kwargs":
+                    pass
+                else:
+                    try:
+                        kw[name] = vrs[name]
+                    except KeyError:
+                        kw[name] = param.default
+
         return cls(**kw)
 
 
 def handle_original_tqdm(func):
     def wrapper_original_tqdm(*args, **kwargs):
-        pbar_name = (
+        cb_name = (
             "progress_size_cb" if func.__qualname__ == "FileApi.upload_directory" else "progress_cb"
         )
 
         spc = inspect.getfullargspec(func)
 
-        if pbar_name in spc.args:  # (args, kwargs) both in spc.args
-            idx = spc.args.index(pbar_name)
+        if cb_name not in spc.args:
+            raise ValueError(
+                f"The '{cb_name}' parameter was not found in the '{func.__qualname__}'"
+            )
+        else:  # Note: (args, kwargs) both in spc.args
+            idx = spc.args.index(cb_name)
             try:
                 progress_cb = args[idx]
             except IndexError:
-                progress_cb = kwargs.get(pbar_name)
-        else:
-            raise ValueError(
-                f"The '{pbar_name}' parameter was not found in the '{func.__qualname__}'"
-            )
+                progress_cb = kwargs.get(cb_name)
 
-        _progress_cb = progress_cb
+            _progress_cb = progress_cb
 
-        # Start progress bar setup
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
-            if not type(progress_cb) == tqdm_sly:
-                progress_cb.clear()
-                _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
+            # Start progress bar setup
+            if progress_cb is not None and isinstance(progress_cb, tqdm):
+                if not type(progress_cb) == tqdm_sly:
+                    progress_cb.clear()
+                    _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
 
-        if pbar_name in spc.args:
             new_args = list(args)
             try:
                 new_args[idx] = _progress_cb
             except IndexError:
-                kwargs[pbar_name] = _progress_cb
+                kwargs[cb_name] = _progress_cb
 
         try:
             result = func(*new_args, **kwargs)
