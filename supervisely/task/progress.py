@@ -627,7 +627,6 @@ class tqdm_sly(tqdm, Progress):
         sgn = inspect.signature(orig_tqdm.__init__)
 
         kw = {}
-        kwargs_tqdm = {}
 
         non_idempotent_args = ["miniters", "position"]
 
@@ -681,14 +680,15 @@ def handle_original_tqdm(func):
                     progress_cb.clear()
                     _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
 
-            new_args = list(args)
+            new_args = list(args).copy()
+            new_kwargs = kwargs.copy()
             try:
                 new_args[idx] = _progress_cb
             except IndexError:
-                kwargs[cb_name] = _progress_cb
+                new_kwargs[cb_name] = _progress_cb
 
         try:
-            result = func(*new_args, **kwargs)
+            result = func(*new_args, **new_kwargs)
         except Exception as e:
             # Ensure progress bar gets closed in case of an exception
             if progress_cb is not None and isinstance(progress_cb, tqdm):

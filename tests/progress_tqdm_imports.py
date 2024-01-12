@@ -19,14 +19,14 @@ api = sly.Api.from_env()
 # api.file DOWNLOAD/UPLOAD
 ##################################
 size = sly.fs.get_file_size("/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb")
-progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B")
+progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B", miniters=2, position=1)
 api.file.upload(
     449,
     "/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb",
     "google-chrome-stable_current_amd64.deb",
     progress,
 )
-print("1 (positional argument)")
+print("1 (positional, non-idempotent args)")
 
 TEAM_ID = 449
 TF_FILEPATH = "/google-chrome-stable_current_amd64.deb"
@@ -37,7 +37,7 @@ p = tqdm(
     unit_scale=True,
 )
 api.file.download(449, TF_FILEPATH, "/tmp/google-chrome-stable_current_amd64.deb", progress_cb=p)
-print("2 (keyword argument)")
+print("2 (pos + keyword)")
 
 breakpoint()
 
