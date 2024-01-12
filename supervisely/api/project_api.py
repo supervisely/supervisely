@@ -475,17 +475,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             json_settings = self.get_settings(id)
             mtag_name = None
 
-            if json_settings["groupImagesByTagId"] is not None:
+            if json_settings.get("groupImagesByTagId") is not None:
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
                         mtag_name = tag["name"]
                         break
 
             json_response[MetaJsonF.PROJECT_SETTINGS] = ProjectSettings(
-                multiview_enabled=json_settings["groupImages"],
+                multiview_enabled=json_settings.get("groupImages", False),
                 multiview_tag_name=mtag_name,
-                multiview_tag_id=json_settings["groupImagesByTagId"],
-                multiview_is_synced=json_settings["groupImagesSync"],
+                multiview_tag_id=json_settings.get("groupImagesByTagId"),
+                multiview_is_synced=json_settings.get("groupImagesSync", False),
             ).to_json()
 
         return json_response
