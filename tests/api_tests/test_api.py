@@ -13,7 +13,6 @@ sys.path.insert(0, sdk_path)
 from supervisely.api.api import Api, UserSession
 
 
-
 class TestLoginInfo(unittest.TestCase):
     def setUp(self):
         self.server = "https://app.supervisely.com"
