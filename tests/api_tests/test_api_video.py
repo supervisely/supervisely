@@ -65,6 +65,10 @@ class TestImageApi(unittest.TestCase):
         video_paths = list_files(self.files_path, filter_fn=sly.video.is_valid_format)
         names = [get_file_name_with_ext(video_path) for video_path in video_paths]
         progress_cb = tqdm(total=len(video_paths), desc="Uploading videos")
+        # progress_cb = sly.tqdm_sly(total=len(video_paths), desc="Uploading videos")
+        # progress_cb = sly.Progress(
+        #     total_cnt=len(video_paths), message="Uploading videos"
+        # ).iters_done_report
 
         # Call the method being tested
         video_info = self.video_api.upload_paths(dataset_id, names, video_paths, progress_cb)

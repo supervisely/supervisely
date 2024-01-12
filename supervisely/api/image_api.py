@@ -56,6 +56,7 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
 )
 from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, tqdm_sly
 
 
 class ImageInfo(NamedTuple):
@@ -961,8 +962,13 @@ class ImageApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
-                if progress_cb is not None and progress_cb.n != progress_cb.total:
-                    progress_cb(progress_cb.total - progress_cb.n)
+                if progress_cb is not None:
+                    if type(progress_cb) in (tqdm, tqdm_sly):
+                        if progress_cb.n != progress_cb.total:
+                            progress_cb(progress_cb.total - progress_cb.n)
+                    elif type(progress_cb.__self__) is Progress:
+                        if progress_cb.__self__.current != progress_cb.__self__.total:
+                            progress_cb(progress_cb.__self__.total - progress_cb.__self__.current)
                 return
 
             warning_items = []
