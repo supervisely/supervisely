@@ -9,6 +9,18 @@ from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
+class FigureInfo(NamedTuple):
+    id: int
+    class_id: int
+    updated_at: str
+    created_at: str
+    entity_id: int
+    object_id: int
+    project_id: int
+    dataset_id: int
+    frame_index: int
+    geometry_type: str
+    geometry: dict
 
 class FigureApi(RemoveableBulkModuleApi):
     """
@@ -37,6 +49,7 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         return [
             ApiField.ID,
+            ApiField.CLASS_ID,
             ApiField.UPDATED_AT,
             ApiField.CREATED_AT,
             ApiField.ENTITY_ID,
@@ -71,7 +84,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         return "FigureInfo"
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> FigureInfo:
         """
         Get Figure information by ID.
 
@@ -115,7 +128,7 @@ class FigureApi(RemoveableBulkModuleApi):
             # ]
         """
         return self._get_info_by_id(id, "figures.info")
-
+    
     def create(
         self,
         entity_id: int,
@@ -124,7 +137,7 @@ class FigureApi(RemoveableBulkModuleApi):
         geometry_json: Dict,
         geometry_type,
         track_id: int = None,
-    ):
+    ) -> int:
         """"""
         input_figure = {
             ApiField.META: meta,
@@ -141,7 +154,7 @@ class FigureApi(RemoveableBulkModuleApi):
         response = self._api.post("figures.bulk.add", body)
         return response.json()[0][ApiField.ID]
 
-    def get_by_ids(self, dataset_id: int, ids: List[int]) -> List[NamedTuple]:
+    def get_by_ids(self, dataset_id: int, ids: List[int]) -> List[FigureInfo]:
         """
         Get Figures information by IDs from given dataset ID.
 
@@ -287,7 +300,7 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
-    def get_list(self, dataset_id: int) -> List[dict]:
+    def get_list(self, dataset_id: int) -> List[FigureInfo]:
         fields = [
             "id",
             "createdAt",
@@ -312,4 +325,11 @@ class FigureApi(RemoveableBulkModuleApi):
         resp = self._api.post(
             "figures.list", {ApiField.DATASET_ID: dataset_id, ApiField.FIELDS: fields}
         )
-        return resp.json()
+        infos = resp.json()
+        file_infos = []
+        for info in infos["entities"]:
+            file_infos.append(self._convert_json_info(info, True))
+        return file_infos
+
+    def _convert_json_info(self, info: dict, skip_missing=False):
+        return super()._convert_json_info(info, True)
