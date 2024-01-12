@@ -162,24 +162,20 @@ class FastTable(Widget):
 
         @server.post(filter_changed_route_path)
         def _filter_changed():
-            try:
-                self._active_page = StateJson()[self.widget_id]["page"]
-                self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
-                self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
-                search_value = StateJson()[self.widget_id]["search"]
-                self._filtered_data = self.search(search_value)
-                self._rows_total = len(self._filtered_data)
-                self._sorted_data = self._sort_table_data(self._filtered_data)
-                self._sliced_data = self._slice_table_data(
-                    self._sorted_data, actual_page=self._active_page
-                )
-                self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-                DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
-                DataJson()[self.widget_id]["total"] = self._rows_total
-                DataJson().send_changes()
-            except Exception as e:
-                logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": str(e)})
-                raise e
+            self._active_page = StateJson()[self.widget_id]["page"]
+            self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
+            self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
+            search_value = StateJson()[self.widget_id]["search"]
+            self._filtered_data = self.search(search_value)
+            self._rows_total = len(self._filtered_data)
+            self._sorted_data = self._sort_table_data(self._filtered_data)
+            self._sliced_data = self._slice_table_data(
+                self._sorted_data, actual_page=self._active_page
+            )
+            self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+            DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+            DataJson()[self.widget_id]["total"] = self._rows_total
+            DataJson().send_changes()
 
     def get_json_data(self) -> Dict[str, Any]:
         """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
@@ -302,7 +298,7 @@ class FastTable(Widget):
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
-        sort = init_options.pop("sort", {})
+        sort = init_options.pop("sort", {"column": None, "order": None})
         page_size = init_options.pop("pageSize", 10)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
@@ -765,6 +761,8 @@ class FastTable(Widget):
         return project_meta
 
     def _validate_fix_columns_value(self, fixed_columns: int) -> int:
+        if fixed_columns is None:
+            return None
         if isinstance(fixed_columns, int):
             if fixed_columns <= 0:
                 logger.warning(

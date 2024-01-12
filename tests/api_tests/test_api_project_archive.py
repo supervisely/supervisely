@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, sdk_path)
+
 from supervisely.api.api import Api
 
 

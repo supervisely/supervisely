@@ -999,7 +999,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Image name.
+        :param name: Image name with extension.
         :type name: str
         :param path: Local Image path.
         :type path: str
@@ -1040,7 +1040,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: List of Images names.
+        :param names: List of Images names with extension.
         :type names: List[str]
         :param paths: List of local Images pathes.
         :type paths: List[str]
@@ -1132,7 +1132,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Images names.
+        :param names: Images names with extension.
         :type names: List[str]
         :param imgs: Images in RGB numpy matrix format
         :type imgs: List[np.ndarray]
@@ -1197,7 +1197,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Image name.
+        :param name: Image name with extension.
         :type name: str
         :param link: Link to Image.
         :type link: str
@@ -1251,7 +1251,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Images names.
+        :param names: Images names with extension.
         :type names: List[str]
         :param links: Links to Images.
         :type links: List[str]
@@ -1310,7 +1310,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Image name.
+        :param name: Image name with extension.
         :type name: str
         :param hash: Image hash.
         :type hash: str
@@ -1380,7 +1380,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Images names.
+        :param names: Images names with extension.
         :type names: List[str]
         :param hashes: Images hashes.
         :type hashes: List[str]
@@ -1450,7 +1450,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Image name.
+        :param name: Image name with extension.
         :type name: str
         :param id: Source image ID in Supervisely.
         :type id: int
@@ -1522,7 +1522,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Source images names.
+        :param names: Source images names with extension.
         :type names: List[str]
         :param ids: Images IDs.
         :type ids: List[int]
@@ -2629,7 +2629,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: dataset ID to upload images to
         :type dataset_id: int
-        :param image_name: name of the image
+        :param image_name: name of the image with extension.
         :type image_name: str
         :param channels: list of numpy arrays with image channels
         :type channels: List[np.ndarray], optional

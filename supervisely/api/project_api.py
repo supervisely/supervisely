@@ -184,7 +184,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         UpdateableModule.__init__(self, api)
 
     def get_list(
-        self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self,
+        workspace_id: int,
+        filters: Optional[List[Dict[str, str]]] = None,
+        fields: List[str] = [],
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -193,8 +196,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
+        :param fields: The list of api fields which will be returned with the response.
+        :type fields: List[str]
+
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[ProjectInfo]`
+        :rtype: :class: `List[ProjectInfo]`
         :Usage example:
 
          .. code-block:: python
@@ -265,7 +271,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         return self.get_list_all_pages(
             "projects.list",
-            {ApiField.WORKSPACE_ID: workspace_id, "filter": filters or []},
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.FILTER: filters or [],
+                ApiField.FIELDS: fields,
+            },
         )
 
     def get_info_by_id(
@@ -370,7 +380,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     custom_data={},
             #                     backup_archive={})
         """
-        info = super().get_info_by_name(parent_id, name)
+
+        fields = [
+            x for x in self.info_sequence() if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS)
+        ]
+
+        info = super().get_info_by_name(parent_id, name, fields)
         self._check_project_info(
             info, name=name, expected_type=expected_type, raise_error=raise_error
         )
@@ -460,17 +475,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             json_settings = self.get_settings(id)
             mtag_name = None
 
-            if json_settings["groupImagesByTagId"] is not None:
+            if json_settings.get("groupImagesByTagId") is not None:
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
                         mtag_name = tag["name"]
                         break
 
             json_response[MetaJsonF.PROJECT_SETTINGS] = ProjectSettings(
-                multiview_enabled=json_settings["groupImages"],
+                multiview_enabled=json_settings.get("groupImages", False),
                 multiview_tag_name=mtag_name,
-                multiview_tag_id=json_settings["groupImagesByTagId"],
-                multiview_is_synced=json_settings["groupImagesSync"],
+                multiview_tag_id=json_settings.get("groupImagesByTagId"),
+                multiview_is_synced=json_settings.get("groupImagesSync", False),
             ).to_json()
 
         return json_response
@@ -642,7 +657,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             m = ProjectMeta.from_json(meta)
 
         m.project_settings.validate(m)
-        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
+        response = self._api.post(
+            "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
+        )
+        try:
+            tmp = ProjectMeta.from_json(data=response.json())
+            m = tmp.clone(project_type=m.project_type, project_settings=m.project_settings)
+        except KeyError:
+            pass  # handle old instances <6.8.69: response.json()=={'success': True}
 
         if m.project_settings is not None:
             s = m.project_settings
@@ -1528,10 +1550,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
     ) -> List[dict]:
         """
-        Delete permanently projects with given IDs from the Supervisely server.
-
         !!! WARNING !!!
         Be careful, this method deletes data from the database, recovery is not possible.
+
+        Delete permanently projects with given IDs from the Supervisely server.
+        All project IDs must belong to the same team.
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]
