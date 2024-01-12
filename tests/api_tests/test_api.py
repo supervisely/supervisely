@@ -51,7 +51,6 @@ class TestApi(unittest.TestCase):
         self.login = "unit_tests"  # write your login here
         self.password = ""  # write your password here
         self.api_token = UserSession(self.server).log_in(self.login, self.password).api_token
-
         self.env_file = "./supervisely.env"
         with open(self.env_file, "w") as file:
             file.write(f'SERVER_ADDRESS="{self.server}"\n')
