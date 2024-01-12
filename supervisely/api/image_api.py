@@ -966,7 +966,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     if type(progress_cb) in (tqdm, tqdm_sly):
                         if progress_cb.n != progress_cb.total:
                             progress_cb(progress_cb.total - progress_cb.n)
-                    elif type(progress_cb.__self__) is Progress:
+                    elif callable(progress_cb) and type(progress_cb.__self__) is Progress:
                         if progress_cb.__self__.current != progress_cb.__self__.total:
                             progress_cb(progress_cb.__self__.total - progress_cb.__self__.current)
                 return
