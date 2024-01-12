@@ -655,7 +655,7 @@ class tqdm_sly(tqdm, Progress):
 
 
 def handle_original_tqdm(func):
-    def wrapper(*args, **kwargs):
+    def wrapper_original_tqdm(*args, **kwargs):
         progress_cb = kwargs.get("progress_cb")
 
         _progress_cb = progress_cb
@@ -685,4 +685,4 @@ def handle_original_tqdm(func):
 
         return result
 
-    return wrapper
+    return wrapper_original_tqdm
