@@ -656,10 +656,22 @@ class tqdm_sly(tqdm, Progress):
 
 def handle_original_tqdm(func):
     def wrapper_original_tqdm(*args, **kwargs):
-        p_name = (
+        pbar_name = (
             "progress_size_cb" if func.__qualname__ == "FileApi.upload_directory" else "progress_cb"
         )
-        progress_cb = kwargs.get(p_name)
+
+        spc = inspect.getfullargspec(func)
+
+        if pbar_name in spc.args:  # (args, kwargs) both in spc.args
+            idx = spc.args.index(pbar_name)
+            try:
+                progress_cb = args[idx]
+            except IndexError:
+                progress_cb = kwargs.get(pbar_name)
+        else:
+            raise ValueError(
+                f"The '{pbar_name}' parameter was not found in the '{func.__qualname__}'"
+            )
 
         _progress_cb = progress_cb
 
@@ -669,9 +681,15 @@ def handle_original_tqdm(func):
                 progress_cb.clear()
                 _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
 
-        kwargs[p_name] = _progress_cb
+        if pbar_name in spc.args:
+            new_args = list(args)
+            try:
+                new_args[idx] = _progress_cb
+            except IndexError:
+                kwargs[pbar_name] = _progress_cb
+
         try:
-            result = func(*args, **kwargs)
+            result = func(*new_args, **kwargs)
         except Exception as e:
             # Ensure progress bar gets closed in case of an exception
             if progress_cb is not None and isinstance(progress_cb, tqdm):

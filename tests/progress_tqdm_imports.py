@@ -18,146 +18,148 @@ api = sly.Api.from_env()
 ##################################
 # api.file DOWNLOAD/UPLOAD
 ##################################
-# size = sly.fs.get_file_size("/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb")
-# progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B")
-# api.file.upload(
-#     449,
-#     "/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb",
-#     "google-chrome-stable_current_amd64.deb",
-#     progress_cb=progress,
-# )
-# print("1")
+size = sly.fs.get_file_size("/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb")
+progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B")
+api.file.upload(
+    449,
+    "/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb",
+    "google-chrome-stable_current_amd64.deb",
+    progress,
+)
+print("1 (positional argument)")
 
 TEAM_ID = 449
-# TF_FILEPATH = "/google-chrome-stable_current_amd64.deb"
-# p = tqdm(
-#     desc=f"download",
-#     total=api.file.get_directory_size(TEAM_ID, TF_FILEPATH),
-#     unit="B",
-#     unit_scale=True,
-# )
-# api.file.download(449, TF_FILEPATH, "/tmp/google-chrome-stable_current_amd64.deb", progress_cb=p)
-# print("2")
+TF_FILEPATH = "/google-chrome-stable_current_amd64.deb"
+p = tqdm(
+    desc=f"download",
+    total=api.file.get_directory_size(TEAM_ID, TF_FILEPATH),
+    unit="B",
+    unit_scale=True,
+)
+api.file.download(449, TF_FILEPATH, "/tmp/google-chrome-stable_current_amd64.deb", progress_cb=p)
+print("2 (keyword argument)")
+
+breakpoint()
 
 TF_DIRPATH = "/stats/"
 LOC_DIRPATH = "/tmp/stats/"
-# p = tqdm(
-#     desc=f"download_directory",
-#     total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
-#     unit="B",
-#     unit_scale=True,
-# )
-# api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
+p = tqdm(
+    desc=f"download_directory",
+    total=api.file.get_directory_size(TEAM_ID, TF_DIRPATH),
+    unit="B",
+    unit_scale=True,
+)
+api.file.download_directory(TEAM_ID, TF_DIRPATH, LOC_DIRPATH, progress_cb=p)
 
-# p = tqdm(
-#     desc=f"upload_directory",
-#     total=sly.fs.get_directory_size(LOC_DIRPATH),
-#     unit="B",
-#     unit_scale=True,
-# )
-# api.file.upload_directory(
-#     TEAM_ID,
-#     LOC_DIRPATH,
-#     TF_DIRPATH,
-#     progress_size_cb=p,
-# )
-# print("2")
+p = tqdm(
+    desc=f"upload_directory",
+    total=sly.fs.get_directory_size(LOC_DIRPATH),
+    unit="B",
+    unit_scale=True,
+)
+api.file.upload_directory(
+    TEAM_ID,
+    LOC_DIRPATH,
+    TF_DIRPATH,
+    progress_size_cb=p,
+)
+print("2")
 
-# ##################################
-# # sly DOWNLOAD/UPLOAD
-# ##################################
-# breakpoint()
-# project = api.project.get_info_by_id(32796)
-# p = tqdm(
-#     desc="download",
-#     total=project.items_count,
-# )
-# sly.download(api, project.id, "/tmp/lemons/", progress_cb=p)
-# print("3")
-
-# # breakpoint()
-# project_fs = sly.read_project("/tmp/lemons/")
-# p = tqdm(
-#     desc="upload",
-#     total=project.items_count,
-# )
-# # print(p)
-# sly.upload("/tmp/lemons/", api, 691, progress_cb=p)
-# print("4")
-
-# shutil.rmtree("/tmp/lemons/")
-# os.makedirs("/tmp/lemons/", exist_ok=True)
+##################################
+# sly DOWNLOAD/UPLOAD
+##################################
+breakpoint()
+project = api.project.get_info_by_id(32796)
+p = tqdm(
+    desc="download",
+    total=project.items_count,
+)
+sly.download(api, project.id, "/tmp/lemons/", progress_cb=p)
+print("3")
 
 # breakpoint()
-# project = api.project.get_info_by_id(32796)
-# p = tqdm(
-#     desc="download",
-#     total=project.items_count,
-# )
-# sly.download_project(api, project.id, "/tmp/lemons/", progress_cb=p)
-# print("5")
+project_fs = sly.read_project("/tmp/lemons/")
+p = tqdm(
+    desc="upload",
+    total=project.items_count,
+)
+print(p)
+sly.upload("/tmp/lemons/", api, 691, progress_cb=p)
+print("4")
 
-# project_fs = sly.read_project("/tmp/lemons/")
-# p = tqdm(
-#     desc="upload",
-#     total=project.items_count,
-# )
-# sly.upload_project("/tmp/lemons/", api, 691, progress_cb=p)
-# print("6")
+shutil.rmtree("/tmp/lemons/")
+os.makedirs("/tmp/lemons/", exist_ok=True)
 
-# breakpoint()
-# project = api.project.get_info_by_id(18142)
-# p = tqdm(
-#     desc="download",
-#     total=project.items_count,
-# )
-# sly.download_video_project(api, project.id, "/tmp/vid/", progress_cb=p)
-# print("7")
+breakpoint()
+project = api.project.get_info_by_id(32796)
+p = tqdm(
+    desc="download",
+    total=project.items_count,
+)
+sly.download_project(api, project.id, "/tmp/lemons/", progress_cb=p)
+print("5")
+
+project_fs = sly.read_project("/tmp/lemons/")
+p = tqdm(
+    desc="upload",
+    total=project.items_count,
+)
+sly.upload_project("/tmp/lemons/", api, 691, progress_cb=p)
+print("6")
+
+breakpoint()
+project = api.project.get_info_by_id(18142)
+p = tqdm(
+    desc="download",
+    total=project.items_count,
+)
+sly.download_video_project(api, project.id, "/tmp/vid/", progress_cb=p)
+print("7")
 
 #! no progress_cb in sly.upload_video_project
-# project_fs = sly.read_project("/tmp/vid/")
-# p = tqdm(
-#     desc="upload",
-#     total=project.items_count,
-# )
-# sly.upload_video_project("/tmp/vid/", api, 691, progress_cb=p)
-# print("8")
+project_fs = sly.read_project("/tmp/vid/")
+p = tqdm(
+    desc="upload",
+    total=project.items_count,
+)
+sly.upload_video_project("/tmp/vid/", api, 691, progress_cb=p)
+print("8")
 
-# breakpoint()
-# project = api.project.get_info_by_id(18594)
-# p = tqdm(
-#     desc="download",
-#     total=project.items_count,
-# )
-# sly.download_volume_project(api, project.id, "/tmp/vol/", progress_cb=p)
-# print("9")
+breakpoint()
+project = api.project.get_info_by_id(18594)
+p = tqdm(
+    desc="download",
+    total=project.items_count,
+)
+sly.download_volume_project(api, project.id, "/tmp/vol/", progress_cb=p)
+print("9")
 
-# project_fs = sly.read_project("/tmp/vol/")
-# p = tqdm(
-#     desc="upload",
-#     total=project.items_count,
-# )
+project_fs = sly.read_project("/tmp/vol/")
+p = tqdm(
+    desc="upload",
+    total=project.items_count,
+)
 #! no progress_cb in sly.upload_volume_project
-# sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
-# print("10")
+sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
+print("10")
 
-# breakpoint()
-# project = api.project.get_info_by_id(18592)
-# p = tqdm(
-#     desc="download",
-#     total=project.items_count,
-# )
-# sly.download_pointcloud_project(api, project.id, "/tmp/pcl/", progress_cb=p)
-# print("11")
+breakpoint()
+project = api.project.get_info_by_id(18592)
+p = tqdm(
+    desc="download",
+    total=project.items_count,
+)
+sly.download_pointcloud_project(api, project.id, "/tmp/pcl/", progress_cb=p)
+print("11")
 
-# breakpoint()
-# project = api.project.get_info_by_id(18593)
-# p = tqdm(
-#     desc="download",
-#     total=project.items_count,
-# )
-# sly.download_pointcloud_episode_project(api, project.id, "/tmp/pcl_ep/", progress_cb=p)
-# print("12")
+breakpoint()
+project = api.project.get_info_by_id(18593)
+p = tqdm(
+    desc="download",
+    total=project.items_count,
+)
+sly.download_pointcloud_episode_project(api, project.id, "/tmp/pcl_ep/", progress_cb=p)
+print("12")
 
 
 # api.annotation.download_batch(59589, [19425323, 19425319], progress_cb=p)
