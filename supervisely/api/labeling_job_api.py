@@ -5,32 +5,31 @@
 from __future__ import annotations
 
 import time
-from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.point import Point
-from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.polyline import Polyline
-from supervisely.geometry.graph import GraphNodes
-
-from supervisely.collection.str_enum import StrEnum
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
-    RemoveableBulkModuleApi,
     ModuleWithStatus,
+    RemoveableBulkModuleApi,
     WaitingTimeExceeded,
 )
+from supervisely.collection.str_enum import StrEnum
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.point import Point
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.project.project_meta import ProjectMeta
 
 
 class LabelingJobInfo(NamedTuple):
@@ -254,8 +253,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                     field_values.append(exclude_images_with_tags)
                     continue
                 elif (
-                    field_name == ApiField.CLASSES_TO_LABEL
-                    or field_name == ApiField.TAGS_TO_LABEL
+                    field_name == ApiField.CLASSES_TO_LABEL or field_name == ApiField.TAGS_TO_LABEL
                 ):
                     new_value = []
                     for fv in value:
@@ -508,9 +506,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         if images_range is not None:
             if len(images_range) != 2:
-                raise RuntimeError(
-                    "images_range has to contain 2 elements (start, end)"
-                )
+                raise RuntimeError("images_range has to contain 2 elements (start, end)")
             images_range = {"start": images_range[0], "end": images_range[1]}
             data[ApiField.META]["range"] = images_range
 
@@ -666,13 +662,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 }
             )
         if project_id is not None:
-            filters.append(
-                {"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id}
-            )
+            filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
-            filters.append(
-                {"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id}
-            )
+            filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
         return self.get_list_all_pages(
             "jobs.list",
             {
@@ -870,9 +862,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             # supervisely.api.module_api.WaitingTimeExceeded: Waiting time exceeded
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
-        effective_wait_timeout = (
-            wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
-        )
+        effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
@@ -1239,7 +1229,5 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         job_meta = self.get_project_meta(id)
         img_tags = _create_tags_from_labeling_job(image.tags, job_meta)
         labels = _create_labels_from_labeling_job(figures, job_meta)
-        ann = Annotation(
-            img_size=(image.height, image.width), labels=labels, img_tags=img_tags
-        )
+        ann = Annotation(img_size=(image.height, image.width), labels=labels, img_tags=img_tags)
         return ann

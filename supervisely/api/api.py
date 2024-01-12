@@ -16,6 +16,7 @@ import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
 import supervisely.api.dataset_api as dataset_api
+import supervisely.api.entity_annotation.figure_api as figure_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
@@ -38,7 +39,6 @@ import supervisely.api.video.video_api as video_api
 import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
-import supervisely.api.entity_annotation.figure_api as figure_api
 import supervisely.io.env as sly_env
 from supervisely._utils import is_development
 from supervisely.io.network_exceptions import (
@@ -117,9 +117,7 @@ class Api:
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "10"))
         if retry_sleep_sec is None:
-            retry_sleep_sec = int(
-                os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1")
-            )
+            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
         if len(token) != 128:
             raise ValueError("Invalid token {!r}: length != 128".format(token))
@@ -167,9 +165,7 @@ class Api:
 
         self.logger = external_logger or logger
 
-        self._require_https_redirect_check = not self.server_address.startswith(
-            "https://"
-        )
+        self._require_https_redirect_check = not self.server_address.startswith("https://")
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -312,13 +308,8 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(
-                        url, data=data, headers=self.headers, stream=stream
-                    )
-                elif (
-                    type(data) is MultipartEncoderMonitor
-                    or type(data) is MultipartEncoder
-                ):
+                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     response = requests.post(
                         url,
                         data=data,
@@ -391,9 +382,7 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(
-                    url, params=json_body, headers=self.headers, stream=stream
-                )
+                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
                 if response.status_code != requests.codes.ok:
                     Api._raise_for_status(response)
