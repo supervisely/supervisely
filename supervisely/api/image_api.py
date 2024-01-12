@@ -896,23 +896,30 @@ class ImageApi(RemoveableBulkModuleApi):
         encoder = MultipartEncoder(fields=content_dict)
         resp = self._api.post("images.bulk.upload", encoder)
 
-        with json.loads(resp.text) as resp_list:
-            remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
-            if len(remote_hashes) != len(hashes_items_to_upload):
-                problem_items = [
-                    (hsh, item, resp["errors"])
-                    for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
-                    if resp.get("errors")
-                ]
-                logger.warn(
-                    "Not all images were uploaded within request.",
-                    extra={
-                        "total_cnt": len(hashes_items_to_upload),
-                        "ok_cnt": len(remote_hashes),
-                        "items": problem_items,
-                    },
-                )
-            return remote_hashes
+        # close all opened files
+        for value in content_dict.values():
+            from io import BufferedReader
+
+            if isinstance(value[1], BufferedReader):
+                value[1].close()
+
+        resp_list = json.loads(resp.text)
+        remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
+        if len(remote_hashes) != len(hashes_items_to_upload):
+            problem_items = [
+                (hsh, item, resp["errors"])
+                for (hsh, item), resp in zip(hashes_items_to_upload, resp_list)
+                if resp.get("errors")
+            ]
+            logger.warn(
+                "Not all images were uploaded within request.",
+                extra={
+                    "total_cnt": len(hashes_items_to_upload),
+                    "ok_cnt": len(remote_hashes),
+                    "items": problem_items,
+                },
+            )
+        return remote_hashes
 
     def _upload_data_bulk(
         self, func_item_to_byte_stream, items_hashes, retry_cnt=3, progress_cb=None
