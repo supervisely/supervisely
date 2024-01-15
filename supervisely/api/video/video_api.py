@@ -1538,8 +1538,8 @@ class VideoApi(RemoveableBulkModuleApi):
     ):
         """Private method. Used for batch uploading of multiple unique videos."""
 
-        hash_to_items = {i_hash: item for item, i_hash in items_hashes}
-
+        items_to_hashes = {item: i_hash for item, i_hash in items_hashes}
+        hash_to_items = {value: key for key, value in items_to_hashes.items()}
         unique_hashes = set(hash_to_items.keys())
         remote_hashes = set(
             self.check_existing_hashes(list(unique_hashes))
@@ -1566,6 +1566,8 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
+                if progress_cb is not None:
+                    progress_cb(len(items_to_hashes) - len(unique_hashes))
                 return
 
             logger.warn(
