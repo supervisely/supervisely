@@ -66,7 +66,7 @@ class ObjectDetection3D(Inference):
             state = request.state.state
             api : Api = request.state.api
             settings = self._get_inference_settings(state)
-            prediction = self._inference_pointcloud_id(api, state.pointcloud_id, settings)
+            prediction = self._inference_pointcloud_id(api, state["pointcloud_id"], settings)
             return prediction
 
         @server.post("/inference_pointcloud_ids")
@@ -79,7 +79,7 @@ class ObjectDetection3D(Inference):
             api : Api = request.state.api
             settings = self._get_inference_settings(state)
             predictions = []
-            for pcd_id in state.pointcloud_ids:
+            for pcd_id in state["pointcloud_ids"]:
                 pred = self._inference_pointcloud_id(api, pcd_id, settings)
                 predictions.append(pred)
             return predictions
