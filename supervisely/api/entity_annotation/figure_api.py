@@ -129,8 +129,21 @@ class FigureApi(RemoveableBulkModuleApi):
             #     }
             # ]
         """
-        return self._get_info_by_id(id, "figures.info")
-    
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometryType",
+            "geometry",
+            "tags",
+        ]
+        return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
+
     def create(
         self,
         entity_id: int,
