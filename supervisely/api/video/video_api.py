@@ -37,7 +37,7 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import Progress
 from supervisely.video.video import (
     gen_video_stream_name,
     get_info,
@@ -654,11 +654,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return project_id, dataset_id
 
     def upload_hash(
-        self,
-        dataset_id: int,
-        name: str,
-        hash: str,
-        stream_index: Optional[int] = None,
+        self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None
     ) -> VideoInfo:
         """
         Upload Video from given hash to Dataset.
@@ -809,7 +805,12 @@ class VideoApi(RemoveableBulkModuleApi):
             )
 
         results = self._upload_bulk_add(
-            lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
+            lambda item: (ApiField.HASH, item),
+            dataset_id,
+            names,
+            hashes,
+            metas,
+            progress_cb,
         )
         return results
 
@@ -1315,8 +1316,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type infos:
         :param item_progress:
         :type item_progress:
-        :param change_name_if_conflict: If True, will rename videos if videos with given names already exist in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -1404,12 +1403,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     # info = self._api.video.get_info_by_name(dataset_id, item_name)
                     # if info is not None:
                     #     item_name = gen_video_stream_name(name, stream_index)
-                    res = self.upload_hash(
-                        dataset_id,
-                        name,
-                        hash,
-                        stream_index,
-                    )
+                    res = self.upload_hash(dataset_id, name, hash, stream_index)
                     video_info_results.append(res)
             except Exception as e:
                 logger.warning(
@@ -1895,7 +1889,12 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         return links[0]
 
-    def add_existing(self, dataset_id: int, video_info: VideoInfo, name: str) -> VideoInfo:
+    def add_existing(
+        self,
+        dataset_id: int,
+        video_info: VideoInfo,
+        name: str,
+    ) -> VideoInfo:
         """
         Add existing video from source Dataset to destination Dataset.
 
