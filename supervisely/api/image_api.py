@@ -56,7 +56,6 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
 )
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
 
 
 class ImageInfo(NamedTuple):
@@ -986,11 +985,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_path(
-        self,
-        dataset_id: int,
-        name: str,
-        path: str,
-        meta: Optional[Dict] = None,
+        self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1067,11 +1062,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
     def upload_np(
-        self,
-        dataset_id: int,
-        name: str,
-        img: np.ndarray,
-        meta: Optional[Dict] = None,
+        self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None
     ) -> ImageInfo:
         """
         Upload given Image in numpy format with given name to Dataset.
@@ -1269,11 +1260,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_hash(
-        self,
-        dataset_id: int,
-        name: str,
-        hash: str,
-        meta: Optional[Dict] = None,
+        self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None
     ) -> ImageInfo:
         """
         Upload Image from given hash to Dataset.
@@ -1400,11 +1387,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_id(
-        self,
-        dataset_id: int,
-        name: str,
-        id: int,
-        meta: Optional[Dict] = None,
+        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -2699,7 +2682,11 @@ class ImageApi(RemoveableBulkModuleApi):
         names = [get_file_name(path) for path in paths]
 
         image_infos = self.upload_paths(
-            dataset_id=dataset_id, names=names, paths=paths, progress_cb=progress_cb, metas=metas
+            dataset_id=dataset_id,
+            names=names,
+            paths=paths,
+            progress_cb=progress_cb,
+            metas=metas,
         )
 
         anns = [Annotation((info.height, info.width)).add_tag(group_tag) for info in image_infos]
