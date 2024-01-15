@@ -282,8 +282,8 @@ class Api:
         :type retry_count: int
         :param ignore_task_id:
         :type ignore_task_id: bool
-        :param path: Path to your .env file.
-        :type path: str
+        :param path: Full path to your .env file.
+        :type path: str, optional
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
@@ -309,17 +309,16 @@ class Api:
         token = sly_env.api_token(raise_not_found=False)
 
         if is_development() and None in (server_address, token):
-            env_path = os.path.expanduser(env_file)
-            if os.path.exists(env_path):
-                _, extension = os.path.splitext(env_path)
+            if os.path.exists(env_file):
+                _, extension = os.path.splitext(env_file)
                 if extension == ".env":
-                    load_dotenv(env_path)
+                    load_dotenv(env_file)
                     server_address = sly_env.server_address()
                     token = sly_env.api_token()
                 else:
-                    raise ValueError(f"'{env_path}' is not an '*.env' file")
+                    raise ValueError(f"'{env_file}' is not an '*.env' file")
             else:
-                raise FileNotFoundError(f"File not found: '{env_path}'")
+                raise FileNotFoundError(f"File not found: '{env_file}'")
 
         if server_address is None:
             raise ValueError(
