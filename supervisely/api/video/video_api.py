@@ -659,7 +659,6 @@ class VideoApi(RemoveableBulkModuleApi):
         name: str,
         hash: str,
         stream_index: Optional[int] = None,
-        change_name_if_conflict: Optional[bool] = False,
     ) -> VideoInfo:
         """
         Upload Video from given hash to Dataset.
@@ -672,8 +671,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hash: str
         :param stream_index: Index of video stream.
         :type stream_index: int, optional
-        :param change_name_if_conflict: If True, video will be renamed if video with the same name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
         :Usage example:
@@ -742,9 +739,7 @@ class VideoApi(RemoveableBulkModuleApi):
         meta = {}
         if stream_index is not None and type(stream_index) is int:
             meta = {"videoStreamIndex": stream_index}
-        return self.upload_hashes(
-            dataset_id, [name], [hash], [meta], change_name_if_conflict=change_name_if_conflict
-        )[0]
+        return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
     def upload_hashes(
         self,
@@ -753,7 +748,6 @@ class VideoApi(RemoveableBulkModuleApi):
         hashes: List[str],
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        change_name_if_conflict: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given hashes to Dataset.
@@ -768,7 +762,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param change_name_if_conflict: If True, videos will be renamed if video with the same name already exists in dataset.
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -816,23 +809,12 @@ class VideoApi(RemoveableBulkModuleApi):
             )
 
         results = self._upload_bulk_add(
-            lambda item: (ApiField.HASH, item),
-            dataset_id,
-            names,
-            hashes,
-            metas,
-            progress_cb,
-            change_name_if_conflict=change_name_if_conflict,
+            lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
         )
         return results
 
     def upload_id(
-        self,
-        dataset_id: int,
-        name: str,
-        id: int,
-        meta: Optional[Dict] = None,
-        change_name_if_conflict: Optional[bool] = False,
+        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
     ) -> VideoInfo:
         """
         Uploads video from given id to Dataset.
@@ -845,8 +827,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Video metadata.
         :type meta: Optional[Dict]
-        :param change_name_if_conflict: If True, video will be renamed if video with the same name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: VideoInfo
         :Usage example:
@@ -865,9 +845,7 @@ class VideoApi(RemoveableBulkModuleApi):
             new_video_info = api.video.upload_id(dst_dataset_id, 'new_video_name.mp4', src_video_id)
         """
         metas = None if meta is None else [meta]
-        return self.upload_ids(
-            dataset_id, [name], [id], metas=metas, change_name_if_conflict=change_name_if_conflict
-        )[0]
+        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
 
     def upload_ids(
         self,
@@ -877,7 +855,6 @@ class VideoApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         infos: Optional[List[VideoInfo]] = None,
-        change_name_if_conflict: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Uploads videos from given ids to Dataset.
@@ -894,8 +871,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param infos: Videos information.
         :type infos: Optional[List[VideoInfo]]
-        :param change_name_if_conflict: If True, videos will be renamed if video with the same name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: List[VideoInfo]
         :Usage example:
@@ -956,7 +931,6 @@ class VideoApi(RemoveableBulkModuleApi):
                 links_names,
                 metas=links_metas,
                 skip_download=True,
-                change_name_if_conflict=change_name_if_conflict,
             )
 
             for info, pos in zip(res_infos_links, links_order):
@@ -969,7 +943,6 @@ class VideoApi(RemoveableBulkModuleApi):
                 hashes,
                 metas=hashes_metas,
                 progress_cb=progress_cb,
-                change_name_if_conflict=change_name_if_conflict,
             )
 
             for info, pos in zip(res_infos_hashes, hashes_order):
@@ -978,14 +951,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return result
 
     def _upload_bulk_add(
-        self,
-        func_item_to_kv,
-        dataset_id,
-        names,
-        items,
-        metas=None,
-        progress_cb=None,
-        change_name_if_conflict=False,
+        self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
     ):
         if metas is None:
             metas = [{}] * len(items)
@@ -995,11 +961,6 @@ class VideoApi(RemoveableBulkModuleApi):
             return results
         if len(names) != len(items):
             raise RuntimeError('Can not match "names" and "items" lists, len(names) != len(items)')
-
-        if change_name_if_conflict is True:
-            names = self.get_free_names(dataset_id, names)
-        else:
-            self.raise_name_intersections_if_exist(dataset_id, names)
 
         for name in names:
             validate_ext(os.path.splitext(name)[1])
@@ -1336,7 +1297,6 @@ class VideoApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         infos=None,
         item_progress=None,
-        change_name_if_conflict: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Uploads Videos with given names from given local paths to Dataset.
@@ -1425,10 +1385,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         metas2 = [meta["meta"] for meta in metas]
 
-        if change_name_if_conflict is True:
-            names = self.get_free_names(dataset_id, names)
-        else:
-            self.raise_name_intersections_if_exist(dataset_id, names)
+        names = self.get_free_names(dataset_id, names)
 
         for name, hash, meta in zip(names, hashes, metas2):
             try:
@@ -1467,7 +1424,6 @@ class VideoApi(RemoveableBulkModuleApi):
         path: str,
         meta: Dict = None,
         item_progress: Optional[Progress] = None,
-        change_name_if_conflict: Optional[bool] = False,
     ) -> VideoInfo:
         """
         Uploads Video with given name from given local path to Dataset.
@@ -1482,8 +1438,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param item_progress:
         :type item_progress:
-        :param change_name_if_conflict: If True, will rename video if video with given name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
         :Usage example:
@@ -1521,7 +1475,6 @@ class VideoApi(RemoveableBulkModuleApi):
             metas=[meta],
             infos=None,
             item_progress=progress_cb,
-            change_name_if_conflict=change_name_if_conflict,
         )
         if type(item_progress) is bool:
             p.set_current_value(value=p.total, report=True)
@@ -1619,13 +1572,6 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
-                if progress_cb is not None:
-                    if type(progress_cb) in (tqdm, tqdm_sly):
-                        if progress_cb.n != progress_cb.total:
-                            progress_cb(progress_cb.total - progress_cb.n)
-                    elif callable(progress_cb) and type(progress_cb.__self__) is Progress:
-                        if progress_cb.__self__.current != progress_cb.__self__.total:
-                            progress_cb(progress_cb.__self__.total - progress_cb.__self__.current)
                 return
 
             logger.warn(
@@ -1734,7 +1680,6 @@ class VideoApi(RemoveableBulkModuleApi):
         hashes: List[str] = None,
         metas: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
-        change_name_if_conflict: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given links to Dataset.
@@ -1753,8 +1698,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param skip_download: Skip download videos to local storage.
         :type skip_download: Optional[bool]
-        :param change_name_if_conflict: If True, videos will be renamed if video with the same name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -1788,12 +1731,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if infos is not None and hashes is not None and not skip_download:
             self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
-            lambda item: (ApiField.LINK, item),
-            dataset_id,
-            names,
-            links,
-            metas,
-            change_name_if_conflict=change_name_if_conflict,
+            lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
         )
 
     def update_custom_data(self, id: int, data: dict):
@@ -1844,7 +1782,6 @@ class VideoApi(RemoveableBulkModuleApi):
         hash: Optional[str] = None,
         meta: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
-        change_name_if_conflict: Optional[bool] = False,
     ):
         """
         Upload Video from given link to Dataset.
@@ -1863,8 +1800,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: List[Dict], optional
         :param skip_download: Skip download video to local storage.
         :type skip_download: Optional[bool]
-        :param change_name_if_conflict: If True, video will be renamed if video with the same name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
@@ -1949,7 +1884,6 @@ class VideoApi(RemoveableBulkModuleApi):
             hashes=[h],
             metas=[meta],
             skip_download=skip_download,
-            change_name_if_conflict=change_name_if_conflict,
         )
         if len(links) != 1:
             raise RuntimeError(
@@ -1961,13 +1895,7 @@ class VideoApi(RemoveableBulkModuleApi):
             )
         return links[0]
 
-    def add_existing(
-        self,
-        dataset_id: int,
-        video_info: VideoInfo,
-        name: str,
-        change_name_if_conflict: Optional[bool] = False,
-    ) -> VideoInfo:
+    def add_existing(self, dataset_id: int, video_info: VideoInfo, name: str) -> VideoInfo:
         """
         Add existing video from source Dataset to destination Dataset.
 
@@ -1977,8 +1905,6 @@ class VideoApi(RemoveableBulkModuleApi):
         :type video_info: VideoInfo
         :param name: Video name.
         :type name: str
-        :param change_name_if_conflict: If True, will rename video if video with given name already exists in dataset.
-        :type change_name_if_conflict: bool, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
@@ -2045,7 +1971,6 @@ class VideoApi(RemoveableBulkModuleApi):
                 hashes=[video_info.hash],
                 links=[video_info.link],
                 infos=None,
-                change_name_if_conflict=change_name_if_conflict,
             )[0]
         else:
             return self.upload_hash(dataset_id, name, video_info.hash)
@@ -2196,12 +2121,16 @@ class VideoApi(RemoveableBulkModuleApi):
 
         names = [get_file_name_with_ext(path) for path in paths]
 
+        if change_name_if_conflict is True:
+            names = self.get_free_names(dataset_id, names)
+        else:
+            self.raise_name_intersections_if_exist(dataset_id, names)
+
         video_infos = self.upload_paths(
             dataset_id,
             names,
             paths,
             progress_cb=progress_cb,
-            change_name_if_conflict=change_name_if_conflict,
         )
         return video_infos
 
