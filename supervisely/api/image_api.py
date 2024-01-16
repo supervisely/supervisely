@@ -2755,8 +2755,8 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         dir_path: str,
         progress_cb: Optional[Callable] = None,
-        include_subdirs: Optional[bool] = False,
-        change_name_if_conflict: Optional[bool] = False,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
     ) -> List[ImageInfo]:
         """
         Uploads all images with supported extensions from given directory to Supervisely.
@@ -2768,15 +2768,15 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dir_path: str
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param include_subdirs: If True uploads images from subdirectories of given directory, otherwise only images from given directory.
-        :type include_subdirs: bool, optional
+        :param recursive: If True uploads images from subdirectories of given directory recursively, otherwise only images from given directory.
+        :type recursive: bool, optional
         :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
         :type change_name_if_conflict: bool, optional
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         """
 
-        if include_subdirs:
+        if recursive:
             paths = list_files_recursively(dir_path, filter_fn=sly_image.is_valid_format)
         else:
             paths = list_files(dir_path, filter_fn=sly_image.is_valid_format)
@@ -2793,24 +2793,24 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def upload_dirs(
         self,
-        dirs: List[str],
         dataset_id: int,
+        dir_paths: List[str],
         progress_cb: Optional[Callable] = None,
-        include_subdirs: Optional[bool] = False,
-        change_name_if_conflict: Optional[bool] = False,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
     ) -> List[ImageInfo]:
         """
         Uploads all images with supported extensions from given directories to Supervisely.
         Optionally, uploads images from subdirectories of given directories.
 
-        :param dirs: List of paths to directories with images.
-        :type dirs: List[str]
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
+        :param dir_paths: List of paths to directories with images.
+        :type dir_paths: List[str]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param include_subdirs: If True uploads images from subdirectories of given directories, otherwise only images from given directories.
-        :type include_subdirs: bool, optional
+        :param recursive: If True uploads images from subdirectories of given directories recursively, otherwise only images from given directories.
+        :type recursive: bool, optional
         :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
         :type change_name_if_conflict: bool, optional
         :return: List of uploaded images infos
@@ -2818,10 +2818,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
 
         image_infos = []
-        for dir_path in dirs:
+        for dir_path in dir_paths:
             image_infos.extend(
                 self.upload_dir(
-                    dataset_id, dir_path, progress_cb, include_subdirs, change_name_if_conflict
+                    dataset_id, dir_path, progress_cb, recursive, change_name_if_conflict
                 )
             )
         return image_infos

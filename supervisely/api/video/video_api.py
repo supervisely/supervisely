@@ -2087,7 +2087,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :rtype: None
         """
         videos_in_dataset = self.get_list(dataset_id)
-        used_names = {image_info.name for image_info in videos_in_dataset}
+        used_names = {video_info.name for video_info in videos_in_dataset}
         name_intersections = used_names.intersection(set(names))
         if message is None:
             message = f"Videos with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename videos and try again or set change_name_if_conflict=True to rename automatically on upload."
@@ -2099,8 +2099,8 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         dir_path: str,
         progress_cb: Optional[Callable] = None,
-        include_subdirs: Optional[bool] = False,
-        change_name_if_conflict: Optional[bool] = False,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
     ) -> List[VideoInfo]:
         """
         Uploads all videos with supported extensions from given directory to Supervisely.
@@ -2112,65 +2112,58 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dir_path: str
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param include_subdirs: If True, will upload videos from subdirectories of given directory. Otherwise, will upload videos only from given directory.
-        :type include_subdirs: bool, optional
-        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and videos with the identical names already exist in Dataset raises error.
+        :param recursive: If True, will upload videos from subdirectories of given directory recursively. Otherwise, will upload videos only from given directory.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Video name when Dataset already contains an Video with identical name, If False and videos with the identical names already exist in Dataset raises error.
         :type change_name_if_conflict: bool, optional
         :return: List of uploaded videos infos
-        :rtype: List[ImageInfo]
+        :rtype: List[VideoInfo]
         """
 
-        if include_subdirs:
+        if recursive:
             paths = list_files_recursively(dir_path, filter_fn=is_valid_format)
         else:
             paths = list_files(dir_path, filter_fn=is_valid_format)
 
         names = [get_file_name_with_ext(path) for path in paths]
 
-        if change_name_if_conflict is True:
-            names = self.get_free_names(dataset_id, names)
-        else:
+        if change_name_if_conflict is False:
             self.raise_name_intersections_if_exist(dataset_id, names)
 
-        video_infos = self.upload_paths(
-            dataset_id,
-            names,
-            paths,
-            progress_cb=progress_cb,
-        )
+        video_infos = self.upload_paths(dataset_id, names, paths, progress_cb=progress_cb)
         return video_infos
 
     def upload_dirs(
         self,
-        dirs: List[str],
         dataset_id: int,
+        dir_paths: List[str],
         progress_cb: Optional[Callable] = None,
-        include_subdirs: Optional[bool] = False,
-        change_name_if_conflict: Optional[bool] = False,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
     ) -> List[VideoInfo]:
         """
         Uploads all videos with supported extensions from given directories to Supervisely.
         Optionally, uploads videos from subdirectories of given directories.
 
-        :param dirs: List of paths to directories with videos.
-        :type dirs: List[str]
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
+        :param dir_paths: List of paths to directories with videos.
+        :type dir_paths: List[str]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param include_subdirs: If True, will upload videos from subdirectories of given directories. Otherwise, will upload videos only from given directories.
-        :type include_subdirs: bool, optional
-        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and videos with the identical names already exist in Dataset raises error.
+        :param recursive: If True, will upload videos from subdirectories of given directories recursively. Otherwise, will upload videos only from given directories.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Video name when Dataset already contains an Video with identical name, If False and videos with the identical names already exist in Dataset raises error.
         :type change_name_if_conflict: bool, optional
         :return: List of uploaded videos infos
-        :rtype: List[ImageInfo]
+        :rtype: List[VideoInfo]
         """
 
         video_infos = []
-        for dir_path in dirs:
+        for dir_path in dir_paths:
             video_infos.extend(
                 self.upload_dir(
-                    dataset_id, dir_path, progress_cb, include_subdirs, change_name_if_conflict
+                    dataset_id, dir_path, progress_cb, recursive, change_name_if_conflict
                 )
             )
         return video_infos
