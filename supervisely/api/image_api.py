@@ -50,7 +50,6 @@ from supervisely.io.fs import (
     list_files,
     list_files_recursively,
 )
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
