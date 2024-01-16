@@ -625,7 +625,7 @@ class Api:
         gc.collect()
 
         if os.path.isfile(SUPERVISELY_ENV_FILE):
-            load_dotenv(SUPERVISELY_ENV_FILE)
+            load_dotenv(SUPERVISELY_ENV_FILE, override=True)
             api = cls.from_env()
             env_user_login = api.user.get_my_info().login
 
@@ -672,5 +672,5 @@ class Api:
         if session.workspace_id:
             set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
         # load new file
-        load_dotenv(SUPERVISELY_ENV_FILE)
+        load_dotenv(SUPERVISELY_ENV_FILE, override=True)
         return cls.from_env()
