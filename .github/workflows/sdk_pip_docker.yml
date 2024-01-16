@@ -3,7 +3,11 @@ name: Upload PyPI and Docker
 on:
   release:
     types: [published]
-
+    environment:
+      name: pypi
+      url: https://pypi.org/p/supervisely
+    permissions:
+      id-token: write
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -31,10 +35,7 @@ jobs:
       - name: Build package
         run: python -m build
       - name: Publish package
-        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-        with:
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Delay for PyPI publish
         uses: jakejarvis/wait-action@master
