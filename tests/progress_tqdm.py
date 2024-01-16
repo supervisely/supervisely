@@ -1,6 +1,8 @@
-from dotenv import load_dotenv
-import os, math
+import math
+import os
 from time import sleep
+
+from dotenv import load_dotenv
 
 import supervisely as sly
 

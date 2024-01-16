@@ -2,6 +2,7 @@ from typing import Callable, List, Optional, Union
 
 from tqdm import tqdm
 
+from supervisely import get_project_class
 from supervisely.api.api import Api
 from supervisely.project import read_project
 from supervisely.project.pointcloud_episode_project import (
@@ -12,9 +13,10 @@ from supervisely.project.project import upload_project
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import upload_video_project
 from supervisely.project.volume_project import upload_volume_project
-from supervisely import get_project_class
+from supervisely.task.progress import handle_original_tqdm
 
 
+@handle_original_tqdm
 def upload(
     src_dir: str,
     api: Api,

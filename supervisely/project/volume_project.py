@@ -19,13 +19,13 @@ from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.task.progress import Progress
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, handle_original_tqdm
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume import stl_converter
 from supervisely.volume import volume as sly_volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.sly_logger import logger
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -234,6 +234,7 @@ class VolumeProject(VideoProject):
         )
 
 
+@handle_original_tqdm
 def download_volume_project(
     api: Api,
     project_id: int,
