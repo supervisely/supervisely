@@ -522,7 +522,6 @@ class VideoApi(RemoveableBulkModuleApi):
                         ApiField.DATASET_ID: dataset_id,
                         ApiField.FILTER: filters,
                         ApiField.FIELDS: fields,
-                        ApiField.RAW_VIDEO_META: True,
                     },
                 )
             )
