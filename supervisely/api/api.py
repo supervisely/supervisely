@@ -15,7 +15,7 @@ from urllib.parse import urljoin, urlparse
 
 import jwt
 import requests
-from dotenv import load_dotenv, set_key
+from dotenv import get_key, load_dotenv, set_key
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -589,11 +589,11 @@ class Api:
 
     @classmethod
     def from_credentials(
-        cls, server_address: str, login: str, password: str, is_overwrite: bool = False
+        cls, server_address: str, login: str, password: str, override: bool = False
     ) -> Api:
         """
-        Create Api object using credentials and save them to ".env" file.
-        If ".env" file already exists, you can overwrite it. In this case, backup will be created automatically.
+        Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
+        If ".env" file already exists, backup will be created automatically.
         All backups will be stored in the same directory with postfix "_YYYYMMDDHHMMSS". You can have not more than 5 last backups.
         This method can be used also to update ".env" file.
 
@@ -603,8 +603,8 @@ class Api:
         :type login: str
         :param password: User password.
         :type password: str
-        :param is_overwrite: Overwrite existing ".env" file. If True, backup will be created automatically.
-        :type is_overwrite: bool, optional
+        :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
+        :type override: bool, optional
         :return: Api object
 
         :Usage example:
@@ -624,53 +624,27 @@ class Api:
         del password
         gc.collect()
 
-        if os.path.isfile(SUPERVISELY_ENV_FILE):
-            load_dotenv(SUPERVISELY_ENV_FILE)
-            api = cls.from_env()
-            env_user_login = api.user.get_my_info().login
+        api = cls(session.server_address, session.api_token, ignore_task_id=True)
 
-            if not is_overwrite:
-                prefix = f"File {SUPERVISELY_ENV_FILE} already exists, but for other"
-                postfix = (
-                    "Set 'is_overwrite' to overwrite it, backup file will be created automatically."
-                )
-                if (
-                    login != env_user_login
-                    and urlparse(server_address).netloc == urlparse(api.server_address).netloc
-                ):
-                    raise RuntimeError(f"{prefix} user with login '{env_user_login}'. {postfix}")
-                elif (
-                    login == env_user_login
-                    and urlparse(server_address).netloc != urlparse(api.server_address).netloc
-                ):
-                    raise RuntimeError(f"{prefix} server '{api.server_address}'. {postfix}")
-                elif (
-                    login != env_user_login
-                    and urlparse(server_address).netloc != urlparse(api.server_address).netloc
-                ):
-                    raise RuntimeError(
-                        f"{prefix} server '{api.server_address}' and user with login '{env_user_login}'. {postfix}"
-                    )
-                else:
-                    return api
-            else:
+        if override:
+            if os.path.isfile(SUPERVISELY_ENV_FILE):
                 # create backup
                 timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
                 backup_file = f"{SUPERVISELY_ENV_FILE}_{timestamp}"
                 shutil.copy2(SUPERVISELY_ENV_FILE, backup_file)
-                os.remove(SUPERVISELY_ENV_FILE)
+                if api.token != get_key(SUPERVISELY_ENV_FILE, API_TOKEN):
+                    # create new file
+                    os.remove(SUPERVISELY_ENV_FILE)
+                    Path(SUPERVISELY_ENV_FILE).touch()
                 # remove old backups
                 all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
                 while len(all_backups) > 5:
                     os.remove(all_backups.pop(0))
-        # create new file
-        Path(SUPERVISELY_ENV_FILE).touch()
-        set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, server_address)
-        set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
-        if session.team_id:
-            set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
-        if session.workspace_id:
-            set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
-        # load new file
-        load_dotenv(SUPERVISELY_ENV_FILE)
-        return cls.from_env()
+            set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, server_address)
+            set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
+            if session.team_id:
+                set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
+            if session.workspace_id:
+                set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
+            load_dotenv(SUPERVISELY_ENV_FILE, override=override)
+        return api

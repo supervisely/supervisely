@@ -46,8 +46,10 @@ from supervisely.io.fs import (
     get_file_ext,
     get_file_hash,
     get_file_name,
+    get_file_name_with_ext,
+    list_files,
+    list_files_recursively,
 )
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -275,6 +277,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type sort_order: :class:`str`, optional
         :param limit: Max number of list elements. No limit if None (default).
         :type limit: :class:`int`, optional
+        :param force_metadata_for_links: If True, updates meta for images with remote storage links when listing.
+        :type force_metadata_for_links: bool, optional
+        :param return_first_response: If True, returns first response without waiting for all pages.
+        :type return_first_response: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -889,6 +895,13 @@ class ImageApi(RemoveableBulkModuleApi):
         encoder = MultipartEncoder(fields=content_dict)
         resp = self._api.post("images.bulk.upload", encoder)
 
+        # close all opened files
+        for value in content_dict.values():
+            from io import BufferedReader
+
+            if isinstance(value[1], BufferedReader):
+                value[1].close()
+
         resp_list = json.loads(resp.text)
         remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
         if len(remote_hashes) != len(hashes_items_to_upload):
@@ -918,7 +931,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :param retry_cnt: int, number of retries to send the whole set of items
         :param progress_cb: callback or tqdm object to account progress (in number of items)
         """
-        hash_to_items = {i_hash: item for item, i_hash in items_hashes}
+        # count all items to adjust progress_cb and create hash to item mapping with unique hashes
+        items_count_total = 0
+        hash_to_items = {}
+        for item, i_hash in items_hashes:
+            hash_to_items[i_hash] = item
+            items_count_total += 1
 
         unique_hashes = set(hash_to_items.keys())
         remote_hashes = set(
@@ -947,6 +965,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
+                if progress_cb is not None:
+                    progress_cb(items_count_total - len(unique_hashes))
                 return
 
             warning_items = []
@@ -1212,7 +1232,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
-
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1327,6 +1346,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param batch_size: Number of images to upload in one batch.
+        :type batch_size: int, optional
+        :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
+        :type skip_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1452,6 +1475,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param batch_size: Number of images to upload in one batch.
+        :type batch_size: int, optional
+        :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
+        :type force_metadata_for_links: bool, optional
+        :param infos: List of ImageInfo objects. If None, will be requested from server.
+        :type infos: List[ImageInfo], optional
+        :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
+        :type skip_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -2486,6 +2517,8 @@ class ImageApi(RemoveableBulkModuleApi):
     def remove(self, image_id: int):
         """
         Remove image from supervisely by id.
+        All image IDs must belong to the same dataset.
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param image_id: Images ID in Supervisely.
         :type image_id: int
@@ -2670,3 +2703,125 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
         )
         return uploaded_image_infos
+
+    def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:
+        """
+        Returns list of free names for given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :return: List of free names.
+        :rtype: List[str]
+        """
+
+        images_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
+        used_names = {image_info.name for image_info in images_in_dataset}
+        new_names = [
+            generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
+            for name in names
+        ]
+        return new_names
+
+    def raise_name_intersections_if_exist(
+        self, dataset_id: int, names: List[str], message: str = None
+    ):
+        """
+        Raises error if images with given names already exist in dataset.
+        Default error message:
+        "Images with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}.
+        Please, rename images and try again or set change_name_if_conflict=True to rename automatically on upload."
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :param message: Error message.
+        :type message: str, optional
+        :return: None
+        :rtype: None
+        """
+        images_in_dataset = self.get_list(dataset_id)
+        used_names = {image_info.name for image_info in images_in_dataset}
+        name_intersections = used_names.intersection(set(names))
+        if message is None:
+            message = f"Images with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename images and try again or set change_name_if_conflict=True to rename automatically on upload."
+        if len(name_intersections) > 0:
+            raise ValueError(f"{message}")
+
+    def upload_dir(
+        self,
+        dataset_id: int,
+        dir_path: str,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[ImageInfo]:
+        """
+        Uploads all images with supported extensions from given directory to Supervisely.
+        Optionally, uploads images from subdirectories of given directory.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_path: Path to directory with images.
+        :type dir_path: str
+        :param recursive: If True uploads images from subdirectories of given directory recursively, otherwise only images from given directory.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded images infos
+        :rtype: List[ImageInfo]
+        """
+
+        if recursive:
+            paths = list_files_recursively(dir_path, filter_fn=sly_image.is_valid_format)
+        else:
+            paths = list_files(dir_path, filter_fn=sly_image.is_valid_format)
+
+        names = [get_file_name_with_ext(path) for path in paths]
+
+        if change_name_if_conflict is True:
+            names = self.get_free_names(dataset_id, names)
+        else:
+            self.raise_name_intersections_if_exist(dataset_id, names)
+
+        image_infos = self.upload_paths(dataset_id, names, paths, progress_cb=progress_cb)
+        return image_infos
+
+    def upload_dirs(
+        self,
+        dataset_id: int,
+        dir_paths: List[str],
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[ImageInfo]:
+        """
+        Uploads all images with supported extensions from given directories to Supervisely.
+        Optionally, uploads images from subdirectories of given directories.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_paths: List of paths to directories with images.
+        :type dir_paths: List[str]
+        :param recursive: If True uploads images from subdirectories of given directories recursively, otherwise only images from given directories.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded images infos
+        :rtype: List[ImageInfo]
+        """
+
+        image_infos = []
+        for dir_path in dir_paths:
+            image_infos.extend(
+                self.upload_dir(
+                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
+                )
+            )
+        return image_infos

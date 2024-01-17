@@ -1199,7 +1199,7 @@ class RemoveableBulkModuleApi(ModuleApi):
     def remove_batch(self, ids, progress_cb=None, batch_size=50):
         """
         Remove entities in batches from the Supervisely server.
-        All entity IDs must belong to the same team.
+        All entity IDs must belong to the same nesting (for example team, or workspace, or project, or dataset).
         Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: IDs of entities in Supervisely.
