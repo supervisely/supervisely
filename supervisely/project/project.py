@@ -45,7 +45,7 @@ from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm
-
+from supervisely.io.fs import validate_path_length_encoding
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
@@ -1604,7 +1604,9 @@ class Project:
             #         ds2
             #         ds3
         """
-        ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
+        ds_path: str = os.path.join(self.directory, ds_name)
+        validate_path_length_encoding(ds_path, "Dataset name")
+        ds = self.dataset_class(ds_path, OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
 

@@ -259,6 +259,31 @@ def list_files(
     # ]
 
 
+def validate_path_length_encoding(path: str, entity_name: str = "Path") -> None:
+    """
+    Checks whether the path is too long by counting encoded characters.
+
+    :param path: Target path.
+    :type path: str
+    :param entity_name: Name of the entity to be checked. Used in error message.
+    :type entity_name: Optional[str]
+    :returns: None
+    :rtype: :class:`NoneType`
+    :raises RuntimeError: If path is too long.
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import validate_path_length
+        validate_path_length('/home/admin/work/projects/examples/my_dir')
+    """
+    path_encoded = path.encode("utf-8")
+    if len(path_encoded) > 255:
+        raise RuntimeError(
+            f"{entity_name} is too long. Max length is 255 chars. Current encoded length is '{len(path_encoded)}' chars."
+        )
+
+
 def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
     """
     Creates a leaf directory and all intermediate ones.
@@ -276,6 +301,7 @@ def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
         from supervisely.io.fs import mkdir
         mkdir('/home/admin/work/projects/example')
     """
+    validate_path_length_encoding(dir)
     if dir_exists(dir) and remove_content_if_exists is True:
         clean_dir(dir, ignore_errors=True)
     else:
