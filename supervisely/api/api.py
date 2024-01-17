@@ -15,7 +15,7 @@ from urllib.parse import urljoin, urlparse
 
 import jwt
 import requests
-from dotenv import load_dotenv, set_key
+from dotenv import get_key, load_dotenv, set_key
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -632,13 +632,14 @@ class Api:
                 timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
                 backup_file = f"{SUPERVISELY_ENV_FILE}_{timestamp}"
                 shutil.copy2(SUPERVISELY_ENV_FILE, backup_file)
-                os.remove(SUPERVISELY_ENV_FILE)
+                if api.token != get_key(SUPERVISELY_ENV_FILE, API_TOKEN):
+                    # create new file
+                    os.remove(SUPERVISELY_ENV_FILE)
+                    Path(SUPERVISELY_ENV_FILE).touch()
                 # remove old backups
                 all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
                 while len(all_backups) > 5:
                     os.remove(all_backups.pop(0))
-                # create new file
-            Path(SUPERVISELY_ENV_FILE).touch()
             set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, server_address)
             set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
             if session.team_id:

@@ -16,9 +16,9 @@ from supervisely.api.api import Api, UserSession
 
 class TestLoginInfo(unittest.TestCase):
     def setUp(self):
-        self.server = "https://app.supervisely.com"
+        self.server = ""  # write server url here
         self.invalid_server = "invalid_server"
-        self.login = "unit_tests"
+        self.login = ""  # write your login here
         self.password = ""  # write your password here
         self.session = UserSession(self.server)
 
@@ -48,10 +48,10 @@ class TestLoginInfo(unittest.TestCase):
 
 class TestApi(unittest.TestCase):
     def setUp(self):
-        self.server = "https://dev.supervisely.com"
-        self.login_1 = "unit_tests_1"  # write your login_1 here
-        self.login_2 = "unit_tests_2"  # write your login_2 here
-        self.password = "t64cU7ndQw8aZF5"  # write your password here
+        self.server = ""  # write server url here
+        self.login_1 = ""  # write your login_1 here
+        self.login_2 = ""  # write your login_2 here
+        self.password = ""  # write your password here
         self.api_token_1 = UserSession(self.server).log_in(self.login_1, self.password).api_token
         self.api_token_2 = UserSession(self.server).log_in(self.login_2, self.password).api_token
         self.env_file = "./supervisely.env"
@@ -62,9 +62,10 @@ class TestApi(unittest.TestCase):
     def test_from_credentials_file_exists(self):
         self.env_file = os.path.abspath(self.env_file)
         with patch("supervisely.api.SUPERVISELY_ENV_FILE", self.env_file):
-            api = Api.from_credentials(self.server, self.login_1, self.password)
+            api = Api.from_credentials(self.server, self.login_1, self.password, override=True)
             self.assertEqual(get_key(self.env_file, "API_TOKEN"), self.api_token_1)
             self.assertEqual(get_key(self.env_file, "API_TOKEN"), api.token)
+            self.assertIsNotNone(get_key(self.env_file, "INIT_GROUP_ID"))
             load_dotenv(self.env_file, override=True)
 
             api = Api.from_credentials(self.server, self.login_2, self.password)
