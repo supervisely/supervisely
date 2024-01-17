@@ -45,6 +45,11 @@ class FileViewer(Widget):
         return {
             "list": self._files_list,
             "loading": self._loading,
+            "options":{
+                "flatMode": True,
+                "extendedSelection": True,
+                "selectionFileType": "folder" # null | folder | file
+            }
         }
 
     def get_json_state(self):
