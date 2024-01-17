@@ -646,5 +646,5 @@ class Api:
                 set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
             if session.workspace_id:
                 set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
-        load_dotenv(SUPERVISELY_ENV_FILE, override=override)
+            load_dotenv(SUPERVISELY_ENV_FILE, override=override)
         return api

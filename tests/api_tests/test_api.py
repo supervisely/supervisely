@@ -65,25 +65,29 @@ class TestApi(unittest.TestCase):
             api = Api.from_credentials(self.server, self.login_1, self.password, override=True)
             self.assertEqual(get_key(self.env_file, "API_TOKEN"), self.api_token_1)
             self.assertEqual(get_key(self.env_file, "API_TOKEN"), api.token)
-            self.assertIsNotNone(get_key(self.env_file, "INIT_GROUP_ID"))
-            load_dotenv(self.env_file, override=True)
+            init_group_id = get_key(self.env_file, "INIT_GROUP_ID")
+            self.assertIsNotNone(init_group_id)
 
             api = Api.from_credentials(self.server, self.login_2, self.password)
             self.assertNotEqual(get_key(self.env_file, "API_TOKEN"), api.token)
             self.assertNotEqual(os.environ.get("API_TOKEN"), api.token)
+            check_init_group_id = get_key(self.env_file, "INIT_GROUP_ID")
+            self.assertEqual(init_group_id, check_init_group_id)
 
             api = Api.from_credentials(self.server, self.login_2, self.password, override=True)
             self.assertEqual(self.api_token_2, api.token)
             self.assertEqual(get_key(self.env_file, "API_TOKEN"), api.token)
             self.assertEqual(os.environ.get("API_TOKEN"), api.token)
+            check_init_group_id = get_key(self.env_file, "INIT_GROUP_ID")
+            self.assertNotEqual(init_group_id, check_init_group_id)
 
             for _ in range(7):
                 api = Api.from_credentials(self.server, self.login_2, self.password, override=True)
+                self.assertEqual(get_key(self.env_file, "API_TOKEN"), api.token)
+                self.assertEqual(get_key(self.env_file, "SERVER_ADDRESS"), self.server)
+                self.assertEqual(os.environ.get("API_TOKEN"), api.token)
+                self.assertEqual(api.user.get_my_info().login, self.login_2)
             self.assertTrue(7 > len(glob.glob(f"{self.env_file}*")) > 1)
-            self.assertEqual(api.user.get_my_info().login, self.login_2)
-            self.assertEqual(get_key(self.env_file, "API_TOKEN"), api.token)
-            self.assertEqual(get_key(self.env_file, "SERVER_ADDRESS"), self.server)
-            self.assertEqual(os.environ.get("API_TOKEN"), api.token)
             for item in glob.glob(f"{self.env_file}*"):
                 os.remove(item)
 

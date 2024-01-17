@@ -2098,9 +2098,9 @@ class VideoApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         dir_path: str,
-        progress_cb: Optional[Callable] = None,
         recursive: Optional[bool] = True,
         change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[VideoInfo]:
         """
         Uploads all videos with supported extensions from given directory to Supervisely.
@@ -2110,12 +2110,12 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param dir_path: Path to directory with videos.
         :type dir_path: str
-        :param progress_cb: Function for tracking upload progress.
-        :type progress_cb: Optional[Union[tqdm, Callable]]
         :param recursive: If True, will upload videos from subdirectories of given directory recursively. Otherwise, will upload videos only from given directory.
         :type recursive: bool, optional
         :param change_name_if_conflict: If True adds suffix to the end of Video name when Dataset already contains an Video with identical name, If False and videos with the identical names already exist in Dataset raises error.
         :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :return: List of uploaded videos infos
         :rtype: List[VideoInfo]
         """
@@ -2137,9 +2137,9 @@ class VideoApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         dir_paths: List[str],
-        progress_cb: Optional[Callable] = None,
         recursive: Optional[bool] = True,
         change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[VideoInfo]:
         """
         Uploads all videos with supported extensions from given directories to Supervisely.
@@ -2149,12 +2149,12 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param dir_paths: List of paths to directories with videos.
         :type dir_paths: List[str]
-        :param progress_cb: Function for tracking upload progress.
-        :type progress_cb: Optional[Union[tqdm, Callable]]
         :param recursive: If True, will upload videos from subdirectories of given directories recursively. Otherwise, will upload videos only from given directories.
         :type recursive: bool, optional
         :param change_name_if_conflict: If True adds suffix to the end of Video name when Dataset already contains an Video with identical name, If False and videos with the identical names already exist in Dataset raises error.
         :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :return: List of uploaded videos infos
         :rtype: List[VideoInfo]
         """
@@ -2163,7 +2163,7 @@ class VideoApi(RemoveableBulkModuleApi):
         for dir_path in dir_paths:
             video_infos.extend(
                 self.upload_dir(
-                    dataset_id, dir_path, progress_cb, recursive, change_name_if_conflict
+                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
                 )
             )
         return video_infos

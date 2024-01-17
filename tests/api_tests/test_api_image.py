@@ -67,7 +67,9 @@ class TestImageApi(unittest.TestCase):
         progress_cb = tqdm(total=len(image_paths), desc="Uploading images")
 
         # Call the method being tested
-        images_info = self.image_api.upload_paths(dataset_id, names, image_paths, progress_cb)
+        images_info = self.image_api.upload_paths(
+            dataset_id, names, image_paths, progress_cb=progress_cb
+        )
 
         # Verify the method returns the correct value
         self.assertIsInstance(images_info, list)
@@ -88,7 +90,9 @@ class TestImageApi(unittest.TestCase):
         progress_cb = tqdm(total=len(listed_images), desc="Uploading images")
 
         # Call the method being tested
-        images_info = self.image_api.upload_dir(dataset_id, self.files_path_1, progress_cb)
+        images_info = self.image_api.upload_dir(
+            dataset_id, self.files_path_1, progress_cb=progress_cb
+        )
 
         # Verify the method returns the correct value
         self.assertIsInstance(images_info, list)
@@ -96,7 +100,9 @@ class TestImageApi(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.image_api.upload_dir(dataset_id, self.files_path_1, change_name_if_conflict=False)
 
-        images_info = self.image_api.upload_dir(dataset_id, self.files_path_1, progress_cb)
+        images_info = self.image_api.upload_dir(
+            dataset_id, self.files_path_1, progress_cb=progress_cb
+        )
         self.assertEqual(len(images_info), len(listed_images))
 
     def test_upload_dirs(self):
@@ -110,7 +116,9 @@ class TestImageApi(unittest.TestCase):
         progress_cb = tqdm(total=len(all_images), desc="Uploading images")
 
         # Call the method being tested
-        images_info = self.image_api.upload_dirs(dataset_id, self.all_paths, progress_cb)
+        images_info = self.image_api.upload_dirs(
+            dataset_id, self.all_paths, progress_cb=progress_cb
+        )
         # Verify the method returns the correct value
         self.assertIsInstance(images_info, list)
         self.assertEqual(len(images_info), len(all_images))

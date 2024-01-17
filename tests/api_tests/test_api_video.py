@@ -67,7 +67,9 @@ class TestVideoApi(unittest.TestCase):
         progress_cb = tqdm(total=len(video_paths), desc="Uploading videos")
 
         # Call the method being tested
-        video_info = self.video_api.upload_paths(dataset_id, names, video_paths, progress_cb)
+        video_info = self.video_api.upload_paths(
+            dataset_id, names, video_paths, progress_cb=progress_cb
+        )
 
         # Verify the method returns the correct value
         self.assertIsInstance(video_info, list)
@@ -87,7 +89,9 @@ class TestVideoApi(unittest.TestCase):
         progress_cb = tqdm(total=len(listed_videos), desc="Uploading videos")
 
         # Call the method being tested
-        videos_info = self.video_api.upload_dir(dataset_id, self.files_path_1, progress_cb)
+        videos_info = self.video_api.upload_dir(
+            dataset_id, self.files_path_1, progress_cb=progress_cb
+        )
 
         # Verify the method returns the correct value
         self.assertIsInstance(videos_info, list)
@@ -107,14 +111,16 @@ class TestVideoApi(unittest.TestCase):
         progress_cb = tqdm(total=len(all_videos), desc="Uploading videos")
 
         # Call the method being tested
-        videos_info = self.video_api.upload_dirs(dataset_id, self.all_paths, progress_cb)
+        videos_info = self.video_api.upload_dirs(
+            dataset_id, self.all_paths, progress_cb=progress_cb
+        )
         # Verify the method returns the correct value
         self.assertIsInstance(videos_info, list)
         self.assertEqual(len(videos_info), len(all_videos))
 
         with self.assertRaises(ValueError):
             self.video_api.upload_dirs(
-                dataset_id, self.all_paths, progress_cb, change_name_if_conflict=False
+                dataset_id, self.all_paths, change_name_if_conflict=False, progress_cb=progress_cb
             )
 
 
