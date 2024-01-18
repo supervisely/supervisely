@@ -1,8 +1,8 @@
-from typing import List
-from supervisely.app import StateJson, DataJson
-from supervisely.app.widgets import Widget
+from typing import List, Literal, Union
+
 from supervisely.api.api import Api
-from supervisely.project.project_type import ProjectType
+from supervisely.app import DataJson, StateJson
+from supervisely.app.widgets import Widget
 
 
 class FileViewer(Widget):
@@ -13,8 +13,26 @@ class FileViewer(Widget):
     def __init__(
         self,
         files_list: List[dict],
+        selection_type: Literal[None, "file", "folder"] = None,
+        extended_selection: bool = False,
         widget_id: str = None,
     ):
+        """
+        Widget for selecting files and folders in convenient GUI
+
+        :param files_list: list of dicts with files and folders info
+        :type files_list: List[dict]
+        :param selection_type: type of selection, defaults to None
+        :type selection_type: Literal[None, "file", "folder"], optional
+        :param extended_selection: If True method 'get_selected_items()' returns an array of objects { path: '', type: 'file or folder' } instead of array with paths
+        :type extended_selection: bool, optional
+        :param widget_id: widget id, defaults to None
+        :type widget_id: str, optional
+        :raises ValueError: if files_list is not a list
+        :raises ValueError: if files_list contains non-dict element
+        :raises KeyError: if files_list contains dict without 'path' key
+
+        """
         self._api = Api()
 
         if type(files_list) is not list:
@@ -33,6 +51,8 @@ class FileViewer(Widget):
                 )
 
         self._files_list = files_list
+        self._selection_type = selection_type
+        self._extended_selection = extended_selection
         self._selected = []
         self._viewer_path = ""
         self._changes_handled = False
@@ -45,11 +65,11 @@ class FileViewer(Widget):
         return {
             "list": self._files_list,
             "loading": self._loading,
-            "options":{
+            "options": {
                 "flatMode": True,
-                "extendedSelection": True,
-                "selectionFileType": "folder" # null | folder | file
-            }
+                "extendedSelection": self._extended_selection,
+                "selectionFileType": self._selection_type,
+            },
         }
 
     def get_json_state(self):
