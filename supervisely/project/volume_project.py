@@ -232,6 +232,44 @@ class VolumeProject(VideoProject):
             project_name=project_name,
             log_progress=log_progress,
         )
+    
+    @staticmethod
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
+        )
+    
+    @staticmethod    
+    def get_train_val_splits_by_tag(
+        project_dir: str,
+        train_tag_name: str,
+        val_tag_name: str,
+        untagged: Optional[str] = "ignore",
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+        )
+    
+    @staticmethod
+    def get_train_val_splits_by_dataset(
+        project_dir: str, train_datasets: List[str], val_datasets: List[str]
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+        )    
+
 
 
 @handle_original_tqdm
