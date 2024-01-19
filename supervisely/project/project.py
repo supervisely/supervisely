@@ -1605,7 +1605,7 @@ class Project:
             #         ds3
         """
         ds_path: str = os.path.join(self.directory, ds_name)
-        validate_path_length_encoding(ds_path, "Dataset name")
+        ds_path = validate_path_length_encoding(ds_path, "Dataset name")
         ds = self.dataset_class(ds_path, OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
