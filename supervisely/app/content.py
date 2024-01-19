@@ -130,10 +130,11 @@ class StateJson(_PatchableJson, metaclass=Singleton):
             return None
         content = await request.json()
 
+        logger.info(f"Content from request: {content}")
+
         if content.get("context", {}).get("outside_request", False) is True:
             # ! DEBUG, REMOVE
-            outside_request = content.get("context", {}).get("request")
-            logger.info(f"Outside request exists in request: {outside_request}")
+            logger.info(f"Outside request exists in request, and WILL NOT be overwritten")
             return None
         # TODO: should we always replace STATE with {}?
         logger.info("Outside request doesn't exist in request, state will be overwritten")
