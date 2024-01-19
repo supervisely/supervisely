@@ -1,13 +1,14 @@
 import os
 from typing import List, Optional, Dict, Union, Tuple, Literal
-from supervisely import (
-    Project,
-    Api,
-    PointcloudEpisodeProject,
-    VideoProject,
-    VolumeProject,
-    PointcloudProject,
-)
+
+from supervisely.api.api import Api
+
+from supervisely.project.project import Project
+from supervisely.project.volume_project import VolumeProject
+from supervisely.project.video_project import VideoProject
+from supervisely.project.pointcloud_project import PointcloudProject
+from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
+
 from supervisely.project.project import ItemInfo
 from supervisely.project import get_project_class
 from supervisely.app import StateJson, DataJson
@@ -69,6 +70,7 @@ class TrainValSplits(Widget):
         self._train_ds_select: Union[SelectDataset, SelectString] = None
         self._val_ds_select: Union[SelectDataset, SelectString] = None
         self._split_methods = []
+
         contents = []
         tabs_descriptions = []
         if random_splits:
@@ -207,7 +209,6 @@ class TrainValSplits(Widget):
             train_count = splits_counts["train"]
             val_count = splits_counts["val"]
             val_part = val_count / (val_count + train_count)
-            # project = Project(project_dir, sly.OpenMode.READ)
             project = self._project_class(project_dir, sly.OpenMode.READ)
             n_images = project.total_items
             new_val_count = round(val_part * n_images)
