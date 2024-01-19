@@ -1,23 +1,26 @@
 from __future__ import annotations
+
+import asyncio
 import copy
-import os
 import enum
 import json
-import threading
+import os
 import queue
+import threading
 import time
 import traceback
+
 import jsonpatch
-import asyncio
 from fastapi import Request
+
+from supervisely._utils import is_production
+from supervisely.api.api import Api
+from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.singleton import Singleton
+from supervisely.io import env as sly_env
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
-from supervisely.app.singleton import Singleton
-from supervisely.app.fastapi import run_sync
-from supervisely._utils import is_production
-from supervisely.io import env as sly_env
-from supervisely.api.api import Api
 
 
 class Field(str, enum.Enum):
@@ -128,9 +131,15 @@ class StateJson(_PatchableJson, metaclass=Singleton):
         content = await request.json()
 
         if content.get("context", {}).get("outside_request", False) is True:
+            # ! DEBUG, REMOVE
+            outside_request = content.get("context", {}).get("request")
+            logger.info(f"Outside request exists in request: {outside_request}")
             return None
         # TODO: should we always replace STATE with {}?
+        logger.info("Outside request doesn't exist in request, state will be overwritten")
         d = content.get(Field.STATE, {})
+        logger.info(f"Content from request: {content}")
+        logger.info(f"State from request: {d}")
         await cls._replace_global(d)
         return cls(d, __local__=True)
 
