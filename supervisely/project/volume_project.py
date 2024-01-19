@@ -120,6 +120,24 @@ class VolumeProject(VideoProject):
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
 
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'volumes'
+        """
+        return ProjectType.VOLUMES
+
     @staticmethod
     def download(
         api: Api,
@@ -232,7 +250,7 @@ class VolumeProject(VideoProject):
             project_name=project_name,
             log_progress=log_progress,
         )
-    
+
     @staticmethod
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
@@ -242,8 +260,8 @@ class VolumeProject(VideoProject):
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
         )
-    
-    @staticmethod    
+
+    @staticmethod
     def get_train_val_splits_by_tag(
         project_dir: str,
         train_tag_name: str,
@@ -257,7 +275,7 @@ class VolumeProject(VideoProject):
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
         )
-    
+
     @staticmethod
     def get_train_val_splits_by_dataset(
         project_dir: str, train_datasets: List[str], val_datasets: List[str]
@@ -268,8 +286,7 @@ class VolumeProject(VideoProject):
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
-        )    
-
+        )
 
 
 @handle_original_tqdm
