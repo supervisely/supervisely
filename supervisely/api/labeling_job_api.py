@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
+from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -22,7 +23,6 @@ from supervisely.api.module_api import (
     RemoveableBulkModuleApi,
     WaitingTimeExceeded,
 )
-from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes

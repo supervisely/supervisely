@@ -9,6 +9,7 @@ from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
+
 class FigureInfo(NamedTuple):
     id: int
     class_id: int
@@ -22,6 +23,8 @@ class FigureInfo(NamedTuple):
     geometry_type: str
     geometry: dict
     tags: list
+    meta: dict
+
 
 class FigureApi(RemoveableBulkModuleApi):
     """
@@ -60,7 +63,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.FRAME_INDEX,
             ApiField.GEOMETRY_TYPE,
             ApiField.GEOMETRY,
-            ApiField.TAGS
+            ApiField.TAGS,
+            ApiField.META,
         ]
 
     @staticmethod
@@ -141,6 +145,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "geometryType",
             "geometry",
             "tags",
+            "meta",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -275,8 +280,27 @@ class FigureApi(RemoveableBulkModuleApi):
             # ]
         """
         filters = [{"field": "id", "operator": "in", "value": ids}]
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometryType",
+            "geometry",
+            "tags",
+            "meta",
+        ]
         figures_infos = self.get_list_all_pages(
-            "figures.list", {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters}
+            "figures.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters,
+                ApiField.FIELDS: fields,
+            },
         )
 
         if len(ids) != len(figures_infos):
@@ -321,21 +345,14 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
             "datasetId",
+            "geometryType",
             "geometry",
             "tags",
             "meta",
-            "area",
-            "realArea",
-            "tool",
-            "instanceId",
-            "geometryType",
-            "description",
-            "createdBy",
         ]
         resp = self._api.post(
             "figures.list", {ApiField.DATASET_ID: dataset_id, ApiField.FIELDS: fields}
