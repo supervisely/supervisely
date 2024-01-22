@@ -147,7 +147,7 @@ class TrainedModelsSelector(Widget):
             task_widget = Container(
                 [
                     Text(
-                        f"<a href='{self._task_link}'>{self._task_id}</a> <i class='zmdi zmdi-link'></i>",
+                        f"<i class='zmdi zmdi-folder'></i> <a href='{self._task_link}'>{self._task_id}</a>",
                         "text",
                     ),
                     Text(
@@ -184,7 +184,7 @@ class TrainedModelsSelector(Widget):
 
         def _create_session_widget(self) -> Text:
             session_link_widget = Text(
-                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-link'></i>",
+                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-open-in-new'></i>",
                 "text",
             )
             return session_link_widget
