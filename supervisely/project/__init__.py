@@ -51,8 +51,12 @@ def read_project(
         project_fs = sly.read_project(proj_dir)
     """
     paths = list_files(dir)
+
+    meta = None
     for path in paths:
         if get_file_name_with_ext(path) == "meta.json":
             meta = ProjectMeta.from_json(load_json_file(path))
+    if meta is None:
+        raise FileNotFoundError(f"The file 'meta.json' was not found in the directory: '{dir}'")
 
     return read_single_project(dir, get_project_class(meta.project_type))
