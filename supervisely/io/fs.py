@@ -259,7 +259,7 @@ def list_files(
     # ]
 
 
-def validate_path_length_encoding(path: str, entity_name: str = "Path", max_length_byte=255) -> str:
+def validate_path_length_bytes(path: str, entity_name: str = "Path", max_length_byte=255) -> str:
     """
     Checks whether the path is too long by counting encoded characters
     and return truncated path if it is too long or original path otherwise.
@@ -277,7 +277,9 @@ def validate_path_length_encoding(path: str, entity_name: str = "Path", max_leng
         from supervisely.io.fs import validate_path_length
         validate_path_length('/home/admin/work/projects/examples/my_dir')
     """
-    cut_index = len(path.encode('utf8', errors="replace")[:max_length_byte].decode('utf8', errors="ignore"))
+    cut_index = len(
+        path.encode("utf8", errors="replace")[:max_length_byte].decode("utf8", errors="ignore")
+    )
     new_path = path[:cut_index]
     if new_path != path:
         logger.warn(
