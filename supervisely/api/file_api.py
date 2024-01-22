@@ -9,6 +9,7 @@ import re
 import shutil
 import tarfile
 import urllib
+from tqdm import tqdm
 from pathlib import Path
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
@@ -846,7 +847,10 @@ class FileApi(ModuleApiBase):
         if progress_cb is None:
             data = encoder
         else:
-            data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
+            try:
+                data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
+            except AttributeError:
+                data = MultipartEncoderMonitor(encoder, progress_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
@@ -1292,7 +1296,7 @@ class FileApi(ModuleApiBase):
         local_dir: str,
         remote_dir: str,
         change_name_if_conflict: Optional[bool] = True,
-        progress_size_cb: Optional[Callable] = None,
+        progress_size_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
     ) -> str:
         """
