@@ -1,32 +1,30 @@
 import os
-from typing import List, Optional, Dict, Union, Tuple, Literal
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
+import supervisely as sly
+from supervisely._utils import rand_str
 from supervisely.api.api import Api
-
-from supervisely.project.project import Project
-from supervisely.project.volume_project import VolumeProject
-from supervisely.project.video_project import VideoProject
-from supervisely.project.pointcloud_project import PointcloudProject
-from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
-
-from supervisely.project.project import ItemInfo
-from supervisely.project import get_project_class
-from supervisely.app import StateJson, DataJson
+from supervisely.app import DataJson, StateJson, get_data_dir
 from supervisely.app.widgets import (
-    Widget,
-    RadioTabs,
     Container,
+    Field,
     NotificationBox,
+    RadioTabs,
     SelectDataset,
     SelectString,
-    Field,
     SelectTagMeta,
+    Widget,
 )
-from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
-from supervisely.app import get_data_dir
-from supervisely._utils import rand_str
+from supervisely.app.widgets.random_splits_table.random_splits_table import (
+    RandomSplitsTable,
+)
 from supervisely.io.fs import remove_dir
-import supervisely as sly
+from supervisely.project import get_project_class
+from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
+from supervisely.project.pointcloud_project import PointcloudProject
+from supervisely.project.project import ItemInfo, Project
+from supervisely.project.video_project import VideoProject
+from supervisely.project.volume_project import VolumeProject
 
 
 class TrainValSplits(Widget):
@@ -60,7 +58,9 @@ class TrainValSplits(Widget):
                 self._project_id, raise_error=True
             )
 
-        self._project_type = project_fs.type if project_id is None else self._project_info.type
+        self._project_type = (
+            project_fs.type.value if project_id is None else self._project_info.type
+        )
         self._project_class = get_project_class(self._project_type)
 
         self._random_splits_table: RandomSplitsTable = None
