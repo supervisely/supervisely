@@ -136,7 +136,7 @@ class VolumeProject(VideoProject):
             print(project.type)
             # Output: 'volumes'
         """
-        return ProjectType.VOLUMES
+        return ProjectType.VOLUMES.value
 
     @staticmethod
     def download(

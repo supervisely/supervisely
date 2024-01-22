@@ -58,9 +58,7 @@ class TrainValSplits(Widget):
                 self._project_id, raise_error=True
             )
 
-        self._project_type = (
-            project_fs.type.value if project_id is None else self._project_info.type
-        )
+        self._project_type = project_fs.type if project_id is None else self._project_info.type
         self._project_class = get_project_class(self._project_type)
 
         self._random_splits_table: RandomSplitsTable = None

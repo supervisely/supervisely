@@ -11,7 +11,7 @@ from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple,
 
 import numpy as np
 from tqdm import tqdm
-from supervisely.project.project_type import ProjectType
+
 import supervisely as sly
 from supervisely._utils import abs_url, batched, is_development
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
@@ -43,6 +43,7 @@ from supervisely.io.fs import (
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm
 
@@ -1402,7 +1403,7 @@ class Project:
             print(project.type)
             # Output: 'images'
         """
-        return ProjectType.IMAGES
+        return ProjectType.IMAGES.value
 
     @property
     def datasets(self) -> Project.DatasetDict:

@@ -554,7 +554,7 @@ class PointcloudProject(VideoProject):
             print(project.type)
             # Output: 'point_clouds'
         """
-        return ProjectType.POINT_CLOUDS
+        return ProjectType.POINT_CLOUDS.value
 
     @staticmethod
     def get_train_val_splits_by_count(

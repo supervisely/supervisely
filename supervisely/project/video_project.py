@@ -799,7 +799,7 @@ class VideoProject(Project):
             print(project.type)
             # Output: 'videos'
         """
-        return ProjectType.VIDEOS
+        return ProjectType.VIDEOS.value
 
     def set_key_id_map(self, new_map: KeyIdMap):
         """
