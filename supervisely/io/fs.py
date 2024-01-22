@@ -274,8 +274,8 @@ def validate_path_length_bytes(path: str, entity_name: str = "Path", max_length_
 
      .. code-block:: python
 
-        from supervisely.io.fs import validate_path_length
-        validate_path_length('/home/admin/work/projects/examples/my_dir')
+        from supervisely.io.fs import validate_path_length_bytes
+        validate_path_length_bytes('/home/admin/work/projects/examples/my_dir')
     """
     cut_index = len(
         path.encode("utf8", errors="replace")[:max_length_byte].decode("utf8", errors="ignore")

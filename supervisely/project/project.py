@@ -39,13 +39,14 @@ from supervisely.io.fs import (
     list_files_recursively,
     mkdir,
     silent_remove,
+    validate_path_length_bytes,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm
-from supervisely.io.fs import validate_path_length_encoding
+
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
@@ -1605,7 +1606,7 @@ class Project:
             #         ds3
         """
         ds_path: str = os.path.join(self.directory, ds_name)
-        ds_path = validate_path_length_encoding(ds_path, "Dataset name")
+        ds_path = validate_path_length_bytes(ds_path, "Dataset name")
         ds = self.dataset_class(ds_path, OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
@@ -2543,6 +2544,7 @@ def _download_project(
             if progress_cb is not None:
                 progress_cb(len(batch))
 
+
 @handle_original_tqdm
 def upload_project(
     dir: str,
@@ -2672,6 +2674,7 @@ def upload_project(
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
 
     return project.id, project.name
+
 
 @handle_original_tqdm
 def download_project(
