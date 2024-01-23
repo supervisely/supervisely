@@ -155,7 +155,7 @@ class FigureApi(RemoveableBulkModuleApi):
         object_id: int,
         meta: Dict,
         geometry_json: Dict,
-        geometry_type,
+        geometry_type: str,
         track_id: int = None,
     ) -> int:
         """"""
