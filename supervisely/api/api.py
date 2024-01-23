@@ -16,7 +16,6 @@ import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
 import supervisely.api.dataset_api as dataset_api
-import supervisely.api.entity_annotation.figure_api as figure_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
@@ -158,7 +157,6 @@ class Api:
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
-        self.figure = figure_api.FigureApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec

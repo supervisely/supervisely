@@ -1120,7 +1120,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
     def get_project_meta(self, id: int) -> ProjectMeta:
         """
-        Returns project meta of the labeling job with given id.
+        Returns project meta with classes and tags used in the labeling job with given id.
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
@@ -1206,7 +1206,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         job_info = self.get_info_by_id(id)
         figures = [
             figure
-            for figure in self._api.figure.get_list(job_info.dataset_id)
+            for figure in self._api.image.figure.get_list(job_info.dataset_id)
             if image_id == figure.entity_id
         ]
         image = self._api.image.get_info_by_id(image_id)
