@@ -35,6 +35,8 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.entity_annotation.figure_api import FigureApi
+from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
@@ -184,6 +186,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
         image_info = api.image.get_info_by_id(image_id) # api usage example
     """
+
+    def __init__(self, api):
+        super().__init__(api)
+        self.figure = FigureApi(api) # @TODO: rename to object like in labeling UI
+        self.tag = TagApi(api)
 
     @staticmethod
     def info_sequence():
