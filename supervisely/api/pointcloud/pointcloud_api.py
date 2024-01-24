@@ -1,21 +1,21 @@
 # coding: utf-8
 
 # docs
+from collections import defaultdict
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
+
 from requests import Response
-from typing import List, NamedTuple, Dict, Optional, Callable, Union
-from supervisely.task.progress import Progress
+from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
-from collections import defaultdict
-from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
-from supervisely.io.fs import ensure_base_path, get_file_hash
 from supervisely._utils import batched
-
+from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.pointcloud.pointcloud_annotation_api import PointcloudAnnotationAPI
-from supervisely.api.pointcloud.pointcloud_object_api import PointcloudObjectApi
 from supervisely.api.pointcloud.pointcloud_figure_api import PointcloudFigureApi
+from supervisely.api.pointcloud.pointcloud_object_api import PointcloudObjectApi
 from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudTagApi
-from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from supervisely.io.fs import ensure_base_path, get_file_hash
+from supervisely.task.progress import Progress
 
 
 class PointcloudInfo(NamedTuple):
@@ -453,7 +453,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Point cloud name.
+        :param name: Point cloud name with extension.
         :type name: str
         :param hash: Point cloud hash.
         :type hash: str
@@ -520,7 +520,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Point cloud name.
+        :param names: Point cloud name with extension.
         :type names: List[str]
         :param hashes: Point cloud hash.
         :type hashes: List[str]
@@ -732,7 +732,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param name: Point cloud name.
+        :param name: Point cloud name with extension.
         :type name: str
         :param path: Path to point cloud.
         :type path: str
@@ -774,7 +774,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param names: Point clouds names.
+        :param names: Point clouds names with extension.
         :type names: List[str]
         :param paths: Paths to point clouds.
         :type paths: List[str]

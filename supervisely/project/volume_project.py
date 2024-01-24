@@ -19,13 +19,13 @@ from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.task.progress import Progress
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, handle_original_tqdm
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume import stl_converter
 from supervisely.volume import volume as sly_volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.sly_logger import logger
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -119,6 +119,24 @@ class VolumeProject(VideoProject):
         return super(VolumeProject, self).get_classes_stats(
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
+
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'volumes'
+        """
+        return ProjectType.VOLUMES.value
 
     @staticmethod
     def download(
@@ -233,7 +251,45 @@ class VolumeProject(VideoProject):
             log_progress=log_progress,
         )
 
+    @staticmethod
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
+        )
 
+    @staticmethod
+    def get_train_val_splits_by_tag(
+        project_dir: str,
+        train_tag_name: str,
+        val_tag_name: str,
+        untagged: Optional[str] = "ignore",
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+        )
+
+    @staticmethod
+    def get_train_val_splits_by_dataset(
+        project_dir: str, train_datasets: List[str], val_datasets: List[str]
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+        )
+
+
+@handle_original_tqdm
 def download_volume_project(
     api: Api,
     project_id: int,

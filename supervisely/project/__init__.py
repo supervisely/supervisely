@@ -6,6 +6,7 @@ from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProj
 from supervisely.project.pointcloud_project import PointcloudProject
 from supervisely.project.project import Project, read_single_project
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import ProjectSettings
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoProject
 from supervisely.project.volume_project import VolumeProject
@@ -50,8 +51,12 @@ def read_project(
         project_fs = sly.read_project(proj_dir)
     """
     paths = list_files(dir)
+
+    meta = None
     for path in paths:
         if get_file_name_with_ext(path) == "meta.json":
             meta = ProjectMeta.from_json(load_json_file(path))
+    if meta is None:
+        raise FileNotFoundError(f"The file 'meta.json' with the list of annotation classes and tags was not found in the directory: '{dir}'. Learn more about Supervisely annotation JSON format here: https://developer.supervisely.com/api-references/supervisely-annotation-json-format")
 
     return read_single_project(dir, get_project_class(meta.project_type))

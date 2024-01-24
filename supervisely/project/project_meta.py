@@ -2,20 +2,21 @@
 
 # docs
 from __future__ import annotations
-from supervisely.project.project_type import ProjectType
-from supervisely.annotation.tag_meta import TagMeta
-from typing import List, Dict, Optional, Tuple, Union
 
+from typing import Dict, List, Optional, Tuple, Union
 
-from supervisely.io.json import JsonSerializable
-from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely._utils import take_with_default
-
 from supervisely.annotation.obj_class import ObjClass
-from supervisely.geometry.polygon import Polygon
+from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.io.json import JsonSerializable
+from supervisely.project.project_settings import ProjectSettings
+from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
 
 
 class ProjectMetaJsonFields:
@@ -24,6 +25,7 @@ class ProjectMetaJsonFields:
     OBJ_TAGS = "tags_objects"
     TAGS = "tags"
     PROJECT_TYPE = "projectType"
+    PROJECT_SETTINGS = "projectSettings"
 
 
 def _merge_img_obj_tag_metas(
@@ -54,7 +56,9 @@ class ProjectMeta(JsonSerializable):
     :param tag_metas: TagMetaCollection or just list that stores TagMeta instances with unique names.
     :type tag_metas: TagMetaCollection or List[TagMeta], optional
     :param project_type: Type of items in project: images, videos, volumes, point_clouds.
-    :type project_type: str, optional
+    :type project_type: ProjectType, optional
+    :param project_settings: Additional project properties. For example, multi-view settings.
+    :type project_settings: dict or ProjectSettings, optional
 
     :Usage example:
 
@@ -62,7 +66,7 @@ class ProjectMeta(JsonSerializable):
 
         import supervisely as sly
 
-        #Empty ProjectMeta example
+        # Example 1: Empty ProjectMeta
         meta = sly.ProjectMeta()
         print(meta)
         # Output:
@@ -78,7 +82,7 @@ class ProjectMeta(JsonSerializable):
         # +------+------------+-----------------+--------+---------------+--------------------+
         # +------+------------+-----------------+--------+---------------+--------------------+
 
-        #More complex ProjectMeta example
+        # Example 2: Complex ProjectMeta
         lemon = sly.ObjClass('lemon', sly.Rectangle)
         kiwi = sly.ObjClass('kiwi', sly.Polygon)
         tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
@@ -102,8 +106,25 @@ class ProjectMeta(JsonSerializable):
         # | fruit | any_string |       None      |        |      all      |         []         |
         # +-------+------------+-----------------+--------+---------------+--------------------+
 
-        # Example 2
+        # Example 3: Add multi-view to the project
 
+        lemon = sly.ObjClass('lemon', sly.Rectangle)
+        kiwi = sly.ObjClass('kiwi', sly.Polygon)
+        tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+
+        settings = sly.ProjectSettings(
+            multiview_enabled=True,
+            multiview_tag_name=tag_fruit.name,
+            multiview_is_synced=False,
+        )
+        meta = sly.ProjectMeta(
+            obj_classes=[lemon, kiwi],
+            tag_metas=tag_fruit,
+            project_type=sly.ProjectType.IMAGES,
+            project_settings=settings
+        )
+
+        # Example 4: Custom color
         cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
         scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
         meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
@@ -114,6 +135,7 @@ class ProjectMeta(JsonSerializable):
         obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[ProjectType] = None,
+        project_settings: Optional[Union[ProjectSettings, Dict]] = None,
     ):
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
@@ -134,6 +156,15 @@ class ProjectMeta(JsonSerializable):
             raise TypeError(f"tag_metas argument has unknown type {type(tag_metas)}")
 
         self._project_type = project_type
+
+        if isinstance(project_settings, dict):
+            self._project_settings = ProjectSettings.from_json(project_settings)
+        else:
+            self._project_settings = project_settings
+            if project_settings is None:
+                self._project_settings = ProjectSettings()
+
+        self._project_settings.validate(self)
 
     @property
     def obj_classes(self) -> ObjClassCollection:
@@ -215,7 +246,7 @@ class ProjectMeta(JsonSerializable):
         return self._tag_metas
 
     @property
-    def project_type(self):
+    def project_type(self) -> str:
         """
         Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
 
@@ -230,9 +261,34 @@ class ProjectMeta(JsonSerializable):
             meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
 
             print(meta.project_type)
-            # Output: <ProjectType.IMAGES: 'images'>
+            # Output: 'images'
         """
         return self._project_type
+
+    @property
+    def project_settings(self) -> ProjectSettings:
+        """
+        Settings of the project. See possible values in :class: `ProjectSettings`.
+
+        :return: Project settings
+        :rtype: :class: `Dict[str, str]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            s = sly.ProjectSettings(
+                multiview_enabled=True,
+                multiview_tag_name='multi_tag',
+                multiview_is_synced=False,
+            )
+            meta = sly.ProjectMeta(project_settings=s)
+
+            print(meta.project_settings)
+            # Output: <class 'supervisely.project.project_settings.ProjectSettings'>
+        """
+        return self._project_settings
 
     def to_json(self) -> Dict:
         """
@@ -282,6 +338,8 @@ class ProjectMeta(JsonSerializable):
         }
         if self._project_type is not None:
             res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
+        if self._project_settings is not None:
+            res[ProjectMetaJsonFields.PROJECT_SETTINGS] = self._project_settings.to_json()
         return res
 
     @classmethod
@@ -362,10 +420,24 @@ class ProjectMeta(JsonSerializable):
                 "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
             ) from e
 
+        project_settings_json = data.get(ProjectMetaJsonFields.PROJECT_SETTINGS, None)
+        if project_settings_json is None:
+            project_settings = None
+        else:
+            try:
+                project_settings = ProjectSettings.from_json(project_settings_json)
+            except Exception as e:
+                raise Exception(
+                    f"Failed to deserialize settings from Project meta JSON. "
+                    "Check the annotation format documentation at: "  # TODO
+                    "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
+                ) from e
+
         return cls(
             obj_classes=obj_classes,
             tag_metas=tag_metas,
             project_type=project_type,
+            project_settings=project_settings,
         )
 
     def merge(self, other: ProjectMeta) -> ProjectMeta:
@@ -445,6 +517,7 @@ class ProjectMeta(JsonSerializable):
         obj_classes: Optional[Union[ObjClassCollection, List[ObjClass]]] = None,
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[str] = None,
+        project_settings: Optional[Union[dict, ProjectSettings]] = None,
     ) -> ProjectMeta:
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
@@ -455,6 +528,9 @@ class ProjectMeta(JsonSerializable):
         :type tag_metas: TagMetaCollection or List[TagMeta], optional
         :param project_type: Type of items in project: images, videos, volumes, point_clouds.
         :type project_type: str, optional
+        :param project_settings: Additional project properties. For example, multi-view settings
+        :type project_settings: dict or ProjectSettings, optional
+
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
         :Usage example:
@@ -500,6 +576,7 @@ class ProjectMeta(JsonSerializable):
             obj_classes=take_with_default(obj_classes, self.obj_classes),
             tag_metas=take_with_default(tag_metas, self.tag_metas),
             project_type=take_with_default(project_type, self.project_type),
+            project_settings=take_with_default(project_settings, self.project_settings),
         )
 
     def add_obj_class(self, new_obj_class: ObjClass) -> ProjectMeta:
@@ -927,13 +1004,13 @@ class ProjectMeta(JsonSerializable):
         """
         return self._obj_classes.get(obj_class_name)
 
-    def get_obj_class_by_id(self, obj_class_id: int) -> ObjClass:
+    def get_obj_class_by_id(self, obj_class_id: int) -> Optional[ObjClass]:
         """
         Get given ObjClass by name from ProjectMeta.
 
         :param obj_class_id: ObjClass id.
         :type obj_class_id: int
-        :return: ObjClass object
+        :return: ObjClass object or None
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
         :Usage example:
 
@@ -949,13 +1026,13 @@ class ProjectMeta(JsonSerializable):
             if obj_class.sly_id == obj_class_id:
                 return obj_class
 
-    def get_tag_meta(self, tag_name: str) -> TagMeta:
+    def get_tag_meta(self, tag_name: str) -> Optional[TagMeta]:
         """
         Get given TagMeta by name from ProjectMeta.
 
         :param tag_name: TagMeta name.
         :type tag_name: str
-        :return: TagMeta object.
+        :return: TagMeta object or None.
         :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
         :Usage example:
 
@@ -1004,25 +1081,25 @@ class ProjectMeta(JsonSerializable):
         """
         return self._tag_metas.get(tag_name)
 
-    def get_tag_meta_by_id(self, tag_meta_id: int) -> TagMeta:
+    def get_tag_meta_by_id(self, tag_id: int) -> Optional[TagMeta]:
+        """Return TagMeta with given id.
+
+        :param tag_id: TagMeta id to search for.
+        :type tag_id: int
+        :return: TagMeta with given id.
+        :rtype: TagMeta or None
         """
-        Get given TagMeta by name from ProjectMeta.
+        return self._tag_metas.get_by_id(tag_id)
 
-        :param tag_meta_id: TagMeta id.
-        :type tag_meta_id: int
-        :return: TagMeta object
-        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
-        :Usage example:
+    def get_tag_name_by_id(self, tag_id: int) -> Optional[str]:
+        """Return tag name with given id.
 
-         .. code-block:: python
-
-            import supervisely as sly
-
-            tag_id = 215
-            meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-            tag_meta = meta.get_tag_meta_by_id(tag_id)
+        :param tag_id: TagMeta id to search for.
+        :type tag_id: int
+        :return: tag name with given id.
+        :rtype: tag name or None
         """
-        return self.tag_metas.get_by_id(tag_meta_id)
+        return self._tag_metas.get_tag_name_by_id(tag_id)
 
     @staticmethod
     def merge_list(metas: List[ProjectMeta]) -> ProjectMeta:

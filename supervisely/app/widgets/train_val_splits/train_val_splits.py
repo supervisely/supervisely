@@ -1,37 +1,47 @@
 import os
-from typing import List, Optional, Dict, Union, Tuple
-from supervisely import Project, Api
-from supervisely.project.project import ItemInfo
-from supervisely.app import StateJson, DataJson
+from typing import Dict, List, Literal, Optional, Tuple, Union
+
+import supervisely as sly
+from supervisely._utils import rand_str
+from supervisely.api.api import Api
+from supervisely.app import DataJson, StateJson, get_data_dir
 from supervisely.app.widgets import (
-    Widget,
-    RadioTabs,
     Container,
+    Field,
     NotificationBox,
+    RadioTabs,
     SelectDataset,
     SelectString,
-    Field,
     SelectTagMeta,
+    Widget,
 )
-from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
-from supervisely.app import get_data_dir
-from supervisely._utils import rand_str
+from supervisely.app.widgets.random_splits_table.random_splits_table import (
+    RandomSplitsTable,
+)
 from supervisely.io.fs import remove_dir
-import supervisely as sly
+from supervisely.project import get_project_class
+from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
+from supervisely.project.pointcloud_project import PointcloudProject
+from supervisely.project.project import ItemInfo, Project
+from supervisely.project.video_project import VideoProject
+from supervisely.project.volume_project import VolumeProject
 
 
 class TrainValSplits(Widget):
     def __init__(
         self,
         project_id: Optional[int] = None,
-        project_fs: Optional[Project] = None,
+        project_fs: Optional[
+            Union[Project, VideoProject, VolumeProject, PointcloudProject, PointcloudEpisodeProject]
+        ] = None,
         random_splits: Optional[bool] = True,
         tags_splits: Optional[bool] = True,
         datasets_splits: Optional[bool] = True,
         widget_id: Optional[int] = None,
     ):
         self._project_id = project_id
-        self._project_fs: Project = project_fs
+        self._project_fs = project_fs
+
         if project_fs is not None and project_id is not None:
             raise ValueError(
                 "You can not provide both project_id and project_fs parameters to TrainValSplits widget."
@@ -44,7 +54,13 @@ class TrainValSplits(Widget):
         self._project_info = None
         if project_id is not None:
             self._api = Api()
-            self._project_info = self._api.project.get_info_by_id(self._project_id)
+            self._project_info = self._api.project.get_info_by_id(
+                self._project_id, raise_error=True
+            )
+
+        self._project_type = project_fs.type if project_id is None else self._project_info.type
+        self._project_class = get_project_class(self._project_type)
+
         self._random_splits_table: RandomSplitsTable = None
         self._train_tag_select: SelectTagMeta = None
         self._val_tag_select: SelectTagMeta = None
@@ -52,6 +68,7 @@ class TrainValSplits(Widget):
         self._train_ds_select: Union[SelectDataset, SelectString] = None
         self._val_ds_select: Union[SelectDataset, SelectString] = None
         self._split_methods = []
+
         contents = []
         tabs_descriptions = []
         if random_splits:
@@ -181,18 +198,21 @@ class TrainValSplits(Widget):
         tmp_project_dir = None
         if self._project_fs is None:
             tmp_project_dir = os.path.join(get_data_dir(), rand_str(15))
-            Project.download(self._api, self._project_id, tmp_project_dir)
+            self._project_class.download(self._api, self._project_id, tmp_project_dir)
+
         project_dir = tmp_project_dir if tmp_project_dir is not None else self._project_fs.directory
+
         if split_method == "Random":
             splits_counts = self._random_splits_table.get_splits_counts()
             train_count = splits_counts["train"]
             val_count = splits_counts["val"]
             val_part = val_count / (val_count + train_count)
-            project = Project(project_dir, sly.OpenMode.READ)
+            project = self._project_class(project_dir, sly.OpenMode.READ)
             n_images = project.total_items
             new_val_count = round(val_part * n_images)
             new_train_count = n_images - new_val_count
-            train_set, val_set = Project.get_train_val_splits_by_count(
+
+            train_set, val_set = self._project_class.get_train_val_splits_by_count(
                 project_dir, new_train_count, new_val_count
             )
 
@@ -200,7 +220,7 @@ class TrainValSplits(Widget):
             train_tag_name = self._train_tag_select.get_selected_name()
             val_tag_name = self._val_tag_select.get_selected_name()
             add_untagged_to = self._untagged_select.get_value()
-            train_set, val_set = Project.get_train_val_splits_by_tag(
+            train_set, val_set = self._project_class.get_train_val_splits_by_tag(
                 project_dir, train_tag_name, val_tag_name, add_untagged_to
             )
 
@@ -222,7 +242,8 @@ class TrainValSplits(Widget):
                 self._val_ds_select: SelectString
                 train_ds_names = self._train_ds_select.get_value()
                 val_ds_names = self._val_ds_select.get_value()
-            train_set, val_set = Project.get_train_val_splits_by_dataset(
+
+            train_set, val_set = self._project_class.get_train_val_splits_by_dataset(
                 project_dir, train_ds_names, val_ds_names
             )
 

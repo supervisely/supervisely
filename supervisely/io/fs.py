@@ -122,15 +122,15 @@ def list_dir_recursively(
     dir: str, include_subdirs: bool = False, use_global_paths: bool = False
 ) -> List[str]:
     """
-    Recursively walks through directory and returns list with all file paths.
+    Recursively walks through directory and returns list with all file paths, and optionally subdirectory paths.
 
     :param path: Path to directory.
     :type path: str
-    :param include_subdirs: If True, subdirectories will be included in the result list.
+    :param include_subdirs: If True, subdirectory paths will be included in the result list.
     :type include_subdirs: bool
     :param use_global_paths: If True, absolute paths will be returned instead of relative ones.
     :type use_global_paths: bool
-    :returns: List containing file paths.
+    :returns: List containing file paths, and optionally subdirectory paths.
     :rtype: :class:`List[str]`
     :Usage example:
 
@@ -143,7 +143,7 @@ def list_dir_recursively(
         print(list_dir)
         # Output: ['meta.json', 'ds1/ann/IMG_0748.jpeg.json', 'ds1/ann/IMG_4451.jpeg.json', 'ds1/img/IMG_0748.jpeg', 'ds1/img/IMG_4451.jpeg']
     """
-    all_files = []
+    all_paths = []
     for root, dirs, files in os.walk(dir):
         for name in files:
             file_path = os.path.join(root, name)
@@ -152,17 +152,17 @@ def list_dir_recursively(
                 if not use_global_paths
                 else os.path.abspath(file_path)
             )
-            all_files.append(file_path)
+            all_paths.append(file_path)
         if include_subdirs:
             for name in dirs:
-                dir_path = os.path.join(root, name)
-                dir_path = (
-                    os.path.relpath(dir_path, dir)
+                subdir_path = os.path.join(root, name)
+                subdir_path = (
+                    os.path.relpath(subdir_path, dir)
                     if not use_global_paths
-                    else os.path.abspath(dir_path)
+                    else os.path.abspath(subdir_path)
                 )
-                all_files.append(dir_path)
-    return all_files
+                all_paths.append(subdir_path)
+    return all_paths
 
 
 def list_files_recursively(
@@ -170,13 +170,14 @@ def list_files_recursively(
 ) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
+    Can be filtered by valid extensions and filter function.
 
      :param dir: Target dir path.
      :param dir: str
      :param valid_extensions: List with valid file extensions.
-     :type valid_extensions: List[str]
-     :param filter_fn: Function with a single argument that determines whether to keep a given file path.
-     :type filter_fn:
+     :type valid_extensions: List[str], optional
+     :param filter_fn: Function with a single argument. Argument is a file path. Function determines whether to keep a given file path. Must return True or False.
+     :type filter_fn: Callable, optional
      :returns: List with file paths
      :rtype: :class:`List[str]`
      :Usage example:
@@ -212,14 +213,16 @@ def list_files(
 ) -> List[str]:
     """
     Returns list with file paths presented in given directory.
+    Can be filtered by valid extensions and filter function.
+    Also can be case insensitive for valid extensions.
 
     :param dir: Target dir path.
     :param dir: str
     :param valid_extensions: List with valid file extensions.
     :type valid_extensions: List[str]
-    :param filter_fn: Function with a single argument that determines whether to keep a given file path.
-    :type filter_fn:
-    :param ignore_valid_extensions_case: If True, valid extensions will be compared with file extensions in case-insensitive manner.
+    :param filter_fn: Function with a single argument. Argument is a file path. Function determines whether to keep a given file path. Must return True or False.
+    :type filter_fn: Callable, optional
+    :param ignore_valid_extensions_case: If True, validation of file extensions will be case insensitive.
     :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
@@ -710,7 +713,9 @@ def get_file_hash(path: str) -> str:
         from supervisely.io.fs import get_file_hash
         hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
-    return get_bytes_hash(open(path, "rb").read())
+    with open(path, "rb") as file:
+        file_bytes = file.read()
+        return get_bytes_hash(file_bytes)
 
 
 def tree(dir_path: str) -> str:

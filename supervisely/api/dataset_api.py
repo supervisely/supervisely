@@ -526,24 +526,45 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             res = res._replace(items_count=res.images_count)
         return DatasetInfo(**res._asdict())
 
-    def remove_permanently(self, ids: Union[int, List]) -> dict:
+    def remove_permanently(
+        self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
+    ) -> List[dict]:
         """
-        Delete permanently datasets with given IDs from the Supervisely server.
-
         !!! WARNING !!!
         Be careful, this method deletes data from the database, recovery is not possible.
 
+        Delete permanently datasets with given IDs from the Supervisely server.
+        All dataset IDs must belong to the same team.
+        Therefore, it is necessary to sort IDs before calling this method.
+
+
         :param ids: IDs of datasets in Supervisely.
         :type ids: Union[int, List]
-        :return: Response content in JSON format
-        :rtype: dict
+        :param batch_size: The number of entities that will be deleted by a single API call. This value must be in the range 1-50 inclusive, if you set a value out of range it will automatically adjust to the boundary values.
+        :type batch_size: int, optional
+        :param progress_cb: Function for control delete progress.
+        :type progress_cb: Callable, optional
+        :return: A list of response content in JSON format for each API call.
+        :rtype: List[dict]
         """
+        if batch_size > 50:
+            batch_size = 50
+        elif batch_size < 1:
+            batch_size = 1
+
         if isinstance(ids, int):
             datasets = [{ApiField.ID: ids}]
         else:
             datasets = [{ApiField.ID: id} for id in ids]
-        response = self._api.post("datasets.remove.permanently", {ApiField.DATASETS: datasets})
-        return response.json()
+
+        batches = [datasets[i : i + batch_size] for i in range(0, len(datasets), batch_size)]
+        responses = []
+        for batch in batches:
+            response = self._api.post("datasets.remove.permanently", {ApiField.DATASETS: batch})
+            if progress_cb is not None:
+                progress_cb(len(batch))
+            responses.append(response.json())
+        return responses
 
     def get_list_all(
         self,

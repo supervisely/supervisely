@@ -336,7 +336,7 @@ class AppService:
 
                 else:
                     self.logger.error(
-                        traceback.format_exc(),
+                        repr(e),
                         exc_info=True,
                         extra={
                             "main_name": command,

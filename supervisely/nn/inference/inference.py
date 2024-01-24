@@ -6,6 +6,8 @@ import requests
 from requests.structures import CaseInsensitiveDict
 import uuid
 import time
+import re
+import subprocess
 from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -75,6 +77,7 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
+        self._autostart_delay_time = 5*60  # 5 min
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -102,6 +105,7 @@ class Inference:
 
             def on_change_model_callback(gui: GUI.InferenceGUI):
                 self._model_served = False
+                clean_up_cuda()
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
@@ -760,7 +764,19 @@ class Inference:
 
         @call_on_autostart()
         def autostart_func():
-            self.gui.deploy_with_current_params()
+            gpu_count = get_gpu_count()
+            if gpu_count > 1:
+                # run autostart after 5 min
+                def delayed_autostart():
+                    logger.debug("Found more than one GPU, autostart will be delayed.")
+                    time.sleep(self._autostart_delay_time)
+                    if not self._model_served:
+                        logger.debug("Deploying the model via autostart...")
+                        self.gui.deploy_with_current_params()
+                self._executor.submit(delayed_autostart)
+            else:
+                # run autostart immediately
+                self.gui.deploy_with_current_params()
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
@@ -1043,3 +1059,24 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_pos=1,
     arg_key="device",
 )
+
+
+def get_gpu_count():
+    try:
+        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode('utf-8')
+        gpu_count = len(re.findall(r'GPU \d+:', nvidia_smi_output))
+        return gpu_count
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
+        return 0
+    
+
+def clean_up_cuda():
+    try:
+        # torch may not be installed
+        import torch
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
+    except Exception as exc:
+        logger.debug("Error in clean_up_cuda.", exc_info=True)

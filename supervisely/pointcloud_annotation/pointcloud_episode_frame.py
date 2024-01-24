@@ -5,7 +5,7 @@ from supervisely._utils import take_with_default
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
-from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
 class PointcloudEpisodeFrame(Frame):
     """
@@ -21,12 +21,12 @@ class PointcloudEpisodeFrame(Frame):
 
         import supervisely as sly
         from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-        from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+        from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
         # Create pointcloud object
         obj_class_car = sly.ObjClass('car', Cuboid3d)
-        pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-        objects = PointcloudObjectCollection([pointcloud_obj_car])
+        pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+        objects = PointcloudEpisodeObjectCollection([pointcloud_obj_car])
 
         # Create figure
         frame_index = 7
@@ -63,7 +63,7 @@ class PointcloudEpisodeFrame(Frame):
     def from_json(
         cls, 
         data: Dict, 
-        objects: PointcloudObjectCollection, 
+        objects: PointcloudEpisodeObjectCollection, 
         frames_count: Optional[int]=None, 
         key_id_map: Optional[KeyIdMap]=None
     ) -> PointcloudEpisodeFrame:
@@ -72,8 +72,8 @@ class PointcloudEpisodeFrame(Frame):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: PointcloudObjectCollection object.
-        :type objects: PointcloudObjectCollection
+        :param objects: PointcloudEpisodeObjectCollection object.
+        :type objects: PointcloudEpisodeObjectCollection
         :param frames_count: Number of frames in point cloud.
         :type frames_count: int, optional
         :param key_id_map: KeyIdMap object.
@@ -88,11 +88,11 @@ class PointcloudEpisodeFrame(Frame):
 
             import supervisely as sly
             from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-            from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+            from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
             obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-            objects = PointcloudObjectCollection([pointcloud_obj_car])
+            pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+            objects = PointcloudEpisodeObjectCollection([pointcloud_obj_car])
 
             frame_index = 7
             position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)

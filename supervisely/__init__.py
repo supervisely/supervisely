@@ -110,10 +110,11 @@ from supervisely.worker_api.chunking import (
 )
 import supervisely.worker_proto.worker_api_pb2 as api_proto
 
-from supervisely.api.api import Api
+from supervisely.api.api import Api, UserSession
 from supervisely.api import api
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
+from supervisely.project.project_settings import ProjectSettings
 from supervisely.api.report_api import NotificationType
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.dataset_api import DatasetInfo
@@ -141,6 +142,7 @@ from supervisely._utils import (
     get_readable_datetime,
     generate_free_name,
     setup_certificates,
+    is_community,
 )
 
 import supervisely._utils as utils
@@ -176,6 +178,10 @@ from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
 from supervisely.pointcloud_annotation.pointcloud_episode_frame import PointcloudEpisodeFrame
 from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
     PointcloudEpisodeFrameCollection,
+)
+from supervisely.pointcloud_annotation.pointcloud_episode_object import PointcloudEpisodeObject
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
+    PointcloudEpisodeObjectCollection,
 )
 from supervisely.pointcloud_annotation.pointcloud_episode_tag import PointcloudEpisodeTag
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (

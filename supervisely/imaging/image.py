@@ -25,7 +25,18 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = [".jpg", ".jpeg", ".mpo", ".bmp", ".png", ".webp", ".tiff", ".tif", ".nrrd"]
+SUPPORTED_IMG_EXTS = [
+    ".jpg",
+    ".jpeg",
+    ".mpo",
+    ".bmp",
+    ".png",
+    ".webp",
+    ".tiff",
+    ".tif",
+    ".nrrd",
+    ".jfif",
+]
 DEFAULT_IMG_EXT = ".png"
 
 
@@ -187,6 +198,31 @@ def validate_format(path: str) -> None:
                 img_ext, path, ", ".join(SUPPORTED_IMG_EXTS)
             )
         )
+
+
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if a given file has a supported format.
+
+    :param path: Path to file.
+    :type path: str
+    :return: True if file format in list of supported images formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            sly.image.is_valid_format('/images/new_image.jpeg') # True
+            sly.image.is_valid_format('/images/016_img.py') # False
+    """
+
+    try:
+        validate_format(path)
+        return True
+    except (UnsupportedImageFormat, ImageReadException):
+        return False
 
 
 def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:

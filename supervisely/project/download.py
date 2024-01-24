@@ -12,8 +12,10 @@ from supervisely.project.project import download_project
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import download_video_project
 from supervisely.project.volume_project import download_volume_project
+from supervisely.task.progress import handle_original_tqdm
 
 
+@handle_original_tqdm
 def download(
     api: Api,
     project_id: int,

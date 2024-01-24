@@ -2,31 +2,33 @@
 
 # docs
 from __future__ import annotations
+
 import os
 import random
-from supervisely.api.api import Api
-from typing import Tuple, List, Dict, Optional, Callable, NamedTuple, Union
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from tqdm import tqdm
+
 import supervisely.imaging.image as sly_image
 from supervisely._utils import batched
+from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import touch, dir_exists, list_files, mkdir, get_file_name
+from supervisely.io.fs import dir_exists, get_file_name, list_files, mkdir, touch
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
 )
-from supervisely.project.pointcloud_project import PointcloudProject, PointcloudDataset
+from supervisely.project.pointcloud_project import PointcloudDataset, PointcloudProject
 from supervisely.project.project import OpenMode
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.frame import Frame
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class EpisodeItemPaths(NamedTuple):
@@ -300,6 +302,24 @@ class PointcloudEpisodeProject(PointcloudProject):
         return super(PointcloudEpisodeProject, self).get_classes_stats(
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
+
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.PointcloudEpisodeProject("/home/admin/work/supervisely/projects/pointcloud_episode_project", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'point_cloud_episodes'
+        """
+        return ProjectType.POINT_CLOUD_EPISODES.value
 
     @staticmethod
     def get_train_val_splits_by_count(
@@ -607,6 +627,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         )
 
 
+@handle_original_tqdm
 def download_pointcloud_episode_project(
     api: Api,
     project_id: int,

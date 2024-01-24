@@ -3,12 +3,19 @@
 
 from __future__ import annotations
 
+import datetime
+import gc
+import glob
 import json
 import os
-from typing import Dict, List, NamedTuple, Optional
+import shutil
+from pathlib import Path
+from typing import Dict, Optional
+from urllib.parse import urljoin, urlparse
 
+import jwt
 import requests
-from dotenv import load_dotenv
+from dotenv import get_key, load_dotenv, set_key
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -39,7 +46,7 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import is_development
+from supervisely._utils import camel_to_snake, is_development
 from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
@@ -52,6 +59,94 @@ SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC
 SERVER_ADDRESS = "SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
+SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
+
+class UserSession:
+    """
+    UserSession object contains info that is returned after user authentication.
+
+    :param server: Server url.
+    :type server: str
+    :raises: :class:`RuntimeError`, if server url is invalid.
+    """
+
+    def __init__(self, server_address: str):
+        self.api_token = None
+        self.team_id = None
+        self.workspace_id = None
+
+        if not self._validate_server_url(server_address):
+            raise RuntimeError(f"Invalid server url: {server_address}")
+        self.server_address = server_address
+
+    def __str__(self):
+        return f"UserSession(server={self.server_address})"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def _validate_server_url(server_address) -> bool:
+        """
+        Validate server url.
+
+        :return: True if server url is valid, False otherwise.
+        """
+        result = urlparse(server_address)
+        if all([result.scheme, result.netloc]):
+            try:
+                response = requests.get(server_address)
+                if response.status_code == 200:
+                    return True
+            except requests.RequestException:
+                pass
+        return False
+
+    def _setattrs_user_session(self, decoded_token):
+        """
+        Add decoded info to UserSession object.
+
+        :param decoded_token: Decoded token.
+        :type decoded_token: dict
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        for key, value in decoded_token.items():
+            if key == "group":
+                self.team = value
+                self.team_id = value["id"]
+            elif key == "workspace":
+                self.workspace = value
+                self.workspace_id = value["id"]
+            else:
+                key = camel_to_snake(key)
+                setattr(self, key, value)
+
+    def log_in(self, login: str, password: str) -> UserSession:
+        """
+        Authenticate user and return UserSession object with decoded info from JWT token.
+
+        :param login: User login.
+        :type login: str
+        :param password: User password.
+        :type password: str
+        :return: UserSession object
+        :rtype: :class:`UserSession`
+        """
+        login_url = urljoin(self.server_address, "api/account")
+        payload = {"login": login, "password": password}
+        response = requests.post(login_url, data=payload)
+        del password
+        gc.collect()
+        if response.status_code == 200:
+            data = response.json()
+            jwt_token = data.get("token", None)
+            decoded_token = jwt.decode(jwt_token, options={"verify_signature": False})
+            self._setattrs_user_session(decoded_token)
+            return self
+        else:
+            raise RuntimeError(f"Failed to authenticate user: status code {response.status_code}")
 
 
 class Api:
@@ -178,7 +273,7 @@ class Api:
         cls,
         retry_count: int = 10,
         ignore_task_id: bool = False,
-        env_file: str = "~/supervisely.env",
+        env_file: str = SUPERVISELY_ENV_FILE,
     ) -> Api:
         """
         Initialize API use environment variables.
@@ -290,7 +385,7 @@ class Api:
         :type data: dict
         :param retries: The number of attempts to connect to the server.
         :type retries: int, optional
-        :param stream: Define, if you’d like to get the raw socket response from the server.
+        :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
@@ -358,7 +453,7 @@ class Api:
         :type method: dict
         :param retries: The number of attempts to connect to the server.
         :type method: int, optional
-        :param stream: Define, if you’d like to get the raw socket response from the server.
+        :param stream: Define, if you'd like to get the raw socket response from the server.
         :type method: bool, optional
         :param use_public_api:
         :type method: bool, optional
@@ -491,3 +586,65 @@ class Api:
                 self.logger.warn(msg)
 
             self._require_https_redirect_check = False
+
+    @classmethod
+    def from_credentials(
+        cls, server_address: str, login: str, password: str, override: bool = False
+    ) -> Api:
+        """
+        Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
+        If ".env" file already exists, backup will be created automatically.
+        All backups will be stored in the same directory with postfix "_YYYYMMDDHHMMSS". You can have not more than 5 last backups.
+        This method can be used also to update ".env" file.
+
+        :param server_address: Supervisely server url.
+        :type server_address: str
+        :param login: User login.
+        :type login: str
+        :param password: User password.
+        :type password: str
+        :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
+        :type override: bool, optional
+        :return: Api object
+
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+
+                server_address = 'https://app.supervisely.com'
+                login = 'user'
+                password = 'pass'
+
+                api = sly.Api.from_credentials(server_address, login, password)
+        """
+
+        session = UserSession(server_address).log_in(login, password)
+        del password
+        gc.collect()
+
+        api = cls(session.server_address, session.api_token, ignore_task_id=True)
+
+        if override:
+            if os.path.isfile(SUPERVISELY_ENV_FILE):
+                # create backup
+                timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                backup_file = f"{SUPERVISELY_ENV_FILE}_{timestamp}"
+                shutil.copy2(SUPERVISELY_ENV_FILE, backup_file)
+                if api.token != get_key(SUPERVISELY_ENV_FILE, API_TOKEN):
+                    # create new file
+                    os.remove(SUPERVISELY_ENV_FILE)
+                    Path(SUPERVISELY_ENV_FILE).touch()
+                # remove old backups
+                all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
+                while len(all_backups) > 5:
+                    os.remove(all_backups.pop(0))
+            set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, server_address)
+            set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
+            if session.team_id:
+                set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
+            if session.workspace_id:
+                set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
+            load_dotenv(SUPERVISELY_ENV_FILE, override=override)
+        return api
