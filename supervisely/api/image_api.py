@@ -187,7 +187,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def __init__(self, api):
         super().__init__(api)
-        self.figure = FigureApi(api)
+        self.figure = FigureApi(api) # @TODO: rename to object like in labeling UI
         self.tag = TagApi(api)
 
     @staticmethod
