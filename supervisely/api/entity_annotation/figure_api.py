@@ -339,18 +339,16 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
-    def get_list(
-        self, dataset_id: int, image_ids: List[int] = None
-    ) -> List[FigureInfo]:
+    def download(self, dataset_id: int, image_ids: List[int] = None) -> Dict[int, List[FigureInfo]]:
         """
-        Method returns list of Figures for given dataset ID. Can be filtered by image IDs.
-        
+        Method returns dictionary with image ids and list of FigureInfo for given dataset ID. Can be filtered by image IDs.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param image_ids: List of image IDs within given dataset ID.
         :type image_ids: List[int], optional
         :return: List of information about Figures. See :class:`FigureInfo<FigureInfo>`
-        :rtype: :class:`List[FigureInfo]`
+        :rtype: :class:`Dict[int, List[FigureInfo]]`
         """
         fields = [
             "id",
@@ -378,10 +376,14 @@ class FigureApi(RemoveableBulkModuleApi):
         }
         resp = self._api.post("figures.list", data)
         infos = resp.json()
-        file_infos = []
+        images_figures = {}
         for info in infos["entities"]:
-            file_infos.append(self._convert_json_info(info, True))
-        return file_infos
+            figure_info = self._convert_json_info(info, True)
+            if figure_info.entity_id in images_figures:
+                images_figures[figure_info.entity_id].append(figure_info)
+            else:
+                images_figures[figure_info.entity_id] = [figure_info]
+        return images_figures
 
     def _convert_json_info(self, info: dict, skip_missing=False):
         return super()._convert_json_info(info, True)

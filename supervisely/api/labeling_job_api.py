@@ -1208,12 +1208,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         self._api.add_header("x-job-id", str(id))
         job_info = self.get_info_by_id(id)
-        figures = self._api.image.figure.get_list(job_info.dataset_id, image_ids)
-
-        figures_map = {image_ids: [] for image_ids in image_ids}
-        for figure in figures:
-            figures_map[figure.entity_id].append(figure)
-
+        figures_map = self._api.image.figure.download(job_info.dataset_id, image_ids)
         images = self._api.image.get_list(
             job_info.dataset_id,
             filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
@@ -1225,8 +1220,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         anns = []
         for image in images:
+            img_figures = figures_map.get(image.id, [])
             img_tags = _create_tags_from_labeling_job(image.tags, project_meta)
-            labels = _create_labels_from_labeling_job(figures_map[image.id], project_meta)
+            labels = _create_labels_from_labeling_job(img_figures, project_meta)
             ann = Annotation(img_size=(image.height, image.width), labels=labels, img_tags=img_tags)
             anns.append(ann)
         return anns
