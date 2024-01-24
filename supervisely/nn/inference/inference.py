@@ -1,53 +1,54 @@
 import json
 import os
-import sys
-from fastapi.responses import JSONResponse
-import requests
-from requests.structures import CaseInsensitiveDict
-import uuid
-import time
 import re
 import subprocess
-from functools import partial, wraps
+import sys
+import time
+import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Optional, Any, Union
-from fastapi import Form, HTTPException, Response, UploadFile, status
-from supervisely._utils import (
-    is_debug_with_sly_net,
-    rand_str,
-    is_production,
-    add_callback,
-)
-from supervisely.app.exceptions import DialogWindowError
-from supervisely.app.fastapi.subapp import get_name_from_env
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from functools import partial, wraps
+from typing import Any, Dict, List, Optional, Union
 
+import requests
+import yaml
+from fastapi import Form, HTTPException, Request, Response, UploadFile, status
+from fastapi.responses import JSONResponse
+from requests.structures import CaseInsensitiveDict
+
+import supervisely.app.development as sly_app_development
+import supervisely.imaging.image as sly_image
+import supervisely.io.env as env
+import supervisely.io.fs as fs
+import supervisely.nn.inference.gui as GUI
+from supervisely._utils import (
+    add_callback,
+    is_debug_with_sly_net,
+    is_production,
+    rand_str,
+)
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
-import supervisely.imaging.image as sly_image
-import supervisely.io.fs as fs
-from supervisely.sly_logger import logger
-import supervisely.io.env as env
-import yaml
-
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application, call_on_autostart
-from supervisely.app.content import get_data_dir, StateJson
-from fastapi import Request
-
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
+from supervisely.app.content import StateJson, get_data_dir
+from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.fastapi.subapp import (
+    Application,
+    call_on_autostart,
+    get_name_from_env,
+)
 from supervisely.app.widgets import Widget
-from supervisely.nn.prediction_dto import Prediction
-import supervisely.app.development as sly_app_development
-from supervisely.imaging.color import get_predefined_colors
-from supervisely.task.progress import Progress
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
-import supervisely.nn.inference.gui as GUI
+from supervisely.imaging.color import get_predefined_colors
+from supervisely.nn.prediction_dto import Prediction
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -77,7 +78,7 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
-        self._autostart_delay_time = 5*60  # 5 min
+        self._autostart_delay_time = 5 * 60  # 5 min
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -305,6 +306,12 @@ class Inference:
         model_dir: str,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def load_model(self, local_weights_path: str, device: str, model_source: str):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def deploy(self):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def _on_model_deployed(self):
@@ -773,6 +780,7 @@ class Inference:
                     if not self._model_served:
                         logger.debug("Deploying the model via autostart...")
                         self.gui.deploy_with_current_params()
+
                 self._executor.submit(delayed_autostart)
             else:
                 # run autostart immediately
@@ -998,6 +1006,21 @@ class Inference:
             except Exception as e:
                 return {"result": f"an error occured: {repr(e)}"}
 
+        @server.post("/get_deploy_settings")
+        def _get_deploy_settings():
+            return self.load_model.__arguments + self.load_model.__docstring
+
+        @server.post("/deploy")
+        def _deploy(response: Response, request: Request):
+            try:
+                state = request.state.state
+                device = state["device"]
+                model_dir = state["model_dir"]
+                self.deploy()
+                return {"result": "model was successfully deployed"}
+            except Exception as e:
+                return {"result": f"an error occured: {repr(e)}"}
+
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
     log_extra = {
@@ -1076,19 +1099,21 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
 
 def get_gpu_count():
     try:
-        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode('utf-8')
-        gpu_count = len(re.findall(r'GPU \d+:', nvidia_smi_output))
+        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode("utf-8")
+        gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
-    
+
 
 def clean_up_cuda():
     try:
         # torch may not be installed
-        import torch
         import gc
+
+        import torch
+
         gc.collect()
         torch.cuda.empty_cache()
     except Exception as exc:
