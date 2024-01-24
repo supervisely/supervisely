@@ -1018,9 +1018,9 @@ class ProjectMeta(JsonSerializable):
 
             import supervisely as sly
 
+            tag_id = 215
             meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-
-            tag_meta_id = 215
+            tag_meta = meta.get_tag_meta_by_id(tag_id)
         """
         return self.tag_metas.get_by_id(tag_meta_id)
 
