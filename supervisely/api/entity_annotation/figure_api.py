@@ -339,7 +339,19 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
-    def get_list(self, dataset_id: int) -> List[FigureInfo]:
+    def get_list(
+        self, dataset_id: int, image_ids: List[int] = None
+    ) -> List[FigureInfo]:
+        """
+        Method returns list of Figures for given dataset ID. Can be filtered by image IDs.
+        
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of image IDs within given dataset ID.
+        :type image_ids: List[int], optional
+        :return: List of information about Figures. See :class:`FigureInfo<FigureInfo>`
+        :rtype: :class:`List[FigureInfo]`
+        """
         fields = [
             "id",
             "createdAt",
@@ -354,9 +366,17 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
         ]
-        resp = self._api.post(
-            "figures.list", {ApiField.DATASET_ID: dataset_id, ApiField.FIELDS: fields}
-        )
+
+        if image_ids is None:
+            filters = []
+        else:
+            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FIELDS: fields,
+            ApiField.FILTER: filters,
+        }
+        resp = self._api.post("figures.list", data)
         infos = resp.json()
         file_infos = []
         for info in infos["entities"]:

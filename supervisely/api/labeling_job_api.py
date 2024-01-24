@@ -1144,7 +1144,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         job_meta = ProjectMeta(obj_classes=job_classes, tag_metas=job_tags)
         return job_meta
 
-    def get_annotation_by_image_id(self, id: int, image_id: int) -> Annotation:
+    def get_annotations(
+        self, id: int, image_ids: List[int], project_meta: ProjectMeta = None
+    ) -> List[Annotation]:
         """
         Returns annotation for given image id from labeling job with given id.
 
@@ -1204,16 +1206,22 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         self._api.add_header("x-job-id", str(id))
         job_info = self.get_info_by_id(id)
-        figures = [
-            figure
-            for figure in self._api.image.figure.get_list(job_info.dataset_id)
-            if image_id == figure.entity_id
-        ]
-        image = self._api.image.get_info_by_id(image_id)
+        figures = self._api.image.figure.get_list(job_info.dataset_id, image_ids)
+        images = self._api.image.get_list(
+            job_info.dataset_id,
+            filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
+        )
         self._api.pop_header("x-job-id")
 
-        job_meta = self.get_project_meta(id)
-        img_tags = _create_tags_from_labeling_job(image.tags, job_meta)
-        labels = _create_labels_from_labeling_job(figures, job_meta)
-        ann = Annotation(img_size=(image.height, image.width), labels=labels, img_tags=img_tags)
-        return ann
+        if project_meta is None:
+            project_meta = self.get_project_meta(id)
+
+        anns = []
+        for image in images:
+            img_tags = _create_tags_from_labeling_job(image.tags, project_meta)
+            labels = _create_labels_from_labeling_job(figures, project_meta)
+            ann = Annotation(
+                img_size=(image.height, image.width), labels=labels, img_tags=img_tags
+            )
+            anns.append(ann)
+        return anns

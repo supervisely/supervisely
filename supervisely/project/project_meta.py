@@ -1022,9 +1022,7 @@ class ProjectMeta(JsonSerializable):
 
             tag_meta_id = 215
         """
-        for tag_meta in self.tag_metas:
-            if tag_meta.sly_id == tag_meta_id:
-                return tag_meta
+        return self.tag_metas.get_by_id(tag_meta_id)
 
     @staticmethod
     def merge_list(metas: List[ProjectMeta]) -> ProjectMeta:
