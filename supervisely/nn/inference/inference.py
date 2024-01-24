@@ -95,6 +95,9 @@ class Inference:
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
+        self.deploy = DEPLOY_DECORATOR(self.deploy)
+        self.deploy = add_callback(self.deploy, self._set_served_callback)
+
         if use_gui:
             self.initialize_gui()
 
@@ -1010,13 +1013,12 @@ class Inference:
         def _get_deploy_settings():
             return self.load_model.__arguments + self.load_model.__docstring
 
-        @server.post("/deploy")
-        def _deploy(response: Response, request: Request):
+        @server.post("/deploy_from_api")
+        def _deploy_from_api(response: Response, request: Request):
             try:
                 state = request.state.state
-                device = state["device"]
-                model_dir = state["model_dir"]
-                self.deploy()
+                deploy_params = state["deploy_params"]
+                self.deploy(deploy_params)
                 return {"result": "model was successfully deployed"}
             except Exception as e:
                 return {"result": f"an error occured: {repr(e)}"}
@@ -1091,6 +1093,12 @@ def _create_notify_after_complete_decorator(
 
 
 LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
+    "✅ Model has been successfully deployed on %s device",
+    arg_pos=1,
+    arg_key="device",
+)
+
+DEPLOY_DECORATOR = _create_notify_after_complete_decorator(
     "✅ Model has been successfully deployed on %s device",
     arg_pos=1,
     arg_key="device",
