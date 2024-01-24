@@ -1,17 +1,18 @@
 # coding: utf-8
 """Functions for processing volumes"""
 
-import os
-import json
-from typing import List, Tuple, Union
-import numpy as np
 
+import os
+from typing import List, Tuple, Union
+
+import numpy as np
 import pydicom
 import SimpleITK as sitk
 import stringcase
-from supervisely.io.fs import get_file_ext, list_files_recursively, list_files
+
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
+from supervisely.io.fs import get_file_ext, list_files_recursively
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -129,6 +130,27 @@ def validate_format(path: str):
         raise UnsupportedVolumeFormat(
             f"File {path} has unsupported volume extension. Supported extensions: {ALLOWED_VOLUME_EXTENSIONS}"
         )
+
+
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if a given file has a supported format.
+    :param path: Path to file.
+    :type path: str
+    :return: True if file format in list of supported Volume formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+         .. code-block:: python
+            import supervisely as sly
+            sly.volume.is_valid_format('/volumes/dcm01.dcm') # True
+            sly.volume.is_valid_format('/volumes/nrrd.py') # False
+    """
+
+    try:
+        validate_format(path)
+        return True
+    except UnsupportedVolumeFormat:
+        return False
 
 
 def rescale_slope_intercept(value: float, slope: float, intercept: float) -> float:
@@ -393,7 +415,7 @@ def inspect_dicom_series(root_dir: str):
 
     :param root_dir: Directory path with volumes.
     :type root_dir: str
-    :return: Dictionary with DICOM volumes IDs and corresponding fiel names.
+    :return: Dictionary with DICOM volumes IDs and corresponding file names.
     :rtype: dict
     :Usage example:
 
