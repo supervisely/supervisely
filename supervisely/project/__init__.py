@@ -57,6 +57,6 @@ def read_project(
         if get_file_name_with_ext(path) == "meta.json":
             meta = ProjectMeta.from_json(load_json_file(path))
     if meta is None:
-        raise FileNotFoundError(f"The file 'meta.json' was not found in the directory: '{dir}'")
+        raise FileNotFoundError(f"The file 'meta.json' with the list of annotation classes and tags was not found in the directory: '{dir}'. Learn more about Supervisely annotation JSON format here: https://developer.supervisely.com/api-references/supervisely-annotation-json-format")
 
     return read_single_project(dir, get_project_class(meta.project_type))
