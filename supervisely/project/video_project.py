@@ -783,6 +783,24 @@ class VideoProject(Project):
         # TODO: write docstring
         return self._key_id_map
 
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.VideoProject("/home/admin/work/supervisely/projects/video", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'videos'
+        """
+        return ProjectType.VIDEOS.value
+
     def set_key_id_map(self, new_map: KeyIdMap):
         """
         Save given KeyIdMap object to project dir in json format.

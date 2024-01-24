@@ -43,6 +43,7 @@ from supervisely.io.fs import (
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm
 
@@ -1387,6 +1388,24 @@ class Project:
         return self._name
 
     @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'images'
+        """
+        return ProjectType.IMAGES.value
+
+    @property
     def datasets(self) -> Project.DatasetDict:
         """
         Project datasets.
@@ -2541,6 +2560,7 @@ def _download_project(
             if progress_cb is not None:
                 progress_cb(len(batch))
 
+
 @handle_original_tqdm
 def upload_project(
     dir: str,
@@ -2670,6 +2690,7 @@ def upload_project(
         api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
 
     return project.id, project.name
+
 
 @handle_original_tqdm
 def download_project(

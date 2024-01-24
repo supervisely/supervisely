@@ -303,6 +303,24 @@ class PointcloudEpisodeProject(PointcloudProject):
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
 
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.PointcloudEpisodeProject("/home/admin/work/supervisely/projects/pointcloud_episode_project", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'point_cloud_episodes'
+        """
+        return ProjectType.POINT_CLOUD_EPISODES.value
+
     @staticmethod
     def get_train_val_splits_by_count(
         project_dir: str, train_count: int, val_count: int
