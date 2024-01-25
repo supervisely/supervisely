@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Union
 from requests.exceptions import HTTPError, RetryError
 from rich.console import Console
 
-from supervisely import is_development
+from supervisely import is_development, is_community
 from supervisely.app import DialogWindowError
 from supervisely.sly_logger import EventType, logger
 
@@ -232,9 +232,11 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2003
                 self.title = "File size limit exceeded"
-                self.message = (
-                    "The given file size is too large (more than 10 GB) for free community edition."
-                )
+                self.message = "The given file size is too large "
+                if is_community():
+                    self.message += "for community edition (more than 10 GB)."
+                else:
+                    self.message += "(more than 100 GB)."
 
                 super().__init__(
                     exception,
@@ -248,7 +250,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2004
                 self.title = "Image files size limit exceeded"
-                self.message = "The given image file size is too large (more than 1 GB) for free community edition."
+                self.message = "The given image file size is too large (more than 1 GB) for community edition."
 
                 super().__init__(
                     exception,
@@ -262,7 +264,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2005
                 self.title = "Video files size limit exceeded"
-                self.message = "The given video file size is too large (more than 300 MB) for free community edition."
+                self.message = "The given video file size is too large (more than 300 MB) for community edition."
 
                 super().__init__(
                     exception,
@@ -276,7 +278,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2006
                 self.title = "Volume files size limit exceeded"
-                self.message = "The given volume file size is too large (more than 150 MB) for free community edition."
+                self.message = "The given volume file size is too large (more than 150 MB) for community edition."
 
                 super().__init__(
                     exception,
@@ -289,9 +291,8 @@ class ErrorHandler:
         class OutOfMemory(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2007
-                self.title = "Out of memory"
+                self.title = "Computer where the agent is deployed has run out of memory"
                 self.message = (
-                    "The agent ran out of memory. "
                     "Please, check your agent's memory usage, reduce batch size or use a device with more memory capacity."
                 )
 
