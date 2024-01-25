@@ -1,3 +1,4 @@
+import os
 from typing import Callable, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
@@ -1125,13 +1126,16 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         names = []
         paths = []
-        dcm_volumes = inspect_dicom_series(dir_path)
-        for _, files in dcm_volumes:
-            item_path = files[0]
-            name = f"{get_file_name(path=item_path)}.nrrd"
+
+        if os.path.isdir(dir_path) is False:
+            raise ValueError(f"Path {dir_path} is not a directory or does not exist")
+
+        dcm_volumes = inspect_dicom_series(dir_path, logging=log_progress)
+        for serie, files in dcm_volumes.items():
+            name = f"{serie}.nrrd"
             names.append(name)
             paths.append(files)
-        nrrd_volumes = inspect_nrrd_series(dir_path)
+        nrrd_volumes = inspect_nrrd_series(dir_path, logging=log_progress)
         for volume_path in nrrd_volumes:
             name = get_file_name_with_ext(volume_path)
             names.append(name)
@@ -1144,7 +1148,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         volume_infos = []
         for name, path in zip(names, paths):
-            if isinstance(path, list):
+            if isinstance(path, tuple):
                 volume_info = self.upload_dicom_serie_paths(
                     dataset_id=dataset_id,
                     name=name,
@@ -1207,6 +1211,9 @@ class VolumeApi(RemoveableBulkModuleApi):
                 # All volumes has been uploaded with IDs: [18630605, 18630606, 18630607]
         """
         volume_infos = []
+        if not isinstance(dir_paths, list):
+            raise ValueError(f"dir_paths must be a list of strings, but got {type(dir_paths)}")
+
         for dir_path in dir_paths:
             volume_infos.extend(
                 self.upload_dir(

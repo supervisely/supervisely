@@ -409,12 +409,15 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
     return volume_bytes
 
 
-def inspect_dicom_series(root_dir: str):
+def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     """
     Search for DICOM series in the directory and its subdirectories.
+    If several series with the same UID are found in the directory, then the series are numbered in the format: "series_uid_01", "series_uid_02", etc.
 
     :param root_dir: Directory path with volumes.
     :type root_dir: str
+    :param logging: Specify whether to print logging messages.
+    :type logging: bool
     :return: Dictionary with DICOM volumes IDs and corresponding file names.
     :rtype: dict
     :Usage example:
@@ -435,11 +438,18 @@ def inspect_dicom_series(root_dir: str):
         sitk.ProcessObject_SetGlobalWarningDisplay(False)
         series_found = reader.GetGDCMSeriesIDs(dir)
         sitk.ProcessObject_SetGlobalWarningDisplay(True)
-        logger.info(f"Found {len(series_found)} series in directory {dir}")
+        if logging:
+            logger.info(f"Found {len(series_found)} series in directory {dir}")
         for serie in series_found:
             dicom_names = reader.GetGDCMSeriesFileNames(dir, serie)
-            found_series[serie] = dicom_names
-    logger.info(f"Total {len(found_series)} series in directory {root_dir}")
+            new_key = serie
+            new_suffix = 1
+            while new_key in found_series:
+                new_key = "{}_{:02d}".format(serie, new_suffix)
+                new_suffix += 1
+            found_series[new_key] = dicom_names
+    if logging:
+        logger.info(f"Total {len(found_series)} series in directory {root_dir}")
     return found_series
 
 
@@ -662,12 +672,14 @@ def get_meta(
     return volume_meta
 
 
-def inspect_nrrd_series(root_dir: str) -> List[str]:
+def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     """
     Inspect a directory for NRRD series by recursively listing files with the ".nrrd" extension and returns a list of NRRD file paths found in the directory.
 
     :param root_dir: Directory to inspect for NRRD series.
     :type root_dir: str
+    :param logging: Specify whether to print logging messages.
+    :type logging: bool
     :return: List of NRRD file paths found in the given directory.
     :rtype: List[str]
     :Usage example:
@@ -681,7 +693,8 @@ def inspect_nrrd_series(root_dir: str) -> List[str]:
     """
 
     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
-    logger.info(f"Total {len(nrrd_paths)} NRRD series in directory {root_dir}")
+    if logging:
+        logger.info(f"Total {len(nrrd_paths)} NRRD series in directory {root_dir}")
     return nrrd_paths
 
 
