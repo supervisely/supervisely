@@ -2,9 +2,11 @@
 """Functions for processing pointclouds"""
 
 import os
-import numpy as np
 from typing import List, Optional
-from supervisely._utils import is_development, abs_url
+
+import numpy as np
+
+from supervisely._utils import abs_url, is_development
 from supervisely.io.fs import ensure_base_path
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
@@ -94,6 +96,53 @@ def validate_ext(ext: str) -> None:
         )
 
 
+def is_valid_pcd(file_path):
+    """
+    Checks if the given file is a valid PCD file.
+
+    :param file_path: Path to the file.
+    :type file_path: str
+    :return: True if the file is a valid PCD file, False otherwise.
+    :rtype: :class:`bool`
+    :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            pcd_path = "/pointclouds/pcd0001.jpg"
+            sly.pointcloud.is_valid_pcd(pcd_path) # False
+    """
+    try:
+        with open(file_path, "rb") as file:
+            header_lines = [
+                next(file).decode("utf-8") for _ in range(11)
+            ]  # Assuming a standard PCD header has 11 lines
+
+            # Check if the header contains expected PCD identifiers
+            if all(
+                line.startswith("#")
+                or line.startswith("VERSION")
+                or line.startswith("FIELDS")
+                or line.startswith("SIZE")
+                or line.startswith("TYPE")
+                or line.startswith("COUNT")
+                or line.startswith("WIDTH")
+                or line.startswith("HEIGHT")
+                or line.startswith("VIEWPOINT")
+                or line.startswith("POINTS")
+                or line.startswith("DATA")
+                for line in header_lines
+            ):
+                return True
+            else:
+                return False
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+
 def validate_format(path: str):
     """
     Raise error if file from given path with given extention is not supported
@@ -117,6 +166,34 @@ def validate_format(path: str):
 
     _, ext = os.path.splitext(path)
     validate_ext(ext)
+
+
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if Pointcloud file from given path has supported extension.
+
+    :param path: Path to Pointcloud file.
+    :type path: str
+    :return: True if file format in list of supported pointcloud formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        pcd_path = "/pointclouds/pcd0001.jpg"
+        sly.pointcloud.is_valid_format(pcd_path) # False
+    """
+    _, ext = os.path.splitext(path)
+
+    if ext.lower() in ALLOWED_POINTCLOUD_EXTENSIONS:
+        if ext.lower() == ".pcd":
+            if not is_valid_pcd(path):
+                return False
+        return True
+    else:
+        return False
 
 
 def get_labeling_tool_url(dataset_id: int, pointcloud_id: int):

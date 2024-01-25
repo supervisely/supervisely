@@ -1,6 +1,7 @@
 # coding: utf-8
 
 # docs
+import os
 from collections import defaultdict
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
@@ -8,13 +9,20 @@ from requests import Response
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
-from supervisely._utils import batched
+from supervisely._utils import batched, generate_free_name
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.pointcloud.pointcloud_annotation_api import PointcloudAnnotationAPI
 from supervisely.api.pointcloud.pointcloud_figure_api import PointcloudFigureApi
 from supervisely.api.pointcloud.pointcloud_object_api import PointcloudObjectApi
 from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudTagApi
-from supervisely.io.fs import ensure_base_path, get_file_hash
+from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_hash,
+    get_file_name_with_ext,
+    list_files,
+    list_files_recursively,
+)
+from supervisely.pointcloud.pointcloud import is_valid_format
 from supervisely.task.progress import Progress
 
 
@@ -812,9 +820,9 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         Check if point clouds with given hashes are exist.
 
-        :param paths: Point clouds hashes.
+        :param paths: Point clouds hashes to check.
         :type paths: List[str]
-        :return: List of point clouds hashes.
+        :return: List of point clouds hashes that are exist.
         :rtype: List[str]
         :Usage example:
 
@@ -862,10 +870,9 @@ class PointcloudApi(RemoveableBulkModuleApi):
         if progress_cb is not None:
             progress_cb(len(remote_hashes))
 
-        # upload only new images to supervisely server
-        items_to_upload = []
-        for hash in new_hashes:
-            items_to_upload.extend(hash_to_items[hash])
+        # upload only new unique images to supervisely server
+        items_to_upload = [hash_to_items[hash][0] for hash in new_hashes]
+        progress_corrector = sum(len(hash_to_items[hash]) for hash in new_hashes)
 
         for batch in batched(items_to_upload):
             content_dict = {}
@@ -880,4 +887,135 @@ class PointcloudApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch))
 
+        if not items_to_upload:
+            if progress_cb is not None:
+                progress_cb(len(hashes) - len(unique_hashes))
+
         return hashes
+
+    def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:
+        """
+        Returns list of free names for given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :return: List of free names.
+        :rtype: List[str]
+        """
+
+        pcds_in_dataset = self.get_list(dataset_id)
+        used_names = {pcd_info.name for pcd_info in pcds_in_dataset}
+        new_names = [
+            generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
+            for name in names
+        ]
+        return new_names
+
+    def raise_name_intersections_if_exist(
+        self, dataset_id: int, names: List[str], message: str = None
+    ):
+        """
+        Raises error if pointclouds with given names already exist in dataset.
+        Default error message:
+        "Pointclouds with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}.
+        Please, rename pointclouds and try again or set change_name_if_conflict=True to rename automatically on upload."
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :param message: Error message.
+        :type message: str, optional
+        :return: None
+        :rtype: None
+        """
+        pcds_in_dataset = self.get_list(dataset_id)
+        used_names = {pcd_info.name for pcd_info in pcds_in_dataset}
+        name_intersections = used_names.intersection(set(names))
+        if message is None:
+            message = f"Pointclouds with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename pointclouds and try again or set change_name_if_conflict=True to rename automatically on upload."
+        if len(name_intersections) > 0:
+            raise ValueError(f"{message}")
+
+    def upload_dir(
+        self,
+        dataset_id: int,
+        dir_path: str,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[PointcloudInfo]:
+        """
+        Uploads all pointclouds with supported extensions from given directory to Supervisely.
+        Optionally, uploads pointclouds from subdirectories of given directory.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_path: Path to directory with pointclouds.
+        :type dir_path: str
+        :param recursive: If True, will upload pointclouds from subdirectories of given directory recursively. Otherwise, will upload pointclouds only from given directory.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Pointcloud name when Dataset already contains an Pointcloud with identical name, If False and pointclouds with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded pointclouds infos
+        :rtype: List[PointcloudInfo]
+        """
+
+        if os.path.isdir(dir_path) is False:
+            raise ValueError(f"Path {dir_path} is not a directory or does not exist")
+
+        if recursive:
+            paths = list_files_recursively(dir_path, filter_fn=is_valid_format)
+        else:
+            paths = list_files(dir_path, filter_fn=is_valid_format)
+
+        names = [get_file_name_with_ext(path) for path in paths]
+
+        if change_name_if_conflict is True:
+            names = self.get_free_names(dataset_id, names)
+        else:
+            self.raise_name_intersections_if_exist(dataset_id, names)
+
+        pcds_infos = self.upload_paths(dataset_id, names, paths, progress_cb=progress_cb)
+        return pcds_infos
+
+    def upload_dirs(
+        self,
+        dataset_id: int,
+        dir_paths: List[str],
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[PointcloudInfo]:
+        """
+        Uploads all pointclouds with supported extensions from given directories to Supervisely.
+        Optionally, uploads pointclouds from subdirectories of given directories.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_paths: List of paths to directories with pointclouds.
+        :type dir_paths: List[str]
+        :param recursive: If True, will upload pointclouds from subdirectories of given directories recursively. Otherwise, will upload pointclouds only from given directories.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Pointclouds name when Dataset already contains an Pointclouds with identical name, If False and pointclouds with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded pointclouds infos
+        :rtype: List[Pointclouds]
+        """
+        if not isinstance(dir_paths, list):
+            raise TypeError(f"dir_paths must be a list of strings, but got {type(dir_paths)}")
+
+        pcds_infos = []
+        for dir_path in dir_paths:
+            pcds_infos.extend(
+                self.upload_dir(
+                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
+                )
+            )
+        return pcds_infos
