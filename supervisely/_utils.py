@@ -176,8 +176,8 @@ def is_community() -> bool:
     server_address = sly_env.server_address()
 
     if (
-        server_address == "https://app.supervise.ly"
-        or server_address == "https://app.supervisely.com/"
+        server_address.rstrip("/") == "https://app.supervise.ly"
+        or server_address.rstrip("/") == "https://app.supervisely.com"
     ):
         return True
     else:
