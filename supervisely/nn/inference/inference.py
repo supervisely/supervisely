@@ -95,8 +95,8 @@ class Inference:
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
-        self.deploy = DEPLOY_DECORATOR(self.deploy)
-        self.deploy = add_callback(self.deploy, self._set_served_callback)
+        self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
+        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
             self.initialize_gui()
@@ -108,8 +108,7 @@ class Inference:
                 gui.show_deployed_model_info(self)
 
             def on_change_model_callback(gui: GUI.InferenceGUI):
-                self._model_served = False
-                clean_up_cuda()
+                self.shutdown_model()
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
@@ -311,11 +310,22 @@ class Inference:
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def load_model(self, local_weights_path: str, device: str, model_source: str):
+    def prepare_model_files(self, deploy_params: dict):
+        pass
+
+    def load_model(self, *args, **kwargs):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def deploy(self):
+    def load_model_meta(self, model_source: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def get_layout(self):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def shutdown_model(self):
+        self._model_served = False
+        clean_up_cuda()
+        logger.info("Model has been stopped")
 
     def _on_model_deployed(self):
         pass
@@ -769,7 +779,8 @@ class Inference:
         else:
             self._task_id = env.task_id() if is_production() else None
 
-        self._app = Application(layout=self.get_ui())
+        # self._app = Application(layout=self.get_ui())
+        self._app = Application(layout=self.get_layout())
         server = self._app.get_server()
 
         @call_on_autostart()
@@ -996,29 +1007,37 @@ class Inference:
             inference_request = self._inference_requests[inference_request_uuid].copy()
             return inference_request["preparing_progress"]
 
-        @server.post("/deploy_nn_serving")
-        def deploy_nn_serving(response: Response, request: Request):
-            try:
-                state = request.state.state
-                device = state["device"]
-                model_dir = state["model_dir"]
-                self.load_on_device(
-                    model_dir, device, started_via_api=True, deploy_params=state["deploy_params"]
-                )
-                return {"result": "model was successfully deployed"}
-            except Exception as e:
-                return {"result": f"an error occured: {repr(e)}"}
-
         @server.post("/get_deploy_settings")
-        def _get_deploy_settings():
-            return self.load_model.__arguments + self.load_model.__docstring
+        def _get_deploy_settings(response: Response, request: Request):
+            arg_names = self.load_model.__code__.co_varnames[: self.load_model.__code__.co_argcount]
+            arg_defaults = self.load_model.__defaults__ or ()
+            arg_types = self.load_model.__annotations__
+
+            default_offset = len(arg_names) - len(arg_defaults)
+            args_details = []
+            for i, name in enumerate(arg_names):
+                if name == "self":
+                    continue
+                arg_type = arg_types.get(name, None)
+                if arg_type is not None:
+                    arg_type = arg_type.__name__
+                if i >= default_offset:
+                    default = arg_defaults[i - default_offset]
+                else:
+                    default = None
+                args_details.append({"name": name, "type": arg_type, "default": default})
+            return args_details
 
         @server.post("/deploy_from_api")
         def _deploy_from_api(response: Response, request: Request):
             try:
+                if self._model_served:
+                    self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                self.deploy(deploy_params)
+                self.load_model(**deploy_params)
+                self.gui.set_deployed()
+                self._model_served = True
                 return {"result": "model was successfully deployed"}
             except Exception as e:
                 return {"result": f"an error occured: {repr(e)}"}
@@ -1098,7 +1117,7 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_key="device",
 )
 
-DEPLOY_DECORATOR = _create_notify_after_complete_decorator(
+LOAD_MODEL_DECORATOR = _create_notify_after_complete_decorator(
     "✅ Model has been successfully deployed on %s device",
     arg_pos=1,
     arg_key="device",
