@@ -234,7 +234,7 @@ class ErrorHandler:
                 self.title = "File size limit exceeded"
                 self.message = "The given file size is too large "
                 if is_community():
-                    self.message += "for community edition (more than 10 GB)."
+                    self.message += "for Community Edition (more than 10 GB)."
                 else:
                     self.message += "(more than 100 GB)."
 
@@ -250,7 +250,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2004
                 self.title = "Image files size limit exceeded"
-                self.message = "The given image file size is too large (more than 1 GB) for community edition."
+                self.message = "The given image file size is too large (more than 1 GB) for Community Edition."
 
                 super().__init__(
                     exception,
@@ -264,7 +264,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2005
                 self.title = "Video files size limit exceeded"
-                self.message = "The given video file size is too large (more than 300 MB) for community edition."
+                self.message = "The given video file size is too large (more than 300 MB) for Community Edition."
 
                 super().__init__(
                     exception,
@@ -278,7 +278,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2006
                 self.title = "Volume files size limit exceeded"
-                self.message = "The given volume file size is too large (more than 150 MB) for community edition."
+                self.message = "The given volume file size is too large (more than 150 MB) for Community Edition."
 
                 super().__init__(
                     exception,
