@@ -457,7 +457,7 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2018
                 self.title = "Usage limits reached"
-                self.message = "Your plan usage exceeded. Please, upgrade to continue."
+                self.message = "Your plan usage exceeded. Please, upgrade plan to continue: https://supervisely.com/pricing/"
 
                 super().__init__(
                     exception,
