@@ -453,6 +453,19 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class PaymentRequired(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 2018
+                self.title = "Usage limits reached"
+                self.message = "Your plan usage exceeded. Please, upgrade to continue."
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
     class SDK:
         class ProjectStructureError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -627,6 +640,7 @@ ERROR_PATTERNS = {
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*Unauthorized for url.*": ErrorHandler.Agent.AgentError,
         r".*Operation is canceled because task with id.*already finished.*": ErrorHandler.API.TaskFinished,
+        r".*Payment\ Required.*": ErrorHandler.API.PaymentRequired,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
