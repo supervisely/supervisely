@@ -863,18 +863,22 @@ class PointcloudApi(RemoveableBulkModuleApi):
             hashes.append(item_hash)
             hash_to_items[item_hash].append(item)
 
+        # count number of items for each hash
+        items_number_for_hashes = {hash: len(items) for hash, items in hash_to_items.items()}
+
         unique_hashes = set(hashes)
         remote_hashes = self.check_existing_hashes(list(unique_hashes))
         new_hashes = unique_hashes - set(remote_hashes)
 
         if progress_cb is not None:
-            progress_cb(len(remote_hashes))
+            total_remote_items = sum([items_number_for_hashes[hash] for hash in remote_hashes])
+            progress_cb(total_remote_items)
 
         # upload only new unique images to supervisely server
         items_to_upload = [hash_to_items[hash][0] for hash in new_hashes]
-        progress_corrector = sum(len(hash_to_items[hash]) for hash in new_hashes)
+        total_nem_items_list = [items_number_for_hashes[hash] for hash in new_hashes]
 
-        for batch in batched(items_to_upload):
+        for batch, numbers_batch in zip(batched(items_to_upload), batched(total_nem_items_list)):
             content_dict = {}
             for idx, item in enumerate(batch):
                 content_dict["{}-file".format(idx)] = (
@@ -884,12 +888,20 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 )
             encoder = MultipartEncoder(fields=content_dict)
             self._api.post("point-clouds.bulk.upload", encoder)
+
             if progress_cb is not None:
-                progress_cb(len(batch))
+                progress_cb(sum(numbers_batch))
+
+            for value in content_dict.values():
+                from io import BufferedReader
+
+                if isinstance(value[1], BufferedReader):
+                    value[1].close()
 
         if not items_to_upload:
+            total_unique_items = sum([items_number_for_hashes[hash] for hash in unique_hashes])
             if progress_cb is not None:
-                progress_cb(len(hashes) - len(unique_hashes))
+                progress_cb(len(hashes) - total_unique_items)
 
         return hashes
 
