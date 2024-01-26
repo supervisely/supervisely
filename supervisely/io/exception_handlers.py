@@ -290,9 +290,9 @@ class ErrorHandler:
 
         class OutOfMemory(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
-                device_prefix = "GPU" if any([s in exception.args[0] for s in ["CUDA", "cuda", "GPU"]]) else "RAM"
+                device_prefix = "GPU memory" if any([s in exception.args[0] for s in ["CUDA", "cuda", "GPU"]]) else "RAM"
                 self.code = 2007
-                self.title = f"Computer where the agent is deployed has run out of {device_prefix} memory"
+                self.title = f"Computer where the agent is deployed has run out of {device_prefix}"
                 self.message = (
                     "Please, check your agent's memory usage, reduce batch size or use a device with more memory capacity."
                 )
