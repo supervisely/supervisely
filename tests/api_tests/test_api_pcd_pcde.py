@@ -50,8 +50,8 @@ class TestPCDApi(unittest.TestCase):
         self.pcd_api = self.api.pointcloud
         self.pcde_api = self.api.pointcloud_episode
         self.dataset_instance = self.api.dataset
-        self.files_path_pcd = "/home/ganpoweird/Work/test_assets/pcds/pointcloud"
-        self.files_path_pcde = "/home/ganpoweird/Work/test_assets/pcde/pointcloud"
+        self.files_path_pcd = "/test_assets/pcds/pointcloud"
+        self.files_path_pcde = "/test_assets/pcde/pointcloud"
         self.pcd_dataset = self.dataset_instance.create(
             self.pcd_project_id,
             name=f"[UT] Dataset PCD",
