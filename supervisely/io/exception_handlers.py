@@ -631,7 +631,7 @@ ERROR_PATTERNS = {
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
         r".*Annotation\.from_json.*": ErrorHandler.SDK.AnnotationFromJsonFailed,
-        r".*CUDA.*out\sof\smemory.*": ErrorHandler.API.OutOfMemory,
+        r".*out\sof\smemory.*": ErrorHandler.API.OutOfMemory,
         r".*cuda runtime error.*out of memory.*": ErrorHandler.API.OutOfMemory,
         r".*CUDA error.*an illegal memory access was encountered.*": ErrorHandler.API.OutOfMemory,
         r"The\ model\ has\ not\ yet\ been\ deployed.*": ErrorHandler.APP.CallUndeployedModelError,
