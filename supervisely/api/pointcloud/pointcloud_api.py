@@ -985,6 +985,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
         else:
             paths = list_files(dir_path, filter_fn=is_valid_format)
 
+        paths.sort()
+
         names = [get_file_name_with_ext(path) for path in paths]
 
         if change_name_if_conflict is True:

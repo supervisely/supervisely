@@ -133,6 +133,41 @@ class PointcloudEpisodeApi(PointcloudApi):
         )
         return response.json()[ApiField.STOPPED]
 
+    def get_max_frame_idx(self, dataset_id: int) -> int:
+        """
+        Get max frame index for episode by dataset id.
+        This method is useful for uploading pointclouds to the episode in parts.
+
+        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :type dataset_id: int
+        :return: Max frame index.
+        :rtype: int
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 62664
+            max_frame = api.pointcloud_episode.get_max_frame(dataset_id)
+            print(max_frame)
+
+            # Output:
+            # 1
+        """
+
+        pointclouds = self.get_list(dataset_id)
+        frames = [x.frame for x in pointclouds]
+        if len(frames) == 0:
+            return None
+        max_frame = max(frames)
+        return max_frame
+
     def _upload_bulk_add(
         self,
         func_item_to_kv,
@@ -143,7 +178,26 @@ class PointcloudEpisodeApi(PointcloudApi):
         progress_cb=None,
     ):
         if metas is None:
-            metas = [{"frame": i} for i in range(len(items))]
+            max_frame = self.get_max_frame_idx(dataset_id)
+            if max_frame is None:
+                max_frame = range(len(items))
+            else:
+                max_frame = range(max_frame + 1, max_frame + 1 + len(items))
+            metas = [{"frame": i} for i in max_frame]
+        else:
+            if len(metas) != len(items):
+                raise RuntimeError(
+                    'Can not match "metas" and "items" lists, len(metas) != len(items)'
+                )
+
+            missing_frame_indices = [idx for idx, meta in enumerate(metas) if "frame" not in meta]
+            if len(missing_frame_indices) == len(metas):
+                raise RuntimeError("No 'frame' key found in all 'metas'.")
+            elif len(missing_frame_indices) > 0:
+                missing_frame_names = [names[idx] for idx in missing_frame_indices]
+                raise RuntimeError(
+                    f"No 'frame' key found in 'metas' for names {missing_frame_names}."
+                )
 
         results = []
         if len(names) == 0:
@@ -159,7 +213,7 @@ class PointcloudEpisodeApi(PointcloudApi):
                     {
                         ApiField.NAME: name,
                         item_tuple[0]: item_tuple[1],
-                        ApiField.META: meta if meta is not None else {},
+                        ApiField.META: meta,
                     }
                 )
             response = self._api.post(
