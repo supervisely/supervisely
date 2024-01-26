@@ -183,14 +183,16 @@ class PointcloudEpisodeApi(PointcloudApi):
                 max_frame = range(len(items))
             else:
                 max_frame = range(max_frame + 1, max_frame + 1 + len(items))
-            metas = [{"frame": i} for i in max_frame]
+            metas = [{ApiField.FRAME: i} for i in max_frame]
         else:
             if len(metas) != len(items):
                 raise RuntimeError(
                     'Can not match "metas" and "items" lists, len(metas) != len(items)'
                 )
 
-            missing_frame_indices = [idx for idx, meta in enumerate(metas) if "frame" not in meta]
+            missing_frame_indices = [
+                idx for idx, meta in enumerate(metas) if ApiField.FRAME not in meta
+            ]
             if len(missing_frame_indices) == len(metas):
                 raise RuntimeError("No 'frame' key found in all 'metas'.")
             elif len(missing_frame_indices) > 0:
