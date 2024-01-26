@@ -1,17 +1,16 @@
+# isort:skip_file
 import os
 import sys
 import unittest
 
 sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, sdk_path)
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from supervisely.api.api import Api
-from supervisely.api.volume.volume_api import VolumeInfo
-from supervisely.io.fs import get_file_name_with_ext, list_files, list_files_recursively
 
-import supervisely as sly  # isort:skip
-from tqdm import tqdm  # isort:skip
+import supervisely as sly
+from tqdm import tqdm
 
 
 class TestVolumeApi(unittest.TestCase):
@@ -21,8 +20,7 @@ class TestVolumeApi(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.api = Api.from_env()
-        # workspace_id = input("Enter workspace ID for tests here >> ")
-        workspace_id = 1051
+        workspace_id = input("Enter workspace ID for tests here >> ")
         with patch("builtins.input", return_value="user_input_value"):
             project = cls.api.project.create(
                 workspace_id=int(workspace_id),
@@ -39,7 +37,7 @@ class TestVolumeApi(unittest.TestCase):
     def setUp(self):
         self.volume_api = self.api.volume
         self.dataset_instance = self.api.dataset
-        self.files_path_1 = "/home/ganpoweird/Work/test_assets/volumes_1"
+        self.files_path_1 = "/test_assets/volumes_1"
         self.files_path_2 = "/test_assets/volumes_2"
         self.files_path_3 = "/test_assets/volumes_3"
         self.all_paths = [self.files_path_1, self.files_path_2, self.files_path_3]
@@ -64,7 +62,6 @@ class TestVolumeApi(unittest.TestCase):
 
         progress_cb = tqdm(total=volumes, desc="Uploading volumes")
 
-        # Call the method being tested
         volumes_info = self.volume_api.upload_dirs(
             dataset_id, [self.files_path_1], progress_cb=progress_cb, log_progress=True
         )
