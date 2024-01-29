@@ -50,6 +50,63 @@ class BBoxTracking(Inference, InferenceImageCache):
         info["task type"] = "tracking"
         return info
 
+    def track(self, api: sly.Api, context: dict, notify_annotation_tool: bool):
+        video_interface = TrackerInterface(
+            context=context,
+            api=api,
+            load_all_frames=False,
+            frame_loader=self.download_frame,
+            bypass_notify=not notify_annotation_tool,
+        )
+
+        range_of_frames = [
+            video_interface.frames_indexes[0],
+            video_interface.frames_indexes[-1],
+        ]
+
+        self.run_cache_task_manually(
+            api,
+            [range_of_frames],
+            video_id=video_interface.video_id,
+        )
+
+        api.logger.info("Start tracking.")
+
+        for fig_id, obj_id in zip(
+            video_interface.geometries.keys(),
+            video_interface.object_ids,
+        ):
+            init = False
+            for _ in video_interface.frames_loader_generator():
+                geom = video_interface.geometries[fig_id]
+                if not isinstance(geom, sly.Rectangle):
+                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+
+                imgs = video_interface.frames
+                target = PredictionBBox(
+                    "",  # TODO: can this be useful?
+                    [geom.top, geom.left, geom.bottom, geom.right],
+                    None,
+                )
+
+                if not init:
+                    self.initialize(imgs[0], target)
+                    init = True
+
+                geometry = self.predict(
+                    rgb_image=imgs[-1],
+                    prev_rgb_image=imgs[0],
+                    target_bbox=target,
+                    settings=self.custom_inference_settings_dict,
+                )
+                sly_geometry = self._to_sly_geometry(geometry)
+                video_interface.add_object_geometries([sly_geometry], obj_id, fig_id)
+
+                if video_interface.global_stop_indicatior:
+                    return
+
+            api.logger.info(f"Figure #{fig_id} tracked.")
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -57,7 +114,12 @@ class BBoxTracking(Inference, InferenceImageCache):
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
-            task.add_task(track, request)
+            task.add_task(track_with_annotation_tool, request)
+            return {"message": "Track task started."}
+
+        @server.post("/predict")
+        def start_track_predict(request: Request, task: BackgroundTasks):
+            task.add_task(self.track, request.state.api, request.state.context, False)
             return {"message": "Track task started."}
 
         def send_error_data(func):
@@ -89,64 +151,8 @@ class BBoxTracking(Inference, InferenceImageCache):
             return wrapper
 
         @send_error_data
-        def track(request: Request):
-            context = request.state.context
-            api: sly.Api = request.state.api
-
-            video_interface = TrackerInterface(
-                context=context,
-                api=api,
-                load_all_frames=False,
-                frame_loader=self.download_frame,
-            )
-
-            range_of_frames = [
-                video_interface.frames_indexes[0],
-                video_interface.frames_indexes[-1],
-            ]
-
-            self.run_cache_task_manually(
-                api,
-                [range_of_frames],
-                video_id=video_interface.video_id,
-            )
-
-            api.logger.info("Start tracking.")
-
-            for fig_id, obj_id in zip(
-                video_interface.geometries.keys(),
-                video_interface.object_ids,
-            ):
-                init = False
-                for _ in video_interface.frames_loader_generator():
-                    geom = video_interface.geometries[fig_id]
-                    if not isinstance(geom, sly.Rectangle):
-                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
-
-                    imgs = video_interface.frames
-                    target = PredictionBBox(
-                        "",  # TODO: can this be useful?
-                        [geom.top, geom.left, geom.bottom, geom.right],
-                        None,
-                    )
-
-                    if not init:
-                        self.initialize(imgs[0], target)
-                        init = True
-
-                    geometry = self.predict(
-                        rgb_image=imgs[-1],
-                        prev_rgb_image=imgs[0],
-                        target_bbox=target,
-                        settings=self.custom_inference_settings_dict,
-                    )
-                    sly_geometry = self._to_sly_geometry(geometry)
-                    video_interface.add_object_geometries([sly_geometry], obj_id, fig_id)
-
-                    if video_interface.global_stop_indicatior:
-                        return
-
-                api.logger.info(f"Figure #{fig_id} tracked.")
+        def track_with_annotation_tool(request: Request):
+            self.track(request.state.api, request.state.context, notify_annotation_tool=True)
 
     def initialize(self, init_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> None:
         """

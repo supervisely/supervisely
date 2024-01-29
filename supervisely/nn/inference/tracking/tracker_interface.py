@@ -16,6 +16,7 @@ class TrackerInterface:
         notify_in_predict=False,
         per_point_polygon_tracking=True,
         frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
+        bypass_notify: bool = False,
     ):
         self.api: sly.Api = api
         self.logger: Logger = api.logger
@@ -27,6 +28,7 @@ class TrackerInterface:
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
+        self.bypass_notify = bypass_notify
 
         # all geometries
         self.stop = len(self.figure_ids) * self.frames_count
@@ -177,6 +179,9 @@ class TrackerInterface:
         fend: Optional[int] = None,
         task: str = "not defined",
     ):
+        if self.bypass_notify:
+            return
+            
         self.global_pos += 1
 
         if stop:
