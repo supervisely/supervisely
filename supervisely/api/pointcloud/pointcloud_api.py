@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
 from requests import Response
-from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from requests_toolbelt import MultipartEncoder
 from tqdm import tqdm
 
 from supervisely._utils import batched, generate_free_name
@@ -23,7 +23,6 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
-from supervisely.task.progress import Progress
 
 
 class PointcloudInfo(NamedTuple):
