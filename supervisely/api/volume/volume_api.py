@@ -716,7 +716,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type name: str
         :param paths: Local volumes paths.
         :type paths: List[str]
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :param anonymize: Determine whether to hide PatientID and PatientName fields.
         :type anonymize: bool, optional
@@ -800,7 +800,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type name: str
         :param path: Local volume path.
         :type path: str
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
@@ -923,7 +923,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param paths: Local volumes paths.
         :type paths: List[str]
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
@@ -1098,7 +1098,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type dir_path: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
@@ -1184,7 +1184,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type dir_paths: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
