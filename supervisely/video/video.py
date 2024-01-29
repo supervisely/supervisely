@@ -168,7 +168,7 @@ def is_valid_format(path: str) -> bool:
 
     :param path: Path to Video file.
     :type path: str
-    :return: True if file format in list of supported images formats, False - in otherwise
+    :return: True if file format in list of supported video formats, False - in otherwise
     :rtype: :class:`bool`
     :Usage example:
 
