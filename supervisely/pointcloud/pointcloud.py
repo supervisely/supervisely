@@ -97,51 +97,52 @@ def validate_ext(ext: str) -> None:
         )
 
 
-def is_valid_pcd(file_path):
-    """
-    Checks if the given file is a valid PCD file.
+# TODO: add validation for all pcd versions accrdingly to https://pointclouds.org/documentation/tutorials/pcd_file_format.html
+# def is_valid_pcd(file_path):
+#     """
+#     Checks if the given file is a valid PCD file.
 
-    :param file_path: Path to the file.
-    :type file_path: str
-    :return: True if the file is a valid PCD file, False otherwise.
-    :rtype: :class:`bool`
-    :Usage example:
+#     :param file_path: Path to the file.
+#     :type file_path: str
+#     :return: True if the file is a valid PCD file, False otherwise.
+#     :rtype: :class:`bool`
+#     :Usage example:
 
-         .. code-block:: python
+#          .. code-block:: python
 
-            import supervisely as sly
+#             import supervisely as sly
 
-            pcd_path = "/pointclouds/pcd0001.jpg"
-            sly.pointcloud.is_valid_pcd(pcd_path) # False
-    """
-    try:
-        with open(file_path, "rb") as file:
-            header_lines = [
-                next(file).decode("utf-8") for _ in range(11)
-            ]  # Assuming a standard PCD header has 11 lines
+#             pcd_path = "/pointclouds/pcd0001.jpg"
+#             sly.pointcloud.is_valid_pcd(pcd_path) # False
+#     """
+#     try:
+#         with open(file_path, "rb") as file:
+#             header_lines = [
+#                 next(file).decode("utf-8") for _ in range(11)
+#             ]  # Assuming a standard PCD header has 11 lines
 
-            # Check if the header contains expected PCD identifiers
-            if all(
-                line.startswith("#")
-                or line.startswith("VERSION")
-                or line.startswith("FIELDS")
-                or line.startswith("SIZE")
-                or line.startswith("TYPE")
-                or line.startswith("COUNT")
-                or line.startswith("WIDTH")
-                or line.startswith("HEIGHT")
-                or line.startswith("VIEWPOINT")
-                or line.startswith("POINTS")
-                or line.startswith("DATA")
-                for line in header_lines
-            ):
-                return True
-            else:
-                return False
+#             # Check if the header contains expected PCD identifiers
+#             if all(
+#                 line.startswith("#")
+#                 or line.startswith("VERSION")
+#                 or line.startswith("FIELDS")
+#                 or line.startswith("SIZE")
+#                 or line.startswith("TYPE")
+#                 or line.startswith("COUNT")
+#                 or line.startswith("WIDTH")
+#                 or line.startswith("HEIGHT")
+#                 or line.startswith("VIEWPOINT")
+#                 or line.startswith("POINTS")
+#                 or line.startswith("DATA")
+#                 for line in header_lines
+#             ):
+#                 return True
+#             else:
+#                 return False
 
-    except Exception as e:
-        logger.debug(f"Error: {e}")
-        return False
+#     except Exception as e:
+#         logger.debug(f"Error: {e}")
+#         return False
 
 
 def validate_format(path: str):
@@ -189,9 +190,10 @@ def is_valid_format(path: str) -> bool:
     _, ext = os.path.splitext(path)
 
     if ext.lower() in ALLOWED_POINTCLOUD_EXTENSIONS:
-        if ext.lower() == ".pcd":
-            if not is_valid_pcd(path):
-                return False
+        # TODO: uncomment when pcd validation will be implemented
+        # if ext.lower() == ".pcd":
+        #     if not is_valid_pcd(path):
+        #         return False
         return True
     else:
         return False
