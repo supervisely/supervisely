@@ -31,7 +31,7 @@ jobs:
 
     - name: Run pylint and save errors to file
       run: |
-        pylint_output=$(pylint .) || true
+        pylint_output=$(pylint supervisely) || true
         if [[ $pylint_output == *"E"* ]]; then
           echo "$pylint_output" > pylint_errors.txt
           echo "::set-output name=pylint_errors::$pylint_output"
