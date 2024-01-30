@@ -1,0 +1,57 @@
+name: Pylint check
+
+on: 
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint
+
+    - name: Create .pylintrc file
+      run: |
+        echo "[MESSAGES CONTROL]" >> .pylintrc
+        echo "enable = E" >> .pylintrc
+        echo "disable = E0401,E1101,R,F,W,C" >> .pylintrc
+
+    - name: Run pylint
+      run: |
+        pylint_output=$(pylint **/*.py) || true
+        if [[ $pylint_output == *"E"* ]]; then
+          echo "$pylint_output" > pylint_errors.txt
+          echo "::set-output name=pylint_errors::$pylint_output"
+        fi
+      id: pylint
+
+    - name: Create GitHub issue in another repository and link to a project
+      run: |
+        if [[ -n "${{ steps.pylint.outputs.pylint_errors }}" ]]; then
+          issue_number=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{
+              "title": "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}",
+              "body": "${{ steps.pylint.outputs.pylint_errors }}",
+              "assignees": ["GoldenAnpu"]
+            }' \
+            https://api.github.com/repos/users/GoldenAnpu/issues | jq '.number')
+
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{
+              "content_id": $issue_number,
+              "content_type": "Issue"
+            }' \
+            https://api.github.com/projects/columns/column_id/cards
+        fi
