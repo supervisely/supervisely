@@ -28,7 +28,7 @@ jobs:
 
     - name: Run pylint and save errors to file
       run: |
-        pylint_output=$(pylint **/*.py) || true
+        pylint_output=$(pylint .) || true
         if [[ $pylint_output == *"E"* ]]; then
           echo "$pylint_output" > pylint_errors.txt
           echo "::set-output name=pylint_errors::$pylint_output"
@@ -39,13 +39,15 @@ jobs:
       run: |
         if [[ -n "${{ steps.pylint.outputs.pylint_errors }}" ]]; then
           issue_body=$(cat pylint_errors.txt)
-          issue_number=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          issue_response=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -d '{
               "title": "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}",
               "body": "'"${issue_body}"'",
               "assignees": ["GoldenAnpu"]
             }' \
-            https://api.github.com/repos/GoldenAnpu/issues/issues | jq '.number')
+            https://api.github.com/repos/GoldenAnpu/issues/issues)
 
-          echo "::set-output name=issue_number::$issue_number"
+          issue_url=$(echo "$issue_response" | jq -r '.html_url')
+
+          echo "::set-output name=issue_url::$issue_url"
         fi
