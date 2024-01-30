@@ -436,7 +436,7 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+            return Jinja2Templates().TemplateResponse(request, "index.html")
 
         @app.on_event("shutdown")
         def shutdown():
