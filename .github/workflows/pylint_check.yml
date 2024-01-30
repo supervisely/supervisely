@@ -52,8 +52,6 @@ jobs:
               "title": "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}",
               "body": "'"${issue_body}"'",
               "assignees": ["GoldenAnpu"],
-              "milestone":1,
-              "labels":["bug"],
             }' \
             )
 
@@ -62,11 +60,4 @@ jobs:
           echo "issue_url=$issue_url" >> $GITHUB_ENV
         else
           echo "No pylint errors detected."
-        fi
-
-    - name: Debug - Show issue response
-      run: |
-        if [[ -n "${{ steps.pylint.outputs.pylint_errors }}" ]]; then
-          echo "Issue body: $(cat pylint_errors.txt)"
-          echo "GitHub response: $issue_response"
         fi
