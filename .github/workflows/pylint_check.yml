@@ -45,8 +45,8 @@ jobs:
               "title": "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}",
               "body": "${{ steps.pylint.outputs.pylint_errors }}",
               "assignees": ["GoldenAnpu"]
-            }' \
-            https://api.github.com/repos/users/GoldenAnpu/issues | jq '.number')
+            }' \            
+            https://api.github.com/repos/GoldenAnpu/issues/issues | jq '.number')
 
           curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -d '{
