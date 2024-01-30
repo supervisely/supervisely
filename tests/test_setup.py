@@ -16,9 +16,7 @@ class SetupTests(unittest.TestCase):
             activate_script = os.path.join("test_venv", "bin", "activate")
 
         # Install the package in the virtual environment
-        install_cmd = (
-            f"bash -c 'source {activate_script} && python -m pip install ../supervisely[all]'"
-        )
+        install_cmd = f"bash -c 'source {activate_script} && pip install ../supervisely'"
         install_result = subprocess.run(install_cmd, shell=True, capture_output=True, text=True)
 
         # Check if the installation was successful

@@ -107,64 +107,6 @@ def get_install_requirements(main_requires, alternative_requires):
     return install_requires
 
 
-extras_require = {
-    "extras": [
-        "docker>=5.0.3, <6.0.0",
-        "imagecorruptions>=1.1.2, <2.0.0",
-        "scikit-image>=0.17.1, <1.0.0",
-        "matplotlib>=3.3.2, <4.0.0",
-        "pascal-voc-writer>=0.1.4, <1.0.0",
-        "scipy>=1.5.2, <2.0.0",
-        "pandas>=1.1.3, <1.4.0",
-        "ruamel.yaml==0.17.21",
-    ],
-    "apps": [
-        "uvicorn[standard]>=0.18.2, <1.0.0",
-        "fastapi>=0.79.0, <1.0.0",
-        "websockets>=10.3, <11.0",
-        "jinja2>=3.0.3, <4.0.0",
-        "psutil>=5.9.0, <6.0.0",
-        "jsonpatch>=1.32, <2.0",
-        "MarkupSafe>=2.1.1, <3.0.0",
-        "arel>=0.2.0, <1.0.0",
-        "tqdm>=4.62.3, <5.0.0",
-        "pandas>=1.1.3, <1.4.0",
-    ],
-    "docs": [
-        "sphinx==4.4.0",
-        "jinja2==3.0.3",
-        "sphinx-immaterial==0.4.0",
-        "sphinx-copybutton==0.4.0",
-        "sphinx-autodoc-typehints==1.15.3",
-        "sphinxcontrib-details-directive==0.1.0",
-        "myst-parser==0.18.0",
-    ],
-    "sdk-no-usages": [
-        "grpcio>=1.34.1, <2.0.0",
-        "plotly>=4.11.0, <6.0.0",
-        "psutil>=5.4.5, <6.0.0",
-    ],
-    # legacy dependencies
-    "plugins": [
-        "jsonschema>=2.6.0,<3.0.0",
-    ],
-    "sdk-nn-plugins": [
-        "flask-restful>=0.3.7, <1.0.0",
-        "Werkzeug>=1.0.1, <3.0.0",
-    ],
-    "aug": [
-        "imgaug>=0.4.0, <1.0.0",
-        "imagecorruptions>=1.1.2, <2.0.0",
-    ],
-}
-
-
-all_extras = []
-for extra in extras_require.values():
-    all_extras.extend(extra)
-
-extras_require["all"] = all_extras
-
 # Dependencies do not include PyTorch, so
 # supervisely_lib.nn.hosted.pytorch will not work out of the box.
 # If you need to invoke that part of the code, it is very likely you
@@ -207,5 +149,54 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     install_requires=get_install_requirements(INSTALL_REQUIRES, ALT_INSTALL_REQUIRES),
-    extras_require=(extras_require),
+    extras_require={
+        "extras": [
+            "docker>=5.0.3, <6.0.0",
+            "imagecorruptions>=1.1.2, <2.0.0",
+            "scikit-image>=0.17.1, <1.0.0",
+            "matplotlib>=3.3.2, <4.0.0",
+            "pascal-voc-writer>=0.1.4, <1.0.0",
+            "scipy>=1.5.2, <2.0.0",
+            "pandas>=1.1.3, <1.4.0",
+            "ruamel.yaml==0.17.21",
+        ],
+        "apps": [
+            "uvicorn[standard]>=0.18.2, <1.0.0",
+            "fastapi>=0.79.0, <1.0.0",
+            "websockets>=10.3, <11.0",
+            "jinja2>=3.0.3, <4.0.0",
+            "psutil>=5.9.0, <6.0.0",
+            "jsonpatch>=1.32, <2.0",
+            "MarkupSafe>=2.1.1, <3.0.0",
+            "arel>=0.2.0, <1.0.0",
+            "tqdm>=4.62.3, <5.0.0",
+            "pandas>=1.1.3, <1.4.0",
+        ],
+        "docs": [
+            "sphinx==4.4.0",
+            "jinja2==3.0.3",
+            "sphinx-immaterial==0.4.0",
+            "sphinx-copybutton==0.4.0",
+            "sphinx-autodoc-typehints==1.15.3",
+            "sphinxcontrib-details-directive==0.1.0",
+            "myst-parser==0.18.0",
+        ],
+        "sdk-no-usages": [
+            "grpcio>=1.34.1, <2.0.0",
+            "plotly>=4.11.0, <6.0.0",
+            "psutil>=5.4.5, <6.0.0",
+        ],
+        # legacy dependencies
+        "plugins": [
+            "jsonschema>=2.6.0,<3.0.0",
+        ],
+        "sdk-nn-plugins": [
+            "flask-restful>=0.3.7, <1.0.0",
+            "Werkzeug>=1.0.1, <3.0.0",
+        ],
+        "aug": [
+            "imgaug>=0.4.0, <1.0.0",
+            "imagecorruptions>=1.1.2, <2.0.0",
+        ],
+    },
 )
