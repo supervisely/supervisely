@@ -42,6 +42,7 @@ jobs:
       run: |
         if [[ -n "${{ steps.pylint.outputs.pylint_errors }}" ]]; then
           issue_body=$(cat pylint_errors.txt)
+          echo "Issue body: $issue_body"
           issue_response=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -d '{
               "title": "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}",
@@ -50,22 +51,12 @@ jobs:
             }' \
             https://api.github.com/repos/GoldenAnpu/issues/issues)
 
+          echo "GitHub response: $issue_response"
           issue_url=$(echo "$issue_response" | jq -r '.html_url')
-
-          echo "::set-output name=issue_url::$issue_url"
+          echo "issue_url=$issue_url" >> $GITHUB_ENV
+        else
+          echo "No pylint errors detected."
         fi
-        
-    - name: Debug - List repository contents
-      run: |
-        ls -la
-
-    - name: Debug - Show current directory
-      run: |
-        pwd
-
-    - name: Debug - Show GitHub token
-      run: |
-        echo ${{ secrets.GITHUB_TOKEN }}
 
     - name: Debug - Show issue response
       run: |
