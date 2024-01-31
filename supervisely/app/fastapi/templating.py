@@ -27,7 +27,11 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             variable_start_string="{{{",
             variable_end_string="}}}",
         )
-        env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
+        try:
+            env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
+        except:
+            # for fastapi version==0.108.0
+            pass
         return env_sly
 
     def TemplateResponse(
@@ -49,6 +53,13 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             "app_name": get_name_from_env(default="Supervisely App"),
         }
 
-        return super().TemplateResponse(
-            name, context_with_widgets, status_code, headers, media_type, background
-        )
+        try:
+            request = context["request"]
+            return super().TemplateResponse(
+                request, name, context_with_widgets, status_code, headers, media_type, background
+            )
+        except:
+            # for fastapi version<0.108.0
+            return super().TemplateResponse(
+                name, context_with_widgets, status_code, headers, media_type, background
+            )
