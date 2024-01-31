@@ -196,16 +196,32 @@ def create(
     before_shutdown_callbacks=None,
 ) -> FastAPI:
     from supervisely.app import DataJson, StateJson
+    from contextlib import asynccontextmanager
 
     JinjaWidgets().auto_widget_id = auto_widget_id
     logger.info(f"JinjaWidgets().auto_widget_id is set to {auto_widget_id}.")
 
-    app = FastAPI()
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+
+        await shutdown(process_id, before_shutdown_callbacks)
+        if headless is False:
+            from supervisely.app.content import ContentOrigin
+
+            ContentOrigin().stop()
+            client = TestClient(app)
+            resp = run_sync(client.get("/"))
+            assert resp.status_code == 200
+            logger.info("Application has been shut down successfully")
+
+    app = FastAPI(lifespan=lifespan)
     WebsocketManager().set_app(app)
 
-    @app.post("/shutdown")
-    async def shutdown_endpoint(request: Request):
-        shutdown(process_id, before_shutdown_callbacks)
+
+    # @app.post("/shutdown")
+    # async def shutdown_endpoint(request: Request):
+    #     shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
 
@@ -438,15 +454,15 @@ def _init(
         def read_index(request: Request):
             return Jinja2Templates().TemplateResponse(request, "index.html")
 
-        @app.on_event("shutdown")
-        def shutdown():
-            from supervisely.app.content import ContentOrigin
+        # @app.on_event("shutdown")
+        # def shutdown():
+        #     from supervisely.app.content import ContentOrigin
 
-            ContentOrigin().stop()
-            client = TestClient(app)
-            resp = run_sync(client.get("/"))
-            assert resp.status_code == 200
-            logger.info("Application has been shut down successfully")
+        #     ContentOrigin().stop()
+        #     client = TestClient(app)
+        #     resp = run_sync(client.get("/"))
+        #     assert resp.status_code == 200
+        #     logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
             app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
