@@ -52,7 +52,8 @@ INSTALL_REQUIRES = [
     "psutil>=5.9.0, <6.0.0",
     "jsonpatch>=1.32, <2.0",
     "MarkupSafe>=2.1.1, <3.0.0",
-    "arel>=0.2.0, <1.0.0",
+    # "arel>=0.2.0, <1.0.0",
+    "arel", # for tests
     "tqdm>=4.62.3, <5.0.0",
     # "pandas>=1.1.3, <=2.1.4",
     "pandas>=1.1.3, <=1.5.2", # for tests
