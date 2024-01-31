@@ -4,7 +4,7 @@ from __future__ import annotations
 import inspect
 import io
 import math
-from functools import partial
+from functools import partial, wraps
 from typing import Optional, Union
 
 from tqdm import tqdm
@@ -655,6 +655,7 @@ class tqdm_sly(tqdm, Progress):
 
 
 def handle_original_tqdm(func):
+    @wraps(func)
     def wrapper_original_tqdm(*args, **kwargs):
         cb_name = (
             "progress_size_cb" if func.__qualname__ == "FileApi.upload_directory" else "progress_cb"
