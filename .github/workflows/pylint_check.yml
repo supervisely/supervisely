@@ -50,7 +50,7 @@ jobs:
             https://api.github.com/repos/GoldenAnpu/issues/issues \
             -d '{
               "title": "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}",
-              "body": "simple text",
+              "body": "'"${issue_body}"'",
               "assignees": ["GoldenAnpu"],
               "labels": ["bug"]
             }' \
