@@ -28,7 +28,8 @@ INSTALL_REQUIRES = [
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
-    "Shapely>=1.7.1, <=2.0.2",
+    # "Shapely>=1.7.1, <=2.0.2",
+    "Shapely>=1.7.1, <2.0.0", # for tests
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
     "python-dotenv>=0.19.2, <=1.0.0",
@@ -39,7 +40,8 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <4.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.5.0",
+    # "pydantic>=1.7.4, <=2.5.0",
+    "pydantic>=1.7.4, <2.0.0", # for tests
     # "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "anyio>=3.7.1,<4.0.0", # for tests
     # "fastapi>=0.108.0, <=0.109.0",
@@ -52,7 +54,8 @@ INSTALL_REQUIRES = [
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
     "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=2.1.4",
+    # "pandas>=1.1.3, <=2.1.4",
+    "pandas>=1.1.3, <=1.5.2", # for tests
     "async_asgi_testclient",
     "PyYAML",
     "distinctipy",
@@ -65,9 +68,11 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.1.0",
+    # "urllib3>=1.26.15, <=2.1.0",
+    "urllib3>=1.26.15, <2.0.0", # for tests
     "cacheout==0.14.1",
-    "jsonschema>=2.6.0,<=4.20.0",
+    # "jsonschema>=2.6.0,<=4.20.0",
+    "jsonschema>=2.6.0,<3.0.0", # for tests
     "pyjwt>=2.1.0,<3.0.0",
 ]
 
