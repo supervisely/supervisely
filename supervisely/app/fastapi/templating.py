@@ -30,6 +30,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         try:
             env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
         except:
+            print("Warning: url_for is not available in fastapi version==0.108.0")
             # for fastapi version==0.108.0
             pass
         return env_sly
@@ -59,6 +60,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
                 request, name, context_with_widgets, status_code, headers, media_type, background
             )
         except:
+            print("Warning: request is not available in fastapi version<0.108.0")
             # for fastapi version<0.108.0
             return super().TemplateResponse(
                 name, context_with_widgets, status_code, headers, media_type, background

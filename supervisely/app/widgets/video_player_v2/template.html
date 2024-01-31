@@ -1,0 +1,25 @@
+<sly-video-v2
+    :video-url="data.{{{widget.widget_id}}}.videoUrl"
+    :annotation="data.{{{widget.widget_id}}}.annotation"
+    :project-meta="data.{{{widget.widget_id}}}.projectMeta"
+    :frame.sync="state.{{{widget.widget_id}}}.currentFrame"
+    :disabled="state.{{{widget.widget_id}}}.disabled"
+    :options="state.{{{widget.widget_id}}}.options"
+    {% if widget._play_clicked_handled %}
+    @play="post('/{{{widget.widget_id}}}/play_clicked_cb')"
+    {% endif %}
+    {% if widget._pause_clicked_handled %}
+    @pause="post('/{{{widget.widget_id}}}/pause_clicked_cb')"
+    {% endif %}
+    style="width: '100%'; height: 'auto';"
+    >
+    <h1>Overlay text</h1>
+</sly-video-v2>
+<!-- {% if widget._frame_change_started_handled %}
+    @frame-change-start="state.{{{widget.widget_id}}}.startFrame=state.{{{widget.widget_id}}}.currentFrame;
+    post('/{{{widget.widget_id}}}/frame_change_started_cb')"
+{% endif %}
+
+{% if widget._frame_change_finished_handled %}
+    @frame-change-end="post('/{{{widget.widget_id}}}/frame_change_finished_cb')"
+{% endif %} -->
