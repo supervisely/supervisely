@@ -196,23 +196,11 @@ def create(
     before_shutdown_callbacks=None,
 ) -> FastAPI:
     from supervisely.app import DataJson, StateJson
-    from contextlib import asynccontextmanager
 
     JinjaWidgets().auto_widget_id = auto_widget_id
     logger.info(f"JinjaWidgets().auto_widget_id is set to {auto_widget_id}.")
 
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        """
-        Used to run tasks before and after the application starts and stops.
-        (instead of using `startup` and `shutdown` events)
-        """
-        yield
-
-        if headless is False:
-            await stop_content_origin(app)
-
-    app = FastAPI(lifespan=lifespan)
+    app = FastAPI()
     WebsocketManager().set_app(app)
 
 
@@ -307,16 +295,6 @@ def shutdown(
             current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
-
-
-async def stop_content_origin(app):
-    from supervisely.app.content import ContentOrigin
-
-    ContentOrigin().stop()
-    client = TestClient(app)
-    resp = run_sync(client.get("/"))
-    assert resp.status_code == 200
-    logger.info("Application has been shut down successfully")
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
@@ -459,17 +437,17 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse(request, "index.html")
+            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
-        # @app.on_event("shutdown")
-        # def shutdown():
-        #     from supervisely.app.content import ContentOrigin
+        @app.on_event("shutdown")
+        def shutdown():
+            from supervisely.app.content import ContentOrigin
 
-        #     ContentOrigin().stop()
-        #     client = TestClient(app)
-        #     resp = run_sync(client.get("/"))
-        #     assert resp.status_code == 200
-        #     logger.info("Application has been shut down successfully")
+            ContentOrigin().stop()
+            client = TestClient(app)
+            resp = run_sync(client.get("/"))
+            assert resp.status_code == 200
+            logger.info("Application has been shut down successfully")
 
         if static_dir is not None:
             app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")

@@ -3,9 +3,8 @@ import os
 from os import PathLike
 import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
-from starlette.background import BackgroundTask
 from starlette.templating import _TemplateResponse as _TemplateResponse
-from starlette.requests import Request as StarletteRequest
+from starlette.background import BackgroundTask
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
@@ -32,8 +31,8 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
 
     def TemplateResponse(
         self,
-        request: StarletteRequest,
         name: str,
+        context: dict,
         status_code: int = 200,
         headers: dict = None,
         media_type: str = None,
@@ -42,13 +41,20 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
         from supervisely.app.fastapi.subapp import get_name_from_env
 
         context_with_widgets = {
-            "request": request,
+            **context,
             **JinjaWidgets().context,
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
             "app_name": get_name_from_env(default="Supervisely App"),
         }
 
-        return super().TemplateResponse(
-            request, name, context_with_widgets, status_code, headers, media_type, background
-        )
+        try:
+            request = context["request"]
+            return super().TemplateResponse(
+                request, name, context_with_widgets, status_code, headers, media_type, background
+            )
+        except:
+            # for fastapi version < 0.108.0
+            return super().TemplateResponse(
+                name, context_with_widgets, status_code, headers, media_type, background
+            )
