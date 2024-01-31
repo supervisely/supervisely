@@ -46,7 +46,7 @@ INSTALL_REQUIRES = [
     "anyio>=3.7.1,<4.0.0", # for tests
     # "fastapi>=0.108.0, <=0.109.0",
     "fastapi>=0.79.0, <0.100.0", # for tests
-    "starlette>=0.31.1, <0.36.0",
+    # "starlette>=0.31.1, <0.36.0",
     "websockets>=10.3, <11.0",
     "jinja2>=3.0.3, <4.0.0",
     "psutil>=5.9.0, <6.0.0",
