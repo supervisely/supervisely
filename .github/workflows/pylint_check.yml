@@ -1,6 +1,6 @@
-on: 
-  push:
+on:
   pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
@@ -28,13 +28,20 @@ jobs:
         echo "[MESSAGES CONTROL]" >> .pylintrc
         echo "enable = E" >> .pylintrc
         echo "disable = E0401,E1101,R,F,W,C" >> .pylintrc
-
+    
+    - name: Get list of changed files
+      id: getfile
+      run: |
+        echo "::set-output name=files::$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep .py | xargs)"
+      
     - name: Run pylint and save errors to file
       run: |
-        pylint_output=$(pylint supervisely) || true
-        if [[ $pylint_output == *"E"* ]]; then
-          echo "$pylint_output" > pylint_errors.txt
-          echo "::set-output name=pylint_errors::$pylint_output"
+        if [ -n "${{ steps.getfile.outputs.files }}" ]; then
+          pylint_output=$(pylint ${{ steps.getfile.outputs.files }}) || true
+          if [[ $pylint_output == *"E"* ]]; then
+            echo "$pylint_output" > pylint_errors.txt
+            echo "::set-output name=pylint_errors::$pylint_output"
+          fi
         fi
       id: pylint
 
@@ -47,7 +54,7 @@ jobs:
           json=$(jq -n \
                     --arg title "Pylint Errors for ${{ github.event_name }} ${{ github.sha }}" \
                     --arg body "$issue_body" \
-                    --argjson assignees '["GoldenAnpu"]' \
+                    --argjson assignees '["${{ github.actor }}"]' \
                     --argjson labels '["bug"]' \
                     '{title: $title, body: $body, assignees: $assignees, labels: $labels}')
 
