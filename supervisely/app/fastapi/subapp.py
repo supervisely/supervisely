@@ -209,15 +209,8 @@ def create(
         """
         yield
 
-        # await shutdown(process_id, before_shutdown_callbacks)
         if headless is False:
-            from supervisely.app.content import ContentOrigin
-
-            ContentOrigin().stop()
-            client = TestClient(app)
-            resp = run_sync(client.get("/"))
-            assert resp.status_code == 200
-            logger.info("Application has been shut down successfully")
+            await stop_content_origin(app)
 
     app = FastAPI(lifespan=lifespan)
     WebsocketManager().set_app(app)
@@ -314,6 +307,16 @@ def shutdown(
             current_process.send_signal(signal.SIGINT)  # emit ctrl + c
     except KeyboardInterrupt:
         logger.info("Application has been shut down successfully")
+
+
+async def stop_content_origin(app):
+    from supervisely.app.content import ContentOrigin
+
+    ContentOrigin().stop()
+    client = TestClient(app)
+    resp = run_sync(client.get("/"))
+    assert resp.status_code == 200
+    logger.info("Application has been shut down successfully")
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
