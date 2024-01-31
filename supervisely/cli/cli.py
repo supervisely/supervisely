@@ -16,6 +16,7 @@ from supervisely.cli.teamfiles import (
 def cli():
     pass
 
+# nothing
 
 @cli.command(help="This app allows you to release your aplication to Supervisely platform")
 @click.option(
