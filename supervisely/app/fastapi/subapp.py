@@ -203,9 +203,13 @@ def create(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        """
+        Used to run tasks before and after the application starts and stops.
+        (instead of using `startup` and `shutdown` events)
+        """
         yield
 
-        await shutdown(process_id, before_shutdown_callbacks)
+        # await shutdown(process_id, before_shutdown_callbacks)
         if headless is False:
             from supervisely.app.content import ContentOrigin
 
@@ -219,9 +223,9 @@ def create(
     WebsocketManager().set_app(app)
 
 
-    # @app.post("/shutdown")
-    # async def shutdown_endpoint(request: Request):
-    #     shutdown(process_id, before_shutdown_callbacks)
+    @app.post("/shutdown")
+    async def shutdown_endpoint(request: Request):
+        shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
 
