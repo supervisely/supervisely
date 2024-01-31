@@ -203,7 +203,6 @@ def create(
     app = FastAPI()
     WebsocketManager().set_app(app)
 
-
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
         shutdown(process_id, before_shutdown_callbacks)
