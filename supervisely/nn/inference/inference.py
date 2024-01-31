@@ -49,6 +49,7 @@ from supervisely.nn.prediction_dto import Prediction
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+from supervisely.app.widgets import Container
 
 try:
     from typing import Literal
@@ -99,17 +100,31 @@ class Inference:
         self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
-            self.initialize_gui()
+            # self.initialize_gui()
+            # self._gui = GUI.InferenceGUI()
 
-            def on_serve_callback(gui: GUI.InferenceGUI):
+            self._gui = GUI.ServingGUI()
+            self._user_layout = self.init_gui()
+
+            # add compatibility for InferenceGUI
+            def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
-                device = gui.get_device()
-                self.load_on_device(self._model_dir, device)
+
+                if isinstance(self.gui, GUI.InferenceGUI):
+                    device = gui.get_device()
+                    self.load_on_device(self._model_dir, device)
+                else:
+                    deploy_params = self.get_params_from_ui()
+                    self.load_model(**deploy_params)
+                    self.update_gui(self._model_served)
+                    self.set_params_to_ui(deploy_params)
                 gui.show_deployed_model_info(self)
 
-            def on_change_model_callback(gui: GUI.InferenceGUI):
+            def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 self.shutdown_model()
+                self.update_gui(self._model_served)
 
+            # if isinstance(self.gui, GUI.InferenceGUI):
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
 
@@ -135,6 +150,18 @@ class Inference:
         if not self._use_gui:
             return None
         return self.gui.get_ui()
+
+    def init_gui(self):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def update_gui(self, is_model_deployed: bool = True):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def set_params_to_ui(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def get_params_from_ui(self):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
         models = self.get_models()
@@ -310,16 +337,10 @@ class Inference:
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def prepare_model_files(self, deploy_params: dict):
-        pass
-
     def load_model(self, *args, **kwargs):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def load_model_meta(self, model_source: str, local_weights_path: str):
-        raise NotImplementedError("Have to be implemented in child class after inheritance")
-
-    def get_layout(self):
+    def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def shutdown_model(self):
@@ -779,8 +800,11 @@ class Inference:
         else:
             self._task_id = env.task_id() if is_production() else None
 
+        serving_layout = self.get_ui()
+        layout = Container([self._user_layout, serving_layout])
+
         # self._app = Application(layout=self.get_ui())
-        self._app = Application(layout=self.get_layout())
+        self._app = Application(layout=layout)
         server = self._app.get_server()
 
         @call_on_autostart()
@@ -1036,11 +1060,15 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 self.load_model(**deploy_params)
+                self.update_gui(self._model_served)
+                self.set_params_to_ui(deploy_params)
                 self.gui.set_deployed()
+                self.gui.show_deployed_model_info(self)
                 self._model_served = True
                 return {"result": "model was successfully deployed"}
             except Exception as e:
-                return {"result": f"an error occured: {repr(e)}"}
+                # return {"result": f"an error occured: {repr(e)}"}
+                raise e
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):

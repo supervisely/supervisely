@@ -1,5 +1,5 @@
 from typing import List, Literal, NamedTuple
-
+from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
 
 
@@ -27,6 +27,7 @@ import supervisely.nn.checkpoints.yolov8 as yolov8
 
 
 def get_list(
+    api: Api,
     team_id: int,
     framework: Literal[
         "yolov5",
@@ -43,27 +44,27 @@ def get_list(
     ],
 ) -> List[CheckpointInfo]:
     if framework == "yolov5":
-        checkpoints = yolov5.get_list(team_id)
+        checkpoints = yolov5.get_list(api, team_id)
     elif framework == "yolov5_v2":
-        checkpoints = yolov5_v2.get_list(team_id)
+        checkpoints = yolov5_v2.get_list(api, team_id)
     elif framework == "yolov8":
-        checkpoints = yolov8.get_list(team_id)
+        checkpoints = yolov8.get_list(api, team_id)
     elif framework == "detectron2":
-        checkpoints = detectron2.get_list(team_id)
+        checkpoints = detectron2.get_list(api, team_id)
     elif framework == "mmdetection":
-        checkpoints = mmdetection.get_list(team_id)
+        checkpoints = mmdetection.get_list(api, team_id)
     elif framework == "mmdetection3":
-        checkpoints = mmdetection3.get_list(team_id)
+        checkpoints = mmdetection3.get_list(api, team_id)
     elif framework == "mmsegmentation":
-        checkpoints = mmsegmentation.get_list(team_id)
+        checkpoints = mmsegmentation.get_list(api, team_id)
     elif framework == "mmclassification":
-        checkpoints = mmclassification.get_list(team_id)
+        checkpoints = mmclassification.get_list(api, team_id)
     elif framework == "ritm":
-        checkpoints = ritm.get_list(team_id)
+        checkpoints = ritm.get_list(api, team_id)
     elif framework == "unet":
-        checkpoints = unet.get_list(team_id)
+        checkpoints = unet.get_list(api, team_id)
     elif framework == "hrda":
-        checkpoints = hrda.get_list(team_id)
+        checkpoints = hrda.get_list(api, team_id)
     else:
         raise NotImplementedError(f"Unknown framework: {framework}")
 

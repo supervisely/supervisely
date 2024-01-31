@@ -176,7 +176,9 @@ class TrainedModelsSelector(Widget):
         def _create_checkpoints_widget(self) -> Select:
             checkpoint_selector = Select(
                 [
-                    Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
+                    Select.Item(
+                        value=checkpoint_info["path"], label=checkpoint_info["name"]
+                    )
                     for checkpoint_info in self._checkpoints
                 ]
             )
@@ -224,7 +226,9 @@ class TrainedModelsSelector(Widget):
     def get_json_state(self) -> Dict:
         return {"selectedRow": 0}
 
-    def _generate_table_rows(self, checkpoint_infos: List[CheckpointInfo]) -> List[Dict]:
+    def _generate_table_rows(
+        self, checkpoint_infos: List[CheckpointInfo]
+    ) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
         table_rows = []
         for checkpoint_info in checkpoint_infos:
@@ -252,7 +256,7 @@ class TrainedModelsSelector(Widget):
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
 
-    def select_row(self, row_index):
+    def set_active_row(self, row_index):
         if row_index < 0 or row_index > len(self._rows) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
