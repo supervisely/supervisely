@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import traceback
 from functools import wraps
-from typing import Any, List, NamedTuple, Union
+from typing import Any, List, NamedTuple, Union, Tuple
 
 from supervisely import logger
 from supervisely.app.content import DataJson, StateJson
@@ -10,6 +10,7 @@ from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.widgets import Widget
 
+NumT = Union[int, float]
 """
 size1 = 10
 x1 = list(range(size1))
@@ -51,7 +52,7 @@ class Apexchart(Widget):
 
     def __init__(
         self,
-        series: list,
+        series: List[dict],
         options: dict,
         type: str,
         height: Union[int, str] = "300",
@@ -138,7 +139,64 @@ class Apexchart(Widget):
         if send_changes:
             DataJson().send_changes()
 
-    def _update_series(self) -> None:
+    def set_colors(self, colors: list, send_changes=True):
+        """
+        Set colors for every series in the chart.
+
+        :param colors: Set new colors for every series as a string, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0), '#0000FF']}`.
+        :type colors: Dict[str, List[str]]
+        :param send_changes: Send changes to the chart. Defaults to True.
+        :type send_changes: bool, optional
+        """
+        self._options["colors"] = colors
+        self.update_data()
+        if send_changes:
+            DataJson().send_changes()
+
+    def add_to_series(
+        self,
+        name_or_id: Union[str, int],
+        data: Union[List[tuple], List[dict], tuple, dict],
+        send_changes=True,
+    ):
+        """
+        Add new points to series.
+
+        :param name_or_id: Series name or the index in the list.
+        :type name_or_id: str | int
+        :param data: Point or list of points to add; use one of the following formats
+            `[(x1, y1), ...]`, `[{'x': x1, 'y': y1}, ...]`, `(x1,y1)` or `{'x': x1, 'y': y1}`
+        :type data: List[tuple] | List[dict] | tuple | dict
+        """
+        if isinstance(name_or_id, int):
+            series_id = name_or_id
+        else:
+            series_id, _ = self.get_series_by_name(name_or_id)
+
+        if isinstance(data, List):
+            data_list = self._list_of_point_dicts_to_list_of_tuples(data)
+        else:
+            # single datapoint
+            data_list = self._list_of_point_dicts_to_list_of_tuples([data])
+
+        self._series[series_id]["data"].extend(data_list)
+        DataJson()[self.widget_id]["series"] = self._series
+
+        if send_changes:
+            DataJson().send_changes()
+            self._update_series_in_apexhart()
+
+    def get_series_by_name(self, name):
+        series_list = DataJson()[self.widget_id]["series"]
+        series_id, series_data = next(
+            ((i, series) for i, series in enumerate(series_list) if series["name"] == name),
+            (None, None),
+        )
+        # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
+        return series_id, series_data
+
+    def _update_series_in_apexhart(self) -> None:
+        # necessary for the force rendering of data
         run_sync(
             WebsocketManager().broadcast(
                 {
@@ -150,8 +208,14 @@ class Apexchart(Widget):
             )
         )
 
-    def set_colors(self, colors: list, send_changes=True):
-        self._options["colors"] = colors
-        self.update_data()
-        if send_changes:
-            DataJson().send_changes()
+    def _list_of_point_dicts_to_list_of_tuples(
+        self, point_dcts: List[Union[dict, tuple]]
+    ) -> List[Tuple[NumT, NumT]]:
+        if len(point_dcts) == 0:
+            return []
+        if isinstance(point_dcts[0], tuple):
+            return point_dcts
+        return [self._point_dict_to_tuple(dct) for dct in point_dcts]
+
+    def _point_dict_to_tuple(self, point_dct: dict):
+        return (point_dct["x"], point_dct["y"])

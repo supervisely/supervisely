@@ -115,11 +115,13 @@ class GridChart(Widget):
         return
 
     def set_colors(self, colors: Dict[str, List[str]], send_changes=True):
-        """Set colors for every line in the grid chart.
+        """
+        Set colors for every line in the grid chart.
 
-        Args:
-            colors (Dict[str, List[str]]): Set new colors for every line as a string, rgb, or HEX. Example: `{'title':['red', 'rgb(0,255,0), '#0000FF']}`
-            send_changes (bool, optional): Send changes to the chart. Defaults to True.
+        :param colors: Set new colors for every line as a string, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0), '#0000FF']}`.
+        :type colors: Dict[str, List[str]]
+        :param send_changes: Send changes to the chart. Defaults to True.
+        :type send_changes: bool, optional
         """
         for title, clrs in colors.items():
             widget: Apexchart = self._widgets[title]
