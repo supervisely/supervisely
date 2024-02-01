@@ -260,11 +260,11 @@ def setup_certificates():
                 if extra_ca_contents == "":
                     raise RuntimeError(f"File with certificates is empty: {path_to_certificate}")
 
-            requests_ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE")
-            if requests_ca_bundle is not None:
+            requests_ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", "").strip()
+            if requests_ca_bundle != "":
                 if os.path.exists(requests_ca_bundle):
                     if os.path.isfile(requests_ca_bundle):
-                        certificates = get_certificates_list(os.environ.get("REQUESTS_CA_BUNDLE"))
+                        certificates = get_certificates_list(requests_ca_bundle)
                     else:
                         raise RuntimeError(f"Path to bundle is not a file: {requests_ca_bundle}")
             else:
@@ -275,11 +275,11 @@ def setup_certificates():
             with open(new_bundle_path, "w", encoding="ascii") as f:
                 f.write("\n".join(certificates))
 
-            old_request_ca_bundle_path = os.environ["REQUESTS_CA_BUNDLE"]
+            old_request_ca_bundle_path = requests_ca_bundle
             os.environ["REQUESTS_CA_BUNDLE"] = new_bundle_path
             if (
-                os.environ.get("SSL_CERT_FILE") is None
-                or os.environ.get("SSL_CERT_FILE") == old_request_ca_bundle_path
+                os.environ.get("SSL_CERT_FILE", "").strip() == ""
+                or os.environ.get("SSL_CERT_FILE").strip() == old_request_ca_bundle_path
             ):
                 os.environ["SSL_CERT_FILE"] = new_bundle_path
             logger.info(f"Certificates were added to the bundle: {path_to_certificate}")
