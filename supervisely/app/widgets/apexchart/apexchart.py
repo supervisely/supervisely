@@ -158,16 +158,7 @@ class Apexchart(Widget):
         name_or_id: Union[str, int],
         data: Union[List[tuple], List[dict], tuple, dict],
         send_changes=True,
-    ):
-        """
-        Add new points to series.
-
-        :param name_or_id: Series name or the index in the list.
-        :type name_or_id: str | int
-        :param data: Point or list of points to add; use one of the following formats
-            `[(x1, y1), ...]`, `[{'x': x1, 'y': y1}, ...]`, `(x1,y1)` or `{'x': x1, 'y': y1}`
-        :type data: List[tuple] | List[dict] | tuple | dict
-        """
+    ) -> None:
         if isinstance(name_or_id, int):
             series_id = name_or_id
         else:

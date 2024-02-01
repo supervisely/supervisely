@@ -58,7 +58,6 @@ class GridChart(Widget):
             if isinstance(plot_data, dict):
                 # self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data.get('series', []), show_legend=plot_data.get('show_legend', True))
                 # passing parameters in this way will eventually result in a JsonPatchConflict error
-                plot_data
                 self._widgets[plot_data["title"]] = LineChart(**plot_data)
             else:
                 self._widgets[plot_data] = LineChart(title=plot_data, series=[])

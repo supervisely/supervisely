@@ -107,6 +107,18 @@ class LineChart(Apexchart):
         super().add_series(name, x, y)
         self.update_y_range(min(y), max(y))
 
+    def add_to_series(self, name_or_id, data, send_changes=True):
+        """
+        Add new points to series.
+
+        :param name_or_id: Series name or the index in the list.
+        :type name_or_id: str | int
+        :param data: Point or list of points to add; use one of the following formats
+            `[(x1, y1), ...]`, `[{'x': x1, 'y': y1}, ...]`, `(x1,y1)` or `{'x': x1, 'y': y1}`
+        :type data: List[tuple] | List[dict] | tuple | dict
+        """
+        super().add_to_series(name_or_id, data, send_changes)
+
     def add_series_batch(self, series: dict):
         # usage example
         # lines = []
