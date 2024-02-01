@@ -260,15 +260,13 @@ def setup_certificates():
                 if extra_ca_contents == "":
                     raise RuntimeError(f"File with certificates is empty: {path_to_certificate}")
 
+            certificates = get_certificates_list(DEFAULT_CA_BUNDLE_PATH)
             requests_ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", "").strip()
-            if requests_ca_bundle != "":
-                if os.path.exists(requests_ca_bundle):
-                    if os.path.isfile(requests_ca_bundle):
-                        certificates = get_certificates_list(requests_ca_bundle)
-                    else:
-                        raise RuntimeError(f"Path to bundle is not a file: {requests_ca_bundle}")
-            else:
-                certificates = get_certificates_list(DEFAULT_CA_BUNDLE_PATH)
+            if requests_ca_bundle != "" and os.path.exists(requests_ca_bundle):
+                if os.path.isfile(requests_ca_bundle):
+                    certificates = get_certificates_list(requests_ca_bundle)
+                else:
+                    raise RuntimeError(f"Path to bundle is not a file: {requests_ca_bundle}")
 
             certificates.insert(0, extra_ca_contents)
             new_bundle_path = os.path.join(gettempdir(), "sly_extra_ca_certs.crt")
