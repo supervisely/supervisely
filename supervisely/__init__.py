@@ -257,4 +257,4 @@ from supervisely.app.fastapi.subapp import Event
 try:
     setup_certificates()
 except Exception as e:
-    logger.warn(f"Failed to setup certificates. Reason: {e}")
+    logger.warn(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)
