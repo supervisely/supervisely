@@ -1,8 +1,10 @@
-from typing import Union
 from functools import wraps
-from supervisely.app.widgets.apexchart.apexchart import Apexchart
-from supervisely.app.content import StateJson, DataJson
+from typing import List, Tuple, Union
 
+from supervisely.app.content import DataJson, StateJson
+from supervisely.app.widgets.apexchart.apexchart import Apexchart
+
+NumT = Union[int, float]
 try:
     from typing import Literal
 except ImportError:
@@ -117,3 +119,55 @@ class LineChart(Apexchart):
             super().add_series(name, x, y, send_changes=False)
             self.update_y_range(min(y), max(y), send_changes=False)
         DataJson().send_changes()
+
+    def get_series_by_name(self, name):
+        series_list = DataJson()[self.widget_id]["series"]
+        series_id, series_data = next(
+            ((i, series) for i, series in enumerate(series_list) if series["name"] == name),
+            (None, None),
+        )
+        # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
+        return series_id, series_data
+
+    def add_to_series(
+        self,
+        name_or_id: Union[str, int],
+        data: Union[List[Union[tuple, dict]], Union[tuple, dict]],
+    ):
+        """
+        Add new points to series
+
+        :param name_or_id: series name
+        :type name_or_id: str | int
+        :param data: point or list of points to add; use one of the following formats
+            `[(x1, y1), ...]`, `[{'x': x1, 'y': y1}, ...]`, `(x1,y1)` or `{'x': x1, 'y': y1}`
+        :type data: Union[List[Union[tuple, dict]], Union[tuple, dict]]
+        """
+        if isinstance(name_or_id, int):
+            series_id = name_or_id
+        else:
+            series_id, _ = self.get_series_by_name(name_or_id)
+
+        if isinstance(data, List):
+            data_list = self._list_of_point_dicts_to_list_of_tuples(data)
+        else:
+            # single datapoint
+            data_list = self._list_of_point_dicts_to_list_of_tuples([data])
+
+        self._series[series_id]["data"].extend(data_list)
+        DataJson()[self.widget_id]["series"] = self._series
+
+        DataJson().send_changes()
+        self._update_series()
+
+    def _list_of_point_dicts_to_list_of_tuples(
+        self, point_dcts: List[Union[dict, tuple]]
+    ) -> List[Tuple[NumT, NumT]]:
+        if len(point_dcts) == 0:
+            return []
+        if isinstance(point_dcts[0], tuple):
+            return point_dcts
+        return [self._point_dict_to_tuple(dct) for dct in point_dcts]
+
+    def _point_dict_to_tuple(self, point_dct: dict):
+        return (point_dct["x"], point_dct["y"])

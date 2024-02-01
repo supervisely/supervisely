@@ -1,10 +1,14 @@
 from __future__ import annotations
-from typing import Union, NamedTuple, Any, List
-from functools import wraps
+
 import traceback
-from supervisely.app.widgets import Widget
-from supervisely.app.content import StateJson, DataJson
+from functools import wraps
+from typing import Any, List, NamedTuple, Union
+
 from supervisely import logger
+from supervisely.app.content import DataJson, StateJson
+from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.widgets import Widget
 
 """
 size1 = 10
@@ -121,7 +125,7 @@ class Apexchart(Widget):
             DataJson().send_changes()
 
     def set_title(self, title: str, send_changes=True):
-        if self._options.get('title') is None:
+        if self._options.get("title") is None:
             self._options["title"] = {}
         self._options["title"]["text"] = title
         self.update_data()
@@ -133,7 +137,19 @@ class Apexchart(Widget):
         self.update_data()
         if send_changes:
             DataJson().send_changes()
-    
+
+    def _update_series(self) -> None:
+        run_sync(
+            WebsocketManager().broadcast(
+                {
+                    "runAction": {
+                        "action": f"sly-apexchart-{self.widget_id}.update-series",
+                        "payload": {},
+                    }
+                }
+            )
+        )
+
     def set_colors(self, colors: list, send_changes=True):
         self._options["colors"] = colors
         self.update_data()
