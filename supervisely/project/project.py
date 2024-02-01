@@ -39,6 +39,7 @@ from supervisely.io.fs import (
     list_files_recursively,
     mkdir,
     silent_remove,
+    validate_path_length_bytes,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
@@ -1623,7 +1624,9 @@ class Project:
             #         ds2
             #         ds3
         """
-        ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
+        ds_path: str = os.path.join(self.directory, ds_name)
+        ds_path = validate_path_length_bytes(ds_path, "Dataset name")
+        ds = self.dataset_class(ds_path, OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
 
