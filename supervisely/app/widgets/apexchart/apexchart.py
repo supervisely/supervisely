@@ -149,18 +149,15 @@ class Apexchart(Widget):
         """
         Set colors for every series in the chart.
 
-        :param colors: Set new colors for every series as a string, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0), '#0000FF']}` or `{'title' : [[255,0,0], [0,255,0], [0,0,255]]}`.
-        :type colors: List[str]
+        :param colors: Set new colors for every series as a color name, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0)', '#0000FF']}` or `{'title' : [[255,0,0], [0,255,0], [0,0,255]]}`.
+        :type colors: List[str | List[int]]
         :param send_changes: Send changes to the chart. Defaults to True.
         :type send_changes: bool
         """
         clrs = colors
-        if isinstance(colors[0], List):
-            try: # nonstr rgb
-                clrs = [rgb2hex(c) for c in colors]
-            except:
-                raise ValueError("All value types of the colors list should be only `str` or only `List[int]`")
-
+        if isinstance(colors[0], list): # f.e. [255, 0, 0]
+            clrs = [rgb2hex(c) for c in colors]
+            
         self._options["colors"] = clrs
         self.update_data()
         if send_changes:
