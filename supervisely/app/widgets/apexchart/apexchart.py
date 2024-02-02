@@ -5,6 +5,7 @@ from functools import wraps
 from typing import Any, List, NamedTuple, Union, Tuple, Literal
 
 from supervisely import logger
+from supervisely.imaging.color import hex2rgb, rgb2hex
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
@@ -142,16 +143,23 @@ class Apexchart(Widget):
         if send_changes:
             DataJson().send_changes()
 
-    def set_colors(self, colors: list, send_changes=True):
+    def set_colors(self, colors: List[Union[str, List[int]]], send_changes=True):
         """
         Set colors for every series in the chart.
 
-        :param colors: Set new colors for every series as a string, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0), '#0000FF']}`.
-        :type colors: Dict[str, List[str]]
+        :param colors: Set new colors for every series as a string, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0), '#0000FF']}` or `{'title' : [[255,0,0], [0,255,0], [0,0,255]]}`.
+        :type colors: List[str]
         :param send_changes: Send changes to the chart. Defaults to True.
-        :type send_changes: bool, optional
+        :type send_changes: bool
         """
-        self._options["colors"] = colors
+        clrs = colors
+        if isinstance(colors[0], List):
+            try: # nonstr rgb
+                clrs = [rgb2hex(c) for c in colors]
+            except:
+                raise ValueError("All value types of the colors list should be only `str` or only `List[int]`")
+
+        self._options["colors"] = clrs
         self.update_data()
         if send_changes:
             DataJson().send_changes()
