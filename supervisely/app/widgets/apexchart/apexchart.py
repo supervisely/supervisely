@@ -195,7 +195,7 @@ class Apexchart(Widget):
             DataJson().send_changes()
             self._update_series_in_apexhart()
 
-    def get_series_by_name(self, name):
+    def get_series_by_name(self, name:str) -> Tuple[int, dict]:
         series_list = DataJson()[self.widget_id]["series"]
         series_id, series_data = next(
             ((i, series) for i, series in enumerate(series_list) if series["name"] == name),

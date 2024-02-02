@@ -25,15 +25,13 @@ class GridChart(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
-        # TODO expand LineChart -> ApexChart
+        # TODO maybe generalize LineChart -> ApexChart ???
         self._widgets = {}
         self._columns = columns
         self._gap = gap
 
         for plot_data in data:
             if isinstance(plot_data, dict):
-                # self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data.get('series', []), show_legend=plot_data.get('show_legend', True))
-                # passing parameters in this way will eventually result in a JsonPatchConflict error
                 self._widgets[plot_data["title"]] = LineChart(**plot_data)
             else:
                 self._widgets[plot_data] = LineChart(title=plot_data, series=[])
@@ -86,26 +84,12 @@ class GridChart(Widget):
     def get_json_state(self):
         return None
 
-    def set_colors(self, colors: Dict[str, List[str]], send_changes=True):
-        """
-        Set colors for every line in the grid chart.
-
-        :param colors: Set new colors for every line as a string, rgb, or HEX. Example: `{'title' : ['red', 'rgb(0,255,0), '#0000FF']}`.
-        :type colors: Dict[str, List[str]]
-        :param send_changes: Send changes to the chart. Defaults to True.
-        :type send_changes: bool, optional
-        """
-        for title, clrs in colors.items():
-            widget: Apexchart = self._widgets[title]
-            widget.set_colors(colors=clrs, send_changes=send_changes)
-
-    def add_scalar(self, identifier: str, y, x):
+    def add_scalar(self, identifier: str, y:Union[float, int], x:Union[float, int]) -> None:
         """
         Add scalar to series on plot. If no series with name,
-         defined in `identifier` exists,
-         one will be created automatically.
+         defined in `identifier` exists, one will be created automatically.
 
-        :param identifier: slash-separated plot and series name
+        :param identifier: '/'-separated plot and series name
         :type identifier: str
         :param y: y value
         :type y: float | int
@@ -113,34 +97,10 @@ class GridChart(Widget):
         :type x: float | int
         """
         plot_title, series_name = identifier.split("/")
-        w = self._widgets[plot_title]
-        _, series = w.get_series_by_name(series_name)
+        w: LineChart = self._widgets[plot_title]
+        series_id, series = w.get_series_by_name(series_name)
 
         if series is not None:
-            self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[(x, y)])
+            w.add_to_series(name_or_id=series_id, data=[(x, y)])
         else:
-            self._widgets[plot_title].add_series(name=series_name, x=[x], y=[y])
-
-    def add_scalars(self, plot_title: str, new_values: dict, x):
-        """
-        Add scalars to several series on one plot at point `x`
-
-        :param plot_title: name of existing plot
-        :type plot_title: str
-        :param new_values: dictionary in the `{series_name: y_value, ...}` format
-        :type new_values: dict
-        :param x: value of `x`
-        :type x: float | int
-        """
-        for series_name in new_values.keys():
-            _, series = self._widgets[plot_title].get_series_by_name(series_name)
-            if series is not None:
-                self._widgets[plot_title].add_to_series(
-                    name_or_id=series_name,
-                    # data=[{"x": x, "y": new_values[series_name]}],
-                    data=[(x, new_values[series_name])],
-                )
-            else:
-                self._widgets[plot_title].add_series(
-                    name=series_name, x=[x], y=[new_values[series_name]]
-                )
+            w.add_series(name=series_name, x=[x], y=[y])
