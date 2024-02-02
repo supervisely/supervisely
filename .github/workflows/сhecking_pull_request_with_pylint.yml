@@ -99,14 +99,11 @@ jobs:
         response=$(curl -X POST \
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/json" \
-                                          
           -d '{
             "query": "query getProjectID($org_login: String!, $project_number: Int!) { organization(login: $org_login) { projectV2(number: $project_number) { id } } }",
             "variables": {
               "org_login": "${{ env.ORG_LOGIN }}",
               "project_number": ${{ env.PROJECT_NUMBER }}
-                    
-                 
             }
           }' \
           https://api.github.com/graphql)
