@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import traceback
 from functools import wraps
-from typing import Any, List, NamedTuple, Union, Tuple
+from typing import Any, List, NamedTuple, Union, Tuple, Literal
 
 from supervisely import logger
 from supervisely.app.content import DataJson, StateJson
@@ -56,7 +56,7 @@ class Apexchart(Widget):
         options: dict,
         type: str,
         height: Union[int, str] = "300",
-        sly_options={},
+        sly_options: dict = {},
     ):
         self._series = series
         self._options = options
@@ -118,7 +118,10 @@ class Apexchart(Widget):
     def add_series(self, name: str, x: list, y: list, send_changes=True):
         if len(x) != len(y):
             raise ValueError(f"Lists x and y have different lenght, {len(x)} != {len(y)}")
-        data = [{"x": px, "y": py} for px, py in zip(x, y)]
+
+        dtype = self._sly_options.get("data_type", "dict")
+        data = [{"x": px, "y": py} if dtype == "dict" else (px, py) for px, py in zip(x, y)]
+
         series = {"name": name, "data": data}
         self._series.append(series)
         self.update_data()

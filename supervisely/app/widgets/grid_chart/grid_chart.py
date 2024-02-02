@@ -16,30 +16,6 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-"""
-size1 = 10
-x1 = list(range(size1))
-y1 = np.random.randint(low=10, high=148, size=size1).tolist()
-s1 = [{"x": x, "y": y} for x, y in zip(x1, y1)]
-
-size2 = 30
-x2 = list(range(size2))
-y2 = np.random.randint(low=0, high=300, size=size2).tolist()
-s2 = [{"x": x, "y": y} for x, y in zip(x2, y2)]
-
-chart = sly.app.widgets.LineChart(
-    title="Max vs Denis",
-    series=[{"name": "Max", "data": s1}, {"name": "Denis", "data": s2}],
-    xaxis_type="category",
-)
-
-@chart.click
-def refresh_images_table(datapoint: sly.app.widgets.LineChart.ClickedDataPoint):
-    print(f"Line: {datapoint.series_name}")
-    print(f"x = {datapoint.x}")
-    print(f"y = {datapoint.y}")
-"""
-
 
 class GridChart(Widget):
     def __init__(
@@ -110,9 +86,6 @@ class GridChart(Widget):
     def get_json_state(self):
         return None
 
-    def set_series(self, series: list, send_changes=True):
-        return
-
     def set_colors(self, colors: Dict[str, List[str]], send_changes=True):
         """
         Set colors for every line in the grid chart.
@@ -140,7 +113,8 @@ class GridChart(Widget):
         :type x: float | int
         """
         plot_title, series_name = identifier.split("/")
-        _, series = self._widgets[plot_title].get_series_by_name(series_name)
+        w = self._widgets[plot_title]
+        _, series = w.get_series_by_name(series_name)
 
         if series is not None:
             self._widgets[plot_title].add_to_series(name_or_id=series_name, data=[(x, y)])
