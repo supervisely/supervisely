@@ -65,6 +65,7 @@ class Apexchart(Widget):
         self._height = height
         self._click_handled = False
         self._sly_options = sly_options
+        self._data_type: Literal['dict','tuple'] = self._options.get("data_type", "dict")
         super().__init__(file_path=__file__)
 
     def get_json_data(self):
@@ -116,13 +117,14 @@ class Apexchart(Widget):
 
         return _click
 
+    def _wrap_xy(self, px, py)-> Union[dict, tuple]:
+        return {"x": px, "y": py} if self._data_type == "dict" else (px, py)
+        
     def add_series(self, name: str, x: list, y: list, send_changes=True):
         if len(x) != len(y):
             raise ValueError(f"Lists x and y have different lenght, {len(x)} != {len(y)}")
-
-        dtype = self._sly_options.get("data_type", "dict")
-        data = [{"x": px, "y": py} if dtype == "dict" else (px, py) for px, py in zip(x, y)]
-
+                
+        data = [self._wrap_xy(px, py) for px, py in zip(x, y)]
         series = {"name": name, "data": data}
         self._series.append(series)
         self.update_data()
@@ -164,6 +166,19 @@ class Apexchart(Widget):
         if send_changes:
             DataJson().send_changes()
 
+    def _wrap_to_series_data(self, data):
+        if isinstance(data, list):
+            if len(data)==0:
+                return []
+            if isinstance(data[0], dict):
+                return [self._wrap_xy(dct['x'], dct['y']) for dct in data]
+            return [self._wrap_xy(*tpl) for tpl in data]
+        
+        else: # if single datapoint
+            if isinstance(data, dict):
+                return [self._wrap_xy(data['x'], data['y'])]
+            return [self._wrap_xy(*data)]
+
     def add_to_series(
         self,
         name_or_id: Union[str, int],
@@ -174,13 +189,8 @@ class Apexchart(Widget):
             series_id = name_or_id
         else:
             series_id, _ = self.get_series_by_name(name_or_id)
-
-        if isinstance(data, List):
-            data_list = self._list_of_point_dicts_to_list_of_tuples(data)
-        else:
-            # single datapoint
-            data_list = self._list_of_point_dicts_to_list_of_tuples([data])
-
+        
+        data_list = self._wrap_to_series_data(data)
         self._series[series_id]["data"].extend(data_list)
         DataJson()[self.widget_id]["series"] = self._series
 
@@ -210,14 +220,3 @@ class Apexchart(Widget):
             )
         )
 
-    def _list_of_point_dicts_to_list_of_tuples(
-        self, point_dcts: List[Union[dict, tuple]]
-    ) -> List[Tuple[NumT, NumT]]:
-        if len(point_dcts) == 0:
-            return []
-        if isinstance(point_dcts[0], tuple):
-            return point_dcts
-        return [self._point_dict_to_tuple(dct) for dct in point_dcts]
-
-    def _point_dict_to_tuple(self, point_dct: dict):
-        return (point_dct["x"], point_dct["y"])
