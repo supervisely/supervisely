@@ -66,7 +66,7 @@ jobs:
           echo "Issue body: $issue_body"
           
           json=$(jq -n \
-                    --arg title "Pylint Errors for ${{ github.event_name }} #${{ github.event.pull_request.number }} at $(date -u +'%Y-%m-%d %H:%M')" \
+                    --arg title "Pylint Errors for ${{ github.event_name }} #${{ github.event.pull_request.number }} at $(date -u +'%Y-%m-%d %H:%M') UTC+0" \
                     --arg body "$issue_body" \
                     --argjson assignees '["${{ github.actor }}"]' \
                     --argjson labels '["bug", "pylint"]' \
