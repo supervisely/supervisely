@@ -3,6 +3,7 @@
 
 # docs
 from __future__ import annotations
+
 from collections import Counter
 from typing import Dict, Iterator, List, Optional
 
@@ -303,7 +304,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
             if tag_meta.sly_id == tag_meta_id:
                 return tag_meta.name
         return None
-    
+
     def merge(self, other: TagMetaCollection) -> TagMetaCollection:
         """
         Merge two TagMetaCollection objects.
@@ -363,10 +364,15 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
             if our_tag is None:
                 new_tags.append(other_tag)
             elif our_tag != other_tag:
-                if our_tag.value_type == TagValueType.ONEOF_STRING and other_tag.value_type == TagValueType.ONEOF_STRING:
+                if (
+                    our_tag.value_type == TagValueType.ONEOF_STRING
+                    and other_tag.value_type == TagValueType.ONEOF_STRING
+                ):
                     if Counter(our_tag.possible_values) == Counter(other_tag.possible_values):
                         continue
-                raise ValueError('Error during merge for key {!r}: values are different'.format(other_tag.key()))
+                raise ValueError(
+                    "Error during merge for tag {!r}: values are different".format(other_tag.key())
+                )
         return self.clone(new_tags + self.items())
 
 
