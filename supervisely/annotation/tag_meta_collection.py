@@ -3,11 +3,11 @@
 
 # docs
 from __future__ import annotations
-
+from collections import Counter
 from typing import Dict, Iterator, List, Optional
 
 from supervisely.annotation.renamer import Renamer
-from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.json import JsonSerializable
 
@@ -303,6 +303,71 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
             if tag_meta.sly_id == tag_meta_id:
                 return tag_meta.name
         return None
+    
+    def merge(self, other: TagMetaCollection) -> TagMetaCollection:
+        """
+        Merge two TagMetaCollection objects.
+
+        :param key: TagMetaCollection object.
+        :type key:  TagMetaCollection
+        :raises: :class:`ValueError` if item name from given collection is in TagMetaCollection but TagMetas in both are different
+        :return: TagMetaCollection object
+        :rtype: :class:`TagMetaCollection<TagMetaCollection>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+            collection = sly.TagMetaCollection([item_cat, item_turtle])
+
+            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+            other_collection = sly.TagMetaCollection([item_dog, item_turtle])
+
+            merge = collection.merge(other_collection)
+            print(merge.to_json())
+            # Output: [
+            #     {
+            #         "name": "dog",
+            #         "value_type": "none",
+            #         "color": "#8A6C0F",
+            #         "hotkey": "",
+            #         "applicable_type": "all",
+            #         "classes": []
+            #     },
+            #     {
+            #         "name": "cat",
+            #         "value_type": "none",
+            #         "color": "#0F4A8A",
+            #         "hotkey": "",
+            #         "applicable_type": "all",
+            #         "classes": []
+            #     },
+            #     {
+            #         "name": "turtle",
+            #         "value_type": "any_string",
+            #         "color": "#4F0F8A",
+            #         "hotkey": "",
+            #         "applicable_type": "all",
+            #         "classes": []
+            #     }
+            # ]
+        """
+        new_tags = []
+        for other_tag in other.items():
+            our_tag = self.get(other_tag.key())
+            if our_tag is None:
+                new_tags.append(other_tag)
+            elif our_tag != other_tag:
+                if our_tag.value_type == TagValueType.ONEOF_STRING and other_tag.value_type == TagValueType.ONEOF_STRING:
+                    if Counter(our_tag.possible_values) == Counter(other_tag.possible_values):
+                        continue
+                raise ValueError('Error during merge for key {!r}: values are different'.format(other_tag.key()))
+        return self.clone(new_tags + self.items())
 
 
 def make_renamed_tag_metas(
