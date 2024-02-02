@@ -11,7 +11,6 @@ from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.widgets import Widget
 
-NumT = Union[int, float]
 """
 size1 = 10
 x1 = list(range(size1))
@@ -145,7 +144,7 @@ class Apexchart(Widget):
         if send_changes:
             DataJson().send_changes()
 
-    def set_colors(self, colors: List[Union[str, List[int]]], send_changes=True):
+    def set_colors(self, colors: List[str or List[int]], send_changes=True):
         """
         Set colors for every series in the chart.
 

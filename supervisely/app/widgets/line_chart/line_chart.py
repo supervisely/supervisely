@@ -4,7 +4,6 @@ from typing import List, Tuple, Union
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets.apexchart.apexchart import Apexchart
 
-NumT = Union[int, float]
 try:
     from typing import Literal
 except ImportError:
