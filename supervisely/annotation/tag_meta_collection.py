@@ -309,8 +309,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         """
         Merge two TagMetaCollection objects.
 
-        :param key: TagMetaCollection object.
-        :type key:  TagMetaCollection
+        :param other: TagMetaCollection object.
+        :type other:  TagMetaCollection
         :raises: :class:`ValueError` if item name from given collection is in TagMetaCollection but TagMetas in both are different
         :return: TagMetaCollection object
         :rtype: :class:`TagMetaCollection<TagMetaCollection>`
