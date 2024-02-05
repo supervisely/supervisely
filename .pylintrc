@@ -3,5 +3,3 @@
 disable = C, W, R
 [FORMAT]
 max-line-length=100
-[MASTER]
-ignore=*.yaml,*.yml,*.json

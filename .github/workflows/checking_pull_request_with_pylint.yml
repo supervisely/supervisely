@@ -50,8 +50,8 @@ jobs:
       run: |
         IFS=' ' read -r -a files <<< "${{ steps.changed-files.outputs.all_changed_and_modified_files }}"
         if [ "${#files[@]}" -gt 0 ]; then
-          pylint_output=$(pylint "${files[@]}") || true
-          if [[ $pylint_output == *"E"* ]]; then
+          pylint_output=$(pylint --ignore-patterns=".*\.yaml$|.*\.yml$|.*\.json$|.*\.pylintrc$" "${files[@]}") || true
+          if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
             # Save pylint output to a file
             echo "$pylint_output" > pylint_errors.txt
             echo "ERRORS_DETECTED=true" >> $GITHUB_ENV
