@@ -92,96 +92,84 @@ jobs:
         fi
     
    
-    - name: Get Project ID
+    - name: Get Project ID    
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
-        if [[ "${{ env.ERRORS_DETECTED }}" == "true" ]]; then
-          org_login=${{ env.ORG_LOGIN }}
-          project_number=${{ env.PROJECT_NUMBER }}
+        org_login=${{ env.ORG_LOGIN }}
+        project_number=${{ env.PROJECT_NUMBER }}
 
-          response=$(curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "query": "query getProjectID($org_login: String!, $project_number: Int!) { organization(login: $org_login) { projectV2(number: $project_number) { id } } }",
-              "variables": {
-                "org_login": "${{ env.ORG_LOGIN }}",
-                "project_number": ${{ env.PROJECT_NUMBER }}
-              }
-            }' \
-            https://api.github.com/graphql)
-          echo "Response from GitHub API: $response"
-          project_id=$(echo "$response" | jq -r '.data.organization.projectV2.id')
-                  
-          echo "Organization Project ID: $project_id"
-          echo "ORG_PROJECT_ID=$project_id" >> $GITHUB_ENV
-        else
-          echo "No pylint errors detected."
-        fi
-
+        response=$(curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "query": "query getProjectID($org_login: String!, $project_number: Int!) { organization(login: $org_login) { projectV2(number: $project_number) { id } } }",
+            "variables": {
+              "org_login": "${{ env.ORG_LOGIN }}",
+              "project_number": ${{ env.PROJECT_NUMBER }}
+            }
+          }' \
+          https://api.github.com/graphql)
+        echo "Response from GitHub API: $response"
+        project_id=$(echo "$response" | jq -r '.data.organization.projectV2.id')
+                
+        echo "Organization Project ID: $project_id"
+        echo "ORG_PROJECT_ID=$project_id" >> $GITHUB_ENV
+    
     - name: Get Status Field ID and Status ID
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
-        if [[ "${{ env.ERRORS_DETECTED }}" == "true" ]]; then
-          response=$(curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            --data-raw '{
-              "query": "query getProjectFields($projectId: ID!) { node(id: $projectId) { ... on ProjectV2 { fields(first: 100) { nodes { ... on ProjectV2Field { id dataType name } ... on ProjectV2IterationField { id name dataType configuration { iterations { startDate id } } } ... on ProjectV2SingleSelectField { id name dataType options { id name } } } } } } }",
-              "variables": {
-                "projectId": "${{ env.ORG_PROJECT_ID}}"
-              }
-            }' \
-            https://api.github.com/graphql)
-          echo "Response from GitHub API: $response"
-          status_field_id=$(echo "$response" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .id')        
-          status_id=$(echo "$response" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == "${{ env.TODO_NAME }}") | .id')
-          echo "STATUS_FIELD_ID=$status_field_id" >> $GITHUB_ENV
-          echo "STATUS_ID=$status_id" >> $GITHUB_ENV       
-          echo "Status Field ID: $status_id"
-          echo "Todo ID: $todo_id"
-        else
-          echo "No pylint errors detected."
-        fi
+        response=$(curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          --data-raw '{
+            "query": "query getProjectFields($projectId: ID!) { node(id: $projectId) { ... on ProjectV2 { fields(first: 100) { nodes { ... on ProjectV2Field { id dataType name } ... on ProjectV2IterationField { id name dataType configuration { iterations { startDate id } } } ... on ProjectV2SingleSelectField { id name dataType options { id name } } } } } } }",
+            "variables": {
+              "projectId": "${{ env.ORG_PROJECT_ID}}"
+            }
+          }' \
+          https://api.github.com/graphql)
+        echo "Response from GitHub API: $response"
+        status_field_id=$(echo "$response" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .id')        
+        status_id=$(echo "$response" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == "${{ env.TODO_NAME }}") | .id')
+        echo "STATUS_FIELD_ID=$status_field_id" >> $GITHUB_ENV
+        echo "STATUS_ID=$status_id" >> $GITHUB_ENV       
+        echo "Status Field ID: $status_id"
+        echo "Todo ID: $todo_id"
 
     - name: Add Issue to project
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
-        if [[ "${{ env.ERRORS_DETECTED }}" == "true" ]]; then        
-          issue_id=${{ env.ISSUE_NODE_ID }}
-          project_id=${{ env.ORG_PROJECT_ID }}
-          
-          item_id=$(curl -X POST -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/graphql \
-            -d @- <<EOF | jq -r '.data.addProjectV2ItemById.item.id'
-            {
-              "query": "mutation {
-                addProjectV2ItemById(input: {
-                  contentId: \"$issue_id\",
-                  projectId: \"$project_id\"
-                }) {
-                  item {
-                    id
-                    project {
-                      title
-                    }
+        issue_id=${{ env.ISSUE_NODE_ID }}
+        project_id=${{ env.ORG_PROJECT_ID }}
+        
+        item_id=$(curl -X POST -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/graphql \
+          -d @- <<EOF | jq -r '.data.addProjectV2ItemById.item.id'
+          {
+            "query": "mutation {
+              addProjectV2ItemById(input: {
+                contentId: \"$issue_id\",
+                projectId: \"$project_id\"
+              }) {
+                item {
+                  id
+                  project {
+                    title
                   }
                 }
-              }"
-            }
-          EOF
-                  )
-                  
-                  echo "Item ID: $item_id"
-                  echo "ITEM_TO_MOVE=$item_id" >> $GITHUB_ENV
-        else
-          echo "No pylint errors detected."
-        fi
-
+              }
+            }"
+          }
+        EOF
+                )
+                
+                echo "Item ID: $item_id"
+                echo "ITEM_TO_MOVE=$item_id" >> $GITHUB_ENV
+    
     - name: Move issue to Todo column
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
-        if [[ "${{ env.ERRORS_DETECTED }}" == "true" ]]; then
-          curl -X POST -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" -H "Content-Type: application/json" -d '{
-          "query": "mutation { set_status: updateProjectV2ItemFieldValue(input: { projectId: \"${{ env.ORG_PROJECT_ID }}\", itemId: \"${{env.ITEM_TO_MOVE}}\", fieldId: \"${{ env.STATUS_FIELD_ID}}\", value: { singleSelectOptionId: \"${{ env.STATUS_ID }}\" } }) { projectV2Item { id } } }"
-          }' https://api.github.com/graphql
-        else
-          echo "No pylint errors detected."
-        fi
+        curl -X POST -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" -H "Content-Type: application/json" -d '{
+        "query": "mutation { set_status: updateProjectV2ItemFieldValue(input: { projectId: \"${{ env.ORG_PROJECT_ID }}\", itemId: \"${{env.ITEM_TO_MOVE}}\", fieldId: \"${{ env.STATUS_FIELD_ID}}\", value: { singleSelectOptionId: \"${{ env.STATUS_ID }}\" } }) { projectV2Item { id } } }"
+        }' https://api.github.com/graphql
