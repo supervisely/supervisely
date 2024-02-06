@@ -423,7 +423,7 @@ class Api:
                         url, json=json_body, headers=self.headers, stream=stream
                     )
 
-                if not response.ok:
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -483,7 +483,7 @@ class Api:
                     json_body = {**params, **self.additional_fields}
                 response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
-                if not response.ok:
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
