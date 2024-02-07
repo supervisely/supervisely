@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import traceback
 from functools import wraps
-from typing import Any, List, NamedTuple, Union, Tuple, Literal
+from typing import Any, List, Literal, NamedTuple, Tuple, Union
 
 from supervisely import logger
-from supervisely.imaging.color import hex2rgb, rgb2hex
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.widgets import Widget
+from supervisely.imaging.color import hex2rgb, rgb2hex
 
 """
 size1 = 10
@@ -64,7 +64,7 @@ class Apexchart(Widget):
         self._height = height
         self._click_handled = False
         self._sly_options = sly_options
-        self._data_type: Literal['dict','tuple'] = self._options.get("data_type", "dict")
+        self._data_type: Literal["dict", "tuple"] = self._options.get("data_type", "dict")
         super().__init__(file_path=__file__)
 
     def get_json_data(self):
@@ -116,13 +116,13 @@ class Apexchart(Widget):
 
         return _click
 
-    def _wrap_xy(self, px, py)-> Union[dict, tuple]:
+    def _wrap_xy(self, px, py) -> Union[dict, tuple]:
         return {"x": px, "y": py} if self._data_type == "dict" else (px, py)
-        
+
     def add_series(self, name: str, x: list, y: list, send_changes=True):
         if len(x) != len(y):
             raise ValueError(f"Lists x and y have different lenght, {len(x)} != {len(y)}")
-                
+
         data = [self._wrap_xy(px, py) for px, py in zip(x, y)]
         series = {"name": name, "data": data}
         self._series.append(series)
@@ -144,7 +144,7 @@ class Apexchart(Widget):
         if send_changes:
             DataJson().send_changes()
 
-    def set_colors(self, colors: List[str or List[int]], send_changes=True):
+    def set_colors(self, colors: List[str or List[int]], send_changes: bool = True) -> None:
         """
         Set colors for every series in the chart.
 
@@ -154,25 +154,27 @@ class Apexchart(Widget):
         :type send_changes: bool
         """
         clrs = colors
-        if isinstance(colors[0], list): # f.e. [255, 0, 0]
+        if isinstance(colors[0], list):  # f.e. [255, 0, 0]
             clrs = [rgb2hex(c) for c in colors]
-            
+
         self._options["colors"] = clrs
         self.update_data()
         if send_changes:
             DataJson().send_changes()
 
-    def _wrap_to_series_data(self, data):
+    def _wrap_to_series_data(
+        self, data: Union[List[tuple], List[dict], tuple, dict]
+    ) -> List[Union[dict, tuple]]:
         if isinstance(data, list):
-            if len(data)==0:
+            if len(data) == 0:
                 return []
             if isinstance(data[0], dict):
-                return [self._wrap_xy(dct['x'], dct['y']) for dct in data]
+                return [self._wrap_xy(dct["x"], dct["y"]) for dct in data]
             return [self._wrap_xy(*tpl) for tpl in data]
-        
-        else: # if single datapoint
+
+        else:  # if single datapoint
             if isinstance(data, dict):
-                return [self._wrap_xy(data['x'], data['y'])]
+                return [self._wrap_xy(data["x"], data["y"])]
             return [self._wrap_xy(*data)]
 
     def add_to_series(
@@ -185,26 +187,25 @@ class Apexchart(Widget):
             series_id = name_or_id
         else:
             series_id, _ = self.get_series_by_name(name_or_id)
-        
+
         data_list = self._wrap_to_series_data(data)
         self._series[series_id]["data"].extend(data_list)
         DataJson()[self.widget_id]["series"] = self._series
 
         if send_changes:
             DataJson().send_changes()
-            self._update_series_in_apexhart()
+            self._force_series_update()
 
-    def get_series_by_name(self, name:str) -> Tuple[int, dict]:
+    def get_series_by_name(self, name: str) -> Tuple[int, dict]:
         series_list = DataJson()[self.widget_id]["series"]
         series_id, series_data = next(
             ((i, series) for i, series in enumerate(series_list) if series["name"] == name),
             (None, None),
         )
-        # assert series_id is not None, KeyError("Series with name: {name} doesn't exists.")
         return series_id, series_data
 
-    def _update_series_in_apexhart(self) -> None:
-        # necessary for the force rendering of data
+    def _force_series_update(self) -> None:
+        # necessary for the force rendering of data in apexchart
         run_sync(
             WebsocketManager().broadcast(
                 {
@@ -215,4 +216,3 @@ class Apexchart(Widget):
                 }
             )
         )
-

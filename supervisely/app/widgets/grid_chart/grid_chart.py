@@ -20,7 +20,7 @@ except ImportError:
 class GridChart(Widget):
     def __init__(
         self,
-        data: List[Dict or str] = [],
+        data: List[Union[dict, str]] = [],
         columns: int = 1,
         gap: int = 10,
         widget_id: str = None,
@@ -84,7 +84,7 @@ class GridChart(Widget):
     def get_json_state(self):
         return None
 
-    def add_scalar(self, identifier: str, y: float or int, x: float or int) -> None:
+    def add_scalar(self, identifier: str, y: Union[float, int], x: Union[float, int]) -> None:
         """
         Add scalar to series on plot. If no series with name,
          defined in `identifier` exists, one will be created automatically.
