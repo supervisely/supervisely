@@ -35,7 +35,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install pylint
-        pip install .
+        pip install .[extras,sdk-nn-plugins,aug]
         
     - name: Get changed files
       id: changed-files
@@ -48,9 +48,9 @@ jobs:
 
     - name: Run check with pylint
       run: |
-        IFS=' ' read -r -a files <<< "${{ steps.changed-files.outputs.all_changed_and_modified_files }}"
+        IFS=' ' read -r -a files <<< "$(echo '${{ steps.changed-files.outputs.all_changed_and_modified_files }}' | tr ' ' '\n' | grep -o '[a-zA-Z0-9_/-]*\.py' | tr '\n' ' ')"
         if [ "${#files[@]}" -gt 0 ]; then
-          pylint_output=$(pylint --ignore-patterns=".*\.yaml$|.*\.yml$|.*\.json$|.*\.pylintrc$" "${files[@]}") || true
+          pylint_output=$(pylint "${files[@]}") || true
           if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
             # Save pylint output to a file
             echo "$pylint_output" > pylint_errors.txt
