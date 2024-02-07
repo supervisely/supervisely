@@ -75,10 +75,10 @@ class UserSession:
         self.api_token = None
         self.team_id = None
         self.workspace_id = None
-
-        if not self._validate_server_url(server_address):
-            raise RuntimeError(f"Invalid server url: {server_address}")
         self.server_address = server_address
+
+        if not self._normalize_and_validate_server_url():
+            raise RuntimeError(f"Invalid server url: {server_address}")
 
     def __str__(self):
         return f"UserSession(server={self.server_address})"
@@ -86,17 +86,23 @@ class UserSession:
     def __repr__(self):
         return self.__str__()
 
-    @staticmethod
-    def _validate_server_url(server_address) -> bool:
+    def _normalize_and_validate_server_url(self) -> bool:
         """
         Validate server url.
 
         :return: True if server url is valid, False otherwise.
         """
-        result = urlparse(server_address)
+        self.server_address = Api.normalize_server_address(self.server_address)
+        if not self.server_address.startswith("https://"):
+            response = requests.get(self.server_address, allow_redirects=False)
+            if (300 <= response.status_code < 400) or (
+                response.headers.get("Location", "").startswith("https://")
+            ):
+                self.server_address = self.server_address.replace("http://", "https://")
+        result = urlparse(self.server_address)
         if all([result.scheme, result.netloc]):
             try:
-                response = requests.get(server_address)
+                response = requests.get(self.server_address)
                 if response.status_code == 200:
                     return True
             except requests.RequestException:
@@ -417,7 +423,7 @@ class Api:
                         url, json=json_body, headers=self.headers, stream=stream
                     )
 
-                if response.status_code != requests.codes.ok:
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -477,7 +483,7 @@ class Api:
                     json_body = {**params, **self.additional_fields}
                 response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
-                if response.status_code != requests.codes.ok:
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:

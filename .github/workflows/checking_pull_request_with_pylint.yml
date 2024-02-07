@@ -33,9 +33,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install pylint   
-    
+        pip install --upgrade pip
+        pip install pylint
+        pip install .
         
     - name: Get changed files
       id: changed-files
@@ -50,8 +50,8 @@ jobs:
       run: |
         IFS=' ' read -r -a files <<< "${{ steps.changed-files.outputs.all_changed_and_modified_files }}"
         if [ "${#files[@]}" -gt 0 ]; then
-          pylint_output=$(pylint "${files[@]}") || true
-          if [[ $pylint_output == *"E"* ]]; then
+          pylint_output=$(pylint --ignore-patterns=".*\.yaml$|.*\.yml$|.*\.json$|.*\.pylintrc$" "${files[@]}") || true
+          if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
             # Save pylint output to a file
             echo "$pylint_output" > pylint_errors.txt
             echo "ERRORS_DETECTED=true" >> $GITHUB_ENV
@@ -92,7 +92,8 @@ jobs:
         fi
     
    
-    - name: Get Project ID
+    - name: Get Project ID    
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
         org_login=${{ env.ORG_LOGIN }}
         project_number=${{ env.PROJECT_NUMBER }}
@@ -115,6 +116,7 @@ jobs:
         echo "ORG_PROJECT_ID=$project_id" >> $GITHUB_ENV
     
     - name: Get Status Field ID and Status ID
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
         response=$(curl -X POST \
           -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" \
@@ -135,6 +137,7 @@ jobs:
         echo "Todo ID: $todo_id"
 
     - name: Add Issue to project
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
         issue_id=${{ env.ISSUE_NODE_ID }}
         project_id=${{ env.ORG_PROJECT_ID }}
@@ -165,6 +168,7 @@ jobs:
                 echo "ITEM_TO_MOVE=$item_id" >> $GITHUB_ENV
     
     - name: Move issue to Todo column
+      if: ${{ env.ERRORS_DETECTED == 'true' }}
       run: |
         curl -X POST -H "Authorization: Bearer ${{ secrets.PYLINT_TOKEN }}" -H "Content-Type: application/json" -d '{
         "query": "mutation { set_status: updateProjectV2ItemFieldValue(input: { projectId: \"${{ env.ORG_PROJECT_ID }}\", itemId: \"${{env.ITEM_TO_MOVE}}\", fieldId: \"${{ env.STATUS_FIELD_ID}}\", value: { singleSelectOptionId: \"${{ env.STATUS_ID }}\" } }) { projectV2Item { id } } }"
