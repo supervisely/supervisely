@@ -859,7 +859,7 @@ class PointcloudProject(VideoProject):
         )
 
 
-@handle_original_tqdm
+# @handle_original_tqdm
 def download_pointcloud_project(
     api: Api,
     project_id: int,

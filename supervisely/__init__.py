@@ -245,8 +245,22 @@ import supervisely.team_files as team_files
 import supervisely.output as output
 
 # monkey patching
-import tqdm
+import importlib
+
+m = importlib.import_module("__main__")
 from supervisely.task.progress import tqdm_sly
+
+try:
+    getattr(m, "tqdm")
+    try:
+        getattr(m.tqdm, "tqdm")
+        m.tqdm.tqdm = tqdm_sly
+    except AttributeError:
+        m.tqdm = tqdm_sly
+except AttributeError:
+    pass
+
+import tqdm
 
 _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly

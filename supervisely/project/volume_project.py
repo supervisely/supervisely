@@ -289,7 +289,7 @@ class VolumeProject(VideoProject):
         )
 
 
-@handle_original_tqdm
+# @handle_original_tqdm
 def download_volume_project(
     api: Api,
     project_id: int,

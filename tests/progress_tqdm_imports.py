@@ -1,10 +1,14 @@
 # case1 # monkeypatchin not working in venv
-from tqdm import tqdm  # isort: skip
-import supervisely as sly  # isort: skip
+# from tqdm import tqdm  # isort: skip
+# import supervisely as sly  # isort: skip
 
 # case2 #works ok everywhere
+import supervisely as sly  # isort: skip
+from tqdm import tqdm  # isort: skip
+
+# case3
+# import tqdm  # isort: skip
 # import supervisely as sly  # isort: skip
-# from tqdm import tqdm  # isort: skip
 
 import os
 import shutil
@@ -20,6 +24,11 @@ api = sly.Api.from_env()
 ##################################
 size = sly.fs.get_file_size("/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb")
 progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B", miniters=2, position=1)
+# progress = tqdm.tqdm(
+#     desc="Uploading", total=size, unit_scale=True, unit="B", miniters=2, position=1
+# )  # case 3
+
+# breakpoint()
 api.file.upload(
     449,
     "/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb",
