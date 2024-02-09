@@ -2561,7 +2561,6 @@ def _download_project(
                 progress_cb(len(batch))
 
 
-@handle_original_tqdm
 def upload_project(
     dir: str,
     api: Api,
@@ -2692,7 +2691,6 @@ def upload_project(
     return project.id, project.name
 
 
-@handle_original_tqdm
 def download_project(
     api: Api,
     project_id: int,

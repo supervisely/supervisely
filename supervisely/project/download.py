@@ -15,7 +15,6 @@ from supervisely.project.volume_project import download_volume_project
 from supervisely.task.progress import handle_original_tqdm
 
 
-@handle_original_tqdm
 def download(
     api: Api,
     project_id: int,
