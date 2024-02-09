@@ -246,16 +246,35 @@ import supervisely.output as output
 
 # monkey patching
 import importlib
-
-m = importlib.import_module("__main__")
+import inspect
 from supervisely.task.progress import tqdm_sly
 
-if hasattr(m, "tqdm"):
-    if hasattr(m.tqdm, "tqdm"):
-        m.tqdm.tqdm = tqdm_sly
-    else:
-        m.tqdm = tqdm_sly
 
+# case 1: tqdm imported before sly
+def get_module_names_from_stack(is_reversed=False) -> list:
+    frame_records = inspect.stack()
+    module_names = []
+    for frame_record in frame_records:
+        module_name = frame_record.frame.f_globals["__name__"]
+        module_names.append(module_name)
+    if is_reversed:
+        module_names.reverse()
+    return module_names
+
+
+module_names = get_module_names_from_stack(is_reversed=True)
+
+for mname in module_names:  # list starts with "__main__"
+    m = importlib.import_module(mname)
+    if not hasattr(m, "tqdm"):
+        continue
+    else:
+        if hasattr(m.tqdm, "tqdm"):
+            m.tqdm.tqdm = tqdm_sly
+        else:
+            m.tqdm = tqdm_sly
+
+# case 2: sly imported before tqdm
 import tqdm
 
 _original_tqdm = tqdm.tqdm

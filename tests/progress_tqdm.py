@@ -4,6 +4,11 @@ from time import sleep
 
 from dotenv import load_dotenv
 
+from tests.progress_tqdm_funcs import dwnl, upl
+
+# dwnl()
+upl()
+breakpoint()
 import supervisely as sly
 
 if sly.is_development():
