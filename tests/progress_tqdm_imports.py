@@ -1,10 +1,10 @@
 # case1 # monkeypatchin not working in venv
-# from tqdm import tqdm  # isort: skip
-# import supervisely as sly  # isort: skip
+from tqdm import tqdm  # isort: skip
+import supervisely as sly  # isort: skip
 
 # case2 #works ok everywhere
-import supervisely as sly  # isort: skip
-from tqdm import tqdm  # isort: skip
+# import supervisely as sly  # isort: skip
+# from tqdm import tqdm  # isort: skip
 
 # case3
 # import tqdm  # isort: skip

@@ -248,6 +248,7 @@ import supervisely.output as output
 import importlib
 import inspect
 from supervisely.task.progress import tqdm_sly
+import tqdm
 
 
 # case 1: tqdm imported before sly
@@ -275,7 +276,6 @@ for mname in module_names:  # list starts with "__main__"
             m.tqdm = tqdm_sly
 
 # case 2: sly imported before tqdm
-import tqdm
 
 _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
