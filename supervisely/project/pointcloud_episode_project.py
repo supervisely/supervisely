@@ -627,7 +627,6 @@ class PointcloudEpisodeProject(PointcloudProject):
         )
 
 
-# @handle_original_tqdm
 def download_pointcloud_episode_project(
     api: Api,
     project_id: int,

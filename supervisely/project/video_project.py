@@ -1165,7 +1165,6 @@ class VideoProject(Project):
         )
 
 
-# @handle_original_tqdm
 def download_video_project(
     api: Api,
     project_id: int,

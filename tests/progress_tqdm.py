@@ -3,11 +3,25 @@ import os
 from time import sleep
 
 from dotenv import load_dotenv
-
-from tests.progress_tqdm_funcs import dwnl, upl
+from progress_tqdm_funcs import *
 
 # dwnl()
-upl()
+# upl()
+# dwnl_dir()
+# upldir()
+
+dwnl_prj()
+upl_prj()
+
+dwn_prj_img()
+upl_prj_img()
+
+dwnl_prj_pcl()
+dwnl_prj_pclep()
+dwnl_prj_vol()
+dwnl_prj_vid()
+
+
 breakpoint()
 import supervisely as sly
 

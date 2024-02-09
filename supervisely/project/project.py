@@ -2561,7 +2561,6 @@ def _download_project(
                 progress_cb(len(batch))
 
 
-# @handle_original_tqdm
 def upload_project(
     dir: str,
     api: Api,
