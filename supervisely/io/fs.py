@@ -613,6 +613,7 @@ def archive_directory(
     if os.path.getsize(tar_path) <= split:
         return
 
+    particle = 500 * 1024 * 1024  # 500Mb
     tar_name = os.path.basename(tar_path)
     tar_dir = os.path.abspath(os.path.dirname(tar_path))
     parts_paths = []
@@ -622,13 +623,16 @@ def archive_directory(
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
             output_path = os.path.join(tar_dir, part_name)
-            data = input_file.read(split)
-            if not data:
-                break
             with open(output_path, "wb") as output_file:
-                output_file.write(data)
+                while output_file.tell() < split:
+                    data = input_file.read(particle)
+                    if not data:
+                        break
+                    output_file.write(data)
                 parts_paths.append(output_path)
                 part_number += 1
+            if not data:
+                break
 
     os.remove(tar_path)
     return parts_paths
