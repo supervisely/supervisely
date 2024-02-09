@@ -115,7 +115,7 @@ class LinePlot(Widget):
     def add_to_series(
         self,
         name_or_id: Union[str, int],
-        data: Union[List[Union[tuple, dict]], Union[tuple, dict]],
+        data: Union[List[tuple], List[dict], tuple, dict],
     ):
         """
         Add new points to series

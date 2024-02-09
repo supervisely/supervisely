@@ -1,15 +1,17 @@
-import typing
 import os
+import typing
 from os import PathLike
+
 import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
-from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
+from starlette.templating import _TemplateResponse as _TemplateResponse
+
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
 # https://github.com/supervisely/js-bundle
-js_bundle_version = "2.1.74"
+js_bundle_version = "2.1.76"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
 js_frontend_version = "0.0.48"
