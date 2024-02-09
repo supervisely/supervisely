@@ -250,15 +250,11 @@ import importlib
 m = importlib.import_module("__main__")
 from supervisely.task.progress import tqdm_sly
 
-try:
-    getattr(m, "tqdm")
-    try:
-        getattr(m.tqdm, "tqdm")
+if hasattr(m, "tqdm"):
+    if hasattr(m.tqdm, "tqdm"):
         m.tqdm.tqdm = tqdm_sly
-    except AttributeError:
+    else:
         m.tqdm = tqdm_sly
-except AttributeError:
-    pass
 
 import tqdm
 
