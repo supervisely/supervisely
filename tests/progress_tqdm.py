@@ -3,13 +3,14 @@ import os
 from time import sleep
 
 from dotenv import load_dotenv
-from progress_tqdm_funcs import *
+from progress_tqdm_imports import *
 
 # dwnl()
-# upl()
+upl()
 # dwnl_dir()
 # upldir()
 
+breakpoint
 dwnl_prj()
 upl_prj()
 

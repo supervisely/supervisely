@@ -244,7 +244,7 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 import supervisely.team_files as team_files
 import supervisely.output as output
 
-# monkey patching
+# start monkey patching
 import importlib
 import inspect
 from supervisely.task.progress import tqdm_sly
@@ -279,6 +279,7 @@ import tqdm
 
 _original_tqdm = tqdm.tqdm
 tqdm.tqdm = tqdm_sly
+# end monkeypatching
 
 from supervisely.io.exception_handlers import handle_exceptions
 from supervisely.app.fastapi.subapp import Event
