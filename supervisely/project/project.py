@@ -2691,7 +2691,6 @@ def upload_project(
     return project.id, project.name
 
 
-# @handle_original_tqdm
 def download_project(
     api: Api,
     project_id: int,
