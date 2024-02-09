@@ -253,7 +253,6 @@ import tqdm
 _original_tqdm = tqdm.tqdm
 
 
-# case 1: tqdm imported before sly
 def get_module_names_from_stack(is_reversed=False) -> list:
     frame_records = inspect.stack()
     module_names = []
