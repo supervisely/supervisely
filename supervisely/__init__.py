@@ -250,6 +250,8 @@ import inspect
 from supervisely.task.progress import tqdm_sly
 import tqdm
 
+_original_tqdm = tqdm.tqdm
+
 
 # case 1: tqdm imported before sly
 def get_module_names_from_stack(is_reversed=False) -> list:
@@ -271,14 +273,12 @@ for mname in module_names:  # list starts with "__main__"
         continue
     else:
         if hasattr(m.tqdm, "tqdm"):
-            m.tqdm.tqdm = tqdm_sly
+            if type(m.tqdm.tqdm) != tqdm_sly:
+                m.tqdm.tqdm = tqdm_sly
         else:
-            m.tqdm = tqdm_sly
+            if type(m.tqdm) != tqdm_sly:
+                m.tqdm = tqdm_sly
 
-# case 2: sly imported before tqdm
-
-_original_tqdm = tqdm.tqdm
-tqdm.tqdm = tqdm_sly
 # end monkeypatching
 
 from supervisely.io.exception_handlers import handle_exceptions

@@ -22,15 +22,15 @@ from dotenv import load_dotenv
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 api = sly.Api.from_env()
+TEAM_ID = 449
+TF_FILEPATH = "/google-chrome-stable_current_amd64.deb"
 
 
 # breakpoint()
 def upl():
     size = sly.fs.get_file_size("/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb")
-    progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B", miniters=2, position=1)
-    # progress = tqdm.tqdm(
-    #     desc="Uploading", total=size, unit_scale=True, unit="B", miniters=2, position=1
-    # )  # case 3
+    # progress = tqdm(desc="Uploading", total=size, unit_scale=True, unit="B")
+    progress = tqdm.tqdm(desc="Uploading", total=size, unit_scale=True, unit="B")  # case 3
     api.file.upload(
         449,
         "/home/grokhi/Downloads/google-chrome-stable_current_amd64.deb",
@@ -40,27 +40,32 @@ def upl():
     print("1 (positional, non-idempotent args)")
 
 
-# dwnl()
-upl()
-# dwnl_dir()
-# upldir()
-
-breakpoint()
-TEAM_ID = 449
-TF_FILEPATH = "/google-chrome-stable_current_amd64.deb"
-
-
 def dwnl():
+    size = api.file.get_directory_size(TEAM_ID, TF_FILEPATH)
     p = tqdm(
         desc=f"download",
-        total=api.file.get_directory_size(TEAM_ID, TF_FILEPATH),
+        total=size,
         unit="B",
         unit_scale=True,
     )
+    # p = tqdm.tqdm(
+    #     desc=f"download",
+    #     total=size,
+    #     unit="B",
+    #     unit_scale=True,
+    # )
     api.file.download(
         449, TF_FILEPATH, "/tmp/google-chrome-stable_current_amd64.deb", progress_cb=p
     )
     print("2 (pos + keyword)")
+
+
+dwnl()
+# upl()
+# dwnl_dir()
+# upldir()
+
+# breakpoint()
 
 
 TF_DIRPATH = "/stats/"
