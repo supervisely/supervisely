@@ -789,7 +789,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         return results
 
     def upload_nrrd_serie_path(
-        self, dataset_id: int, name: str, path: str, log_progress=True
+        self, dataset_id: int, name: str, path: str, log_progress=True, progress_cb=None
     ) -> VolumeInfo:
         """
         Upload NRRD format volume from given path to Dataset.
@@ -829,10 +829,14 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
 
         volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
-        progress_cb = None
+
         if log_progress is True:
-            progress_cb = tqdm_sly(desc=f"Upload volume {name}", total=sum(volume_np.shape)).update
-        res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
+            progress_nrrd = tqdm_sly(
+                desc=f"Upload volume {name}",
+                total=sum(volume_np.shape),
+                leave=True if progress_cb is None else False,
+            )
+        res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_nrrd)
         return self.get_info_by_name(dataset_id, name)
 
     def _download(self, id: int, is_stream: bool = False):
@@ -954,7 +958,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         volume_infos = []
         for name, path in zip(names, paths):
-            info = self.upload_nrrd_serie_path(dataset_id, name, path, log_progress=log_progress)
+            info = self.upload_nrrd_serie_path(dataset_id, name, path, log_progress, progress_cb)
             volume_infos.append(info)
             if progress_cb is not None:
                 progress_cb(1)

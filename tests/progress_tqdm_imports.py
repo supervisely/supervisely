@@ -60,7 +60,7 @@ def dwnl():
     print("2 (pos + keyword)")
 
 
-dwnl()
+# dwnl()/
 # upl()
 # dwnl_dir()
 # upldir()
@@ -152,14 +152,15 @@ def dwnl_prj_vid():
     print("7")
 
 
-# #! no progress_cb in sly.upload_video_project
-# project_fs = sly.read_project("/tmp/vid/")
-# p = tqdm(
-#     desc="upload",
-#     total=project.items_count,
-# )
-# sly.upload_video_project("/tmp/vid/", api, 691, progress_cb=p)
-# print("8")
+def upl_prj_vid():
+    #! no progress_cb in sly.upload_video_project
+    project_fs = sly.read_project("/tmp/vid/")
+    p = tqdm(
+        desc="upload",
+        total=project_fs.total_items,
+    )
+    sly.upload_video_project("/tmp/vid/", api, 691, progress_cb=p)
+    print("8")
 
 
 def dwnl_prj_vol():
@@ -172,14 +173,12 @@ def dwnl_prj_vol():
     print("9")
 
 
-# #! no progress_cb in sly.upload_volume_project
-# project_fs = sly.read_project("/tmp/vol/")
-# p = tqdm(
-#     desc="upload",
-#     total=project.items_count,
-# )
-# sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
-# print("10")
+def upl_prj_vol():
+    #! no progress_cb in sly.upload_volume_project
+    project_fs = sly.read_project("/tmp/vol/")
+    p = tqdm(desc="upload", total=project_fs.total_items)  # , position=0, leave=True)
+    sly.upload_volume_project("/tmp/vol/", api, 691, progress_cb=p)
+    print("10")
 
 
 def dwnl_prj_pcl():

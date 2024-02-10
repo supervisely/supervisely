@@ -20,7 +20,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume import stl_converter
 from supervisely.volume import volume as sly_volume
@@ -496,7 +496,14 @@ def load_figure_data(
 # TODO: add methods to convert to 3d masks
 
 
-def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_progress=True):
+def upload_volume_project(
+    dir: str,
+    api: Api,
+    workspace_id: int,
+    project_name: Optional[str] = None,
+    log_progress: Optional[bool] = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> Tuple[int, str]:
     project_fs = VolumeProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name
@@ -520,8 +527,7 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
             interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
             mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
-        progress_cb = None
-        if log_progress:
+        if log_progress and progress_cb is None:
             ds_progress = Progress(
                 "Uploading volumes to dataset {!r}".format(dataset.name),
                 total_cnt=len(item_paths),
@@ -534,14 +540,13 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
         item_ids = [item_info.id for item_info in item_infos]
         ds_progress = None
         if log_progress:
-            ds_progress = Progress(
-                "Uploading annotations to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
+            ds_progress = tqdm_sly(
+                desc="Uploading annotations to dataset {!r}".format(dataset.name),
+                total=len(item_paths),
             )
-            progress_cb = ds_progress.iters_done_report
 
         api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb, mask_dirs
+            item_ids, ann_paths, project_fs.meta, interpolation_dirs, ds_progress, mask_dirs
         )
 
     return project.id, project.name

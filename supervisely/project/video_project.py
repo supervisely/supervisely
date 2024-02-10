@@ -1369,6 +1369,7 @@ def upload_video_project(
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
     include_custom_data: Optional[bool] = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = VideoProject.read_single(dir)
     if project_name is None:
@@ -1390,8 +1391,8 @@ def upload_video_project(
             item_paths.append(video_path)
             ann_paths.append(ann_path)
 
-        progress_cb = None
-        if log_progress:
+        # progress_cb = None
+        if log_progress and progress_cb is None:
             ds_progress = Progress(
                 "Uploading videos to dataset {!r}".format(dataset.name),
                 total_cnt=len(item_paths),
@@ -1423,7 +1424,7 @@ def upload_video_project(
             )
             raise e
         item_ids = [item_info.id for item_info in item_infos]
-        if log_progress:
+        if log_progress and progress_cb is None:
             ds_progress = Progress(
                 "Uploading annotations to dataset {!r}".format(dataset.name),
                 total_cnt=len(item_paths),
