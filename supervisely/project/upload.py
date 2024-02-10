@@ -5,18 +5,8 @@ from tqdm import tqdm
 from supervisely import get_project_class
 from supervisely.api.api import Api
 from supervisely.project import read_project
-from supervisely.project.pointcloud_episode_project import (
-    upload_pointcloud_episode_project,
-)
-from supervisely.project.pointcloud_project import upload_pointcloud_project
-from supervisely.project.project import upload_project
-from supervisely.project.project_type import ProjectType
-from supervisely.project.video_project import upload_video_project
-from supervisely.project.volume_project import upload_volume_project
-from supervisely.task.progress import handle_original_tqdm
 
 
-@handle_original_tqdm
 def upload(
     src_dir: str,
     api: Api,
@@ -27,7 +17,7 @@ def upload(
     **kwargs,
 ) -> None:
     """
-    Uploads project of any type from the local directory. See methods `sly.upload_project`,
+    Uploads project of any modality from the local directory. See methods `sly.upload_project`,
     `sly.upload_video_project`, `sly.upload_volume_project`, `sly.upload_pointcloud_project`,
     `sly.upload_pointcloud_episode_project` to examine full list of possible arguments.
 
@@ -115,13 +105,6 @@ def upload(
 
     if progress_cb is not None:
         log_progress = False
-        kwargs["progress_cb"] = progress_cb
-
-    if progress_cb is not None and project_fs.meta.project_type in (
-        ProjectType.VIDEOS.value,
-        ProjectType.VOLUMES.value,
-    ):
-        log_progress = True
 
     project_class = get_project_class(project_fs.meta.project_type)
 
@@ -131,5 +114,6 @@ def upload(
         workspace_id=workspace_id,
         project_name=project_name,
         log_progress=log_progress,
+        progress_cb=progress_cb,
         **kwargs,
     )

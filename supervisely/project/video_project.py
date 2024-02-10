@@ -1114,6 +1114,7 @@ class VideoProject(Project):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Upload video project from given directory in Supervisely.
@@ -1162,6 +1163,7 @@ class VideoProject(Project):
             workspace_id=workspace_id,
             project_name=project_name,
             log_progress=log_progress,
+            progress_cb=progress_cb,
         )
 
 

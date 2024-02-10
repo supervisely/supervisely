@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # breakpoint()
 # dwnl_prj()
-# upl_prj()
+upl_prj()
 
 # dwn_prj_img()
 # upl_prj_img()
@@ -22,7 +22,7 @@ from tqdm import tqdm
 # dwnl_prj_pcl()
 # dwnl_prj_pclep()
 # dwnl_prj_vol()
-upl_prj_vol()
+# upl_prj_vol()
 
 # dwnl_prj_vid()
 # upl_prj_vid()

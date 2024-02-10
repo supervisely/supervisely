@@ -146,6 +146,7 @@ class VolumeProject(VideoProject):
         dataset_ids: Optional[List[int]] = None,
         download_volumes: Optional[bool] = True,
         log_progress: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download volume project from Supervisely to the given directory.
@@ -193,6 +194,7 @@ class VolumeProject(VideoProject):
             dataset_ids=dataset_ids,
             download_volumes=download_volumes,
             log_progress=log_progress,
+            progress_cb=progress_cb,
         )
 
     @staticmethod
@@ -202,6 +204,7 @@ class VolumeProject(VideoProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads volume project to Supervisely from the given directory.
@@ -249,6 +252,7 @@ class VolumeProject(VideoProject):
             workspace_id=workspace_id,
             project_name=project_name,
             log_progress=log_progress,
+            progress_cb=progress_cb,
         )
 
     @staticmethod

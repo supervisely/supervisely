@@ -110,16 +110,17 @@ def dwnl_prj():
 
 
 def upl_prj():
-    project_fs = sly.read_project("/tmp/lemons/")
+    # project_fs = sly.read_project("/tmp/lemons/")
+    project_fs = sly.read_project("/tmp/vid/")
     p = tqdm(
         desc="upload",
         total=project_fs.total_items,
     )
-    sly.upload("/tmp/lemons/", api, 691, progress_cb=p)
+    sly.upload("/tmp/vid/", api, 691, progress_cb=p)
     print("4")
 
-    shutil.rmtree("/tmp/lemons/")
-    os.makedirs("/tmp/lemons/", exist_ok=True)
+    # shutil.rmtree("/tmp/lemons/")
+    # os.makedirs("/tmp/lemons/", exist_ok=True)
 
 
 def dwn_prj_img():
