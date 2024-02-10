@@ -518,6 +518,8 @@ def upload_volume_project(
     project = api.project.create(workspace_id, project_name, ProjectType.VOLUMES)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
+    identifier = {}
+
     for dataset_fs in project_fs.datasets:
         dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
@@ -542,11 +544,15 @@ def upload_volume_project(
             dataset.id, names, item_paths, progress_cb, log_progress
         )
         item_ids = [item_info.id for item_info in item_infos]
+        identifier[dataset_fs.name] = item_ids
+
+    for dataset_fs in project_fs.datasets:
         ds_progress = None
-        if log_progress:
+        if log_progress or progress_cb is not None:
             ds_progress = tqdm_sly(
-                desc="Uploading annotations to dataset {!r}".format(dataset.name),
-                total=len(item_paths),
+                desc="Uploading annotations",# to dataset {!r}".format(dataset.name),
+                # total=len(item_paths),
+                total=project_fs.total_items,
             )
 
         api.volume.annotation.upload_paths(

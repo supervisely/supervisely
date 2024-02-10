@@ -21,7 +21,7 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -1383,6 +1383,8 @@ def upload_video_project(
     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
+    identifier = {}
+
     for dataset_fs in project_fs.datasets:
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
@@ -1393,16 +1395,15 @@ def upload_video_project(
             item_paths.append(video_path)
             ann_paths.append(ann_path)
 
-        # progress_cb = None
         if log_progress and progress_cb is None:
-            ds_progress = Progress(
-                "Uploading videos to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
+            progress_cb = tqdm_sly(
+                desc="Uploading videos to dataset {!r}".format(dataset.name),
+                total=len(item_paths),
+                position=0,
             )
-            progress_cb = ds_progress.iters_done_report
         try:
             item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
-
+            identifier[dataset_fs.name] = item_infos
             if include_custom_data:
                 for item_info in item_infos:
                     item_name = item_info.name
@@ -1425,15 +1426,20 @@ def upload_video_project(
                 },
             )
             raise e
+
+    ann_progress = None
+    if log_progress or progress_cb is not None:
+        ann_progress = tqdm_sly(
+            desc="Uploading annotations",  # to dataset {!r}".format(dataset.name),
+            total=len(item_paths),
+        )
+
+    for dataset_fs in project_fs.datasets:
+        item_infos = identifier[dataset_fs.name]
         item_ids = [item_info.id for item_info in item_infos]
-        if log_progress and progress_cb is None:
-            ds_progress = Progress(
-                "Uploading annotations to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
-            )
-            progress_cb = ds_progress.iters_done_report
+
         try:
-            api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
+            api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, ann_progress)
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",

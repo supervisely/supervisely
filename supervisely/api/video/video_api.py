@@ -1548,7 +1548,7 @@ class VideoApi(RemoveableBulkModuleApi):
         remote_hashes = set(
             self.check_existing_hashes(list(unique_hashes))
         )  # existing -- from server
-        if progress_cb:
+        if progress_cb is not None:
             progress_cb(len(remote_hashes))
         # pending_hashes = unique_hashes #- remote_hashes #@TODO: only fo debug!
         pending_hashes = unique_hashes - remote_hashes
