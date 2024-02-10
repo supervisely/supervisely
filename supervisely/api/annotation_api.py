@@ -1041,3 +1041,23 @@ class AnnotationApi(ModuleApi):
                 ApiField.GEOMETRY: label.geometry.to_json(),
             },
         )
+
+    def render_ann(self, image_id, data, height, width, thickness):
+        color = [255, 0, 255]
+        return self._api.post(
+            "annotations.bulk.render",
+            {
+                ApiField.COLOR: color,
+                ApiField.SHOW_DISABLED: True,
+                ApiField.CLASSES: [],
+                ApiField.IMAGES: [
+                    {
+                        ApiField.ID: image_id,
+                        ApiField.ANNOTATION_DATA: data,
+                        ApiField.HEIGHT: height,
+                        ApiField.WIDTH: width,
+                        ApiField.THICKNESS: thickness,
+                    }
+                ],
+            },
+        )
