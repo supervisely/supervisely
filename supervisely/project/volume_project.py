@@ -518,13 +518,13 @@ def upload_volume_project(
     project = api.project.create(workspace_id, project_name, ProjectType.VOLUMES)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
-    identifier = {}
+    ann_item_ids, ann_paths, mask_dirs, interpolation_dirs = [], [], [],[]
 
     for dataset_fs in project_fs.datasets:
         dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths, mask_dirs, interpolation_dirs = [], [], [], [], []
+        names, item_paths = [], []
         for item_name in dataset_fs:
             img_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
@@ -544,20 +544,17 @@ def upload_volume_project(
         item_infos = api.volume.upload_nrrd_series_paths(
             dataset.id, names, item_paths, ds_progress, log_progress
         )
-        item_ids = [item_info.id for item_info in item_infos]
-        identifier[dataset_fs.name] = item_ids
+        ann_item_ids.extend([item_info.id for item_info in item_infos])        
 
+    ann_progress = None
+    if log_progress or progress_cb is not None:
+        ann_progress = tqdm_sly(
+            desc="Uploading annotations",
+            total=project_fs.total_items,
+        )
     for dataset_fs in project_fs.datasets:
-        ds_progress = None
-        if log_progress or progress_cb is not None:
-            ds_progress = tqdm_sly(
-                desc="Uploading annotations",# to dataset {!r}".format(dataset.name),
-                # total=len(item_paths),
-                total=project_fs.total_items,
-            )
-
         api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, interpolation_dirs, ds_progress, mask_dirs
+            ann_item_ids, ann_paths, project_fs.meta, interpolation_dirs, ann_progress, mask_dirs
         )
 
     return project.id, project.name
