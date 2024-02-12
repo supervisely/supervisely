@@ -1395,14 +1395,16 @@ def upload_video_project(
             item_paths.append(video_path)
             ann_paths.append(ann_path)
 
+        
+        ds_progress_cb = progress_cb
         if log_progress and progress_cb is None:
-            progress_cb = tqdm_sly(
+            ds_progress_cb = tqdm_sly(
                 desc="Uploading videos to dataset {!r}".format(dataset.name),
                 total=len(item_paths),
                 position=0,
-            )
+            )        
         try:
-            item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
+            item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress_cb)
             identifier[dataset_fs.name] = item_infos
             if include_custom_data:
                 for item_info in item_infos:
@@ -1430,8 +1432,8 @@ def upload_video_project(
     ann_progress = None
     if log_progress or progress_cb is not None:
         ann_progress = tqdm_sly(
-            desc="Uploading annotations",  # to dataset {!r}".format(dataset.name),
-            total=len(item_paths),
+            desc="Uploading annotations",
+            total=project_fs.total_items,
         )
 
     for dataset_fs in project_fs.datasets:
