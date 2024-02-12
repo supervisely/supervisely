@@ -518,6 +518,9 @@ def upload_volume_project(
     project = api.project.create(workspace_id, project_name, ProjectType.VOLUMES)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
+    if progress_cb is not None:
+        log_progress=False    
+
     ann_item_ids, ann_paths, mask_dirs, interpolation_dirs = [], [], [],[]
 
     for dataset_fs in project_fs.datasets:
@@ -534,7 +537,7 @@ def upload_volume_project(
             mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
         ds_progress = progress_cb
-        if log_progress and progress_cb is None:
+        if log_progress:
             ds_progress = tqdm_sly(
                 desc= "Uploading volumes to dataset {!r}".format(dataset.name),
                 total=len(item_paths),

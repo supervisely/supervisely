@@ -1383,29 +1383,31 @@ def upload_video_project(
     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
-    identifier = {}
+    if progress_cb is not None:
+        log_progress=False
+
+    ann_item_ids, ann_paths = [], []
 
     for dataset_fs in project_fs.datasets:
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths, ann_paths = [], [], []
+        names, item_paths = [], []
         for item_name in dataset_fs:
             video_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(video_path)
             ann_paths.append(ann_path)
 
-        
-        ds_progress_cb = progress_cb
-        if log_progress and progress_cb is None:
-            ds_progress_cb = tqdm_sly(
+        ds_progress = progress_cb
+        if log_progress:
+            ds_progress = tqdm_sly(
                 desc="Uploading videos to dataset {!r}".format(dataset.name),
                 total=len(item_paths),
                 position=0,
             )        
         try:
-            item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress_cb)
-            identifier[dataset_fs.name] = item_infos
+            item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress)
+            ann_item_ids.extend([item_info.id for item_info in item_infos])  
             if include_custom_data:
                 for item_info in item_infos:
                     item_name = item_info.name
@@ -1429,26 +1431,23 @@ def upload_video_project(
             )
             raise e
 
-    ann_progress = None
+    anns_progress = None
     if log_progress or progress_cb is not None:
-        ann_progress = tqdm_sly(
+        anns_progress = tqdm_sly(
             desc="Uploading annotations",
             total=project_fs.total_items,
         )
 
     for dataset_fs in project_fs.datasets:
-        item_infos = identifier[dataset_fs.name]
-        item_ids = [item_info.id for item_info in item_infos]
-
         try:
-            api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, ann_progress)
+            api.video.annotation.upload_paths(ann_item_ids, ann_paths, project_fs.meta, anns_progress)
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project.id,
                     "dataset_id": dataset.id,
-                    "item_ids": item_ids,
+                    "item_ids": ann_item_ids,
                     "ann_paths": ann_paths,
                 },
             )
