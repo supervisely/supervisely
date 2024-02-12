@@ -669,7 +669,11 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True, is_spli
         chunk = 50 * 1024 * 1024  # 50Mb
         base_name = get_file_name(archive_path)
         dir_name = os.path.dirname(archive_path)
-        ext = get_file_ext(archive_path)
+        if get_file_ext(base_name) in (".zip", ".tar"):
+            ext = get_file_ext(base_name)
+            base_name = get_file_name(base_name)
+        else:
+            ext = get_file_ext(archive_path)
         parts = sorted([f for f in os.listdir(dir_name) if f.startswith(base_name)])
         combined = os.path.join(dir_name, f"combined{ext}")
 
