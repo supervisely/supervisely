@@ -644,6 +644,7 @@ class tqdm_sly(tqdm, Progress):
 
 
 def handle_original_tqdm(func):
+    # Deprecated
     @wraps(func)
     def wrapper_original_tqdm(*args, **kwargs):
         cb_name = (

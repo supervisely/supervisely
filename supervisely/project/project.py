@@ -45,7 +45,7 @@ from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.task.progress import Progress, tqdm_sly
 
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
@@ -2573,38 +2573,39 @@ def upload_project(
     if project_name is None:
         project_name = project_fs.name
 
-    external_progress_cb = True
-    if progress_cb is None:
-        external_progress_cb = False
-
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
     project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
-    for dataset_fs in project_fs.datasets:
-        dataset = api.dataset.create(project.id, dataset_fs.name)
+    if progress_cb is not None:
+        log_progress=False
 
-        dataset_fs: Dataset
+    image_id_dct, anns_paths_dct = {}, {}
 
-        names, img_paths, ann_paths, img_infos = [], [], [], []
-        for item_name in dataset_fs:
-            img_path, ann_path = dataset_fs.get_item_paths(item_name)
-            img_info_path = dataset_fs.get_img_info_path(item_name)
+    for ds_fs in project_fs.datasets:
+        dataset = api.dataset.create(project.id, ds_fs.name)
+
+        ds_fs: Dataset
+        
+
+        names, img_paths, img_infos, ann_paths  = [], [], [], []
+        for item_name in ds_fs:
+            img_path, ann_path = ds_fs.get_item_paths(item_name)
+            img_info_path = ds_fs.get_img_info_path(item_name)
 
             names.append(item_name)
             img_paths.append(img_path)
             ann_paths.append(ann_path)
 
             if os.path.isfile(img_info_path):
-                img_infos.append(dataset_fs.get_image_info(item_name=item_name))
+                img_infos.append(ds_fs.get_image_info(item_name=item_name))
 
-        img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
-        ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
+        img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))        
         metas = [{} for _ in names]
 
-        meta_dir = os.path.join(dir, dataset_fs.name, "meta")
+        meta_dir = os.path.join(dir, ds_fs.name, "meta")
         if os.path.isdir(meta_dir):
             metas = []
             for name in names:
@@ -2614,19 +2615,16 @@ def upload_project(
                 else:
                     metas.append({})
 
-        if external_progress_cb is False:
-            progress_cb = None
-
-        if log_progress and progress_cb is None:
-            ds_progress = Progress(
-                "Uploading images to dataset {!r}".format(dataset.name),
-                total_cnt=len(names),
-            )
-            progress_cb = ds_progress.iters_done_report
+        ds_progress = progress_cb
+        if log_progress:
+            ds_progress = tqdm_sly(
+                desc="Uploading images to dataset {!r}".format(dataset.name),
+                total=len(names),
+            )            
 
         if len(img_paths) != 0:
             uploaded_img_infos = api.image.upload_paths(
-                dataset.id, names, img_paths, progress_cb, metas=metas
+                dataset.id, names, img_paths, ds_progress, metas=metas
             )
         elif len(img_paths) == 0 and len(img_infos) != 0:
             # uploading links and hashes (the code from api.image.upload_ids)
@@ -2652,7 +2650,7 @@ def upload_project(
                     dataset_id,
                     links_names,
                     links,
-                    progress_cb,
+                    ds_progress,
                     metas=links_metas,
                 )
                 for info, pos in zip(res_infos_links, links_order):
@@ -2663,7 +2661,7 @@ def upload_project(
                     dataset_id,
                     hashes_names,
                     hashes,
-                    progress_cb,
+                    ds_progress,
                     metas=hashes_metas,
                 )
                 for info, pos in zip(res_infos_hashes, hashes_order):
@@ -2674,19 +2672,17 @@ def upload_project(
             raise ValueError(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
             )
+        image_id_dct[ds_fs.name]= [img_info.id for img_info in uploaded_img_infos]
+        anns_paths_dct[ds_fs.name] = list(filter(lambda x: os.path.isfile(x), ann_paths))
 
-        image_ids = [img_info.id for img_info in uploaded_img_infos]
-
-        if external_progress_cb is False:
-            progress_cb = None
-
-        if log_progress and progress_cb is None:
-            ds_progress = Progress(
-                "Uploading annotations to dataset {!r}".format(dataset.name),
-                total_cnt=len(img_paths),
-            )
-            progress_cb = ds_progress.iters_done_report
-        api.annotation.upload_paths(image_ids, ann_paths, progress_cb)
+    anns_progress = None
+    if log_progress or progress_cb is not None:
+        anns_progress = tqdm_sly(
+            desc="Uploading annotations",
+            total=project_fs.total_items,
+        )
+    for ds_fs in project_fs.datasets:        
+        api.annotation.upload_paths(image_id_dct[ds_fs.name], anns_paths_dct[ds_fs.name], anns_progress)
 
     return project.id, project.name
 

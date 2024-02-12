@@ -156,7 +156,6 @@ def dwnl_prj_vid():
 
 
 def upl_prj_vid():
-    #! no progress_cb in sly.upload_video_project
     project_fs = sly.read_project("/tmp/vid/")
     p = tqdm(
         desc="upload",

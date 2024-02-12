@@ -1384,16 +1384,17 @@ def upload_video_project(
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
-        log_progress=False
+        log_progress = False
 
-    ann_item_ids, ann_paths = [], []
+    item_id_dct, anns_paths_dct = {}, {}
 
-    for dataset_fs in project_fs.datasets:
-        dataset = api.dataset.create(project.id, dataset_fs.name)
+    for ds_fs in project_fs.datasets:
+        ds_fs: VideoDataset
+        dataset = api.dataset.create(project.id, ds_fs.name)
 
-        names, item_paths = [], []
-        for item_name in dataset_fs:
-            video_path, ann_path = dataset_fs.get_item_paths(item_name)
+        names, item_paths, ann_paths = [], [], []
+        for item_name in ds_fs:
+            video_path, ann_path = ds_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(video_path)
             ann_paths.append(ann_path)
@@ -1404,15 +1405,15 @@ def upload_video_project(
                 desc="Uploading videos to dataset {!r}".format(dataset.name),
                 total=len(item_paths),
                 position=0,
-            )        
+            )
         try:
             item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress)
-            ann_item_ids.extend([item_info.id for item_info in item_infos])  
+            item_id_dct[ds_fs.name] = [item_info.id for item_info in item_infos]
             if include_custom_data:
                 for item_info in item_infos:
                     item_name = item_info.name
                     custom_data_path = os.path.join(
-                        dir, dataset_fs.name, "custom_data", f"{item_name}.json"
+                        dir, ds_fs.name, "custom_data", f"{item_name}.json"
                     )
 
                     if os.path.exists(custom_data_path):
@@ -1430,6 +1431,7 @@ def upload_video_project(
                 },
             )
             raise e
+        anns_paths_dct[ds_fs.name] = ann_paths
 
     anns_progress = None
     if log_progress or progress_cb is not None:
@@ -1438,16 +1440,18 @@ def upload_video_project(
             total=project_fs.total_items,
         )
 
-    for dataset_fs in project_fs.datasets:
+    for ds_fs in project_fs.datasets:
         try:
-            api.video.annotation.upload_paths(ann_item_ids, ann_paths, project_fs.meta, anns_progress)
+            api.video.annotation.upload_paths(
+                item_id_dct[ds_fs.name], anns_paths_dct[ds_fs.name], project_fs.meta, anns_progress
+            )
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project.id,
                     "dataset_id": dataset.id,
-                    "item_ids": ann_item_ids,
+                    "item_ids": item_id_dct[ds_fs.name],
                     "ann_paths": ann_paths,
                 },
             )

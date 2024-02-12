@@ -519,15 +519,15 @@ def upload_volume_project(
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
-        log_progress=False    
+        log_progress = False
 
-    ann_item_ids, ann_paths, mask_dirs, interpolation_dirs = [], [], [],[]
+    item_id_dct, anns_paths_dct, interpolation_dirs_dct, mask_dirs_dct = {}, {}, {}, {}
 
     for dataset_fs in project_fs.datasets:
         dataset_fs: VolumeDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
-        names, item_paths = [], []
+        names, item_paths, ann_paths, mask_dirs, interpolation_dirs = [], [], [], [], []
         for item_name in dataset_fs:
             img_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
@@ -539,7 +539,7 @@ def upload_volume_project(
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
-                desc= "Uploading volumes to dataset {!r}".format(dataset.name),
+                desc="Uploading volumes to dataset {!r}".format(dataset.name),
                 total=len(item_paths),
                 position=0,
             )
@@ -547,17 +547,25 @@ def upload_volume_project(
         item_infos = api.volume.upload_nrrd_series_paths(
             dataset.id, names, item_paths, ds_progress, log_progress
         )
-        ann_item_ids.extend([item_info.id for item_info in item_infos])        
+        item_id_dct[dataset_fs.name] = [item_info.id for item_info in item_infos]
+        anns_paths_dct[dataset_fs.name] = ann_paths
+        interpolation_dirs_dct[dataset_fs.name] = interpolation_dirs
+        mask_dirs_dct[dataset_fs.name] = mask_dirs
 
-    ann_progress = None
+    anns_progress = None
     if log_progress or progress_cb is not None:
-        ann_progress = tqdm_sly(
+        anns_progress = tqdm_sly(
             desc="Uploading annotations",
             total=project_fs.total_items,
         )
-    for dataset_fs in project_fs.datasets:
+    for ds_fs in project_fs.datasets:
         api.volume.annotation.upload_paths(
-            ann_item_ids, ann_paths, project_fs.meta, interpolation_dirs, ann_progress, mask_dirs
+            item_id_dct[ds_fs.name],
+            anns_paths_dct[ds_fs.name],
+            project_fs.meta,
+            interpolation_dirs_dct[ds_fs.name],
+            anns_progress,
+            mask_dirs_dct[ds_fs.name],
         )
 
     return project.id, project.name
