@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 import uuid
+import inspect
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
@@ -100,13 +101,15 @@ class Inference:
         self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
-            # self.initialize_gui()
-            # self._gui = GUI.InferenceGUI()
+            init_gui_method = getattr(self, 'init_gui', None)
+            original_init_gui_method = getattr(Inference, 'init_gui', None)
+            if init_gui_method.__func__ is not original_init_gui_method:
+                # logger.debug(f"'init_gui' method is overridden in {self.__class__.__name__}. Using custom GUI (ServingGUI)")
+                self._gui = GUI.ServingGUI()
+                self._user_layout = self.init_gui()
+            else:
+                self.initialize_gui()
 
-            self._gui = GUI.ServingGUI()
-            self._user_layout = self.init_gui()
-
-            # add compatibility for InferenceGUI
             def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
 
@@ -151,16 +154,16 @@ class Inference:
             return None
         return self.gui.get_ui()
 
-    def init_gui(self):
+    def init_gui(self) -> Widget:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def update_gui(self, is_model_deployed: bool = True):
+    def update_gui(self, is_model_deployed: bool = True) -> None:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def set_params_to_ui(self, deploy_params: dict):
+    def set_params_to_ui(self, deploy_params: dict) -> None:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def get_params_from_ui(self):
+    def get_params_from_ui(self) -> dict:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
@@ -337,7 +340,7 @@ class Inference:
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def load_model(self, *args, **kwargs):
+    def load_model(self, **kwargs):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def load_model_meta(self, model_tab: str, local_weights_path: str):
@@ -1033,23 +1036,21 @@ class Inference:
 
         @server.post("/get_deploy_settings")
         def _get_deploy_settings(response: Response, request: Request):
-            arg_names = self.load_model.__code__.co_varnames[: self.load_model.__code__.co_argcount]
-            arg_defaults = self.load_model.__defaults__ or ()
-            arg_types = self.load_model.__annotations__
+            load_model_method = getattr(self, 'load_model')
+            method_signature = inspect.signature(load_model_method)
+            docstring = inspect.getdoc(load_model_method) or ''
+            doc_lines = docstring.split('\n')
+            param_docs = {line.split(":")[1].strip(): line.split(":")[2].strip() for line in doc_lines if line.startswith(":param")}
 
-            default_offset = len(arg_names) - len(arg_defaults)
             args_details = []
-            for i, name in enumerate(arg_names):
-                if name == "self":
+            for name, parameter in method_signature.parameters.items():
+                if name == 'self':
                     continue
-                arg_type = arg_types.get(name, None)
-                if arg_type is not None:
-                    arg_type = arg_type.__name__
-                if i >= default_offset:
-                    default = arg_defaults[i - default_offset]
-                else:
-                    default = None
-                args_details.append({"name": name, "type": arg_type, "default": default})
+                arg_type = parameter.annotation.__name__ if parameter.annotation != inspect.Parameter.empty else None
+                default = parameter.default if parameter.default != inspect.Parameter.empty else None
+                doc = param_docs.get(f"param {name}", None)
+                args_details.append({"name": name, "type": arg_type, "default": default, "doc": doc})
+
             return args_details
 
         @server.post("/deploy_from_api")
@@ -1062,11 +1063,16 @@ class Inference:
                 self.load_model(**deploy_params)
                 self.update_gui(self._model_served)
                 self.set_params_to_ui(deploy_params)
-                self.gui.set_deployed()
+                
+                # update to set correct device
+                device = deploy_params.get("device", "cpu")
+                self.gui.set_deployed(device)
+                
                 self.gui.show_deployed_model_info(self)
                 self._model_served = True
                 return {"result": "model was successfully deployed"}
             except Exception as e:
+                self.gui._success_label.hide()
                 # return {"result": f"an error occured: {repr(e)}"}
                 raise e
 

@@ -645,7 +645,9 @@ class ServingGUI:
         return self._download_progress
 
     # pass model tables?
-    def set_deployed(self):
+    def set_deployed(self, device: str = None):
+        if device is not None:
+            self._device_select.set_value(device)
         self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_value().upper()} device"
         self._success_label.show()
         self._serve_button.hide()

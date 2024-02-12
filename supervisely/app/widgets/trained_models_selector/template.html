@@ -44,5 +44,12 @@
         {% endfor %}
         </tbody>
     </table>
+    <div class="mt10" v-if="{{{widget.show_custom_checkpoint_path}}}"
+    >
+    {{{widget.show_custom_checkpoint_path_checkbox}}}
+    <div class="mt10">
+    {{{widget.custom_tab_widgets}}}
+</div>
+</div>
 </div>
 </div>
