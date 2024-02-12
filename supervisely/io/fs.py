@@ -613,7 +613,7 @@ def archive_directory(
     if os.path.getsize(tar_path) <= split:
         return
 
-    particle = 500 * 1024 * 1024  # 500Mb
+    particle = 50 * 1024 * 1024  # 50Mb
     tar_name = os.path.basename(tar_path)
     tar_dir = os.path.abspath(os.path.dirname(tar_path))
     parts_paths = []
