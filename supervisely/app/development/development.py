@@ -1,9 +1,12 @@
 import os
-from pathlib import Path
-import shlex
+import stat
 import subprocess
-from supervisely.io.fs import mkdir
+from typing import Optional
+
+import requests
+
 from supervisely.api.api import Api
+from supervisely.io.fs import mkdir
 from supervisely.sly_logger import logger
 
 try:
@@ -14,48 +17,91 @@ except ImportError:
 VPN_CONFIGURATION_DIR = "~/supervisely-network"
 
 
-def supervisely_vpn_network(action: Literal["up", "down"] = "up"):
-    # TODO: already down "wg-quick: `wg0' is not a WireGuard interface\n"
-    # TODO: wg-quick must be run as root. Please enter the password for max to continue:
-
-    process = subprocess.run(
-        shlex.split("curl --max-time 3 -s http://10.8.0.1:80"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-        shell=True,
-    )
-    if "Connected to Supervisely Net!" in process.stdout:
-        logger.info(f"You connected to Supervisely VPN Network")
-        return
-
-    api = Api()
-    current_dir = Path(__file__).parent.absolute()
-    script_path = os.path.join(current_dir, "sly-net.sh")
+def supervisely_vpn_network(
+    action: Literal["up", "down"] = "up",
+    force: Optional[bool] = True,
+    raise_on_error: Optional[bool] = True,
+):
+    logger.info("wg quick reqires root privileges, you may be asked to enter your password.")
     network_dir = os.path.expanduser(VPN_CONFIGURATION_DIR)
     mkdir(network_dir)
+    os.chdir(network_dir)
 
-    process = subprocess.run(
-        shlex.split(f"{script_path} {action} {api.token} {api.server_address} {network_dir}"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
+    config_file = os.path.join(network_dir, "wg0.conf")
+    public_key = os.path.join(network_dir, "public.key")
+    private_key = os.path.join(network_dir, "private.key")
+
+    logger.info(f"VPN configuration directory: {network_dir}")
+    api = Api()
+
+    # If force is enabled, we will try to bring down the connection first.
+    if force:
+        logger.info("Force is enabled, trying to bring down the connection...")
+        try:
+            subprocess.run(
+                ["wg-quick", "down", config_file],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            logger.info("Connection has been brought down successfully.")
+        except subprocess.CalledProcessError as e:
+            logger.info(f"The connection was not active: {e.stderr.decode()}.")
+
+    # Generate the private and public keys if they don't exist.
+    if not os.path.exists(public_key):
+        logger.info(f"Public key not found in {public_key}, generating a new one...")
+        with open(private_key, "w") as priv_key_file:
+            subprocess.run(["wg", "genkey"], stdout=priv_key_file)
+        os.chmod(private_key, stat.S_IRUSR | stat.S_IWUSR)  # Change file permissions to 600
+        with open(private_key) as priv_key_file, open(public_key, "w") as pub_key_file:
+            subprocess.run(["wg", "pubkey"], stdin=priv_key_file, stdout=pub_key_file)
+    else:
+        logger.info(f"Public key found in {public_key}, using it...")
+
+    # Register the connection with the server.
+    logger.info(f"Registering the connection with the server: {api.server_address}...")
+    response = requests.post(
+        f"{api.server_address}/net/register/{api.token}/{open(public_key).read().strip()}",
+        timeout=5,
     )
-    text = "connected to"
-    if action == "down":
-        text = "disconnected from"
-    try:
-        process.check_returncode()
-        logger.info(f"You have been successfully {text} Supervisely VPN Network")
-    except subprocess.CalledProcessError as e:
-        print(e.stdout)
+    response.raise_for_status()
+    logger.info(f"Connection registered with the server, status: {response.status_code}.")
+    ip, server_public_key, server_endpoint, *_ = response.text.split(";")
 
-        e.cmd[2] = "***-api-token-***"
-        if "wg0' already exists" in e.stderr:
-            logger.info(f"You {text} Supervisely VPN Network")
-            pass
-        else:
-            raise e
+    # Update the configuration file with the server's parameters.
+    logger.info(
+        f"Updating wg0.conf with the following parameters: IP: {ip}"
+        f"Server Public Key: {server_public_key}, Server endpoint: {server_endpoint}"
+    )
+    with open(config_file, "w") as f:
+        f.write(
+            f"""
+            [Interface]
+            PrivateKey = {open(private_key).read().strip()}
+            Address = {ip}/16
+            [Peer]
+            PublicKey = {server_public_key}
+            AllowedIPs = 10.8.0.0/16
+            Endpoint = {server_endpoint}
+            PersistentKeepalive = 25
+            """
+        )
+    os.chmod(config_file, 0o600)
+
+    logger.info("Configuration saved, bringing up the connection...")
+    try:
+        subprocess.run(
+            ["wg-quick", action, config_file],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        logger.info("Connection to Supervisely VPN has been established successfully.")
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Error while connecting to VPN, try again. Error: {e.stderr.decode()}")
+        if raise_on_error:
+            raise
 
 
 def create_debug_task(team_id, port="8000"):
