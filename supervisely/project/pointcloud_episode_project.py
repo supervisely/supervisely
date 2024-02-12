@@ -26,7 +26,7 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -859,8 +859,8 @@ def upload_pointcloud_episode_project(
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
-    project_locally = PointcloudEpisodeProject.read_single(directory)
-    project_name = project_locally.name if project_name is None else project_name
+    project_fs = PointcloudEpisodeProject.read_single(directory)
+    project_name = project_fs.name if project_name is None else project_name
 
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
@@ -868,23 +868,26 @@ def upload_pointcloud_episode_project(
     project_remotely = api.project.create(
         workspace_id, project_name, ProjectType.POINT_CLOUD_EPISODES
     )
-    api.project.update_meta(project_remotely.id, project_locally.meta.to_json())
+    api.project.update_meta(project_remotely.id, project_fs.meta.to_json())
+
+    if progress_cb is not None:
+        log_progress = False
 
     key_id_map = KeyIdMap()
-    for dataset_locally in project_locally.datasets:
-        ann_json_path = dataset_locally.get_ann_path()
+    for ds_fs in project_fs.datasets:
+        ann_json_path = ds_fs.get_ann_path()
 
         if os.path.isfile(ann_json_path):
             ann_json = load_json_file(ann_json_path)
             episode_annotation = PointcloudEpisodeAnnotation.from_json(
-                ann_json, project_locally.meta
+                ann_json, project_fs.meta
             )
         else:
             episode_annotation = PointcloudEpisodeAnnotation()
 
-        dataset_remotely = api.dataset.create(
+        dataset = api.dataset.create(
             project_remotely.id,
-            dataset_locally.name,
+            ds_fs.name,
             description=episode_annotation.description,
             change_name_if_conflict=True,
         )
@@ -892,37 +895,35 @@ def upload_pointcloud_episode_project(
         # STEP 1 — upload episodes
         items_infos = {"names": [], "paths": [], "metas": []}
 
-        for item_name in dataset_locally:
-            item_path, related_images_dir, frame_idx = dataset_locally.get_item_paths(item_name)
+        for item_name in ds_fs:
+            item_path, related_images_dir, frame_idx = ds_fs.get_item_paths(item_name)
 
             item_meta = {"frame": frame_idx}
 
             items_infos["names"].append(item_name)
             items_infos["paths"].append(item_path)
             items_infos["metas"].append(item_meta)
-
-        progress = None
-        if log_progress and progress_cb is None:
-            progress = Progress(
-                "Uploading pointclouds: {!r}".format(dataset_remotely.name),
-                total_cnt=len(dataset_locally),
-            ).iters_done_report
-        elif progress_cb is not None:
-            progress = progress_cb
+        
+        ds_progress = progress_cb
+        if log_progress:
+            ds_progress = tqdm_sly(
+                desc = "Uploading pointclouds: {!r}".format(dataset.name),
+                total=len(ds_fs),                
+            )
         try:
             pcl_infos = api.pointcloud_episode.upload_paths(
-                dataset_remotely.id,
+                dataset.id,
                 names=items_infos["names"],
                 paths=items_infos["paths"],
                 metas=items_infos["metas"],
-                progress_cb=progress,
+                progress_cb=ds_progress,
             )
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project_remotely.id,
-                    "dataset_id": dataset_remotely.id,
+                    "dataset_id": dataset.id,
                     "item_names": items_infos["names"],
                     "item_paths": items_infos["paths"],
                     "item_metas": items_infos["metas"],
@@ -933,14 +934,14 @@ def upload_pointcloud_episode_project(
         frame_to_pcl_ids = {pcl_info.frame: pcl_info.id for pcl_info in pcl_infos}
         try:
             api.pointcloud_episode.annotation.append(
-                dataset_remotely.id, episode_annotation, frame_to_pcl_ids, key_id_map
+                dataset.id, episode_annotation, frame_to_pcl_ids, key_id_map
             )
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project_remotely.id,
-                    "dataset_id": dataset_remotely.id,
+                    "dataset_id": dataset.id,
                     "frame_to_pcl_ids": frame_to_pcl_ids,
                     "ann": episode_annotation.to_json(),
                 },
@@ -952,30 +953,29 @@ def upload_pointcloud_episode_project(
 
         # STEP 3.1 — upload images
         for pcl_info in pcl_infos:
-            related_items = dataset_locally.get_related_images(pcl_info.name)
+            related_items = ds_fs.get_related_images(pcl_info.name)
             images_paths_for_frame = [img_path for img_path, _ in related_items]
 
             img_infos["img_paths"].extend(images_paths_for_frame)
 
-        if log_progress and progress_cb is None:
-            progress = Progress(
-                "Uploading photo context: {!r}".format(dataset_remotely.name),
-                total_cnt=len(img_infos["img_paths"]),
-            ).iters_done_report
-        elif progress_cb is not None:
-            progress = progress_cb
-
+        rltd_progress = None
+        if log_progress or progress_cb is not None:
+            rltd_progress = tqdm_sly(
+                desc = "Uploading photo context: {!r}".format(dataset.name),
+                total=len(img_infos["img_paths"]),
+                leave = False,
+            )
         try:
             images_hashes = api.pointcloud_episode.upload_related_images(
                 img_infos["img_paths"],
-                progress_cb=progress,
+                progress_cb=rltd_progress,
             )
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project_remotely.id,
-                    "dataset_id": dataset_remotely.id,
+                    "dataset_id": dataset.id,
                     "img_paths": img_infos["img_paths"],
                 },
             )
@@ -984,7 +984,7 @@ def upload_pointcloud_episode_project(
         # STEP 3.2 — upload images metas
         images_hashes_iterator = images_hashes.__iter__()
         for pcl_info in pcl_infos:
-            related_items = dataset_locally.get_related_images(pcl_info.name)
+            related_items = ds_fs.get_related_images(pcl_info.name)
 
             for img_ind, (_, meta_json) in enumerate(related_items):
                 img_hash = next(images_hashes_iterator)
@@ -1007,7 +1007,7 @@ def upload_pointcloud_episode_project(
                     "INFO FOR DEBUGGING",
                     extra={
                         "project_id": project_remotely.id,
-                        "dataset_id": dataset_remotely.id,
+                        "dataset_id": dataset.id,
                         "rimg_infos": img_infos["img_metas"],
                     },
                 )
