@@ -26,8 +26,7 @@ INSTALL_REQUIRES = [
     "protobuf>=3.14.0, <=3.20.3",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
-    "requests-toolbelt>=1.0.0",
-    # "requests-toolbelt>=0.9.1", # , <1.0.0
+    "requests-toolbelt>=0.9.1", # , <1.0.0
     "Shapely>=1.7.1, <=2.0.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
@@ -62,7 +61,7 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=2.0.0, <=2.2.0",
+    "urllib3>=1.26.15, <=2.2.0",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
