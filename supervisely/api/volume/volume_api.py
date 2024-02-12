@@ -2,6 +2,7 @@ import os
 from typing import Callable, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger, volume
@@ -626,16 +627,22 @@ class VolumeApi(RemoveableBulkModuleApi):
             raise ValueError("Name has to be with .nrrd extension, for example: my_volume.nrrd")
         from timeit import default_timer as timer
 
-        logger.debug(f"Start volume {name} compression before upload...")
+        with logging_redirect_tqdm():
+            logger.debug(f"Start volume {name} compression before upload...")
+        
         start = timer()
         volume_bytes = volume.encode(np_data, meta)
-        logger.debug(f"Volume has been compressed in {timer() - start} seconds")
-
-        logger.debug(f"Start uploading bytes of {name} volume ...")
+        with logging_redirect_tqdm([logger]):
+            logger.debug(f"Volume has been compressed in {timer() - start} seconds")                
+            logger.debug(f"Start uploading bytes of {name} volume ...")
+        
         start = timer()
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
-        logger.debug(f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds")
+
+        with logging_redirect_tqdm([logger]):
+            logger.debug(f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds")        
+
         volume_info = self.upload_hash(dataset_id, name, volume_hash, meta)
         if progress_cb is not None:
             progress_cb(1)  # upload volume
@@ -833,9 +840,10 @@ class VolumeApi(RemoveableBulkModuleApi):
         progress_nrrd = None
         if log_progress is True or progress_cb is not None:
             progress_nrrd = tqdm_sly(
-                desc=f"Upload volume {name}",
+                desc=f"Upload volume '{name}'",
                 total=sum(volume_np.shape),
                 leave=True if progress_cb is None else False,
+                position = 1,
             )
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_nrrd)
         return self.get_info_by_name(dataset_id, name)

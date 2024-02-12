@@ -1,7 +1,7 @@
 # coding: utf-8
-
 import os
 import re
+import sys
 from collections import namedtuple
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
@@ -533,15 +533,16 @@ def upload_volume_project(
             interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
             mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
+        ds_progress = progress_cb
         if log_progress and progress_cb is None:
-            ds_progress = Progress(
-                "Uploading volumes to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
+            ds_progress = tqdm_sly(
+                desc= "Uploading volumes to dataset {!r}".format(dataset.name),
+                total=len(item_paths),
+                position=0,
             )
-            progress_cb = ds_progress.iters_done_report
 
         item_infos = api.volume.upload_nrrd_series_paths(
-            dataset.id, names, item_paths, progress_cb, log_progress
+            dataset.id, names, item_paths, ds_progress, log_progress
         )
         item_ids = [item_info.id for item_info in item_infos]
         identifier[dataset_fs.name] = item_ids
