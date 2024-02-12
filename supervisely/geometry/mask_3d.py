@@ -2,31 +2,32 @@
 
 # docs
 from __future__ import annotations
-import numpy as np
+
 import base64
 import gzip
-import nrrd
 import tempfile
-from typing import Optional, Union, List, Dict, Literal, Tuple
-from supervisely.io.fs import get_file_name, get_file_ext, remove_dir
-from supervisely.geometry.geometry import Geometry
+from typing import Dict, List, Literal, Optional, Tuple, Union
+
+import nrrd
+import numpy as np
+
+from supervisely import logger
+from supervisely._utils import unwrap_if_numpy
 from supervisely.geometry.constants import (
-    SPACE_ORIGIN,
+    CLASS_ID,
+    CREATED_AT,
     DATA,
     GEOMETRY_SHAPE,
     GEOMETRY_TYPE,
-    LABELER_LOGIN,
-    UPDATED_AT,
-    CREATED_AT,
     ID,
-    CLASS_ID,
+    LABELER_LOGIN,
     MASK_3D,
+    SPACE_ORIGIN,
+    UPDATED_AT,
 )
-from supervisely._utils import unwrap_if_numpy
+from supervisely.geometry.geometry import Geometry
+from supervisely.io.fs import get_file_ext, get_file_name, remove_dir
 from supervisely.io.json import JsonSerializable
-from supervisely.io.fs import remove_dir, get_file_name
-from supervisely import logger
-
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
@@ -413,7 +414,7 @@ class Mask3D(Geometry):
 
         if DATA not in json_data[json_root_key]:
             raise ValueError(
-                "{} field must contain {} and {} fields to create Mask3D object.".format(
+                "{} field must contain {} field to create Mask3D object.".format(
                     json_root_key, DATA
                 )
             )
