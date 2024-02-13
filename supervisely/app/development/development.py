@@ -35,6 +35,7 @@ def supervisely_vpn_network(
     :type raise_on_error: Optional[bool]
     :raises RuntimeError: If wg-quick is not available in the system and raise_on_error is True.
     :raises subprocess.CalledProcessError: If an error occurs while connecting and raise_on_error is True.
+    :raises RuntimeError: If an error occurs while connecting and raise_on_error is True.
     """
     if shutil.which("wg-quick") is None:
         if raise_on_error:
