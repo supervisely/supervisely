@@ -1,14 +1,14 @@
 from functools import wraps
-from typing import List, Dict, Union, Optional, Callable
+from typing import Callable, Dict, List, Optional, Union
 
 import yaml
+
 import supervisely.app.widgets as Widgets
 import supervisely.io.env as env
-from supervisely.task.progress import Progress
 from supervisely import Api
 from supervisely.api.file_api import FileApi
 from supervisely.sly_logger import logger
-
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -628,14 +628,6 @@ class ServingGUI:
     def get_device(self) -> str:
         return self._device_select.get_value()
 
-    # def get_model_info(self) -> Dict[str, Dict[str, str]]:
-    #     if not self._support_submodels:
-    #         return None
-    #     selected_model = self._model_select.get_value()
-    #     selected_model_info = self._models[selected_model].copy()
-    #     del selected_model_info["checkpoints"]
-    #     return {selected_model: selected_model_info}
-
     @property
     def serve_button(self) -> Widgets.Button:
         return self._serve_button
@@ -644,7 +636,6 @@ class ServingGUI:
     def download_progress(self) -> Widgets.Progress:
         return self._download_progress
 
-    # pass model tables?
     def set_deployed(self, device: str = None):
         if device is not None:
             self._device_select.set_value(device)
