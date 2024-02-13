@@ -1,4 +1,5 @@
 import os
+import shutil
 import stat
 import subprocess
 from typing import Optional
@@ -15,6 +16,7 @@ except ImportError:
     from typing_extensions import Literal
 
 VPN_CONFIGURATION_DIR = "~/supervisely-network"
+VPN_IP = "http://10.8.0.1"
 
 
 def supervisely_vpn_network(
@@ -33,8 +35,19 @@ def supervisely_vpn_network(
     :type raise_on_error: Optional[bool]
     :raises subprocess.CalledProcessError: If an error occurs while connecting and raise_on_error is True.
     """
+    if shutil.which("wg-quick") is None:
+        logger.error(
+            "wg-quick is not available in the system. "
+            "Please refer to this documentation to install required packages: "
+            "https://developer.supervisely.com/app-development/advanced/advanced-debugging#prepare-environment"
+        )
+        if raise_on_error:
+            raise FileNotFoundError("wg-quick is not available in the system.")
+        return
+    else:
+        logger.info("wg-quick is available in the system, will try to connect to VPN.")
 
-    logger.info("wg quick reqires root privileges, you may be asked to enter your password.")
+    logger.info("wg-quick reqires root privileges, you may be asked to enter your password.")
     network_dir = os.path.expanduser(VPN_CONFIGURATION_DIR)
     mkdir(network_dir)
     os.chdir(network_dir)
@@ -109,11 +122,23 @@ def supervisely_vpn_network(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        logger.info("Connection to Supervisely VPN has been established successfully.")
+        logger.info(
+            "WireGuard interface has been successfully brought up, checking the connection..."
+        )
     except subprocess.CalledProcessError as e:
         logger.warning(f"Error while connecting to VPN, try again. Error: {e.stderr.decode()}")
         if raise_on_error:
             raise
+
+    test_response = requests.get(VPN_IP, timeout=5)
+    test_response.raise_for_status()
+
+    if not test_response.ok:
+        logger.warning(f"Error while connecting to VPN, try again. Error: {test_response.text}")
+        if raise_on_error:
+            raise
+    else:
+        logger.info(f"VPN connection has been successfully established to {VPN_IP}")
 
 
 def create_debug_task(team_id, port="8000"):
