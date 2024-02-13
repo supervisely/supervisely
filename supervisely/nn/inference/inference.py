@@ -803,11 +803,12 @@ class Inference:
         else:
             self._task_id = env.task_id() if is_production() else None
 
-        serving_layout = self.get_ui()
-        layout = Container([self._user_layout, serving_layout])
-
-        # self._app = Application(layout=self.get_ui())
-        self._app = Application(layout=layout)
+        if isinstance(self.gui, GUI.InferenceGUI):
+            self._app = Application(layout=self.get_ui())
+        elif isinstance(self.gui, GUI.ServingGUI):
+            serving_layout = self.get_ui()
+            layout = Container([self._user_layout, serving_layout])
+            self._app = Application(layout=layout)
         server = self._app.get_server()
 
         @call_on_autostart()
