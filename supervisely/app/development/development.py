@@ -139,6 +139,7 @@ def supervisely_vpn_network(
             logger.warning(f"Error while connecting to VPN, try again. Error: {e.stderr.decode()}")
             return
 
+    # Check the connection.
     test_response = requests.get(VPN_IP, timeout=5)
     test_response.raise_for_status()
 
