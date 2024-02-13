@@ -144,7 +144,7 @@ def supervisely_vpn_network(
     if not test_response.ok:
         logger.warning(f"Error while connecting to VPN, try again. Error: {test_response.text}")
         if raise_on_error:
-            raise
+            raise RuntimeError(f"Error while connecting to VPN: {test_response.text}")
     else:
         logger.info(f"VPN connection has been successfully established to {VPN_IP}")
 
