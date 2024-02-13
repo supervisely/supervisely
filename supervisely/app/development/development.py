@@ -18,10 +18,22 @@ VPN_CONFIGURATION_DIR = "~/supervisely-network"
 
 
 def supervisely_vpn_network(
-    action: Literal["up", "down"] = "up",
+    action: Optional[Literal["up", "down"]] = "up",
     force: Optional[bool] = True,
     raise_on_error: Optional[bool] = True,
-):
+) -> None:
+    """Connects to Supervisely network using WireGuard VPN.
+    Reads Supervisely API settings from the environment variables.
+
+    :param action: The action to perform, either "up" or "down".
+    :type action: Optional[Literal["up", "down"]]
+    :param force: If True, the connection will be brought down before bringing it up.
+    :type force: Optional[bool]
+    :param raise_on_error: If True, an exception will be raised if an error occurs.
+    :type raise_on_error: Optional[bool]
+    :raises subprocess.CalledProcessError: If an error occurs while connecting and raise_on_error is True.
+    """
+
     logger.info("wg quick reqires root privileges, you may be asked to enter your password.")
     network_dir = os.path.expanduser(VPN_CONFIGURATION_DIR)
     mkdir(network_dir)
