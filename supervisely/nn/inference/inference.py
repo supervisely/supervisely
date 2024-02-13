@@ -101,33 +101,31 @@ class Inference:
         self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
-            init_gui_method = getattr(self, 'init_gui', None)
-            original_init_gui_method = getattr(Inference, 'init_gui', None)
-            if init_gui_method.__func__ is not original_init_gui_method:
-                # logger.debug(f"'init_gui' method is overridden in {self.__class__.__name__}. Using custom GUI (ServingGUI)")
+            initialize_custom_gui_method = getattr(self, 'initialize_custom_gui', None)
+            original_initialize_custom_gui_method = getattr(Inference, 'initialize_custom_gui', None)
+            if initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
                 self._gui = GUI.ServingGUI()
-                self._user_layout = self.init_gui()
+                self._user_layout = self.initialize_custom_gui()
             else:
                 self.initialize_gui()
 
             def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
 
-                if isinstance(self.gui, GUI.InferenceGUI):
-                    device = gui.get_device()
-                    self.load_on_device(self._model_dir, device)
-                else:
+                if isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_ui()
                     self.load_model(**deploy_params)
                     self.update_gui(self._model_served)
                     self.set_params_to_ui(deploy_params)
+                else: # GUI.InferenceGUI
+                    device = gui.get_device()
+                    self.load_on_device(self._model_dir, device)
                 gui.show_deployed_model_info(self)
 
             def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 self.shutdown_model()
                 self.update_gui(self._model_served)
 
-            # if isinstance(self.gui, GUI.InferenceGUI):
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
 
@@ -154,7 +152,7 @@ class Inference:
             return None
         return self.gui.get_ui()
 
-    def init_gui(self) -> Widget:
+    def initialize_custom_gui(self) -> Widget:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def update_gui(self, is_model_deployed: bool = True) -> None:

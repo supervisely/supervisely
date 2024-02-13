@@ -309,9 +309,13 @@ class TrainedModelsSelector(Widget):
             return {"selectedRow": 0}
 
     def disable_table(self) -> None:
+        for row in self._rows:
+            row.checkpoints_selector.disable()
         super().disable()
         
     def enable_table(self) -> None:
+        for row in self._rows:
+            row.checkpoints_selector.enable()
         super().enable()
 
     def enable(self):
@@ -319,6 +323,7 @@ class TrainedModelsSelector(Widget):
         self._model_path_input.enable()
         self.custom_checkpoint_task_type_selector.enable()
         self.show_custom_checkpoint_path_checkbox.enable()
+        self.enable_table()
         super().enable()
 
     def disable(self) -> None:
@@ -326,6 +331,7 @@ class TrainedModelsSelector(Widget):
         self._model_path_input.disable()
         self.custom_checkpoint_task_type_selector.disable()
         self.show_custom_checkpoint_path_checkbox.disable()
+        self.disable_table()
         super().disable()
     def _generate_table_rows(
         self, checkpoint_infos: List[CheckpointInfo]
