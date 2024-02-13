@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 import re
@@ -5,7 +6,6 @@ import subprocess
 import sys
 import time
 import uuid
-import inspect
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
@@ -40,7 +40,7 @@ from supervisely.app.fastapi.subapp import (
     call_on_autostart,
     get_name_from_env,
 )
-from supervisely.app.widgets import Widget
+from supervisely.app.widgets import Container, Widget
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
@@ -50,7 +50,6 @@ from supervisely.nn.prediction_dto import Prediction
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
-from supervisely.app.widgets import Container
 
 try:
     from typing import Literal
@@ -101,8 +100,10 @@ class Inference:
         self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
-            initialize_custom_gui_method = getattr(self, 'initialize_custom_gui', None)
-            original_initialize_custom_gui_method = getattr(Inference, 'initialize_custom_gui', None)
+            initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+            original_initialize_custom_gui_method = getattr(
+                Inference, "initialize_custom_gui", None
+            )
             if initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
                 self._gui = GUI.ServingGUI()
                 self._user_layout = self.initialize_custom_gui()
@@ -117,7 +118,7 @@ class Inference:
                     self.load_model(**deploy_params)
                     self.update_gui(self._model_served)
                     self.set_params_to_ui(deploy_params)
-                else: # GUI.InferenceGUI
+                else:  # GUI.InferenceGUI
                     device = gui.get_device()
                     self.load_on_device(self._model_dir, device)
                 gui.show_deployed_model_info(self)
@@ -1035,20 +1036,32 @@ class Inference:
 
         @server.post("/get_deploy_settings")
         def _get_deploy_settings(response: Response, request: Request):
-            load_model_method = getattr(self, 'load_model')
+            load_model_method = getattr(self, "load_model")
             method_signature = inspect.signature(load_model_method)
-            docstring = inspect.getdoc(load_model_method) or ''
-            doc_lines = docstring.split('\n')
-            param_docs = {line.split(":")[1].strip(): line.split(":")[2].strip() for line in doc_lines if line.startswith(":param")}
+            docstring = inspect.getdoc(load_model_method) or ""
+            doc_lines = docstring.split("\n")
+            param_docs = {
+                line.split(":")[1].strip(): line.split(":")[2].strip()
+                for line in doc_lines
+                if line.startswith(":param")
+            }
 
             args_details = []
             for name, parameter in method_signature.parameters.items():
-                if name == 'self':
+                if name == "self":
                     continue
-                arg_type = parameter.annotation.__name__ if parameter.annotation != inspect.Parameter.empty else None
-                default = parameter.default if parameter.default != inspect.Parameter.empty else None
+                arg_type = (
+                    parameter.annotation.__name__
+                    if parameter.annotation != inspect.Parameter.empty
+                    else None
+                )
+                default = (
+                    parameter.default if parameter.default != inspect.Parameter.empty else None
+                )
                 doc = param_docs.get(f"param {name}", None)
-                args_details.append({"name": name, "type": arg_type, "default": default, "doc": doc})
+                args_details.append(
+                    {"name": name, "type": arg_type, "default": default, "doc": doc}
+                )
 
             return args_details
 
@@ -1062,17 +1075,16 @@ class Inference:
                 self.load_model(**deploy_params)
                 self.update_gui(self._model_served)
                 self.set_params_to_ui(deploy_params)
-                
+
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")
                 self.gui.set_deployed(device)
-                
+
                 self.gui.show_deployed_model_info(self)
                 self._model_served = True
                 return {"result": "model was successfully deployed"}
             except Exception as e:
                 self.gui._success_label.hide()
-                # return {"result": f"an error occured: {repr(e)}"}
                 raise e
 
 
