@@ -1,52 +1,44 @@
 # coding: utf-8
-
 from __future__ import annotations
-from typing import List, Optional, Dict, Tuple, Callable, NamedTuple, Union
 
-from supervisely.api.api import Api
-from collections import namedtuple
 import os
 import random
-import numpy as np
 import shutil
+from collections import namedtuple
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
+
+import numpy as np
 from tqdm import tqdm
 
-from supervisely.io.fs import (
-    file_exists,
-    touch,
-    dir_exists,
-    list_files,
-    get_file_name_with_ext,
-    get_file_name,
-    copy_file,
-    silent_remove,
-    remove_dir,
-    ensure_base_path,
-)
 import supervisely.imaging.image as sly_image
-from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
+import supervisely.pointcloud.pointcloud as sly_pointcloud
 from supervisely._utils import batched
-from supervisely.video_annotation.key_id_map import KeyIdMap
-
+from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-
-from supervisely.project.project import (
-    OpenMode,
-    Dataset,
-    read_single_project as read_project_wrapper,
+from supervisely.io.fs import (
+    copy_file,
+    dir_exists,
+    ensure_base_path,
+    file_exists,
+    get_file_name,
+    get_file_name_with_ext,
+    list_files,
+    remove_dir,
+    silent_remove,
+    touch,
 )
-
-
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-import supervisely.pointcloud.pointcloud as sly_pointcloud
-from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.io.json import dump_json_file
+from supervisely.project.project import Dataset, OpenMode
+from supervisely.project.project import read_single_project as read_project_wrapper
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
+from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudItemPaths(NamedTuple):
@@ -545,6 +537,24 @@ class PointcloudProject(VideoProject):
         return super(PointcloudProject, self).get_classes_stats(
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
+
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.PointcloudProject("/home/admin/work/supervisely/projects/pointclouds", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'point_clouds'
+        """
+        return ProjectType.POINT_CLOUDS.value
 
     @staticmethod
     def get_train_val_splits_by_count(

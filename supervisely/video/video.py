@@ -162,6 +162,30 @@ def validate_format(path: str) -> None:
     validate_ext(os.path.splitext(path)[1])
 
 
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if Video file from given path could be read and has supported extension.
+
+    :param path: Path to Video file.
+    :type path: str
+    :return: True if file format in list of supported video formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        video_path = "/video/video.jpg"
+        sly.video.is_valid_format(video_path) # False
+    """
+    try:
+        validate_format(path)
+        return True
+    except (VideoReadException, UnsupportedVideoFormat):
+        return False
+
+
 def _check_video_requires_processing(video_info, stream_info):
     """
     Check if video need container or codec processing

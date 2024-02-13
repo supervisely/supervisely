@@ -110,7 +110,7 @@ from supervisely.worker_api.chunking import (
 )
 import supervisely.worker_proto.worker_api_pb2 as api_proto
 
-from supervisely.api.api import Api
+from supervisely.api.api import Api, UserSession
 from supervisely.api import api
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
@@ -244,14 +244,46 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 import supervisely.team_files as team_files
 import supervisely.output as output
 
-# monkey patching
-import tqdm
+# start monkey patching
+import importlib
+import inspect
 from supervisely.task.progress import tqdm_sly
+import tqdm
 
 _original_tqdm = tqdm.tqdm
-tqdm.tqdm = tqdm_sly
+
+
+def get_module_names_from_stack(is_reversed=False) -> list:
+    frame_records = inspect.stack()
+    module_names = []
+    for frame_record in frame_records:
+        module_name = frame_record.frame.f_globals["__name__"]
+        module_names.append(module_name)
+    if is_reversed:
+        module_names.reverse()
+    return module_names
+
+
+module_names = get_module_names_from_stack(is_reversed=True)
+
+for mname in module_names:  # list starts with "__main__"
+    m = importlib.import_module(mname)
+    if not hasattr(m, "tqdm"):
+        continue
+    else:
+        if hasattr(m.tqdm, "tqdm"):
+            if type(m.tqdm.tqdm) != tqdm_sly:
+                m.tqdm.tqdm = tqdm_sly
+        else:
+            if type(m.tqdm) != tqdm_sly:
+                m.tqdm = tqdm_sly
+
+# end monkeypatching
 
 from supervisely.io.exception_handlers import handle_exceptions
 from supervisely.app.fastapi.subapp import Event
 
-setup_certificates()
+try:
+    setup_certificates()
+except Exception as e:
+    logger.warn(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)

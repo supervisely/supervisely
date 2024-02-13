@@ -1,17 +1,18 @@
 # coding: utf-8
 """Functions for processing volumes"""
 
-import os
-import json
-from typing import List, Tuple, Union
-import numpy as np
 
+import os
+from typing import List, Tuple, Union
+
+import numpy as np
 import pydicom
 import SimpleITK as sitk
 import stringcase
-from supervisely.io.fs import get_file_ext, list_files_recursively, list_files
+
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
+from supervisely.io.fs import get_file_ext, list_files_recursively
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -129,6 +130,27 @@ def validate_format(path: str):
         raise UnsupportedVolumeFormat(
             f"File {path} has unsupported volume extension. Supported extensions: {ALLOWED_VOLUME_EXTENSIONS}"
         )
+
+
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if a given file has a supported format.
+    :param path: Path to file.
+    :type path: str
+    :return: True if file format in list of supported Volume formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+         .. code-block:: python
+            import supervisely as sly
+            sly.volume.is_valid_format('/volumes/dcm01.dcm') # True
+            sly.volume.is_valid_format('/volumes/nrrd.py') # False
+    """
+
+    try:
+        validate_format(path)
+        return True
+    except UnsupportedVolumeFormat:
+        return False
 
 
 def rescale_slope_intercept(value: float, slope: float, intercept: float) -> float:
@@ -387,13 +409,16 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
     return volume_bytes
 
 
-def inspect_dicom_series(root_dir: str):
+def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     """
     Search for DICOM series in the directory and its subdirectories.
+    If several series with the same UID are found in the directory, then the series are numbered in the format: "series_uid_01", "series_uid_02", etc.
 
     :param root_dir: Directory path with volumes.
     :type root_dir: str
-    :return: Dictionary with DICOM volumes IDs and corresponding fiel names.
+    :param logging: Specify whether to print logging messages.
+    :type logging: bool
+    :return: Dictionary with DICOM volumes IDs and corresponding file names.
     :rtype: dict
     :Usage example:
 
@@ -413,11 +438,18 @@ def inspect_dicom_series(root_dir: str):
         sitk.ProcessObject_SetGlobalWarningDisplay(False)
         series_found = reader.GetGDCMSeriesIDs(dir)
         sitk.ProcessObject_SetGlobalWarningDisplay(True)
-        logger.info(f"Found {len(series_found)} series in directory {dir}")
+        if logging:
+            logger.info(f"Found {len(series_found)} series in directory {dir}")
         for serie in series_found:
             dicom_names = reader.GetGDCMSeriesFileNames(dir, serie)
-            found_series[serie] = dicom_names
-    logger.info(f"Total {len(found_series)} series in directory {root_dir}")
+            new_key = serie
+            new_suffix = 1
+            while new_key in found_series:
+                new_key = "{}_{:02d}".format(serie, new_suffix)
+                new_suffix += 1
+            found_series[new_key] = dicom_names
+    if logging:
+        logger.info(f"Total {len(found_series)} series in directory {root_dir}")
     return found_series
 
 
@@ -640,12 +672,14 @@ def get_meta(
     return volume_meta
 
 
-def inspect_nrrd_series(root_dir: str) -> List[str]:
+def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     """
     Inspect a directory for NRRD series by recursively listing files with the ".nrrd" extension and returns a list of NRRD file paths found in the directory.
 
     :param root_dir: Directory to inspect for NRRD series.
     :type root_dir: str
+    :param logging: Specify whether to print logging messages.
+    :type logging: bool
     :return: List of NRRD file paths found in the given directory.
     :rtype: List[str]
     :Usage example:
@@ -659,7 +693,8 @@ def inspect_nrrd_series(root_dir: str) -> List[str]:
     """
 
     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
-    logger.info(f"Total {len(nrrd_paths)} NRRD series in directory {root_dir}")
+    if logging:
+        logger.info(f"Total {len(nrrd_paths)} NRRD series in directory {root_dir}")
     return nrrd_paths
 
 

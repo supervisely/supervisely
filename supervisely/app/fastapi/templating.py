@@ -1,15 +1,17 @@
-import typing
 import os
+import typing
 from os import PathLike
+
 import jinja2
 from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
-from starlette.templating import _TemplateResponse as _TemplateResponse
 from starlette.background import BackgroundTask
+from starlette.templating import _TemplateResponse as _TemplateResponse
+
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
 # https://github.com/supervisely/js-bundle
-js_bundle_version = "2.1.75"
+js_bundle_version = "2.1.76"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
 js_frontend_version = "0.0.48"
@@ -27,7 +29,11 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             variable_start_string="{{{",
             variable_end_string="}}}",
         )
-        env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
+        try:
+            env_sly.globals["url_for"] = env_fastapi.globals["url_for"]
+        except:
+            # for fastapi version==0.108.0
+            pass
         return env_sly
 
     def TemplateResponse(
@@ -49,6 +55,13 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             "app_name": get_name_from_env(default="Supervisely App"),
         }
 
-        return super().TemplateResponse(
-            name, context_with_widgets, status_code, headers, media_type, background
-        )
+        try:
+            request = context["request"]
+            return super().TemplateResponse(
+                request, name, context_with_widgets, status_code, headers, media_type, background
+            )
+        except:
+            # for fastapi version<0.108.0
+            return super().TemplateResponse(
+                name, context_with_widgets, status_code, headers, media_type, background
+            )

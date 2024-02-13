@@ -1,7 +1,29 @@
-from dotenv import load_dotenv
-import os, math
+import math
+import os
 from time import sleep
 
+from dotenv import load_dotenv
+from progress_tqdm_imports import *
+
+# dwnl()
+upl()
+# dwnl_dir()
+# upldir()
+
+breakpoint()
+dwnl_prj()
+upl_prj()
+
+dwn_prj_img()
+upl_prj_img()
+
+dwnl_prj_pcl()
+dwnl_prj_pclep()
+dwnl_prj_vol()
+dwnl_prj_vid()
+
+
+breakpoint()
 import supervisely as sly
 
 if sly.is_development():

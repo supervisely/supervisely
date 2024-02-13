@@ -33,12 +33,11 @@
 >
   {% for item in widget._widgets %} 
     {% if widget._fractions is none %}
-      <div>{{{item}}}</div>
+      <div style="{{{widget._widgets_style}}}">{{{item}}}</div>
     {% else %}
-      <div style="flex: {{{widget._fractions[loop.index0]}}}; display: flex; ">
+      <div style="flex: {{{widget._fractions[loop.index0]}}}; display: flex;  {{{widget._widgets_style}}}">
         {{{item}}}
       </div>
     {% endif %} 
   {% endfor %}
 </div>
-

@@ -22,7 +22,7 @@ INSTALL_REQUIRES = [
     "numpy>=1.19, <2.0.0",
     "opencv-python>=4.5.5.62, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <10.0.0",
+    "pillow>=5.4.1, <=10.2.0",
     "protobuf>=3.14.0, <=3.20.3",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
@@ -39,8 +39,8 @@ INSTALL_REQUIRES = [
     "trimesh>=3.11.2, <4.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
     "pydantic>=1.7.4, <=2.5.0",
-    "anyio>=3.7.1,<4.0.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
-    "fastapi>=0.79.0, <0.100.0",
+    "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
+    "fastapi>=0.79.0, <=0.109.0",
     "websockets>=10.3, <11.0",
     "jinja2>=3.0.3, <4.0.0",
     "psutil>=5.9.0, <6.0.0",
@@ -64,6 +64,7 @@ INSTALL_REQUIRES = [
     "urllib3>=1.26.15, <=2.1.0",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
+    "pyjwt>=2.1.0,<3.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {

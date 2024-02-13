@@ -14,7 +14,13 @@ from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
 import supervisely.io.fs as sly_fs
-from supervisely._utils import abs_url, batched, is_development, rand_str
+from supervisely._utils import (
+    abs_url,
+    batched,
+    generate_free_name,
+    is_development,
+    rand_str,
+)
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.video.video_annotation_api import VideoAnnotationAPI
 from supervisely.api.video.video_figure_api import VideoFigureApi
@@ -25,7 +31,10 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
+    get_file_name_with_ext,
     get_file_size,
+    list_files,
+    list_files_recursively,
 )
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -33,6 +42,7 @@ from supervisely.video.video import (
     gen_video_stream_name,
     get_info,
     get_video_streams,
+    is_valid_format,
     validate_ext,
 )
 
@@ -323,8 +333,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
-        :param raw_video_metadata: Get normalized metadata from server.
-        :type raw_video_metadata: bool
+        :param raw_video_meta: Get normalized metadata from server if False.
+        :type raw_video_meta: bool
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -522,7 +532,6 @@ class VideoApi(RemoveableBulkModuleApi):
                         ApiField.DATASET_ID: dataset_id,
                         ApiField.FILTER: filters,
                         ApiField.FIELDS: fields,
-                        ApiField.RAW_VIDEO_META: True,
                     },
                 )
             )
@@ -1374,6 +1383,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
         metas2 = [meta["meta"] for meta in metas]
 
+        names = self.get_free_names(dataset_id, names)
+
         for name, hash, meta in zip(names, hashes, metas2):
             try:
                 all_streams = meta["streams"]
@@ -1387,11 +1398,11 @@ class VideoApi(RemoveableBulkModuleApi):
                     #         warn_video_requires_processing(file_name)
                     #         continue
 
-                    item_name = name
-                    info = self._api.video.get_info_by_name(dataset_id, item_name)
-                    if info is not None:
-                        item_name = gen_video_stream_name(name, stream_index)
-                    res = self.upload_hash(dataset_id, item_name, hash, stream_index)
+                    # item_name = name
+                    # info = self._api.video.get_info_by_name(dataset_id, item_name)
+                    # if info is not None:
+                    #     item_name = gen_video_stream_name(name, stream_index)
+                    res = self.upload_hash(dataset_id, name, hash, stream_index)
                     video_info_results.append(res)
             except Exception as e:
                 logger.warning(
@@ -1491,6 +1502,13 @@ class VideoApi(RemoveableBulkModuleApi):
         else:
             resp = self._api.post("videos.bulk.upload", encoder)
 
+        # close all opened files
+        for value in content_dict.values():
+            from io import BufferedReader
+
+            if isinstance(value[1], BufferedReader):
+                value[1].close()
+
         resp_list = json.loads(resp.text)
         remote_hashes = [d["hash"] for d in resp_list if "hash" in d]
         if len(remote_hashes) != len(hashes_items_to_upload):
@@ -1519,7 +1537,12 @@ class VideoApi(RemoveableBulkModuleApi):
     ):
         """Private method. Used for batch uploading of multiple unique videos."""
 
-        hash_to_items = {i_hash: item for item, i_hash in items_hashes}
+        # count all items to adjust progress_cb and create hash to item mapping with unique hashes
+        items_count_total = 0
+        hash_to_items = {}
+        for item, i_hash in items_hashes:
+            hash_to_items[i_hash] = item
+            items_count_total += 1
 
         unique_hashes = set(hash_to_items.keys())
         remote_hashes = set(
@@ -1547,6 +1570,8 @@ class VideoApi(RemoveableBulkModuleApi):
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
+                if progress_cb is not None:
+                    progress_cb(items_count_total - len(unique_hashes))
                 return
 
             logger.warn(
@@ -1973,6 +1998,8 @@ class VideoApi(RemoveableBulkModuleApi):
     ):
         """
         Remove videos from supervisely by IDs.
+        All video IDs must belong to the same dataset.
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: List of Videos IDs in Supervisely.
         :type ids: List[int]
@@ -2019,3 +2046,123 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         super(VideoApi, self).remove(video_id)
+
+    def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:
+        """
+        Returns list of free names for given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :return: List of free names.
+        :rtype: List[str]
+        """
+
+        videos_in_dataset = self.get_list(dataset_id)
+        used_names = {video_info.name for video_info in videos_in_dataset}
+        new_names = [
+            generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
+            for name in names
+        ]
+        return new_names
+
+    def raise_name_intersections_if_exist(
+        self, dataset_id: int, names: List[str], message: str = None
+    ):
+        """
+        Raises error if videos with given names already exist in dataset.
+        Default error message:
+        "Videos with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}.
+        Please, rename videos and try again or set change_name_if_conflict=True to rename automatically on upload."
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :param message: Error message.
+        :type message: str, optional
+        :return: None
+        :rtype: None
+        """
+        videos_in_dataset = self.get_list(dataset_id)
+        used_names = {video_info.name for video_info in videos_in_dataset}
+        name_intersections = used_names.intersection(set(names))
+        if message is None:
+            message = f"Videos with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename videos and try again or set change_name_if_conflict=True to rename automatically on upload."
+        if len(name_intersections) > 0:
+            raise ValueError(f"{message}")
+
+    def upload_dir(
+        self,
+        dataset_id: int,
+        dir_path: str,
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[VideoInfo]:
+        """
+        Uploads all videos with supported extensions from given directory to Supervisely.
+        Optionally, uploads videos from subdirectories of given directory.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_path: Path to directory with videos.
+        :type dir_path: str
+        :param recursive: If True, will upload videos from subdirectories of given directory recursively. Otherwise, will upload videos only from given directory.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Video name when Dataset already contains an Video with identical name, If False and videos with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded videos infos
+        :rtype: List[VideoInfo]
+        """
+
+        if recursive:
+            paths = list_files_recursively(dir_path, filter_fn=is_valid_format)
+        else:
+            paths = list_files(dir_path, filter_fn=is_valid_format)
+
+        names = [get_file_name_with_ext(path) for path in paths]
+
+        if change_name_if_conflict is False:
+            self.raise_name_intersections_if_exist(dataset_id, names)
+
+        video_infos = self.upload_paths(dataset_id, names, paths, progress_cb=progress_cb)
+        return video_infos
+
+    def upload_dirs(
+        self,
+        dataset_id: int,
+        dir_paths: List[str],
+        recursive: Optional[bool] = True,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[VideoInfo]:
+        """
+        Uploads all videos with supported extensions from given directories to Supervisely.
+        Optionally, uploads videos from subdirectories of given directories.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_paths: List of paths to directories with videos.
+        :type dir_paths: List[str]
+        :param recursive: If True, will upload videos from subdirectories of given directories recursively. Otherwise, will upload videos only from given directories.
+        :type recursive: bool, optional
+        :param change_name_if_conflict: If True adds suffix to the end of Video name when Dataset already contains an Video with identical name, If False and videos with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded videos infos
+        :rtype: List[VideoInfo]
+        """
+
+        video_infos = []
+        for dir_path in dir_paths:
+            video_infos.extend(
+                self.upload_dir(
+                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
+                )
+            )
+        return video_infos
