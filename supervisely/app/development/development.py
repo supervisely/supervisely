@@ -33,17 +33,23 @@ def supervisely_vpn_network(
     :type force: Optional[bool]
     :param raise_on_error: If True, an exception will be raised if an error occurs.
     :type raise_on_error: Optional[bool]
+    :raises RuntimeError: If wg-quick is not available in the system and raise_on_error is True.
     :raises subprocess.CalledProcessError: If an error occurs while connecting and raise_on_error is True.
     """
     if shutil.which("wg-quick") is None:
-        logger.error(
-            "wg-quick is not available in the system. "
-            "Please refer to this documentation to install required packages: "
-            "https://developer.supervisely.com/app-development/advanced/advanced-debugging#prepare-environment"
-        )
         if raise_on_error:
-            raise FileNotFoundError("wg-quick is not available in the system.")
-        return
+            raise RuntimeError(
+                "wg-quick is not available in the system. "
+                "Please refer to this documentation to install required packages: "
+                "https://developer.supervisely.com/app-development/advanced/advanced-debugging#prepare-environment"
+            )
+        else:
+            logger.error(
+                "wg-quick is not available in the system. "
+                "Please refer to this documentation to install required packages: "
+                "https://developer.supervisely.com/app-development/advanced/advanced-debugging#prepare-environment"
+            )
+            return
     else:
         logger.info("wg-quick is available in the system, will try to connect to VPN.")
 
@@ -126,9 +132,11 @@ def supervisely_vpn_network(
             "WireGuard interface has been successfully brought up, checking the connection..."
         )
     except subprocess.CalledProcessError as e:
-        logger.warning(f"Error while connecting to VPN, try again. Error: {e.stderr.decode()}")
         if raise_on_error:
             raise
+        else:
+            logger.warning(f"Error while connecting to VPN, try again. Error: {e.stderr.decode()}")
+            return
 
     test_response = requests.get(VPN_IP, timeout=5)
     test_response.raise_for_status()
