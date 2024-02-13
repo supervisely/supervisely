@@ -6,7 +6,7 @@ class ImageFormatConverter:
     #     pass
     converter = None
 
-    def __init__(self, input_data):  # , output_format = AvailableFormats.SLY):
+    def __init__(self, input_data):
         self.converter = self.detect_format(input_data)  # -> converter class
 
     @property
