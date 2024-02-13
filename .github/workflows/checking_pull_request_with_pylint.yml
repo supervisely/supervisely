@@ -2,11 +2,12 @@ name: Checking modified files in PR with pylint
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [closed]
   workflow_dispatch:
 
 jobs:
   pylint:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     env:
       ISSUES_URL: "https://api.github.com/repos/supervisely/issues/issues"
