@@ -576,10 +576,12 @@ def get_directory_size(dir_path: str) -> int:
 
 
 def archive_directory(
-    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None, chunk_size_mb: int = 50
 ) -> Union[None, List[str]]:
     """
     Create tar archive from directory and optionally split it into parts of specified size.
+    You can adjust the size of the chunk to read from the file, while archiving the file into parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param dir_: Target directory path.
     :type dir_: str
@@ -588,6 +590,8 @@ def archive_directory(
     :param split: Split archive into parts of specified size (in bytes) or size with
         suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
     :type split: Union[int, str]
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None or list of archive parts if split is not None
     :rtype: Union[None, List[str]]
     :Usage example:
@@ -613,7 +617,7 @@ def archive_directory(
     if os.path.getsize(tar_path) <= split:
         return
 
-    chunk = 50 * 1024 * 1024  # 50Mb
+    chunk = chunk_size_mb * 1024 * 1024
     tar_name = os.path.basename(tar_path)
     tar_dir = os.path.abspath(os.path.dirname(tar_path))
     parts_paths = []
@@ -638,10 +642,14 @@ def archive_directory(
     return parts_paths
 
 
-def unpack_archive(archive_path: str, target_dir: str, remove_junk=True, is_split=False) -> None:
+def unpack_archive(
+    archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
+) -> None:
     """
     Unpacks archive to the target directory, removes junk files and directories.
     To extract a split archive, you must pass the path to the first part in archive_path. Archive parts must be in the same directory. Format: archive_name.tar.001, archive_name.tar.002, etc. Works with tar and zip.
+    You can adjust the size of the chunk to read from the file, while unpacking the file from parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param archive_path: Path to the archive.
     :type archive_path: str
@@ -649,8 +657,10 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True, is_spli
     :type target_dir: str
     :param remove_junk: Remove junk files and directories. Default is True.
     :type remove_junk: bool
-    :param is_split: If True, archive_path must be the path to the first part. Default is False.
+    :param is_split: Determines if the source archive is split into parts. If True, archive_path must be the path to the first part. Default is False.
     :type is_split: bool
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -666,7 +676,7 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True, is_spli
     """
 
     if is_split:
-        chunk = 50 * 1024 * 1024  # 50Mb
+        chunk = chunk_size_mb * 1024 * 1024
         base_name = get_file_name(archive_path)
         dir_name = os.path.dirname(archive_path)
         if get_file_ext(base_name) in (".zip", ".tar"):
