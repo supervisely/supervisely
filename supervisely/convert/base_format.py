@@ -3,12 +3,16 @@ from supervisely import Annotation
 from supervisely.imaging.image import read
 
 
-class AvailableFormats(StrEnum):
-    COCO = "coco"
+class AvailableImageFormats(StrEnum):
     SLY = "supervisely"
+    COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
 
+class AvailableVideoFormats(StrEnum):
+    SLY = "supervisely"
+    MOT = "coco"
+    DAVIS = "yolo"
 
 class BaseFormat:
     def __init__(self, data):
@@ -40,10 +44,10 @@ class BaseFormat:
             return self.meta
         raise NotImplementedError()
 
-    def get_items(self) -> generator?:
+    def get_items(self): # -> generator?
         raise NotImplementedError()
     
-    def to_supervisely(self, image_path: str, ann_path: str) -> Annotation:
+    def to_supervisely(self, item_path: str, ann_path: str) -> Annotation:
         """Convert to Supervisely format."""
 
         if self.meta is None:
@@ -51,16 +55,16 @@ class BaseFormat:
         raise NotImplementedError()
 
 
-    def preview(self, sample_size=5):
-        """Preview the sample data."""
+    # def preview(self, sample_size=5):
+    #     """Preview the sample data."""
 
-        previews = []
-        for i, (image_path, ann_path) in enumerate(self.get_items()):
-            if i >= sample_size:
-                break
-            ann = self.to_supervisely(image_path, ann_path)
-            img = read(image_path)
-            ann.draw_pretty(img)
-            previews.append(img)
+    #     previews = []
+    #     for i, (image_path, ann_path) in enumerate(self.get_items()):
+    #         if i >= sample_size:
+    #             break
+    #         ann = self.to_supervisely(image_path, ann_path)
+    #         img = read(image_path)
+    #         ann.draw_pretty(img)
+    #         previews.append(img)
 
-        return previews
+    #     return previews

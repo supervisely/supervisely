@@ -1,36 +1,72 @@
+import os
 from typing import Literal
 
-from supervisely import ProjectType
+from supervisely import Api, ProjectType, batched
 from supervisely.convert.base_format import BaseFormat
+from supervisely.convert.converter_utils import (
+    contains_only_images,
+    contains_only_point_clouds,
+    contains_only_videos,
+    contains_only_volumes,
+)
 from supervisely.convert.image.image_converter import ImageFormatConverter
-from supervisely import Api, batched
+from supervisely.convert.video.video_converter import VideoFormatConverter
+
+# format extensions
+
+# supervisely - .json
+# coco - .json
+# yolo - .txt
+# pascal_voc - .xml
 
 
 # class Converter:
 class ImportManager:
     def __init__(
-        self, input_data, save_path=None, output_type: Literal["folder", "archive"] = "folder"
+        self, input_data, save_path: str = None, output_type: Literal["folder", "archive"] = "folder"
     ):
         # input_data date - folder / archive / link / team files
         # if save_path is None - save to the same level folder
+        if not os.path.exists(input_data):
+            raise RuntimeError(f"Directory does not exist: {input_data}")
+        
         self.input_data = input_data
-        self.modality = self._detect_modality(input_data)
-        self.converter = None
+        self.save_path = save_path
+        self.output_type = output_type
+        
+        self.modality = self._detect_modality()
+        self.converter = self._get_converter()
         self.api = Api.from_env()
 
 
-    def _detect_modality(self, data):
+    def _detect_modality(self):
         """Detect modality of input data (images, videos, pointclouds, volumes)"""
-        raise NotImplementedError()
+        
+        if contains_only_images(self.input_data):
+            return ProjectType.IMAGES.value
+        
+        if contains_only_videos(self.input_data):
+            return ProjectType.VIDEOS.value
+        
+        if contains_only_point_clouds(self.input_data):
+            return ProjectType.POINT_CLOUDS.value # @TODO: ProjectType.POINT_CLOUDS_EPISODES
+        
+        if contains_only_volumes(self.input_data):
+            return ProjectType.VOLUMES.value
+        
+        else:
+            raise RuntimeError("Use of mixed data types is not supported.")
     
-    def get_converter(self):
+    def _get_converter(self):
         """Return correct converter"""
-        if self.modality == ProjectType.IMAGES:
-            self.converter = ImageFormatConverter(self.input_data)
-        elif self.modality == ProjectType.VIDEOS:
-            # self.converter = VideoFormatConverter(input_data)
-            pass
-        return self.converter
+        if self.modality == ProjectType.IMAGES.value:
+            return ImageFormatConverter(self.input_data).converter
+        elif self.modality == ProjectType.VIDEOS.value:
+            return VideoFormatConverter(self.input_data).converter
+        # elif self.modality == ProjectType.POINT_CLOUDS.value:
+        #     return PointCloudFormatConverter(input_data)
+        # elif self.modality == ProjectType.VOLUMES.value:
+        #     return VolumeFormatConverter(input_data)
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
