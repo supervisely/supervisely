@@ -4,9 +4,12 @@
 # docs
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
+import cv2
+import numpy as np
 from tqdm import tqdm
 
 from supervisely._utils import batched
@@ -1042,22 +1045,27 @@ class AnnotationApi(ModuleApi):
             },
         )
 
-    def render_ann(self, image_id, data, height, width, thickness):
-        color = [255, 0, 255]
-        return self._api.post(
+    def render_anns(self, image_ids, show_disabled=False, color=[],  classes=[]) -> List[bytes]: 
+        # ,  width, , data=None, height=None, thickness=1
+        # color = [255, 0, 255]
+        imgs = [
+            {
+                ApiField.ID: image_id,
+                # ApiField.ANNOTATION_DATA: data,
+                # ApiField.HEIGHT: height,
+                # ApiField.WIDTH: width,
+                # ApiField.THICKNESS: thickness,
+            } for image_id in image_ids
+        ]
+        res = self._api.post(
             "annotations.bulk.render",
             {
-                ApiField.COLOR: color,
-                ApiField.SHOW_DISABLED: True,
-                ApiField.CLASSES: [],
-                ApiField.IMAGES: [
-                    {
-                        ApiField.ID: image_id,
-                        ApiField.ANNOTATION_DATA: data,
-                        ApiField.HEIGHT: height,
-                        ApiField.WIDTH: width,
-                        ApiField.THICKNESS: thickness,
-                    }
-                ],
+                # ApiField.COLOR: color,
+                # ApiField.SHOW_DISABLED: show_disabled,
+                # ApiField.CLASSES: classes,
+                ApiField.IMAGES: imgs,
             },
         )
+
+        return [base64.b64decode(x.split(',')[-1]) for x in res.json()]
+

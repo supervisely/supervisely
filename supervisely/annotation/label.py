@@ -597,9 +597,10 @@ class LabelBase:
         """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(img_size))
 
-    def _draw_tags(self, bitmap, font):
+    def _draw_tags(self, bitmap, font, add_name=False):
         bbox = self.geometry.to_bbox()
-        texts = [tag.get_compact_str() for tag in self.tags]
+        texts = [t.get_compact_str() for t in self.tags]
+        texts = texts if add_name is False else [self.obj_class.name] + texts
         sly_image.draw_text_sequence(
             bitmap=bitmap,
             texts=texts,
@@ -610,10 +611,13 @@ class LabelBase:
 
     def _draw_class_name(self, bitmap, font):
         bbox = self.geometry.to_bbox()
-            
-        sly_image.draw_text(bitmap, self.obj_class.name, (bbox.top, bbox.left), font=font)
-        
-        
+        sly_image.draw_text(
+            bitmap,
+            self.obj_class.name,
+            (bbox.top, bbox.left),
+            corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
+            font=font,
+        )
 
     def draw(
         self,
@@ -622,8 +626,8 @@ class LabelBase:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         tags_font: Optional[FreeTypeFont] = None,
-        draw_class_name: bool = False,
-        class_name_font = None
+        draw_name: bool = False,
+        name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
         Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw>`.
@@ -648,13 +652,12 @@ class LabelBase:
         if draw_tags:
             if tags_font is None:
                 tags_font = self._get_font(bitmap.shape[:2])
-            self._draw_tags(bitmap, tags_font)
-        if draw_class_name:
-            if class_name_font is None:
-                # cls_font = self._get_font(bitmap.shape[:2])
-                class_name_font = sly_font.get_font(font_size=24)
-                # _, _, _, bottom = font.getbbox(label.obj_class.name)                
-            self._draw_class_name(bitmap, class_name_font)            
+            self._draw_tags(bitmap, tags_font, add_name=draw_name)
+        elif draw_name:
+            if name_font is None:
+                name_font = self._get_font(bitmap.shape[:2])
+                # _, _, _, bottom = font.getbbox(label.obj_class.name)
+            self._draw_class_name(bitmap, name_font)
 
     def get_mask(self, img_size: Tuple[int, int]) -> np.ndarray:
         """Returns 2D boolean mask of the label.
@@ -679,6 +682,8 @@ class LabelBase:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         tags_font: Optional[FreeTypeFont] = None,
+        draw_name=None,
+        name_font=None,
     ) -> None:
         """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
@@ -703,7 +708,12 @@ class LabelBase:
         if draw_tags:
             if tags_font is None:
                 tags_font = self._get_font(bitmap.shape[:2])
-            self._draw_tags(bitmap, tags_font)
+            self._draw_tags(bitmap, tags_font, add_name=draw_name)
+        elif draw_name:
+            if name_font is None:
+                name_font = self._get_font(bitmap.shape[:2])
+                # _, _, _, bottom = font.getbbox(label.obj_class.name)
+            self._draw_class_name(bitmap, name_font)
 
     @property
     def area(self) -> float:

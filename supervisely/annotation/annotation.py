@@ -1341,6 +1341,7 @@ class Annotation:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         fill_rectangles: Optional[bool] = True,
+        draw_label_names: bool = False,
     ) -> None:
         """
         Draws current Annotation on image. Modifies mask.
@@ -1396,6 +1397,8 @@ class Annotation:
                     thickness=thickness,
                     draw_tags=draw_tags,
                     tags_font=tags_font,
+                    draw_name=draw_label_names,
+                    name_font=tags_font,
                 )
                 continue
             label.draw(
@@ -1404,6 +1407,8 @@ class Annotation:
                 thickness=thickness,
                 draw_tags=draw_tags,
                 tags_font=tags_font,
+                draw_name=draw_label_names,
+                name_font=tags_font,
             )
         if draw_tags:
             self._draw_tags(bitmap)

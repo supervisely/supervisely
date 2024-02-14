@@ -491,7 +491,6 @@ def draw_text(
             fill=(255, 255, 255, 128),
         )
     drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)
-
     source_img = PILImage.alpha_composite(source_img, canvas)
     source_img = source_img.convert("RGB")
     bitmap[:, :, :] = np.array(source_img, dtype=np.uint8)
