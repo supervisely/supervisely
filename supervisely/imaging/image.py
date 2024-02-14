@@ -47,7 +47,6 @@ class CornerAnchorMode:
     TOP_RIGHT = "tr"
     BOTTOM_LEFT = "bl"
     BOTTOM_RIGHT = "br"
-    MIDDLE_LEFT = "ml"
 
 
 class RotateMode(Enum):
@@ -367,7 +366,6 @@ def draw_text_sequence(
     col_space: Optional[int] = 12,
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
-    center_to_first_elem = False
 ) -> None:
     """
     Draws text labels on bitmap from left to right with col_space spacing between labels.
@@ -415,16 +413,18 @@ def draw_text_sequence(
 
     _, max_height = drawer.textsize("".join(texts), font=font)
 
-    _, text_height =  drawer.textsize(texts[0], font=font)     
+    _, text_height = drawer.textsize(texts[0], font=font)
     middle = text_height // 2
     for text in texts:
-        _, h = drawer.textsize(text, font=font)        
-        row_offset = middle - h // 2  
+        _, h = drawer.textsize(text, font=font)
+        row_offset = middle - h // 2
 
         y, x = anchor_point[0] - row_offset, anchor_point[1] + col_offset
-        text_height, text_width = draw_text(bitmap, text, (y, x), corner_snap, font, fill_background, (0, 0, 0, 255), middle, max_height)
+        text_height, text_width = draw_text(
+            bitmap, text, (y, x), corner_snap, font, fill_background, (0, 0, 0, 255), max_height
+        )
         col_offset += text_width + col_space
-        
+
 
 def draw_text(
     bitmap: np.ndarray,
@@ -434,10 +434,8 @@ def draw_text(
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
     color: Optional[Union[Tuple[int, int, int, int], Tuple[int, int, int]]] = (0, 0, 0, 255),
-    middle=None,
-    max_height=None,
-    
-) -> tuple:
+    max_text_height: Optional[int] = None,
+) -> Tuple[int, int]:
     """
     Draws given text on bitmap image.
 
@@ -457,6 +455,9 @@ def draw_text(
                   ranging from 0 to 255.
                   If alpha is not provided, it defaults to 255 (fully opaque).
     :type color: Union[Tuple[int, int, int, int], Tuple[int, int, int]], optional
+    :param max_text_height: The parameter is necessary to draw neatly the fill background of list of texts with different heights. See `self.draw_text_sequence` for details.
+    :type max_text_height: bool, optional
+
     :return: Height and width of text
     :rtype: :class:`Tuple[int, int]`
     :Usage example:
@@ -503,13 +504,16 @@ def draw_text(
         rect_left -= text_width
 
     if fill_background:
-        rect_right = rect_left + text_width        
-        rect_bottom = rect_top + text_height
-        if max_height is not None:
-            rect_bottom = rect_top + max_height
+        rect_right = rect_left + text_width
+        _rect_top = rect_top
+        _rect_bottom = _rect_top + text_height
+        if max_text_height is not None:
+            delta = (max_text_height - text_height) // 2
+            _rect_bottom += delta
+            _rect_top -= delta
 
         drawer.rectangle(
-            ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
+            ((rect_left, _rect_top), (rect_right + 1, _rect_bottom)),
             fill=(255, 255, 255, 128),
         )
     drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)
