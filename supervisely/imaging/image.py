@@ -47,6 +47,7 @@ class CornerAnchorMode:
     TOP_RIGHT = "tr"
     BOTTOM_LEFT = "bl"
     BOTTOM_RIGHT = "br"
+    MIDDLE_LEFT = "ml"
 
 
 class RotateMode(Enum):
@@ -366,6 +367,7 @@ def draw_text_sequence(
     col_space: Optional[int] = 12,
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
+    center_to_first_elem = False
 ) -> None:
     """
     Draws text labels on bitmap from left to right with col_space spacing between labels.
@@ -405,10 +407,20 @@ def draw_text_sequence(
                    After
     """
     col_offset = 0
-    for text in texts:
+    first_elem_height = None
+    source_img = PILImage.fromarray(bitmap)
+    source_img = source_img.convert("RGBA")
+    canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
+    drawer = ImageDraw.Draw(canvas, "RGBA")
+    _, max_height = drawer.textsize("".join(texts), font=font)
+    for idx, text in enumerate(texts):
         position = anchor_point[0], anchor_point[1] + col_offset
-        _, text_width = draw_text(bitmap, text, position, corner_snap, font, fill_background)
+        text_height, text_width = draw_text(bitmap, text, position, corner_snap, font, fill_background,(0, 0, 0, 255), first_elem_height, max_height)
         col_offset += text_width + col_space
+
+        if idx==0:
+            first_elem_height = text_height
+        # row_offset = first_elem_height/2 + 
 
 
 def draw_text(
@@ -419,6 +431,8 @@ def draw_text(
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
     color: Optional[Union[Tuple[int, int, int, int], Tuple[int, int, int]]] = (0, 0, 0, 255),
+    first_element_height=None,
+    max_height=None
 ) -> tuple:
     """
     Draws given text on bitmap image.
@@ -472,6 +486,7 @@ def draw_text(
     drawer = ImageDraw.Draw(canvas, "RGBA")
     text_width, text_height = drawer.textsize(text, font=font)
     rect_top, rect_left = anchor_point
+    rect_top_bg = anchor_point[0]
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
         pass  # Do nothing
@@ -482,12 +497,17 @@ def draw_text(
     elif corner_snap == CornerAnchorMode.BOTTOM_RIGHT:
         rect_top -= text_height
         rect_left -= text_width
+    elif corner_snap == CornerAnchorMode.MIDDLE_LEFT:        
+        rect_top += 0 if first_element_height is None else (first_element_height - text_height) // 2
+        rect_top_bg += (text_height-  max_height) // 2 if first_element_height is None else (first_element_height -  max_height) // 2
 
     if fill_background:
         rect_right = rect_left + text_width
-        rect_bottom = rect_top + text_height
+        # rect_bottom = rect_top + text_height
+        rect_bottom = rect_top_bg + max_height
+        first_element_height
         drawer.rectangle(
-            ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
+            ((rect_left, rect_top_bg), (rect_right + 1, rect_bottom)),
             fill=(255, 255, 255, 128),
         )
     drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)

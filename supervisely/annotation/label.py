@@ -605,7 +605,7 @@ class LabelBase:
             bitmap=bitmap,
             texts=texts,
             anchor_point=(bbox.top, bbox.left),
-            corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
+            corner_snap=sly_image.CornerAnchorMode.MIDDLE_LEFT,
             font=font,
         )
 
