@@ -605,7 +605,7 @@ class LabelBase:
             bitmap=bitmap,
             texts=texts,
             anchor_point=(bbox.top, bbox.left),
-            corner_snap=sly_image.CornerAnchorMode.MIDDLE_LEFT,
+            corner_snap=sly_image.CornerAnchorMode.BOTTOM_LEFT,
             font=font,
         )
 
@@ -656,7 +656,6 @@ class LabelBase:
         elif draw_name:
             if name_font is None:
                 name_font = self._get_font(bitmap.shape[:2])
-                # _, _, _, bottom = font.getbbox(label.obj_class.name)
             self._draw_class_name(bitmap, name_font)
 
     def get_mask(self, img_size: Tuple[int, int]) -> np.ndarray:
@@ -712,7 +711,6 @@ class LabelBase:
         elif draw_name:
             if name_font is None:
                 name_font = self._get_font(bitmap.shape[:2])
-                # _, _, _, bottom = font.getbbox(label.obj_class.name)
             self._draw_class_name(bitmap, name_font)
 
     @property

@@ -407,21 +407,24 @@ def draw_text_sequence(
                    After
     """
     col_offset = 0
-    first_elem_height = None
+
     source_img = PILImage.fromarray(bitmap)
     source_img = source_img.convert("RGBA")
     canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
     drawer = ImageDraw.Draw(canvas, "RGBA")
+
     _, max_height = drawer.textsize("".join(texts), font=font)
-    for idx, text in enumerate(texts):
-        position = anchor_point[0], anchor_point[1] + col_offset
-        text_height, text_width = draw_text(bitmap, text, position, corner_snap, font, fill_background,(0, 0, 0, 255), first_elem_height, max_height)
+
+    _, text_height =  drawer.textsize(texts[0], font=font)     
+    middle = text_height // 2
+    for text in texts:
+        _, h = drawer.textsize(text, font=font)        
+        row_offset = middle - h // 2  
+
+        y, x = anchor_point[0] - row_offset, anchor_point[1] + col_offset
+        text_height, text_width = draw_text(bitmap, text, (y, x), corner_snap, font, fill_background, (0, 0, 0, 255), middle, max_height)
         col_offset += text_width + col_space
-
-        if idx==0:
-            first_elem_height = text_height
-        # row_offset = first_elem_height/2 + 
-
+        
 
 def draw_text(
     bitmap: np.ndarray,
@@ -431,8 +434,9 @@ def draw_text(
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
     color: Optional[Union[Tuple[int, int, int, int], Tuple[int, int, int]]] = (0, 0, 0, 255),
-    first_element_height=None,
-    max_height=None
+    middle=None,
+    max_height=None,
+    
 ) -> tuple:
     """
     Draws given text on bitmap image.
@@ -486,7 +490,7 @@ def draw_text(
     drawer = ImageDraw.Draw(canvas, "RGBA")
     text_width, text_height = drawer.textsize(text, font=font)
     rect_top, rect_left = anchor_point
-    rect_top_bg = anchor_point[0]
+    # rect_top_bg = anchor_point[0]
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
         pass  # Do nothing
@@ -497,17 +501,15 @@ def draw_text(
     elif corner_snap == CornerAnchorMode.BOTTOM_RIGHT:
         rect_top -= text_height
         rect_left -= text_width
-    elif corner_snap == CornerAnchorMode.MIDDLE_LEFT:        
-        rect_top += 0 if first_element_height is None else (first_element_height - text_height) // 2
-        rect_top_bg += (text_height-  max_height) // 2 if first_element_height is None else (first_element_height -  max_height) // 2
 
     if fill_background:
-        rect_right = rect_left + text_width
-        # rect_bottom = rect_top + text_height
-        rect_bottom = rect_top_bg + max_height
-        first_element_height
+        rect_right = rect_left + text_width        
+        rect_bottom = rect_top + text_height
+        if max_height is not None:
+            rect_bottom = rect_top + max_height
+
         drawer.rectangle(
-            ((rect_left, rect_top_bg), (rect_right + 1, rect_bottom)),
+            ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
             fill=(255, 255, 255, 128),
         )
     drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)
