@@ -576,10 +576,12 @@ def get_directory_size(dir_path: str) -> int:
 
 
 def archive_directory(
-    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None, chunk_size_mb: int = 50
 ) -> Union[None, List[str]]:
     """
     Create tar archive from directory and optionally split it into parts of specified size.
+    You can adjust the size of the chunk to read from the file, while archiving the file into parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param dir_: Target directory path.
     :type dir_: str
@@ -588,6 +590,8 @@ def archive_directory(
     :param split: Split archive into parts of specified size (in bytes) or size with
         suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
     :type split: Union[int, str]
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None or list of archive parts if split is not None
     :rtype: Union[None, List[str]]
     :Usage example:
@@ -613,6 +617,7 @@ def archive_directory(
     if os.path.getsize(tar_path) <= split:
         return
 
+    chunk = chunk_size_mb * 1024 * 1024
     tar_name = os.path.basename(tar_path)
     tar_dir = os.path.abspath(os.path.dirname(tar_path))
     parts_paths = []
@@ -622,21 +627,29 @@ def archive_directory(
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
             output_path = os.path.join(tar_dir, part_name)
-            data = input_file.read(split)
-            if not data:
-                break
             with open(output_path, "wb") as output_file:
-                output_file.write(data)
+                while output_file.tell() < split:
+                    data = input_file.read(chunk)
+                    if not data:
+                        break
+                    output_file.write(data)
                 parts_paths.append(output_path)
                 part_number += 1
+            if not data:
+                break
 
     os.remove(tar_path)
     return parts_paths
 
 
-def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None:
+def unpack_archive(
+    archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
+) -> None:
     """
     Unpacks archive to the target directory, removes junk files and directories.
+    To extract a split archive, you must pass the path to the first part in archive_path. Archive parts must be in the same directory. Format: archive_name.tar.001, archive_name.tar.002, etc. Works with tar and zip.
+    You can adjust the size of the chunk to read from the file, while unpacking the file from parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param archive_path: Path to the archive.
     :type archive_path: str
@@ -644,6 +657,10 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None
     :type target_dir: str
     :param remove_junk: Remove junk files and directories. Default is True.
     :type remove_junk: bool
+    :param is_split: Determines if the source archive is split into parts. If True, archive_path must be the path to the first part. Default is False.
+    :type is_split: bool
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -657,7 +674,33 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None
 
         sly.fs.unpack_archive(archive_path, target_dir)
     """
+
+    if is_split:
+        chunk = chunk_size_mb * 1024 * 1024
+        base_name = get_file_name(archive_path)
+        dir_name = os.path.dirname(archive_path)
+        if get_file_ext(base_name) in (".zip", ".tar"):
+            ext = get_file_ext(base_name)
+            base_name = get_file_name(base_name)
+        else:
+            ext = get_file_ext(archive_path)
+        parts = sorted([f for f in os.listdir(dir_name) if f.startswith(base_name)])
+        combined = os.path.join(dir_name, f"combined{ext}")
+
+        with open(combined, "wb") as output_file:
+            for part in parts:
+                part_path = os.path.join(dir_name, part)
+                with open(part_path, "rb") as input_file:
+                    while True:
+                        data = input_file.read(chunk)
+                        if not data:
+                            break
+                        output_file.write(data)
+        archive_path = combined
+
     shutil.unpack_archive(archive_path, target_dir)
+    if is_split:
+        silent_remove(archive_path)
     if remove_junk:
         remove_junk_from_dir(target_dir)
 
