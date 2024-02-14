@@ -8,5 +8,14 @@ class YOLOFormat(BaseFormat):
     def __str__(self):
         return AvailableFormats.YOLO
 
+    def get_meta(self):
+        raise NotImplementedError()
+    
+    # def get_classes(self):
+    #     raise NotImplementedError()
+    
+    def get_items(self):
+        raise NotImplementedError()
+    
     def to_supervisely(self):
         raise NotImplementedError()

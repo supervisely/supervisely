@@ -6,7 +6,13 @@ class COCOFormat(BaseFormat):
         super().__init__(input_data)
 
     def __str__(self):
-        return AvailableFormats.SLY
+        return AvailableFormats.COCO
 
-    def to_supervisely(self):
+    def get_meta(self):
+        return super().get_meta()
+    
+    def get_items(self):
+        return super().get_items()
+
+    def to_supervisely(self, image_path: str, ann_path: str):
         raise NotImplementedError()
