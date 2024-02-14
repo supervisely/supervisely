@@ -13,6 +13,7 @@ class AvailableFormats(StrEnum):
 class BaseFormat:
     def __init__(self, data):
         self.input_data = data
+        self.meta = None
         self.items = None# {"path/to/image.jpg": "path/to/annotation.json"}
 
 
@@ -35,13 +36,18 @@ class BaseFormat:
     #     pass
 
     def get_meta(self):
+        if self.meta is not None:
+            return self.meta
         raise NotImplementedError()
 
-    def get_items(self):
+    def get_items(self) -> generator?:
         raise NotImplementedError()
     
     def to_supervisely(self, image_path: str, ann_path: str) -> Annotation:
         """Convert to Supervisely format."""
+
+        if self.meta is None:
+            self.meta = self.get_meta()
         raise NotImplementedError()
 
 
