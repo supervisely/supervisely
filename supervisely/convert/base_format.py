@@ -19,20 +19,20 @@ class BaseFormat:
     # def __str__(self):
     #     return "Base format converter."
 
-    @property
-    def format(self):
-        return self.__str__()
+    # @property
+    # def format(self):
+    #     return self.__str__()
 
-    @property
-    def dataset_name(self):
-        pass
+    # @property
+    # def dataset_name(self):
+    #     pass
 
-    @property
-    def items_count(self):
-        return len(self.items)
+    # @property
+    # def items_count(self):
+    #     return len(self.items)
 
-    def _generate_project_meta(self):
-        pass
+    # def _generate_project_meta(self):
+    #     pass
 
     def get_meta(self):
         raise NotImplementedError()
