@@ -2,11 +2,11 @@
 
 # Supervisely imports.
 import supervisely as sly
-from supervisely.nn.hosted.inference_single_image import SingleImageInferenceBase
-from supervisely.nn.hosted.constants import SETTINGS
-from supervisely.nn.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG
-from supervisely.nn.pytorch.weights import WeightsRW
-from supervisely.nn import raw_to_labels
+from supervisely.nn.legacy.hosted.inference_single_image import SingleImageInferenceBase
+from supervisely.nn.legacy.hosted.constants import SETTINGS
+from supervisely.nn.legacy.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG
+from supervisely.nn.legacy.pytorch.weights import WeightsRW
+from supervisely.nn.legacy import raw_to_labels
 
 # Third-party imports.
 import numpy as np

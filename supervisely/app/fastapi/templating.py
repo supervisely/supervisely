@@ -57,7 +57,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
 
         try:
             request = context["request"]
-            return super().TemplateResponse(
+            return super().TemplateResponse(  # pylint: disable=no-member too-many-function-args
                 request, name, context_with_widgets, status_code, headers, media_type, background
             )
         except:

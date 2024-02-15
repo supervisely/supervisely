@@ -1,4 +1,4 @@
-from supervisely.nn.dataset import SlyDataset
+from supervisely.nn.legacy.dataset import SlyDataset
 
 from torchvision.transforms.functional import to_tensor
 

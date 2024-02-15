@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as torch_functional
 
 from supervisely.imaging import image as sly_image
-from supervisely.nn.pytorch.cuda import cuda_variable
+from supervisely.nn.legacy.pytorch.cuda import cuda_variable
 
 
 def infer_per_pixel_scores_single_image(model, raw_input, out_shape, apply_softmax=True):

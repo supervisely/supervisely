@@ -50,7 +50,7 @@ jobs:
       run: |
         IFS=' ' read -r -a files <<< "$(echo '${{ steps.changed-files.outputs.all_changed_and_modified_files }}' | tr ' ' '\n' | grep -o '[a-zA-Z0-9_/-]*\.py' | tr '\n' ' ')"
         if [ "${#files[@]}" -gt 0 ]; then
-          pylint_output=$(pylint "${files[@]}" --generated-members=cv2.*) || true
+          pylint_output=$(pylint "${files[@]}" --generated-members=cv2.*,signal.*) || true
           if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
             # Save pylint output to a file
             echo "$pylint_output" > pylint_errors.txt

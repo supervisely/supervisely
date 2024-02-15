@@ -22,9 +22,9 @@ from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.sliding_windows import SlidingWindows
 from supervisely.imaging.image import read as sly_image_read
-from supervisely.nn import raw_to_labels
-from supervisely.nn.config import update_recursively, update_strict, MultiTypeValidator
-from supervisely.nn.hosted.inference_single_image import SingleImageInferenceBase
+from supervisely.nn.legacy import raw_to_labels
+from supervisely.nn.legacy.config import update_recursively, update_strict, MultiTypeValidator
+from supervisely.nn.legacy.hosted.inference_single_image import SingleImageInferenceBase
 
 
 INFERENCE_MODE_CONFIG = 'inference_mode_config'

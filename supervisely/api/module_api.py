@@ -830,6 +830,7 @@ class ModuleApi(ModuleApiBase):
 
     def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
+        # pylint: disable=too-many-function-args
         from supervisely.api.project_api import ProjectApi
 
         if type(self) == ProjectApi:

@@ -300,6 +300,7 @@ class Inference:
 
         return models_list
 
+    # pylint: disable=method-hidden
     def load_on_device(
         self,
         model_dir: str,
@@ -340,6 +341,8 @@ class Inference:
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
         }
+
+    # pylint: enable=method-hidden
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
         hr_info = {}
@@ -462,6 +465,7 @@ class Inference:
         )
         return ann
 
+    # pylint: disable=method-hidden
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
         raise NotImplementedError("Have to be implemented in child class")
 
@@ -470,6 +474,7 @@ class Inference:
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
+    # pylint: enable=method-hidden
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
         if settings is None:
