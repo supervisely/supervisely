@@ -597,10 +597,10 @@ class LabelBase:
         """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(img_size))
 
-    def _draw_tags(self, bitmap, font, add_name=False):
+    def _draw_tags(self, bitmap, font, add_class_name=False):
         bbox = self.geometry.to_bbox()
         texts = [t.get_compact_str() for t in self.tags]
-        texts = texts if add_name is False else [self.obj_class.name] + texts
+        texts = texts if add_class_name is False else [self.obj_class.name] + texts
         sly_image.draw_text_sequence(
             bitmap=bitmap,
             texts=texts,
@@ -626,8 +626,8 @@ class LabelBase:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         tags_font: Optional[FreeTypeFont] = None,
-        draw_name: Optional[bool] = False,
-        name_font: Optional[FreeTypeFont] = None,
+        draw_class_name: Optional[bool] = False,
+        class_name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
         Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw>`.
@@ -642,10 +642,10 @@ class LabelBase:
         :type draw_tags: bool, optional
         :param tags_font: Font of tags to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type tags_font: FreeTypeFont, optional
-        :param draw_name: Draw the class name on the bitmap. If the draw_tags parameter is set to True, the class name will use the same font as the tags_font.
-        :type draw_name: bool, optional
-        :param name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
-        :type name_font: FreeTypeFont, optional
+        :param draw_class_name: Draw the class name on the bitmap. If the draw_tags parameter is set to True, the class name will use the same font as the tags_font.
+        :type draw_class_name: bool, optional
+        :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
+        :type class_name_font: FreeTypeFont, optional
 
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
@@ -657,11 +657,11 @@ class LabelBase:
         if draw_tags:
             if tags_font is None:
                 tags_font = self._get_font(bitmap.shape[:2])
-            self._draw_tags(bitmap, tags_font, add_name=draw_name)
-        elif draw_name:
-            if name_font is None:
-                name_font = self._get_font(bitmap.shape[:2])
-            self._draw_class_name(bitmap, name_font)
+            self._draw_tags(bitmap, tags_font, add_class_name=draw_class_name)
+        elif draw_class_name:
+            if class_name_font is None:
+                class_name_font = self._get_font(bitmap.shape[:2])
+            self._draw_class_name(bitmap, class_name_font)
 
     def get_mask(self, img_size: Tuple[int, int]) -> np.ndarray:
         """Returns 2D boolean mask of the label.
@@ -686,8 +686,8 @@ class LabelBase:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         tags_font: Optional[FreeTypeFont] = None,
-        draw_name: Optional[bool] = False,
-        name_font: Optional[FreeTypeFont] = None,
+        draw_class_name: Optional[bool] = False,
+        class_name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
@@ -702,10 +702,10 @@ class LabelBase:
         :type draw_tags: bool, optional
         :param tags_font: Font of tags to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type tags_font: FreeTypeFont, optional
-        :param draw_name: Draw the class name on the bitmap. If the draw_tags parameter is set to True, the class name will use the same font as the tags_font.
-        :type draw_name: bool, optional
-        :param name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
-        :type name_font: FreeTypeFont, optional
+        :param draw_class_name: Draw the class name on the bitmap. If the draw_tags parameter is set to True, the class name will use the same font as the tags_font.
+        :type draw_class_name: bool, optional
+        :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
+        :type class_name_font: FreeTypeFont, optional
 
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
@@ -717,11 +717,11 @@ class LabelBase:
         if draw_tags:
             if tags_font is None:
                 tags_font = self._get_font(bitmap.shape[:2])
-            self._draw_tags(bitmap, tags_font, add_name=draw_name)
-        elif draw_name:
-            if name_font is None:
-                name_font = self._get_font(bitmap.shape[:2])
-            self._draw_class_name(bitmap, name_font)
+            self._draw_tags(bitmap, tags_font, add_class_name=draw_class_name)
+        elif draw_class_name:
+            if class_name_font is None:
+                class_name_font = self._get_font(bitmap.shape[:2])
+            self._draw_class_name(bitmap, class_name_font)
 
     @property
     def area(self) -> float:
