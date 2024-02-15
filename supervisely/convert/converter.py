@@ -5,12 +5,6 @@ from typing import Literal
 from supervisely import Api, ProjectType, batched, logger
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.convert.modality_helpers import (
-    contains_only_images,
-    contains_only_point_clouds,
-    contains_only_videos,
-    contains_only_volumes,
-)
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.imaging.image import is_valid_ext as is_valid_image_ext
 from supervisely.io.fs import get_file_ext
@@ -43,16 +37,16 @@ class ImportManager:
     def _detect_modality(self):
         """Detect modality of input data (images, videos, pointclouds, volumes)"""
 
-        if self._contains_only_images(self.input_data):
+        if self._contains_only_images():
             return ProjectType.IMAGES.value
 
-        if self._contains_only_videos(self.input_data):
+        if self._contains_only_videos():
             return ProjectType.VIDEOS.value
 
-        if self._contains_only_point_clouds(self.input_data):
+        if self._contains_only_point_clouds():
             return ProjectType.POINT_CLOUDS.value  # @TODO: ProjectType.POINT_CLOUDS_EPISODES
 
-        if self._contains_only_volumes(self.input_data):
+        if self._contains_only_volumes():
             return ProjectType.VOLUMES.value
         else:
             raise RuntimeError("Use of mixed data types is not supported.")

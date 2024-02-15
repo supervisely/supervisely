@@ -3,7 +3,7 @@ import os
 from supervisely import Annotation
 from supervisely.collection.str_enum import StrEnum
 from supervisely.imaging.image import read
-from supervisely.io.fs import ALLOWED_IMAGE_EXTENSIONS, file_exists, get_file_ext
+from supervisely.io.fs import file_exists, get_file_ext
 
 
 class AvailableImageFormats(StrEnum):

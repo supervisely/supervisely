@@ -15,7 +15,7 @@ ALLOWED_CONVERTERS = [COCOConverter, PascalVOCConverter, SLYImageConverter, YOLO
 
 
 
-class ImageConverter:
+class ImageConverter(BaseConverter):
     def __init__(self, input_data, items, annotations):
         self.input_data = input_data
         self.items = items
@@ -28,8 +28,9 @@ class ImageConverter:
 
     def _detect_format(self):
         for converter in ALLOWED_CONVERTERS:
-            if converter.validate_format(self.input_data):
-                return converter(self.input_data, self.items, self.annotations)
+            converter = converter(self.input_data, self.items, self.annotations)
+            if converter.validate_format():
+                return converter
 
 
     #     format_counts = self._count_formats()
