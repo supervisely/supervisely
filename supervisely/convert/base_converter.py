@@ -1,6 +1,9 @@
+import os
+
 from supervisely import Annotation
 from supervisely.collection.str_enum import StrEnum
 from supervisely.imaging.image import read
+from supervisely.io.fs import ALLOWED_IMAGE_EXTENSIONS, file_exists, get_file_ext
 
 
 class AvailableImageFormats(StrEnum):
@@ -15,33 +18,49 @@ class AvailableVideoFormats(StrEnum):
     DAVIS = "yolo"
 
 class BaseConverter:
-    def __init__(self, data):
+    def __init__(self, data, items, annotations={}):
         self.input_data = data
+        self.items = items # {"path/to/image.jpg": "path/to/annotation.json"}
+        self.annotations = annotations
         self.meta = None
-        self.items = None# {"path/to/image.jpg": "path/to/annotation.json"}
-
-
-    # def __str__(self):
-    #     return "Base format converter."
 
     @property
     def format(self):
         return self.__str__()
 
-    # @property
-    # def dataset_name(self):
-    #     pass
-
-    # @property
-    # def items_count(self):
-    #     return len(self.items)
-
-    # def _generate_project_meta(self):
-    #     pass
+    @property
+    def items_count(self):
+        return len(self.items)
+    
+    @property
+    def ann_ext(self):
+        raise NotImplementedError()
+    
+    @property
+    def key_file_ext(self):
+        raise NotImplementedError()
 
     @staticmethod
-    def validate_ann_format(ann_path):
+    def validate_ann_file(ann_path):
         raise NotImplementedError()
+    
+    def require_key_file(self):
+        return False
+    
+    def validate_key_files(self):
+        raise NotImplementedError()
+
+    def validate_format(self):
+        if self.require_key_file():
+            self.validate_key_files()
+
+        for path in self.annotations:
+            is_valid = self.validate_ann_file(path)
+            if not is_valid:
+                return False
+        if self.meta is None:
+            return False
+        return True
 
     def get_meta(self):
         if self.meta is not None:

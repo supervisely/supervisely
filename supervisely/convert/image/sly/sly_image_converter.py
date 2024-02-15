@@ -1,4 +1,6 @@
+from supervisely import Annotation, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageFormats, BaseConverter
+from supervisely.io.fs import get_file_ext, list_files_recursively
 from supervisely.io.json import load_json_file
 
 SLY_ANN_KEYS = ["imageName", "imageId", "createdAt", "updatedAt", "annotation"]
@@ -9,28 +11,41 @@ class SLYImageConverter(BaseConverter):
 
     def __str__(self):
         return AvailableImageFormats.SLY
+
+    def validate_ann_file(self, ann_path):
+        if self.meta is None:
+            pass
+        pass
+
+    def require_key_file(self):
+        return True
     
-    @staticmethod
-    def validate_ann_format(ann_path):
-        ann_json = load_json_file(ann_path)
-        if all(key in ann_json for key in SLY_ANN_KEYS):
-            return True
+    def validate_key_files(self):
+        jsons = list_files_recursively(self.items, valid_extensions=[".json"])
+        # TODO: find meta.json first
+        for key_file in jsons:
+            try:
+                self.meta = ProjectMeta.from_json(load_json_file(key_file))
+                return True
+            except Exception:
+                continue
+
+    @property
+    def ann_ext(self):
+        return ".json" 
+
+    def require_key_file(self):
         return False
-                
+
     def get_meta(self):
-        return super().get_meta()
+        return self.meta
     
-    def get_items(self):
-        return super().get_items()
-
-    def to_supervisely(self):
+    def get_items(self): # -> generator?
         raise NotImplementedError()
 
-    def to_coco(self):
-        raise NotImplementedError()
+    def to_supervisely(self, item_path: str, ann_path: str) -> Annotation:
+        """Convert to Supervisely format."""
 
-    def to_pascal_voc(self):
-        raise NotImplementedError()
-
-    def to_yolo(self):
+        if self.meta is None:
+            self.meta = self.get_meta()
         raise NotImplementedError()

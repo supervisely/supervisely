@@ -1,7 +1,8 @@
+import imghdr
 import os
 from typing import Literal
 
-from supervisely import Api, ProjectType, batched
+from supervisely import Api, ProjectType, batched, logger
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.modality_helpers import (
@@ -11,15 +12,20 @@ from supervisely.convert.modality_helpers import (
     contains_only_volumes,
 )
 from supervisely.convert.video.video_converter import VideoConverter
+from supervisely.imaging.image import is_valid_ext as is_valid_image_ext
+from supervisely.io.fs import get_file_ext
+from supervisely.pointcloud.pointcloud import is_valid_ext as is_valid_point_cloud_ext
+from supervisely.video.video import is_valid_ext as is_valid_video_ext
+from supervisely.volume.volume import is_valid_ext as is_valid_volume_ext
 
+possible_annotations_exts = [".json", ".xml", ".txt"]
+possible_junk_exts = [".DS_Store"]
 
 # class Converter:
 class ImportManager:
     def __init__(
         self,
-        input_data,
-        save_path: str = None,
-        output_type: Literal["folder", "archive"] = "folder",
+        input_data
     ):
         # input_data date - folder / archive / link / team files
         # if save_path is None - save to the same level folder
@@ -27,8 +33,8 @@ class ImportManager:
             raise RuntimeError(f"Directory does not exist: {input_data}")
 
         self.input_data = input_data
-        self.save_path = save_path
-        self.output_type = output_type
+        self.items = {}
+        self.annotations = {}
 
         self.modality = self._detect_modality()
         self.converter = self._get_converter()
@@ -37,16 +43,16 @@ class ImportManager:
     def _detect_modality(self):
         """Detect modality of input data (images, videos, pointclouds, volumes)"""
 
-        if contains_only_images(self.input_data):
+        if self._contains_only_images(self.input_data):
             return ProjectType.IMAGES.value
 
-        if contains_only_videos(self.input_data):
+        if self._contains_only_videos(self.input_data):
             return ProjectType.VIDEOS.value
 
-        if contains_only_point_clouds(self.input_data):
+        if self._contains_only_point_clouds(self.input_data):
             return ProjectType.POINT_CLOUDS.value  # @TODO: ProjectType.POINT_CLOUDS_EPISODES
 
-        if contains_only_volumes(self.input_data):
+        if self._contains_only_volumes(self.input_data):
             return ProjectType.VOLUMES.value
         else:
             raise RuntimeError("Use of mixed data types is not supported.")
@@ -54,7 +60,7 @@ class ImportManager:
     def _get_converter(self):
         """Return correct converter"""
         if self.modality == ProjectType.IMAGES.value:
-            return ImageConverter(self.input_data).converter
+            return ImageConverter(self.input_data, self.items, self.annotations).converter
         elif self.modality == ProjectType.VIDEOS.value:
             return VideoConverter(self.input_data).converter
         # elif self.modality == ProjectType.POINT_CLOUDS.value:
@@ -79,3 +85,51 @@ class ImportManager:
             img_infos = self.api.image.upload_paths(dataset_id, item_names, img_paths)
             img_ids = [img_info.id for img_info in img_infos]
             self.api.annotation.upload_anns(img_ids, anns)
+
+
+    def _contains_only_images(self):
+        for root, _, files in os.walk(self.input_data):
+            for file in files:
+                full_path = os.path.join(root, file)
+                ext = get_file_ext(full_path)
+                if ext in possible_junk_exts:  # add better check
+                    continue
+                elif ext in possible_annotations_exts:
+                    self.annotations[full_path] = None
+                elif imghdr.what(full_path) is None:
+                    logger.info(f"Non-image file found: {full_path}")
+                    return False
+                else:
+                    self.items[full_path] = None
+
+        return True
+
+
+    def _contains_only_videos(self):
+        for root, _, files in os.walk(self.input_data):
+            for file in files:
+                ext = get_file_ext(file)
+                if is_valid_video_ext(ext):
+                    logger.info(f"Non-video file found: {os.path.join(root, file)}")
+                    return False
+        return True
+
+
+    def _contains_only_point_clouds(self):
+        for root, _, files in os.walk(self.input_data):
+            for file in files:
+                ext = get_file_ext(file)
+                if is_valid_point_cloud_ext(ext):
+                    logger.info(f"Non-point cloud file found: {os.path.join(root, file)}")
+                    return False
+        return True
+
+
+    def _contains_only_volumes(self):
+        for root, _, files in os.walk(self.input_data):
+            for file in files:
+                ext = get_file_ext(file)
+                if is_valid_volume_ext(ext):
+                    logger.info(f"Non-volume file found: {os.path.join(root, file)}")
+                    return False
+        return True
