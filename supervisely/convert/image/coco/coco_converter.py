@@ -13,7 +13,11 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import AvailableImageFormats, BaseConverter
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import get_file_ext, list_files_recursively
+from supervisely.io.fs import (
+    get_file_ext,
+    get_file_name_with_ext,
+    list_files_recursively,
+)
 
 COCO_ANN_KEYS = ["images", "annotations", "categories"]
 
@@ -22,7 +26,7 @@ class COCOConverter(BaseConverter):
         
         self.input_data = input_data
         self.items = items
-        self.annotations = []
+        self.annotations = annotations
         
         self.classes = None
         self.tags = None
@@ -108,8 +112,17 @@ class COCOConverter(BaseConverter):
                 if tag_meta.name not in existing_tags:
                     self.meta = self.meta.add_tag_meta(tag_meta)
                     
-            self.annotations.append(key_file)
-            
+            coco_anns = coco.imgToAnns 
+            coco_images = coco.imgs
+            coco_items = coco_images.items()
+            for img_id, img_info in coco_items:
+                img_ann = coco_anns[img_id]
+                
+                img_paths = list(self.items.keys())
+                for path in img_paths:
+                    filename = img_info["file_name"]
+                    if filename == get_file_name_with_ext(path):
+                        self.items[path] = img_ann
             
         if self.meta is None:
             return False
@@ -121,11 +134,18 @@ class COCOConverter(BaseConverter):
     def get_items(self): # -> generator?
         return self.items.keys()
     
-    def get_anns(self):
+    def get_anns(self): # -> take anns from key files
         return self.annotations
     
-    def to_supervisely(self, item_path: str, ann_path: str) -> Annotation:
+    def to_supervisely(self, item_path: str, ann: str) -> Annotation:
         """Convert to Supervisely format."""
 
+
         self.meta = self.get_meta()
+        items = self.items
+        
+        
         raise NotImplementedError()
+    
+    
+    
