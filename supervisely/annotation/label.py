@@ -626,7 +626,7 @@ class LabelBase:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         tags_font: Optional[FreeTypeFont] = None,
-        draw_name: bool = False,
+        draw_name: Optional[bool] = False,
         name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
@@ -642,6 +642,11 @@ class LabelBase:
         :type draw_tags: bool, optional
         :param tags_font: Font of tags to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type tags_font: FreeTypeFont, optional
+        :param draw_name: Draw the class name on the bitmap. If the draw_tags parameter is set to True, the class name will use the same font as the tags_font.
+        :type draw_name: bool, optional
+        :param name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
+        :type name_font: FreeTypeFont, optional
+
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         """
@@ -681,8 +686,8 @@ class LabelBase:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         tags_font: Optional[FreeTypeFont] = None,
-        draw_name=None,
-        name_font=None,
+        draw_name: Optional[bool] = False,
+        name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
         Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
@@ -697,6 +702,11 @@ class LabelBase:
         :type draw_tags: bool, optional
         :param tags_font: Font of tags to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type tags_font: FreeTypeFont, optional
+        :param draw_name: Draw the class name on the bitmap. If the draw_tags parameter is set to True, the class name will use the same font as the tags_font.
+        :type draw_name: bool, optional
+        :param name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
+        :type name_font: FreeTypeFont, optional
+
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         """

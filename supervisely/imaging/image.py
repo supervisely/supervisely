@@ -406,17 +406,15 @@ def draw_text_sequence(
     """
     col_offset = 0
 
-    source_img = PILImage.fromarray(bitmap)
-    source_img = source_img.convert("RGBA")
-    canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
-    drawer = ImageDraw.Draw(canvas, "RGBA")
+    canvas = PILImage.new("RGBA", bitmap.shape[:2][::-1], (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas, "RGBA")
 
-    _, max_height = drawer.textsize("".join(texts), font=font)
+    _, max_height = draw.textsize("".join(texts), font=font)
 
-    _, text_height = drawer.textsize(texts[0], font=font)
+    _, text_height = draw.textsize(texts[0], font=font)
     middle = text_height // 2
     for text in texts:
-        _, h = drawer.textsize(text, font=font)
+        _, h = draw.textsize(text, font=font)
         row_offset = middle - h // 2
 
         y, x = anchor_point[0] - row_offset, anchor_point[1] + col_offset
@@ -491,7 +489,6 @@ def draw_text(
     drawer = ImageDraw.Draw(canvas, "RGBA")
     text_width, text_height = drawer.textsize(text, font=font)
     rect_top, rect_left = anchor_point
-    # rect_top_bg = anchor_point[0]
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
         pass  # Do nothing
