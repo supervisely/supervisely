@@ -1341,6 +1341,7 @@ class Annotation:
         thickness: Optional[int] = 1,
         draw_tags: Optional[bool] = False,
         fill_rectangles: Optional[bool] = True,
+        draw_class_names: Optional[bool] = False,
     ) -> None:
         """
         Draws current Annotation on image. Modifies mask.
@@ -1353,6 +1354,11 @@ class Annotation:
         :type thickness: int, optional
         :param draw_tags: Determines whether to draw tags on bitmap or not.
         :type draw_tags: bool, optional
+        :param fill_rectangles: Choose False if you want to draw only contours of bboxes. By default, True.
+        :type fill_rectangles: int, optional
+        :param draw_class_names: Determines whether to draw class names on bitmap or not.
+        :type draw_class_names: int, optional
+
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
@@ -1396,6 +1402,8 @@ class Annotation:
                     thickness=thickness,
                     draw_tags=draw_tags,
                     tags_font=tags_font,
+                    draw_class_name=draw_class_names,
+                    class_name_font=tags_font,
                 )
                 continue
             label.draw(
@@ -1404,6 +1412,8 @@ class Annotation:
                 thickness=thickness,
                 draw_tags=draw_tags,
                 tags_font=tags_font,
+                draw_class_name=draw_class_names,
+                class_name_font=tags_font,
             )
         if draw_tags:
             self._draw_tags(bitmap)
