@@ -1,7 +1,7 @@
-from supervisely.convert.base_format import BaseFormat
+from supervisely.convert.base_converter import BaseConverter
 
 
-class VideoFormatConverter:
+class VideoConverter:
     converter = None
 
     def __init__(self, input_data):
@@ -11,6 +11,6 @@ class VideoFormatConverter:
     def format(self):
         return self.converter.format
 
-    def _detect_format(self, data) -> BaseFormat:
+    def _detect_format(self, data) -> BaseConverter:
         """return converter class"""
         raise NotImplementedError()

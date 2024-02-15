@@ -1,5 +1,5 @@
-from supervisely.collection.str_enum import StrEnum
 from supervisely import Annotation
+from supervisely.collection.str_enum import StrEnum
 from supervisely.imaging.image import read
 
 
@@ -14,7 +14,7 @@ class AvailableVideoFormats(StrEnum):
     MOT = "coco"
     DAVIS = "yolo"
 
-class BaseFormat:
+class BaseConverter:
     def __init__(self, data):
         self.input_data = data
         self.meta = None
@@ -24,9 +24,9 @@ class BaseFormat:
     # def __str__(self):
     #     return "Base format converter."
 
-    # @property
-    # def format(self):
-    #     return self.__str__()
+    @property
+    def format(self):
+        return self.__str__()
 
     # @property
     # def dataset_name(self):
@@ -38,6 +38,10 @@ class BaseFormat:
 
     # def _generate_project_meta(self):
     #     pass
+
+    @staticmethod
+    def validate_ann_format(ann_path):
+        raise NotImplementedError()
 
     def get_meta(self):
         if self.meta is not None:
