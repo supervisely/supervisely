@@ -34,10 +34,10 @@ COCO_ANN_KEYS = ["images", "annotations", "categories"]
 
 class COCOConverter(ImageConverter):
     def __init__(self, input_data, items, annotations):
-        self.input_data = input_data
-        self.items = items
-        self.annotations = annotations
-        self.meta = None
+        self._input_data = input_data
+        self._items = items
+        self._annotations = annotations
+        self._meta = None
 
     def __str__(self):
         return AvailableImageConverters.COCO
@@ -54,12 +54,12 @@ class COCOConverter(ImageConverter):
         return True
 
     def validate_ann_file(self, ann_path: str):
-        if self.meta is not None:
+        if self._meta is not None:
             return True
         return False
 
     def validate_key_files(self):
-        jsons = list_files_recursively(self.input_data, valid_extensions=[".json"])
+        jsons = list_files_recursively(self._input_data, valid_extensions=[".json"])
         for key_file in jsons:
             coco = COCO(key_file)  # wont throw error if not COCO
             if not all(key in coco.dataset for key in COCO_ANN_KEYS):
@@ -70,8 +70,8 @@ class COCOConverter(ImageConverter):
             ann_types = get_ann_types(coco)
             categories = coco.loadCats(ids=coco.getCatIds())
 
-            if self.meta is None:
-                self.meta = ProjectMeta()
+            if self._meta is None:
+                self._meta = ProjectMeta()
             for category in categories:
                 if category["name"] in [obj_class.name for obj_class in self.meta.obj_classes]:
                     continue
@@ -104,31 +104,32 @@ class COCOConverter(ImageConverter):
             coco_images = coco.imgs
             coco_items = coco_images.items()
 
-            new_items = []
             for img_id, img_info in coco_items:
                 img_ann = coco_anns[img_id]
                 img_shape = (img_info["height"], img_info["width"])
-
-                img_paths = self.items
-                for path in img_paths:
+                for item in self.items:
                     filename = img_info["file_name"]
-                    if filename == get_file_name_with_ext(path):
-                        item = self.Item(path, img_ann, img_shape, {"categories": categories})
-                        new_items.append(item)
+                    if filename == item.name:
+                        item.update(item.path, img_ann, img_shape, {"categories": categories})
 
-        self.items = new_items
-        if self.meta is None:
+        if self._meta is None:
             return False
         return True
 
     def get_meta(self):
-        return self.meta
+        return self._meta
 
     def get_items(self):  # -> generator?
-        return self.items
+        return self._items
 
-    def to_supervisely(self, item: ImageConverter.Item, meta) -> Annotation:
+    def to_supervisely(self, item: ImageConverter.Item, meta: ProjectMeta) -> Annotation:
         """Convert to Supervisely format."""
+        if item.ann_data is None:
+            if item.shape is not None:
+                return Annotation(item.shape)
+            else:
+                return Annotation.from_img_path(item.path)
+
         ann = create_sly_ann_from_coco_annotation(
             meta, item.custom_data["categories"], item.ann_data, item.shape
         )

@@ -1,6 +1,6 @@
 import os
 
-from supervisely import Annotation
+from supervisely import Annotation, ProjectMeta
 from supervisely.collection.str_enum import StrEnum
 from supervisely.imaging.image import read
 from supervisely.io.fs import file_exists, get_file_ext, get_file_name_with_ext
@@ -56,17 +56,27 @@ class BaseConverter:
         def set_shape(self, shape):
             self._shape = shape
 
-        def set_custom_data(self, custom_data):
+        def set_custom_data(self, custom_data: dict):
             self.custom_data = custom_data
 
-        def update_custom_data(self, custom_data):
+        def update_custom_data(self, custom_data: dict):
             self.custom_data.update(custom_data)
 
+        def update(self, item_path=None, ann_data=None, shape=None, custom_data={}):
+            if item_path is not None:
+                self.set_path(item_path)
+            if ann_data is not None:
+                self.set_ann_data(ann_data)
+            if shape is not None:
+                self.set_shape(shape)
+            if custom_data:
+                self.update_custom_data(custom_data)
+
     def __init__(self, data, items, annotations={}):
-        self.input_data = data
-        self.items = items  # {"path/to/image.jpg": "path/to/annotation.json"}
-        self.annotations = annotations
-        self.meta = None
+        self._input_data = data
+        self._items = items
+        self._annotations = annotations
+        self._meta = None
 
     @property
     def format(self):
@@ -74,7 +84,7 @@ class BaseConverter:
 
     @property
     def items_count(self):
-        return len(self.items)
+        return len(self._items)
 
     @property
     def ann_ext(self):
@@ -98,39 +108,27 @@ class BaseConverter:
         if self.require_key_file():
             self.validate_key_files()
 
-        for path in self.annotations:
+        for path in self._annotations:
             is_valid = self.validate_ann_file(path)
             if not is_valid:
                 return False
-        if self.meta is None:
+        if self._meta is None:
             return False
         return True
 
     def get_meta(self):
-        if self.meta is not None:
-            return self.meta
-        raise NotImplementedError()
+        if self._meta is not None:
+            return self._meta
+        else:
+            return ProjectMeta()
 
     def get_items(self):  # -> generator?
         raise NotImplementedError()
 
-    def to_supervisely(self, item_path: str, ann_path: str, meta) -> Annotation:
+    def to_supervisely(self, item: BaseItem, meta: ProjectMeta) -> Annotation:
         """Convert to Supervisely format."""
-
-        if self.meta is None:
-            self.meta = self.get_meta()
-        raise NotImplementedError()
-
-    # def preview(self, sample_size=5):
-    #     """Preview the sample data."""
-
-    #     previews = []
-    #     for i, (image_path, ann_path) in enumerate(self.get_items()):
-    #         if i >= sample_size:
-    #             break
-    #         ann = self.to_supervisely(image_path, ann_path)
-    #         img = read(image_path)
-    #         ann.draw_pretty(img)
-    #         previews.append(img)
-
-    #     return previews
+        if item.ann_data is None:
+            if item.shape is not None:
+                return Annotation(item.shape)
+            else:
+                return Annotation.from_img_path(item.path)
