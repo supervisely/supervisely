@@ -48,9 +48,10 @@ jobs:
 
     - name: Run check with pylint
       run: |
+        python_files=""
         for changed_file in ${{ steps.changed-files.outputs.all_changed_and_modified_files }}; do
-          if [[ $file == *.py ]]; then
-            python_files+="$file "
+          if [[ $changed_file == *.py ]]; then
+            python_files+="$changed_file "
           fi
         done
         if [ "${#python_files[@]}" -gt 0 ]; then
