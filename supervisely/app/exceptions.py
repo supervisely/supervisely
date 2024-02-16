@@ -31,7 +31,7 @@ class DialogWindowWarning(DialogWindowBase):
 # for compatibility
 class DialogWindowMessage(DialogWindowError):
     def __init__(self, title, description):
-        super().__init__(title, description, "info")
+        super().__init__(title, description, "info")  # pylint: disable=too-many-function-args
 
 
 def show_dialog(

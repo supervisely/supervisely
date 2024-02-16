@@ -9,9 +9,8 @@ import json
 import operator
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -1699,7 +1698,7 @@ class Annotation:
     def filter_labels_by_min_side(
         self,
         thresh: int,
-        filter_operator: Optional[operator] = operator.lt,
+        filter_operator: Optional[Callable] = operator.lt,  # operator from the operator module
         classes: Optional[List[str]] = None,
     ) -> Annotation:
         """
@@ -1765,7 +1764,7 @@ class Annotation:
 
         return self.transform_labels(filter)
 
-    def get_label_by_id(self, sly_id: int) -> Label or None:
+    def get_label_by_id(self, sly_id: int) -> Union[Label, None]:
         """
         Get Label from current Annotation by sly_id.
 
@@ -2172,7 +2171,7 @@ class Annotation:
     def to_indexed_color_mask(
         self,
         mask_path: str,
-        palette: Optional[Image.ADAPTIVE] = Image.ADAPTIVE,
+        palette: Optional[Image.ADAPTIVE] = Image.ADAPTIVE,  # pylint: disable=no-member
         colors: Optional[int] = 256,
     ) -> None:
         """
@@ -2625,7 +2624,9 @@ class Annotation:
         new_ann = self.clone(labels=new_labels)
         return new_ann
 
-    def masks_to_imgaug(self, class_to_index: Dict[str, int]) -> SegmentationMapsOnImage or None:
+    def masks_to_imgaug(
+        self, class_to_index: Dict[str, int]
+    ) -> Union[SegmentationMapsOnImage, None]:
         """
         Convert current annotation objects masks to SegmentationMapsOnImage format.
 
@@ -2659,7 +2660,7 @@ class Annotation:
             segmaps = SegmentationMapsOnImage(mask, shape=self.img_size)
         return segmaps
 
-    def bboxes_to_imgaug(self) -> BoundingBoxesOnImage or None:
+    def bboxes_to_imgaug(self) -> Union[BoundingBoxesOnImage, None]:
         """
         Convert current annotation objects boxes to BoundingBoxesOnImage format.
 

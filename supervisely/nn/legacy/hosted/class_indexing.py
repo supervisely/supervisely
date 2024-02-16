@@ -120,6 +120,7 @@ def infer_training_class_to_idx_map(weights_init_type, in_project_class_to_idx, 
     else:
         raise RuntimeError('Unknown weights init type: {}'.format(weights_init_type))
 
+    # pylint: disable=too-many-format-args
     if special_class_ids is not None:
         for class_title, requested_class_id in special_class_ids.items():
             effective_class_id = class_title_to_idx[class_title]

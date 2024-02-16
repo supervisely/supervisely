@@ -1,19 +1,32 @@
 from supervisely import logger
-from supervisely.nn.dataset import ensure_samples_nonempty
-from supervisely.nn.hosted.class_indexing import CONTINUE_TRAINING, TRANSFER_LEARNING
-from supervisely.nn.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG, HEAD_LAYER
-from supervisely.nn.hosted.trainer import SuperviselyModelTrainer, BATCH_SIZE, DATASET_TAGS, EPOCHS, LOSS, LR, \
-    TRAIN, VAL, WEIGHTS_INIT_TYPE, INPUT_SIZE, HEIGHT, WIDTH
-from supervisely.nn.training.eval_planner import EvalPlanner, VAL_EVERY
-from supervisely.nn.pytorch.dataset import PytorchSegmentationSlyDataset
-from supervisely.nn.pytorch.weights import WeightsRW
+from supervisely.nn.legacy.dataset import ensure_samples_nonempty
+from supervisely.nn.legacy.hosted.class_indexing import CONTINUE_TRAINING, TRANSFER_LEARNING
+from supervisely.nn.legacy.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG, HEAD_LAYER
+from supervisely.nn.legacy.hosted.trainer import (
+    SuperviselyModelTrainer,
+    BATCH_SIZE,
+    DATASET_TAGS,
+    EPOCHS,
+    LOSS,
+    LR,
+    TRAIN,
+    VAL,
+    WEIGHTS_INIT_TYPE,
+    INPUT_SIZE,
+    HEIGHT,
+    WIDTH,
+)
+from supervisely.nn.legacy.training.eval_planner import EvalPlanner, VAL_EVERY
+from supervisely.nn.legacy.pytorch.dataset import PytorchSegmentationSlyDataset
+from supervisely.nn.legacy.pytorch.weights import WeightsRW
 from supervisely.task.paths import TaskPaths
 from supervisely.task.progress import Progress, epoch_float, report_metrics_training, report_metrics_validation
 
+# pylint: disable=import-error
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-
+# pylint: enable=import-error
 
 def _check_all_pixels_have_segmentation_class(targets):
     if targets.min().item() < 0:

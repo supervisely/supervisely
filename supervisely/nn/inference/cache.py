@@ -87,6 +87,7 @@ class PersistentImageTTLCache(TTLCache):
         silent_remove(filepath)
 
     def __get_keys(self):
+        # pylint: disable=no-member
         return self._TTLCache__links.keys()
 
     def expire(self, time=None):

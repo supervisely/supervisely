@@ -4,7 +4,13 @@ import json
 import requests
 
 from supervisely.io import fs as sly_fs
-from supervisely.nn.inference.rest_constants import GET_OUTPUT_META, IMAGE, INFERENCE, MODEL, SUPPORTED_REQUEST_TYPES
+from supervisely.nn.legacy.inference.rest_constants import (
+    GET_OUTPUT_META,
+    IMAGE,
+    INFERENCE,
+    MODEL,
+    SUPPORTED_REQUEST_TYPES,
+)
 
 from requests_toolbelt import MultipartEncoder
 

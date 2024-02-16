@@ -7,10 +7,12 @@ from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.imaging.image import read as sly_image_read
 from supervisely.io.json import load_json_file
-from supervisely.nn.hosted.constants import MODEL, SETTINGS, INPUT_SIZE, HEIGHT, WIDTH
-from supervisely.nn.hosted.legacy.inference_config import maybe_convert_from_v1_inference_task_config, \
-                                                              maybe_convert_from_deploy_task_config
-from supervisely.nn.config import update_recursively
+from supervisely.nn.legacy.hosted.constants import MODEL, SETTINGS, INPUT_SIZE, HEIGHT, WIDTH
+from supervisely.nn.legacy.hosted.legacy.inference_config import (
+    maybe_convert_from_v1_inference_task_config,
+    maybe_convert_from_deploy_task_config,
+)
+from supervisely.nn.legacy.config import update_recursively
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.paths import TaskPaths
 from supervisely.task.progress import Progress

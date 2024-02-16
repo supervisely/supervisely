@@ -2,18 +2,19 @@
 
 # Supervisely imports.
 import supervisely as sly
-from supervisely.nn.hosted.inference_single_image import SingleImageInferenceBase
-from supervisely.nn.hosted.constants import SETTINGS
-from supervisely.nn.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG
-from supervisely.nn.pytorch.weights import WeightsRW
-from supervisely.nn import raw_to_labels
+from supervisely.nn.legacy.hosted.inference_single_image import SingleImageInferenceBase
+from supervisely.nn.legacy.hosted.constants import SETTINGS
+from supervisely.nn.legacy.hosted.pytorch.constants import CUSTOM_MODEL_CONFIG
+from supervisely.nn.legacy.pytorch.weights import WeightsRW
+from supervisely.nn.legacy import raw_to_labels
 
 # Third-party imports.
 import numpy as np
+# pylint: disable=import-error
 import torch
 from torch.autograd import Variable
 from torchvision.transforms.functional import to_tensor
-
+# pylint: enable=import-error
 
 class PytorchSegmentationApplier(SingleImageInferenceBase):
     def __init__(self, model_factory_fn):

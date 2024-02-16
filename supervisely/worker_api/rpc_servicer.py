@@ -11,7 +11,7 @@ import threading
 from supervisely.annotation.annotation import Annotation
 from supervisely.function_wrapper import function_wrapper, function_wrapper_nofail
 from supervisely.imaging.image import drop_image_alpha_channel
-from supervisely.nn.hosted.inference_modes import InferenceModeFactory, InfModeFullImage, \
+from supervisely.nn.legacy.hosted.inference_modes import InferenceModeFactory, InfModeFullImage, \
     MODE, NAME, get_effective_inference_mode_config
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.worker_api.agent_api import AgentAPI

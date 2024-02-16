@@ -89,6 +89,7 @@ class PoseEstimation(Inference):
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
+    @staticmethod
     def process_image_crop(func):
         """
         Decorator for processing annotation labels before and after inference.
