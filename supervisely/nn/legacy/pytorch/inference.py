@@ -1,8 +1,10 @@
 # coding: utf-8
 import numpy as np
 
+# pylint: disable=import-error
 import torch
 import torch.nn.functional as torch_functional
+# pylint: enable=import-error
 
 from supervisely.imaging import image as sly_image
 from supervisely.nn.legacy.pytorch.cuda import cuda_variable

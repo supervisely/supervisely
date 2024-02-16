@@ -119,7 +119,7 @@ class Inference:
     def _prepare_device(self, device):
         if device is None:
             try:
-                import torch
+                import torch # pylint: disable=import-error
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
@@ -1079,7 +1079,7 @@ def get_gpu_count():
 def clean_up_cuda():
     try:
         # torch may not be installed
-        import torch
+        import torch # pylint: disable=import-error
         import gc
         gc.collect()
         torch.cuda.empty_cache()

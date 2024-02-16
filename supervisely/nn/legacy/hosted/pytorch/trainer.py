@@ -22,10 +22,11 @@ from supervisely.nn.legacy.pytorch.weights import WeightsRW
 from supervisely.task.paths import TaskPaths
 from supervisely.task.progress import Progress, epoch_float, report_metrics_training, report_metrics_validation
 
+# pylint: disable=import-error
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-
+# pylint: enable=import-error
 
 def _check_all_pixels_have_segmentation_class(targets):
     if targets.min().item() < 0:
