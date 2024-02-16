@@ -2580,7 +2580,7 @@ def upload_project(
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
-        log_progress=False
+        log_progress = False
 
     image_id_dct, anns_paths_dct = {}, {}
 
@@ -2588,9 +2588,8 @@ def upload_project(
         dataset = api.dataset.create(project.id, ds_fs.name)
 
         ds_fs: Dataset
-        
 
-        names, img_paths, img_infos, ann_paths  = [], [], [], []
+        names, img_paths, img_infos, ann_paths = [], [], [], []
         for item_name in ds_fs:
             img_path, ann_path = ds_fs.get_item_paths(item_name)
             img_info_path = ds_fs.get_img_info_path(item_name)
@@ -2602,7 +2601,8 @@ def upload_project(
             if os.path.isfile(img_info_path):
                 img_infos.append(ds_fs.get_image_info(item_name=item_name))
 
-        img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))        
+        img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
+        ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
         metas = [{} for _ in names]
 
         meta_dir = os.path.join(dir, ds_fs.name, "meta")
@@ -2620,7 +2620,7 @@ def upload_project(
             ds_progress = tqdm_sly(
                 desc="Uploading images to dataset {!r}".format(dataset.name),
                 total=len(names),
-            )            
+            )
 
         if len(img_paths) != 0:
             uploaded_img_infos = api.image.upload_paths(
@@ -2672,8 +2672,8 @@ def upload_project(
             raise ValueError(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
             )
-        image_id_dct[ds_fs.name]= [img_info.id for img_info in uploaded_img_infos]
-        anns_paths_dct[ds_fs.name] = list(filter(lambda x: os.path.isfile(x), ann_paths))
+        image_id_dct[ds_fs.name] = [img_info.id for img_info in uploaded_img_infos]
+        anns_paths_dct[ds_fs.name] = ann_paths
 
     anns_progress = None
     if log_progress or progress_cb is not None:
@@ -2681,8 +2681,10 @@ def upload_project(
             desc="Uploading annotations",
             total=project_fs.total_items,
         )
-    for ds_fs in project_fs.datasets:        
-        api.annotation.upload_paths(image_id_dct[ds_fs.name], anns_paths_dct[ds_fs.name], anns_progress)
+    for ds_fs in project_fs.datasets:
+        api.annotation.upload_paths(
+            image_id_dct[ds_fs.name], anns_paths_dct[ds_fs.name], anns_progress
+        )
 
     return project.id, project.name
 

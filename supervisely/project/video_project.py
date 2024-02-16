@@ -1195,7 +1195,7 @@ def download_video_project(
     :type save_video_info: bool, optional
     :param log_progress: Show downloading logs in the output.
     :type log_progress: bool, optional
-    :param progress_cb: Function for tracking download progress.
+    :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
 
     :return: None.
@@ -1452,7 +1452,7 @@ def upload_video_project(
                     "project_id": project.id,
                     "dataset_id": dataset.id,
                     "item_ids": item_id_dct[ds_fs.name],
-                    "ann_paths": ann_paths,
+                    "ann_paths": anns_paths_dct[ds_fs.name],
                 },
             )
             raise e

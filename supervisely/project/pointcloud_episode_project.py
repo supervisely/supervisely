@@ -865,10 +865,8 @@ def upload_pointcloud_episode_project(
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
-    project_remotely = api.project.create(
-        workspace_id, project_name, ProjectType.POINT_CLOUD_EPISODES
-    )
-    api.project.update_meta(project_remotely.id, project_fs.meta.to_json())
+    project = api.project.create(workspace_id, project_name, ProjectType.POINT_CLOUD_EPISODES)
+    api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
         log_progress = False
@@ -884,7 +882,7 @@ def upload_pointcloud_episode_project(
             episode_annotation = PointcloudEpisodeAnnotation()
 
         dataset = api.dataset.create(
-            project_remotely.id,
+            project.id,
             ds_fs.name,
             description=episode_annotation.description,
             change_name_if_conflict=True,
@@ -920,7 +918,7 @@ def upload_pointcloud_episode_project(
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
-                    "project_id": project_remotely.id,
+                    "project_id": project.id,
                     "dataset_id": dataset.id,
                     "item_names": items_infos["names"],
                     "item_paths": items_infos["paths"],
@@ -938,7 +936,7 @@ def upload_pointcloud_episode_project(
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
-                    "project_id": project_remotely.id,
+                    "project_id": project.id,
                     "dataset_id": dataset.id,
                     "frame_to_pcl_ids": frame_to_pcl_ids,
                     "ann": episode_annotation.to_json(),
@@ -972,7 +970,7 @@ def upload_pointcloud_episode_project(
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
-                    "project_id": project_remotely.id,
+                    "project_id": project.id,
                     "dataset_id": dataset.id,
                     "img_paths": img_infos["img_paths"],
                 },
@@ -1004,11 +1002,11 @@ def upload_pointcloud_episode_project(
                 logger.info(
                     "INFO FOR DEBUGGING",
                     extra={
-                        "project_id": project_remotely.id,
+                        "project_id": project.id,
                         "dataset_id": dataset.id,
                         "rimg_infos": img_infos["img_metas"],
                     },
                 )
                 raise e
 
-    return project_remotely.id, project_remotely.name
+    return project.id, project.name

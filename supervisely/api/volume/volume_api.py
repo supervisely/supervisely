@@ -629,19 +629,21 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         with logging_redirect_tqdm():
             logger.debug(f"Start volume {name} compression before upload...")
-        
+
         start = timer()
         volume_bytes = volume.encode(np_data, meta)
         with logging_redirect_tqdm([logger]):
-            logger.debug(f"Volume has been compressed in {timer() - start} seconds")                
-            logger.debug(f"Start uploading bytes of {name} volume ...")
-        
+            logger.debug(f"Volume has been compressed in {timer() - start} seconds")
+            logger.debug(f"Start uploading bytes of '{name}' volume ...")
+
         start = timer()
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
 
         with logging_redirect_tqdm([logger]):
-            logger.debug(f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds")        
+            logger.debug(
+                f"3D volume bytes has been sucessfully uploaded in {timer() - start} seconds"
+            )
 
         volume_info = self.upload_hash(dataset_id, name, volume_hash, meta)
         if progress_cb is not None:
@@ -843,7 +845,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 desc=f"Upload volume '{name}'",
                 total=sum(volume_np.shape),
                 leave=True if progress_cb is None else False,
-                position = 1,
+                position=1,
             )
         res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_nrrd)
         return self.get_info_by_name(dataset_id, name)

@@ -163,10 +163,12 @@ class VolumeProject(VideoProject):
         :type download_volumes: :class:`bool`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking the download progress.
+        :type progress_cb: tqdm or callable, optional
+
         :return: None
         :rtype: NoneType
         :Usage example:
-
         .. code-block:: python
 
                 import supervisely as sly
@@ -219,6 +221,9 @@ class VolumeProject(VideoProject):
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking the download progress.
+        :type progress_cb: tqdm or callable, optional
+
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
