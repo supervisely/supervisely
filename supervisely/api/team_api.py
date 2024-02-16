@@ -126,6 +126,12 @@ class ActivityAction:
     # action: ANNOTATION_DURATION -> meta["duration"] e.g. meta-> {"duration": 30} in seconds
 
 
+class UsageInfo(NamedTuple):
+    """ """
+
+    plan: str
+
+
 class TeamInfo(NamedTuple):
     """ """
 
@@ -135,6 +141,7 @@ class TeamInfo(NamedTuple):
     role: str
     created_at: str
     updated_at: str
+    usage: UsageInfo
 
 
 class TeamApi(ModuleNoParent, UpdateableModule):
@@ -178,7 +185,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                      description='',
                      role='admin',
                      created_at='2020-03-31T14:49:08.931Z',
-                     updated_at='2020-03-31T14:49:08.931Z')
+                     updated_at='2020-03-31T14:49:08.931Z',
+                     UsgeInfo(plan='free')                )
         """
         return [
             ApiField.ID,
@@ -187,6 +195,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             ApiField.ROLE,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
+            ApiField.USAGE,
         ]
 
     @staticmethod
@@ -227,19 +236,22 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                   description='',
             #                   role='admin',
             #                   created_at='2020-03-31T14:49:08.931Z',
-            #                   updated_at='2020-03-31T14:49:08.931Z'),
+            #                   updated_at='2020-03-31T14:49:08.931Z',
+            #                   UsgeInfo(plan='free')                ),
             # TeamInfo(id=2,
             #          name='Road',
             #          description='',
             #          role='admin',
             #          created_at='2020-03-31T08:52:11.000Z',
-            #          updated_at='2020-03-31T08:52:11.000Z'),
+            #          updated_at='2020-03-31T08:52:11.000Z',
+            #          UsgeInfo(plan='free')                ),
             # TeamInfo(id=3,
             #          name='Animal',
             #          description='',
             #          role='admin',
             #          created_at='2020-04-02T08:59:03.717Z',
-            #          updated_at='2020-04-02T08:59:03.717Z')
+            #          updated_at='2020-04-02T08:59:03.717Z',
+            #          UsgeInfo(plan='free')                )
             # ]
 
             # Filtered Team list
@@ -250,7 +262,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  description='',
             #                  role='admin',
             #                  created_at='2020-04-02T08:59:03.717Z',
-            #                  updated_at='2020-04-02T08:59:03.717Z')
+            #                  updated_at='2020-04-02T08:59:03.717Z',
+            #                  UsgeInfo(plan='free')                )
             # ]
         """
         return self.get_list_all_pages("teams.list", {ApiField.FILTER: filters or []})
@@ -280,7 +293,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #          description='',
             #          role='admin',
             #          created_at='2020-04-15T10:50:41.926Z',
-            #          updated_at='2020-04-15T10:50:41.926Z')
+            #          updated_at='2020-04-15T10:50:41.926Z',
+            #          UsgeInfo(plan='free')                )
 
             # You can also get Team info by name
             team_info = api.team.get_info_by_name("Fruits")
@@ -290,7 +304,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #          description='',
             #          role='admin',
             #          created_at='2020-04-15T10:50:41.926Z',
-            #          updated_at='2020-04-15T10:50:41.926Z')
+            #          updated_at='2020-04-15T10:50:41.926Z',
+            #          UsgeInfo(plan='free')                )
         """
 
         info = self._get_info_by_id(id, "teams.info")
@@ -332,7 +347,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  description='',
             #                  role='admin',
             #                  created_at='2021-03-11T11:18:46.576Z',
-            #                  updated_at='2021-03-11T11:18:46.576Z')
+            #                  updated_at='2021-03-11T11:18:46.576Z',
+            #                  UsgeInfo(plan='free')                )
         """
         effective_name = self._get_effective_new_name(
             name=name, change_name_if_conflict=change_name_if_conflict
@@ -525,4 +541,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
     def _convert_json_info(self, info: dict, skip_missing=True) -> TeamInfo:
         """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
-        return TeamInfo(**res._asdict())
+        res_dict = res._asdict()
+        if isinstance(res_dict.get("usage"), dict):
+            res_dict["usage"] = UsageInfo(**res_dict["usage"])
+        return TeamInfo(**res_dict)
