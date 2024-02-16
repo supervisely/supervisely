@@ -1,5 +1,6 @@
 import numpy as np
-from typing import Generator, Optional, List, Callable, OrderedDict, Dict
+from typing import Generator, Optional, List, Callable, Dict
+from typing import OrderedDict as OrderedDictType
 from collections import OrderedDict
 
 import supervisely as sly
@@ -33,7 +34,7 @@ class TrackerInterface:
         self.global_pos = 0
         self.global_stop_indicatior = False
 
-        self.geometries: OrderedDict[int, Geometry] = OrderedDict()
+        self.geometries: OrderedDictType[int, Geometry] = OrderedDict()
         self.frames_indexes: List[int] = []
         self._cur_frames_indexes: List[int] = []
         self._frames: Optional[np.ndarray] = None

@@ -29,7 +29,8 @@ class SalientObjectSegmentation(SemanticSegmentation):
             return None
         label = Label(geometry, obj_class)
         return [label]
-
+    
+    @staticmethod
     def process_image_crop(func):
         """
         Decorator for processing annotation labels before and after inference.
@@ -121,7 +122,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
                 elif "image_path" in kwargs.keys():
                     image_path = kwargs["image_path"]
                     image_np = sly_image.read(image_path)
-                rectangle = process_padded_bbox(image_np, rectangle)
+                rectangle = process_padded_bbox(image_np, rectangle) # pylint: disable=used-before-assignment
 
             if "image_np" in kwargs.keys():
                 image_np = kwargs["image_np"]

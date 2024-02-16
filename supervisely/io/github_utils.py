@@ -37,7 +37,7 @@ def download_tar(github_url, tar_path, github_token=None, version="master", log_
         github_url += ".git"
     tar_url = github_url.replace(".git", "/archive/{}.tar.gz".format(version))
     r = requests.get(tar_url, headers=headers, stream=True)
-    if r.status_code != requests.codes.ok:
+    if r.status_code != requests.codes.ok:  # pylint: disable=no-member
         Api._raise_for_status(r)
 
     progress = Progress("Downloading (KB)", len(r.content) / 1024)

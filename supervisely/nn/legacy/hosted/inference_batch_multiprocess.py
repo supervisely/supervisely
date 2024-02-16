@@ -12,13 +12,13 @@ import multiprocessing as mp
 from supervisely import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.imaging import image as sly_image
-from supervisely.nn.config import AlwaysPassingConfigValidator
+from supervisely.nn.legacy.config import AlwaysPassingConfigValidator
 from supervisely.project.project import Project, read_single_project, OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.paths import TaskPaths
 from supervisely.task.progress import report_inference_finished
-from supervisely.nn.hosted.inference_modes import InferenceModeFactory
-from supervisely.nn.hosted.inference_batch import determine_task_inference_mode_config
+from supervisely.nn.legacy.hosted.inference_modes import InferenceModeFactory
+from supervisely.nn.legacy.hosted.inference_batch import determine_task_inference_mode_config
 from supervisely.task.progress import Progress
 
 
