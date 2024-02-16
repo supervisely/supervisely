@@ -186,7 +186,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                      role='admin',
                      created_at='2020-03-31T14:49:08.931Z',
                      updated_at='2020-03-31T14:49:08.931Z',
-                     UsgeInfo(plan='free')                )
+                     UsageInfo(plan='free')               )
         """
         return [
             ApiField.ID,
@@ -237,21 +237,21 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                   role='admin',
             #                   created_at='2020-03-31T14:49:08.931Z',
             #                   updated_at='2020-03-31T14:49:08.931Z',
-            #                   UsgeInfo(plan='free')                ),
+            #                   UsageInfo(plan='free')               ),
             # TeamInfo(id=2,
             #          name='Road',
             #          description='',
             #          role='admin',
             #          created_at='2020-03-31T08:52:11.000Z',
             #          updated_at='2020-03-31T08:52:11.000Z',
-            #          UsgeInfo(plan='free')                ),
+            #          UsageInfo(plan='free')               ),
             # TeamInfo(id=3,
             #          name='Animal',
             #          description='',
             #          role='admin',
             #          created_at='2020-04-02T08:59:03.717Z',
             #          updated_at='2020-04-02T08:59:03.717Z',
-            #          UsgeInfo(plan='free')                )
+            #          UsageInfo(plan='free')               )
             # ]
 
             # Filtered Team list
@@ -263,7 +263,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  role='admin',
             #                  created_at='2020-04-02T08:59:03.717Z',
             #                  updated_at='2020-04-02T08:59:03.717Z',
-            #                  UsgeInfo(plan='free')                )
+            #                  UsageInfo(plan='free')               )
             # ]
         """
         return self.get_list_all_pages("teams.list", {ApiField.FILTER: filters or []})
@@ -294,7 +294,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #          role='admin',
             #          created_at='2020-04-15T10:50:41.926Z',
             #          updated_at='2020-04-15T10:50:41.926Z',
-            #          UsgeInfo(plan='free')                )
+            #          UsageInfo(plan='free')               )
 
             # You can also get Team info by name
             team_info = api.team.get_info_by_name("Fruits")
@@ -305,7 +305,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #          role='admin',
             #          created_at='2020-04-15T10:50:41.926Z',
             #          updated_at='2020-04-15T10:50:41.926Z',
-            #          UsgeInfo(plan='free')                )
+            #          UsageInfo(plan='free')               )
         """
 
         info = self._get_info_by_id(id, "teams.info")
@@ -348,7 +348,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  role='admin',
             #                  created_at='2021-03-11T11:18:46.576Z',
             #                  updated_at='2021-03-11T11:18:46.576Z',
-            #                  UsgeInfo(plan='free')                )
+            #                  UsageInfo(plan='free')               )
         """
         effective_name = self._get_effective_new_name(
             name=name, change_name_if_conflict=change_name_if_conflict
