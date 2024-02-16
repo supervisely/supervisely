@@ -48,9 +48,15 @@ jobs:
 
     - name: Run check with pylint
       run: |
-        IFS=' ' read -r -a files <<< "$(echo '${{ steps.changed-files.outputs.all_changed_and_modified_files }}' | tr ' ' '\n' | grep -o '[a-zA-Z0-9_/-]*\.py' | tr '\n' ' ')"
-        if [ "${#files[@]}" -gt 0 ]; then
-          pylint_output=$(pylint "${files[@]}" --generated-members=cv2.*,signal.*) || true
+        IFS=' ' read -r -a files <<< "$(echo '${{ steps.changed-files.outputs.all_changed_and_modified_files }}' | tr ' ' '\n' | tr '\n' ' ')"
+        python_files=()
+        for file in "${files[@]}"; do
+          if [[ $file == *.py ]]; then
+            python_files+=("$file")
+          fi
+        done
+        if [ "${#python_files[@]}" -gt 0 ]; then
+          pylint_output=$(pylint "${python_files[@]}" --generated-members=cv2.*,signal.*) || true
           if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
             # Save pylint output to a file
             echo "$pylint_output" > pylint_errors.txt
@@ -59,6 +65,7 @@ jobs:
             echo "ERRORS_DETECTED=false" >> $GITHUB_ENV
           fi
         fi
+        echo "Python files checked: $python_files"
       id: pylint
     
     - name: Fail if pylint errors detected
