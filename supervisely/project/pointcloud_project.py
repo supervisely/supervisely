@@ -1113,7 +1113,7 @@ def upload_pointcloud_project(
         ds_progress = None
         if log_progress:
             ds_progress = tqdm_sly(
-                desc="Uploading pointclouds to dataset {!r}".format(dataset.name),
+                desc="Uploading pointclouds to {!r}".format(dataset.name),
                 total=len(dataset_fs),
             )
 

@@ -2618,7 +2618,7 @@ def upload_project(
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
-                desc="Uploading images to dataset {!r}".format(dataset.name),
+                desc="Uploading images to {!r}".format(dataset.name),
                 total=len(names),
             )
 

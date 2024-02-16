@@ -544,7 +544,7 @@ def upload_volume_project(
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
-                desc="Uploading volumes to dataset {!r}".format(dataset.name),
+                desc="Uploading volumes to {!r}".format(dataset.name),
                 total=len(item_paths),
                 position=0,
             )
