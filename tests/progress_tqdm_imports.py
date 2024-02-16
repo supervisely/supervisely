@@ -113,11 +113,11 @@ def upl_prj():
     project_fs = sly.read_project("/tmp/lemons/")
     # project_fs = sly.read_project("/tmp/vid/")
     # project_fs = sly.read_project("/tmp/vol/")
-    p = tqdm(
-        desc="upload",
-        total=project_fs.total_items,
-    )
-    sly.upload("/tmp/lemons/", api, 691, progress_cb=p)
+    # p = tqdm(
+    #     desc="upload",
+    #     total=project_fs.total_items,
+    # )
+    sly.upload_project("/tmp/lemons/", api, 691)  # , progress_cb=p)
     # sly.upload("/tmp/vid/", api, 691, progress_cb=p)
     # sly.upload("/tmp/vol/", api, 691, progress_cb=p)
     print("4")
@@ -127,22 +127,22 @@ def upl_prj():
 
 
 def dwn_prj_img():
-    project = api.project.get_info_by_id(32796)
-    # p = tqdm(
-    #     desc="download",
-    #     total=project.items_count,
-    # )
-    sly.download_project(api, project.id, "/tmp/lemons/")
+    project = api.project.get_info_by_id(21394)
+    p = tqdm(
+        desc="download",
+        total=project.items_count,
+    )
+    sly.download_project(api, project.id, "/tmp/img/", progress_cb=p)
     print("5")
 
 
 def upl_prj_img():
-    project_fs = sly.read_project("/tmp/lemons/")
-    # p = tqdm(
-    #     desc="upload",
-    #     total=project_fs.total_items,
-    # )
-    sly.upload_project("/tmp/lemons/", api, 691)
+    project_fs = sly.read_project("/tmp/img/")
+    p = tqdm(
+        desc="upload",
+        total=project_fs.total_items,
+    )
+    sly.upload_project("/tmp/img/", api, 691, progress_cb=p)
     print("6")
 
 

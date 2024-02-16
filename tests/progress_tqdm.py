@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from progress_tqdm_imports import *
 from tqdm import tqdm
 
-os.environ["ENV"] = "production"
+# os.environ["ENV"] = "production"
 
 # dwnl()
 # upl()
@@ -19,7 +19,7 @@ os.environ["ENV"] = "production"
 # upl_prj()
 
 # dwn_prj_img()
-# upl_prj_img()
+upl_prj_img()
 
 # dwnl_prj_vol()
 # upl_prj_vol()
@@ -27,11 +27,11 @@ os.environ["ENV"] = "production"
 # dwnl_prj_vid()
 # upl_prj_vid()
 
-dwnl_prj_pcl()
-upl_prj_pcl()
+# dwnl_prj_pcl()
+# upl_prj_pcl()
 
-dwnl_prj_pclep()
-upl_prj_pclep()
+# dwnl_prj_pclep()
+# upl_prj_pclep()
 
 breakpoint()
 import supervisely as sly

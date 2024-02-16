@@ -2672,19 +2672,18 @@ def upload_project(
             raise ValueError(
                 "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
             )
-        image_id_dct[ds_fs.name] = [img_info.id for img_info in uploaded_img_infos]
-        anns_paths_dct[ds_fs.name] = ann_paths
+        # image_id_dct[ds_fs.name] =
+        image_ids = [img_info.id for img_info in uploaded_img_infos]
+        # anns_paths_dct[ds_fs.name] = ann_paths
 
-    anns_progress = None
-    if log_progress or progress_cb is not None:
-        anns_progress = tqdm_sly(
-            desc="Uploading annotations",
-            total=project_fs.total_items,
-        )
-    for ds_fs in project_fs.datasets:
-        api.annotation.upload_paths(
-            image_id_dct[ds_fs.name], anns_paths_dct[ds_fs.name], anns_progress
-        )
+        anns_progress = None
+        if log_progress or progress_cb is not None:
+            anns_progress = tqdm_sly(
+                desc="Uploading annotations to {!r}".format(dataset.name),
+                total=len(image_ids),
+                leave=False,
+            )
+        api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
 
     return project.id, project.name
 
