@@ -1,7 +1,7 @@
 from supervisely.convert.base_converter import AvailableVideoFormats, BaseConverter
 
 
-class MOTFormat(BaseConverter):
+class MOTConverter(BaseConverter):
     def __init__(self, input_data):
         super().__init__(input_data)
 

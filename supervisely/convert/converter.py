@@ -15,20 +15,21 @@ from supervisely.volume.volume import is_valid_ext as is_valid_volume_ext
 possible_annotations_exts = [".json", ".xml", ".txt"]
 possible_junk_exts = [".DS_Store"]
 
+
+# add class for Item with name, path, shape, ann data, ann path?
+
+
 # class Converter:
 class ImportManager:
-    def __init__(
-        self,
-        input_data
-    ):
+    def __init__(self, input_data):
         # input_data date - folder / archive / link / team files
         # if save_path is None - save to the same level folder
         if not os.path.exists(input_data):
             raise RuntimeError(f"Directory does not exist: {input_data}")
 
         self.input_data = input_data
-        self.items = {}
-        self.annotations = {}
+        self.items = []
+        self.annotations = []
 
         self.modality = self._detect_modality()
         self.converter = self._get_converter()
@@ -54,6 +55,15 @@ class ImportManager:
     def _get_converter(self):
         """Return correct converter"""
         if self.modality == ProjectType.IMAGES.value:
+            from supervisely.convert.image.coco.coco_converter import COCOConverter
+            from supervisely.convert.image.pascal_voc.pascal_voc_converter import (
+                PascalVOCConverter,
+            )
+            from supervisely.convert.image.sly.sly_image_converter import (
+                SLYImageConverter,
+            )
+            from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
+
             return ImageConverter(self.input_data, self.items, self.annotations).converter
         elif self.modality == ProjectType.VIDEOS.value:
             return VideoConverter(self.input_data).converter
@@ -80,7 +90,6 @@ class ImportManager:
             img_ids = [img_info.id for img_info in img_infos]
             self.api.annotation.upload_anns(img_ids, anns)
 
-
     def _contains_only_images(self):
         for root, _, files in os.walk(self.input_data):
             for file in files:
@@ -89,15 +98,14 @@ class ImportManager:
                 if ext in possible_junk_exts:  # add better check
                     continue
                 elif ext in possible_annotations_exts:
-                    self.annotations[full_path] = None
+                    self.annotations.append(full_path)
                 elif imghdr.what(full_path) is None:
                     logger.info(f"Non-image file found: {full_path}")
                     return False
                 else:
-                    self.items[full_path] = None
+                    self.items.append(full_path)
 
         return True
-
 
     def _contains_only_videos(self):
         for root, _, files in os.walk(self.input_data):
@@ -108,7 +116,6 @@ class ImportManager:
                     return False
         return True
 
-
     def _contains_only_point_clouds(self):
         for root, _, files in os.walk(self.input_data):
             for file in files:
@@ -117,7 +124,6 @@ class ImportManager:
                     logger.info(f"Non-point cloud file found: {os.path.join(root, file)}")
                     return False
         return True
-
 
     def _contains_only_volumes(self):
         for root, _, files in os.walk(self.input_data):

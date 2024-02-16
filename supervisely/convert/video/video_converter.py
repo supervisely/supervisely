@@ -1,6 +1,12 @@
 from supervisely.convert.base_converter import BaseConverter
 
 
+class AvailableVideoConverters:
+    SLY = "supervisely"
+    MOT = "coco"
+    DAVIS = "yolo"
+
+
 class VideoConverter:
     converter = None
 

@@ -1,7 +1,7 @@
 from supervisely.convert.base_converter import AvailableVideoFormats, BaseConverter
 
 
-class SLYVideoFormat(BaseConverter):
+class SLYVideoConverter(BaseConverter):
     def __init__(self, input_data):
         super().__init__(input_data)
 

@@ -3,24 +3,68 @@ import os
 from supervisely import Annotation
 from supervisely.collection.str_enum import StrEnum
 from supervisely.imaging.image import read
-from supervisely.io.fs import file_exists, get_file_ext
+from supervisely.io.fs import file_exists, get_file_ext, get_file_name_with_ext
 
 
-class AvailableImageFormats(StrEnum):
+class AvailableImageConverters:
     SLY = "supervisely"
     COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
 
-class AvailableVideoFormats(StrEnum):
-    SLY = "supervisely"
-    MOT = "coco"
-    DAVIS = "yolo"
 
 class BaseConverter:
+    class BaseItem:
+        def __init__(self, item_path, ann_data=None, shape=None, custom_data={}):
+            self._path = item_path
+            self._ann_data = ann_data
+            # self.ann_path = ann_path
+            self._type = None
+            self._shape = shape
+            self._custom_data = custom_data
+
+        @property
+        def name(self):
+            return get_file_name_with_ext(self._path)
+
+        @property
+        def path(self):
+            return self._path
+
+        @property
+        def ann_data(self):
+            return self._ann_data
+
+        @property
+        def type(self):
+            return self._type
+
+        @property
+        def shape(self):
+            return self._shape
+
+        @property
+        def custom_data(self):
+            return self._custom_data
+
+        def set_path(self, path):
+            self._path = path
+
+        def set_ann_data(self, ann_data):
+            self._ann_data = ann_data
+
+        def set_shape(self, shape):
+            self._shape = shape
+
+        def set_custom_data(self, custom_data):
+            self.custom_data = custom_data
+
+        def update_custom_data(self, custom_data):
+            self.custom_data.update(custom_data)
+
     def __init__(self, data, items, annotations={}):
         self.input_data = data
-        self.items = items # {"path/to/image.jpg": "path/to/annotation.json"}
+        self.items = items  # {"path/to/image.jpg": "path/to/annotation.json"}
         self.annotations = annotations
         self.meta = None
 
@@ -31,11 +75,11 @@ class BaseConverter:
     @property
     def items_count(self):
         return len(self.items)
-    
+
     @property
     def ann_ext(self):
         raise NotImplementedError()
-    
+
     @property
     def key_file_ext(self):
         raise NotImplementedError()
@@ -43,10 +87,10 @@ class BaseConverter:
     @staticmethod
     def validate_ann_file(ann_path):
         raise NotImplementedError()
-    
+
     def require_key_file(self):
         return False
-    
+
     def validate_key_files(self):
         raise NotImplementedError()
 
@@ -67,16 +111,15 @@ class BaseConverter:
             return self.meta
         raise NotImplementedError()
 
-    def get_items(self): # -> generator?
+    def get_items(self):  # -> generator?
         raise NotImplementedError()
-    
-    def to_supervisely(self, item_path: str, ann_path: str) -> Annotation:
+
+    def to_supervisely(self, item_path: str, ann_path: str, meta) -> Annotation:
         """Convert to Supervisely format."""
 
         if self.meta is None:
             self.meta = self.get_meta()
         raise NotImplementedError()
-
 
     # def preview(self, sample_size=5):
     #     """Preview the sample data."""
