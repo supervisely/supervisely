@@ -53,7 +53,7 @@ class COCOConverter(ImageConverter):
 
             colors = []
             tag_metas = []
-            ann_types = get_ann_types(coco)
+            ann_types = coco_helper.get_ann_types(coco)
             categories = coco.loadCats(ids=coco.getCatIds())
 
             if self._meta is None:
@@ -70,7 +70,9 @@ class COCOConverter(ImageConverter):
                         obj_classes.append(ObjClass(category["name"], Polygon, new_color))
                     if "bbox" in ann_types:
                         obj_classes.append(
-                            ObjClass(add_tail(category["name"], "bbox"), Rectangle, new_color)
+                            ObjClass(
+                                coco_helper.add_tail(category["name"], "bbox"), Rectangle, new_color
+                            )
                         )
 
                 for obj_class in obj_classes:
