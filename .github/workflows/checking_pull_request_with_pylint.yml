@@ -64,7 +64,9 @@ jobs:
             echo "ERRORS_DETECTED=false" >> $GITHUB_ENV
           fi
         fi
-        echo "Python files checked: ${python_files[*]}"
+        for file in "${python_files[@]}"; do
+          echo "File checked: $file"
+        done
       id: pylint
     
     - name: Fail if pylint errors detected
