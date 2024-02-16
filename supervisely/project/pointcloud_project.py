@@ -1090,7 +1090,7 @@ def upload_pointcloud_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: Optional[bool] = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
@@ -1113,7 +1113,7 @@ def upload_pointcloud_project(
         ds_progress = None
         if log_progress:
             ds_progress = tqdm_sly(
-                desc = "Uploading dataset: {!r}".format(dataset.name), total=len(dataset_fs)
+                desc="Uploading dataset: {!r}".format(dataset.name), total=len(dataset_fs)
             )
 
         for item_name in dataset_fs:

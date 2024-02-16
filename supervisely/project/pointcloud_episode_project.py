@@ -855,7 +855,7 @@ def upload_pointcloud_episode_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: Optional[bool] = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
@@ -879,9 +879,7 @@ def upload_pointcloud_episode_project(
 
         if os.path.isfile(ann_json_path):
             ann_json = load_json_file(ann_json_path)
-            episode_annotation = PointcloudEpisodeAnnotation.from_json(
-                ann_json, project_fs.meta
-            )
+            episode_annotation = PointcloudEpisodeAnnotation.from_json(ann_json, project_fs.meta)
         else:
             episode_annotation = PointcloudEpisodeAnnotation()
 
@@ -903,12 +901,12 @@ def upload_pointcloud_episode_project(
             items_infos["names"].append(item_name)
             items_infos["paths"].append(item_path)
             items_infos["metas"].append(item_meta)
-        
+
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
-                desc = "Uploading pointclouds: {!r}".format(dataset.name),
-                total=len(ds_fs),                
+                desc="Uploading pointclouds: {!r}".format(dataset.name),
+                total=len(ds_fs),
             )
         try:
             pcl_infos = api.pointcloud_episode.upload_paths(
@@ -961,9 +959,9 @@ def upload_pointcloud_episode_project(
         rltd_progress = None
         if log_progress or progress_cb is not None:
             rltd_progress = tqdm_sly(
-                desc = "Uploading photo context: {!r}".format(dataset.name),
+                desc="Uploading photo context: {!r}".format(dataset.name),
                 total=len(img_infos["img_paths"]),
-                leave = False,
+                leave=False,
             )
         try:
             images_hashes = api.pointcloud_episode.upload_related_images(

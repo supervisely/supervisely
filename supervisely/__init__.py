@@ -195,11 +195,13 @@ from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,
     download_pointcloud_project,
+    upload_pointcloud_project,
 )
 from supervisely.project.pointcloud_episode_project import (
     PointcloudEpisodeDataset,
     PointcloudEpisodeProject,
     download_pointcloud_episode_project,
+    upload_pointcloud_episode_project,
 )
 
 from supervisely.pyscripts_utils import utils as ps
