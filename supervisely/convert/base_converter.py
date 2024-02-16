@@ -18,10 +18,10 @@ class BaseConverter:
         def __init__(self, item_path, ann_data=None, shape=None, custom_data={}):
             self._path = item_path
             self._ann_data = ann_data
-            # self.ann_path = ann_path
             self._type = None
             self._shape = shape
             self._custom_data = custom_data
+            self._meta = None
 
         @property
         def name(self):
@@ -112,8 +112,8 @@ class BaseConverter:
             is_valid = self.validate_ann_file(path)
             if not is_valid:
                 return False
-        if self._meta is None:
-            return False
+        # if self._meta is None:
+        # return False
         return True
 
     def get_meta(self):

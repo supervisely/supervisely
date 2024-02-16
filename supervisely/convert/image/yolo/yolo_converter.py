@@ -7,10 +7,10 @@ from supervisely.convert.image.image_converter import ImageConverter
 class YOLOConverter(ImageConverter):
 
     def __init__(self, input_data, items, annotations):
-        self.input_data = input_data
-        self.items = items
-        self.annotations = annotations
-        self.meta = None
+        self._input_data = input_data
+        self._items = items
+        self._annotations = annotations
+        self._meta = None
 
     def __str__(self):
         return AvailableImageConverters.YOLO

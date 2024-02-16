@@ -51,13 +51,13 @@ class ImageConverter(BaseConverter):
     def validate_key_files(self):
         return False
 
-    def validate_format(self):
-        return False
+    def get_meta(self):
+        return self._meta
 
     def _detect_format(self):
         found_formats = []
         all_converters = ImageConverter.__subclasses__()
-        for converter in [all_converters[0]]:  # check only yolo for now
+        for converter in all_converters:
             converter = converter(self._input_data, self._items, self._annotations)
             if converter.validate_format():
                 if len(found_formats) > 1:
@@ -72,4 +72,4 @@ class ImageConverter(BaseConverter):
             return self
 
         if len(found_formats) == 1:
-            return converter
+            return found_formats[0]
