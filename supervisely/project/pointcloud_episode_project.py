@@ -872,8 +872,8 @@ def upload_pointcloud_episode_project(
         log_progress = False
 
     key_id_map = KeyIdMap()
-    for ds_fs in project_fs.datasets:
-        ann_json_path = ds_fs.get_ann_path()
+    for dataset_fs in project_fs.datasets:
+        ann_json_path = dataset_fs.get_ann_path()
 
         if os.path.isfile(ann_json_path):
             ann_json = load_json_file(ann_json_path)
@@ -883,7 +883,7 @@ def upload_pointcloud_episode_project(
 
         dataset = api.dataset.create(
             project.id,
-            ds_fs.name,
+            dataset_fs.name,
             description=episode_annotation.description,
             change_name_if_conflict=True,
         )
@@ -891,8 +891,8 @@ def upload_pointcloud_episode_project(
         # STEP 1 — upload episodes
         items_infos = {"names": [], "paths": [], "metas": []}
 
-        for item_name in ds_fs:
-            item_path, related_images_dir, frame_idx = ds_fs.get_item_paths(item_name)
+        for item_name in dataset_fs:
+            item_path, related_images_dir, frame_idx = dataset_fs.get_item_paths(item_name)
 
             item_meta = {"frame": frame_idx}
 
@@ -903,8 +903,8 @@ def upload_pointcloud_episode_project(
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
-                desc="Uploading pointclouds: {!r}".format(dataset.name),
-                total=len(ds_fs),
+                desc="Uploading pointclouds to dataset {!r}".format(dataset.name),
+                total=len(dataset_fs),
             )
         try:
             pcl_infos = api.pointcloud_episode.upload_paths(
@@ -949,7 +949,7 @@ def upload_pointcloud_episode_project(
 
         # STEP 3.1 — upload images
         for pcl_info in pcl_infos:
-            related_items = ds_fs.get_related_images(pcl_info.name)
+            related_items = dataset_fs.get_related_images(pcl_info.name)
             images_paths_for_frame = [img_path for img_path, _ in related_items]
 
             img_infos["img_paths"].extend(images_paths_for_frame)
@@ -957,7 +957,7 @@ def upload_pointcloud_episode_project(
         rltd_progress = None
         if log_progress or progress_cb is not None:
             rltd_progress = tqdm_sly(
-                desc="Uploading photo context: {!r}".format(dataset.name),
+                desc="Uploading photo context to {!r}".format(dataset.name),
                 total=len(img_infos["img_paths"]),
                 leave=False,
             )
@@ -980,7 +980,7 @@ def upload_pointcloud_episode_project(
         # STEP 3.2 — upload images metas
         images_hashes_iterator = images_hashes.__iter__()
         for pcl_info in pcl_infos:
-            related_items = ds_fs.get_related_images(pcl_info.name)
+            related_items = dataset_fs.get_related_images(pcl_info.name)
 
             for img_ind, (_, meta_json) in enumerate(related_items):
                 img_hash = next(images_hashes_iterator)

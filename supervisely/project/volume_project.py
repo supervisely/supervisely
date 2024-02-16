@@ -552,17 +552,17 @@ def upload_volume_project(
         item_infos = api.volume.upload_nrrd_series_paths(
             dataset.id, names, item_paths, ds_progress, log_progress
         )
-        item_ids = [item_info.id for item_info in item_infos]
+        volume_ids = [item_info.id for item_info in item_infos]
 
         anns_progress = None
         if log_progress or progress_cb is not None:
             anns_progress = tqdm_sly(
                 desc="Uploading annotations to {!r}".format(dataset.name),
-                total=project_fs.total_items,
+                total=len(volume_ids),
                 leave=False,
             )
         api.volume.annotation.upload_paths(
-            item_ids,
+            volume_ids,
             ann_paths,
             project_fs.meta,
             interpolation_dirs,

@@ -842,7 +842,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         progress_nrrd = None
         if log_progress is True or progress_cb is not None:
             progress_nrrd = tqdm_sly(
-                desc=f"Upload volume '{name}'",
+                desc=f"Uploading volume '{name}'",
                 total=sum(volume_np.shape),
                 leave=True if progress_cb is None else False,
                 position=1,
