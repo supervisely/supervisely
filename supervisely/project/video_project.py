@@ -1386,15 +1386,13 @@ def upload_video_project(
     if progress_cb is not None:
         log_progress = False
 
-    item_id_dct, anns_paths_dct = {}, {}
-
-    for ds_fs in project_fs.datasets:
-        ds_fs: VideoDataset
-        dataset = api.dataset.create(project.id, ds_fs.name)
+    for dataset_fs in project_fs.datasets:
+        dataset_fs: VideoDataset
+        dataset = api.dataset.create(project.id, dataset_fs.name)
 
         names, item_paths, ann_paths = [], [], []
-        for item_name in ds_fs:
-            video_path, ann_path = ds_fs.get_item_paths(item_name)
+        for item_name in dataset_fs:
+            video_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(video_path)
             ann_paths.append(ann_path)
@@ -1408,12 +1406,12 @@ def upload_video_project(
             )
         try:
             item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress)
-            item_id_dct[ds_fs.name] = [item_info.id for item_info in item_infos]
+            video_ids = [item_info.id for item_info in item_infos]
             if include_custom_data:
                 for item_info in item_infos:
                     item_name = item_info.name
                     custom_data_path = os.path.join(
-                        dir, ds_fs.name, "custom_data", f"{item_name}.json"
+                        dir, dataset_fs.name, "custom_data", f"{item_name}.json"
                     )
 
                     if os.path.exists(custom_data_path):
@@ -1431,28 +1429,24 @@ def upload_video_project(
                 },
             )
             raise e
-        anns_paths_dct[ds_fs.name] = ann_paths
 
-    anns_progress = None
-    if log_progress or progress_cb is not None:
-        anns_progress = tqdm_sly(
-            desc="Uploading annotations",
-            total=project_fs.total_items,
-        )
-
-    for ds_fs in project_fs.datasets:
-        try:
-            api.video.annotation.upload_paths(
-                item_id_dct[ds_fs.name], anns_paths_dct[ds_fs.name], project_fs.meta, anns_progress
+        anns_progress = None
+        if log_progress or progress_cb is not None:
+            anns_progress = tqdm_sly(
+                desc="Uploading annotations to {!r}".format(dataset.name),
+                total=len(video_ids),
+                leave=False,
             )
+        try:
+            api.video.annotation.upload_paths(video_ids, ann_paths, project_fs.meta, anns_progress)
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project.id,
                     "dataset_id": dataset.id,
-                    "item_ids": item_id_dct[ds_fs.name],
-                    "ann_paths": anns_paths_dct[ds_fs.name],
+                    "item_ids": video_ids,
+                    "ann_paths": ann_paths,
                 },
             )
             raise e

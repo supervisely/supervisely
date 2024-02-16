@@ -552,25 +552,22 @@ def upload_volume_project(
         item_infos = api.volume.upload_nrrd_series_paths(
             dataset.id, names, item_paths, ds_progress, log_progress
         )
-        item_id_dct[dataset_fs.name] = [item_info.id for item_info in item_infos]
-        anns_paths_dct[dataset_fs.name] = ann_paths
-        interpolation_dirs_dct[dataset_fs.name] = interpolation_dirs
-        mask_dirs_dct[dataset_fs.name] = mask_dirs
+        item_ids = [item_info.id for item_info in item_infos]
 
-    anns_progress = None
-    if log_progress or progress_cb is not None:
-        anns_progress = tqdm_sly(
-            desc="Uploading annotations",
-            total=project_fs.total_items,
-        )
-    for ds_fs in project_fs.datasets:
+        anns_progress = None
+        if log_progress or progress_cb is not None:
+            anns_progress = tqdm_sly(
+                desc="Uploading annotations to {!r}".format(dataset.name),
+                total=project_fs.total_items,
+                leave=False,
+            )
         api.volume.annotation.upload_paths(
-            item_id_dct[ds_fs.name],
-            anns_paths_dct[ds_fs.name],
+            item_ids,
+            ann_paths,
             project_fs.meta,
-            interpolation_dirs_dct[ds_fs.name],
+            interpolation_dirs,
             anns_progress,
-            mask_dirs_dct[ds_fs.name],
+            mask_dirs,
         )
 
     return project.id, project.name
