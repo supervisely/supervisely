@@ -1566,7 +1566,7 @@ class VideoApi(RemoveableBulkModuleApi):
                         "Hash inconsistency in images bulk upload.",
                         extra={"sent": hashes, "received": hashes_rcv},
                     )
-                if progress_cb:
+                if progress_cb is not None:
                     progress_cb(len(hashes_rcv))
 
             if not pending_hashes:
