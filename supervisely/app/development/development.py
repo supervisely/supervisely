@@ -21,7 +21,6 @@ VPN_IP = "http://10.8.0.1"
 
 def supervisely_vpn_network(
     action: Optional[Literal["up", "down"]] = "up",
-    force: Optional[bool] = True,
     raise_on_error: Optional[bool] = True,
 ) -> None:
     """Connects to Supervisely network using WireGuard VPN.
@@ -29,8 +28,6 @@ def supervisely_vpn_network(
 
     :param action: The action to perform, either "up" or "down".
     :type action: Optional[Literal["up", "down"]]
-    :param force: If True, the connection will be brought down before bringing it up.
-    :type force: Optional[bool]
     :param raise_on_error: If True, an exception will be raised if an error occurs.
     :type raise_on_error: Optional[bool]
     :raises RuntimeError: If wg-quick is not available in the system and raise_on_error is True.
@@ -66,19 +63,18 @@ def supervisely_vpn_network(
     logger.info(f"VPN configuration directory: {network_dir}")
     api = Api()
 
-    # If force is enabled, we will try to bring down the connection first.
-    if force:
-        logger.info("Force is enabled, trying to bring down the connection...")
-        try:
-            subprocess.run(
-                ["wg-quick", "down", config_file],
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            logger.info("Connection has been brought down successfully.")
-        except subprocess.CalledProcessError as e:
-            logger.info(f"The connection was not active: {e.stderr.decode()}.")
+    # Try to bring down the connection if it's active.
+    logger.info("Trying to bring down the connection...")
+    try:
+        subprocess.run(
+            ["wg-quick", "down", config_file],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        logger.info("Connection has been brought down successfully.")
+    except subprocess.CalledProcessError as e:
+        logger.info(f"The connection was not active: {e.stderr.decode()}.")
 
     # Generate the private and public keys if they don't exist.
     if not os.path.exists(public_key):
