@@ -1,10 +1,10 @@
 from typing import List
 
 from supervisely import (
+    AnyGeometry,
     Bitmap,
     ObjClass,
     Point,
-    PointLocation,
     Polygon,
     Polyline,
     ProjectMeta,
@@ -30,6 +30,8 @@ def create_tags_from_annotation(meta: ProjectMeta, tags: List[dict]) -> ProjectM
         tag_value = tag["value"]
         if tag_value is None:
             tag_meta = TagMeta(tag_name, TagValueType.NONE)
+        elif isinstance(tag_value, int) or isinstance(tag_value, float):
+            tag_meta = TagMeta(tag_name, TagValueType.ANY_NUMBER)
         else:
             tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
 
@@ -54,12 +56,15 @@ def create_classes_from_annotation(meta: ProjectMeta, object: dict) -> ProjectMe
         obj_class = ObjClass(name=class_name, geometry_type=Polygon)
     elif geometry_type == Polyline.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Polyline)
-    elif geometry_type == PointLocation.geometry_name():
-        obj_class = ObjClass(name=class_name, geometry_type=PointLocation)
     # elif geometry_type == GraphNodes.geometry_name():
     #     geometry_config = None
     #     obj_class = ObjClass(name=class_name, geometry_type=GraphNodes)
     existing_class = meta.get_obj_class(class_name)
     if existing_class is None:
         meta = meta.add_obj_class(obj_class)
+    else:
+        if existing_class.geometry_type != obj_class.geometry_type:
+            obj_class = ObjClass(name=class_name, geometry_type=AnyGeometry)
+            meta = meta.delete_obj_class(class_name)
+            meta = meta.add_obj_class(obj_class)
     return meta

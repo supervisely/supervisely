@@ -101,11 +101,8 @@ class BaseConverter:
     def validate_ann_file(ann_path):
         raise NotImplementedError()
 
-    # def require_key_file(self):
-    #     return False
-
-    # def validate_key_files(self):
-    #     raise NotImplementedError()
+    def validate_key_file(self):
+        raise NotImplementedError()
 
     def validate_format(self):
         raise NotImplementedError()
@@ -117,8 +114,8 @@ class BaseConverter:
             self._meta = ProjectMeta()
             return self._meta
 
-    def get_items(self):  # -> generator?
-        raise NotImplementedError()
+    def get_items(self):
+        return self._items
 
     def to_supervisely(self, item: BaseItem, meta: ProjectMeta) -> Annotation:
         """Convert to Supervisely format."""
