@@ -1,9 +1,10 @@
 import os
+
 import yaml
 
+from supervisely import logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely import logger
 from supervisely.io.fs import list_files_recursively
 
 coco_classes = [
@@ -89,17 +90,17 @@ coco_classes = [
     "toothbrush",
 ]
 
+
 class YOLOConverter(ImageConverter):
 
-    def __init__(self, input_data, items, annotations):
+    def __init__(self, input_data):
         self._input_data = input_data
-        self._items = items
-        self._annotations = annotations
+        self._items = []
         self._meta = None
 
     def __str__(self):
         return AvailableImageConverters.YOLO
-    
+
     @property
     def ann_ext(self):
         return ".txt"
@@ -121,7 +122,9 @@ class YOLOConverter(ImageConverter):
             with open(key_file, "r") as config_yaml_info:
                 config_yaml = yaml.safe_load(config_yaml_info)
                 if "names" in config_yaml:
-                    logger.warn("['names'] key is empty. Class names will be taken from default coco classes names")
+                    logger.warn(
+                        "['names'] key is empty. Class names will be taken from default coco classes names"
+                    )
                 classes = config_yaml.get("names", coco_classes)
                 nc = config_yaml.get("nc", len(coco_classes))
                 # result["names"] = config_yaml.get("names", coco_classes)
@@ -134,7 +137,7 @@ class YOLOConverter(ImageConverter):
                     if len(config_yaml["colors"]) != len(classes):
                         logger.warn("Number of classes in ['names'] and ['colors'] are different")
                         return False
-                    
+
                 for t in ["train", "val"]:
                     if t not in config_yaml:
                         logger.warn(f"{t} path is not defined in {key_file}")
@@ -171,3 +174,6 @@ class YOLOConverter(ImageConverter):
 
     def to_supervisely(self):
         raise NotImplementedError()
+
+    def validate_format(self):
+        return False

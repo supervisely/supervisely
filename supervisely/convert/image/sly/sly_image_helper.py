@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import List
 
 from supervisely import (
     Bitmap,
@@ -15,17 +15,12 @@ from supervisely import (
 from supervisely.io.json import load_json_file
 
 
-def get_meta_from_annotations(annotations: List[str], validate_ann_func: Callable) -> ProjectMeta:
-    meta = ProjectMeta()
-    for ann_path in annotations:
-        if validate_ann_func(ann_path):
-            ann_json = load_json_file(ann_path)
-            for object in ann_json["annotation"]["objects"]:
-                meta = create_tags_from_annotation(meta, object["tags"])
-                meta = create_classes_from_annotation(meta, object)
-            meta = create_tags_from_annotation(meta, ann_json["annotation"]["tags"])
-        else:
-            continue
+def get_meta_from_annotation(meta, ann_path: str) -> ProjectMeta:
+    ann_json = load_json_file(ann_path)
+    for object in ann_json["annotation"]["objects"]:
+        meta = create_tags_from_annotation(meta, object["tags"])
+        meta = create_classes_from_annotation(meta, object)
+    meta = create_tags_from_annotation(meta, ann_json["annotation"]["tags"])
     return meta
 
 

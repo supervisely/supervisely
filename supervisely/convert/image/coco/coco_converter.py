@@ -19,10 +19,9 @@ COCO_ANN_KEYS = ["images", "annotations", "categories"]
 
 
 class COCOConverter(ImageConverter):
-    def __init__(self, input_data, items, annotations):
+    def __init__(self, input_data):
         self._input_data = input_data
-        self._items = items
-        self._annotations = annotations
+        self._items = []
         self._meta = None
 
     def __str__(self):
@@ -122,3 +121,6 @@ class COCOConverter(ImageConverter):
             meta, item.custom_data["categories"], item.ann_data, item.shape
         )
         return ann
+
+    def validate_format(self):
+        return False

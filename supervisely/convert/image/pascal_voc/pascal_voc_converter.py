@@ -6,10 +6,9 @@ from supervisely.convert.image.image_converter import ImageConverter
 
 class PascalVOCConverter(ImageConverter):
 
-    def __init__(self, input_data, items, annotations):
+    def __init__(self, input_data):
         self._input_data = input_data
-        self._items = items
-        self._annotations = annotations
+        self._items = []
         self._meta = None
 
     def __str__(self):
@@ -30,3 +29,6 @@ class PascalVOCConverter(ImageConverter):
 
     def to_supervisely(self, image_path: str, ann_path: str):
         raise NotImplementedError()
+
+    def validate_format(self):
+        return False

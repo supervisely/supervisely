@@ -19,19 +19,13 @@ class ImageConverter(BaseConverter):
             self._custom_data = custom_data
 
         def create_empty_annotation(self):
-            if self._shape is not None:
-                return Annotation(self._shape)
-            else:
-                ann = Annotation.from_img_path(self._path)
-                self._shape = ann.img_size  # fill item shape
-                return ann
+            return Annotation(self._shape)
 
-    def __init__(self, input_data, items, annotations):
+    def __init__(self, input_data):
         self._input_data = input_data
-        self._items = [self.Item(path) for path in items]
-        self._annotations = annotations
-        self._converter = self._detect_format()
         self._meta = None
+        self._items = []
+        self._converter = self._detect_format()
 
     @property
     def format(self):
@@ -53,12 +47,6 @@ class ImageConverter(BaseConverter):
     def validate_ann_file(ann_path):
         return False
 
-    def require_key_file(self):
-        return False
-
-    def validate_key_files(self):
-        return False
-
     def get_meta(self):
         return self._meta
 
@@ -66,7 +54,9 @@ class ImageConverter(BaseConverter):
         found_formats = []
         all_converters = ImageConverter.__subclasses__()
         for converter in all_converters:
-            converter = converter(self._input_data, self._items, self._annotations)
+            if converter.__name__ == "BaseConverter":
+                continue
+            converter = converter(self._input_data)
             if converter.validate_format():
                 if len(found_formats) > 1:
                     raise RuntimeError(
@@ -77,7 +67,7 @@ class ImageConverter(BaseConverter):
 
         if len(found_formats) == 0:
             logger.info(f"No valid dataset formats detected. Only image will be processed")
-            return self
+            return self  # TODO: list items if no valid format detected
 
         if len(found_formats) == 1:
             return found_formats[0]

@@ -101,23 +101,14 @@ class BaseConverter:
     def validate_ann_file(ann_path):
         raise NotImplementedError()
 
-    def require_key_file(self):
-        return False
+    # def require_key_file(self):
+    #     return False
 
-    def validate_key_files(self):
-        raise NotImplementedError()
+    # def validate_key_files(self):
+    #     raise NotImplementedError()
 
     def validate_format(self):
-        if self.require_key_file():
-            self.validate_key_files()
-
-        for path in self._annotations:
-            is_valid = self.validate_ann_file(path)
-            if not is_valid:
-                return False
-        # if self._meta is None:
-        # return False
-        return True
+        raise NotImplementedError()
 
     def get_meta(self):
         if self._meta is not None:
