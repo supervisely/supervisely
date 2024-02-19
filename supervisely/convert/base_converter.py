@@ -105,6 +105,15 @@ class BaseConverter:
         raise NotImplementedError()
 
     def validate_format(self):
+        """
+        Validate format of the input data meets the requirements of the converter. Should be implemented in the subclass.
+        Additionally, this method must do the following steps:
+            1. creates project meta (if key file file exists) and save it to self._meta
+            2. creates items, count detected annotations and save them to self._items
+            3. validates annotation files (and genereate meta if key file is missing)
+
+        :return: True if format is valid, False otherwise.
+        """
         raise NotImplementedError()
 
     def get_meta(self):
