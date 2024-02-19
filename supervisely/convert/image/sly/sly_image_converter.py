@@ -83,7 +83,7 @@ class SLYImageConverter(ImageConverter):
             if ann_name in ann_dict:
                 ann_path = ann_dict[ann_name]
                 if self._meta is None:
-                    meta = self.generate_meta_from_annotation(meta, ann_path)
+                    meta = self.generate_meta_from_annotation(ann_path, meta)
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
                     item.set_ann_data(ann_path)
