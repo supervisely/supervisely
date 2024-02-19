@@ -1,8 +1,6 @@
 import supervisely.imaging.image as image
-from supervisely import Annotation, logger
+from supervisely import Annotation, Api, batched, logger, ProjectMeta
 from supervisely.convert.base_converter import BaseConverter
-
-ALLOWED_IMAGE_ANN_EXTENSIONS = [".json", ".txt", ".xml"]
 
 
 class ImageConverter(BaseConverter):
@@ -32,10 +30,6 @@ class ImageConverter(BaseConverter):
         return self._converter.format
 
     @property
-    def items(self):
-        return self._items
-
-    @property
     def ann_ext(self):
         return None
 
@@ -46,9 +40,6 @@ class ImageConverter(BaseConverter):
     @staticmethod
     def validate_ann_file(ann_path):
         return False
-
-    def get_meta(self):
-        return self._meta
 
     def _detect_format(self):
         found_formats = []
@@ -71,3 +62,30 @@ class ImageConverter(BaseConverter):
 
         if len(found_formats) == 1:
             return found_formats[0]
+
+
+    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50):
+        """Upload converted data to Supervisely"""
+
+        dataset = api.dataset.get_info_by_id(dataset_id)
+        meta_json = api.project.get_meta(dataset.project_id)
+        meta = ProjectMeta.from_json(meta_json)
+        meta = meta.merge(self._meta)
+
+        api.project.update_meta(dataset.project_id, meta)
+
+        for batch in batched(self.items, batch_size=batch_size):
+            item_names = []
+            item_paths = []
+            anns = []
+            for item in batch:
+                ann = self.to_supervisely(item, meta)
+                item_names.append(item.name)
+                item_paths.append(item.path)
+                anns.append(ann)
+
+            img_infos = api.image.upload_paths(dataset_id, item_names, item_paths)
+            img_ids = [img_info.id for img_info in img_infos]
+            api.annotation.upload_anns(img_ids, anns)
+
+        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")

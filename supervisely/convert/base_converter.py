@@ -1,6 +1,6 @@
 import os
 
-from supervisely import Annotation, ProjectMeta
+from supervisely import Annotation, Api, ProjectMeta
 from supervisely.collection.str_enum import StrEnum
 from supervisely.imaging.image import read
 from supervisely.io.fs import file_exists, get_file_ext, get_file_name_with_ext
@@ -108,11 +108,7 @@ class BaseConverter:
         raise NotImplementedError()
 
     def get_meta(self):
-        if self._meta is not None:
-            return self._meta
-        else:
-            self._meta = ProjectMeta()
-            return self._meta
+        return self._meta
 
     def get_items(self):
         return self._items
@@ -124,3 +120,7 @@ class BaseConverter:
                 return Annotation(item.shape)
             else:
                 return Annotation.from_img_path(item.path)
+
+    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50):
+        """Upload converted data to Supervisely"""
+        raise NotImplementedError()
