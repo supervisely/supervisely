@@ -14,6 +14,7 @@ from supervisely.volume.volume import is_valid_ext as is_valid_volume_ext
 
 possible_annotations_exts = [".json", ".xml", ".txt"]
 
+# windows junk if endswith Zone.Identifier
 
 # add class for Item with name, path, shape, ann data, ann path?
 

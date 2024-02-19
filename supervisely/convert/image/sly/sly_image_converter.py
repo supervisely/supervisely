@@ -80,9 +80,15 @@ class SLYImageConverter(ImageConverter):
             if self.validate_ann_file(ann_path):
                 ann_json = load_json_file(ann_path)
                 for object in ann_json["annotation"]["objects"]:
+
+                    for obj_tag in object["tags"]:
+                        tag_name = obj_tag["name"]
+                        tag_value = obj_tag["value"]
+                        tag_meta = TagMeta(tag_name, tag_value)
+                        meta = meta.add_tag_meta(tag_meta)
+
                     class_name = object["classTitle"]
                     geometry_type = object["geometryType"]
-
                     # @TODO: add better check for geometry type, add
                     if geometry_type == Bitmap.geometry_name():
                         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
@@ -104,6 +110,12 @@ class SLYImageConverter(ImageConverter):
                         meta = meta.add_obj_class(obj_class)
                     else:
                         continue
+
+                for img_tag in ann_json["annotation"]["tags"]:
+                    tag_name = img_tag["name"]
+                    tag_value = img_tag["value"]
+                    tag_meta = TagMeta(tag_name, tag_value)
+                    meta = meta.add_tag_meta(tag_meta)
 
                 # [ ] @TODO: add tags
             else:
