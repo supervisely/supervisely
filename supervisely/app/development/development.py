@@ -16,7 +16,6 @@ except ImportError:
     from typing_extensions import Literal
 
 VPN_CONFIGURATION_DIR = "~/supervisely-network"
-VPN_IP = "http://10.8.0.1"
 
 
 def supervisely_vpn_network(
@@ -95,12 +94,13 @@ def supervisely_vpn_network(
     )
     response.raise_for_status()
     logger.info(f"Connection registered with the server, status: {response.status_code}.")
-    ip, server_public_key, server_endpoint, *_ = response.text.split(";")
+    ip, server_public_key, server_endpoint, subnet_base, gateway = response.text.split(";")
 
     # Update the configuration file with the server's parameters.
     logger.info(
-        f"Updating wg0.conf with the following parameters: IP: {ip}"
-        f"Server Public Key: {server_public_key}, Server endpoint: {server_endpoint}"
+        f"Updating wg0.conf with the following parameters: IP: {ip} "
+        f"Server Public Key: {server_public_key}, Server endpoint: {server_endpoint} "
+        f"Subnet base: {subnet_base}, Gateway: {gateway}"
     )
     with open(config_file, "w") as f:
         f.write(
@@ -110,7 +110,7 @@ def supervisely_vpn_network(
             Address = {ip}/16
             [Peer]
             PublicKey = {server_public_key}
-            AllowedIPs = 10.8.0.0/16
+            AllowedIPs = {subnet_base}
             Endpoint = {server_endpoint}
             PersistentKeepalive = 25
             """
@@ -136,7 +136,7 @@ def supervisely_vpn_network(
             return
 
     # Check the connection.
-    test_response = requests.get(VPN_IP, timeout=5)
+    test_response = requests.get(f"http://{gateway}", timeout=5)
     test_response.raise_for_status()
 
     if not test_response.ok:
@@ -144,7 +144,7 @@ def supervisely_vpn_network(
         if raise_on_error:
             raise RuntimeError(f"Error while connecting to VPN: {test_response.text}")
     else:
-        logger.info(f"VPN connection has been successfully established to {VPN_IP}")
+        logger.info(f"VPN connection has been successfully established to {gateway}")
 
 
 def create_debug_task(team_id, port="8000"):
