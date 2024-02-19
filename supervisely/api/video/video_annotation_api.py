@@ -1,5 +1,6 @@
 # coding: utf-8
 from __future__ import annotations
+
 import json
 from typing import Callable, Dict, List, Optional, Union
 
@@ -179,3 +180,5 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
 
             # ignore existing key_id_map because the new objects will be created
             self.append(video_id, ann)
+            if progress_cb is not None:
+                progress_cb(1)

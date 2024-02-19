@@ -4,15 +4,6 @@ from tqdm import tqdm
 
 from supervisely import get_project_class
 from supervisely.api.api import Api
-from supervisely.project.pointcloud_episode_project import (
-    download_pointcloud_episode_project,
-)
-from supervisely.project.pointcloud_project import download_pointcloud_project
-from supervisely.project.project import download_project
-from supervisely.project.project_type import ProjectType
-from supervisely.project.video_project import download_video_project
-from supervisely.project.volume_project import download_volume_project
-from supervisely.task.progress import handle_original_tqdm
 
 
 def download(
@@ -144,6 +135,9 @@ def download(
     """
 
     project_info = api.project.get_info_by_id(project_id)
+
+    if progress_cb is not None:
+        log_progress = False
 
     project_class = get_project_class(project_info.type)
 

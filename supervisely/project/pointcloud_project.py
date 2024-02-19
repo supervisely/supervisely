@@ -37,7 +37,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, handle_original_tqdm
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -1090,7 +1090,7 @@ def upload_pointcloud_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: Optional[bool] = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
@@ -1103,14 +1103,18 @@ def upload_pointcloud_project(
     project = api.project.create(workspace_id, project_name, ProjectType.POINT_CLOUDS)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
+    if progress_cb is not None:
+        log_progress = False
+
     key_id_map = KeyIdMap()
     for dataset_fs in project_fs:
         dataset = api.dataset.create(project.id, dataset_fs.name, change_name_if_conflict=True)
 
         ds_progress = None
         if log_progress:
-            ds_progress = Progress(
-                "Uploading dataset: {!r}".format(dataset.name), total_cnt=len(dataset_fs)
+            ds_progress = tqdm_sly(
+                desc="Uploading pointclouds to {!r}".format(dataset.name),
+                total=len(dataset_fs),
             )
 
         for item_name in dataset_fs:
@@ -1221,7 +1225,7 @@ def upload_pointcloud_project(
                     )
                     raise e
             if log_progress:
-                ds_progress.iters_done_report(1)
+                ds_progress(1)
             if progress_cb is not None:
                 progress_cb(1)
 
