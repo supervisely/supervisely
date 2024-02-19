@@ -147,3 +147,68 @@ def add_tail(body: str, tail: str):
 
 def coco_category_to_class_name(coco_categories):
     return {category["id"]: category["name"] for category in coco_categories}
+
+    # if meta_path is not None:
+    #     meta_json = load_json_file(meta_path)
+    #     self._meta = ProjectMeta.from_json(meta_json)
+    #     meta = self._meta
+    # else:
+    #     meta = ProjectMeta()
+    # jsons = list_files_recursively(self._input_data, valid_extensions=[".json"])
+    # for key_file in jsons:
+    #     coco = COCO(key_file)  # wont throw error if not COCO
+    #     if not all(key in coco.dataset for key in COCO_ANN_KEYS):
+    #         continue
+
+    #     colors = []
+    #     tag_metas = []
+    #     ann_types = coco_helper.get_ann_types(coco)
+    #     categories = coco.loadCats(ids=coco.getCatIds())
+
+    #     if self._meta is None:
+    #         self._meta = ProjectMeta()
+    #     for category in categories:
+    #         if category["name"] in [obj_class.name for obj_class in self.meta.obj_classes]:
+    #             continue
+    #         new_color = generate_rgb(colors)
+    #         colors.append(new_color)
+
+    #         obj_classes = []
+    #         if ann_types is not None:
+    #             if "segmentation" in ann_types:
+    #                 obj_classes.append(ObjClass(category["name"], Polygon, new_color))
+    #             if "bbox" in ann_types:
+    #                 obj_classes.append(
+    #                     ObjClass(
+    #                         coco_helper.add_tail(category["name"], "bbox"), Rectangle, new_color
+    #                     )
+    #                 )
+
+    #         for obj_class in obj_classes:
+    #             existing_classes = [obj_class.name for obj_class in self.meta.obj_classes]
+    #             if obj_class.name not in existing_classes:
+    #                 self.meta = self.meta.add_obj_class(obj_class)
+
+    #         if ann_types is not None and "caption" in ann_types:
+    #             tag_metas.append(TagMeta("caption", TagValueType.ANY_STRING))
+
+    #         for tag_meta in tag_metas:
+    #             existing_tags = [tag_meta.name for tag_meta in self.meta.tag_metas]
+    #             if tag_meta.name not in existing_tags:
+    #                 self.meta = self.meta.add_tag_meta(tag_meta)
+
+    #     coco_anns = coco.imgToAnns
+    #     coco_images = coco.imgs
+    #     coco_items = coco_images.items()
+
+    #     for img_id, img_info in coco_items:
+    #         img_ann = coco_anns[img_id]
+    #         img_shape = (img_info["height"], img_info["width"])
+    #         for item in self.items:
+    #             filename = img_info["file_name"]
+    #             if filename == item.name:
+    #                 item.update(item.path, img_ann, img_shape, {"categories": categories})
+
+    # if self._meta is None:
+    #     return False
+    # return True

@@ -1,3 +1,6 @@
+import imghdr
+import os
+
 from pycocotools.coco import COCO
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
@@ -9,11 +12,12 @@ from supervisely import (
     Rectangle,
     TagMeta,
     TagValueType,
+    logger,
 )
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import list_files_recursively
+from supervisely.io.fs import JUNK_FILES, get_file_ext, list_files_recursively
 
 COCO_ANN_KEYS = ["images", "annotations", "categories"]
 
@@ -35,73 +39,63 @@ class COCOConverter(ImageConverter):
     def key_file_ext(self):
         return ".json"
 
-    def require_key_file(self):
-        return True
-
     def validate_ann_file(self, ann_path: str):
-        if self._meta is not None:
-            return True
-        return False
+        pass
 
-    def validate_key_files(self):
-        jsons = list_files_recursively(self._input_data, valid_extensions=[".json"])
-        for key_file in jsons:
-            coco = COCO(key_file)  # wont throw error if not COCO
-            if not all(key in coco.dataset for key in COCO_ANN_KEYS):
-                continue
-
-            colors = []
-            tag_metas = []
-            ann_types = coco_helper.get_ann_types(coco)
-            categories = coco.loadCats(ids=coco.getCatIds())
-
-            if self._meta is None:
-                self._meta = ProjectMeta()
-            for category in categories:
-                if category["name"] in [obj_class.name for obj_class in self.meta.obj_classes]:
-                    continue
-                new_color = generate_rgb(colors)
-                colors.append(new_color)
-
-                obj_classes = []
-                if ann_types is not None:
-                    if "segmentation" in ann_types:
-                        obj_classes.append(ObjClass(category["name"], Polygon, new_color))
-                    if "bbox" in ann_types:
-                        obj_classes.append(
-                            ObjClass(
-                                coco_helper.add_tail(category["name"], "bbox"), Rectangle, new_color
-                            )
-                        )
-
-                for obj_class in obj_classes:
-                    existing_classes = [obj_class.name for obj_class in self.meta.obj_classes]
-                    if obj_class.name not in existing_classes:
-                        self.meta = self.meta.add_obj_class(obj_class)
-
-                if ann_types is not None and "caption" in ann_types:
-                    tag_metas.append(TagMeta("caption", TagValueType.ANY_STRING))
-
-                for tag_meta in tag_metas:
-                    existing_tags = [tag_meta.name for tag_meta in self.meta.tag_metas]
-                    if tag_meta.name not in existing_tags:
-                        self.meta = self.meta.add_tag_meta(tag_meta)
-
-            coco_anns = coco.imgToAnns
-            coco_images = coco.imgs
-            coco_items = coco_images.items()
-
-            for img_id, img_info in coco_items:
-                img_ann = coco_anns[img_id]
-                img_shape = (img_info["height"], img_info["width"])
-                for item in self.items:
-                    filename = img_info["file_name"]
-                    if filename == item.name:
-                        item.update(item.path, img_ann, img_shape, {"categories": categories})
-
-        if self._meta is None:
+    def validate_key_file(self, key_file_path):
+        coco = COCO(key_file_path)  # wont throw error if not COCO
+        if not all(key in coco.dataset for key in COCO_ANN_KEYS):
             return False
         return True
+
+    def validate_format(self):
+        detected_ann_cnt = 0
+
+        # 1. find annotation file
+        # 2. create image list and annotation dict {file_name: ann dict}
+        # 3. create project meta from coco annotation
+        # 4. implement to_supervisely() method
+
+        images_list, ann_path = [], None
+        for root, _, files in os.walk(self._input_data):
+            for file in files:
+                full_path = os.path.join(root, file)
+                ext = get_file_ext(full_path)
+                if file in JUNK_FILES:
+                    continue
+                elif ext == self.ann_ext:
+                    is_valid = self.validate_key_file(full_path)
+                    if is_valid:
+                        ann_path = full_path
+                        detected_ann_cnt += 1
+                elif imghdr.what(full_path) is None:
+                    logger.info(f"Non-image file found: {full_path}")
+                    return False
+                else:
+                    images_list.append(full_path)
+
+        if ann_path is None:
+            return False
+
+        coco = COCO(ann_path)
+
+        # create Items
+        # @TODO: coco
+        self._items = []
+        for image_path in images_list:
+            item = self.Item(image_path)
+            ann_name = f"{item.name}.json"
+            if ann_name in ann_dict:
+                ann_path = ann_dict[ann_name]
+                if self._meta is None:
+                    meta = self.generate_meta_from_annotation(ann_path, meta)
+                is_valid = self.validate_ann_file(ann_path, meta)
+                if is_valid:
+                    item.set_ann_data(ann_path)
+                    detected_ann_cnt += 1
+            self._items.append(item)
+        self._meta = meta
+        return detected_ann_cnt > 0
 
     def get_meta(self):
         return self._meta
