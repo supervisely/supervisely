@@ -38,7 +38,7 @@ class ImageConverter(BaseConverter):
         return None
 
     @staticmethod
-    def validate_ann_file(ann_path):
+    def validate_ann_file(ann_path, meta=None):
         return False
 
     def _detect_format(self):
@@ -74,7 +74,7 @@ class ImageConverter(BaseConverter):
 
         api.project.update_meta(dataset.project_id, meta)
 
-        for batch in batched(self.items, batch_size=batch_size):
+        for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
             anns = []
