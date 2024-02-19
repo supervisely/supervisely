@@ -58,7 +58,7 @@ class SLYImageConverter(ImageConverter):
                 elif ext in self.ann_ext:
                     ann_dict[file] = full_path
                 elif imghdr.what(full_path) is None:
-                    logger.info(f"Non-image file found: {full_path}")
+                    # logger.info(f"Non-image file found: {full_path}")
                     return False
                 else:
                     images_list.append(full_path)

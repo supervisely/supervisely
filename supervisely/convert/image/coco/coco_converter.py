@@ -69,7 +69,7 @@ class COCOConverter(ImageConverter):
                         ann_path = full_path
                         detected_ann_cnt += 1
                 elif imghdr.what(full_path) is None:
-                    logger.info(f"Non-image file found: {full_path}")
+                    # logger.info(f"Non-image file found: {full_path}")
                     return False
                 else:
                     images_list.append(full_path)
