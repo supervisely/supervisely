@@ -120,7 +120,8 @@ class BaseConverter:
         if self._meta is not None:
             return self._meta
         else:
-            return ProjectMeta()
+            self._meta = ProjectMeta()
+            return self._meta
 
     def get_items(self):  # -> generator?
         raise NotImplementedError()
