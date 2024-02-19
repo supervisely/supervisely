@@ -2,16 +2,11 @@ import imghdr
 import os
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
-from supervisely import Annotation, Api, ProjectMeta, batched, logger
+from supervisely import Annotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.geometry.geometry import Geometry
-from supervisely.io.fs import (
-    JUNK_FILES,
-    file_exists,
-    get_file_ext,
-    list_files_recursively,
-)
+from supervisely.io.fs import JUNK_FILES, get_file_ext
+
 from supervisely.io.json import load_json_file
 
 # SLY_ANN_KEYS = ["imageName", "imageId", "createdAt", "updatedAt", "annotation"]
@@ -35,8 +30,7 @@ class SLYImageConverter(ImageConverter):
             ann_json = load_json_file(ann_path)["annotation"]
             ann = Annotation.from_json(ann_json, meta)
             return True
-        except Exception as e:
-            raise e
+        except:
             return False
 
     def validate_key_file(self, key_file_path: str):
@@ -56,7 +50,7 @@ class SLYImageConverter(ImageConverter):
                 if file == "meta.json":
                     is_valid = self.validate_key_file(full_path)
                     if is_valid:
-                        meta_path = full_path
+                        continue
 
                 ext = get_file_ext(full_path)
                 if file in JUNK_FILES:  # add better check
@@ -69,9 +63,7 @@ class SLYImageConverter(ImageConverter):
                 else:
                     images_list.append(full_path)
 
-        if meta_path is not None:
-            meta_json = load_json_file(meta_path)
-            self._meta = ProjectMeta.from_json(meta_json)
+        if self._meta is not None:
             meta = self._meta
         else:
             meta = ProjectMeta()
@@ -117,29 +109,3 @@ class SLYImageConverter(ImageConverter):
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
-
-    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50):
-        """Upload converted data to Supervisely"""
-
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(self._meta)
-
-        api.project.update_meta(dataset.project_id, meta)
-
-        for batch in batched(self.items, batch_size=batch_size):
-            item_names = []
-            item_paths = []
-            anns = []
-            for item in batch:
-                ann = self.to_supervisely(item, meta)
-                item_names.append(item.name)
-                item_paths.append(item.path)
-                anns.append(ann)
-
-            img_infos = api.image.upload_paths(dataset_id, item_names, item_paths)
-            img_ids = [img_info.id for img_info in img_infos]
-            api.annotation.upload_anns(img_ids, anns)
-
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
