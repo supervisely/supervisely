@@ -72,6 +72,9 @@ class BaseConverter:
             if custom_data:
                 self.update_custom_data(custom_data)
 
+        def create_empty_annotation(self):
+            raise NotImplementedError()
+
     def __init__(self, data, items, annotations={}):
         self._input_data = data
         self._items = items

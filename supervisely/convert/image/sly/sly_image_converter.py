@@ -1,18 +1,7 @@
 import os
 
-from supervisely import (
-    Annotation,
-    Bitmap,
-    GraphNodes,
-    ObjClass,
-    Point,
-    PointLocation,
-    Polygon,
-    Polyline,
-    ProjectMeta,
-    Rectangle,
-    TagMeta,
-)
+import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
+from supervisely import Annotation, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.geometry.geometry import Geometry
@@ -26,7 +15,6 @@ SLY_ANN_KEYS = ["imageName", "imageId", "createdAt", "updatedAt", "annotation"]
 
 
 class SLYImageConverter(ImageConverter):
-
     def __init__(self, input_data, items, annotations):
         self._input_data = input_data
         self._items = items
@@ -72,63 +60,29 @@ class SLYImageConverter(ImageConverter):
         if self._meta is not None:
             return self._meta
         else:
-            return self._generate_meta_from_anns()
+            return self.generate_meta_from_annotations()
 
-    def _generate_meta_from_anns(self):
-        meta = ProjectMeta()
-        for ann_path in self._annotations:
-            if self.validate_ann_file(ann_path):
-                ann_json = load_json_file(ann_path)
-                for object in ann_json["annotation"]["objects"]:
-
-                    for obj_tag in object["tags"]:
-                        tag_name = obj_tag["name"]
-                        tag_value = obj_tag["value"]
-                        tag_meta = TagMeta(tag_name, tag_value)
-                        meta = meta.add_tag_meta(tag_meta)
-
-                    class_name = object["classTitle"]
-                    geometry_type = object["geometryType"]
-                    # @TODO: add better check for geometry type, add
-                    if geometry_type == Bitmap.geometry_name():
-                        obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
-                    elif geometry_type == Rectangle.geometry_name():
-                        obj_class = ObjClass(name=class_name, geometry_type=Rectangle)
-                    elif geometry_type == Point.geometry_name():
-                        obj_class = ObjClass(name=class_name, geometry_type=Point)
-                    elif geometry_type == Polygon.geometry_name():
-                        obj_class = ObjClass(name=class_name, geometry_type=Polygon)
-                    elif geometry_type == Polyline.geometry_name():
-                        obj_class = ObjClass(name=class_name, geometry_type=Polyline)
-                    elif geometry_type == PointLocation.geometry_name():
-                        obj_class = ObjClass(name=class_name, geometry_type=PointLocation)
-                    # elif geometry_type == GraphNodes.geometry_name():
-                    #     geometry_config = None
-                    #     obj_class = ObjClass(name=class_name, geometry_type=GraphNodes)
-                    existing_class = meta.get_obj_class(class_name)
-                    if existing_class is None:
-                        meta = meta.add_obj_class(obj_class)
-                    else:
-                        continue
-
-                for img_tag in ann_json["annotation"]["tags"]:
-                    tag_name = img_tag["name"]
-                    tag_value = img_tag["value"]
-                    tag_meta = TagMeta(tag_name, tag_value)
-                    meta = meta.add_tag_meta(tag_meta)
-
-                # [ ] @TODO: add tags
-            else:
-                continue
-        self._meta = meta
-        return self._meta
+    def generate_meta_from_annotations(self):
+        meta = sly_image_helper.get_meta_from_annotations(self._annotations, self.validate_ann_file)
+        return meta
 
     def get_items(self):
         return self._items
 
-    def to_supervisely(self, item_path: str, ann_path: str) -> Annotation:
+    def to_supervisely(self, item: ImageConverter.Item, meta: ProjectMeta) -> Annotation:
         """Convert to Supervisely format."""
-
         if self._meta is None:
             self._meta = self.get_meta()
-        raise NotImplementedError()
+
+        if item.ann_data is None:
+            return item.create_empty_annotation()
+
+        if isinstance(item.ann_data, dict):
+            return Annotation.from_json(item.ann_data, meta)
+        elif isinstance(item.ann_data, str):
+            if file_exists(item.ann_data):
+                return Annotation.from_json(load_json_file(item.ann_data), meta)
+        elif isinstance(item.ann_data, Annotation):  # not intended usecase
+            return item.ann_data
+        else:
+            return item.create_empty_annotation()  #  or raise?

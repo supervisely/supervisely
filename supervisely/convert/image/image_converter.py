@@ -1,5 +1,5 @@
 import supervisely.imaging.image as image
-from supervisely import logger
+from supervisely import Annotation, logger
 from supervisely.convert.base_converter import BaseConverter
 
 ALLOWED_IMAGE_ANN_EXTENSIONS = [".json", ".txt", ".xml"]
@@ -17,6 +17,14 @@ class ImageConverter(BaseConverter):
             else:
                 self._shape = shape
             self._custom_data = custom_data
+
+        def create_empty_annotation(self):
+            if self._shape is not None:
+                return Annotation(self._shape)
+            else:
+                ann = Annotation.from_img_path(self._path)
+                self._shape = ann.img_size  # fill item shape
+                return ann
 
     def __init__(self, input_data, items, annotations):
         self._input_data = input_data
