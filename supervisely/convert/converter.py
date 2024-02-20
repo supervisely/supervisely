@@ -2,6 +2,7 @@ import os
 
 from supervisely import Api, ProjectType
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.video.video_converter import VideoConverter
 
 
@@ -28,13 +29,13 @@ class ImportManager:
 
     def get_converter(self):
         """Return correct converter"""
-        if self._modality == ProjectType.IMAGES.value:
+        if str(self._modality) == ProjectType.IMAGES.value:
             return ImageConverter(self._input_data)._converter
-        elif self._modality == ProjectType.VIDEOS.value:
+        elif str(self._modality) == ProjectType.VIDEOS.value:
             return VideoConverter(self._input_data)._converter
-        # elif self.modality == ProjectType.POINT_CLOUDS.value:
-        #     return PointCloudConverter(input_data)
-        # elif self.modality == ProjectType.VOLUMES.value:
+        elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
+            return PointcloudConverter(self._input_data)._converter
+        # elif str(self.modality) == ProjectType.VOLUMES.value:
         #     return VolumeConverter(input_data)
 
     def upload_dataset(self, dataset_id):
@@ -43,7 +44,6 @@ class ImportManager:
 
     # def validate_format(self):
     #     raise NotImplementedError
-        
 
 # @TODO:
 # [ ] - add timer
@@ -51,3 +51,4 @@ class ImportManager:
 # [ ] - windows junk if endswith Zone.Identifier?
 # [ ] - check if archive and unpack
 # [ ] - LAS format
+# [ ] - preserve meta infos
