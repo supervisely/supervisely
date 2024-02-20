@@ -1,4 +1,4 @@
-from supervisely.convert.base_converter import AvailableImageConverters, BaseConverter
+from supervisely.convert.base_converter import AvailableImageConverters, AvailableVideoConverters, BaseConverter
 
 from supervisely.convert.image.coco.coco_converter import COCOConverter
 from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCConverter
