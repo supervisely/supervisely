@@ -1,5 +1,7 @@
 from typing import List, Tuple, Union
 
+from tqdm import tqdm
+
 import supervisely.imaging.image as image
 from supervisely import Annotation, Api, ProjectMeta, batched, logger
 from supervisely.convert.base_converter import BaseConverter
@@ -71,13 +73,21 @@ class ImageConverter(BaseConverter):
                 found_formats.append(converter)
 
         if len(found_formats) == 0:
-            logger.info(f"No valid dataset formats detected. Only images will be processed")
+            logger.info(
+                f"No valid dataset formats detected. Only images will be processed"
+            )
             return self
 
         if len(found_formats) == 1:
             return found_formats[0]
 
-    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50) -> None:
+    def upload_dataset(
+        self,
+        api: Api,
+        dataset_id: int,
+        batch_size: int = 50,
+        log_progress=True,
+    ) -> None:
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
@@ -86,6 +96,12 @@ class ImageConverter(BaseConverter):
         meta = meta.merge(self._meta)
 
         api.project.update_meta(dataset.project_id, meta)
+
+        if log_progress:
+            progress = tqdm(total=self.items_count, desc=f"Uploading images...")
+            progress_cb = progress.update
+        else:
+            progress_cb = None
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -97,10 +113,14 @@ class ImageConverter(BaseConverter):
                 item_paths.append(item.path)
                 anns.append(ann)
 
-            img_infos = api.image.upload_paths(dataset_id, item_names, item_paths)
+            img_infos = api.image.upload_paths(
+                dataset_id, item_names, item_paths, progress_cb
+            )
             img_ids = [img_info.id for img_info in img_infos]
             api.annotation.upload_anns(img_ids, anns)
 
+        if log_progress:
+            progress.close()
         logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
 
 

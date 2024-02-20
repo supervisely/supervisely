@@ -1,6 +1,7 @@
 from typing import List
 
 import cv2
+from tqdm import tqdm
 
 from supervisely import Api, KeyIdMap, ProjectMeta, VideoAnnotation, batched, logger
 from supervisely.convert.base_converter import BaseConverter
@@ -8,9 +9,16 @@ from supervisely.io.fs import file_exists
 from supervisely.io.json import dump_json_file
 
 
-class VideoConverter:
+class VideoConverter(BaseConverter):
     class Item(BaseConverter.BaseItem):
-        def __init__(self, item_path, ann_data=None, shape=None, custom_data={}, frame_count=None):
+        def __init__(
+            self,
+            item_path,
+            ann_data=None,
+            shape=None,
+            custom_data={},
+            frame_count=None,
+        ):
             self._path = item_path
             self._ann_data = ann_data
             self._type = "video"
@@ -78,13 +86,21 @@ class VideoConverter:
                 found_formats.append(converter)
 
         if len(found_formats) == 0:
-            logger.info(f"No valid dataset formats detected. Only image will be processed")
+            logger.info(
+                f"No valid dataset formats detected. Only image will be processed"
+            )
             return self  # TODO: list items if no valid format detected
 
         if len(found_formats) == 1:
             return found_formats[0]
 
-    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1):
+    def upload_dataset(
+        self,
+        api: Api,
+        dataset_id: int,
+        batch_size: int = 1,
+        log_progress=True,
+    ):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
@@ -94,20 +110,44 @@ class VideoConverter:
 
         api.project.update_meta(dataset.project_id, meta)
 
+        if log_progress:
+            progress = tqdm(total=self.items_count, desc=f"Uploading videos...")
+            progress_cb = progress.update
+        else:
+            progress_cb = None
+
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
             anns = []
+            figures_cnt = 0
             for item in batch:
                 item_names.append(item.name)
                 item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta)
+                figures_cnt += len(ann.figures)
                 anns.append(ann)
 
-            vid_infos = api.video.upload_paths(dataset_id, item_names, item_paths)
+            vid_infos = api.video.upload_paths(
+                dataset_id,
+                item_names,
+                item_paths,
+                progress_cb=progress_cb,
+                item_progress=True,
+            )
             vid_ids = [vid_info.id for vid_info in vid_infos]
-            for video_id, ann in zip(vid_ids, anns):
-                api.video.annotation.append(video_id, ann)
 
+            if log_progress:
+                ann_progress = tqdm(total=figures_cnt, desc=f"Uploading annotations...")
+                ann_progress_cb = ann_progress.update
+            else:
+                ann_progress_cb = None
+
+            for video_id, ann in zip(vid_ids, anns):
+                api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
+
+        if log_progress:
+            progress.close()
+            ann_progress.close()
         logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
