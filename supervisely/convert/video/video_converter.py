@@ -5,8 +5,6 @@ from tqdm import tqdm
 
 from supervisely import Api, KeyIdMap, ProjectMeta, VideoAnnotation, batched, logger
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import file_exists
-from supervisely.io.json import dump_json_file
 
 
 class VideoConverter(BaseConverter):
@@ -16,7 +14,7 @@ class VideoConverter(BaseConverter):
             item_path,
             ann_data=None,
             shape=None,
-            custom_data={},
+            custom_data=None,
             frame_count=None,
         ):
             self._path = item_path
@@ -32,7 +30,7 @@ class VideoConverter(BaseConverter):
             else:
                 self._shape = shape
                 self._frame_count = frame_count
-            self._custom_data = custom_data
+            self._custom_data = custom_data if custom_data is not None else {}
 
         @property
         def frame_count(self) -> int:
@@ -69,30 +67,6 @@ class VideoConverter(BaseConverter):
     @staticmethod
     def validate_ann_file(ann_path, meta=None):
         return False
-
-    def _detect_format(self):
-        found_formats = []
-        all_converters = VideoConverter.__subclasses__()
-        for converter in all_converters:
-            if converter.__name__ == "BaseConverter":
-                continue
-            converter = converter(self._input_data)
-            if converter.validate_format():
-                if len(found_formats) > 1:
-                    raise RuntimeError(
-                        f"Multiple formats detected: {found_formats}. "
-                        "Mixed formats are not supported yet."
-                    )
-                found_formats.append(converter)
-
-        if len(found_formats) == 0:
-            logger.info(
-                f"No valid dataset formats detected. Only image will be processed"
-            )
-            return self  # TODO: list items if no valid format detected
-
-        if len(found_formats) == 1:
-            return found_formats[0]
 
     def upload_dataset(
         self,

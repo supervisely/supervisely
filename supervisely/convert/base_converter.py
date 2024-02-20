@@ -1,6 +1,7 @@
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
+from tqdm import tqdm
 
-from supervisely import Annotation, Api, ProjectMeta
+from supervisely import Annotation, Api, batched, logger, ProjectMeta
 from supervisely.io.fs import get_file_name_with_ext
 
 
@@ -15,6 +16,11 @@ class AvailableVideoConverters:
     SLY = "supervisely"
     MOT = "mot"
     # DAVIS = "davis"
+
+
+class AvailablePointcloudConverters:
+    SLY = "supervisely"
+    LAS = "las"
 
 
 class BaseConverter:
@@ -146,3 +152,92 @@ class BaseConverter:
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50) -> None:
         """Upload converted data to Supervisely"""
         raise NotImplementedError()
+
+    def _detect_format(self):
+        found_formats = []
+        all_converters = self.__class__.__subclasses__()
+        for converter in all_converters:
+            if converter.__name__ == "BaseConverter":
+                continue
+            converter = converter(self._input_data)
+            if converter.validate_format():
+                if len(found_formats) > 1:
+                    raise RuntimeError(
+                        f"Multiple formats detected: {found_formats}. "
+                        "Mixed formats are not supported yet."
+                    )
+                found_formats.append(converter)
+
+        if len(found_formats) == 0:
+            logger.info(
+                f"No valid dataset formats detected. Only image will be processed"
+            )
+            return self  # TODO: list items if no valid format detected
+
+        if len(found_formats) == 1:
+            return found_formats[0]
+    
+    # def upload_dataset(
+    #     self,
+    #     api: Api,
+    #     dataset_id: int,
+    #     batch_size: Optional[int] = None,
+    #     log_progress: bool = True,
+    # ) -> None:
+    #     """Upload converted data to Supervisely"""
+
+    #     if len(self._items) == 0:
+    #         logger.warning("No items to upload.")
+    #         return
+        
+    #     item_upload_func = {
+    #         "image": api.image.upload_paths,
+    #         "video": api.video.upload_paths,
+    #         "pointcloud": api.pointcloud.upload_paths,
+    #     }
+
+    #     ann_upload_func = {
+    #         "image": api.annotation.upload_anns,
+    #         "video": api.video.annotation.append,
+    #         "pointcloud": api.pointcloud.annotation.append,
+    #     }
+
+    #     if batch_size is None:
+    #         batch_size = self._batch_size
+
+    #     dataset = api.dataset.get_info_by_id(dataset_id)
+    #     meta_json = api.project.get_meta(dataset.project_id)
+    #     meta = ProjectMeta.from_json(meta_json)
+    #     meta = meta.merge(self._meta)
+
+    #     api.project.update_meta(dataset.project_id, meta)
+
+    #     item_type = self._items[0]._type
+
+    #     if log_progress:
+    #         progress = tqdm(total=self.items_count, desc=f"Uploading {item_type}s...")
+    #         progress_cb = progress.update
+    #     else:
+    #         progress_cb = None
+
+    #     for batch in batched(self._items, batch_size=batch_size):
+    #         item_names = []
+    #         item_paths = []
+    #         anns = []
+    #         for item in batch:
+    #             item_names.append(item.name)
+    #             item_paths.append(item.path)
+
+    #             ann = self.to_supervisely(item, meta)
+    #             anns.append(ann)
+
+    #         img_infos = item_upload_func[item_type](
+    #             dataset_id, item_names, item_paths, progress_cb
+    #         )
+    #         img_ids = [img_info.id for img_info in img_infos]
+    #         ann_upload_func[item_type](img_ids, anns)
+
+    #     if log_progress:
+    #         progress.close()
+
+    #     return dataset
