@@ -247,6 +247,9 @@ from supervisely.project.volume_project import (
     upload_volume_project,
 )
 
+from supervisely.convert.converter import ImportManager
+from supervisely.convert.base_converter import AvailableImageConverters, BaseConverter
+
 from supervisely.geometry.bitmap import SkeletonizeMethod
 
 import supervisely.team_files as team_files

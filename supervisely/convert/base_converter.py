@@ -1,9 +1,5 @@
-import os
-
 from supervisely import Annotation, Api, ProjectMeta
-from supervisely.collection.str_enum import StrEnum
-from supervisely.imaging.image import read
-from supervisely.io.fs import file_exists, get_file_ext, get_file_name_with_ext
+from supervisely.io.fs import get_file_name_with_ext
 
 
 class AvailableImageConverters:

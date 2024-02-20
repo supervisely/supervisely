@@ -1,11 +1,11 @@
 import imghdr
 import os
-import supervisely.convert.image.yolo.yolo_helper as yolo_helper
 import yaml
 
 from supervisely import Annotation, Label, ObjClass, Polygon, ProjectMeta, Rectangle, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.image.yolo import yolo_helper
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
 
 
@@ -51,7 +51,7 @@ class YOLOConverter(ImageConverter):
                         if len(coords) != 4 and (len(coords) % 2 != 0 or len(coords) < 6):
                             logger.warn(f"Invalid coordinates for rectangle or polygon geometry: {ann_path}")
                             return False
-                        
+
                         # collect geometry types for each class
                         if len(coords) == 4:
                             geometry = Rectangle

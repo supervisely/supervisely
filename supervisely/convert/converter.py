@@ -1,22 +1,12 @@
-import imghdr
 import os
-from typing import Literal
 
-from supervisely import Api, ProjectType, batched, logger
-from supervisely.convert.base_converter import BaseConverter
+from supervisely import Api, ProjectType
+
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.video.video_converter import VideoConverter
-from supervisely.imaging.image import is_valid_ext as is_valid_image_ext
-from supervisely.io.fs import JUNK_FILES, get_file_ext
-from supervisely.pointcloud.pointcloud import is_valid_ext as is_valid_point_cloud_ext
-from supervisely.video.video import is_valid_ext as is_valid_video_ext
-from supervisely.volume.volume import is_valid_ext as is_valid_volume_ext
 
-possible_annotations_exts = [".json", ".xml", ".txt"]
 
 # windows junk if endswith Zone.Identifier
-
-# add class for Item with name, path, shape, ann data, ann path?
 
 
 # class Converter:
@@ -42,15 +32,6 @@ class ImportManager:
     def get_converter(self):
         """Return correct converter"""
         if self._modality == ProjectType.IMAGES.value:
-            from supervisely.convert.image.coco.coco_converter import COCOConverter
-            from supervisely.convert.image.pascal_voc.pascal_voc_converter import (
-                PascalVOCConverter,
-            )
-            from supervisely.convert.image.sly.sly_image_converter import (
-                SLYImageConverter,
-            )
-            from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
-
             return ImageConverter(self._input_data)._converter
         elif self._modality == ProjectType.VIDEOS.value:
             return VideoConverter(self._input_data).converter
