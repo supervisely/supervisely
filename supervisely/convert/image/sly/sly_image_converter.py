@@ -1,5 +1,6 @@
 import imghdr
 import os
+from typing import List
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
 from supervisely import Annotation, ProjectMeta, logger
@@ -10,19 +11,27 @@ from supervisely.io.json import load_json_file
 
 
 class SLYImageConverter(ImageConverter):
-    def __init__(self, input_data):
-        self._input_data = input_data
-        self._items = []
-        self._meta = None
+    def __init__(self, input_data: str):
+        self._input_data: str = input_data
+        self._items: List[ImageConverter.Item] = []
+        self._meta: ProjectMeta = None
 
     def __str__(self):
         return AvailableImageConverters.SLY
 
     @property
-    def ann_ext(self):
+    def ann_ext(self) -> str:
         return ".json"
 
-    def validate_ann_file(self, ann_path: str, meta: ProjectMeta):
+    @property
+    def key_file_ext(self) -> str:
+        return ".json"
+
+    def generate_meta_from_annotation(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
+        meta = sly_image_helper.get_meta_from_annotation(ann_path, meta)
+        return meta
+
+    def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
         try:
             ann_json = load_json_file(ann_path)
             if "annotation" in ann_json:
@@ -32,14 +41,14 @@ class SLYImageConverter(ImageConverter):
         except:
             return False
 
-    def validate_key_file(self, key_file_path: str):
+    def validate_key_file(self, key_file_path: str) -> bool:
         try:
             self._meta = ProjectMeta.from_json(load_json_file(key_file_path))
             return True
         except Exception:
             return False
 
-    def validate_format(self):
+    def validate_format(self) -> bool:
         detected_ann_cnt = 0
         meta_path = None
         images_list, ann_dict = [], {}
@@ -83,16 +92,6 @@ class SLYImageConverter(ImageConverter):
             self._items.append(item)
         self._meta = meta
         return detected_ann_cnt > 0
-
-    def get_meta(self):
-        return self._meta
-
-    def generate_meta_from_annotation(self, ann_path, meta):
-        meta = sly_image_helper.get_meta_from_annotation(meta, ann_path)
-        return meta
-
-    def get_items(self):
-        return self._items
 
     def to_supervisely(self, item: ImageConverter.Item, meta: ProjectMeta = None) -> Annotation:
         """Convert to Supervisely format."""

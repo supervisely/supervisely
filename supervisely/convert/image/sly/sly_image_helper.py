@@ -18,20 +18,20 @@ from supervisely.io.json import load_json_file
 SLY_ANN_KEYS = ["imageName", "imageId", "createdAt", "updatedAt", "annotation"]
 
 
-def get_meta_from_annotation(meta, ann_path: str) -> ProjectMeta:
+def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     ann_json = load_json_file(ann_path)
     if all(key in ann_json for key in SLY_ANN_KEYS):
         logger.warn(f"Annotation file {ann_path} is not in Supervisely format")
         return meta
 
     for object in ann_json["annotation"]["objects"]:
-        meta = create_tags_from_annotation(meta, object["tags"])
-        meta = create_classes_from_annotation(meta, object)
-    meta = create_tags_from_annotation(meta, ann_json["annotation"]["tags"])
+        meta = create_tags_from_annotation(object["tags"], meta)
+        meta = create_classes_from_annotation(object, meta)
+    meta = create_tags_from_annotation(ann_json["annotation"]["tags"], meta)
     return meta
 
 
-def create_tags_from_annotation(meta: ProjectMeta, tags: List[dict]) -> ProjectMeta:
+def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectMeta:
     for tag in tags:
         tag_name = tag["name"]
         tag_value = tag["value"]
@@ -49,7 +49,7 @@ def create_tags_from_annotation(meta: ProjectMeta, tags: List[dict]) -> ProjectM
     return meta
 
 
-def create_classes_from_annotation(meta: ProjectMeta, object: dict) -> ProjectMeta:
+def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMeta:
     class_name = object["classTitle"]
     geometry_type = object["geometryType"]
     # @TODO: add better check for geometry type, add

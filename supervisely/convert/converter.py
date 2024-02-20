@@ -1,10 +1,8 @@
 import os
 
 from supervisely import Api, ProjectType
-
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.video.video_converter import VideoConverter
-
 
 # windows junk if endswith Zone.Identifier
 
@@ -34,7 +32,7 @@ class ImportManager:
         if self._modality == ProjectType.IMAGES.value:
             return ImageConverter(self._input_data)._converter
         elif self._modality == ProjectType.VIDEOS.value:
-            return VideoConverter(self._input_data).converter
+            return VideoConverter(self._input_data)._converter
         # elif self.modality == ProjectType.POINT_CLOUDS.value:
         #     return PointCloudConverter(input_data)
         # elif self.modality == ProjectType.VOLUMES.value:

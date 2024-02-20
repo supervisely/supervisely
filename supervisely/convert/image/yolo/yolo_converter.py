@@ -1,8 +1,18 @@
 import imghdr
 import os
+from typing import List
+
 import yaml
 
-from supervisely import Annotation, Label, ObjClass, Polygon, ProjectMeta, Rectangle, logger
+from supervisely import (
+    Annotation,
+    Label,
+    ObjClass,
+    Polygon,
+    ProjectMeta,
+    Rectangle,
+    logger,
+)
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.yolo import yolo_helper
@@ -11,27 +21,26 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
 
 class YOLOConverter(ImageConverter):
 
-    def __init__(self, input_data):
-        self._input_data = input_data
-        self._items = []
-        self._meta = None
-        self.yaml_info = None
-        self.class_index_to_geometry = {}
-        self.coco_classes_dict = {}
+    def __init__(self, input_data: str):
+        self._input_data: str = input_data
+        self._items: List[ImageConverter.Item] = []
+        self._meta: ProjectMeta = None
+        self.yaml_info: dict = None
+        self.class_index_to_geometry: dict = {}
+        self.coco_classes_dict: dict = {}
 
-    def __str__(self):
+    def __str__(self) -> str:
         return AvailableImageConverters.YOLO
 
     @property
-    def ann_ext(self):
+    def ann_ext(self) -> str:
         return ".txt"
 
     @property
-    def key_file_ext(self):
+    def key_file_ext(self) -> str:
         return ".yaml"
 
-
-    def validate_ann_file(self, ann_path: str, meta: ProjectMeta):
+    def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
         try:
             with open(ann_path, "r") as ann_file:
                 lines = ann_file.readlines()
@@ -43,13 +52,19 @@ class YOLOConverter(ImageConverter):
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
                         if class_index not in self.coco_classes_dict:
-                            logger.warn(f"Class index {class_index} not found in the config yaml file: {ann_path}")
+                            logger.warn(
+                                f"Class index {class_index} not found in the config yaml file: {ann_path}"
+                            )
                             return False
                         if any([0 > c > 1 for c in coords]):
-                            logger.warn(f"The bounding coordinates must be in normalized xywh format (from 0 to 1): {ann_path}")
+                            logger.warn(
+                                f"The bounding coordinates must be in normalized xywh format (from 0 to 1): {ann_path}"
+                            )
                             return False
                         if len(coords) != 4 and (len(coords) % 2 != 0 or len(coords) < 6):
-                            logger.warn(f"Invalid coordinates for rectangle or polygon geometry: {ann_path}")
+                            logger.warn(
+                                f"Invalid coordinates for rectangle or polygon geometry: {ann_path}"
+                            )
                             return False
 
                         # collect geometry types for each class
@@ -59,13 +74,13 @@ class YOLOConverter(ImageConverter):
                             geometry = Polygon
 
                         if class_index not in self.class_index_to_geometry:
-                            self.class_index_to_geometry[class_index] = geometry 
+                            self.class_index_to_geometry[class_index] = geometry
 
             return True
         except:
             return False
 
-    def validate_key_file(self, key_path: str):
+    def validate_key_file(self, key_path: str) -> bool:
         result = {"names": None, "colors": None, "datasets": []}
         try:
             with open(key_path, "r") as config_yaml_info:
@@ -109,18 +124,20 @@ class YOLOConverter(ImageConverter):
                             os.path.join(conf_dirname, "/".join(config_yaml[t].split("/")[2:]))
                         )
                     else:
-                        cur_dataset_path = os.path.normpath(os.path.join(conf_dirname, config_yaml[t]))
+                        cur_dataset_path = os.path.normpath(
+                            os.path.join(conf_dirname, config_yaml[t])
+                        )
 
                     if os.path.isdir(cur_dataset_path):
                         result["datasets"].append((t, cur_dataset_path))
-                
+
                 self.yaml_info = result
                 self.coco_classes_dict = {i: classes[i] for i in range(len(classes))}
             return True
         except:
             return False
 
-    def validate_format(self):
+    def validate_format(self) -> bool:
         detected_ann_cnt = 0
         config_path = None
         images_list, ann_dict = [], {}
@@ -150,7 +167,7 @@ class YOLOConverter(ImageConverter):
                 "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
             }
         meta = ProjectMeta()
-        
+
         # create Items
         self._items = []
         for image_path in images_list:
@@ -170,7 +187,7 @@ class YOLOConverter(ImageConverter):
         self._meta = self.generate_meta()
         return detected_ann_cnt > 0
 
-    def generate_meta(self):
+    def generate_meta(self) -> ProjectMeta:
         meta = ProjectMeta()
 
         classes = []
@@ -208,7 +225,7 @@ class YOLOConverter(ImageConverter):
                             geometry = yolo_helper.convert_polygon(height, width, *coords)
 
                         class_name = self.coco_classes_dict[class_index]
-                        obj_class=meta.get_obj_class(class_name)
+                        obj_class = meta.get_obj_class(class_name)
                         label = Label(obj_class=obj_class, geometry=geometry)
                         labels.append(label)
             return Annotation(labels=labels, img_size=(height, width))
