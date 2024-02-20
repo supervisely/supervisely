@@ -20,13 +20,12 @@ SLY_ANN_KEYS = ["size", "framesCount", "frames", "objects", "tags"]
 
 def get_meta_from_annotation(meta, ann_path: str) -> ProjectMeta:
     ann_json = load_json_file(ann_path)
+    if "annotation" in ann_json:
+        ann_json = ann_json["annotation"]
     if not all(key in ann_json for key in SLY_ANN_KEYS):
         logger.warn(f"VideoAnnotation file {ann_path} is not in Supervisely format")
         return meta
 
-    if "annotation" in ann_json:
-        ann_json = ann_json["annotation"]
-    # classname_to_geometry = {}
     object_key_to_name = {}
     for object in ann_json["objects"]:
         meta = create_tags_from_annotation(meta, object["tags"])
