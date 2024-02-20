@@ -24,7 +24,9 @@ class SLYImageConverter(ImageConverter):
 
     def validate_ann_file(self, ann_path: str, meta: ProjectMeta):
         try:
-            ann_json = load_json_file(ann_path)["annotation"]
+            ann_json = load_json_file(ann_path)
+            if "annotation" in ann_json:
+                ann_json = ann_json["annotation"]
             ann = Annotation.from_json(ann_json, meta)
             return True
         except:
@@ -101,7 +103,9 @@ class SLYImageConverter(ImageConverter):
             return item.create_empty_annotation()
 
         try:
-            ann_json = load_json_file(item.ann_data)["annotation"]
+            ann_json = load_json_file(item.ann_data)
+            if "annotation" in ann_json:
+                ann_json = ann_json["annotation"]
             return Annotation.from_json(ann_json, meta)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

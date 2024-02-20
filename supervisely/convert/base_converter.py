@@ -9,6 +9,12 @@ class AvailableImageConverters:
     PASCAL_VOC = "pascal_voc"
 
 
+class AvailableVideoConverters:
+    SLY = "supervisely"
+    MOT = "coco"
+    DAVIS = "yolo"
+
+
 class BaseConverter:
     class BaseItem:
         def __init__(self, item_path, ann_data=None, shape=None, custom_data={}):
