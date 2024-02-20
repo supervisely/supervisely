@@ -111,8 +111,7 @@ class BaseConverter:
     def key_file_ext(self) -> str:
         raise NotImplementedError()
 
-    @staticmethod
-    def validate_ann_file(ann_path) -> bool:
+    def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
 
     def validate_key_file(self) -> bool:
