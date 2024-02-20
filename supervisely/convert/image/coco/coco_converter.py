@@ -111,8 +111,3 @@ class COCOConverter(ImageConverter):
             return Annotation.from_img_path(item.path)
         else:
             return coco_helper.create_supervisely_annotation(item, meta, self._coco_categories)
-
-
-# @TODO:
-# [ ] - Implement Skeleton support
-# [ ] - Implement detailed coco label validation

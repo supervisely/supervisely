@@ -1,5 +1,5 @@
 import supervisely.imaging.image as image
-from supervisely import Annotation, Api, batched, logger, ProjectMeta
+from supervisely import Annotation, Api, ProjectMeta, batched, logger
 from supervisely.convert.base_converter import BaseConverter
 
 
@@ -63,7 +63,6 @@ class ImageConverter(BaseConverter):
         if len(found_formats) == 1:
             return found_formats[0]
 
-
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50):
         """Upload converted data to Supervisely"""
 
@@ -89,3 +88,12 @@ class ImageConverter(BaseConverter):
             api.annotation.upload_anns(img_ids, anns)
 
         logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+
+
+# @TODO:
+# COCO
+# [ ] - Implement Skeleton support
+# [ ] - Implement detailed coco label validation
+# Supervisely
+# [ ] - Implement keypoints support
+# [ ] - Add ann keys validation to method `generate_meta_from_annotation()``

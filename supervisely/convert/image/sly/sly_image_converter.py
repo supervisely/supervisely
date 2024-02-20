@@ -6,10 +6,7 @@ from supervisely import Annotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
-
 from supervisely.io.json import load_json_file
-
-# SLY_ANN_KEYS = ["imageName", "imageId", "createdAt", "updatedAt", "annotation"]
 
 
 class SLYImageConverter(ImageConverter):

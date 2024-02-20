@@ -11,12 +11,19 @@ from supervisely import (
     Rectangle,
     TagMeta,
     TagValueType,
+    logger,
 )
 from supervisely.io.json import load_json_file
+
+SLY_ANN_KEYS = ["imageName", "imageId", "createdAt", "updatedAt", "annotation"]
 
 
 def get_meta_from_annotation(meta, ann_path: str) -> ProjectMeta:
     ann_json = load_json_file(ann_path)
+    if all(key in ann_json for key in SLY_ANN_KEYS):
+        logger.warn(f"Annotation file {ann_path} is not in Supervisely format")
+        return meta
+
     for object in ann_json["annotation"]["objects"]:
         meta = create_tags_from_annotation(meta, object["tags"])
         meta = create_classes_from_annotation(meta, object)
