@@ -21,6 +21,7 @@ class AvailableVideoConverters:
 class AvailablePointcloudConverters:
     SLY = "supervisely"
     LAS = "las/laz"
+    PLY = "ply"
 
 
 class AvailableVolumeConverters:

@@ -18,6 +18,7 @@ from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
     SLYPointcloudConverter,
 )
 from supervisely.convert.pointcloud.las.las_converter import LasConverter
+from supervisely.convert.pointcloud.ply.ply_converter import PlyConverter
 
 # Video
 from supervisely.convert.video.mot.mot_converter import MOTConverter
