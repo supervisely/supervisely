@@ -1,7 +1,6 @@
-from typing import List, Optional, Tuple, Union
-from tqdm import tqdm
+from typing import List, Tuple, Union
 
-from supervisely import Annotation, Api, batched, logger, ProjectMeta
+from supervisely import Annotation, Api, ProjectMeta, batched, logger
 from supervisely.io.fs import get_file_name_with_ext
 
 
@@ -21,6 +20,10 @@ class AvailableVideoConverters:
 class AvailablePointcloudConverters:
     SLY = "supervisely"
     LAS = "las"
+
+
+class AvailableVolumeConverters:
+    SLY = "supervisely"
 
 
 class BaseConverter:
@@ -169,14 +172,12 @@ class BaseConverter:
                 found_formats.append(converter)
 
         if len(found_formats) == 0:
-            logger.info(
-                f"No valid dataset formats detected. Only image will be processed"
-            )
+            logger.info(f"No valid dataset formats detected. Only image will be processed")
             return self  # TODO: list items if no valid format detected
 
         if len(found_formats) == 1:
             return found_formats[0]
-    
+
     # def upload_dataset(
     #     self,
     #     api: Api,
@@ -189,7 +190,7 @@ class BaseConverter:
     #     if len(self._items) == 0:
     #         logger.warning("No items to upload.")
     #         return
-        
+
     #     item_upload_func = {
     #         "image": api.image.upload_paths,
     #         "video": api.video.upload_paths,

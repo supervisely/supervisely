@@ -4,6 +4,7 @@ from supervisely import Api, ProjectType
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.video.video_converter import VideoConverter
+from supervisely.convert.volume.volume_converter import VolumeConverter
 
 
 class ImportManager:
@@ -35,8 +36,8 @@ class ImportManager:
             return VideoConverter(self._input_data)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
             return PointcloudConverter(self._input_data)._converter
-        # elif str(self.modality) == ProjectType.VOLUMES.value:
-        #     return VolumeConverter(input_data)
+        elif str(self.modality) == ProjectType.VOLUMES.value:
+            return VolumeConverter(self._input_data)._converter
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
@@ -44,6 +45,7 @@ class ImportManager:
 
     # def validate_format(self):
     #     raise NotImplementedError
+
 
 # @TODO:
 # [ ] - add timer

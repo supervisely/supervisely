@@ -15,7 +15,7 @@ from supervisely import (
 )
 from supervisely.io.json import load_json_file
 
-SLY_ANN_KEYS = ["objects", "tags", "size"]
+SLY_IMAGE_ANN_KEYS = ["objects", "tags", "size"]
 
 
 def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
@@ -23,7 +23,7 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     if "annotation" in ann_json:
         ann_json = ann_json["annotation"]
 
-    if not all(key in ann_json for key in SLY_ANN_KEYS):
+    if not all(key in ann_json for key in SLY_IMAGE_ANN_KEYS):
         logger.warn(f"Annotation file {ann_path} is not in Supervisely format")
         return meta
 

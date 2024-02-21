@@ -1,10 +1,10 @@
 from supervisely.convert.base_converter import (
     AvailableImageConverters,
-    AvailableVideoConverters,
     AvailablePointcloudConverters,
+    AvailableVideoConverters,
+    AvailableVolumeConverters,
     BaseConverter,
 )
-
 from supervisely.convert.converter import ImportManager
 
 # Image
@@ -13,9 +13,14 @@ from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCC
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
 from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
 
+# Pointcloud
+from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
+    SLYPointcloudConverter,
+)
+
 # Video
 from supervisely.convert.video.mot.mot_converter import MOTConverter
 from supervisely.convert.video.sly.sly_video_converter import SLYVideoConverter
 
-# Pointcloud
-from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import SLYPointcloudConverter
+# Volume
+from supervisely.convert.volume.sly.sly_volume_converter import SLYVolumeConverter
