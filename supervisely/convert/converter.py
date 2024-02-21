@@ -52,7 +52,8 @@ class ImportManager:
 # [ ] - detect remote data format
 # [ ] - windows junk if endswith Zone.Identifier?
 # [ ] - check if archive and unpack
-# [ ] - LAS format
+# [x] - LAS format
 # [ ] - preserve meta infos
 # [ ] - merge meta.json if more than one
 # [ ] - prepare test data for each modality and different formats (corner cases)
+# [ ] - # ? add pointcloud shape

@@ -108,7 +108,8 @@ class ImageConverter(BaseConverter):
 
 # @TODO:
 # COCO
-# [ ] - Implement Skeleton support
+# [x] - Implement Skeleton support
+# [x] - Implement binding of bboxes and masks
 # [ ] - Implement detailed coco label validation
 # Supervisely
 # [x] - Implement keypoints generation (when meta not found)
