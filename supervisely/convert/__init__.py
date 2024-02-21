@@ -17,6 +17,7 @@ from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
 from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
     SLYPointcloudConverter,
 )
+from supervisely.convert.pointcloud.las.las_converter import LasConverter
 
 # Video
 from supervisely.convert.video.mot.mot_converter import MOTConverter
