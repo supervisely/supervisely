@@ -1,14 +1,16 @@
 from typing import List, Optional
-
 from tqdm import tqdm
 
-from supervisely import Api, PointcloudAnnotation, ProjectMeta, batched, logger
+from supervisely import Api, batched, logger, PointcloudAnnotation, ProjectMeta
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
+from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 
 
 class PointcloudConverter(BaseConverter):
+    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
+
     class Item(BaseConverter.BaseItem):
         def __init__(
             self,
@@ -28,7 +30,7 @@ class PointcloudConverter(BaseConverter):
             return self._frame_count
 
         def create_empty_annotation(self) -> PointcloudAnnotation:
-            return PointcloudAnnotation(self._shape, self._frame_count)
+            return PointcloudAnnotation()
 
         def set_related_images(self, related_images: dict) -> None:
             self._related_images.append(related_images)
@@ -72,10 +74,13 @@ class PointcloudConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        if self._meta is not None:
+            curr_meta = self._meta
+        else:
+            curr_meta = ProjectMeta()
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(self._meta)
-
+        meta = meta.merge(curr_meta)
         api.project.update_meta(dataset.project_id, meta)
 
         if log_progress:
