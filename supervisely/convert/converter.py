@@ -54,3 +54,5 @@ class ImportManager:
 # [ ] - check if archive and unpack
 # [ ] - LAS format
 # [ ] - preserve meta infos
+# [ ] - merge meta.json if more than one
+# [ ] - prepare test data for each modality and different formats (corner cases)

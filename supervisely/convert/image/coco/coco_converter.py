@@ -9,7 +9,7 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
 
-COCO_ANN_KEYS = ["images", "annotations", "categories"]
+COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
@@ -67,16 +67,18 @@ class COCOConverter(ImageConverter):
             return False
 
         ann_dict = {}
-        self._meta = ProjectMeta()
+        meta = ProjectMeta()
         for ann_path in ann_paths:
             coco = COCO(ann_path)
             coco_anns = coco.imgToAnns
             coco_images = coco.imgs
-            coco_categories = coco.loadCats(ids=coco.getCatIds())
+            if len(coco.cats) > 0:
+                coco_categories = coco.loadCats(ids=coco.getCatIds())
+            else:
+                coco_categories = []
             self._coco_categories.extend(coco_categories)
             coco_items = coco_images.items()
-            coco_meta = self.generate_meta_from_annotation(coco, self._meta)
-            self._meta = self._meta.merge(coco_meta)
+            meta = self.generate_meta_from_annotation(coco, meta)
             # create ann dict
             for image_id, image_info in coco_items:
                 image_name = image_info["file_name"]
@@ -97,6 +99,8 @@ class COCOConverter(ImageConverter):
                 # if is_valid:
                 item.set_ann_data(ann_data)
             self._items.append(item)
+
+        self._meta = meta
         return detected_ann_cnt > 0
 
     def get_meta(self) -> ProjectMeta:

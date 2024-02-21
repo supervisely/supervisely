@@ -3,11 +3,14 @@ from typing import List, Optional, Tuple, Union
 from tqdm import tqdm
 
 import supervisely.imaging.image as image
-from supervisely import Annotation, Api, ProjectMeta, batched, logger
+from supervisely import Annotation, Api, batched, logger, ProjectMeta
 from supervisely.convert.base_converter import BaseConverter
+from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 
 
 class ImageConverter(BaseConverter):
+    allowed_exts = SUPPORTED_IMG_EXTS
+
     class Item(BaseConverter.BaseItem):
         def __init__(
             self,
@@ -67,10 +70,13 @@ class ImageConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        if self._meta is not None:
+            curr_meta = self._meta
+        else:
+            curr_meta = ProjectMeta()
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(self._meta)
-
+        meta = meta.merge(curr_meta)
         api.project.update_meta(dataset.project_id, meta)
 
         if log_progress:
@@ -105,5 +111,5 @@ class ImageConverter(BaseConverter):
 # [ ] - Implement Skeleton support
 # [ ] - Implement detailed coco label validation
 # Supervisely
-# [ ] - Implement keypoints support
-# [ ] - Add ann keys validation to method `generate_meta_from_annotation()``
+# [x] - Implement keypoints generation (when meta not found)
+# [ ] - Add ann keys validation to method `generate_meta_from_annotation()`

@@ -1,13 +1,15 @@
-from typing import List
-
 import cv2
+
 from tqdm import tqdm
+from typing import List
 
 from supervisely import Api, KeyIdMap, ProjectMeta, VideoAnnotation, batched, logger
 from supervisely.convert.base_converter import BaseConverter
-
+from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
 class VideoConverter(BaseConverter):
+    allowed_exts = ALLOWED_VIDEO_EXTENSIONS
+
     class Item(BaseConverter.BaseItem):
         def __init__(
             self,
@@ -78,10 +80,13 @@ class VideoConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        if self._meta is not None:
+            curr_meta = self._meta
+        else:
+            curr_meta = ProjectMeta()
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(self._meta)
-
+        meta = meta.merge(curr_meta)
         api.project.update_meta(dataset.project_id, meta)
 
         if log_progress:

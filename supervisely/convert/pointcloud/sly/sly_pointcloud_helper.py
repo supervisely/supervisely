@@ -9,6 +9,7 @@ from supervisely import (
     TagValueType,
     logger,
 )
+from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.json import load_json_file
 
 SLY_ANN_KEYS = ["figures", "objects", "tags"]
@@ -25,9 +26,12 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         )
         return meta
 
+    object_key_to_name = {}
     for object in ann_json["objects"]:
         meta = create_tags_from_annotation(object["tags"], meta)
-        meta = create_classes_from_annotation(object, meta)
+        object_key_to_name[object["key"]] = object["classTitle"]
+    for fig in ann_json["figures"]:
+        meta = create_classes_from_annotation(fig, meta, object_key_to_name)
     meta = create_tags_from_annotation(ann_json["tags"], meta)
     return meta
 
@@ -50,17 +54,28 @@ def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectM
     return meta
 
 
-def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMeta:
-    class_name = object["classTitle"]
-    geometry_type = object["geometryType"]
+def create_classes_from_annotation(
+        figure: dict, meta: ProjectMeta, object_key_to_name: dict
+) -> ProjectMeta:
+    obj_key = figure.get("objectKey")
+    if obj_key is None:
+        return meta
+    class_name = object_key_to_name[obj_key]
+    geometry_type = figure["geometryType"]
+    obj_class = None
     if geometry_type == Cuboid.geometry_name():
-        obj_class = ObjClass(name=class_name, geometry_type=Cuboid)
+        obj_class = ObjClass(name=class_name, geometry_type=Cuboid3d)
+    elif geometry_type == Cuboid3d.geometry_name():
+        obj_class = ObjClass(name=class_name, geometry_type=Cuboid3d)
+
+    if obj_class is not None:
         existing_class = meta.get_obj_class(class_name)
         if existing_class is None:
             meta = meta.add_obj_class(obj_class)
         else:
             if existing_class.geometry_type != obj_class.geometry_type:
-                obj_class = ObjClass(name=class_name, geometry_type=AnyGeometry)
                 meta = meta.delete_obj_class(class_name)
+                obj_class = ObjClass(name=class_name, geometry_type=AnyGeometry)
                 meta = meta.add_obj_class(obj_class)
+    
     return meta

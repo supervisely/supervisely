@@ -3,6 +3,7 @@ from typing import List
 from supervisely import (
     AnyGeometry,
     Bitmap,
+    GraphNodes,
     ObjClass,
     Point,
     Polygon,
@@ -14,6 +15,7 @@ from supervisely import (
     logger,
 )
 from supervisely.io.json import load_json_file
+from supervisely.geometry.graph import KeypointsTemplate
 
 SLY_IMAGE_ANN_KEYS = ["objects", "tags", "size"]
 
@@ -66,9 +68,15 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
         obj_class = ObjClass(name=class_name, geometry_type=Polygon)
     elif geometry_type == Polyline.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Polyline)
-    # elif geometry_type == GraphNodes.geometry_name():
-    #     geometry_config = None
-    #     obj_class = ObjClass(name=class_name, geometry_type=GraphNodes)
+    elif geometry_type == GraphNodes.geometry_name():
+        if "nodes" not in object:
+            return meta
+        template = KeypointsTemplate()
+        for uuid, node in object["nodes"].items():
+            if "loc" not in node or len(node["loc"]) != 2:
+                continue
+            template.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
+        obj_class = ObjClass(name=class_name, geometry_type=GraphNodes, geometry_config=template)
     existing_class = meta.get_obj_class(class_name)
     if existing_class is None:
         meta = meta.add_obj_class(obj_class)

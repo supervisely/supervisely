@@ -29,7 +29,7 @@ class SLYVideoConverter(VideoConverter):
         return ".json"
 
     def generate_meta_from_annotation(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
-        meta = sly_video_helper.get_meta_from_annotation(meta, ann_path)
+        meta = sly_video_helper.get_meta_from_annotation(ann_path, meta)
         return meta
 
     def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:

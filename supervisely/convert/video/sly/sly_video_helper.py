@@ -18,7 +18,7 @@ from supervisely.io.json import load_json_file
 SLY_ANN_KEYS = ["size", "framesCount", "frames", "objects", "tags"]
 
 
-def get_meta_from_annotation(meta, ann_path: str) -> ProjectMeta:
+def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     ann_json = load_json_file(ann_path)
     if "annotation" in ann_json:
         ann_json = ann_json["annotation"]
@@ -31,7 +31,7 @@ def get_meta_from_annotation(meta, ann_path: str) -> ProjectMeta:
         meta = create_tags_from_annotation(meta, object["tags"])
         object_key_to_name[object["key"]] = object["classTitle"]
     for frame in ann_json["frames"]:
-        meta = create_classes_from_annotation(meta, frame, object_key_to_name)
+        meta = create_classes_from_annotation(frame, meta, object_key_to_name)
     meta = create_tags_from_annotation(meta, ann_json["tags"])
     return meta
 
@@ -55,10 +55,12 @@ def create_tags_from_annotation(meta: ProjectMeta, tags: List[dict]) -> ProjectM
 
 
 def create_classes_from_annotation(
-    meta: ProjectMeta, frame: dict, object_key_to_name: dict
+    frame: dict, meta: ProjectMeta, object_key_to_name: dict
 ) -> ProjectMeta:
     for fig in frame["figures"]:
-        obj_key = fig["objectKey"]
+        obj_key = fig.get("objectKey")
+        if obj_key is None:
+            continue
         class_name = object_key_to_name[obj_key]
         geometry_type = fig["geometryType"]
         if geometry_type == Bitmap.geometry_name():
