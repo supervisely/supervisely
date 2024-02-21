@@ -111,5 +111,5 @@ class ImageConverter(BaseConverter):
 # [ ] - Implement Skeleton support
 # [ ] - Implement detailed coco label validation
 # Supervisely
-# [ ] - Implement keypoints support
-# [ ] - Add ann keys validation to method `generate_meta_from_annotation()``
+# [x] - Implement keypoints generation (when meta not found)
+# [ ] - Add ann keys validation to method `generate_meta_from_annotation()`
