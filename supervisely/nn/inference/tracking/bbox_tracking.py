@@ -112,6 +112,7 @@ class BBoxTracking(Inference, InferenceImageCache):
         context["videoId"]
         context["frameIndex"]
         context["frames"]
+        context["trackId"] = "auto"
         context["direction"] = "forward"
         context["objectIds"] = []
         context["figureIds"] = []
