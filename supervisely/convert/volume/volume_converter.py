@@ -133,6 +133,9 @@ class VolumeConverter(BaseConverter):
                 # ann = self.to_supervisely(item, meta)
                 # anns.append(ann)
 
+            # for .dcm
+            # api.volume.upload_dicom_serie_paths()
+
             vol_infos = api.volume.upload_nrrd_series_paths(
                 dataset_id,
                 item_names,
@@ -140,9 +143,6 @@ class VolumeConverter(BaseConverter):
                 progress_cb=progress_cb,
             )
             vol_ids = [vol_info.id for vol_info in vol_infos]
-
-            # for vol_id, ann in zip(vol_ids, anns):
-            # api.volume.annotation.append(vol_id, ann)
             api.volume.annotation.upload_paths(
                 vol_ids, anns, meta, interpolation_dirs=interpolation_dirs, mask_dirs=mask_dirs
             )
