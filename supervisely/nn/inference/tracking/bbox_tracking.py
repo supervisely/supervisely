@@ -107,6 +107,67 @@ class BBoxTracking(Inference, InferenceImageCache):
 
             api.logger.info(f"Figure #{fig_id} tracked.")
 
+    def track_api(self, api: sly.Api, context: dict):
+        input_bboxes: list = context["bboxes"]
+        context["videoId"]
+        context["frameIndex"]
+        context["frames"]
+        context["direction"] = "forward"
+        context["objectIds"] = []
+        context["figureIds"] = []
+        video_interface = TrackerInterface(
+            context=context,
+            api=api,
+            load_all_frames=False,
+            frame_loader=self.download_frame,
+            bypass_notify=True,
+        )
+
+        range_of_frames = [
+            video_interface.frames_indexes[0],
+            video_interface.frames_indexes[-1],
+        ]
+
+        self.run_cache_task_manually(
+            api,
+            [range_of_frames],
+            video_id=video_interface.video_id,
+        )
+
+        api.logger.info("Start tracking.")
+
+        predictions = []
+        for input_bbox in input_bboxes:
+            bbox = sly.Rectangle.from_json(input_bbox)
+            predictions_for_object = []
+            init = False
+            for _ in video_interface.frames_loader_generator():
+                imgs = video_interface.frames
+                target = PredictionBBox(
+                    "",  # TODO: can this be useful?
+                    [bbox.top, bbox.left, bbox.bottom, bbox.right],
+                    None,
+                )
+
+                if not init:
+                    self.initialize(imgs[0], target)
+                    init = True
+
+                geometry = self.predict(
+                    rgb_image=imgs[-1],
+                    prev_rgb_image=imgs[0],
+                    target_bbox=target,
+                    settings=self.custom_inference_settings_dict,
+                )
+                sly_geometry = self._to_sly_geometry(geometry)
+
+                predictions_for_object.append(sly_geometry.to_json())
+            predictions.append(predictions_for_object)
+
+        # results must be NxK bboxes: N=number of frames, K=number of objects
+        predictions = list(zip(*predictions))
+        return predictions
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -118,9 +179,8 @@ class BBoxTracking(Inference, InferenceImageCache):
             return {"message": "Track task started."}
 
         @server.post("/predict")
-        def start_track_predict(request: Request, task: BackgroundTasks):
-            task.add_task(self.track, request.state.api, request.state.context, False)
-            return {"message": "Track task started."}
+        def predict_api(request: Request, task: BackgroundTasks):
+            return self.track_api(request.state.api, request.state.context)
 
         def send_error_data(func):
             @functools.wraps(func)
