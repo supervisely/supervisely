@@ -108,14 +108,20 @@ class BBoxTracking(Inference, InferenceImageCache):
             api.logger.info(f"Figure #{fig_id} tracked.")
 
     def track_api(self, api: sly.Api, context: dict):
-        input_bboxes: list = context["bboxes"]
+        # required fields:
+        context["bboxes"]
         context["videoId"]
         context["frameIndex"]
         context["frames"]
+        # optional fields:
         context["trackId"] = "auto"
-        context["direction"] = "forward"
         context["objectIds"] = []
         context["figureIds"] = []
+        if "direction" not in context:
+            context["direction"] = "forward"
+
+        input_bboxes: list = context["bboxes"]
+
         video_interface = TrackerInterface(
             context=context,
             api=api,
@@ -165,7 +171,7 @@ class BBoxTracking(Inference, InferenceImageCache):
                 predictions_for_object.append(sly_geometry.to_json())
             predictions.append(predictions_for_object)
 
-        # results must be NxK bboxes: N=number of frames, K=number of objects
+        # predictions must be NxK bboxes: N=number of frames, K=number of objects
         predictions = list(zip(*predictions))
         return predictions
 
@@ -176,11 +182,11 @@ class BBoxTracking(Inference, InferenceImageCache):
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
-            task.add_task(track_with_annotation_tool, request)
+            task.add_task(track, request)
             return {"message": "Track task started."}
 
-        @server.post("/predict")
-        def predict_api(request: Request, task: BackgroundTasks):
+        @server.post("/track-api")
+        def track_api(request: Request, task: BackgroundTasks):
             return self.track_api(request.state.api, request.state.context)
 
         def send_error_data(func):
@@ -212,7 +218,7 @@ class BBoxTracking(Inference, InferenceImageCache):
             return wrapper
 
         @send_error_data
-        def track_with_annotation_tool(request: Request):
+        def track(request: Request):
             self.track(request.state.api, request.state.context, notify_annotation_tool=True)
 
     def initialize(self, init_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> None:
