@@ -1,11 +1,14 @@
-import os
 from typing import List
 
-from supervisely import ProjectMeta, VolumeAnnotation, logger
+from tqdm import tqdm
+
+import supervisely.convert.volume.dicom.dicom_helper as dicom_helper
+from supervisely import Api, ProjectMeta, VolumeAnnotation, logger
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
-from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
-from supervisely.volume.volume import is_valid_ext as validate_volume_ext
+from supervisely.io.fs import file_exists
+from supervisely.io.json import dump_json_file
+from supervisely.volume.volume import inspect_dicom_series, inspect_nrrd_series
 
 
 class DICOMConverter(VolumeConverter):
@@ -25,39 +28,79 @@ class DICOMConverter(VolumeConverter):
     def key_file_ext(self) -> str:
         return None
 
-    def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
-        return False  # remove this method?
-
-    def validate_key_file(self, key_file_path: str) -> bool:
-        return False  # remove this method?
-
     def validate_format(self) -> bool:
-        detected_ann_cnt = 0
-        vol_list = [], {}, {}
-        for root, _, files in os.walk(self._input_data):
-            for file in files:
-                full_path = os.path.join(root, file)
-                ext = get_file_ext(full_path)
-                if ext == ".dcm":
-                    vol_list.append(full_path)
-                    detected_ann_cnt += 1
-                else:
-                    # need check files without extension
-                    # or use api.volume
-                    pass
-
-        meta = ProjectMeta()
+        # DICOM
+        series_infos = inspect_dicom_series(root_dir=self._input_data)
+        # NRRD
+        nrrd_paths = inspect_nrrd_series(root_dir=self._input_data)
 
         # create Items
         self._items = []
-        for vol_path in vol_list:
-            item = self.Item(vol_path)
+        for path in nrrd_paths:
+            item = self.Item(path)
             self._items.append(item)
-        self._meta = meta
-        return detected_ann_cnt > 0
+        for dicom_id, dicom_paths in series_infos.items():
+            item_path = dicom_helper.dcm_to_nrrd(dicom_id, dicom_paths)
+            item = self.Item(item_path)
+            self._items.append(item)
+        self._meta = ProjectMeta()
+
+        return len(series_infos) > 0
 
     def to_supervisely(
         self, item: VolumeConverter.Item, meta: ProjectMeta = None
     ) -> VolumeAnnotation:
         """Convert to Supervisely format."""
         return item.create_empty_annotation()
+
+    def upload_dataset(
+        self,
+        api: Api,
+        dataset_id: int,
+        log_progress=True,
+    ):
+        """Upload converted data to Supervisely"""
+
+        dataset = api.dataset.get_info_by_id(dataset_id)
+        if self._meta is not None:
+            curr_meta = self._meta
+        else:
+            curr_meta = ProjectMeta()
+        meta_json = api.project.get_meta(dataset.project_id)
+        meta = ProjectMeta.from_json(meta_json)
+        meta = meta.merge(curr_meta)
+
+        api.project.update_meta(dataset.project_id, meta)
+
+        if log_progress:
+            progress = tqdm(total=self.items_count, desc=f"Uploading volumes...")
+            progress_cb = progress.update
+        else:
+            progress_cb = None
+
+        item_names = []
+        item_paths = []
+        anns = []
+        for item in self._items:
+            item_names.append(item.name)
+            item_paths.append(item.path)
+            ann_path = f"{item.path}.json"
+            i = 0
+            while file_exists(ann_path):
+                ann_path = f"{item.path}_{i}.json"
+            ann = self.to_supervisely(item=item, meta=meta)
+            dump_json_file(ann.to_json(), ann_path)
+            anns.append(ann_path)
+
+        vol_infos = api.volume.upload_nrrd_series_paths(
+            dataset_id,
+            item_names,
+            item_paths,
+            progress_cb=progress_cb,
+        )
+        vol_ids = [vol_info.id for vol_info in vol_infos]
+        api.volume.annotation.upload_paths(vol_ids, anns, meta)
+
+        if log_progress:
+            progress.close()
+        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
