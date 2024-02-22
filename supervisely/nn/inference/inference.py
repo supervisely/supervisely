@@ -40,7 +40,8 @@ from supervisely.app.fastapi.subapp import (
     call_on_autostart,
     get_name_from_env,
 )
-from supervisely.app.widgets import Container, Widget
+from supervisely.app.widgets import Container, Widget, Card
+from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
@@ -117,7 +118,6 @@ class Inference:
                     deploy_params = self.get_params_from_ui()
                     self.load_model(**deploy_params)
                     self.update_gui(self._model_served)
-                    self.set_params_to_ui(deploy_params)
                 else:  # GUI.InferenceGUI
                     device = gui.get_device()
                     self.load_on_device(self._model_dir, device)
@@ -125,7 +125,11 @@ class Inference:
 
             def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 self.shutdown_model()
-                self.update_gui(self._model_served)
+                if isinstance(self.gui, GUI.ServingGUI):
+                    self._api_request_model_layout.unlock()
+                    self._api_request_model_layout.hide()
+                    self.update_gui(self._model_served)
+                    self._user_layout_card.show()
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
@@ -157,10 +161,17 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def update_gui(self, is_model_deployed: bool = True) -> None:
-        raise NotImplementedError("Have to be implemented in child class after inheritance")
+        if isinstance(self.gui, GUI.ServingGUI):
+            if is_model_deployed:
+                self._user_layout_card.lock()
+            else:
+                self._user_layout_card.unlock()
 
     def set_params_to_ui(self, deploy_params: dict) -> None:
-        raise NotImplementedError("Have to be implemented in child class after inheritance")
+        if isinstance(self.gui, GUI.ServingGUI):
+            self._user_layout_card.hide()
+            self._api_request_model_info.set_text(yaml.dump(deploy_params), "yaml")
+            self._api_request_model_layout.show()
 
     def get_params_from_ui(self) -> dict:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
@@ -200,7 +211,9 @@ class Inference:
     def get_custom_model_link_type(self) -> Literal["file", "folder"]:
         return "file"
 
-    def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
+    def get_models(
+        self,
+    ) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         return []
 
     def download(self, src_path: str, dst_path: str = None):
@@ -490,7 +503,8 @@ class Inference:
     ):
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
-            "Inferring image_path:", extra={"inference_mode": inference_mode, "path": image_path}
+            "Inferring image_path:",
+            extra={"inference_mode": inference_mode, "path": image_path},
         )
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
@@ -543,7 +557,10 @@ class Inference:
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
         ann.draw_pretty(
-            bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False
+            bitmap=image,
+            thickness=thickness,
+            output_path=vis_path,
+            fill_rectangles=False,
         )
 
     def _inference_image(self, state: dict, file: UploadFile):
@@ -619,7 +636,8 @@ class Inference:
         api.image.download_path(image_id, image_path)
         logger.debug("Inference settings:", extra=settings)
         logger.debug(
-            "Image info:", extra={"id": image_id, "w": image_info.width, "h": image_info.height}
+            "Image info:",
+            extra={"id": image_id, "w": image_info.width, "h": image_info.height},
         )
         logger.debug(f"Downloaded path: {image_path}")
 
@@ -806,7 +824,26 @@ class Inference:
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             serving_layout = self.get_ui()
-            layout = Container([self._user_layout, serving_layout])
+
+            self._user_layout_card = Card(
+                title="Select Model",
+                content=self._user_layout,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
+            self._api_request_model_info = Editor(
+                height_lines=12,
+                language_mode="yaml",
+                readonly=True,
+                restore_default_button=False,
+            )
+            self._api_request_model_layout = Card(
+                title="Model was deployed from API request with the following settings",
+                content=self._api_request_model_info,
+            )
+            self._api_request_model_layout.hide()
+            layout = Container(
+                [self._user_layout_card, self._api_request_model_layout, serving_layout]
+            )
             self._app = Application(layout=layout)
         server = self._app.get_server()
 
@@ -1009,7 +1046,10 @@ class Inference:
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
             inference_request = self._inference_requests[inference_request_uuid]
             inference_request["cancel_inference"] = True
             return {"message": "Inference will be stopped.", "success": True}
@@ -1019,7 +1059,10 @@ class Inference:
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
             del self._inference_requests[inference_request_uuid]
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}

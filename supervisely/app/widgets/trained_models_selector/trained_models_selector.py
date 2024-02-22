@@ -53,7 +53,7 @@ class TrainedModelsSelector(Widget):
             self._api = api
             self._team_id = team_id
             self._task_type = task_type
-            
+
             task_id = checkpoint.session_id
             task_path = checkpoint.session_path
             training_project_name = checkpoint.training_project_name
@@ -105,7 +105,7 @@ class TrainedModelsSelector(Widget):
         @property
         def task_link(self) -> str:
             return self._task_link
-        
+
         @property
         def task_type(self) -> str:
             return self._task_type
@@ -190,9 +190,7 @@ class TrainedModelsSelector(Widget):
         def _create_checkpoints_widget(self) -> Select:
             checkpoint_selector = Select(
                 [
-                    Select.Item(
-                        value=checkpoint_info["path"], label=checkpoint_info["name"]
-                    )
+                    Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
                     for checkpoint_info in self._checkpoints
                 ]
             )
@@ -224,7 +222,7 @@ class TrainedModelsSelector(Widget):
         self._rows = table_rows
         self._rows_html = [row.to_html() for row in self._rows]
         self._changes_handled = False
-        
+
         if self._show_custom_checkpoint_path:
             self.file_thumbnail = FileThumbnail()
             team_files_url = f"{env.server_address().rstrip('/')}/files/"
@@ -238,17 +236,15 @@ class TrainedModelsSelector(Widget):
             )
 
             file_api = FileApi(self._api)
-            self._model_path_input = Input(
-                placeholder="Path to model file in Team Files"
-            )
-            
+            self._model_path_input = Input(placeholder="Path to model file in Team Files")
+
             @self._model_path_input.value_changed
             def change_folder(value):
                 file_info = None
                 if value != "":
                     file_info = file_api.get_info_by_path(env.team_id(), value)
                 self.file_thumbnail.set(file_info)
-            
+
             model_path_field = Field(
                 self._model_path_input,
                 title=f"Copy path to model file from Team Files and paste to field below.",
@@ -256,21 +252,32 @@ class TrainedModelsSelector(Widget):
             )
             self.custom_checkpoint_task_type_selector_field = None
             if len(self._custom_checkpoint_task_types) > 0:
-                self.custom_checkpoint_task_type_selector_items = [Select.Item(value=task_type, label=task_type) for task_type in self._custom_checkpoint_task_types]
-                self.custom_checkpoint_task_type_selector = Select(self.custom_checkpoint_task_type_selector_items)
-                custom_checkpoint_task_type_selector_field = Field(title="Task Type", content=self.custom_checkpoint_task_type_selector)
+                self.custom_checkpoint_task_type_selector_items = [
+                    Select.Item(value=task_type, label=task_type)
+                    for task_type in self._custom_checkpoint_task_types
+                ]
+                self.custom_checkpoint_task_type_selector = Select(
+                    self.custom_checkpoint_task_type_selector_items
+                )
+                custom_checkpoint_task_type_selector_field = Field(
+                    title="Task Type", content=self.custom_checkpoint_task_type_selector
+                )
 
-            self.custom_tab_widgets = Container([
-                team_files_link_btn,
-                custom_checkpoint_task_type_selector_field,
-                model_path_field,
-                self.file_thumbnail
-            ])
-            
+            self.custom_tab_widgets = Container(
+                [
+                    team_files_link_btn,
+                    custom_checkpoint_task_type_selector_field,
+                    model_path_field,
+                    self.file_thumbnail,
+                ]
+            )
+
             self.custom_tab_widgets.hide()
-            
-            self.show_custom_checkpoint_path_checkbox = Checkbox("Use custom path to checkpoint", False)
-            
+
+            self.show_custom_checkpoint_path_checkbox = Checkbox(
+                "Use custom path to checkpoint", False
+            )
+
             @self.show_custom_checkpoint_path_checkbox.value_changed
             def show_custom_checkpoint_path_checkbox_changed(is_checked):
                 if is_checked:
@@ -279,7 +286,7 @@ class TrainedModelsSelector(Widget):
                 else:
                     self.enable_table()
                     self.custom_tab_widgets.hide()
-                
+
                 StateJson()[self.widget_id]["useCustomPath"] = is_checked
                 StateJson().send_changes()
 
@@ -301,10 +308,7 @@ class TrainedModelsSelector(Widget):
 
     def get_json_state(self) -> Dict:
         if self._show_custom_checkpoint_path:
-            return {
-                "selectedRow": 0,
-                "useCustomPath": False
-            }
+            return {"selectedRow": 0, "useCustomPath": False}
         else:
             return {"selectedRow": 0}
 
@@ -312,7 +316,7 @@ class TrainedModelsSelector(Widget):
         for row in self._rows:
             row.checkpoints_selector.disable()
         super().disable()
-        
+
     def enable_table(self) -> None:
         for row in self._rows:
             row.checkpoints_selector.enable()
@@ -333,9 +337,8 @@ class TrainedModelsSelector(Widget):
         self.show_custom_checkpoint_path_checkbox.disable()
         self.disable_table()
         super().disable()
-    def _generate_table_rows(
-        self, checkpoint_infos: List[CheckpointInfo]
-    ) -> List[Dict]:
+
+    def _generate_table_rows(self, checkpoint_infos: List[CheckpointInfo]) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
         table_rows = []
         for checkpoint_info in checkpoint_infos:
@@ -344,7 +347,7 @@ class TrainedModelsSelector(Widget):
                     api=self._api,
                     team_id=self._team_id,
                     checkpoint=checkpoint_info,
-                    task_type=checkpoint_info.task_type
+                    task_type=checkpoint_info.task_type,
                 )
             )
         return table_rows
@@ -364,6 +367,26 @@ class TrainedModelsSelector(Widget):
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
 
+    def get_selected_model_params(self) -> Union[Dict, None]:
+        is_custom_path = self.use_custom_checkpoint_path()
+        if not is_custom_path:
+            selected_model = self.get_selected_row()
+            task_type = selected_model.task_type
+            checkpoint_filename = selected_model.get_selected_checkpoint_name()
+            checkpoint_url = selected_model.get_selected_checkpoint_path()
+        else:
+            task_type = self.get_custom_checkpoint_task_type()
+            checkpoint_filename = self.get_custom_checkpoint_name()
+            checkpoint_url = self.get_custom_checkpoint_path()
+
+        model_params = {
+            "model_source": "Custom models",
+            "task_type": task_type,
+            "checkpoint_name": checkpoint_filename,
+            "checkpoint_url": checkpoint_url,
+        }
+        return model_params
+
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
@@ -372,27 +395,27 @@ class TrainedModelsSelector(Widget):
 
     def use_custom_checkpoint_path(self) -> bool:
         return self.show_custom_checkpoint_path_checkbox.is_checked()
-    
+
     def get_custom_checkpoint_name(self) -> str:
         if self.use_custom_checkpoint_path():
             return get_file_name_with_ext(self.get_custom_checkpoint_path())
-        
+
     def get_custom_checkpoint_path(self) -> str:
         if self.use_custom_checkpoint_path():
             return self._model_path_input.get_value()
-        
+
     def set_custom_checkpoint_path(self, path: str) -> None:
         if self.use_custom_checkpoint_path():
             self._model_path_input.set_value(path)
-            
+
     def set_custom_checkpoint_preview(self, file_info: FileInfo) -> None:
         if self.use_custom_checkpoint_path():
             self.file_thumbnail.set(file_info)
-            
+
     def get_custom_checkpoint_task_type(self) -> str:
         if self.use_custom_checkpoint_path():
             return self.custom_checkpoint_task_type_selector.get_value()
-        
+
     def set_custom_checkpoint_task_type(self, task_type: str) -> None:
         if self.use_custom_checkpoint_path():
             available_task_types = self.custom_checkpoint_task_type_selector.get_labels()

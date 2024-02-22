@@ -80,6 +80,31 @@ class PretrainedModelsSelector(Widget):
             selected_row_index = int(widget_actual_state["selectedRow"])
             return models[selected_row_index]
 
+    def get_selected_model_params(self) -> Union[Dict, None]:
+        selected_model = self.get_selected_row()
+        model_name = selected_model.get("Model")
+        if model_name is None:
+            raise ValueError(
+                "Could not find model name. Make sure you have column 'Model' in your models list."
+            )
+        checkpoint_filename = f"{model_name.lower()}.pt"
+        checkpoint_url = selected_model.get("meta", {}).get("weightsURL")
+        if checkpoint_url is None:
+            pass
+
+        task_type = self.get_selected_task_type()
+        model_params = {
+            "model_source": "Pretrained models",
+            "task_type": task_type,
+            "checkpoint_name": checkpoint_filename,
+            "checkpoint_url": checkpoint_url,
+        }
+
+        if len(self._model_architectures) > 1:
+            arch_type = self.get_selected_arch_type()
+            model_params["arch_type"] = arch_type
+        return model_params
+
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
