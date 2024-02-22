@@ -167,10 +167,10 @@ class Inference:
             else:
                 self._user_layout_card.unlock()
 
-    def set_params_to_ui(self, deploy_params: dict) -> None:
+    def set_params_to_gui(self, deploy_params: dict) -> None:
         if isinstance(self.gui, GUI.ServingGUI):
             self._user_layout_card.hide()
-            self._api_request_model_info.set_text(yaml.dump(deploy_params), "yaml")
+            self._api_request_model_info.set_text(json.dumps(deploy_params), "json")
             self._api_request_model_layout.show()
 
     def get_params_from_gui(self) -> dict:
@@ -827,14 +827,16 @@ class Inference:
 
             self._user_layout_card = Card(
                 title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
                 content=self._user_layout,
                 lock_message="Model is deployed. To change the model, stop the serving first.",
             )
             self._api_request_model_info = Editor(
                 height_lines=12,
-                language_mode="yaml",
+                language_mode="json",
                 readonly=True,
                 restore_default_button=False,
+                auto_format=True,
             )
             self._api_request_model_layout = Card(
                 title="Model was deployed from API request with the following settings",
@@ -1117,7 +1119,7 @@ class Inference:
                 deploy_params = state["deploy_params"]
                 self.load_model(**deploy_params)
                 self.update_gui(self._model_served)
-                self.set_params_to_ui(deploy_params)
+                self.set_params_to_gui(deploy_params)
 
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")

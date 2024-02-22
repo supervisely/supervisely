@@ -29,6 +29,8 @@ class Editor(Widget):
     :type restore_default_button: Optional[bool]
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
+    :param auto_format: If True, the editor will automatically format JSON on initialization.
+    :type auto_format: bool
 
     :Usage example:
     .. code-block:: python
@@ -58,6 +60,7 @@ class Editor(Widget):
         highlight_active_line: Optional[bool] = True,
         restore_default_button: Optional[bool] = True,
         widget_id: Optional[int] = None,
+        auto_format: bool = False,
     ):
         self._initial_code = initial_text
         self._current_code = initial_text
@@ -68,6 +71,8 @@ class Editor(Widget):
         self._show_line_numbers = show_line_numbers
         self._highlight_active_line = highlight_active_line
         self._restore_button = None
+        self._auto_format = auto_format
+
         if restore_default_button:
             self._restore_button = Button("Restore Default", button_type="text", plain=True)
 
@@ -102,6 +107,7 @@ class Editor(Widget):
                 "showGutter": self._show_line_numbers,
                 "maxLines": self._height_lines,
                 "highlightActiveLine": self._highlight_active_line,
+                "formatJsonOnInit": self._auto_format,
             },
         }
 

@@ -80,9 +80,9 @@ class PretrainedModelsSelector(Widget):
             selected_row_index = int(widget_actual_state["selectedRow"])
             return models[selected_row_index]
 
-    def get_selected_model_params(self) -> Union[Dict, None]:
+    def get_selected_model_params(self, model_name_column: str = "Model") -> Union[Dict, None]:
         selected_model = self.get_selected_row()
-        model_name = selected_model.get("Model")
+        model_name = selected_model.get(model_name_column)
         if model_name is None:
             raise ValueError(
                 "Could not find model name. Make sure you have column 'Model' in your models list."
