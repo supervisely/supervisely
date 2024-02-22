@@ -21,7 +21,7 @@ class PointcloudConverter(BaseConverter):
         ):
             self._path = item_path
             self._ann_data = ann_data
-            self._type = "pointcloud"
+            self._type = "point_cloud"
             self._related_images = related_images if related_images is not None else []
             self._custom_data = custom_data if custom_data is not None else {}
 
