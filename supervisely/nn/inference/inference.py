@@ -115,7 +115,7 @@ class Inference:
                 Progress("Deploying model ...", 1)
 
                 if isinstance(self.gui, GUI.ServingGUI):
-                    deploy_params = self.get_params_from_ui()
+                    deploy_params = self.get_params_from_gui()
                     self.load_model(**deploy_params)
                     self.update_gui(self._model_served)
                 else:  # GUI.InferenceGUI
@@ -173,7 +173,7 @@ class Inference:
             self._api_request_model_info.set_text(yaml.dump(deploy_params), "yaml")
             self._api_request_model_layout.show()
 
-    def get_params_from_ui(self) -> dict:
+    def get_params_from_gui(self) -> dict:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
