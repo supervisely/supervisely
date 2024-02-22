@@ -95,7 +95,7 @@ def create_supervisely_annotation(
         labels.extend(curr_labels)
         bbox = object.get("bbox")
         if bbox is not None and len(bbox) == 4:
-            if not obj_class_name.endswith("_bbox"):
+            if not obj_class_name.endswith("bbox"):
                 obj_class_name = add_tail(obj_class_name, "bbox")
             obj_class_rectangle = meta.get_obj_class(obj_class_name)
             if len(curr_labels) > 1:

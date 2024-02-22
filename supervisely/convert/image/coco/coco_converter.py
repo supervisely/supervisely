@@ -51,16 +51,10 @@ class COCOConverter(ImageConverter):
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext == self.ann_ext:
-                    is_valid = self.validate_key_file(full_path)
-                    if is_valid:
-                        ann_paths.append(full_path)
-                        detected_ann_cnt += 1
+                    ann_paths.append(full_path)
                 elif file in JUNK_FILES:
                     continue
-                elif imghdr.what(full_path) is None:
-                    # logger.info(f"Non-image file found: {full_path}")
-                    return False
-                else:
+                elif imghdr.what(full_path):
                     images_list.append(full_path)
 
         if len(ann_paths) is None:
@@ -70,6 +64,8 @@ class COCOConverter(ImageConverter):
         meta = ProjectMeta()
         for ann_path in ann_paths:
             coco = COCO(ann_path)
+            if not all(key in coco.dataset for key in COCO_ANN_KEYS):
+                continue
             coco_anns = coco.imgToAnns
             coco_images = coco.imgs
             if len(coco.cats) > 0:
@@ -88,6 +84,7 @@ class COCOConverter(ImageConverter):
                     ann_dict[image_name] = coco_ann
                 else:
                     ann_dict[image_name].extend(coco_ann)
+            detected_ann_cnt += 1
 
         # create Items
         self._items = []
