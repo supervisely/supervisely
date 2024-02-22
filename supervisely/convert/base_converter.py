@@ -24,6 +24,10 @@ class AvailablePointcloudConverters:
     PLY = "ply"
 
 
+class AvailablePointcloudEpisodesConverters:
+    SLY = "supervisely"
+
+
 class AvailableVolumeConverters:
     SLY = "supervisely"
     DICOM = "dicom"

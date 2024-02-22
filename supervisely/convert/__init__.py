@@ -20,6 +20,11 @@ from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
     SLYPointcloudConverter,
 )
 
+# Pointcloud Episodes
+from supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_converter import (
+    SLYPointcloudEpisodesConverter,
+)
+
 # Video
 from supervisely.convert.video.mot.mot_converter import MOTConverter
 from supervisely.convert.video.sly.sly_video_converter import SLYVideoConverter

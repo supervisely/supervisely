@@ -8,6 +8,7 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
+from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import PointcloudEpisodeConverter
 
 
 class ImportManager:
@@ -15,6 +16,7 @@ class ImportManager:
         self._api = Api.from_env()
 
         if dir_exists(input_data):
+            self._unpack_archives(input_data)
             self._input_data = input_data
         elif self._api.file.dir_exists(team_id(), input_data):
             self._input_data = self._download_input_data(input_data)
@@ -44,6 +46,10 @@ class ImportManager:
             return PointcloudConverter(self._input_data)._converter
         elif str(self.modality) == ProjectType.VOLUMES.value:
             return VolumeConverter(self._input_data)._converter
+        elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
+            return PointcloudEpisodeConverter(self._input_data)._converter
+        else:
+            raise ValueError(f"Unsupported project type selected: {self._modality}")
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
