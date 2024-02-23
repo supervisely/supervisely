@@ -6,7 +6,7 @@ import supervisely.convert.volume.dicom.dicom_helper as dicom_helper
 from supervisely import Api, ProjectMeta, VolumeAnnotation, logger
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
-from supervisely.io.fs import file_exists
+from supervisely.io.fs import file_exists, silent_remove
 from supervisely.io.json import dump_json_file
 from supervisely.volume.volume import inspect_dicom_series, inspect_nrrd_series
 
@@ -32,16 +32,16 @@ class DICOMConverter(VolumeConverter):
         # DICOM
         series_infos = inspect_dicom_series(root_dir=self._input_data)
         # NRRD
-        nrrd_paths = inspect_nrrd_series(root_dir=self._input_data)
+        # nrrd_paths = inspect_nrrd_series(root_dir=self._input_data)
 
         # create Items
         self._items = []
-        for path in nrrd_paths:
-            item = self.Item(path)
-            self._items.append(item)
+        # for path in nrrd_paths:
+        #     item = self.Item(path)
+        #     self._items.append(item)
         for dicom_id, dicom_paths in series_infos.items():
-            item_path = dicom_helper.dcm_to_nrrd(dicom_id, dicom_paths)
-            item = self.Item(item_path)
+            item_path, volume_meta = dicom_helper.dcm_to_nrrd(dicom_id, dicom_paths)
+            item = self.Item(item_path, volume_meta=volume_meta)
             self._items.append(item)
         self._meta = ProjectMeta()
 
@@ -98,8 +98,12 @@ class DICOMConverter(VolumeConverter):
             item_paths,
             progress_cb=progress_cb,
         )
+        for path in item_paths:
+            silent_remove(path)
         vol_ids = [vol_info.id for vol_info in vol_infos]
         api.volume.annotation.upload_paths(vol_ids, anns, meta)
+        for path in anns:
+            silent_remove(path)
 
         if log_progress:
             progress.close()

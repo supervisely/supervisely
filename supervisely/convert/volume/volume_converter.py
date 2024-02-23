@@ -24,18 +24,19 @@ class VolumeConverter(BaseConverter):
         ):
             self._path: str = item_path
             self._ann_data: str = ann_data
-            if shape is None:
+            if volume_meta is None:
                 sitk_volume, meta = read_nrrd_serie_volume(item_path)
+                self._volume_meta = meta
+            else:
+                self._volume_meta: Union[dict, OrderedDict] = volume_meta
+            if shape is None:
                 self._shape: tuple = (
-                    meta["dimensionsIJK"]["y"],
-                    meta["dimensionsIJK"]["x"],
-                    meta["dimensionsIJK"]["z"],
+                    self._volume_meta["dimensionsIJK"]["y"],
+                    self._volume_meta["dimensionsIJK"]["x"],
+                    self._volume_meta["dimensionsIJK"]["z"],
                 )
-                if volume_meta is None:
-                    self._volume_meta: Union[dict, OrderedDict] = meta
             else:
                 self._shape: tuple = shape
-                self._volume_meta: Union[dict, OrderedDict] = volume_meta
 
             self._mask_dir: str = mask_dir
             self._interpolation_dir: str = interpolation_dir

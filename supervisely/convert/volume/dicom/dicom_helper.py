@@ -22,4 +22,4 @@ def dcm_to_nrrd(id: str, paths: List[str]) -> str:
         nrrd_path = os.path.join(parent_dir, f"{id}_{i}.nrrd")
     nrrd.write(nrrd_path, volume_np, volume_meta)
 
-    return nrrd_path
+    return nrrd_path, volume_meta
