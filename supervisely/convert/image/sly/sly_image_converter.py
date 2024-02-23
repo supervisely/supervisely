@@ -51,10 +51,11 @@ class SLYImageConverter(ImageConverter):
     def validate_format(self) -> bool:
         detected_ann_cnt = 0
         meta_path = None
-        images_list, ann_dict = [], {}
+        images_list, ann_dict, img_meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
+                dir_name = os.path.basename(root)
                 if file == "meta.json":
                     is_valid = self.validate_key_file(full_path)
                     if is_valid:
@@ -64,7 +65,10 @@ class SLYImageConverter(ImageConverter):
                 if file in JUNK_FILES:  # add better check
                     continue
                 elif ext in self.ann_ext:
-                    ann_dict[file] = full_path
+                    if dir_name == "meta":
+                        img_meta_dict[file] = full_path
+                    else:
+                        ann_dict[file] = full_path
                 elif imghdr.what(full_path):
                     images_list.append(full_path)
 
@@ -86,6 +90,8 @@ class SLYImageConverter(ImageConverter):
                 if is_valid:
                     item.set_ann_data(ann_path)
                     detected_ann_cnt += 1
+            if ann_name in img_meta_dict:
+                item.set_meta_data(img_meta_dict[ann_name])
             self._items.append(item)
         self._meta = meta
         return detected_ann_cnt > 0
