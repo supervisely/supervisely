@@ -172,7 +172,7 @@ class BBoxTracking(Inference, InferenceImageCache):
             predictions.append(predictions_for_object)
 
         # predictions must be NxK bboxes: N=number of frames, K=number of objects
-        predictions = list(zip(*predictions))
+        predictions = list(map(list, zip(*predictions)))
         return predictions
 
     def serve(self):
