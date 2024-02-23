@@ -6,6 +6,7 @@ import supervisely.imaging.image as image
 from supervisely import Annotation, Api, batched, logger, ProjectMeta
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
+from supervisely.io.json import load_json_file
 
 
 class ImageConverter(BaseConverter):
@@ -16,11 +17,13 @@ class ImageConverter(BaseConverter):
             self,
             item_path: str,
             ann_data: Union[str, dict] = None,
+            meta_data: Union[str, dict] = None,
             shape: Union[Tuple, List] = None,
             custom_data: Optional[dict] = None,
         ):
             self._path: str = item_path
             self._ann_data: Union[str,] = ann_data
+            self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"
             if shape is None:
                 img = image.read(item_path)
@@ -28,6 +31,13 @@ class ImageConverter(BaseConverter):
             else:
                 self._shape: Union[Tuple, List] = shape
             self._custom_data: dict = custom_data if custom_data is not None else {}
+
+        @property
+        def meta(self) -> Union[str, dict]:
+            return self._meta_data
+        
+        def set_meta_data(self, meta_data: Union[str, dict]) -> None:
+            self._meta_data = meta_data
 
         def create_empty_annotation(self) -> Annotation:
             return Annotation(self._shape)
@@ -88,15 +98,17 @@ class ImageConverter(BaseConverter):
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
+            item_metas = []
             anns = []
             for item in batch:
                 ann = self.to_supervisely(item, meta)
                 item_names.append(item.name)
                 item_paths.append(item.path)
+                item_metas.append(load_json_file(item.meta) if item.meta else {})
                 anns.append(ann)
 
             img_infos = api.image.upload_paths(
-                dataset_id, item_names, item_paths, progress_cb
+                dataset_id, item_names, item_paths, progress_cb, item_metas
             )
             img_ids = [img_info.id for img_info in img_infos]
             api.annotation.upload_anns(img_ids, anns)
