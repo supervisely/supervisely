@@ -167,12 +167,12 @@ class BaseConverter:
                 continue
             converter = converter(self._input_data)
             if converter.validate_format():
+                found_formats.append(converter)
                 if len(found_formats) > 1:
                     raise RuntimeError(
                         f"Multiple formats detected: {found_formats}. "
                         "Mixed formats are not supported yet."
                     )
-                found_formats.append(converter)
 
         if len(found_formats) == 0:
             logger.info(f"No valid dataset formats detected. Only items will be processed")
