@@ -91,20 +91,21 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
 
         if self._meta is not None:
             meta = self._meta
-        elif ann_path is not None:
-            meta = self.generate_meta_from_annotation(ann_path, ProjectMeta())
+        else:
+            meta = ProjectMeta()
+        if ann_path is not None:
+            if self._meta is None:
+                meta = self.generate_meta_from_annotation(ann_path, meta)
             is_valid = self.validate_ann_file(ann_path, meta)
             if is_valid:
                 ann_or_rimg_detected = True
-        else:
-            meta = ProjectMeta()
 
         self._items = []            
         updated_frames_pcd_map = {}
         if frames_pcd_map:
             list_of_pcd_names = list(frames_pcd_map.values())
         else:
-            list_of_pcd_names = sorted(pcd_dict.items(), key=lambda x: x[0])
+            list_of_pcd_names = sorted(pcd_dict.keys())
 
         for i, pcd_name in enumerate(list_of_pcd_names):
             if pcd_name in pcd_dict:
