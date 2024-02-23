@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Union, Callable
 
@@ -38,8 +39,9 @@ columns = [
 ]
 
 
-class TrainedModelsSelector(Widget):
+class CustomModelsSelector(Widget):
     class Routes:
+        TASK_TYPE_CHANGED = "task_type_changed"
         VALUE_CHANGED = "value_changed"
 
     class ModelRow:
@@ -138,10 +140,10 @@ class TrainedModelsSelector(Widget):
 
         def to_html(self) -> List[str]:
             return [
-                self._task_widget.to_html(),
-                self._training_project_widget.to_html(),
-                self._checkpoints_widget.to_html(),
-                self._session_widget.to_html(),
+                f"<div> {self._task_widget.to_html()} </div>",
+                f"<div> {self._training_project_widget.to_html()} </div>",
+                f"<div> {self._checkpoints_widget.to_html()} </div>",
+                f"<div> {self._session_widget.to_html()} </div>",
             ]
 
         def _normalize_date(self) -> str:
@@ -220,8 +222,22 @@ class TrainedModelsSelector(Widget):
 
         self._columns = columns
         self._rows = table_rows
-        self._rows_html = [row.to_html() for row in self._rows]
+        # self._rows_html = #[row.to_html() for row in self._rows]
+
+        task_types = []
+        self._rows_html = defaultdict(list)
+        for model_row in table_rows:
+            task_types.append(model_row.task_type)
+            self._rows_html[model_row.task_type].append(model_row.to_html())
+
+        self._task_types = list(set(task_types))
+        if len(self._task_types) == 0:
+            self.__default_selected_task_type = None
+        else:
+            self.__default_selected_task_type = self._task_types[0]
+
         self._changes_handled = False
+        self._task_changes_handled = False
 
         if self._show_custom_checkpoint_path:
             self.file_thumbnail = FileThumbnail()
@@ -303,12 +319,17 @@ class TrainedModelsSelector(Widget):
     def get_json_data(self) -> Dict:
         return {
             "columns": self._columns,
-            "rows_html": self._rows_html,
+            "rowsHtml": self._rows_html,
+            "taskTypes": self._task_types,
         }
 
     def get_json_state(self) -> Dict:
         if self._show_custom_checkpoint_path:
-            return {"selectedRow": 0, "useCustomPath": False}
+            return {
+                "selectedRow": 0,
+                "selectedTaskType": self.__default_selected_task_type,
+                "useCustomPath": False,
+            }
         else:
             return {"selectedRow": 0}
 
@@ -343,7 +364,7 @@ class TrainedModelsSelector(Widget):
         table_rows = []
         for checkpoint_info in checkpoint_infos:
             table_rows.append(
-                TrainedModelsSelector.ModelRow(
+                CustomModelsSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
                     checkpoint=checkpoint_info,
@@ -366,6 +387,9 @@ class TrainedModelsSelector(Widget):
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
+
+    def get_selected_task_type(self) -> str:
+        return StateJson()[self.widget_id]["selectedTaskType"]
 
     def get_selected_model_params(self) -> Union[Dict, None]:
         is_custom_path = self.use_custom_checkpoint_path()
@@ -423,8 +447,20 @@ class TrainedModelsSelector(Widget):
                 raise ValueError(f'"{task_type}" is not available task type')
             self.custom_checkpoint_task_type_selector.set_value(task_type)
 
+    def task_type_changed(self, func: Callable):
+        route_path = self.get_route_path(CustomModelsSelector.Routes.TASK_TYPE_CHANGED)
+        server = self._sly_app.get_server()
+        self._task_changes_handled = True
+
+        @server.post(route_path)
+        def _task_type_changed():
+            res = self.get_selected_task_type()
+            func(res)
+
+        return _task_type_changed
+
     def value_changed(self, func: Callable):
-        route_path = self.get_route_path(TrainedModelsSelector.Routes.VALUE_CHANGED)
+        route_path = self.get_route_path(CustomModelsSelector.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
 
