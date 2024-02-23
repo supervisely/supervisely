@@ -84,6 +84,8 @@ class SLYVolumeConverter(VolumeConverter):
                     stl_dict[stl_dirname] = full_path
                 elif ext in self.ann_ext:
                     ann_dict[file] = full_path
+                elif ext == ".dcm":
+                    return False
                 elif root.endswith(".nrrd") and os.path.isdir(root):
                     mask_dir = os.path.dirname(full_path)
                     mask_dirname = os.path.basename(mask_dir)
