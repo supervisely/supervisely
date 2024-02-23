@@ -16,12 +16,12 @@ class ImportManager:
         self._api = Api.from_env()
 
         if dir_exists(input_data):
-            self._unpack_archives(input_data)
             self._input_data = input_data
         elif self._api.file.dir_exists(team_id(), input_data):
             self._input_data = self._download_input_data(input_data)
         else:
             raise RuntimeError(f"Input data does not exist: {input_data}")
+        self._unpack_archives(self._input_data)
         self._modality = project_type
         self._converter = self.get_converter()
 
@@ -68,27 +68,30 @@ class ImportManager:
             total=directory_size, desc="Downloading...", unit='B', unit_scale=True
         ).update
         self._api.file.download_directory(team_id(), remote_path, local_path, progress_cb=progress_cb)
-        self._unpack_archives(local_path)
 
         return local_path
 
     def _unpack_archives(self, local_path):
         """Unpack if input data contains an archive."""
 
-        archives = []
-        for root, _, files in os.walk(local_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if is_archive(file_path=file_path):
-                    try:
-                        new_path = os.path.splitext(os.path.normpath(file_path))[0]
-                        unpack_archive(file_path, new_path)
-                        archives.append(file_path)
-                    except Exception as e:
-                        logger.error(f"Error while unpacking '{file}': {repr(e)}")
+        new_paths_to_scan = [local_path]
+        while len(new_paths_to_scan) > 0:
+            archives = []
+            path = new_paths_to_scan.pop()
+            for root, _, files in os.walk(path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if is_archive(file_path=file_path):
+                        try:
+                            new_path = os.path.splitext(os.path.normpath(file_path))[0]
+                            unpack_archive(file_path, new_path)
+                            archives.append(file_path)
+                            new_paths_to_scan.append(new_path)
+                        except Exception as e:
+                            logger.error(f"Error while unpacking '{file}': {repr(e)}")
 
-        for archive in archives:
-            silent_remove(archive)
+            for archive in archives:
+                silent_remove(archive)
 
 # @TODO:
 # [ ] - add timer
