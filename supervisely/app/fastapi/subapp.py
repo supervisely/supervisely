@@ -584,7 +584,6 @@ class Application(metaclass=Singleton):
         async def is_running(request: Request):
             if is_production():
                 # @TODO: set task status to running
-                # gives 500 internal server error if bool is not converted to string
                 return {"running": IS_RUNNING, "mode": "production"}
             else:
                 return {"running": IS_RUNNING, "mode": "development"}
