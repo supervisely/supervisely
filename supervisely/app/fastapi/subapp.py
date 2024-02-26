@@ -585,9 +585,9 @@ class Application(metaclass=Singleton):
             if is_production():
                 # @TODO: set task status to running
                 # gives 500 internal server error if bool is not converted to string
-                return {"running": str(IS_RUNNING), "mode": "production"}
+                return {"running": IS_RUNNING, "mode": "production"}
             else:
-                return {"running": str(IS_RUNNING), "mode": "development"}
+                return {"running": IS_RUNNING, "mode": "development"}
 
     def get_server(self):
         return self._fastapi

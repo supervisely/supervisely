@@ -727,7 +727,7 @@ class AppApi(TaskApi):
 
     def is_ready_for_api_calls(self, task_id: int) -> bool:
         try:
-            info = self._api.app.send_request(task_id, "is_running", {}, timeout=1, retries=1)
+            info = self._api.app.send_request(task_id, "is_running", {}, timeout=1, retries=1, raise_error=True)
             is_running = info.get("running", False)
             if is_running:
                 logger.debug(f"App {task_id} is ready for API calls")
