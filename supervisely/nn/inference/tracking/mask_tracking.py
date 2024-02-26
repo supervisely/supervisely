@@ -10,6 +10,7 @@ from supervisely.nn.prediction_dto import PredictionSegmentation
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference import Inference
+from supervisely.geometry.helpers import deserialize_geometry
 
 
 class MaskTracking(Inference, InferenceImageCache):
@@ -61,6 +62,10 @@ class MaskTracking(Inference, InferenceImageCache):
         def start_track(request: Request, task: BackgroundTasks):
             task.add_task(track, request)
             return {"message": "Track task started."}
+
+        @server.post("/track-api")
+        def start_track_api(request: Request, task: BackgroundTasks):
+            return track_api(request)
 
         def send_error_data(func):
             @functools.wraps(func)
@@ -185,3 +190,92 @@ class MaskTracking(Inference, InferenceImageCache):
                     if self.video_interface.global_stop_indicatior:
                         return
                     api.logger.info(f"Figure with id {fig_id} was successfully tracked")
+
+        def track_api(request: Request):
+            context = request.state.context
+            api: sly.Api = request.state.api
+            # required fields:
+            context["input_geometries"]
+            context["videoId"]
+            context["frameIndex"]
+            context["frames"]
+            # optional fields:
+            context["trackId"] = "auto"
+            context["objectIds"] = []
+            context["figureIds"] = []
+            if "direction" not in context:
+                context["direction"] = "forward"
+
+            input_geometries: list = context["input_geometries"]
+
+            self.video_interface = TrackerInterface(
+                context=context,
+                api=api,
+                load_all_frames=True,
+                notify_in_predict=True,
+                per_point_polygon_tracking=False,
+                frame_loader=self.download_frame,
+                bypass_notify=True,
+            )
+            api.logger.info("Starting tracking process")
+            # load frames
+            frames = self.video_interface.frames
+            # combine several binary masks into one multilabel mask
+            i = 0
+            label2id = {}
+
+            for input_geom in input_geometries:
+                geom_tpye, geom_json = input_geom['type'], input_geom['data']
+                geometry = deserialize_geometry(geom_tpye, geom_json)
+                if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
+                    raise TypeError(
+                        f"This app does not support {geometry.geometry_name()} tracking"
+                    )
+                # convert polygon to bitmap
+                if isinstance(geometry, sly.Polygon):
+                    polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                    polygon_label = sly.Label(geometry, polygon_obj_class)
+                    bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+                    bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
+                    geometry = bitmap_label.geometry
+                if i == 0:
+                    multilabel_mask = geometry.data.astype(int)
+                    multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
+                    geometry.draw(bitmap=multilabel_mask, color=[1, 1, 1])
+                    i += 1
+                else:
+                    i += 1
+                    geometry.draw(bitmap=multilabel_mask, color=[i, i, i])
+                label2id[i] = {
+                    "original_geometry": geom_tpye,
+                }
+
+            # run tracker
+            tracked_multilabel_masks = self.predict(
+                frames=frames, input_mask=multilabel_mask[:, :, 0]
+            )
+            tracked_multilabel_masks = np.array(tracked_multilabel_masks)
+
+            predictions = []
+            # decompose multilabel masks into binary masks
+            for i in np.unique(tracked_multilabel_masks):
+                if i != 0:
+                    predictions_for_label = []
+                    binary_masks = tracked_multilabel_masks == i
+                    geometry_type = label2id[i]["original_geometry"]
+                    for j, mask in enumerate(binary_masks[1:]):
+                        # check if mask is not empty
+                        if not np.any(mask):
+                            api.logger.info(
+                                f"Empty mask on frame {context["frameIndex"] + j + 1}"
+                            )
+                            predictions_for_label.append(None)
+                        else:
+                            # frame_idx = j + 1
+                            geometry = sly.Bitmap(mask)
+                            predictions_for_label.append(geometry.to_json())
+                predictions.append(predictions_for_label)
+
+            # predictions must be NxK masks: N=number of frames, K=number of objects
+            predictions = list(map(list, zip(*predictions)))
+            return predictions
