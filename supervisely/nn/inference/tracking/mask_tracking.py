@@ -274,7 +274,7 @@ class MaskTracking(Inference, InferenceImageCache):
                             # frame_idx = j + 1
                             geometry = sly.Bitmap(mask)
                             predictions_for_label.append(geometry.to_json())
-                predictions.append(predictions_for_label)
+                    predictions.append(predictions_for_label)
 
             # predictions must be NxK masks: N=number of frames, K=number of objects
             predictions = list(map(list, zip(*predictions)))
