@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional
 
 from supervisely._utils import take_with_default
@@ -723,6 +724,32 @@ class AppApi(TaskApi):
 
     def get_status(self, task_id: int) -> TaskApi.Status:
         return self._api.task.get_status(task_id)
+
+    def is_ready_for_api_calls(self, task_id: int) -> bool:
+        try:
+            info = self._api.app.send_request(task_id, "is_running", {}, timeout=1, retries=1, raise_error=True)
+            is_running = info.get("running", False)
+            if is_running:
+                logger.debug(f"App {task_id} is ready for API calls")
+                return True
+            return False
+        except:
+            logger.debug(f"App {task_id} is not ready for API calls")
+            return False
+
+    def wait_until_ready_for_api_calls(
+        self, task_id: int, attempts: int = 10, attempt_delay_sec: Optional[int] = 10
+    ):
+        is_ready = False
+        for attempt in range(attempts):
+            is_ready = self.is_ready_for_api_calls(task_id)
+            if not is_ready:
+                logger.debug(f"Waiting for app to be ready for API calls: {is_ready}")
+                sleep(attempt_delay_sec)
+            else:
+                is_ready = True
+                break
+        return is_ready
 
 
 # info about app in team
