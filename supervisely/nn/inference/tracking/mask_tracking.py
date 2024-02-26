@@ -267,7 +267,7 @@ class MaskTracking(Inference, InferenceImageCache):
                         # check if mask is not empty
                         if not np.any(mask):
                             api.logger.info(
-                                f"Empty mask on frame {context["frameIndex"] + j + 1}"
+                                f"Empty mask on frame {context['frameIndex'] + j + 1}"
                             )
                             predictions_for_label.append(None)
                         else:
