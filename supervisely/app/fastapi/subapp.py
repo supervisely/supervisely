@@ -204,15 +204,6 @@ def create(
     app = FastAPI()
     WebsocketManager().set_app(app)
 
-    @app.get("/is_running")
-    async def is_running():
-        if supervisely.is_production():
-            # This message should match what you're looking for in the logs
-            logger.info("Application is running on Supervisely Platform in production mode")
-            return {"running": IS_RUNNING, "mode": "production"}
-        else:
-            return {"running": IS_RUNNING, "mode": "development"}
-
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
         shutdown(process_id, before_shutdown_callbacks)
@@ -261,6 +252,15 @@ def create(
                 }
             )
             return response
+        
+        @app.post("/is_running")
+        async def is_running(request: Request):
+            if supervisely.is_production():
+                # This message should match what you're looking for in the logs
+                logger.info("Application is running on Supervisely Platform in production mode")
+                return {"running": IS_RUNNING, "mode": "production"}
+            else:
+                return {"running": IS_RUNNING, "mode": "development"}
 
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
