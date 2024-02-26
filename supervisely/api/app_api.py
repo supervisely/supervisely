@@ -729,7 +729,7 @@ class AppApi(TaskApi):
         try:
             info = self._api.app.send_request(task_id, "is_running", {}, timeout=1, retries=1)
             is_running = info.get("running", False)
-            if is_running is not None:
+            if is_running:
                 logger.debug(f"App {task_id} is ready for API calls")
                 return True
             return False
