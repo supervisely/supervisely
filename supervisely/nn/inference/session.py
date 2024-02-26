@@ -1,15 +1,17 @@
 import json
 import time
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+
 import requests
-from typing import List, Optional, Union, Iterator, Dict, Any, Tuple
 
 try:
     from typing import Literal
 except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
+
 import yaml
-from requests import Timeout, HTTPError
+from requests import HTTPError, Timeout
 
 import supervisely as sly
 from supervisely.io.network_exceptions import process_requests_exception
@@ -514,6 +516,10 @@ class Session(SessionJSON):
 
         """
         super().__init__(api, task_id, session_url, inference_settings)
+
+    def is_model_served(self):
+        is_served = self.api.task.send_request(self._task_id, "is_model_served", {})
+        return is_served
 
     def get_model_meta(self) -> sly.ProjectMeta:
         if not isinstance(self._model_meta, sly.ProjectMeta):

@@ -40,7 +40,7 @@ from supervisely.app.fastapi.subapp import (
     call_on_autostart,
     get_name_from_env,
 )
-from supervisely.app.widgets import Container, Widget, Card
+from supervisely.app.widgets import Card, Container, Widget
 from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
@@ -1131,6 +1131,10 @@ class Inference:
             except Exception as e:
                 self.gui._success_label.hide()
                 raise e
+
+        @server.post("/is_served")
+        def _is_served(response: Response, request: Request):
+            return {"served": self._model_served}
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
