@@ -252,7 +252,7 @@ def create(
                 }
             )
             return response
-        
+
         @app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             await WebsocketManager().connect(websocket)
@@ -479,7 +479,7 @@ class Application(metaclass=Singleton):
         session_info_solid: bool = False,
     ):
         global IS_RUNNING
-        
+
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -577,20 +577,19 @@ class Application(metaclass=Singleton):
 
                 ContentOrigin().start()
                 resp = run_sync(self.test_client.get("/"))
-        
-        server = self.get_server()   
+
+        server = self.get_server()
+
         @server.post("/is_running")
         async def is_running(request: Request):
             if is_production():
-                # logger.info("Application is running on Supervisely Platform in production mode")
-                return {"running": str(IS_RUNNING), "mode": "production"}
+                # @TODO: set task status to running
+                return {"running": IS_RUNNING, "mode": "production"}
             else:
-                return {"running": str(IS_RUNNING), "mode": "development"}
+                return {"running": IS_RUNNING, "mode": "development"}
 
     def get_server(self):
         return self._fastapi
-    
-    
 
     async def __call__(self, scope, receive, send) -> None:
         await self._fastapi.__call__(scope, receive, send)

@@ -893,6 +893,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         skip_response: bool = False,
         timeout: Optional[int] = 60,
         outside_request: bool = True,
+        retries: int = 10,
     ):
         """send_request"""
         if type(data) is not dict:
@@ -908,6 +909,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "skipResponse": skip_response,
                 "timeout": timeout,
             },
+            retries=retries,
+            raise_error=True
         )
         return resp.json()
 
