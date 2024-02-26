@@ -1,9 +1,9 @@
 # coding: utf-8
 from __future__ import annotations
 
-from time import sleep
 import json
 import os
+from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional
 
 from supervisely._utils import take_with_default
@@ -359,16 +359,12 @@ class AppApi(TaskApi):
                 "filter": take_with_default(
                     filter, []
                 ),  # for example [{"field": "id", "operator": "=", "value": None}]
-                "context": take_with_default(
-                    context, []
-                ),  # for example ["images_project"]
+                "context": take_with_default(context, []),  # for example ["images_project"]
                 "repositoryKey": repository_key,
                 "integratedInto": take_with_default(
                     integrated_into, []
                 ),  # for example ["image_annotation_tool"]
-                "sessionTags": take_with_default(
-                    session_tags, []
-                ),  # for example ["string"]
+                "sessionTags": take_with_default(session_tags, []),  # for example ["string"]
                 "onlyRunning": only_running,
                 "showDisabled": show_disabled,
                 "withShared": with_shared,
@@ -491,9 +487,7 @@ class AppApi(TaskApi):
             # Content-Length
             if "Content-Length" in response.headers:
                 length = int(response.headers["Content-Length"])
-            progress = Progress(
-                "Downloading: ", length, ext_logger=ext_logger, is_size=True
-            )
+            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
 
         mb1 = 1024 * 1024
         ensure_base_path(save_path)
@@ -731,19 +725,19 @@ class AppApi(TaskApi):
     def get_status(self, task_id: int) -> TaskApi.Status:
         return self._api.task.get_status(task_id)
 
-    def is_ready_for_api_calls(self, task_id: int) -> bool:       
-        info = self._api.app.send_request(task_id, "/is_running", {}, skip_response=False, timeout=1)
+    def is_ready_for_api_calls(self, task_id: int) -> bool:
+        info = self._api.app.send_request(task_id, "/is_running", {}, timeout=1)
         if info is not None:
             return True
         return False
 
     def wait_until_ready_for_api_calls(self, task_id: int, timeout: Optional[int] = 10):
-            is_ready = False
-            while not is_ready:
-                is_ready = self.is_ready_for_api_calls(task_id)
-                if not is_ready:
-                    sleep(timeout)
-            return True
+        is_ready = False
+        while not is_ready:
+            is_ready = self.is_ready_for_api_calls(task_id)
+            if not is_ready:
+                sleep(timeout)
+
 
 # info about app in team
 # {
