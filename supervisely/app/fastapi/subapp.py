@@ -48,6 +48,7 @@ from supervisely.sly_logger import logger
 
 # from supervisely.app.fastapi.request import Request
 
+IS_RUNNING = False
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -202,6 +203,15 @@ def create(
 
     app = FastAPI()
     WebsocketManager().set_app(app)
+
+    @app.get("/is_running")
+    async def is_running():
+        if supervisely.is_production():
+            # This message should match what you're looking for in the logs
+            logger.info("Application is running on Supervisely Platform in production mode")
+            return {"running": IS_RUNNING, "mode": "production"}
+        else:
+            return {"running": IS_RUNNING, "mode": "development"}
 
     @app.post("/shutdown")
     async def shutdown_endpoint(request: Request):
@@ -407,9 +417,11 @@ def _init(
             request.state.state = content.get("state")
             request.state.api_token = content.get(
                 "api_token",
-                request.state.context.get("apiToken")
-                if request.state.context is not None
-                else None,
+                (
+                    request.state.context.get("apiToken")
+                    if request.state.context is not None
+                    else None
+                ),
             )
             # logger.debug(f"middleware request api_token {request.state.api_token}")
             # request.state.server_address = content.get(
@@ -535,6 +547,9 @@ class Application(metaclass=Singleton):
             logger.info("Application is running on Supervisely Platform in production mode")
         else:
             logger.info("Application is running on localhost in development mode")
+
+        IS_RUNNING = True
+
         self._process_id = os.getpid()
         logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
