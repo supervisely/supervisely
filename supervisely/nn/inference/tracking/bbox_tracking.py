@@ -109,7 +109,7 @@ class BBoxTracking(Inference, InferenceImageCache):
 
     def track_api(self, api: sly.Api, context: dict):
         # required fields:
-        context["bboxes"]
+        context["input_geometries"]
         context["videoId"]
         context["frameIndex"]
         context["frames"]
@@ -120,7 +120,7 @@ class BBoxTracking(Inference, InferenceImageCache):
         if "direction" not in context:
             context["direction"] = "forward"
 
-        input_bboxes: list = context["bboxes"]
+        input_bboxes: list = context["input_geometries"]
 
         video_interface = TrackerInterface(
             context=context,
@@ -144,7 +144,8 @@ class BBoxTracking(Inference, InferenceImageCache):
         api.logger.info("Start tracking.")
 
         predictions = []
-        for input_bbox in input_bboxes:
+        for input_geom in input_bboxes:
+            input_bbox = input_geom['data']
             bbox = sly.Rectangle.from_json(input_bbox)
             predictions_for_object = []
             init = False

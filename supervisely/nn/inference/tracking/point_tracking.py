@@ -11,6 +11,7 @@ from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
 from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.geometry.helpers import deserialize_geometry
 
 
 class PointTracking(Inference, InferenceImageCache):
@@ -209,10 +210,7 @@ class PointTracking(Inference, InferenceImageCache):
             predictions = []
             for _ in video_interface.frames_loader_generator():
                 for input_geom in input_geometries:
-                    from supervisely.geometry.geometry import Geometry
-                    from supervisely.geometry.helpers import deserialize_geometry
-                    geom_name, geom_json = input_geom['name'], input_geom['data']
-                    # geom = Geometry.from_json(input_geom)
+                    geom_name, geom_json = input_geom['type'], input_geom['data']
                     geom = deserialize_geometry(geom_name, geom_json)
                     if isinstance(geom, sly.Point):
                         geometries = self._predict_point_geometries(
@@ -245,7 +243,7 @@ class PointTracking(Inference, InferenceImageCache):
                     geometries = [g.to_json() for g in geometries]
                     predictions.append(geometries)
 
-            # predictions must be NxK bboxes: N=number of frames, K=number of objects
+            # predictions must be NxK figures: N=number of frames, K=number of objects
             predictions = list(map(list, zip(*predictions)))
             return predictions
         
