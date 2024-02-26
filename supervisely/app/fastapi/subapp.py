@@ -584,9 +584,10 @@ class Application(metaclass=Singleton):
         async def is_running(request: Request):
             if is_production():
                 # @TODO: set task status to running
-                return {"running": IS_RUNNING, "mode": "production"}
+                # gives 500 internal server error if bool is not converted to string
+                return {"running": str(IS_RUNNING), "mode": "production"}
             else:
-                return {"running": IS_RUNNING, "mode": "development"}
+                return {"running": str(IS_RUNNING), "mode": "development"}
 
     def get_server(self):
         return self._fastapi
