@@ -726,7 +726,7 @@ class AppApi(TaskApi):
         return self._api.task.get_status(task_id)
 
     def is_ready_for_api_calls(self, task_id: int) -> bool:
-        info = self._api.app.send_request(task_id, "/is_running", {}, timeout=1)
+        info = self._api.app.send_request(task_id, "is_running", {}, timeout=1)
         if info is not None:
             return True
         return False

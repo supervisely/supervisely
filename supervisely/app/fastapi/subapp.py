@@ -582,11 +582,10 @@ class Application(metaclass=Singleton):
         @server.post("/is_running")
         async def is_running(request: Request):
             if is_production():
-                # This message should match what you're looking for in the logs
-                logger.info("Application is running on Supervisely Platform in production mode")
-                return {"running": IS_RUNNING, "mode": "production"}
+                # logger.info("Application is running on Supervisely Platform in production mode")
+                return {"running": str(IS_RUNNING), "mode": "production"}
             else:
-                return {"running": IS_RUNNING, "mode": "development"}
+                return {"running": str(IS_RUNNING), "mode": "development"}
 
     def get_server(self):
         return self._fastapi
