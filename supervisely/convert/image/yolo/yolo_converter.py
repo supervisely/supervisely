@@ -118,7 +118,7 @@ class YOLOConverter(ImageConverter):
                 for t in ["train", "val"]:
                     if t not in config_yaml:
                         logger.warn(f"{t} path is not defined in {key_path}")
-                        # return False
+                        continue
                     if config_yaml[t].startswith(".."):
                         cur_dataset_path = os.path.normpath(
                             os.path.join(conf_dirname, "/".join(config_yaml[t].split("/")[2:]))

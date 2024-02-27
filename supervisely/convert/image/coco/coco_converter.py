@@ -57,7 +57,7 @@ class COCOConverter(ImageConverter):
                 elif imghdr.what(full_path):
                     images_list.append(full_path)
 
-        if len(ann_paths) is None:
+        if len(ann_paths) == 0:
             return False
 
         ann_dict = {}
