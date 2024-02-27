@@ -580,6 +580,30 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self.remove(id)
         return new_dataset
 
+    def move_to_dataset(self, dataset_id: int, destination_dataset_id: int) -> None:
+        """Moves dataset with specified ID to the dataset with specified destination ID.
+
+        :param dataset_id: ID of the dataset to be moved.
+        :type dataset_id: int
+        :param destination_dataset_id: ID of the destination dataset.
+        :type destination_dataset_id: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            dataset_id = 123
+            destination_dataset_id = 456
+
+            api.dataset.move_to_dataset(dataset_id, destination_dataset_id)
+        """
+        self._api.post(
+            "datasets.move", {ApiField.SRC_ID: dataset_id, ApiField.DEST_ID: destination_dataset_id}
+        )
+
     def _convert_json_info(self, info: dict, skip_missing=True):
         """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)

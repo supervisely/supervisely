@@ -503,6 +503,10 @@ class ApiField:
     USAGE = "usage"
     """"""
     PARENT_ID = "parentId"
+    """"""
+    SRC_ID = "srcId"
+    """"""
+    DEST_ID = "destId"
 
 
 def _get_single_item(items):
