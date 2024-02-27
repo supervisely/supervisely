@@ -727,24 +727,26 @@ class AppApi(TaskApi):
 
     def is_ready_for_api_calls(self, task_id: int) -> bool:
         try:
-            info = self._api.app.send_request(task_id, "is_running", {}, timeout=1, retries=1, raise_error=True)
+            info = self._api.app.send_request(
+                task_id, "is_running", {}, timeout=1, retries=1, raise_error=True
+            )
             is_running = info.get("running", False)
             if is_running:
                 logger.debug(f"App {task_id} is ready for API calls")
                 return True
             return False
         except:
-            logger.debug(f"App {task_id} is not ready for API calls")
+            logger.debug(f"App {task_id} is not ready for API calls yet")
             return False
 
     def wait_until_ready_for_api_calls(
         self, task_id: int, attempts: int = 10, attempt_delay_sec: Optional[int] = 10
     ):
         is_ready = False
+        logger.debug("Waiting for app to be ready for API calls")
         for attempt in range(attempts):
             is_ready = self.is_ready_for_api_calls(task_id)
             if not is_ready:
-                logger.debug(f"Waiting for app to be ready for API calls: {is_ready}")
                 sleep(attempt_delay_sec)
             else:
                 is_ready = True
