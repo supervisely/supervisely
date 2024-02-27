@@ -333,6 +333,15 @@ class CustomModelsSelector(Widget):
         else:
             return {"selectedRow": 0}
 
+    def set_active_task_type(self, task_type: str):
+        if task_type not in self._task_types:
+            raise ValueError(f'Task type "{task_type}" does not exist')
+        StateJson()[self.widget_id]["selectedTaskType"] = task_type
+        StateJson().send_changes()
+
+    def get_available_task_types(self) -> List[str]:
+        return self._task_types
+
     def disable_table(self) -> None:
         for row in self._rows:
             row.checkpoints_selector.disable()

@@ -19,7 +19,7 @@ class AgentSelector(Widget):
     ):
         self._team_id = team_id
         self._show_any_status = not show_only_running
-        self._show_public = False
+        self._show_public = True
         self._show_only_gpu = show_only_gpu
         self._check_network_status = True
         self._compact = compact
