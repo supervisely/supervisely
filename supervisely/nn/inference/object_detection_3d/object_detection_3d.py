@@ -7,11 +7,13 @@ from supervisely.nn.inference.inference import Inference
 from fastapi import Response, Request, status
 from supervisely.sly_logger import logger
 import os
-from supervisely import Api
+from supervisely import Api, PointcloudAnnotation, PointcloudObject, PointcloudFigure
 from supervisely.io.fs import silent_remove
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
-
+from supervisely.pointcloud_annotation.pointcloud_object_collection import (
+    PointcloudObjectCollection,
+)
 
 class ObjectDetection3D(Inference):
     def get_info(self) -> dict:
@@ -53,6 +55,24 @@ class ObjectDetection3D(Inference):
         silent_remove(pcd_path)
         return prediction
 
+    def annotation_from_prediction(
+        self,
+        predictions: List[PredictionCuboid3d],
+    ) -> PointcloudAnnotation:
+        model_meta = self._model_meta
+        objects = []
+        figures = []
+        for prediction in predictions:
+            class_name = prediction.class_name
+            geometry = prediction.cuboid_3d
+            object = PointcloudObject(model_meta.get_obj_class(class_name))
+            figure = PointcloudFigure(object, geometry)
+            objects.append(object)
+            figures.append(figure)
+        objects = PointcloudObjectCollection(objects)
+        annotation = PointcloudAnnotation(objects, figures)
+        return annotation
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -67,7 +87,14 @@ class ObjectDetection3D(Inference):
             api : Api = request.state.api
             settings = self._get_inference_settings(state)
             prediction = self._inference_pointcloud_id(api, state["pointcloud_id"], settings)
-            return prediction
+            annotation = self.annotation_from_prediction(prediction)
+            result = {
+                "results": {
+                    "annotation": annotation.to_json(),
+                    "raw_results": None,
+                }
+            }  # This format is used in "Apply 3D Detection to Pointcloud Project" app.
+            return result
 
         @server.post("/inference_pointcloud_ids")
         def inference_pointcloud_ids(response: Response, request: Request):
@@ -78,8 +105,9 @@ class ObjectDetection3D(Inference):
             state = request.state.state
             api : Api = request.state.api
             settings = self._get_inference_settings(state)
-            predictions = []
+            annotations = []
             for pcd_id in state["pointcloud_ids"]:
-                pred = self._inference_pointcloud_id(api, pcd_id, settings)
-                predictions.append(pred)
-            return predictions
+                prediction = self._inference_pointcloud_id(api, pcd_id, settings)
+                annotation = self.annotation_from_prediction(prediction)
+                annotations.append(annotation.to_json())
+            return annotations
