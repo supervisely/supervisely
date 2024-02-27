@@ -6,6 +6,7 @@ import yaml
 
 from supervisely import (
     Annotation,
+    AnyGeometry,
     Label,
     ObjClass,
     Polygon,
@@ -74,6 +75,11 @@ class YOLOConverter(ImageConverter):
                             geometry = Polygon
 
                         if class_index not in self.class_index_to_geometry:
+                            self.class_index_to_geometry[class_index] = geometry
+                            continue
+                        geometry = AnyGeometry
+                        existing_geometry = self.class_index_to_geometry[class_index]
+                        if geometry != existing_geometry:
                             self.class_index_to_geometry[class_index] = geometry
 
             return True
@@ -220,6 +226,8 @@ class YOLOConverter(ImageConverter):
                             geometry = yolo_helper.convert_rectangle(height, width, *coords)
                         elif len(coords) >= 6 and len(coords) % 2 == 0:
                             geometry = yolo_helper.convert_polygon(height, width, *coords)
+                        else:
+                            continue
 
                         class_name = self.coco_classes_dict[class_index]
                         obj_class = meta.get_obj_class(class_name)
