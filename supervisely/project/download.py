@@ -172,7 +172,7 @@ def download(
 def _get_cache_dir(project_id: int, dataset_name: str = None) -> str:
     p = os.path.join(CACHE_DIR, str(project_id))
     if dataset_name is not None:
-        os.path.join(p, dataset_name)
+        p = os.path.join(p, dataset_name)
     return p
 
 
