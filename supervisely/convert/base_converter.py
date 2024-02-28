@@ -199,39 +199,44 @@ class BaseConverter:
         for existing_cls in meta1.obj_classes:
             new_obj_classes.append(existing_cls)
         for new_cls in meta2.obj_classes:
-            if meta1.obj_classes.get(new_cls.name) is not None:
-                if meta1.obj_classes.get(new_cls.name).geometry_type == new_cls.geometry_type:
-                    continue
             i = 1
             new_name = new_cls.name
+            matched = False
             while meta1.obj_classes.get(new_name) is not None:
+                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                    matched = True
+                    break
                 new_name = f"{new_cls.name}_{i}"
                 i += 1
             if new_name != new_cls.name:
                 logger.warn(f"Class {new_cls.name} renamed to {new_name}")
                 renamed_classes[new_cls.name] = new_name
                 new_cls = new_cls.clone(name=new_name)
-            new_obj_classes.append(new_cls)
+            if not matched:
+                new_obj_classes.append(new_cls)
 
         for existing_tag in meta1.tag_metas:
             new_tags.append(existing_tag)
         for new_tag in meta2.tag_metas:
-            if meta1.tag_metas.get(new_tag.name) is not None:
-                if meta1.tag_metas.get(new_tag.name).value_type == new_tag.value_type:
-                    if new_tag.value_type != TagValueType.ONEOF_STRING:
-                        continue
-                    if meta1.tag_metas[new_tag.name].possible_values == new_tag.possible_values:
-                        continue
             i = 1
             new_name = new_tag.name
+            matched = False
             while meta1.tag_metas.get(new_name) is not None:
+                if meta1.tag_metas.get(new_name).value_type == new_tag.value_type:
+                    if new_tag.value_type != TagValueType.ONEOF_STRING:
+                        matched = True
+                        break
+                    if meta1.tag_metas[new_name].possible_values == new_tag.possible_values:
+                        matched = True
+                        break
                 new_name = f"{new_tag.name}_{i}"
                 i += 1
             if new_name != new_tag.name:
                 logger.warn(f"Tag {new_tag.name} renamed to {new_name}")
                 renamed_tags[new_tag.name] = new_name
                 new_tag = new_tag.clone(name=new_name)
-            new_tags.append(new_tag)
+            if not matched:
+                new_tags.append(new_tag)
 
         new_meta = meta1.clone(obj_classes=new_obj_classes, tag_metas=new_tags)
         return new_meta, renamed_classes, renamed_tags
