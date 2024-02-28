@@ -10,6 +10,7 @@ from supervisely.annotation.tag_collection import TagCollection
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.io.fs import (
+    clean_dir,
     copy_dir_recursively,
     copy_file,
     dir_exists,
@@ -209,16 +210,18 @@ def _download_datasets_to_existing_project(
     progress_cb=None,
     save_image_meta=False,
 ):
+    # if meta not found, download it
+    meta_path = os.path.join(dest_dir, "meta.json")
+    if not os.path.exists(meta_path):
+        dump_json_file(api.project.get_meta(project_id), meta_path)
     try:
         project_fs = Project(dest_dir, OpenMode.READ)
     except RuntimeError as e:
+        # if project is empty, read meta, clean dir, create project and set meta
         if str(e) == "Project is empty":
             meta_path = os.path.join(dest_dir, "meta.json")
-            if os.path.exists(meta_path):
-                meta = ProjectMeta.from_json(load_json_file(meta_path))
-                os.remove(meta_path)
-            else:
-                meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+            meta = ProjectMeta.from_json(load_json_file(meta_path))
+            clean_dir(dest_dir)
             project_fs = Project(dest_dir, OpenMode.CREATE)
             project_fs.set_meta(meta)
         else:
