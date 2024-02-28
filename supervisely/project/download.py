@@ -5,17 +5,18 @@ from tqdm import tqdm
 
 from supervisely import get_project_class
 from supervisely._utils import batched
-from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.io.fs import (
     copy_dir_recursively,
+    copy_file,
     dir_exists,
     get_directory_size,
     mkdir,
 )
-from supervisely.io.json import dump_json_file
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project import Project
 from supervisely.project.project import OpenMode
 from supervisely.task.progress import Progress
@@ -197,7 +198,8 @@ def get_cache_size(project_id: int, dataset_name: str = None) -> int:
 
 def _download_datasets_to_existing_project(
     api: Api,
-    dest_dir,
+    project_id: int,
+    dest_dir: str,
     dataset_ids=List[int],
     log_progress=False,
     batch_size=50,
@@ -207,7 +209,20 @@ def _download_datasets_to_existing_project(
     progress_cb=None,
     save_image_meta=False,
 ):
-    project_fs = Project(dest_dir, OpenMode.READ)
+    try:
+        project_fs = Project(dest_dir, OpenMode.READ)
+    except RuntimeError as e:
+        if str(e) == "Project is empty":
+            meta_path = os.path.join(dest_dir, "meta.json")
+            if os.path.exists(meta_path):
+                meta = ProjectMeta.from_json(load_json_file(meta_path))
+                os.remove(meta_path)
+            else:
+                meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+            project_fs = Project(dest_dir, OpenMode.CREATE)
+            project_fs.set_meta(meta)
+        else:
+            raise e
 
     for dataset_id in dataset_ids:
         dataset_info = api.dataset.get_info_by_id(dataset_id)
@@ -319,6 +334,7 @@ def download_to_cache(
     if is_cached(project_id):
         _download_datasets_to_existing_project(
             api=api,
+            project_id=project_id,
             dest_dir=cache_project_dir,
             dataset_ids=dataset_ids,
             log_progress=log_progress,
@@ -338,7 +354,7 @@ def download_to_cache(
 
 
 def copy_from_cache(
-    project_id: int, dest_dir: str, dataset_name: str = None, progress_cb: Callable = None
+    project_id: int, dest_dir: str, dataset_names: List[str] = None, progress_cb: Callable = None
 ):
     """
     Copy project or dataset from cache to the specified directory.
@@ -356,13 +372,25 @@ def copy_from_cache(
     :return: None.
     :rtype: NoneType
     """
-    if not is_cached(project_id, dataset_name):
-        msg = f"Project {project_id} is not cached"
-        if dataset_name is not None:
-            msg = f"Dataset {dataset_name} of project {project_id} is not cached"
-        raise RuntimeError(msg)
-    cache_dir = _get_cache_dir(project_id, dataset_name)
-    copy_dir_recursively(cache_dir, dest_dir, progress_cb)
+    if not is_cached(project_id):
+        raise RuntimeError(f"Project {project_id} is not cached")
+    if dataset_names is not None:
+        for dataset_name in dataset_names:
+            if not is_cached(project_id, dataset_name):
+                raise RuntimeError(f"Dataset {dataset_name} of project {project_id} is not cached")
+    cache_dir = _get_cache_dir(project_id)
+    if dataset_names is None:
+        copy_dir_recursively(cache_dir, dest_dir, progress_cb)
+    else:
+        # copy meta
+        copy_file(os.path.join(cache_dir, "meta.json"), os.path.join(dest_dir, "meta.json"))
+        # copy datasets
+        for dataset_name in dataset_names:
+            copy_dir_recursively(
+                os.path.join(cache_dir, dataset_name),
+                os.path.join(dest_dir, dataset_name),
+                progress_cb,
+            )
 
 
 def download_using_cache(
@@ -402,5 +430,4 @@ def download_using_cache(
         progress_cb=progress_cb,
         **kwargs,
     )
-    for dataset_name in [*downloaded, *cached]:
-        copy_from_cache(project_id, dest_dir, dataset_name)
+    copy_from_cache(project_id, dest_dir, [*downloaded, *cached])
