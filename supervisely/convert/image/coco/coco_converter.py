@@ -106,9 +106,22 @@ class COCOConverter(ImageConverter):
     def get_items(self) -> list:
         return self._items
 
-    def to_supervisely(self, item: ImageConverter.Item, meta: ProjectMeta) -> Annotation:
+    def to_supervisely(
+            self,
+            item: ImageConverter.Item,
+            meta: ProjectMeta = None,
+            renamed_classes: dict = None,
+            renamed_tags: dict = None,
+    ) -> Annotation:
         """Convert to Supervisely format."""
         if item.ann_data is None:
             return Annotation.from_img_path(item.path)
         else:
-            return coco_helper.create_supervisely_annotation(item, meta, self._coco_categories)
+            ann = coco_helper.create_supervisely_annotation(
+                item,
+                meta,
+                self._coco_categories,
+                renamed_classes,
+                renamed_tags,
+            )
+            return ann

@@ -35,7 +35,7 @@ class ImageConverter(BaseConverter):
         @property
         def meta(self) -> Union[str, dict]:
             return self._meta_data
-        
+
         def set_meta_data(self, meta_data: Union[str, dict]) -> None:
             self._meta_data = meta_data
 
@@ -86,7 +86,8 @@ class ImageConverter(BaseConverter):
             curr_meta = ProjectMeta()
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(curr_meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
+
         api.project.update_meta(dataset.project_id, meta)
 
         if log_progress:
@@ -101,7 +102,7 @@ class ImageConverter(BaseConverter):
             item_metas = []
             anns = []
             for item in batch:
-                ann = self.to_supervisely(item, meta)
+                ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 item_names.append(item.name)
                 item_paths.append(item.path)
                 item_metas.append(load_json_file(item.meta) if item.meta else {})

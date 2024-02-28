@@ -205,7 +205,13 @@ class YOLOConverter(ImageConverter):
         meta = meta.add_obj_classes(classes)
         return meta
 
-    def to_supervisely(self, item: ImageConverter.Item, meta: ProjectMeta = None) -> Annotation:
+    def to_supervisely(
+            self,
+            item: ImageConverter.Item,
+            meta: ProjectMeta = None,
+            renamed_classes: dict = None,
+            renamed_tags: dict = None,
+    ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:
             meta = self._meta
@@ -230,6 +236,9 @@ class YOLOConverter(ImageConverter):
                             continue
 
                         class_name = self.coco_classes_dict[class_index]
+                        if renamed_classes is not None:
+                            if class_name in renamed_classes:
+                                class_name = renamed_classes[class_name]
                         obj_class = meta.get_obj_class(class_name)
                         label = Label(obj_class=obj_class, geometry=geometry)
                         labels.append(label)

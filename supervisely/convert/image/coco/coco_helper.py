@@ -30,15 +30,22 @@ from supervisely.imaging.color import generate_rgb
 
 # COCO Convert funcs
 def create_supervisely_annotation(
-    item: ImageConverter.Item, meta: ProjectMeta, coco_categories: List[dict]
+    item: ImageConverter.Item,
+    meta: ProjectMeta,
+    coco_categories: List[dict],
+    renamed_classes: dict = None,
+    renamed_tags: dict = None,
 ):
     labels = []
     imag_tags = []
     name_cat_id_map = coco_category_to_class_name(coco_categories)
+    renamed_classes = {} if renamed_classes is None else renamed_classes
+    renamed_tags = {} if renamed_tags is None else renamed_tags
     for object in item.ann_data:
         caption = object.get("caption")
         if caption is not None:
-            imag_tags.append(Tag(meta.get_tag_meta("caption"), caption))
+            tag_name = renamed_tags.get("caption", "caption")
+            imag_tags.append(Tag(meta.get_tag_meta(tag_name), caption))
         category_id = object.get("category_id")
         if category_id is None:
             continue
@@ -46,11 +53,12 @@ def create_supervisely_annotation(
         if obj_class_name is None:
             logger.warn(f"Category with id {category_id} not found in categories list")
             continue
+        renamed_class_name = renamed_classes.get(obj_class_name, obj_class_name)
         key = None
         segm = object.get("segmentation")
         curr_labels = []
         if segm is not None and len(segm) > 0:
-            obj_class_polygon = meta.get_obj_class(obj_class_name)
+            obj_class_polygon = meta.get_obj_class(renamed_class_name)
 
             if type(segm) is dict:
                 polygons = convert_rle_mask_to_polygon(object)
@@ -68,7 +76,7 @@ def create_supervisely_annotation(
 
         keypoints = object.get("keypoints")
         if keypoints is not None:
-            obj_class_keypoints = meta.get_obj_class(obj_class_name)
+            obj_class_keypoints = meta.get_obj_class(renamed_class_name)
             keypoints = list(get_coords(object["keypoints"]))
             coco_categorie, keypoint_names = None, None
             for cat in coco_categories:
@@ -97,7 +105,8 @@ def create_supervisely_annotation(
         if bbox is not None and len(bbox) == 4:
             if not obj_class_name.endswith("bbox"):
                 obj_class_name = add_tail(obj_class_name, "bbox")
-            obj_class_rectangle = meta.get_obj_class(obj_class_name)
+            renamed_class_name = renamed_classes.get(obj_class_name, obj_class_name)
+            obj_class_rectangle = meta.get_obj_class(renamed_class_name)
             if len(curr_labels) > 1:
                 for label in curr_labels:
                     bbox = label.geometry.to_bbox()
