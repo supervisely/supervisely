@@ -199,33 +199,33 @@ class BaseConverter:
         for existing_cls in meta1.obj_classes:
             new_obj_classes.append(existing_cls)
         for new_cls in meta2.obj_classes:
-            i = 1
             if meta1.obj_classes.get(new_cls.name) is not None:
                 if meta1.obj_classes.get(new_cls.name).geometry_type == new_cls.geometry_type:
                     continue
-            old_name = new_cls.name
-            while meta1.obj_classes.get(new_cls.name) is not None:
-                new_name = f"{old_name}_{i}"
+            i = 1
+            new_name = new_cls.name
+            while meta1.obj_classes.get(new_name) is not None:
+                new_name = f"{new_cls.name}_{i}"
                 i += 1
-            renamed_classes[old_name] = new_name
+            renamed_classes[new_cls.name] = new_name
             new_cls = new_cls.clone(name=new_name)
             new_obj_classes.append(new_cls)
 
         for existing_tag in meta1.tag_metas:
             new_tags.append(existing_tag)
         for new_tag in meta2.tag_metas:
-            i = 1
             if meta1.tag_metas.get(new_tag.name) is not None:
                 if meta1.tag_metas.get(new_tag.name).value_type == new_tag.value_type:
                     if new_tag.value_type != TagValueType.ONEOF_STRING:
                         continue
                     if meta1.tag_metas[new_tag.name].possible_values == new_tag.possible_values:
                         continue
-            old_name = new_tag.name
-            while meta1.tag_metas.get(new_tag.name) is not None:
-                new_name = f"{old_name}_{i}"
+            i = 1
+            new_name = new_tag.name
+            while meta1.tag_metas.get(new_name) is not None:
+                new_name = f"{new_tag.name}_{i}"
                 i += 1
-            renamed_tags[old_name] = new_name
+            renamed_tags[new_tag.name] = new_name
             new_tag = new_tag.clone(name=new_name)
             new_tags.append(new_tag)
 
