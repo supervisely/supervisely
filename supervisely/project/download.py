@@ -189,14 +189,23 @@ def download_to_cache(
     Download datasets to cache.
     If dataset_infos is not None, dataset_ids must be None and vice versa.
     If both dataset_infos and dataset_ids are None, all datasets of the project will be downloaded.
-    :param api: supervisely.api.api.Api
-    :param project_id: int
-    :param dataset_infos: List[supervisely.api.dataset_api.DatasetInfo]
-    :param dataset_ids: List[int]
-    :param log_progress: bool
-    :param progress_cb: callable which will be called with number of items downloaded
-    :return: Tuple[List, List] where the first list contains names of downloaded datasets and the second list contains
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID, which will be downloaded.
+    :type project_id: int
+    :param dataset_infos: Specified list of Dataset Infos which will be downloaded.
+    :type dataset_infos: list(DatasetInfo), optional
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
+    :type dataset_ids: list(int), optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: Tuple where the first list contains names of downloaded datasets and the second list contains
     names of cached datasets
+    :rtype: Tuple[List, List]
     """
     cache_project_dir = _get_cache_dir(project_id)
     if dataset_infos is not None and dataset_ids is not None:
@@ -225,16 +234,23 @@ def download_to_cache(
 
 
 def copy_from_cache(
-    project_id: int, dst_dir: str, dataset_name: str = None, progress_cb: Callable = None
+    project_id: int, dest_dir: str, dataset_name: str = None, progress_cb: Callable = None
 ):
     """
     Copy project or dataset from cache to the specified directory.
     If dataset_name is None, the whole project will be copied.
-    :param project_id: int
-    :param dst_dir: str
-    :param dataset_name: str
-    :param progress_cb: callable
-    :return: None
+
+    :param project_id: Project ID, which will be downloaded.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_name: Name of the dataset to copy. If not specified, the whole project will be copied.
+    :type dataset_name: str, optional
+    :param progress_cb: Function for tracking copying progress. Will be called with number of bytes copied.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
     """
     if not is_cached(project_id, dataset_name):
         msg = f"Project {project_id} is not cached"
@@ -242,7 +258,7 @@ def copy_from_cache(
             msg = f"Dataset {dataset_name} of project {project_id} is not cached"
         raise RuntimeError(msg)
     cache_dir = _get_cache_dir(project_id, dataset_name)
-    copy_dir_recursively(cache_dir, dst_dir, progress_cb)
+    copy_dir_recursively(cache_dir, dest_dir, progress_cb)
 
 
 def download_using_cache(
@@ -254,7 +270,26 @@ def download_using_cache(
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
-    """ """
+    """
+    Download project to the specified directory using cache.
+    If dataset_ids is None, all datasets of the project will be downloaded.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID, which will be downloaded.
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
+    :type dataset_ids: list(int), optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool, optional
+    :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
+    :type progress_cb: tqdm or callable, optional
+
+    :return: None.
+    :rtype: NoneType
+    """
     download_to_cache(
         api,
         project_id,
@@ -263,4 +298,4 @@ def download_using_cache(
         progress_cb=progress_cb,
         **kwargs,
     )
-    copy_from_cache(project_id, dest_dir, progress_cb=progress_cb)
+    copy_from_cache(project_id, dest_dir)
