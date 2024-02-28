@@ -7,7 +7,17 @@ import random
 import shutil
 from collections import namedtuple
 from enum import Enum
-from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 from tqdm import tqdm
@@ -114,31 +124,39 @@ class Dataset(KeyObject):
         ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
     """
 
-    #: :class:`str`: Items data directory name
-    item_dir_name = "img"
-
-    #: :class:`str`: Annotations directory name
-    ann_dir_name = "ann"
-
-    #: :class:`str`: Items info directory name
-    item_info_dir_name = "img_info"
-
-    #: :class:`str`: Segmentation masks directory name
-    seg_dir_name = "seg"
-
     annotation_class = Annotation
     item_info_class = ImageInfo
 
-    def __init__(self, directory: str, mode: OpenMode):
+    def __init__(
+        self, directory: str, mode: OpenMode, version: Optional[Literal["1.0", "2.0"]] = "2.0"
+    ):
         if type(mode) is not OpenMode:
             raise TypeError(
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
             )
 
+        self.version = version
+
+        if version == "1.0":
+            self.item_dir_name = "img"
+            self.ann_dir_name = "ann"
+            self.item_info_dir_name = "img_info"
+            self.seg_dir_name = "seg"
+            self.meta_dir_name = "meta"
+        elif version == "2.0":
+            self.item_dir_name = ""
+            self.ann_dir_name = ""
+            self.item_info_dir_name = ""
+            self.seg_dir_name = ""
+            self.meta_dir_name = ""
+
         self._directory = directory
         self._item_to_ann = {}  # item file name -> annotation file name
 
-        project_dir, ds_name = os.path.split(directory.rstrip("/"))
+        parts = directory.split(os.path.sep)
+        project_dir = parts[0]
+        ds_name = os.path.join(*parts[1:])
+
         self._project_dir = project_dir
         self._name = ds_name
 
@@ -331,6 +349,26 @@ class Dataset(KeyObject):
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/seg'
         """
         return os.path.join(self.directory, self.seg_dir_name)
+
+    @property
+    def meta_dir(self):
+        """
+        Path to the dataset segmentation masks directory.
+
+        :return: Path to the dataset directory with masks.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.meta_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/meta'
+        """
+        return os.path.join(self.directory, self.meta_dir_name)
 
     @classmethod
     def _has_valid_ext(cls, path: str) -> bool:
@@ -603,11 +641,44 @@ class Dataset(KeyObject):
             print(ds.get_item_info_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info/IMG_0748.jpeg.json'
         """
-        ann_path = self._item_to_ann.get(item_name, None)
-        if ann_path is None:
-            raise RuntimeError("Item {} not found in the project.".format(item_name))
+        if self.version == "1.0":
+            info_path = self._item_to_ann.get(item_name, None)
+            if info_path is None:
+                raise RuntimeError("Item {} not found in the project.".format(item_name))
+        elif self.version == "2.0":
+            info_path = f"{item_name}_info.json"
 
-        return os.path.join(self.item_info_dir, ann_path)
+        return os.path.join(self.item_info_dir, info_path)
+
+    def get_item_meta_path(self, item_name: str) -> str:
+        """
+        Get path to the item info json file without checking if the file exists.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :return: Path to the given item info json file.
+        :rtype: :class:`str`
+        :raises: :class:`RuntimeError` if item not found in the project.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.get_item_info_path("IMG_0748"))
+            # Output: RuntimeError: Item IMG_0748 not found in the project.
+
+            print(ds.get_item_info_path("IMG_0748.jpeg"))
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info/IMG_0748.jpeg.json'
+        """
+        if self.version == "1.0":
+            meta_path = self._item_to_ann.get(item_name, None)
+        elif self.version == "2.0":
+            meta_path = f"{item_name}_meta.json"
+
+        return os.path.join(self.meta_dir, meta_path)
 
     def get_image_info(self, item_name: str) -> ImageInfo:
         """
@@ -1592,7 +1663,7 @@ class Project:
         for dataset in self._datasets:
             yield dataset
 
-    def create_dataset(self, ds_name: str) -> Dataset:
+    def create_dataset(self, ds_name: str, ds_path: Optional[str] = None) -> Dataset:
         """
         Creates a subdirectory with given name and all intermediate subdirectories for items and annotations in project directory, and also adds created dataset
         to the collection of all datasets in the project.
@@ -1623,7 +1694,12 @@ class Project:
             #         ds2
             #         ds3
         """
-        ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
+        if ds_path is None:
+            ds_path = os.path.join(self.directory, ds_name)
+        else:
+            ds_path = os.path.join(self.directory, ds_path)
+
+        ds = self.dataset_class(ds_path, OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
 
@@ -2478,17 +2554,17 @@ def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> s
 
 
 def _download_project(
-    api,
-    project_id,
-    dest_dir,
-    dataset_ids=None,
-    log_progress=False,
-    batch_size=50,
-    only_image_tags=False,
-    save_image_info=False,
-    save_images=True,
-    progress_cb=None,
-    save_image_meta=False,
+    api: sly.Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: Optional[bool] = False,
+    batch_size: Optional[int] = 50,
+    only_image_tags: Optional[bool] = False,
+    save_image_info: Optional[bool] = False,
+    save_images: Optional[bool] = True,
+    progress_cb: Optional[Callable] = None,
+    save_image_meta: Optional[bool] = False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
@@ -2498,20 +2574,21 @@ def _download_project(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
-    for dataset_info in api.dataset.get_list(project_id):
+    for dataset_path, dataset_info in api.dataset.dataset_tree(project_id):
         dataset_id = dataset_info.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
 
-        dataset_fs = project_fs.create_dataset(dataset_info.name)
+        dataset_fs = project_fs.create_dataset(dataset_info.name, dataset_path)
         images = api.image.get_list(dataset_id)
 
         if save_image_meta:
-            meta_dir = os.path.join(dest_dir, dataset_info.name, "meta")
+            meta_dir = dataset_fs.meta_dir
             sly.fs.mkdir(meta_dir)
             for image_info in images:
-                meta_paths = os.path.join(meta_dir, image_info.name + ".json")
-                sly.json.dump_json_file(image_info.meta, meta_paths)
+                sly.json.dump_json_file(
+                    image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
+                )
 
         ds_progress = None
         if log_progress:

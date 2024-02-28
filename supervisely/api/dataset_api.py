@@ -4,7 +4,7 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, List, Literal, NamedTuple, Optional, Union
+from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Tuple, Union
 
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
@@ -823,3 +823,90 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         filters = [{"field": ApiField.NAME, "operator": "=", "value": name}]
         items = self.get_list(project_id, filters, parent_id=parent_id)
         return _get_single_item(items)
+
+    def get_tree(self, project_id: int) -> Dict[DatasetInfo, Dict]:
+        """Returns a tree of all datasets in the project as a dictionary,
+        where the keys are the DatasetInfo objects and the values are dictionaries
+        containing the children of the dataset.
+        Recommended to use with the dataset_tree method to iterate over the tree.
+
+        :param project_id: Project ID for which the tree is built.
+        :type project_id: int
+        :return: Dictionary of datasets and their children.
+        :rtype: Dict[DatasetInfo, Dict]
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+
+            dataset_tree = api.dataset.get_tree(project_id)
+            print(dataset_tree)
+            # Output:
+            # {
+            #     DatasetInfo(id=2532, name="lemons", description="", ...: {
+            #         DatasetInfo(id=2557, name="kiwi", description="", ...: {}
+            #     }
+            # }
+        """
+
+        datasets = self.get_list(project_id, recursive=True)
+        dataset_tree = {}
+
+        def build_tree(parent_id):
+            children = {}
+            for dataset in datasets:
+                if dataset.parent_id == parent_id:
+                    children[dataset] = build_tree(dataset.id)
+            return children
+
+        for dataset in datasets:
+            if dataset.parent_id is None:
+                dataset_tree[dataset] = build_tree(dataset.id)
+
+        return dataset_tree
+
+    def dataset_tree(self, project_id: int) -> Generator[Tuple[str, DatasetInfo], None, None]:
+        """Yields tuples of (path, dataset) for all datasets in the project.
+        Path of the dataset is a string of the form "parent_dataset_name/dataset_name".
+        For root datasets, the path is just the dataset name.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :return: Generator of tuples of (path, dataset).
+        :rtype: Generator[Tuple[str, DatasetInfo], None, None]
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+
+            for dataset_path, dataset in api.dataset.dataset_tree(project_id):
+                dataset: sly.DatasetInfo
+                print(dataset_path, dataset.name)
+
+            # Output:
+            # ds1 ds1
+            # ds1/ds2 ds2
+            # ds1/ds2/ds3 ds3
+        """
+
+        def yield_tree(
+            tree: Dict[DatasetInfo, Dict], path: str
+        ) -> Generator[Tuple[str, DatasetInfo], None, None]:
+            """Yields tuples of (path, dataset) for all datasets in the tree."""
+            for dataset, children in tree.items():
+                new_path = path + "/" + dataset.name if path else dataset.name
+                yield new_path, dataset
+                if children:
+                    yield from yield_tree(children, new_path)
+
+        yield from yield_tree(self.get_tree(project_id), "")
