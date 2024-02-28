@@ -73,6 +73,25 @@ class ObjectDetection3D(Inference):
         annotation = PointcloudAnnotation(objects, figures)
         return annotation
 
+    def raw_results_from_prediction(self, prediction: List[PredictionCuboid3d]) -> List[Dict[str, Any]]:
+        results = []
+        for pred in prediction:
+            detection_name = pred.class_name
+            translation = list(pred.cuboid_3d.position.to_json().values())
+            size = list(pred.cuboid_3d.dimensions.to_json().values())
+            rotation_z = pred.cuboid_3d.rotation.z
+            velocity = [0, 0]  # Is not supported now
+            detection_score = pred.score
+            results.append({
+                "detection_name": detection_name,
+                "translation": translation,
+                "size": size,
+                "rotation": rotation_z,
+                "velocity": velocity,
+                "detection_score": detection_score,
+            })
+        return results
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -88,10 +107,11 @@ class ObjectDetection3D(Inference):
             settings = self._get_inference_settings(state)
             prediction = self._inference_pointcloud_id(api, state["pointcloud_id"], settings)
             annotation = self.annotation_from_prediction(prediction)
+            raw_results = self.raw_results_from_prediction(prediction)
             result = {
                 "results": {
                     "annotation": annotation.to_json(),
-                    "raw_results": None,
+                    "raw_results": raw_results,
                 }
             }  # This format is used in "Apply 3D Detection to Pointcloud Project" app.
             return result
