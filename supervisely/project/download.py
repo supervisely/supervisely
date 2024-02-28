@@ -6,7 +6,7 @@ from tqdm import tqdm
 from supervisely import get_project_class
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
-from supervisely.io.fs import copy_dir_recursively, dir_exists
+from supervisely.io.fs import copy_dir_recursively, dir_exists, get_directory_size
 
 CACHE_DIR = "/apps_cache"
 
@@ -174,6 +174,13 @@ def _split_by_cache(project_id: int, dataset_names: List[str]) -> Tuple[List, Li
     to_download = [ds_name for ds_name in dataset_names if not is_cached(project_id, ds_name)]
     cached = [ds_name for ds_name in dataset_names if is_cached(project_id, ds_name)]
     return to_download, cached
+
+
+def get_cache_size(project_id: int, dataset_name: str = None) -> int:
+    if not is_cached(project_id, dataset_name):
+        return 0
+    cache_dir = _get_cache_dir(project_id, dataset_name)
+    return get_directory_size(cache_dir)
 
 
 def download_to_cache(

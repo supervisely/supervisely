@@ -55,10 +55,11 @@ from supervisely.task.progress import (
 import supervisely.project as project
 from supervisely.project import read_project, get_project_class
 from supervisely.project.download import (
+    copy_from_cache,
     download,
     download_to_cache,
     download_using_cache,
-    copy_from_cache,
+    get_cache_size,
     is_cached,
 )
 from supervisely.project.upload import upload
