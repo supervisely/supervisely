@@ -207,6 +207,7 @@ class BaseConverter:
             while meta1.obj_classes.get(new_name) is not None:
                 new_name = f"{new_cls.name}_{i}"
                 i += 1
+            logger.warn(f"Class {new_cls.name} renamed to {new_name}")
             renamed_classes[new_cls.name] = new_name
             new_cls = new_cls.clone(name=new_name)
             new_obj_classes.append(new_cls)
@@ -225,6 +226,7 @@ class BaseConverter:
             while meta1.tag_metas.get(new_name) is not None:
                 new_name = f"{new_tag.name}_{i}"
                 i += 1
+            logger.warn(f"Tag {new_tag.name} renamed to {new_name}")
             renamed_tags[new_tag.name] = new_name
             new_tag = new_tag.clone(name=new_name)
             new_tags.append(new_tag)
