@@ -297,7 +297,7 @@ def download_using_cache(
     :return: None.
     :rtype: NoneType
     """
-    download_to_cache(
+    downloaded, cached = download_to_cache(
         api,
         project_id,
         dataset_ids=dataset_ids,
@@ -305,4 +305,5 @@ def download_using_cache(
         progress_cb=progress_cb,
         **kwargs,
     )
-    copy_from_cache(project_id, dest_dir)
+    for dataset_name in [*downloaded, *cached]:
+        copy_from_cache(project_id, dest_dir, dataset_name)
