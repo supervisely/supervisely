@@ -4,9 +4,21 @@ from typing import Callable, List, Optional, Tuple, Union
 from tqdm import tqdm
 
 from supervisely import get_project_class
+from supervisely._utils import batched
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.tag_collection import TagCollection
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
-from supervisely.io.fs import copy_dir_recursively, dir_exists, get_directory_size
+from supervisely.io.fs import (
+    copy_dir_recursively,
+    dir_exists,
+    get_directory_size,
+    mkdir,
+)
+from supervisely.io.json import dump_json_file
+from supervisely.project import Project
+from supervisely.project.project import OpenMode
+from supervisely.task.progress import Progress
 
 CACHE_DIR = "/apps_cache"
 
@@ -183,6 +195,82 @@ def get_cache_size(project_id: int, dataset_name: str = None) -> int:
     return get_directory_size(cache_dir)
 
 
+def _download_datasets_to_existing_project(
+    api: Api,
+    dest_dir,
+    dataset_ids=List[int],
+    log_progress=False,
+    batch_size=50,
+    only_image_tags=False,
+    save_image_info=False,
+    save_images=True,
+    progress_cb=None,
+    save_image_meta=False,
+):
+    project_fs = Project(dest_dir, OpenMode.READ)
+
+    for dataset_id in dataset_ids:
+        dataset_info = api.dataset.get_info_by_id(dataset_id)
+
+        dataset_fs = project_fs.create_dataset(dataset_info.name)
+        images = api.image.get_list(dataset_id)
+
+        if save_image_meta:
+            meta_dir = os.path.join(dest_dir, dataset_info.name, "meta")
+            mkdir(meta_dir)
+            for image_info in images:
+                meta_paths = os.path.join(meta_dir, image_info.name + ".json")
+                dump_json_file(image_info.meta, meta_paths)
+
+        ds_progress = None
+        if log_progress:
+            ds_progress = Progress(
+                "Downloading dataset: {!r}".format(dataset_info.name),
+                total_cnt=len(images),
+            )
+
+        for batch in batched(images, batch_size):
+            image_ids = [image_info.id for image_info in batch]
+            image_names = [image_info.name for image_info in batch]
+
+            # download images in numpy format
+            if save_images:
+                batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
+            else:
+                batch_imgs_bytes = [None] * len(image_ids)
+
+            # download annotations in json format
+            if only_image_tags is False:
+                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+                ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+            else:
+                id_to_tagmeta = project_fs.meta.tag_metas.get_id_mapping()
+                ann_jsons = []
+                for image_info in batch:
+                    tags = TagCollection.from_api_response(
+                        image_info.tags, project_fs.meta.tag_metas, id_to_tagmeta
+                    )
+                    tmp_ann = Annotation(
+                        img_size=(image_info.height, image_info.width), img_tags=tags
+                    )
+                    ann_jsons.append(tmp_ann.to_json())
+
+            for img_info, name, img_bytes, ann in zip(
+                batch, image_names, batch_imgs_bytes, ann_jsons
+            ):
+                dataset_fs.add_item_raw_bytes(
+                    item_name=name,
+                    item_raw_bytes=img_bytes if save_images is True else None,
+                    ann=ann,
+                    img_info=img_info if save_image_info is True else None,
+                )
+
+            if log_progress:
+                ds_progress.iters_done_report(len(batch))
+            if progress_cb is not None:
+                progress_cb(len(batch))
+
+
 def download_to_cache(
     api: Api,
     project_id: int,
@@ -228,15 +316,24 @@ def download_to_cache(
         cached_items_n = sum(name_to_info[ds_name].items_count for ds_name in cached)
         progress_cb(cached_items_n)
     dataset_ids = [name_to_info[name].id for name in to_download]
-    download(
-        api=api,
-        project_id=project_id,
-        dest_dir=cache_project_dir,
-        dataset_ids=dataset_ids,
-        log_progress=log_progress,
-        progress_cb=progress_cb,
-        **kwargs,
-    )
+    if is_cached(project_id):
+        _download_datasets_to_existing_project(
+            api=api,
+            dest_dir=cache_project_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    else:
+        download(
+            api=api,
+            project_id=project_id,
+            dest_dir=cache_project_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            **kwargs,
+        )
     return to_download, cached
 
 
