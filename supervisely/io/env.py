@@ -506,3 +506,21 @@ def set_autostart(value: Optional[Literal["1", "true", "yes"]] = None) -> None:
     if not flag_from_env(value):
         raise ValueError("Unknown value for `autostart` env. Use `1`, `true`, `yes` or None.")
     os.environ["modal.state.autostart"] = value
+
+
+def apps_cache_dir():
+    """Returns apps cache directory path from environment variable using following keys:
+        - APPS_CACHE_DIR
+
+    :param raise_not_found: if True, raises KeyError if apps cache directory is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: apps cache directory path
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="apps_cache_dir",
+        keys=["APPS_CACHE_DIR"],
+        postprocess_fn=lambda x: x,
+        default="/apps_cache",
+        raise_not_found=False,
+    )

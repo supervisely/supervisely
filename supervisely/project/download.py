@@ -9,6 +9,7 @@ from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.io.env import apps_cache_dir
 from supervisely.io.fs import (
     clean_dir,
     copy_dir_recursively,
@@ -21,8 +22,6 @@ from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project import Project
 from supervisely.project.project import OpenMode
 from supervisely.task.progress import Progress
-
-CACHE_DIR = "/apps_cache"
 
 
 def download(
@@ -172,7 +171,7 @@ def download(
 
 
 def _get_cache_dir(project_id: int, dataset_name: str = None) -> str:
-    p = os.path.join(CACHE_DIR, str(project_id))
+    p = os.path.join(apps_cache_dir(), str(project_id))
     if dataset_name is not None:
         p = os.path.join(p, dataset_name)
     return p
