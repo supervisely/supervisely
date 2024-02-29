@@ -512,8 +512,6 @@ def apps_cache_dir():
     """Returns apps cache directory path from environment variable using following keys:
         - APPS_CACHE_DIR
 
-    :param raise_not_found: if True, raises KeyError if apps cache directory is not found in environment variables
-    :type raise_not_found: Optional[bool]
     :return: apps cache directory path
     :rtype: str
     """
