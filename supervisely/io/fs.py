@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import tarfile
+from functools import reduce
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import requests
@@ -438,12 +439,14 @@ def file_exists(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def get_subdirs(dir_path: str) -> list:
+def get_subdirs(dir_path: str, recursively: Optional[bool] = False) -> list:
     """
     Get list containing the names of the directories in the given directory.
 
     :param dir_path: Target directory path.
     :type dir_path: str
+    :param recursively: If True, all found subdirectories will be included in the result list.
+    :type recursively: bool
     :returns: List containing directories names.
     :rtype: :class:`list`
     :Usage example:
@@ -455,8 +458,88 @@ def get_subdirs(dir_path: str) -> list:
         print(subdirs)
         # Output: ['tests', 'users', 'ds1']
     """
+    if recursively:
+        return [
+            global_to_relative(entry, dir_path)
+            for entry in list_dir_recursively(dir_path, include_subdirs=True, use_global_paths=True)
+            if os.path.isdir(entry)
+        ]
     res = list(x.name for x in os.scandir(dir_path) if x.is_dir())
     return res
+
+
+def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
+    """Returns a dictionary representing the directory tree.
+    It will have only directories and subdirectories (not files).
+
+    :param dir_path: Target directory path.
+    :type dir_path: str
+    :returns: Dictionary representing the directory tree.
+    :rtype: :class:`Dict[str, Union[str, Dict]]`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import get_subdirs_tree
+        tree = get_subdirs_tree('/home/admin/work/projects/examples')
+        print(tree)
+        # Output: {'examples': {'tests': {}, 'users': {}, 'ds1': {}}}
+    """
+
+    tree = {}
+    subdirs = get_subdirs(dir_path, recursively=True)
+    for subdir in subdirs:
+        parts = subdir.split(os.sep)
+        d = tree
+        for part in parts:
+            if part not in d:
+                d[part] = {}
+            d = d[part]
+
+    return tree
+
+
+def subdir_tree(dir_path: str):
+    """Generator that yields directories in the directory tree,
+    starting from the level below the root directory and then going down the tree.
+
+    :param dir_path: Target directory path.
+    :type dir_path: str
+    :returns: Generator that yields directories in the directory tree.
+    :rtype: Generator[str, None, None]
+    """
+    tree = get_subdirs_tree(dir_path)
+
+    def _subdir_tree(tree, path=""):
+        for key, value in tree.items():
+            new_path = os.path.join(path, key) if path else key
+            yield new_path
+            if value:
+                yield from _subdir_tree(value, new_path)
+
+    yield from _subdir_tree(tree)
+
+
+def global_to_relative(global_path: str, base_dir: str) -> str:
+    """
+    Converts global path to relative path.
+
+    :param global_path: Global path.
+    :type global_path: str
+    :param base_dir: Base directory path.
+    :type base_dir: str
+    :returns: Relative path.
+    :rtype: :class:`str`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import global_to_relative
+        relative_path = global_to_relative('/home/admin/work/projects/examples/1.jpeg', '/home/admin/work/projects')
+        print(relative_path)
+        # Output: examples/1.jpeg
+    """
+    return os.path.relpath(global_path, base_dir)
 
 
 # removes directory content recursively

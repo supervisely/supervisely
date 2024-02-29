@@ -3,7 +3,7 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.obj_class import ObjClass
@@ -26,6 +26,7 @@ class ProjectMetaJsonFields:
     TAGS = "tags"
     PROJECT_TYPE = "projectType"
     PROJECT_SETTINGS = "projectSettings"
+    VERSION = "version"
 
 
 def _merge_img_obj_tag_metas(
@@ -136,6 +137,7 @@ class ProjectMeta(JsonSerializable):
         tag_metas: Optional[Union[TagMetaCollection, List[TagMeta]]] = None,
         project_type: Optional[ProjectType] = None,
         project_settings: Optional[Union[ProjectSettings, Dict]] = None,
+        version: Optional[Literal["1.0", "2.0"]] = "2.0",
     ):
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
@@ -163,6 +165,8 @@ class ProjectMeta(JsonSerializable):
             self._project_settings = project_settings
             if project_settings is None:
                 self._project_settings = ProjectSettings()
+
+        self.version = version
 
         self._project_settings.validate(self)
 
@@ -335,6 +339,7 @@ class ProjectMeta(JsonSerializable):
         res = {
             ProjectMetaJsonFields.OBJ_CLASSES: self._obj_classes.to_json(),
             ProjectMetaJsonFields.TAGS: self._tag_metas.to_json(),
+            ProjectMetaJsonFields.VERSION: self.version,
         }
         if self._project_type is not None:
             res[ProjectMetaJsonFields.PROJECT_TYPE] = self._project_type
@@ -384,6 +389,7 @@ class ProjectMeta(JsonSerializable):
         img_tag_metas_json = data.get(ProjectMetaJsonFields.IMG_TAGS, [])
         obj_tag_metas_json = data.get(ProjectMetaJsonFields.OBJ_TAGS, [])
         project_type = data.get(ProjectMetaJsonFields.PROJECT_TYPE, None)
+        version = data.get(ProjectMetaJsonFields.VERSION, "2.0")
 
         if len(tag_metas_json) > 0:
             # New format - all project tags in a single collection.
@@ -438,6 +444,7 @@ class ProjectMeta(JsonSerializable):
             tag_metas=tag_metas,
             project_type=project_type,
             project_settings=project_settings,
+            version=version,
         )
 
     def merge(self, other: ProjectMeta) -> ProjectMeta:

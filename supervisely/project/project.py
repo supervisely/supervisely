@@ -49,6 +49,7 @@ from supervisely.io.fs import (
     list_files_recursively,
     mkdir,
     silent_remove,
+    subdir_tree,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
@@ -128,7 +129,11 @@ class Dataset(KeyObject):
     item_info_class = ImageInfo
 
     def __init__(
-        self, directory: str, mode: OpenMode, version: Optional[Literal["1.0", "2.0"]] = "2.0"
+        self,
+        directory: str,
+        mode: OpenMode,
+        version: Optional[Literal["1.0", "2.0"]] = "2.0",
+        parents: Optional[List[str]] = None,
     ):
         if type(mode) is not OpenMode:
             raise TypeError(
@@ -136,6 +141,7 @@ class Dataset(KeyObject):
             )
 
         self.version = version
+        self.parents = parents or []
 
         if version == "1.0":
             self.item_dir_name = "img"
@@ -1494,7 +1500,14 @@ class Project:
                 # Output: ds1
                 #         ds2
         """
-        return self._datasets
+
+        def parent_length(dataset):
+            return len(dataset.parents)
+
+        if self.version == "1.0":
+            return self._datasets
+        elif self.version == "2.0":
+            return sorted(self._datasets, key=parent_length)
 
     @property
     def meta(self) -> ProjectMeta:
@@ -1598,11 +1611,26 @@ class Project:
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
-        possible_datasets = get_subdirs(self.directory)
+        version = meta_json.get("version", None)
+        if not version or version == "1.0":
+            self.version = "1.0"
+            possible_datasets = get_subdirs(self.directory)
+        elif version == "2.0":
+            self.version = "2.0"
+            possible_datasets = subdir_tree(self.directory)
+
         for ds_name in possible_datasets:
+            parents = ds_name.split(os.path.sep)
+            if len(parents) > 1:
+                parents.pop(-1)
+            else:
+                parents = None
             try:
                 current_dataset = self.dataset_class(
-                    os.path.join(self.directory, ds_name), OpenMode.READ
+                    os.path.join(self.directory, ds_name),
+                    OpenMode.READ,
+                    version=self.version,
+                    parents=parents,
                 )
                 self._datasets = self._datasets.add(current_dataset)
             except Exception as ex:
@@ -2660,9 +2688,17 @@ def upload_project(
         log_progress = False
 
     image_id_dct, anns_paths_dct = {}, {}
+    dataset_map = {}
 
     for ds_fs in project_fs.datasets:
-        dataset = api.dataset.create(project.id, ds_fs.name)
+        if len(ds_fs.parents) > 0:
+            parent = f"{os.path.sep}".join(ds_fs.parents)
+            parent_id = dataset_map.get(parent)
+        else:
+            parent_id = None
+
+        dataset = api.dataset.create(project.id, ds_fs.name, parent_id=parent_id)
+        dataset_map[dataset.name] = dataset.id
 
         ds_fs: Dataset
 
