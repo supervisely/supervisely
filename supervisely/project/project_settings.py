@@ -171,10 +171,7 @@ class ProjectSettings(JsonSerializable):
                     f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
                     "that will be used for image grouping for multi-view labeling interface."
                 )
-
-            else:
-                if multi_tag.value_type == TagValueType.NONE:
-                    raise RuntimeError(
-                        f"The tag value type '{TagValueType.NONE}' is unsupported for the multi-view mode. "
-                        f"Please specify with the following types: '{TagValueType.ANY_STRING}', '{TagValueType.ANY_NUMBER}', or '{TagValueType.ONEOF_STRING}'"
-                    )
+            elif multi_tag.value_type != TagValueType.ANY_STRING:
+                raise RuntimeError(
+                    f"The multi-view tag value type should be '{TagValueType.ANY_STRING}'. The provided type: '{multi_tag.value_type}'."
+                )

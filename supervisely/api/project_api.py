@@ -996,19 +996,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
         """Enables and disables images grouping by given tag name.
 
-        :param id: Project ID, where images grouping will be enabled
+        :param id: Project ID, where images grouping will be enabled.
         :type id: int
-        :param enable: if True groups images by given tag name, otherwise disables images grouping
+        :param enable: if True groups images by given tag name, otherwise disables images grouping.
         :type enable: bool
-        :param tag_name: Name of the tag. Images will be grouped by this tag
+        :param tag_name: Name of the tag. Images will be grouped by this tag.
         :type tag_name: str
+        :param sync: Enable the syncronization views mode in the grouping settings. By default, `False`
+        :type sync: bool
         """
         project_meta_json = self.get_meta(id)
         project_meta = ProjectMeta.from_json(project_meta_json)
         group_tag_meta = project_meta.get_tag_meta(tag_name)
         if group_tag_meta is None:
-            raise Exception(f"Tag {tag_name} doesn't exists in the given project")
-
+            raise RuntimeError(f"The group tag '{tag_name}' doesn't exist in the given project.")
+        elif group_tag_meta.value_type != TagValueType.ANY_STRING:
+            raise RuntimeError(
+                f"The tag value type should be '{TagValueType.ANY_STRING}' for images grouping. The provided type: '{group_tag_meta.value_type}'"
+            )
         group_tag_id = group_tag_meta.sly_id
         project_settings = {
             "groupImages": enable,
