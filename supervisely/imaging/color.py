@@ -1,14 +1,16 @@
 # coding: utf-8
 from __future__ import annotations
 
-import random
 import colorsys
-import os
+import copy
 import gzip
 import json
-import copy
+import os
+import random
 import re
 from typing import List
+
+import distinctipy
 
 
 def _validate_color(color):
@@ -24,7 +26,7 @@ def _validate_color(color):
         validate_channel_value(channel)
 
 
-def random_rgb() -> List[int, int, int]:
+def random_rgb(fix_satlight=True) -> List[int, int, int]:
     """
     Generate RGB color with fixed saturation and lightness.
 
@@ -40,7 +42,12 @@ def random_rgb() -> List[int, int, int]:
         print(color)
         # Output: [138, 15, 123]
     """
-    hsl_color = (random.random(), 0.3, 0.8)
+    saturation = 0.8
+    lightness = 0.5
+    if fix_satlight is False:
+        saturation = random.uniform(0.2, 0.8)
+        lightness = random.uniform(0.4, 1.0)
+    hsl_color = (random.random(), saturation, lightness)
     rgb_color = colorsys.hls_to_rgb(*hsl_color)
     return [round(c * 255) for c in rgb_color]
 
@@ -201,6 +208,12 @@ def validate_channel_value(value: int) -> None:
 #     json.dump(data, zipfile)
 # with gzip.open("colors.json.gz", "r") as fin:
 #     data = json.loads(fin.read().decode("utf-8"))
+
+
+def get_distinct_colors(n: int) -> List[List[int, int, int]]:
+    # Warning: with the increasing of n, the calculation become slower
+    colors = distinctipy.get_colors(n)
+    return [distinctipy.get_rgb256(color) for color in colors]
 
 
 def get_predefined_colors(n: int):
