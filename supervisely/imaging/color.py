@@ -224,7 +224,7 @@ def get_predefined_colors(n: int):
 
     rand_colors = []
     for i in range(n):
-        rand_colors.append(random_rgb())
+        rand_colors.append(random_rgb(fix_satlight=False))
     return rand_colors
 
 
