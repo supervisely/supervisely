@@ -40,8 +40,8 @@ def random_rgb(fix_satlight=True) -> List[int, int, int]:
         print(color)
         # Output: [138, 15, 123]
     """
-    saturation = 0.8
-    lightness = 0.5
+    saturation = 0.3
+    lightness = 0.8
     if fix_satlight is False:
         saturation = random.uniform(0.2, 0.8)
         lightness = random.uniform(0.4, 1.0)
@@ -191,6 +191,7 @@ def validate_channel_value(value: int) -> None:
 
 
 # generate colors
+# see tests/generate_distinct_colors.py
 # import distinctipy
 # data = {}
 # for n in range(100):

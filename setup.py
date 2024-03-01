@@ -126,7 +126,7 @@ setup(
     ),
     package_data={
         "": ["*.html", "*.css", "*.js"],
-        "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/*.json.gz"],
+        "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
     },
     entry_points={
         "console_scripts": [
