@@ -10,8 +10,6 @@ import random
 import re
 from typing import List
 
-import distinctipy
-
 
 def _validate_color(color):
     """
@@ -208,12 +206,6 @@ def validate_channel_value(value: int) -> None:
 #     json.dump(data, zipfile)
 # with gzip.open("colors.json.gz", "r") as fin:
 #     data = json.loads(fin.read().decode("utf-8"))
-
-
-def get_distinct_colors(n: int) -> List[List[int, int, int]]:
-    # Warning: with the increasing of n, the calculation become slower
-    colors = distinctipy.get_colors(n)
-    return [distinctipy.get_rgb256(color) for color in colors]
 
 
 def get_predefined_colors(n: int):
