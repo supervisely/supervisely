@@ -5,7 +5,7 @@ import distinctipy
 import supervisely as sly
 
 data = {}
-for n in range(5):
+for n in range(500):
     print(n)
     colors = distinctipy.get_colors(n)
     rgb_colors = [distinctipy.get_rgb256(color) for color in colors]
