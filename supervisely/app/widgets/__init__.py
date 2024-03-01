@@ -139,3 +139,5 @@ from supervisely.app.widgets.iframe.iframe import IFrame
 from supervisely.app.widgets.pretrained_models_selector.pretrained_models_selector import (
     PretrainedModelsSelector,
 )
+
+from supervisely.app.widgets.tags_table.tags_table import TagsTable
