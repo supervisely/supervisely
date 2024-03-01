@@ -33,7 +33,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, handle_original_tqdm, tqdm_sly
 
 
 class FileInfo(NamedTuple):
@@ -464,6 +464,7 @@ class FileApi(ModuleApiBase):
 
             api.file.download(8, path_to_file, local_save_path)
         """
+
         if self.is_on_agent(remote_path):
             self.download_from_agent(remote_path, local_save_path, progress_cb)
             return
@@ -839,15 +840,16 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
-        _progress_cb = progress_cb
-        if progress_cb is not None and isinstance(progress_cb, tqdm):
-            _progress_cb = progress_cb.get_partial()
-        if _progress_cb is None:
+        if progress_cb is None:
             data = encoder
         else:
-            data = MultipartEncoderMonitor(encoder, _progress_cb)
+            try:
+                data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
+            except AttributeError:
+                data = MultipartEncoderMonitor(encoder, progress_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
+
         return results
 
     def rename(self, old_name: str, new_name: str) -> None:
@@ -1289,7 +1291,7 @@ class FileApi(ModuleApiBase):
         local_dir: str,
         remote_dir: str,
         change_name_if_conflict: Optional[bool] = True,
-        progress_size_cb: Optional[Callable] = None,
+        progress_size_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
     ) -> str:
         """

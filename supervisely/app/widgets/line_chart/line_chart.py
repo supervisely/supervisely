@@ -1,7 +1,8 @@
-from typing import Union
 from functools import wraps
+from typing import List, Tuple, Union
+
+from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets.apexchart.apexchart import Apexchart
-from supervisely.app.content import StateJson, DataJson
 
 try:
     from typing import Literal
@@ -49,6 +50,7 @@ class LineChart(Apexchart):
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
         height: Union[int, str] = 350,
         decimalsInFloat: int = 2,
+        data_type: Literal["dict", "tuple"] = "dict",
     ):
         self._title = title
         self._series = series
@@ -65,6 +67,7 @@ class LineChart(Apexchart):
         self._ymax = 10
         self._widget_height = height
         self._decimalsInFloat = decimalsInFloat
+        self._data_type = data_type
 
         self._options = {
             "chart": {"type": "line", "zoom": {"enabled": self._zoom}},
@@ -75,6 +78,7 @@ class LineChart(Apexchart):
             "xaxis": {"type": self._xaxis_type},
             "markers": {"size": self._markers_size},
             "yaxis": [{"show": True, "decimalsInFloat": self._decimalsInFloat}],
+            "data_type": data_type,
         }
         if self._xaxis_title is not None:
             self._options["xaxis"]["title"] = {"text": str(self._xaxis_title)}

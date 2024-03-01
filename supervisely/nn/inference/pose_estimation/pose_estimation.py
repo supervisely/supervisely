@@ -89,6 +89,7 @@ class PoseEstimation(Inference):
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
+    # pylint: disable=no-self-argument
     def process_image_crop(func):
         """
         Decorator for processing annotation labels before and after inference.
@@ -106,6 +107,7 @@ class PoseEstimation(Inference):
 
         @functools.wraps(func)
         def wrapper_inference(*args, **kwargs):
+            # pylint: disable=not-callable
             settings = kwargs["settings"]
 
             if "detected_bboxes" in settings:

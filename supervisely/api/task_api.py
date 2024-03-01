@@ -603,7 +603,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         response = self._api.post("tasks.stop", {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
 
-    def get_import_files_list(self, id: int) -> Dict or None:
+    def get_import_files_list(self, id: int) -> Union[Dict, None]:
         """get_import_files_list"""
         response = self._api.post("tasks.import.files_list", {ApiField.ID: id})
         return response.json() if (response is not None) else None
@@ -768,6 +768,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def _validate_checkpoints_support(self, task_id):
         """_validate_checkpoints_support"""
+        # pylint: disable=too-few-format-args
         info = self.get_info_by_id(task_id)
         if info["type"] != str(TaskApi.PluginTaskType.TRAIN):
             raise RuntimeError(

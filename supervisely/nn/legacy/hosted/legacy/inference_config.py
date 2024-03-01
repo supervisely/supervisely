@@ -1,7 +1,7 @@
 # coding: utf-8
 from copy import deepcopy
 
-from supervisely.nn.hosted.constants import MODEL
+from supervisely.nn.legacy.hosted.constants import MODEL
 
 # Copied from supervisely.nn.hosted.inference_modes
 # TODO factor out to a separate common set of constants

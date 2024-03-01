@@ -6,6 +6,8 @@ import requests
 from requests.structures import CaseInsensitiveDict
 import uuid
 import time
+import re
+import subprocess
 from functools import partial, wraps
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -75,6 +77,7 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
+        self._autostart_delay_time = 5*60  # 5 min
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -102,6 +105,7 @@ class Inference:
 
             def on_change_model_callback(gui: GUI.InferenceGUI):
                 self._model_served = False
+                clean_up_cuda()
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
@@ -115,7 +119,7 @@ class Inference:
     def _prepare_device(self, device):
         if device is None:
             try:
-                import torch
+                import torch # pylint: disable=import-error
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
@@ -296,6 +300,7 @@ class Inference:
 
         return models_list
 
+    # pylint: disable=method-hidden
     def load_on_device(
         self,
         model_dir: str,
@@ -336,6 +341,8 @@ class Inference:
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
         }
+
+    # pylint: enable=method-hidden
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
         hr_info = {}
@@ -458,6 +465,7 @@ class Inference:
         )
         return ann
 
+    # pylint: disable=method-hidden
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
         raise NotImplementedError("Have to be implemented in child class")
 
@@ -466,6 +474,7 @@ class Inference:
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
+    # pylint: enable=method-hidden
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
         if settings is None:
@@ -760,7 +769,19 @@ class Inference:
 
         @call_on_autostart()
         def autostart_func():
-            self.gui.deploy_with_current_params()
+            gpu_count = get_gpu_count()
+            if gpu_count > 1:
+                # run autostart after 5 min
+                def delayed_autostart():
+                    logger.debug("Found more than one GPU, autostart will be delayed.")
+                    time.sleep(self._autostart_delay_time)
+                    if not self._model_served:
+                        logger.debug("Deploying the model via autostart...")
+                        self.gui.deploy_with_current_params()
+                self._executor.submit(delayed_autostart)
+            else:
+                # run autostart immediately
+                self.gui.deploy_with_current_params()
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
@@ -1043,3 +1064,24 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_pos=1,
     arg_key="device",
 )
+
+
+def get_gpu_count():
+    try:
+        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode('utf-8')
+        gpu_count = len(re.findall(r'GPU \d+:', nvidia_smi_output))
+        return gpu_count
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
+        return 0
+    
+
+def clean_up_cuda():
+    try:
+        # torch may not be installed
+        import torch # pylint: disable=import-error
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
+    except Exception as exc:
+        logger.debug("Error in clean_up_cuda.", exc_info=True)

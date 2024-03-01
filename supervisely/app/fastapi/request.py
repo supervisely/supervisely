@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, root_validator  # pylint: disable=no-name-in-module
 from supervisely.api.api import Api
 
 

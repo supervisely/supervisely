@@ -11,6 +11,7 @@ class ProjectType(StrEnum):
     POINT_CLOUD_EPISODES = "point_cloud_episodes"
 
 
+
 # Constants for multispectral and multiview projects.
 _MULTISPECTRAL_TAG_NAME = "multispectral"
 _MULTIVIEW_TAG_NAME = "multiview"

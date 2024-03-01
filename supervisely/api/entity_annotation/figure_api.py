@@ -2,17 +2,35 @@
 
 # docs
 from __future__ import annotations
-from typing import List, NamedTuple, Optional, Dict
 
+from typing import Dict, List, NamedTuple, Optional
+
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely._utils import batched
+
+
+class FigureInfo(NamedTuple):
+    id: int
+    class_id: int
+    updated_at: str
+    created_at: str
+    entity_id: int
+    object_id: int
+    project_id: int
+    dataset_id: int
+    frame_index: int
+    geometry_type: str
+    geometry: dict
+    tags: list
+    meta: dict
 
 
 class FigureApi(RemoveableBulkModuleApi):
     """
     Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
+
     @staticmethod
     def info_sequence():
         """
@@ -33,17 +51,21 @@ class FigureApi(RemoveableBulkModuleApi):
                        geometry_type='bitmap',
                        geometry={'bitmap': {'data': 'eJwdlns8...Cgj4=', 'origin': [335, 205]}})
         """
-        return [ApiField.ID,
-                ApiField.UPDATED_AT,
-                ApiField.CREATED_AT,
-                ApiField.ENTITY_ID,
-                ApiField.OBJECT_ID,
-                ApiField.PROJECT_ID,
-                ApiField.DATASET_ID,
-                ApiField.FRAME_INDEX,
-                ApiField.GEOMETRY_TYPE,
-                ApiField.GEOMETRY
-                ]
+        return [
+            ApiField.ID,
+            ApiField.CLASS_ID,
+            ApiField.UPDATED_AT,
+            ApiField.CREATED_AT,
+            ApiField.ENTITY_ID,
+            ApiField.OBJECT_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.FRAME_INDEX,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY,
+            ApiField.TAGS,
+            ApiField.META,
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -68,7 +90,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         return "FigureInfo"
 
-    def get_info_by_id(self, id: int) -> NamedTuple:
+    def get_info_by_id(self, id: int) -> FigureInfo:
         """
         Get Figure information by ID.
 
@@ -111,9 +133,31 @@ class FigureApi(RemoveableBulkModuleApi):
             #     }
             # ]
         """
-        return self._get_info_by_id(id, 'figures.info')
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometryType",
+            "geometry",
+            "tags",
+            "meta",
+        ]
+        return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
-    def create(self, entity_id: int, object_id: int, meta: Dict, geometry_json: Dict, geometry_type, track_id: int=None):
+    def create(
+        self,
+        entity_id: int,
+        object_id: int,
+        meta: Dict,
+        geometry_json: Dict,
+        geometry_type: str,
+        track_id: int = None,
+    ) -> int:
         """"""
         input_figure = {
             ApiField.META: meta,
@@ -130,7 +174,7 @@ class FigureApi(RemoveableBulkModuleApi):
         response = self._api.post("figures.bulk.add", body)
         return response.json()[0][ApiField.ID]
 
-    def get_by_ids(self, dataset_id: int, ids: List[int]) -> List[NamedTuple]:
+    def get_by_ids(self, dataset_id: int, ids: List[int]) -> List[FigureInfo]:
         """
         Get Figures information by IDs from given dataset ID.
 
@@ -236,8 +280,27 @@ class FigureApi(RemoveableBulkModuleApi):
             # ]
         """
         filters = [{"field": "id", "operator": "in", "value": ids}]
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometryType",
+            "geometry",
+            "tags",
+            "meta",
+        ]
         figures_infos = self.get_list_all_pages(
-            "figures.list", {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters}
+            "figures.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters,
+                ApiField.FIELDS: fields,
+            },
         )
 
         if len(ids) != len(figures_infos):
@@ -265,7 +328,7 @@ class FigureApi(RemoveableBulkModuleApi):
         """"""
         if len(figures_json) == 0:
             return
-        for (batch_keys, batch_jsons) in zip(
+        for batch_keys, batch_jsons in zip(
             batched(figures_keys, batch_size=100), batched(figures_json, batch_size=100)
         ):
             resp = self._api.post(
@@ -275,3 +338,52 @@ class FigureApi(RemoveableBulkModuleApi):
             for key, resp_obj in zip(batch_keys, resp.json()):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
+
+    def download(self, dataset_id: int, image_ids: List[int] = None) -> Dict[int, List[FigureInfo]]:
+        """
+        Method returns dictionary with image ids and list of FigureInfo for given dataset ID. Can be filtered by image IDs.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of image IDs within given dataset ID.
+        :type image_ids: List[int], optional
+        :return: List of information about Figures. See :class:`FigureInfo<FigureInfo>`
+        :rtype: :class:`Dict[int, List[FigureInfo]]`
+        """
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometryType",
+            "geometry",
+            "tags",
+            "meta",
+        ]
+
+        if image_ids is None:
+            filters = []
+        else:
+            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FIELDS: fields,
+            ApiField.FILTER: filters,
+        }
+        resp = self._api.post("figures.list", data)
+        infos = resp.json()
+        images_figures = {}
+        for info in infos["entities"]:
+            figure_info = self._convert_json_info(info, True)
+            if figure_info.entity_id in images_figures:
+                images_figures[figure_info.entity_id].append(figure_info)
+            else:
+                images_figures[figure_info.entity_id] = [figure_info]
+        return images_figures
+
+    def _convert_json_info(self, info: dict, skip_missing=False):
+        return super()._convert_json_info(info, True)

@@ -51,12 +51,14 @@ class Container(Widget):
         overflow: Optional[Literal["scroll", "wrap"]] = "scroll",
         style: Optional[str] = "",
         widget_id: Optional[str] = None,
+        widgets_style: Optional[str] = "",
     ):
         self._widgets = widgets
         self._direction = direction
         self._gap = gap
         self._overflow = overflow
         self._style = style
+        self._widgets_style = widgets_style
 
         if self._overflow not in ["scroll", "wrap", None]:
             raise ValueError("overflow can be only 'scroll', 'wrap' or None")

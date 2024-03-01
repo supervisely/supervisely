@@ -25,7 +25,18 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 KEEP_ASPECT_RATIO = -1  # TODO: need move it to best place
 
 # Do NOT use directly for image extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-SUPPORTED_IMG_EXTS = [".jpg", ".jpeg", ".mpo", ".bmp", ".png", ".webp", ".tiff", ".tif", ".nrrd"]
+SUPPORTED_IMG_EXTS = [
+    ".jpg",
+    ".jpeg",
+    ".mpo",
+    ".bmp",
+    ".png",
+    ".webp",
+    ".tiff",
+    ".tif",
+    ".nrrd",
+    ".jfif",
+]
 DEFAULT_IMG_EXT = ".png"
 
 
@@ -187,6 +198,31 @@ def validate_format(path: str) -> None:
                 img_ext, path, ", ".join(SUPPORTED_IMG_EXTS)
             )
         )
+
+
+def is_valid_format(path: str) -> bool:
+    """
+    Checks if a given file has a supported format.
+
+    :param path: Path to file.
+    :type path: str
+    :return: True if file format in list of supported images formats, False - in otherwise
+    :rtype: :class:`bool`
+    :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            sly.image.is_valid_format('/images/new_image.jpeg') # True
+            sly.image.is_valid_format('/images/016_img.py') # False
+    """
+
+    try:
+        validate_format(path)
+        return True
+    except (UnsupportedImageFormat, ImageReadException):
+        return False
 
 
 def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
@@ -369,9 +405,22 @@ def draw_text_sequence(
                    After
     """
     col_offset = 0
+
+    canvas = PILImage.new("RGBA", bitmap.shape[:2][::-1], (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    _, max_height = draw.textsize("".join(texts), font=font)
+
+    _, text_height = draw.textsize(texts[0], font=font)
+    middle = text_height // 2
     for text in texts:
-        position = anchor_point[0], anchor_point[1] + col_offset
-        _, text_width = draw_text(bitmap, text, position, corner_snap, font, fill_background)
+        _, h = draw.textsize(text, font=font)
+        row_offset = middle - h // 2
+
+        y, x = anchor_point[0] - row_offset, anchor_point[1] + col_offset
+        text_height, text_width = draw_text(
+            bitmap, text, (y, x), corner_snap, font, fill_background, (0, 0, 0, 255), max_height
+        )
         col_offset += text_width + col_space
 
 
@@ -383,7 +432,8 @@ def draw_text(
     font: Optional[ImageFont.FreeTypeFont] = None,
     fill_background: Optional[bool] = True,
     color: Optional[Union[Tuple[int, int, int, int], Tuple[int, int, int]]] = (0, 0, 0, 255),
-) -> tuple:
+    max_text_height: Optional[int] = None,
+) -> Tuple[int, int]:
     """
     Draws given text on bitmap image.
 
@@ -403,6 +453,9 @@ def draw_text(
                   ranging from 0 to 255.
                   If alpha is not provided, it defaults to 255 (fully opaque).
     :type color: Union[Tuple[int, int, int, int], Tuple[int, int, int]], optional
+    :param max_text_height: The parameter is necessary to draw neatly the fill background of list of texts with different heights. See `self.draw_text_sequence` for details.
+    :type max_text_height: bool, optional
+
     :return: Height and width of text
     :rtype: :class:`Tuple[int, int]`
     :Usage example:
@@ -449,13 +502,18 @@ def draw_text(
 
     if fill_background:
         rect_right = rect_left + text_width
-        rect_bottom = rect_top + text_height
+        _rect_top = rect_top
+        _rect_bottom = _rect_top + text_height
+        if max_text_height is not None:
+            delta = (max_text_height - text_height) // 2
+            _rect_bottom += delta
+            _rect_top -= delta
+
         drawer.rectangle(
-            ((rect_left, rect_top), (rect_right + 1, rect_bottom)),
+            ((rect_left, _rect_top), (rect_right + 1, _rect_bottom)),
             fill=(255, 255, 255, 128),
         )
     drawer.text((rect_left + 1, rect_top), text, fill=color, font=font)
-
     source_img = PILImage.alpha_composite(source_img, canvas)
     source_img = source_img.convert("RGB")
     bitmap[:, :, :] = np.array(source_img, dtype=np.uint8)

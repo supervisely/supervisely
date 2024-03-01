@@ -473,7 +473,7 @@ class KeyIndexedCollection:
 
     def __str__(self):
         res_table = PrettyTable()
-        res_table.field_names = self.item_type.get_header_ptable()
+        res_table.field_names = self.item_type.get_header_ptable()  # pylint: disable=no-member
         for item in self:
             res_table.add_row(item.get_row_ptable())
         return res_table.get_string()

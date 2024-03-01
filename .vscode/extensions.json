@@ -1,0 +1,11 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.pylint",
+        "ms-python.isort",
+        "ms-python.black-formatter",
+        "esbenp.prettier-vscode",
+        "znck.grammarly",
+        "njpwerner.autodocstring"
+    ]
+}

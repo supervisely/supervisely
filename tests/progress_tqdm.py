@@ -1,7 +1,39 @@
-from dotenv import load_dotenv
-import os, math
+import math
+import os
+import time
 from time import sleep
 
+from dotenv import load_dotenv
+from progress_tqdm_imports import *
+from tqdm import tqdm
+
+# os.environ["ENV"] = "production"
+
+# dwnl()
+# upl()
+# dwnl_dir()
+# upldir()
+
+# breakpoint()
+# dwnl_prj()
+# upl_prj()
+
+# dwn_prj_img()
+upl_prj_img()
+
+# dwnl_prj_vol()
+# upl_prj_vol()
+
+# dwnl_prj_vid()
+# upl_prj_vid()
+
+# dwnl_prj_pcl()
+# upl_prj_pcl()
+
+# dwnl_prj_pclep()
+# upl_prj_pclep()
+
+breakpoint()
 import supervisely as sly
 
 if sly.is_development():
@@ -28,7 +60,6 @@ from tqdm import tqdm
 
 # from supervisely.task.progress import WrapTqdm as tqdm
 
-# os.environ["ENV"] = "production"
 project_fs = sly.read_project(
     "/home/grokhi/supervisely/dataset-ninja/pascal-voc-2012/APP_DATA/43489_18606_Football.tar/Football"
 )

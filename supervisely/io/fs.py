@@ -122,15 +122,15 @@ def list_dir_recursively(
     dir: str, include_subdirs: bool = False, use_global_paths: bool = False
 ) -> List[str]:
     """
-    Recursively walks through directory and returns list with all file paths.
+    Recursively walks through directory and returns list with all file paths, and optionally subdirectory paths.
 
     :param path: Path to directory.
     :type path: str
-    :param include_subdirs: If True, subdirectories will be included in the result list.
+    :param include_subdirs: If True, subdirectory paths will be included in the result list.
     :type include_subdirs: bool
     :param use_global_paths: If True, absolute paths will be returned instead of relative ones.
     :type use_global_paths: bool
-    :returns: List containing file paths.
+    :returns: List containing file paths, and optionally subdirectory paths.
     :rtype: :class:`List[str]`
     :Usage example:
 
@@ -143,7 +143,7 @@ def list_dir_recursively(
         print(list_dir)
         # Output: ['meta.json', 'ds1/ann/IMG_0748.jpeg.json', 'ds1/ann/IMG_4451.jpeg.json', 'ds1/img/IMG_0748.jpeg', 'ds1/img/IMG_4451.jpeg']
     """
-    all_files = []
+    all_paths = []
     for root, dirs, files in os.walk(dir):
         for name in files:
             file_path = os.path.join(root, name)
@@ -152,17 +152,17 @@ def list_dir_recursively(
                 if not use_global_paths
                 else os.path.abspath(file_path)
             )
-            all_files.append(file_path)
+            all_paths.append(file_path)
         if include_subdirs:
             for name in dirs:
-                dir_path = os.path.join(root, name)
-                dir_path = (
-                    os.path.relpath(dir_path, dir)
+                subdir_path = os.path.join(root, name)
+                subdir_path = (
+                    os.path.relpath(subdir_path, dir)
                     if not use_global_paths
-                    else os.path.abspath(dir_path)
+                    else os.path.abspath(subdir_path)
                 )
-                all_files.append(dir_path)
-    return all_files
+                all_paths.append(subdir_path)
+    return all_paths
 
 
 def list_files_recursively(
@@ -170,13 +170,14 @@ def list_files_recursively(
 ) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
+    Can be filtered by valid extensions and filter function.
 
      :param dir: Target dir path.
      :param dir: str
      :param valid_extensions: List with valid file extensions.
-     :type valid_extensions: List[str]
-     :param filter_fn: Function with a single argument that determines whether to keep a given file path.
-     :type filter_fn:
+     :type valid_extensions: List[str], optional
+     :param filter_fn: Function with a single argument. Argument is a file path. Function determines whether to keep a given file path. Must return True or False.
+     :type filter_fn: Callable, optional
      :returns: List with file paths
      :rtype: :class:`List[str]`
      :Usage example:
@@ -212,14 +213,16 @@ def list_files(
 ) -> List[str]:
     """
     Returns list with file paths presented in given directory.
+    Can be filtered by valid extensions and filter function.
+    Also can be case insensitive for valid extensions.
 
     :param dir: Target dir path.
     :param dir: str
     :param valid_extensions: List with valid file extensions.
     :type valid_extensions: List[str]
-    :param filter_fn: Function with a single argument that determines whether to keep a given file path.
-    :type filter_fn:
-    :param ignore_valid_extensions_case: If True, valid extensions will be compared with file extensions in case-insensitive manner.
+    :param filter_fn: Function with a single argument. Argument is a file path. Function determines whether to keep a given file path. Must return True or False.
+    :type filter_fn: Callable, optional
+    :param ignore_valid_extensions_case: If True, validation of file extensions will be case insensitive.
     :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
@@ -573,10 +576,12 @@ def get_directory_size(dir_path: str) -> int:
 
 
 def archive_directory(
-    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None, chunk_size_mb: int = 50
 ) -> Union[None, List[str]]:
     """
     Create tar archive from directory and optionally split it into parts of specified size.
+    You can adjust the size of the chunk to read from the file, while archiving the file into parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param dir_: Target directory path.
     :type dir_: str
@@ -585,6 +590,8 @@ def archive_directory(
     :param split: Split archive into parts of specified size (in bytes) or size with
         suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
     :type split: Union[int, str]
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None or list of archive parts if split is not None
     :rtype: Union[None, List[str]]
     :Usage example:
@@ -610,6 +617,7 @@ def archive_directory(
     if os.path.getsize(tar_path) <= split:
         return
 
+    chunk = chunk_size_mb * 1024 * 1024
     tar_name = os.path.basename(tar_path)
     tar_dir = os.path.abspath(os.path.dirname(tar_path))
     parts_paths = []
@@ -619,21 +627,29 @@ def archive_directory(
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
             output_path = os.path.join(tar_dir, part_name)
-            data = input_file.read(split)
-            if not data:
-                break
             with open(output_path, "wb") as output_file:
-                output_file.write(data)
+                while output_file.tell() < split:
+                    data = input_file.read(chunk)
+                    if not data:
+                        break
+                    output_file.write(data)
                 parts_paths.append(output_path)
                 part_number += 1
+            if not data:
+                break
 
     os.remove(tar_path)
     return parts_paths
 
 
-def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None:
+def unpack_archive(
+    archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
+) -> None:
     """
     Unpacks archive to the target directory, removes junk files and directories.
+    To extract a split archive, you must pass the path to the first part in archive_path. Archive parts must be in the same directory. Format: archive_name.tar.001, archive_name.tar.002, etc. Works with tar and zip.
+    You can adjust the size of the chunk to read from the file, while unpacking the file from parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param archive_path: Path to the archive.
     :type archive_path: str
@@ -641,6 +657,10 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None
     :type target_dir: str
     :param remove_junk: Remove junk files and directories. Default is True.
     :type remove_junk: bool
+    :param is_split: Determines if the source archive is split into parts. If True, archive_path must be the path to the first part. Default is False.
+    :type is_split: bool
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -654,7 +674,33 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None
 
         sly.fs.unpack_archive(archive_path, target_dir)
     """
+
+    if is_split:
+        chunk = chunk_size_mb * 1024 * 1024
+        base_name = get_file_name(archive_path)
+        dir_name = os.path.dirname(archive_path)
+        if get_file_ext(base_name) in (".zip", ".tar"):
+            ext = get_file_ext(base_name)
+            base_name = get_file_name(base_name)
+        else:
+            ext = get_file_ext(archive_path)
+        parts = sorted([f for f in os.listdir(dir_name) if f.startswith(base_name)])
+        combined = os.path.join(dir_name, f"combined{ext}")
+
+        with open(combined, "wb") as output_file:
+            for part in parts:
+                part_path = os.path.join(dir_name, part)
+                with open(part_path, "rb") as input_file:
+                    while True:
+                        data = input_file.read(chunk)
+                        if not data:
+                            break
+                        output_file.write(data)
+        archive_path = combined
+
     shutil.unpack_archive(archive_path, target_dir)
+    if is_split:
+        silent_remove(archive_path)
     if remove_junk:
         remove_junk_from_dir(target_dir)
 
@@ -710,7 +756,9 @@ def get_file_hash(path: str) -> str:
         from supervisely.io.fs import get_file_hash
         hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
-    return get_bytes_hash(open(path, "rb").read())
+    with open(path, "rb") as file:
+        file_bytes = file.read()
+        return get_bytes_hash(file_bytes)
 
 
 def tree(dir_path: str) -> str:
