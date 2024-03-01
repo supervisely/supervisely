@@ -674,7 +674,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             data = self._add_sort_param(data)
         first_response = self._api.post(method, data).json()
         total = first_response["total"]
-        per_page = first_response["perPage"]
+        # per_page = first_response["perPage"]
         after = first_response["after"]
         # pages_count = first_response["pagesCount"]
 

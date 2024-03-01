@@ -34,14 +34,12 @@ from supervisely.collection.key_indexed_collection import (
     KeyObject,
 )
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     copy_file,
     dir_empty,
     dir_exists,
     ensure_base_path,
-    file_exists,
     get_file_name_with_ext,
     get_subdirs,
     list_dir_recursively,
@@ -161,10 +159,12 @@ class Dataset(KeyObject):
 
         parts = directory.split(os.path.sep)
         project_dir = parts[0]
-        ds_name = os.path.join(*parts[1:])
+        full_ds_name = os.path.join(*parts[1:])
+        short_ds_name = os.path.basename(directory)
 
         self._project_dir = project_dir
-        self._name = ds_name
+        self._name = full_ds_name
+        self._short_name = short_ds_name
 
         if mode is OpenMode.READ:
             self._read()
@@ -193,7 +193,10 @@ class Dataset(KeyObject):
     @property
     def name(self) -> str:
         """
-        Dataset name.
+        Full Dataset name, which includes it's parents,
+        e.g. ds1/ds2/ds3.
+
+        Use :attr:`short_name` to get only the name of the dataset.
 
         :return: Dataset Name.
         :rtype: :class:`str`
@@ -208,6 +211,26 @@ class Dataset(KeyObject):
             # Output: "ds1"
         """
         return self._name
+
+    @property
+    def short_name(self) -> str:
+        """
+        Short dataset name, which does not include it's parents.
+        To get the full name of the dataset, use :attr:`name`.
+
+        :return: Dataset Name.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            print(ds.name)
+            # Output: "ds1"
+        """
+        return self._short_name
 
     def key(self):
         # TODO: add docstring
@@ -2075,7 +2098,7 @@ class Project:
             classes_to_remove = []
         if inplace is False:
             raise ValueError(
-                f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
+                "Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
             )
         project = Project(project_dir, OpenMode.READ)
         for dataset in project.datasets:
@@ -2105,7 +2128,7 @@ class Project:
     ):
         if inplace is False:
             raise ValueError(
-                f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
+                "Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
             )
         if without_objects is False and without_tags is False and without_objects_and_tags is False:
             raise ValueError(
@@ -2687,7 +2710,7 @@ def upload_project(
     if progress_cb is not None:
         log_progress = False
 
-    image_id_dct, anns_paths_dct = {}, {}
+    # image_id_dct, anns_paths_dct = {}, {}
     dataset_map = {}
 
     for ds_fs in project_fs.datasets:
@@ -2697,8 +2720,8 @@ def upload_project(
         else:
             parent_id = None
 
-        dataset = api.dataset.create(project.id, ds_fs.name, parent_id=parent_id)
-        dataset_map[dataset.name] = dataset.id
+        dataset = api.dataset.create(project.id, ds_fs.short_name, parent_id=parent_id)
+        dataset_map[ds_fs.name] = dataset.id
 
         ds_fs: Dataset
 
@@ -2920,7 +2943,7 @@ def _download_project_optimized(
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
-    logger.info(f"Annotations are not cached (always download latest version from server)")
+    logger.info("Annotations are not cached (always download latest version from server)")
     project_fs = Project(project_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
