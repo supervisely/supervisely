@@ -154,9 +154,12 @@ class TrackerInterface:
                 self.video_id, frame_index
             )
         else:
-            self._hot_cache[frame_index] = self._local_cache_loader(
+            frame = self._local_cache_loader(
                 self.api, self.video_id, frame_index
             )
+            if self.load_all_frames:
+                self._hot_cache[frame_index] = frame
+            return frame
         return self._hot_cache[frame_index]
 
     def _load_frames(self):
