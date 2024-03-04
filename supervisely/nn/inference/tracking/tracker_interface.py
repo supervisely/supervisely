@@ -154,11 +154,11 @@ class TrackerInterface:
             self._hot_cache[frame_index] = self.api.video.frame.download_np(
                 self.video_id, frame_index
             )
+            return self._hot_cache[frame_index]
         else:
-            self._hot_cache[frame_index] = self._local_cache_loader(
+            return self._local_cache_loader(
                 self.api, self.video_id, frame_index
             )
-        return self._hot_cache[frame_index]
 
     def _load_frames(self):
         rgbs = []
