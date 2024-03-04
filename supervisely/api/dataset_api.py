@@ -151,7 +151,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self,
         project_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
-        recursive: Optional[bool] = False,
+        recursive: Optional[bool] = True,
         parent_id: Optional[int] = None,
     ) -> List[DatasetInfo]:
         """
