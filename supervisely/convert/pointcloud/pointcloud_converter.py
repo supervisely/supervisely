@@ -73,6 +73,9 @@ class PointcloudConverter(BaseConverter):
     ):
         """Upload converted data to Supervisely"""
 
+        if self.items_count == 0:
+            raise RuntimeError("Nothing to upload. Check the input data.")
+
         dataset = api.dataset.get_info_by_id(dataset_id)
         existing_names = set([pcd.name for pcd in api.image.get_list(dataset.id)])
         if self._meta is not None:

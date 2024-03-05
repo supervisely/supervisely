@@ -105,6 +105,9 @@ class VolumeConverter(BaseConverter):
     ):
         """Upload converted data to Supervisely"""
 
+        if self.items_count == 0:
+            raise RuntimeError("Nothing to upload. Check the input data.")
+
         dataset = api.dataset.get_info_by_id(dataset_id)
         existing_names = set([vol.name for vol in api.image.get_list(dataset.id)])
         meta_json = api.project.get_meta(dataset.project_id)
