@@ -646,6 +646,7 @@ class Inference:
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
+        preparing_progress={"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -661,6 +662,7 @@ class Inference:
 
             sly_progress.total = state["framesCount"]
             inference_request["preparing_progress"]["total"] = state["framesCount"]
+            preparing_progress = inference_request["preparing_progress"]
 
         # progress
         inf_video_interface = InferenceVideoInterface(
@@ -670,7 +672,7 @@ class Inference:
             frames_direction=state.get("framesDirection", "forward"),
             video_info=video_info,
             imgs_dir=video_images_path,
-            preparing_progress=inference_request["preparing_progress"],
+            preparing_progress=preparing_progress,
         )
         inf_video_interface.download_frames()
 
