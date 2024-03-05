@@ -106,7 +106,7 @@ class VolumeConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = [vol.name for vol in api.image.get_list(dataset.id)]
+        existing_names = set([vol.name for vol in api.image.get_list(dataset.id)])
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
         meta = meta.merge(self._meta)

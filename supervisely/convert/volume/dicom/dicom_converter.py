@@ -62,7 +62,7 @@ class DICOMConverter(VolumeConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = [vol.name for vol in api.image.get_list(dataset.id)]
+        existing_names = set([vol.name for vol in api.image.get_list(dataset.id)])
         if self._meta is not None:
             curr_meta = self._meta
         else:

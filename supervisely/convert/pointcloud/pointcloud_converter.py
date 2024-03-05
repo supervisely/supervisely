@@ -74,7 +74,7 @@ class PointcloudConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = [pcd.name for pcd in api.image.get_list(dataset.id)]
+        existing_names = set([pcd.name for pcd in api.image.get_list(dataset.id)])
         if self._meta is not None:
             curr_meta = self._meta
         else:

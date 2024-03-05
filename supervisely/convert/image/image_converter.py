@@ -80,7 +80,7 @@ class ImageConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = [img.name for img in api.image.get_list(dataset.id)]
+        existing_names = set([img.name for img in api.image.get_list(dataset.id)])
         if self._meta is not None:
             curr_meta = self._meta
         else:
