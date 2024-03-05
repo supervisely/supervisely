@@ -3,7 +3,7 @@ from typing import List
 from tqdm import tqdm
 
 import supervisely.convert.volume.dicom.dicom_helper as dicom_helper
-from supervisely import Api, ProjectMeta, VolumeAnnotation, logger
+from supervisely import Api, generate_free_name, logger, ProjectMeta, VolumeAnnotation
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.fs import file_exists, silent_remove
@@ -62,6 +62,7 @@ class DICOMConverter(VolumeConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        existing_names = [vol.name for vol in api.image.get_list(dataset.id)]
         if self._meta is not None:
             curr_meta = self._meta
         else:
@@ -82,7 +83,16 @@ class DICOMConverter(VolumeConverter):
         item_paths = []
         anns = []
         for item in self._items:
-            item_names.append(item.name)
+            if item.name in existing_names:
+                new_name = generate_free_name(
+                    existing_names, item.name, with_ext=True, extend_used_names=True
+                )
+                logger.warn(
+                    f"Video with name '{item.name}' already exists, renaming to '{new_name}'"
+                )
+                item_names.append(new_name)
+            else:
+                item_names.append(item.name)
             item_paths.append(item.path)
             ann_path = f"{item.path}.json"
             i = 0

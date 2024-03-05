@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Union
 from tqdm import tqdm
 
 import supervisely.imaging.image as image
-from supervisely import Annotation, Api, batched, logger, ProjectMeta
+from supervisely import Annotation, Api, batched, generate_free_name, logger, ProjectMeta
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.json import load_json_file
@@ -80,6 +80,7 @@ class ImageConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        existing_names = [img.name for img in api.image.get_list(dataset.id)]
         if self._meta is not None:
             curr_meta = self._meta
         else:
@@ -103,7 +104,17 @@ class ImageConverter(BaseConverter):
             anns = []
             for item in batch:
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                item_names.append(item.name)
+
+                if item.name in existing_names:
+                    new_name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
+                    )
+                    logger.warn(
+                        f"Image with name '{item.name}' already exists, renaming to '{new_name}'"
+                    )
+                    item_names.append(new_name)
+                else:
+                    item_names.append(item.name)
                 item_paths.append(item.path)
                 item_metas.append(load_json_file(item.meta) if item.meta else {})
                 anns.append(ann)

@@ -3,7 +3,7 @@ from typing import List, Optional, OrderedDict, Union
 import nrrd
 from tqdm import tqdm
 
-from supervisely import Api, ProjectMeta, VolumeAnnotation, batched, logger
+from supervisely import Api, batched, generate_free_name, logger, ProjectMeta, VolumeAnnotation
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
@@ -106,6 +106,7 @@ class VolumeConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        existing_names = [vol.name for vol in api.image.get_list(dataset.id)]
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
         meta = meta.merge(self._meta)
@@ -125,7 +126,16 @@ class VolumeConverter(BaseConverter):
             mask_dirs = []
             interpolation_dirs = []
             for item in batch:
-                item_names.append(item.name)
+                if item.name in existing_names:
+                    new_name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
+                    )
+                    logger.warn(
+                        f"Item with name '{item.name}' already exists, renaming to '{new_name}'"
+                    )
+                    item_names.append(new_name)
+                else:
+                    item_names.append(item.name)
                 item_paths.append(item.path)
                 anns.append(item.ann_data)
                 mask_dirs.append(item.mask_dir)

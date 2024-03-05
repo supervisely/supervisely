@@ -3,7 +3,7 @@ import cv2
 from tqdm import tqdm
 from typing import List
 
-from supervisely import Api, KeyIdMap, ProjectMeta, VideoAnnotation, batched, logger
+from supervisely import Api, batched, generate_free_name, KeyIdMap, logger, ProjectMeta, VideoAnnotation
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
@@ -80,6 +80,7 @@ class VideoConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        existing_names = [vid.name for vid in api.image.get_list(dataset.id)]
         if self._meta is not None:
             curr_meta = self._meta
         else:
@@ -101,7 +102,16 @@ class VideoConverter(BaseConverter):
             anns = []
             figures_cnt = 0
             for item in batch:
-                item_names.append(item.name)
+                if item.name in existing_names:
+                    new_name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
+                    )
+                    logger.warn(
+                        f"Video with name '{item.name}' already exists, renaming to '{new_name}'"
+                    )
+                    item_names.append(new_name)
+                else:
+                    item_names.append(item.name)
                 item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta)

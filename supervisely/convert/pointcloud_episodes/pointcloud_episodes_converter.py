@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from tqdm import tqdm
 
-from supervisely import Api, PointcloudEpisodeAnnotation, ProjectMeta, batched, logger
+from supervisely import Api, PointcloudEpisodeAnnotation, ProjectMeta, batched, generate_free_name, logger
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
@@ -73,6 +73,7 @@ class PointcloudEpisodeConverter(BaseConverter):
         """Upload converted data to Supervisely"""
 
         dataset = api.dataset.get_info_by_id(dataset_id)
+        existing_names = [pcde.name for pcde in api.image.get_list(dataset.id)]
         if self._meta is not None:
             curr_meta = self._meta
         else:
@@ -94,7 +95,16 @@ class PointcloudEpisodeConverter(BaseConverter):
             item_paths = []
             item_metas = []
             for item in batch:
-                item_names.append(item.name)
+                if item.name in existing_names:
+                    new_name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
+                    )
+                    logger.warn(
+                        f"Video with name '{item.name}' already exists, renaming to '{new_name}'"
+                    )
+                    item_names.append(new_name)
+                else:
+                    item_names.append(item.name)
                 item_paths.append(item.path)
 
             pcd_infos = api.pointcloud_episode.upload_paths(
