@@ -76,7 +76,7 @@ class PointcloudEpisodeConverter(BaseConverter):
             raise RuntimeError("Nothing to upload. Check the input data.")
 
         dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([pcde.name for pcde in api.image.get_list(dataset.id)])
+        existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset.id)])
         if self._meta is not None:
             curr_meta = self._meta
         else:
