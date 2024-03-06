@@ -175,7 +175,7 @@ class BaseConverter:
                     )
 
         if len(found_formats) == 0:
-            logger.info(f"No valid dataset formats detected. Only items will be processed")
+            logger.warn(f"No valid dataset formats detected. Only items will be processed")
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
@@ -184,6 +184,8 @@ class BaseConverter:
                         continue
                     if ext in self.allowed_exts:
                         self._items.append(self.Item(full_path))
+            if self.items_count == 0:
+                raise RuntimeError(f"No valid items found in the input data")
             return self
 
         if len(found_formats) == 1:

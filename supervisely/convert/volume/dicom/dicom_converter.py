@@ -61,9 +61,6 @@ class DICOMConverter(VolumeConverter):
     ):
         """Upload converted data to Supervisely"""
 
-        if self.items_count == 0:
-            raise RuntimeError("Nothing to upload. Check the input data.")
-
         dataset = api.dataset.get_info_by_id(dataset_id)
         existing_names = set([vol.name for vol in api.volume.get_list(dataset.id)])
         if self._meta is not None:
