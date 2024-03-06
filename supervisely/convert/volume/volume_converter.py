@@ -7,10 +7,12 @@ from supervisely import Api, batched, generate_free_name, logger, ProjectMeta, V
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
-from supervisely.volume.volume import read_nrrd_serie_volume
+from supervisely.volume.volume import read_nrrd_serie_volume, ALLOWED_VOLUME_EXTENSIONS
 
 
 class VolumeConverter(BaseConverter):
+    allowed_exts = ALLOWED_VOLUME_EXTENSIONS
+
     class Item(BaseConverter.BaseItem):
         def __init__(
             self,
