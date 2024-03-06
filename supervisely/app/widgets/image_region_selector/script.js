@@ -160,7 +160,7 @@ Vue.component('smarttool-editor', {
       const viewBox = getViewBox(this.bboxEl.bbox());
       this.sceneEl.viewbox(viewBox)
       this.backgroundEl = this.sceneEl.image(this.imageUrl).loaded(() => {
-        this.pointSize = POINT_SIZE * (viewBox.w / this.container.width.baseVal.value);
+        this.pointSize = POINT_SIZE * (getViewBox(this.bboxEl.bbox()).w / this.container.width.baseVal.value);
         this.initPoints();
       });
       this.group.add(
