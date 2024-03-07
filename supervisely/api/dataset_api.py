@@ -870,15 +870,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         return dataset_tree
 
-    def dataset_tree(self, project_id: int) -> Generator[Tuple[str, DatasetInfo], None, None]:
+    def dataset_tree(self, project_id: int) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
         """Yields tuples of (path, dataset) for all datasets in the project.
-        Path of the dataset is a string of the form "parent_dataset_name/dataset_name".
-        For root datasets, the path is just the dataset name.
+        Path of the dataset is a list of parents, e.g. ["ds1", "ds2", "ds3"].
+        For root datasets, the path is an empty list.
 
         :param project_id: Project ID in which the Dataset is located.
         :type project_id: int
         :return: Generator of tuples of (path, dataset).
-        :rtype: Generator[Tuple[str, DatasetInfo], None, None]
+        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
         :Usage example:
 
         .. code-block:: python
@@ -889,24 +889,26 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             project_id = 123
 
-            for dataset_path, dataset in api.dataset.dataset_tree(project_id):
+            for parents, dataset in api.dataset.dataset_tree(project_id):
+                parents: List[str]
                 dataset: sly.DatasetInfo
-                print(dataset_path, dataset.name)
+                print(parents, dataset.name)
+
 
             # Output:
-            # ds1 ds1
-            # ds1/ds2 ds2
-            # ds1/ds2/ds3 ds3
+            # [] ds1
+            # ["ds1"] ds2
+            # ["ds1", "ds2"] ds3
         """
 
         def yield_tree(
-            tree: Dict[DatasetInfo, Dict], path: str
-        ) -> Generator[Tuple[str, DatasetInfo], None, None]:
+            tree: Dict[DatasetInfo, Dict], path: List[str]
+        ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
             """Yields tuples of (path, dataset) for all datasets in the tree."""
             for dataset, children in tree.items():
-                new_path = path + "/" + dataset.name if path else dataset.name
-                yield new_path, dataset
+                yield path, dataset
+                new_path = path + [dataset.name]
                 if children:
                     yield from yield_tree(children, new_path)
 
-        yield from yield_tree(self.get_tree(project_id), "")
+        yield from yield_tree(self.get_tree(project_id), [])

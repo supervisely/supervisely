@@ -126,11 +126,17 @@ class Dataset(KeyObject):
     annotation_class = Annotation
     item_info_class = ImageInfo
 
+    item_dir_name = "img"
+    ann_dir_name = "ann"
+    item_info_dir_name = "img_info"
+    seg_dir_name = "seg"
+    meta_dir_name = "meta"
+    datasets_dir_name = "datasets"
+
     def __init__(
         self,
         directory: str,
         mode: OpenMode,
-        version: Optional[Literal["1.0", "2.0"]] = "2.0",
         parents: Optional[List[str]] = None,
     ):
         if type(mode) is not OpenMode:
@@ -138,28 +144,14 @@ class Dataset(KeyObject):
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
             )
 
-        self.version = version
         self.parents = parents or []
-
-        if version == "1.0":
-            self.item_dir_name = "img"
-            self.ann_dir_name = "ann"
-            self.item_info_dir_name = "img_info"
-            self.seg_dir_name = "seg"
-            self.meta_dir_name = "meta"
-        elif version == "2.0":
-            self.item_dir_name = ""
-            self.ann_dir_name = ""
-            self.item_info_dir_name = ""
-            self.seg_dir_name = ""
-            self.meta_dir_name = ""
 
         self._directory = directory
         self._item_to_ann = {}  # item file name -> annotation file name
 
         parts = directory.split(os.path.sep)
         project_dir = parts[0]
-        full_ds_name = os.path.join(*parts[1:])
+        full_ds_name = os.path.join(*[p for p in parts[1:] if p != self.datasets_dir_name])
         short_ds_name = os.path.basename(directory)
 
         self._project_dir = project_dir
@@ -170,6 +162,14 @@ class Dataset(KeyObject):
             self._read()
         else:
             self._create()
+
+    @classmethod
+    def ignorable_dirs(cls) -> List[str]:
+        return [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+
+    @classmethod
+    def datasets_dir(cls) -> List[str]:
+        return cls.datasets_dir_name
 
     @property
     def project_dir(self) -> str:
@@ -670,12 +670,9 @@ class Dataset(KeyObject):
             print(ds.get_item_info_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info/IMG_0748.jpeg.json'
         """
-        if self.version == "1.0":
-            info_path = self._item_to_ann.get(item_name, None)
-            if info_path is None:
-                raise RuntimeError("Item {} not found in the project.".format(item_name))
-        elif self.version == "2.0":
-            info_path = f"{item_name}_info.json"
+        info_path = self._item_to_ann.get(item_name, None)
+        if info_path is None:
+            raise RuntimeError("Item {} not found in the project.".format(item_name))
 
         return os.path.join(self.item_info_dir, info_path)
 
@@ -702,10 +699,7 @@ class Dataset(KeyObject):
             print(ds.get_item_info_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info/IMG_0748.jpeg.json'
         """
-        if self.version == "1.0":
-            meta_path = self._item_to_ann.get(item_name, None)
-        elif self.version == "2.0":
-            meta_path = f"{item_name}_meta.json"
+        meta_path = self._item_to_ann.get(item_name, None)
 
         return os.path.join(self.meta_dir, meta_path)
 
@@ -1527,10 +1521,7 @@ class Project:
         def parent_length(dataset):
             return len(dataset.parents)
 
-        if self.version == "1.0":
-            return self._datasets
-        elif self.version == "2.0":
-            return sorted(self._datasets, key=parent_length)
+        return sorted(self._datasets, key=parent_length)
 
     @property
     def meta(self) -> ProjectMeta:
@@ -1634,16 +1625,11 @@ class Project:
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
-        version = meta_json.get("version", None)
-        if not version or version == "1.0":
-            self.version = "1.0"
-            possible_datasets = get_subdirs(self.directory)
-        elif version == "2.0":
-            self.version = "2.0"
-            possible_datasets = subdir_tree(self.directory)
+        possible_datasets = subdir_tree(self.directory, Dataset.ignorable_dirs())
 
         for ds_name in possible_datasets:
             parents = ds_name.split(os.path.sep)
+            parents = [p for p in parents if p != Dataset.datasets_dir()]
             if len(parents) > 1:
                 parents.pop(-1)
             else:
@@ -1652,7 +1638,6 @@ class Project:
                 current_dataset = self.dataset_class(
                     os.path.join(self.directory, ds_name),
                     OpenMode.READ,
-                    version=self.version,
                     parents=parents,
                 )
                 self._datasets = self._datasets.add(current_dataset)
@@ -2625,21 +2610,14 @@ def _download_project(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
-    for dataset_path, dataset_info in api.dataset.dataset_tree(project_id):
+    for parents, dataset_info in api.dataset.dataset_tree(project_id):
+        dataset_path = get_dataset_path(dataset_info.name, parents)
         dataset_id = dataset_info.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
 
         dataset_fs = project_fs.create_dataset(dataset_info.name, dataset_path)
         images = api.image.get_list(dataset_id)
-
-        if save_image_meta:
-            meta_dir = dataset_fs.meta_dir
-            sly.fs.mkdir(meta_dir)
-            for image_info in images:
-                sly.json.dump_json_file(
-                    image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
-                )
 
         ds_progress = None
         if log_progress:
@@ -2688,6 +2666,15 @@ def _download_project(
             if progress_cb is not None:
                 progress_cb(len(batch))
 
+        if save_image_meta:
+            meta_dir = dataset_fs.meta_dir
+            for image_info in images:
+                if image_info.meta:
+                    sly.fs.mkdir(meta_dir)
+                    sly.json.dump_json_file(
+                        image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
+                    )
+
 
 def upload_project(
     dir: str,
@@ -2714,9 +2701,14 @@ def upload_project(
     dataset_map = {}
 
     for ds_fs in project_fs.datasets:
+        print(ds_fs.name)
+        print(ds_fs.parents)
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
+            print(dataset_map)
+            print(parent)
+            print(parent_id)
         else:
             parent_id = None
 
@@ -3121,6 +3113,11 @@ def _download_dataset(
         if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]
             cache.write_objects(img_paths, img_hashes)
+
+
+def get_dataset_path(dataset_name: str, parents: List[dir]):
+    relative_path = os.path.sep.join(f"{parent}/datasets" for parent in parents)
+    return os.path.join(relative_path, dataset_name)
 
 
 DatasetDict = Project.DatasetDict
