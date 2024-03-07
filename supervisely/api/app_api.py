@@ -743,7 +743,7 @@ class AppApi(TaskApi):
         self, task_id: int, attempts: int = 10, attempt_delay_sec: Optional[int] = 10
     ):
         is_ready = False
-        logger.debug("Waiting for app to be ready for API calls")
+        logger.info("Waiting for app to be ready for API calls")
         for attempt in range(attempts):
             is_ready = self.is_ready_for_api_calls(task_id)
             if not is_ready:
