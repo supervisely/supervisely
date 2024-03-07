@@ -29,6 +29,7 @@ from supervisely.io.fs import (
     copy_file,
     dir_empty,
     dir_exists,
+    ensure_base_path,
     get_file_name_with_ext,
     list_dir_recursively,
     list_files,
@@ -2692,6 +2693,7 @@ def upload_project(
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
+
         else:
             parent_id = None
 
