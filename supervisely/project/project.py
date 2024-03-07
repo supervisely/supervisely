@@ -7,17 +7,7 @@ import random
 import shutil
 from collections import namedtuple
 from enum import Enum
-from typing import (
-    Callable,
-    Dict,
-    Generator,
-    List,
-    Literal,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -39,9 +29,7 @@ from supervisely.io.fs import (
     copy_file,
     dir_empty,
     dir_exists,
-    ensure_base_path,
     get_file_name_with_ext,
-    get_subdirs,
     list_dir_recursively,
     list_files,
     list_files_recursively,
@@ -2701,14 +2689,9 @@ def upload_project(
     dataset_map = {}
 
     for ds_fs in project_fs.datasets:
-        print(ds_fs.name)
-        print(ds_fs.parents)
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
-            print(dataset_map)
-            print(parent)
-            print(parent_id)
         else:
             parent_id = None
 
