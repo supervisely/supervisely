@@ -5,7 +5,16 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from tqdm import tqdm
 
@@ -1234,3 +1243,23 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ann = Annotation(img_size=(image.height, image.width), labels=labels, img_tags=img_tags)
             anns.append(ann)
         return anns
+
+    def set_entity_review_status(
+        self, id: int, entity_id: int, status: Literal["none", "done", "accepted", "rejected"]
+    ) -> None:
+        """
+        Sets review status for entity with given ID.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param entity_id: Entity ID
+        :type entity_id: int
+        :param status: New review status for entity
+        :type status: str
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "jobs.entities.update-review-status",
+            {ApiField.JOB_ID: id, ApiField.ENTITY_ID: entity_id, ApiField.STATUS: status},
+        )
