@@ -221,6 +221,25 @@ class Dataset(KeyObject):
         """
         return self._short_name
 
+    @property
+    def path(self) -> str:
+        """Returns a relative local path to the dataset.
+
+        :return: Relative local path to the dataset.
+        :rtype: :class:`str`
+        """
+        return self._get_dataset_path(self.short_name, self.parents)
+
+    @staticmethod
+    def _get_dataset_path(dataset_name: str, parents: List[dir]):
+        """Returns a relative local path to the dataset.
+
+        :param dataset_name: Dataset name.
+        :type dataset_name: :class:`str`
+        """
+        relative_path = os.path.sep.join(f"{parent}/datasets" for parent in parents)
+        return os.path.join(relative_path, dataset_name)
+
     def key(self):
         # TODO: add docstring
         return self.name
@@ -2600,7 +2619,7 @@ def _download_project(
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
     for parents, dataset_info in api.dataset.dataset_tree(project_id):
-        dataset_path = get_dataset_path(dataset_info.name, parents)
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
         dataset_id = dataset_info.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
@@ -3098,11 +3117,6 @@ def _download_dataset(
         if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]
             cache.write_objects(img_paths, img_hashes)
-
-
-def get_dataset_path(dataset_name: str, parents: List[dir]):
-    relative_path = os.path.sep.join(f"{parent}/datasets" for parent in parents)
-    return os.path.join(relative_path, dataset_name)
 
 
 DatasetDict = Project.DatasetDict
