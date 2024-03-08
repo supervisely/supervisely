@@ -30,6 +30,7 @@ from supervisely.io.fs import (
     dir_empty,
     dir_exists,
     ensure_base_path,
+    get_file_name,
     get_file_name_with_ext,
     list_dir_recursively,
     list_files,
@@ -102,14 +103,27 @@ class Dataset(KeyObject):
     :param directory: Path to dataset directory.
     :type directory: str
     :param mode: Determines working mode for the given dataset.
-    :type mode: :class:`OpenMode<OpenMode>`
+    :type mode: :class:`OpenMode<OpenMode>`, optional. If not provided, dataset_id must be provided.
+    :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+    :type parents: List[str]
+    :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+        If dataset_id is specified then api must be specified as well.
+    :type dataset_id: Optional[int]
+    :param api: API object if the Dataset is opened in API mode.
+    :type api: Optional[:class:`Api<supervis
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+
+        # To open dataset locally in read mode
         ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+        # To open dataset on API
+        api = sly.Api.from_env()
+        ds = sly.Dataset(dataset_path, dataset_id=1, api=api)
     """
 
     annotation_class = Annotation
@@ -125,15 +139,24 @@ class Dataset(KeyObject):
     def __init__(
         self,
         directory: str,
-        mode: OpenMode,
+        mode: Optional[OpenMode] = None,
         parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[sly.Api] = None,
     ):
-        if type(mode) is not OpenMode:
+        if type(mode) is not OpenMode and mode is not None:
             raise TypeError(
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
             )
+        if mode is None and dataset_id is None:
+            raise ValueError("Either 'mode' or 'dataset_id' must be provided")
+        if dataset_id is not None and api is None:
+            raise ValueError("Argument 'api' must be provided if 'dataset_id' is provided")
 
         self.parents = parents or []
+
+        self.dataset_id = dataset_id
+        self._api = api
 
         self._directory = directory
         self._item_to_ann = {}  # item file name -> annotation file name
@@ -147,7 +170,9 @@ class Dataset(KeyObject):
         self._name = full_ds_name
         self._short_name = short_ds_name
 
-        if mode is OpenMode.READ:
+        if self.dataset_id is not None:
+            self._read_api()
+        elif mode is OpenMode.READ:
             self._read()
         else:
             self._create()
@@ -457,6 +482,29 @@ class Dataset(KeyObject):
                 )
             effective_ann_names.add(ann_name)
             self._item_to_ann[img_name] = ann_name
+
+    def _read_api(self) -> None:
+        """Method to read the dataset, which opened from the API."""
+        self._image_infos = self._api.image.get_list(self.dataset_id)
+        img_names = [img_info.name for img_info in self._image_infos]
+        for img_name in img_names:
+            ann_name = f"{img_name}.json"
+            self._item_to_ann[img_name] = ann_name
+
+    @property
+    def image_infos(self) -> List[ImageInfo]:
+        """If the dataset is opened from the API, returns the list of ImageInfo objects.
+        Otherwise raises an exception.
+
+        :raises: ValueError: If the dataset is opened in local mode.
+        :return: List of ImageInfo objects.
+        :rtype: List[:class:`ImageInfo`]
+        """
+        if not self.dataset_id:
+            raise ValueError(
+                "This dataset was open in local mode. It does not have access to the API."
+            )
+        return self._image_infos
 
     def _create(self):
         """
@@ -1410,19 +1458,39 @@ class Project:
 
         item_type = Dataset
 
-    def __init__(self, directory: str, mode: OpenMode):
-        if type(mode) is not OpenMode:
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        project_id: Optional[int] = None,
+        api: Optional[sly.Api] = None,
+    ):
+        if mode is None and project_id is None:
+            raise ValueError("One of the parameters 'mode' or 'project_id' should be set.")
+        if type(mode) is not OpenMode and mode is not None:
             raise TypeError(
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
             )
+        if project_id is not None and api is None:
+            raise ValueError("Parameter 'api' should be set if 'project_id' is set.")
 
         parent_dir, name = Project._parse_path(directory)
         self._parent_dir = parent_dir
-        self._name = name
+        self._api = api
+        self.project_id = project_id
+
+        if project_id is not None:
+            self._info = api.project.get_info_by_id(project_id)
+            self._name = self._info.name
+        else:
+            self._info = None
+            self._name = name
         self._datasets = Project.DatasetDict()  # ds_name -> dataset object
         self._meta = None
 
-        if mode is OpenMode.READ:
+        if project_id is not None:
+            self._read_api()
+        elif mode is OpenMode.READ:
             self._read()
         else:
             self._create()
@@ -1654,6 +1722,16 @@ class Project:
 
         if self.total_items == 0:
             raise RuntimeError("Project is empty")
+
+    def _read_api(self):
+        self._meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
+        for parents, dataset_info in self._api.dataset.dataset_tree(self.project_id):
+            relative_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            dataset_path = os.path.join(self.directory, relative_path)
+            current_dataset = self.dataset_class(
+                dataset_path, parents=parents, dataset_id=dataset_info.id, api=self._api
+            )
+            self._datasets = self._datasets.add(current_dataset)
 
     def _create(self):
         if dir_exists(self.directory):
