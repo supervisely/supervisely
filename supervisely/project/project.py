@@ -143,7 +143,7 @@ class Dataset(KeyObject):
         dataset_id: Optional[int] = None,
         api: Optional[sly.Api] = None,
     ):
-        if directory is not None and dataset_id is not None:
+        if dataset_id is not None:
             raise NotImplementedError(
                 "Opening dataset from the API is not implemented yet. Please use the local mode "
                 "by providing the 'directory' and 'mode' arguments."
@@ -1470,7 +1470,7 @@ class Project:
         project_id: Optional[int] = None,
         api: Optional[sly.Api] = None,
     ):
-        if directory is not None and project_id is not None:
+        if project_id is not None:
             raise NotImplementedError(
                 "Opening project from the API is not implemented yet. Please use local mode "
                 "by providing directory and mode parameters. "
