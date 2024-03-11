@@ -386,7 +386,7 @@ class Api:
         """
         Performs POST request to server with given parameters.
 
-        :param method:
+        :param method: Method name.
         :type method: str
         :param data: Dictionary to send in the body of the :class:`Request`.
         :type data: dict
@@ -394,6 +394,8 @@ class Api:
         :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :type raise_error: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """

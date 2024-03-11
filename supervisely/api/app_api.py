@@ -726,6 +726,12 @@ class AppApi(TaskApi):
         return self._api.task.get_status(task_id)
 
     def is_ready_for_api_calls(self, task_id: int) -> bool:
+        """
+        Checks if app is ready for API calls.
+        :param task_id: ID of the running task.
+        :type task_id: int
+        :return: True if app is ready for API calls, False otherwise.
+        """
         try:
             info = self._api.app.send_request(
                 task_id, "is_running", {}, timeout=1, retries=1, raise_error=True
@@ -741,7 +747,18 @@ class AppApi(TaskApi):
 
     def wait_until_ready_for_api_calls(
         self, task_id: int, attempts: int = 10, attempt_delay_sec: Optional[int] = 10
-    ):
+    ) -> bool:
+        """
+        Waits until app is ready for API calls.
+
+        :param task_id: ID of the running task.
+        :type task_id: int
+        :param attempts: Number of attempts to check if app is ready for API calls.
+        :type attempts: int
+        :param attempt_delay_sec: Delay between attempts in seconds.
+        :type attempt_delay_sec: int
+        :return: True if app is ready for API calls, False otherwise.
+        """
         is_ready = False
         logger.info("Waiting for app to be ready for API calls")
         for attempt in range(attempts):
