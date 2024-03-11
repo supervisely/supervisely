@@ -30,7 +30,6 @@ from supervisely.io.fs import (
     dir_empty,
     dir_exists,
     ensure_base_path,
-    get_file_name,
     get_file_name_with_ext,
     list_dir_recursively,
     list_files,

@@ -151,11 +151,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self,
         project_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
-        recursive: Optional[bool] = True,
+        recursive: Optional[bool] = False,
         parent_id: Optional[int] = None,
     ) -> List[DatasetInfo]:
         """
-        List of Datasets in the given Project.
+        Returns list of dataset in the given project, or list of nested datasets
+        in the dataset with specified parent_id.
+        To get list of all datasets including nested, recursive parameter should be set to True.
+        Otherwise, the method will return only datasets in the top level.
 
         :param project_id: Project ID in which the Datasets are located.
         :type project_id: int
@@ -314,6 +317,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     ) -> DatasetInfo:
         """
         Checks if Dataset with given name already exists in the Project, if not creates Dataset with the given name.
+        If parent id is specified then the search will be performed in the specified Dataset, otherwise
+        the search will be performed at the top level of the Project.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
@@ -808,6 +813,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     ) -> Union[DatasetInfo, None]:
         """Return Dataset information by name or None if Dataset does not exist.
         If parent_id is not None, the search will be performed in the specified Dataset.
+        Otherwise the search will be performed at the top level of the Project.
 
         :param project_id: Project ID in which the Dataset is located.
         :type project_id: int
