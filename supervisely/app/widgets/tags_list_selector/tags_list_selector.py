@@ -67,6 +67,7 @@ class TagsListSelector(Widget):
         StateJson().send_changes()
 
     def deselect_all(self):
+        # pylint: disable=no-member
         StateJson()[self.widget_id]["selected"] = [False for _ in self._tags]
         StateJson().send_changes()
 

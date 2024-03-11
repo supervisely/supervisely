@@ -28,9 +28,9 @@ def _iou_log_line(iou, intersection, union):
     return 'IoU = {:.6f},  mean intersection = {:.6f}, mean union = {:.6f}'.format(iou, intersection, union)
 
 def render_labels_as_binary_mask(labels, class_title, mask):
-    for label in ann.labels:
+    for label in labels:
         if label.obj_class.name == class_title:
-                label.geometry.draw(mask, True)
+            label.geometry.draw(mask, True)
 
 class IoUMetric(MetricsBase):
 

@@ -3,12 +3,21 @@ import os
 from copy import deepcopy
 
 from supervisely.imaging import image as sly_image
-from supervisely.nn.inference.rest_constants import GET_OUTPUT_META, IMAGE, INFERENCE, MODEL, OUTPUT_META, \
-    ANNOTATION, META, MODE, GPU_DEVICE
+from supervisely.nn.legacy.inference.rest_constants import (
+    GET_OUTPUT_META,
+    IMAGE,
+    INFERENCE,
+    MODEL,
+    OUTPUT_META,
+    ANNOTATION,
+    META,
+    MODE,
+    GPU_DEVICE,
+)
 
 from supervisely.worker_api.interfaces import SingleImageInferenceInterface
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.nn.hosted.deploy import ModelDeploy
+from supervisely.nn.legacy.hosted.deploy import ModelDeploy
 from supervisely.function_wrapper import function_wrapper
 
 from flask import Flask

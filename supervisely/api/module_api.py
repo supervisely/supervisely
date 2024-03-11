@@ -499,6 +499,8 @@ class ApiField:
     PAGE = "page"
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
+    """"""
+    USAGE = "usage"
 
 
 def _get_single_item(items):
@@ -830,7 +832,13 @@ class ModuleApi(ModuleApiBase):
 
     def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
-        items = self.get_list(parent_id, filters, fields)
+        # pylint: disable=too-many-function-args
+        from supervisely.api.project_api import ProjectApi
+
+        if type(self) == ProjectApi:
+            items = self.get_list(parent_id, filters, fields)
+        else:
+            items = self.get_list(parent_id, filters)
         return _get_single_item(items)
 
     def get_list(self, parent_id, filters=None):
@@ -1194,6 +1202,8 @@ class RemoveableBulkModuleApi(ModuleApi):
     def remove_batch(self, ids, progress_cb=None, batch_size=50):
         """
         Remove entities in batches from the Supervisely server.
+        All entity IDs must belong to the same nesting (for example team, or workspace, or project, or dataset).
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: IDs of entities in Supervisely.
         :type ids: List[int]

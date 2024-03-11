@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import inspect
+import io
 import math
-from functools import partial
-from typing import Optional
+from functools import partial, wraps
+from typing import Optional, Union
 
 from tqdm import tqdm
 
@@ -428,17 +429,6 @@ class tqdm_sly(tqdm, Progress):
             )
             self.n = 0
 
-    # @property
-    # def total(self):
-    #     return self._total
-
-    # @total.setter
-    # def total(self, value):
-    #     if is_development():
-    #         self._total = value
-    #     else:
-    #         Progress.set(self, self.n or 0, value)
-
     def __iter__(self):
         """Backward-compatibility to use: for x in tqdm(iterable)"""
 
@@ -607,3 +597,104 @@ class tqdm_sly(tqdm, Progress):
             kwargs["total_cnt"] = None
 
         return kwargs
+
+    @classmethod
+    def from_original_tqdm(
+        cls,
+        orig_tqdm: tqdm,
+        **kwargs,
+    ):
+        # iterable=None, desc=None, total=None, leave=True, file=None,
+        #          ncols=None, mininterval=0.1, maxinterval=10.0, miniters=None,
+        #          ascii=None, disable=False, unit='it', unit_scale=False,
+        #          dynamic_ncols=False, smoothing=0.3, bar_format=None, initial=0,
+        #          position=None, postfix=None, unit_divisor=1000, write_bytes=False,
+        #          lock_args=None, nrows=None, colour=None, delay=0, gui=False,
+
+        vrs = vars(orig_tqdm).copy()
+        sgn = inspect.signature(orig_tqdm.__init__)
+
+        kw = {}
+
+        non_idempotent_args = ["miniters", "position"]
+
+        def _handle_ni_args(name, vrs):
+            if name == "miniters":
+                return None if vrs[name] == 0 else vrs[name]
+            if name == "position":
+                return None if vrs["pos"] == 0 else -vrs["pos"]
+
+        for name, param in sgn.parameters.items():
+            if name in kwargs:
+                kw[name] = kwargs[name]
+            elif name in non_idempotent_args:
+                kw[name] = _handle_ni_args(name, vrs)
+            else:
+                if name == "kwargs":
+                    pass
+                else:
+                    try:
+                        kw[name] = vrs[name]
+                    except KeyError:
+                        kw[name] = param.default
+
+        # legacy tqdm 'nested' in kwargs
+        kw.update({k: v for k, v in kwargs.items() if k not in kw})
+        return cls(**kw)
+
+
+def handle_original_tqdm(func):
+    # Deprecated
+    @wraps(func)
+    def wrapper_original_tqdm(*args, **kwargs):
+        cb_name = (
+            "progress_size_cb" if func.__qualname__ == "FileApi.upload_directory" else "progress_cb"
+        )
+
+        spc = inspect.getfullargspec(func)
+
+        if cb_name not in spc.args:
+            raise ValueError(
+                f"The '{cb_name}' parameter was not found in the '{func.__qualname__}'"
+            )
+        else:  # Note: (args, kwargs) both in spc.args
+            idx = spc.args.index(cb_name)
+            try:
+                progress_cb = args[idx]
+            except IndexError:
+                progress_cb = kwargs.get(cb_name)
+
+            _progress_cb = progress_cb
+
+            # Start progress bar setup
+            if progress_cb is not None and isinstance(progress_cb, tqdm):
+                if not type(progress_cb) == tqdm_sly:
+                    progress_cb.clear()
+                    _progress_cb = tqdm_sly.from_original_tqdm(progress_cb)
+
+            new_args = list(args).copy()
+            new_kwargs = kwargs.copy()
+            try:
+                new_args[idx] = _progress_cb
+            except IndexError:
+                new_kwargs[cb_name] = _progress_cb
+
+        try:
+            result = func(*new_args, **new_kwargs)
+        except Exception as e:
+            # Ensure progress bar gets closed in case of an exception
+            if progress_cb is not None and isinstance(progress_cb, tqdm):
+                if not type(progress_cb) == tqdm_sly:
+                    progress_cb.close()
+                _progress_cb.close()
+            raise e
+
+        # close progress bar
+        if progress_cb is not None and isinstance(progress_cb, tqdm):
+            if not type(progress_cb) == tqdm_sly:
+                progress_cb.close()
+            _progress_cb.close()
+
+        return result
+
+    return wrapper_original_tqdm

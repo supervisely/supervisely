@@ -1,5 +1,10 @@
+import os
+import sys
 import unittest
 from unittest.mock import Mock, patch
+
+sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, sdk_path)
 
 from supervisely.api.api import Api
 
@@ -88,6 +93,7 @@ class TestRemoveProjectPermanently(unittest.TestCase):
         for resp in response:
             self.assertIn("success", resp)
 
+    # TODO test delete projects from different teams in one request
 
 if __name__ == "__main__":
     unittest.main()

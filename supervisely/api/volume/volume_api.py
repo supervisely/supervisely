@@ -1,10 +1,12 @@
+import os
 from typing import Callable, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger, volume
-from supervisely._utils import batched
+from supervisely._utils import batched, generate_free_name
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.volume.volume_annotation_api import VolumeAnnotationAPI
 from supervisely.api.volume.volume_figure_api import VolumeFigureApi
@@ -18,8 +20,10 @@ from supervisely.io.fs import (
     get_bytes_hash,
     get_file_ext,
     get_file_name,
+    get_file_name_with_ext,
 )
 from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.volume.volume import inspect_dicom_series, inspect_nrrd_series
 from supervisely.volume_annotation.plane import Plane
 
 try:
@@ -247,7 +251,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         filters=None,
         sort: Literal["id", "name", "description", "createdAt", "updatedAt"] = "id",
         sort_order: Literal["asc", "desc"] = "asc",
-    ):
+    ) -> List[VolumeInfo]:
         """
         Get list of information about all volumes for a given dataset ID.
 
@@ -623,16 +627,24 @@ class VolumeApi(RemoveableBulkModuleApi):
             raise ValueError("Name has to be with .nrrd extension, for example: my_volume.nrrd")
         from timeit import default_timer as timer
 
-        logger.debug(f"Start volume {name} compression before upload...")
+        with logging_redirect_tqdm():
+            logger.debug(f"Start volume {name} compression before upload...")
+
         start = timer()
         volume_bytes = volume.encode(np_data, meta)
-        logger.debug(f"Volume has been compressed in {timer() - start} seconds")
+        with logging_redirect_tqdm([logger]):
+            logger.debug(f"Volume has been compressed in {timer() - start} seconds")
+            logger.debug(f"Start uploading bytes of '{name}' volume ...")
 
-        logger.debug(f"Start uploading bytes of {name} volume ...")
         start = timer()
         volume_hash = get_bytes_hash(volume_bytes)
         self._api.image._upload_data_bulk(lambda v: v, [(volume_bytes, volume_hash)])
-        logger.debug(f"3d Volume bytes has been sucessfully uploaded in {timer() - start} seconds")
+
+        with logging_redirect_tqdm([logger]):
+            logger.debug(
+                f"3D volume bytes has been sucessfully uploaded in {timer() - start} seconds"
+            )
+
         volume_info = self.upload_hash(dataset_id, name, volume_hash, meta)
         if progress_cb is not None:
             progress_cb(1)  # upload volume
@@ -703,7 +715,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         paths: List[str],
         log_progress: bool = True,
         anonymize: bool = True,
-    ):
+    ) -> VolumeInfo:
         """
         Upload given DICOM series from given paths to Dataset.
 
@@ -713,7 +725,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type name: str
         :param paths: Local volumes paths.
         :type paths: List[str]
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :param anonymize: Determine whether to hide PatientID and PatientName fields.
         :type anonymize: bool, optional
@@ -785,7 +797,9 @@ class VolumeApi(RemoveableBulkModuleApi):
             results.extend(response.json())
         return results
 
-    def upload_nrrd_serie_path(self, dataset_id: int, name: str, path: str, log_progress=True):
+    def upload_nrrd_serie_path(
+        self, dataset_id: int, name: str, path: str, log_progress=True, progress_cb=None
+    ) -> VolumeInfo:
         """
         Upload NRRD format volume from given path to Dataset.
 
@@ -795,7 +809,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type name: str
         :param path: Local volume path.
         :type path: str
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
@@ -824,10 +838,16 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
 
         volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
-        progress_cb = None
-        if log_progress is True:
-            progress_cb = tqdm_sly(desc=f"Upload volume {name}", total=sum(volume_np.shape)).update
-        res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_cb)
+
+        progress_nrrd = None
+        if log_progress is True or progress_cb is not None:
+            progress_nrrd = tqdm_sly(
+                desc=f"Uploading volume '{name}'",
+                total=sum(volume_np.shape),
+                leave=True if progress_cb is None else False,
+                position=1,
+            )
+        res = self.upload_np(dataset_id, name, volume_np, volume_meta, progress_nrrd)
         return self.get_info_by_name(dataset_id, name)
 
     def _download(self, id: int, is_stream: bool = False):
@@ -918,7 +938,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param paths: Local volumes paths.
         :type paths: List[str]
-        :param log_progress: Determine if logs are displaying.
+        :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
@@ -949,7 +969,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         volume_infos = []
         for name, path in zip(names, paths):
-            info = self.upload_nrrd_serie_path(dataset_id, name, path, log_progress=log_progress)
+            info = self.upload_nrrd_serie_path(dataset_id, name, path, log_progress, progress_cb)
             volume_infos.append(info)
             if progress_cb is not None:
                 progress_cb(1)
@@ -1030,3 +1050,189 @@ class VolumeApi(RemoveableBulkModuleApi):
         ).content
 
         return read_bytes(image_bytes)
+
+    def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:
+        """
+        Returns list of free names for given dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :return: List of free names.
+        :rtype: List[str]
+        """
+
+        volumes_in_dataset = self.get_list(dataset_id)
+        used_names = {volume_info.name for volume_info in volumes_in_dataset}
+        new_names = [
+            generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
+            for name in names
+        ]
+        return new_names
+
+    def raise_name_intersections_if_exist(
+        self, dataset_id: int, names: List[str], message: str = None
+    ):
+        """
+        Raises error if volumes with given names already exist in dataset.
+        Default error message:
+        "Volumes with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}.
+        Please, rename volumes and try again or set change_name_if_conflict=True to rename automatically on upload."
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: List of names to check.
+        :type names: List[str]
+        :param message: Error message.
+        :type message: str, optional
+        :return: None
+        :rtype: None
+        """
+        volumes_in_dataset = self.get_list(dataset_id)
+        used_names = {volume_info.name for volume_info in volumes_in_dataset}
+        name_intersections = used_names.intersection(set(names))
+        if message is None:
+            message = f"Volumes with the following names already exist in dataset [ID={dataset_id}]: {name_intersections}. Please, rename volumes and try again or set change_name_if_conflict=True to rename automatically on upload."
+        if len(name_intersections) > 0:
+            raise ValueError(f"{message}")
+
+    def upload_dir(
+        self,
+        dataset_id: int,
+        dir_path: str,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        log_progress: bool = False,
+        change_name_if_conflict: bool = True,
+    ) -> List[VolumeInfo]:
+        """
+        Upload all volumes from given directory to Dataset recursively.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_path: Local directory path.
+        :type dir_path: str
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param log_progress: Determine if additional technical logs are displaying.
+        :type log_progress: bool, optional
+        :param change_name_if_conflict: Determine if names are changing if conflict.
+        :type change_name_if_conflict: bool, optional
+        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[VolumeInfo]`
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+                from tqdm import tqdm
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+                api = sly.Api.from_env()
+
+                dataset_id = 61958
+                dir_path = "src/upload/volumes/"
+                volume_infos = api.volume.upload_dir(dataset_id, dir_path)
+                print(f"All volumes has been uploaded with IDs: {[x.id for x in volume_infos]}")
+
+                # Output:
+                # All volumes has been uploaded with IDs: [18630605, 18630606, 18630607]
+        """
+        names = []
+        paths = []
+
+        if os.path.isdir(dir_path) is False:
+            raise ValueError(f"Path {dir_path} is not a directory or does not exist")
+
+        dcm_volumes = inspect_dicom_series(dir_path, logging=log_progress)
+        for serie, files in dcm_volumes.items():
+            name = f"{serie}.nrrd"
+            names.append(name)
+            paths.append(files)
+        nrrd_volumes = inspect_nrrd_series(dir_path, logging=log_progress)
+        for volume_path in nrrd_volumes:
+            name = get_file_name_with_ext(volume_path)
+            names.append(name)
+            paths.append(volume_path)
+
+        if change_name_if_conflict:
+            names = self.get_free_names(dataset_id, names)
+        else:
+            self.raise_name_intersections_if_exist(dataset_id, names)
+
+        volume_infos = []
+        for name, path in zip(names, paths):
+            if isinstance(path, tuple):
+                volume_info = self.upload_dicom_serie_paths(
+                    dataset_id=dataset_id,
+                    name=name,
+                    paths=path,
+                    log_progress=log_progress,
+                )
+            else:
+                volume_info = self.upload_nrrd_serie_path(
+                    dataset_id=dataset_id,
+                    name=name,
+                    path=path,
+                    log_progress=log_progress,
+                )
+            volume_infos.append(volume_info)
+            if progress_cb is not None:
+                progress_cb(1)
+        return volume_infos
+
+    def upload_dirs(
+        self,
+        dataset_id: int,
+        dir_paths: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        log_progress: bool = False,
+        change_name_if_conflict: bool = True,
+    ) -> List[VolumeInfo]:
+        """
+        Upload all volumes from given directories to Dataset recursively.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param dir_paths: List of local directory paths.
+        :type dir_paths: List[str]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param log_progress: Determine if additional technical logs are displaying.
+        :type log_progress: bool, optional
+        :param change_name_if_conflict: Determine if names are changing if conflict.
+        :type change_name_if_conflict: bool, optional
+        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[VolumeInfo]`
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+                from tqdm import tqdm
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+                api = sly.Api.from_env()
+
+                dataset_id = 61958
+                dir_paths = ["src/upload/volumes1/", "src/upload/volumes2/"]
+                volume_infos = api.volume.upload_dirs(dataset_id, dir_paths)
+                print(f"All volumes has been uploaded with IDs: {[x.id for x in volume_infos]}")
+
+                # Output:
+                # All volumes has been uploaded with IDs: [18630605, 18630606, 18630607]
+        """
+        volume_infos = []
+        if not isinstance(dir_paths, list):
+            raise ValueError(f"dir_paths must be a list of strings, but got {type(dir_paths)}")
+
+        for dir_path in dir_paths:
+            volume_infos.extend(
+                self.upload_dir(
+                    dataset_id, dir_path, progress_cb, log_progress, change_name_if_conflict
+                )
+            )
+        return volume_infos

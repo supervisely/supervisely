@@ -5,21 +5,32 @@
 from __future__ import annotations
 
 import time
-from typing import List, NamedTuple, Dict, Optional, Callable, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from supervisely.collection.str_enum import StrEnum
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
+from supervisely.annotation.tag import Tag
+from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
-    RemoveableBulkModuleApi,
     ModuleWithStatus,
+    RemoveableBulkModuleApi,
     WaitingTimeExceeded,
 )
+from supervisely.collection.str_enum import StrEnum
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.point import Point
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.project.project_meta import ProjectMeta
 
 
 class LabelingJobInfo(NamedTuple):
@@ -287,6 +298,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_range: Optional[List[int, int]] = None,
         reviewer_id: Optional[int] = None,
         images_ids: Optional[List[int]] = [],
+        dynamic_classes: Optional[bool] = False,
+        dynamic_tags: Optional[bool] = False,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -319,6 +332,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type reviewer_id: int, optional
         :param images_ids: List of images ids to label in dataset
         :type images_ids: List[int], optional
+        :param dynamic_classes: If True, classes created after creating the job will be available for annotators
+        :type dynamic_classes: bool, optional
+        :param dynamic_tags: If True, tags created after creating the job will be available for annotators
+        :type dynamic_tags: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -485,6 +502,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 "imageFiguresLimit": objects_limit_per_image,
                 "imageTagsLimit": tags_limit_per_image,
                 "entityIds": images_ids,
+                "dynamicClasses": dynamic_classes,
+                "dynamicTags": dynamic_tags,
             },
         }
 
@@ -1106,3 +1125,112 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             api.labeling_job.set_status(id=9, status="completed")
         """
         self._api.post("jobs.set-status", {ApiField.ID: id, ApiField.STATUS: status})
+
+    def get_project_meta(self, id: int) -> ProjectMeta:
+        """
+        Returns project meta with classes and tags used in the labeling job with given id.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :return: Project meta of the labeling job with given id.
+        :rtype: :class:`ProjectMeta`
+        """
+        job_info = self.get_info_by_id(id)
+        project_meta_json = self._api.project.get_meta(job_info.project_id)
+        project_meta = ProjectMeta.from_json(project_meta_json)
+
+        job_classes = [
+            obj_class
+            for obj_class in project_meta.obj_classes
+            if obj_class.name in job_info.classes_to_label
+        ]
+        job_tags = [
+            tag_meta
+            for tag_meta in project_meta.tag_metas
+            if tag_meta.name in job_info.tags_to_label
+        ]
+        job_meta = ProjectMeta(obj_classes=job_classes, tag_metas=job_tags)
+        return job_meta
+
+    def get_annotations(
+        self, id: int, image_ids: List[int], project_meta: ProjectMeta = None
+    ) -> List[Annotation]:
+        """
+        Return annotations for given image ids from labeling job with given id.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param image_ids: Image IDs in Supervisely.
+        :type image_ids: int
+        :param project_meta: Project meta of the labeling job with given id. Can be retrieved with :func:`get_project_meta`.
+        :type project_meta: :class:`ProjectMeta`, optional
+        :return: Annotation for given image id from labeling job with given id.
+        :rtype: :class:`Annotation`
+        """
+
+        def _get_geometry(type: str, data: dict):
+            if type == "bitmap":
+                geometry = Bitmap.from_json(data)
+            elif type == "point":
+                geometry = Point.from_json(data)
+            elif type == "rectangle":
+                geometry = Rectangle.from_json(data)
+            elif type == "polygon":
+                geometry = Polygon.from_json(data)
+            elif type == "line":
+                geometry = Polyline.from_json(data)
+            elif type == "graph":
+                geometry = GraphNodes.from_json(data)
+            else:
+                geometry = None
+            return geometry
+
+        def _create_tags_from_labeling_job(
+            job_tags_map: List[dict], project_meta: ProjectMeta
+        ) -> List[Tag]:
+            tags = []
+            for tag in job_tags_map:
+                tag_meta = project_meta.get_tag_meta_by_id(tag["tagId"])
+                if tag_meta is None:
+                    continue
+                tag_value = tag.get("value", None)
+                tag = Tag(tag_meta, value=tag_value)
+                tags.append(tag)
+            return tags
+
+        def _create_labels_from_labeling_job(
+            figures_map: List[FigureInfo], project_meta: ProjectMeta
+        ) -> List[Label]:
+            labels = []
+            for figure in figures_map:
+                obj_class = project_meta.get_obj_class_by_id(figure.class_id)
+                if obj_class is None:
+                    continue
+                geometry = _get_geometry(figure.geometry_type, figure.geometry)
+                if geometry is None:
+                    continue
+                tags = _create_tags_from_labeling_job(figure.tags, project_meta)
+                label = Label(obj_class=obj_class, geometry=geometry, tags=tags)
+                labels.append(label)
+            return labels
+
+        self._api.add_header("x-job-id", str(id))
+        job_info = self.get_info_by_id(id)
+        figures_map = self._api.image.figure.download(job_info.dataset_id, image_ids)
+        images = self._api.image.get_list(
+            job_info.dataset_id,
+            filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
+        )
+        self._api.pop_header("x-job-id")
+
+        if project_meta is None:
+            project_meta = self.get_project_meta(id)
+
+        anns = []
+        for image in images:
+            img_figures = figures_map.get(image.id, [])
+            img_tags = _create_tags_from_labeling_job(image.tags, project_meta)
+            labels = _create_labels_from_labeling_job(img_figures, project_meta)
+            ann = Annotation(img_size=(image.height, image.width), labels=labels, img_tags=img_tags)
+            anns.append(ann)
+        return anns

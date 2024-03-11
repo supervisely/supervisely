@@ -1,0 +1,6 @@
+[MESSAGES CONTROL]
+; disable = C0330, C0301, C0305, W0702, W0605, C0116, C0115, W0718
+disable = C, W, R
+generated-members = cv2.*,signal.*
+[FORMAT]
+max-line-length=100

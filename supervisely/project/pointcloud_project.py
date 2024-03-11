@@ -1,52 +1,44 @@
 # coding: utf-8
-
 from __future__ import annotations
-from typing import List, Optional, Dict, Tuple, Callable, NamedTuple, Union
 
-from supervisely.api.api import Api
-from collections import namedtuple
 import os
 import random
-import numpy as np
 import shutil
+from collections import namedtuple
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
+
+import numpy as np
 from tqdm import tqdm
 
-from supervisely.io.fs import (
-    file_exists,
-    touch,
-    dir_exists,
-    list_files,
-    get_file_name_with_ext,
-    get_file_name,
-    copy_file,
-    silent_remove,
-    remove_dir,
-    ensure_base_path,
-)
 import supervisely.imaging.image as sly_image
-from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
+import supervisely.pointcloud.pointcloud as sly_pointcloud
 from supervisely._utils import batched
-from supervisely.video_annotation.key_id_map import KeyIdMap
-
+from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.pointcloud.pointcloud_api import PointcloudInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-
-from supervisely.project.project import (
-    OpenMode,
-    Dataset,
-    read_single_project as read_project_wrapper,
+from supervisely.io.fs import (
+    copy_file,
+    dir_exists,
+    ensure_base_path,
+    file_exists,
+    get_file_name,
+    get_file_name_with_ext,
+    list_files,
+    remove_dir,
+    silent_remove,
+    touch,
 )
-
-
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
-import supervisely.pointcloud.pointcloud as sly_pointcloud
-from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.io.json import dump_json_file
+from supervisely.project.project import Dataset, OpenMode
+from supervisely.project.project import read_single_project as read_project_wrapper
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
+from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudItemPaths(NamedTuple):
@@ -545,6 +537,24 @@ class PointcloudProject(VideoProject):
         return super(PointcloudProject, self).get_classes_stats(
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
+
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.PointcloudProject("/home/admin/work/supervisely/projects/pointclouds", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'point_clouds'
+        """
+        return ProjectType.POINT_CLOUDS.value
 
     @staticmethod
     def get_train_val_splits_by_count(
@@ -1080,7 +1090,7 @@ def upload_pointcloud_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: Optional[bool] = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = PointcloudProject.read_single(directory)
@@ -1093,14 +1103,18 @@ def upload_pointcloud_project(
     project = api.project.create(workspace_id, project_name, ProjectType.POINT_CLOUDS)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
+    if progress_cb is not None:
+        log_progress = False
+
     key_id_map = KeyIdMap()
     for dataset_fs in project_fs:
         dataset = api.dataset.create(project.id, dataset_fs.name, change_name_if_conflict=True)
 
         ds_progress = None
         if log_progress:
-            ds_progress = Progress(
-                "Uploading dataset: {!r}".format(dataset.name), total_cnt=len(dataset_fs)
+            ds_progress = tqdm_sly(
+                desc="Uploading pointclouds to {!r}".format(dataset.name),
+                total=len(dataset_fs),
             )
 
         for item_name in dataset_fs:
@@ -1211,7 +1225,7 @@ def upload_pointcloud_project(
                     )
                     raise e
             if log_progress:
-                ds_progress.iters_done_report(1)
+                ds_progress(1)
             if progress_cb is not None:
                 progress_cb(1)
 

@@ -376,7 +376,7 @@ class SessionJSON:
         for retry_idx in range(retries):
             try:
                 response = requests.post(*args, **kwargs)
-                if response.status_code != requests.codes.ok:
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     sly.Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:

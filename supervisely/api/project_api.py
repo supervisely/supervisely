@@ -475,17 +475,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             json_settings = self.get_settings(id)
             mtag_name = None
 
-            if json_settings["groupImagesByTagId"] is not None:
+            if json_settings.get("groupImagesByTagId") is not None:
                 for tag in json_response["tags"]:
                     if tag["id"] == json_settings["groupImagesByTagId"]:
                         mtag_name = tag["name"]
                         break
 
             json_response[MetaJsonF.PROJECT_SETTINGS] = ProjectSettings(
-                multiview_enabled=json_settings["groupImages"],
+                multiview_enabled=json_settings.get("groupImages", False),
                 multiview_tag_name=mtag_name,
-                multiview_tag_id=json_settings["groupImagesByTagId"],
-                multiview_is_synced=json_settings["groupImagesSync"],
+                multiview_tag_id=json_settings.get("groupImagesByTagId"),
+                multiview_is_synced=json_settings.get("groupImagesSync", False),
             ).to_json()
 
         return json_response
@@ -657,7 +657,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             m = ProjectMeta.from_json(meta)
 
         m.project_settings.validate(m)
-        self._api.post("projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()})
+        response = self._api.post(
+            "projects.meta.update", {ApiField.ID: id, ApiField.META: m.to_json()}
+        )
+        try:
+            tmp = ProjectMeta.from_json(data=response.json())
+            m = tmp.clone(project_type=m.project_type, project_settings=m.project_settings)
+        except KeyError:
+            pass  # handle old instances <6.8.69: response.json()=={'success': True}
 
         if m.project_settings is not None:
             s = m.project_settings
@@ -989,19 +996,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def images_grouping(self, id: int, enable: bool, tag_name: str, sync: bool = False) -> None:
         """Enables and disables images grouping by given tag name.
 
-        :param id: Project ID, where images grouping will be enabled
+        :param id: Project ID, where images grouping will be enabled.
         :type id: int
-        :param enable: if True groups images by given tag name, otherwise disables images grouping
+        :param enable: if True groups images by given tag name, otherwise disables images grouping.
         :type enable: bool
-        :param tag_name: Name of the tag. Images will be grouped by this tag
+        :param tag_name: Name of the tag. Images will be grouped by this tag.
         :type tag_name: str
+        :param sync: Enable the syncronization views mode in the grouping settings. By default, `False`
+        :type sync: bool
         """
         project_meta_json = self.get_meta(id)
         project_meta = ProjectMeta.from_json(project_meta_json)
         group_tag_meta = project_meta.get_tag_meta(tag_name)
         if group_tag_meta is None:
-            raise Exception(f"Tag {tag_name} doesn't exists in the given project")
-
+            raise RuntimeError(f"The group tag '{tag_name}' doesn't exist in the given project.")
+        elif group_tag_meta.value_type != TagValueType.ANY_STRING:
+            raise RuntimeError(
+                f"The tag value type should be '{TagValueType.ANY_STRING}' for images grouping. The provided type: '{group_tag_meta.value_type}'"
+            )
         group_tag_id = group_tag_meta.sly_id
         project_settings = {
             "groupImages": enable,
@@ -1543,10 +1555,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
     ) -> List[dict]:
         """
-        Delete permanently projects with given IDs from the Supervisely server.
-
         !!! WARNING !!!
         Be careful, this method deletes data from the database, recovery is not possible.
+
+        Delete permanently projects with given IDs from the Supervisely server.
+        All project IDs must belong to the same team.
+        Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: IDs of projects in Supervisely.
         :type ids: Union[int, List]

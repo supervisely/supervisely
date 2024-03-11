@@ -130,7 +130,7 @@ class Import(Application):
             return self._project_name
 
         @property
-        def progress(self) -> SlyTqdm or tqdm:
+        def progress(self) -> Union[SlyTqdm, tqdm]:
             return self._progress
 
         @property
@@ -379,7 +379,9 @@ class Import(Application):
             self.__remove_source_files_checkbox.disable()
 
         self.__settings_card_widgets = Container(widgets=[self.__remove_source_files_checkbox])
+        # pylint: disable=assignment-from-none
         custom_settings_container = self.add_custom_settings()
+        # pylint: enable=assignment-from-none
         if custom_settings_container is not None:
             if not isinstance(custom_settings_container, Widget):
                 raise ValueError("Custom settings must return a Widget")

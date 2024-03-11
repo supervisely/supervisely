@@ -4,8 +4,8 @@ from copy import deepcopy
 from supervisely import logger
 from supervisely.function_wrapper import function_wrapper
 from supervisely.io.json import load_json_file
-from supervisely.nn.config import update_recursively
-from supervisely.nn.hosted.constants import CONFIG, MODEL
+from supervisely.nn.legacy.config import update_recursively
+from supervisely.nn.legacy.hosted.constants import CONFIG, MODEL
 from supervisely.task.paths import TaskPaths
 
 from supervisely.worker_api.rpc_servicer import AgentRPCServicer

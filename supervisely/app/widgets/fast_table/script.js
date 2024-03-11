@@ -175,7 +175,7 @@ Vue.component('fast-table', {
                   <span v-if="columnsSettings[idx]?.type === 'class'" class="w-3 h-3 rounded-sm flex mr-1.5 flex-none" :style="{ backgroundColor: (classesMap[col] || { color: '#00ff00' }).color }"></span>
                   <span v-html="highlight(col)"></span>
                   <span v-if="idx === 0 && settings.isRowClickable" class="opacity-0 transition-all duration-300 text-secondary-500 text-xs group-hover:translate-x-2 group-hover:opacity-100">➔</span>
-                  <span class="text-slate-400 ml-0.5 text-[.7rem]" v-if="columnsSettings[idx]?.postfix">{{ columnsSettings[idx].postfix }}</span>
+                  <span class="text-slate-400 ml-0.5 text-[.7rem]" v-if="col != '' && columnsSettings[idx]?.postfix">{{ columnsSettings[idx].postfix }}</span>
                 </div>
                 <div v-if="columnsSettings[idx]?.type === 'class'" class="text-[.6rem] text-slate-500 pl-[1.2rem]">
                   {{ (classesMap[col]?.shape || 'Unknown').replace('bitmap', 'mask') }}

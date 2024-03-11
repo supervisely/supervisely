@@ -12,7 +12,7 @@ References
 import nrrd
 import numpy as np
 
-from loaders.volume import Volume
+from loaders.volume import Volume  # pylint: disable=import-error
 
 
 def open_image(path, verbose=True):

@@ -2,28 +2,26 @@
 
 # docs
 from __future__ import annotations
-from collections import namedtuple
+
 import os
+from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from tqdm import tqdm
+
+from supervisely._utils import batched
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import file_exists, touch, mkdir
+from supervisely.io.fs import file_exists, mkdir, touch
 from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project import (
-    Dataset,
-    OpenMode,
-    Project,
-    read_single_project as read_project_wrapper,
-)
+from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
-from supervisely._utils import batched
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -785,6 +783,24 @@ class VideoProject(Project):
         # TODO: write docstring
         return self._key_id_map
 
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.VideoProject("/home/admin/work/supervisely/projects/video", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'videos'
+        """
+        return ProjectType.VIDEOS.value
+
     def set_key_id_map(self, new_map: KeyIdMap):
         """
         Save given KeyIdMap object to project dir in json format.
@@ -1098,6 +1114,7 @@ class VideoProject(Project):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Upload video project from given directory in Supervisely.
@@ -1146,6 +1163,7 @@ class VideoProject(Project):
             workspace_id=workspace_id,
             project_name=project_name,
             log_progress=log_progress,
+            progress_cb=progress_cb,
         )
 
 
@@ -1177,7 +1195,7 @@ def download_video_project(
     :type save_video_info: bool, optional
     :param log_progress: Show downloading logs in the output.
     :type log_progress: bool, optional
-    :param progress_cb: Function for tracking download progress.
+    :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
 
     :return: None.
@@ -1353,6 +1371,7 @@ def upload_video_project(
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
     include_custom_data: Optional[bool] = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = VideoProject.read_single(dir)
     if project_name is None:
@@ -1364,7 +1383,11 @@ def upload_video_project(
     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
     api.project.update_meta(project.id, project_fs.meta.to_json())
 
+    if progress_cb is not None:
+        log_progress = False
+
     for dataset_fs in project_fs.datasets:
+        dataset_fs: VideoDataset
         dataset = api.dataset.create(project.id, dataset_fs.name)
 
         names, item_paths, ann_paths = [], [], []
@@ -1374,16 +1397,16 @@ def upload_video_project(
             item_paths.append(video_path)
             ann_paths.append(ann_path)
 
-        progress_cb = None
+        ds_progress = progress_cb
         if log_progress:
-            ds_progress = Progress(
-                "Uploading videos to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
+            ds_progress = tqdm_sly(
+                desc="Uploading videos to {!r}".format(dataset.name),
+                total=len(item_paths),
+                position=0,
             )
-            progress_cb = ds_progress.iters_done_report
         try:
-            item_infos = api.video.upload_paths(dataset.id, names, item_paths, progress_cb)
-
+            item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress)
+            video_ids = [item_info.id for item_info in item_infos]
             if include_custom_data:
                 for item_info in item_infos:
                     item_name = item_info.name
@@ -1406,22 +1429,23 @@ def upload_video_project(
                 },
             )
             raise e
-        item_ids = [item_info.id for item_info in item_infos]
-        if log_progress:
-            ds_progress = Progress(
-                "Uploading annotations to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
+
+        anns_progress = None
+        if log_progress or progress_cb is not None:
+            anns_progress = tqdm_sly(
+                desc="Uploading annotations to {!r}".format(dataset.name),
+                total=len(video_ids),
+                leave=False,
             )
-            progress_cb = ds_progress.iters_done_report
         try:
-            api.video.annotation.upload_paths(item_ids, ann_paths, project_fs.meta, progress_cb)
+            api.video.annotation.upload_paths(video_ids, ann_paths, project_fs.meta, anns_progress)
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
                 extra={
                     "project_id": project.id,
                     "dataset_id": dataset.id,
-                    "item_ids": item_ids,
+                    "item_ids": video_ids,
                     "ann_paths": ann_paths,
                 },
             )

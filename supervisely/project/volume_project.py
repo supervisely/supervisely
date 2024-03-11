@@ -1,7 +1,7 @@
 # coding: utf-8
-
 import os
 import re
+import sys
 from collections import namedtuple
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
@@ -19,13 +19,13 @@ from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.task.progress import Progress
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume import stl_converter
 from supervisely.volume import volume as sly_volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.sly_logger import logger
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -120,6 +120,24 @@ class VolumeProject(VideoProject):
             dataset_names, return_objects_count, return_figures_count, return_items_count
         )
 
+    @property
+    def type(self) -> str:
+        """
+        Project type.
+
+        :return: Project type.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
+            print(project.type)
+            # Output: 'volumes'
+        """
+        return ProjectType.VOLUMES.value
+
     @staticmethod
     def download(
         api: Api,
@@ -128,6 +146,7 @@ class VolumeProject(VideoProject):
         dataset_ids: Optional[List[int]] = None,
         download_volumes: Optional[bool] = True,
         log_progress: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download volume project from Supervisely to the given directory.
@@ -144,10 +163,12 @@ class VolumeProject(VideoProject):
         :type download_volumes: :class:`bool`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking the download progress.
+        :type progress_cb: tqdm or callable, optional
+
         :return: None
         :rtype: NoneType
         :Usage example:
-
         .. code-block:: python
 
                 import supervisely as sly
@@ -175,6 +196,7 @@ class VolumeProject(VideoProject):
             dataset_ids=dataset_ids,
             download_volumes=download_volumes,
             log_progress=log_progress,
+            progress_cb=progress_cb,
         )
 
     @staticmethod
@@ -184,6 +206,7 @@ class VolumeProject(VideoProject):
         workspace_id: int,
         project_name: Optional[str] = None,
         log_progress: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads volume project to Supervisely from the given directory.
@@ -198,6 +221,9 @@ class VolumeProject(VideoProject):
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking the download progress.
+        :type progress_cb: tqdm or callable, optional
+
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -231,6 +257,44 @@ class VolumeProject(VideoProject):
             workspace_id=workspace_id,
             project_name=project_name,
             log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    @staticmethod
+    def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
+        )
+
+    @staticmethod
+    def get_train_val_splits_by_tag(
+        project_dir: str,
+        train_tag_name: str,
+        val_tag_name: str,
+        untagged: Optional[str] = "ignore",
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+        )
+
+    @staticmethod
+    def get_train_val_splits_by_dataset(
+        project_dir: str, train_datasets: List[str], val_datasets: List[str]
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
         )
 
 
@@ -441,7 +505,14 @@ def load_figure_data(
 # TODO: add methods to convert to 3d masks
 
 
-def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_progress=True):
+def upload_volume_project(
+    dir: str,
+    api: Api,
+    workspace_id: int,
+    project_name: Optional[str] = None,
+    log_progress: Optional[bool] = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> Tuple[int, str]:
     project_fs = VolumeProject.read_single(dir)
     if project_name is None:
         project_name = project_fs.name
@@ -451,6 +522,11 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
 
     project = api.project.create(workspace_id, project_name, ProjectType.VOLUMES)
     api.project.update_meta(project.id, project_fs.meta.to_json())
+
+    if progress_cb is not None:
+        log_progress = False
+
+    item_id_dct, anns_paths_dct, interpolation_dirs_dct, mask_dirs_dct = {}, {}, {}, {}
 
     for dataset_fs in project_fs.datasets:
         dataset_fs: VolumeDataset
@@ -465,28 +541,33 @@ def upload_volume_project(dir, api: Api, workspace_id, project_name=None, log_pr
             interpolation_dirs.append(dataset_fs.get_interpolation_dir(item_name))
             mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
-        progress_cb = None
+        ds_progress = progress_cb
         if log_progress:
-            ds_progress = Progress(
-                "Uploading volumes to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
+            ds_progress = tqdm_sly(
+                desc="Uploading volumes to {!r}".format(dataset.name),
+                total=len(item_paths),
+                position=0,
             )
-            progress_cb = ds_progress.iters_done_report
 
         item_infos = api.volume.upload_nrrd_series_paths(
-            dataset.id, names, item_paths, progress_cb, log_progress
+            dataset.id, names, item_paths, ds_progress, log_progress
         )
-        item_ids = [item_info.id for item_info in item_infos]
-        ds_progress = None
-        if log_progress:
-            ds_progress = Progress(
-                "Uploading annotations to dataset {!r}".format(dataset.name),
-                total_cnt=len(item_paths),
-            )
-            progress_cb = ds_progress.iters_done_report
+        volume_ids = [item_info.id for item_info in item_infos]
 
+        anns_progress = None
+        if log_progress or progress_cb is not None:
+            anns_progress = tqdm_sly(
+                desc="Uploading annotations to {!r}".format(dataset.name),
+                total=len(volume_ids),
+                leave=False,
+            )
         api.volume.annotation.upload_paths(
-            item_ids, ann_paths, project_fs.meta, interpolation_dirs, progress_cb, mask_dirs
+            volume_ids,
+            ann_paths,
+            project_fs.meta,
+            interpolation_dirs,
+            anns_progress,
+            mask_dirs,
         )
 
     return project.id, project.name
