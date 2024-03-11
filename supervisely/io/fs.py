@@ -498,7 +498,7 @@ def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
     return tree
 
 
-def subdir_tree(dir_path: str, ignore: Optional[List[str]] = None) -> Generator[str, None, None]:
+def subdirs_tree(dir_path: str, ignore: Optional[List[str]] = None) -> Generator[str, None, None]:
     """Generator that yields directories in the directory tree,
     starting from the level below the root directory and then going down the tree.
     If ignore is specified, it will ignore paths which end with the specified directory names.
@@ -516,15 +516,15 @@ def subdir_tree(dir_path: str, ignore: Optional[List[str]] = None) -> Generator[
     tree = get_subdirs_tree(dir_path)
     ignore = ignore or []
 
-    def _subdir_tree(tree, path=""):
+    def _subdirs_tree(tree, path=""):
         for key, value in tree.items():
             new_path = os.path.join(path, key) if path else key
             if not any(new_path.endswith(i) for i in ignore):
                 yield new_path
             if value:
-                yield from _subdir_tree(value, new_path)
+                yield from _subdirs_tree(value, new_path)
 
-    yield from _subdir_tree(tree)
+    yield from _subdirs_tree(tree)
 
 
 def global_to_relative(global_path: str, base_dir: str) -> str:

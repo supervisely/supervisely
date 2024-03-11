@@ -36,7 +36,7 @@ from supervisely.io.fs import (
     list_files_recursively,
     mkdir,
     silent_remove,
-    subdir_tree,
+    subdirs_tree,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
@@ -1700,7 +1700,7 @@ class Project:
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
-        possible_datasets = subdir_tree(self.directory, Dataset.ignorable_dirs())
+        possible_datasets = subdirs_tree(self.directory, Dataset.ignorable_dirs())
 
         for ds_name in possible_datasets:
             parents = ds_name.split(os.path.sep)
@@ -1724,7 +1724,7 @@ class Project:
 
     def _read_api(self):
         self._meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
-        for parents, dataset_info in self._api.dataset.dataset_tree(self.project_id):
+        for parents, dataset_info in self._api.dataset.tree(self.project_id):
             relative_path = Dataset._get_dataset_path(dataset_info.name, parents)
             dataset_path = os.path.join(self.directory, relative_path)
             current_dataset = self.dataset_class(
@@ -2695,7 +2695,7 @@ def _download_project(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
-    for parents, dataset_info in api.dataset.dataset_tree(project_id):
+    for parents, dataset_info in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
         dataset_id = dataset_info.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
@@ -3020,7 +3020,7 @@ def _download_project_optimized(
     project_fs = Project(project_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
-    for parents, dataset_info in api.dataset.dataset_tree(project_id):
+    for parents, dataset_info in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
         dataset_name = dataset_info.name
         dataset_id = dataset_info.id

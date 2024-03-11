@@ -876,7 +876,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         return dataset_tree
 
-    def dataset_tree(self, project_id: int) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
+    def tree(self, project_id: int) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
         """Yields tuples of (path, dataset) for all datasets in the project.
         Path of the dataset is a list of parents, e.g. ["ds1", "ds2", "ds3"].
         For root datasets, the path is an empty list.
@@ -895,7 +895,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             project_id = 123
 
-            for parents, dataset in api.dataset.dataset_tree(project_id):
+            for parents, dataset in api.dataset.tree(project_id):
                 parents: List[str]
                 dataset: sly.DatasetInfo
                 print(parents, dataset.name)
