@@ -1081,6 +1081,9 @@ class Inference:
 
         @server.post("/get_deploy_settings")
         def _get_deploy_settings(response: Response, request: Request):
+            """
+            Get deploy settings for the model. Works only for the Sphinx docstring format.
+            """
             load_model_method = getattr(self, "load_model")
             method_signature = inspect.signature(load_model_method)
             docstring = inspect.getdoc(load_model_method) or ""
