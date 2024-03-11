@@ -143,6 +143,12 @@ class Dataset(KeyObject):
         dataset_id: Optional[int] = None,
         api: Optional[sly.Api] = None,
     ):
+        if directory is not None and dataset_id is not None:
+            raise NotImplementedError(
+                "Opening dataset from the API is not implemented yet. Please use the local mode "
+                "by providing the 'directory' and 'mode' arguments."
+                "This feature will be available later."
+            )
         if type(mode) is not OpenMode and mode is not None:
             raise TypeError(
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
@@ -1464,6 +1470,12 @@ class Project:
         project_id: Optional[int] = None,
         api: Optional[sly.Api] = None,
     ):
+        if directory is not None and project_id is not None:
+            raise NotImplementedError(
+                "Opening project from the API is not implemented yet. Please use local mode "
+                "by providing directory and mode parameters. "
+                "This feature will be implemented later."
+            )
         if mode is None and project_id is None:
             raise ValueError("One of the parameters 'mode' or 'project_id' should be set.")
         if type(mode) is not OpenMode and mode is not None:

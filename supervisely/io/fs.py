@@ -438,14 +438,14 @@ def file_exists(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def get_subdirs(dir_path: str, recursively: Optional[bool] = False) -> list:
+def get_subdirs(dir_path: str, recursive: Optional[bool] = False) -> list:
     """
     Get list containing the names of the directories in the given directory.
 
     :param dir_path: Target directory path.
     :type dir_path: str
-    :param recursively: If True, all found subdirectories will be included in the result list.
-    :type recursively: bool
+    :param recursive: If True, all found subdirectories will be included in the result list.
+    :type recursive: bool
     :returns: List containing directories names.
     :rtype: :class:`list`
     :Usage example:
@@ -457,7 +457,7 @@ def get_subdirs(dir_path: str, recursively: Optional[bool] = False) -> list:
         print(subdirs)
         # Output: ['tests', 'users', 'ds1']
     """
-    if recursively:
+    if recursive:
         return [
             global_to_relative(entry, dir_path)
             for entry in list_dir_recursively(dir_path, include_subdirs=True, use_global_paths=True)
@@ -486,7 +486,7 @@ def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
     """
 
     tree = {}
-    subdirs = get_subdirs(dir_path, recursively=True)
+    subdirs = get_subdirs(dir_path, recursive=True)
     for subdir in subdirs:
         parts = subdir.split(os.sep)
         d = tree
