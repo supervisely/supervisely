@@ -1085,25 +1085,28 @@ class Inference:
             method_signature = inspect.signature(load_model_method)
             docstring = inspect.getdoc(load_model_method) or ""
             doc_lines = docstring.split("\n")
-            param_docs = {
-                line.split(":")[1].strip(): line.split(":")[2].strip()
-                for line in doc_lines
-                if line.startswith(":param")
-            }
+
+            param_docs = {}
+            param_type = {}
+            for line in doc_lines:
+                if line.startswith(":param"):
+                    name = line.split(":")[1].strip().split()[1]
+                    doc = line.replace(f":param {name}:", "").strip()
+                    param_docs[name] = doc
+                if line.startswith(":type"):
+                    name = line.split(":")[1].strip().split()[1]
+                    type = line.replace(f":type {name}:", "").strip()
+                    param_type[name] = type
 
             args_details = []
             for name, parameter in method_signature.parameters.items():
                 if name == "self":
                     continue
-                arg_type = (
-                    parameter.annotation.__name__
-                    if parameter.annotation != inspect.Parameter.empty
-                    else None
-                )
+                arg_type = param_type.get(name, None)
                 default = (
                     parameter.default if parameter.default != inspect.Parameter.empty else None
                 )
-                doc = param_docs.get(f"param {name}", None)
+                doc = param_docs.get(name, None)
                 args_details.append(
                     {"name": name, "type": arg_type, "default": default, "doc": doc}
                 )
