@@ -3020,14 +3020,15 @@ def _download_project_optimized(
     project_fs = Project(project_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
-    for dataset_info in api.dataset.get_list(project_id):
+    for parents, dataset_info in api.dataset.dataset_tree(project_id):
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
         dataset_name = dataset_info.name
         dataset_id = dataset_info.id
         need_download = True
         if datasets_whitelist is not None and dataset_id not in datasets_whitelist:
             need_download = False
         if need_download is True:
-            dataset = project_fs.create_dataset(dataset_name)
+            dataset = project_fs.create_dataset(dataset_name, dataset_path)
             _download_dataset(
                 api,
                 dataset,
