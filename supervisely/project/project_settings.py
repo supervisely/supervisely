@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional
 
 from jsonschema import ValidationError, validate
 
 from supervisely._utils import take_with_default
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta import TagValueType
 from supervisely.io.json import JsonSerializable
 from supervisely.sly_logger import logger
 
