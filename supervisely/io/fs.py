@@ -438,12 +438,14 @@ def file_exists(path: str) -> bool:
     return os.path.isfile(path)
 
 
-def get_subdirs(dir_path: str) -> list:
+def get_subdirs(dir_path: str, recursive: Optional[bool] = False) -> list:
     """
     Get list containing the names of the directories in the given directory.
 
     :param dir_path: Target directory path.
     :type dir_path: str
+    :param recursive: If True, all found subdirectories will be included in the result list.
+    :type recursive: bool
     :returns: List containing directories names.
     :rtype: :class:`list`
     :Usage example:
@@ -455,8 +457,96 @@ def get_subdirs(dir_path: str) -> list:
         print(subdirs)
         # Output: ['tests', 'users', 'ds1']
     """
+    if recursive:
+        return [
+            global_to_relative(entry, dir_path)
+            for entry in list_dir_recursively(dir_path, include_subdirs=True, use_global_paths=True)
+            if os.path.isdir(entry)
+        ]
     res = list(x.name for x in os.scandir(dir_path) if x.is_dir())
     return res
+
+
+def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
+    """Returns a dictionary representing the directory tree.
+    It will have only directories and subdirectories (not files).
+
+    :param dir_path: Target directory path.
+    :type dir_path: str
+    :returns: Dictionary representing the directory tree.
+    :rtype: :class:`Dict[str, Union[str, Dict]]`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import get_subdirs_tree
+        tree = get_subdirs_tree('/home/admin/work/projects/examples')
+        print(tree)
+        # Output: {'examples': {'tests': {}, 'users': {}, 'ds1': {}}}
+    """
+
+    tree = {}
+    subdirs = get_subdirs(dir_path, recursive=True)
+    for subdir in subdirs:
+        parts = subdir.split(os.sep)
+        d = tree
+        for part in parts:
+            if part not in d:
+                d[part] = {}
+            d = d[part]
+
+    return tree
+
+
+def subdirs_tree(dir_path: str, ignore: Optional[List[str]] = None) -> Generator[str, None, None]:
+    """Generator that yields directories in the directory tree,
+    starting from the level below the root directory and then going down the tree.
+    If ignore is specified, it will ignore paths which end with the specified directory names.
+    All subdirectories of ignored directories will still be yielded.
+
+    :param dir_path: Target directory path.
+    :type dir_path: str
+    :param ignore: List of directories to ignore. Note, that function still will yield
+        subdirectories of ignored directories. It will only ignore paths which end with
+        the specified directory names.
+    :type ignore: List[str]
+    :returns: Generator that yields directories in the directory tree.
+    :rtype: Generator[str, None, None]
+    """
+    tree = get_subdirs_tree(dir_path)
+    ignore = ignore or []
+
+    def _subdirs_tree(tree, path=""):
+        for key, value in tree.items():
+            new_path = os.path.join(path, key) if path else key
+            if not any(new_path.endswith(i) for i in ignore):
+                yield new_path
+            if value:
+                yield from _subdirs_tree(value, new_path)
+
+    yield from _subdirs_tree(tree)
+
+
+def global_to_relative(global_path: str, base_dir: str) -> str:
+    """
+    Converts global path to relative path.
+
+    :param global_path: Global path.
+    :type global_path: str
+    :param base_dir: Base directory path.
+    :type base_dir: str
+    :returns: Relative path.
+    :rtype: :class:`str`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import global_to_relative
+        relative_path = global_to_relative('/home/admin/work/projects/examples/1.jpeg', '/home/admin/work/projects')
+        print(relative_path)
+        # Output: examples/1.jpeg
+    """
+    return os.path.relpath(global_path, base_dir)
 
 
 # removes directory content recursively
@@ -576,10 +666,12 @@ def get_directory_size(dir_path: str) -> int:
 
 
 def archive_directory(
-    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None
+    dir_: str, tar_path: str, split: Optional[Union[int, str]] = None, chunk_size_mb: int = 50
 ) -> Union[None, List[str]]:
     """
     Create tar archive from directory and optionally split it into parts of specified size.
+    You can adjust the size of the chunk to read from the file, while archiving the file into parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param dir_: Target directory path.
     :type dir_: str
@@ -588,6 +680,8 @@ def archive_directory(
     :param split: Split archive into parts of specified size (in bytes) or size with
         suffix (e.g. '1Kb' = 1024, '1Mb' = 1024 * 1024). Default is None.
     :type split: Union[int, str]
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None or list of archive parts if split is not None
     :rtype: Union[None, List[str]]
     :Usage example:
@@ -613,6 +707,7 @@ def archive_directory(
     if os.path.getsize(tar_path) <= split:
         return
 
+    chunk = chunk_size_mb * 1024 * 1024
     tar_name = os.path.basename(tar_path)
     tar_dir = os.path.abspath(os.path.dirname(tar_path))
     parts_paths = []
@@ -622,21 +717,29 @@ def archive_directory(
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
             output_path = os.path.join(tar_dir, part_name)
-            data = input_file.read(split)
-            if not data:
-                break
             with open(output_path, "wb") as output_file:
-                output_file.write(data)
+                while output_file.tell() < split:
+                    data = input_file.read(chunk)
+                    if not data:
+                        break
+                    output_file.write(data)
                 parts_paths.append(output_path)
                 part_number += 1
+            if not data:
+                break
 
     os.remove(tar_path)
     return parts_paths
 
 
-def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None:
+def unpack_archive(
+    archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
+) -> None:
     """
     Unpacks archive to the target directory, removes junk files and directories.
+    To extract a split archive, you must pass the path to the first part in archive_path. Archive parts must be in the same directory. Format: archive_name.tar.001, archive_name.tar.002, etc. Works with tar and zip.
+    You can adjust the size of the chunk to read from the file, while unpacking the file from parts.
+    Be careful with this parameter, it can affect the performance of the function.
 
     :param archive_path: Path to the archive.
     :type archive_path: str
@@ -644,6 +747,10 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None
     :type target_dir: str
     :param remove_junk: Remove junk files and directories. Default is True.
     :type remove_junk: bool
+    :param is_split: Determines if the source archive is split into parts. If True, archive_path must be the path to the first part. Default is False.
+    :type is_split: bool
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -657,7 +764,33 @@ def unpack_archive(archive_path: str, target_dir: str, remove_junk=True) -> None
 
         sly.fs.unpack_archive(archive_path, target_dir)
     """
+
+    if is_split:
+        chunk = chunk_size_mb * 1024 * 1024
+        base_name = get_file_name(archive_path)
+        dir_name = os.path.dirname(archive_path)
+        if get_file_ext(base_name) in (".zip", ".tar"):
+            ext = get_file_ext(base_name)
+            base_name = get_file_name(base_name)
+        else:
+            ext = get_file_ext(archive_path)
+        parts = sorted([f for f in os.listdir(dir_name) if f.startswith(base_name)])
+        combined = os.path.join(dir_name, f"combined{ext}")
+
+        with open(combined, "wb") as output_file:
+            for part in parts:
+                part_path = os.path.join(dir_name, part)
+                with open(part_path, "rb") as input_file:
+                    while True:
+                        data = input_file.read(chunk)
+                        if not data:
+                            break
+                        output_file.write(data)
+        archive_path = combined
+
     shutil.unpack_archive(archive_path, target_dir)
+    if is_split:
+        silent_remove(archive_path)
     if remove_junk:
         remove_junk_from_dir(target_dir)
 

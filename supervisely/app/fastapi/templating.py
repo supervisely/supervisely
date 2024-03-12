@@ -14,7 +14,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 js_bundle_version = "2.1.77"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
-js_frontend_version = "0.0.48"
+js_frontend_version = "v0.0.50"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
@@ -57,7 +57,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
 
         try:
             request = context["request"]
-            return super().TemplateResponse(
+            return super().TemplateResponse(  # pylint: disable=no-member too-many-function-args
                 request, name, context_with_widgets, status_code, headers, media_type, background
             )
         except:

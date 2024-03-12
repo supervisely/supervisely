@@ -429,17 +429,6 @@ class tqdm_sly(tqdm, Progress):
             )
             self.n = 0
 
-    # @property
-    # def total(self):
-    #     return self._total
-
-    # @total.setter
-    # def total(self, value):
-    #     if is_development():
-    #         self._total = value
-    #     else:
-    #         Progress.set(self, self.n or 0, value)
-
     def __iter__(self):
         """Backward-compatibility to use: for x in tqdm(iterable)"""
 
@@ -655,6 +644,7 @@ class tqdm_sly(tqdm, Progress):
 
 
 def handle_original_tqdm(func):
+    # Deprecated
     @wraps(func)
     def wrapper_original_tqdm(*args, **kwargs):
         cb_name = (

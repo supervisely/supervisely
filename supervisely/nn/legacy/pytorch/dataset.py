@@ -1,6 +1,6 @@
-from supervisely.nn.dataset import SlyDataset
+from supervisely.nn.legacy.dataset import SlyDataset
 
-from torchvision.transforms.functional import to_tensor
+from torchvision.transforms.functional import to_tensor # pylint: disable=import-error
 
 
 class PytorchSegmentationSlyDataset(SlyDataset):

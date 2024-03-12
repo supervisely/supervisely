@@ -298,6 +298,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_range: Optional[List[int, int]] = None,
         reviewer_id: Optional[int] = None,
         images_ids: Optional[List[int]] = [],
+        dynamic_classes: Optional[bool] = False,
+        dynamic_tags: Optional[bool] = False,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -330,6 +332,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type reviewer_id: int, optional
         :param images_ids: List of images ids to label in dataset
         :type images_ids: List[int], optional
+        :param dynamic_classes: If True, classes created after creating the job will be available for annotators
+        :type dynamic_classes: bool, optional
+        :param dynamic_tags: If True, tags created after creating the job will be available for annotators
+        :type dynamic_tags: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -496,6 +502,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 "imageFiguresLimit": objects_limit_per_image,
                 "imageTagsLimit": tags_limit_per_image,
                 "entityIds": images_ids,
+                "dynamicClasses": dynamic_classes,
+                "dynamicTags": dynamic_tags,
             },
         }
 

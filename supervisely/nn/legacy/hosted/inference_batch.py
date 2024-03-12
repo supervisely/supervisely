@@ -7,13 +7,19 @@ from supervisely import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.imaging import image as sly_image
 from supervisely.io.json import load_json_file
-from supervisely.nn.config import AlwaysPassingConfigValidator
+from supervisely.nn.legacy.config import AlwaysPassingConfigValidator
 from supervisely.project.project import Project, read_single_project, OpenMode
 from supervisely.task.paths import TaskPaths
 from supervisely.task.progress import report_inference_finished
-from supervisely.nn.hosted.inference_single_image import SingleImageInferenceBase
-from supervisely.nn.hosted.inference_modes import MODE, InferenceModeFactory, get_effective_inference_mode_config
-from supervisely.nn.hosted.legacy.inference_config import maybe_convert_from_v1_inference_task_config
+from supervisely.nn.legacy.hosted.inference_single_image import SingleImageInferenceBase
+from supervisely.nn.legacy.hosted.inference_modes import (
+    MODE,
+    InferenceModeFactory,
+    get_effective_inference_mode_config,
+)
+from supervisely.nn.legacy.hosted.legacy.inference_config import (
+    maybe_convert_from_v1_inference_task_config,
+)
 from supervisely.task.progress import Progress
 
 

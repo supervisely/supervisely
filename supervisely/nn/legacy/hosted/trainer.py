@@ -7,10 +7,10 @@ from copy import deepcopy
 
 from supervisely import logger
 from supervisely.io import fs as sly_fs
-from supervisely.nn.config import update_recursively
-from supervisely.nn.dataset import samples_by_tags
-from supervisely.nn.hosted import class_indexing
-from supervisely.nn.hosted.constants import SETTINGS, INPUT_SIZE, HEIGHT, WIDTH
+from supervisely.nn.legacy.config import update_recursively
+from supervisely.nn.legacy.dataset import samples_by_tags
+from supervisely.nn.legacy.hosted import class_indexing
+from supervisely.nn.legacy.hosted.constants import SETTINGS, INPUT_SIZE, HEIGHT, WIDTH
 from supervisely.task.progress import report_checkpoint_saved
 from supervisely.project.project import read_single_project
 from supervisely.geometry.rectangle import Rectangle

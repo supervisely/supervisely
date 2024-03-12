@@ -773,7 +773,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         dataset_id: int,
         names: List[str],
         paths: List[str],
-        progress_cb: Optional[Callable] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
     ) -> List[PointcloudInfo]:
         """

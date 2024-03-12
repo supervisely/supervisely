@@ -503,6 +503,15 @@ class ApiField:
     GPU_INFO = "gpuInfo"
     """"""
     IS_PUBLIC = "isPublic"
+    """"""
+    USAGE = "usage"
+    """"""
+    PARENT_ID = "parentId"
+    """"""
+    SRC_ID = "srcId"
+    """"""
+    DEST_ID = "destId"
+
 
 
 def _get_single_item(items):
@@ -670,7 +679,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             data = self._add_sort_param(data)
         first_response = self._api.post(method, data).json()
         total = first_response["total"]
-        per_page = first_response["perPage"]
+        # per_page = first_response["perPage"]
         after = first_response["after"]
         # pages_count = first_response["pagesCount"]
 
@@ -834,6 +843,7 @@ class ModuleApi(ModuleApiBase):
 
     def _get_info_by_filters(self, parent_id, filters, fields=[]):
         """_get_info_by_filters"""
+        # pylint: disable=too-many-function-args
         from supervisely.api.project_api import ProjectApi
 
         if type(self) == ProjectApi:

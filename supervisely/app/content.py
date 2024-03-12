@@ -136,6 +136,7 @@ class StateJson(_PatchableJson, metaclass=Singleton):
 
     @classmethod
     async def _replace_global(cls, d: dict):
+        # pylint: disable=not-async-context-manager
         async with cls._global_lock:
             global_state = cls()
             # !!! May cause problems with some apps !!!

@@ -78,7 +78,7 @@ def project():
     pass
 
 
-@project.command(help="Download project data from supervisely to local directory")
+@project.command(name="download", help="Download project data from supervisely to local directory")
 @click.option(
     "-id",
     "--id",
@@ -93,7 +93,7 @@ def project():
     type=str,
     help="Download destination directory",
 )
-def download(id: int, dst: str) -> None:
+def download_project(id: int, dst: str) -> None:
     try:
         success = download_run(id, dst)
         if success:
@@ -126,7 +126,7 @@ def get_name(id: int) -> None:
         sys.exit(1)
 
 
-@project.command(help="Upload project data from local directory")
+@project.command(name="upload", help="Upload project data from local directory")
 @click.option(
     "-s",
     "--src",
@@ -148,7 +148,7 @@ def get_name(id: int) -> None:
     type=str,
     help="Custom project name",
 )
-def upload(src: str, id: int, name: str) -> None:
+def upload_project(src: str, id: int, name: str) -> None:
     try:
         success = upload_run(src, id, name)
         if success:

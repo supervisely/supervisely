@@ -296,6 +296,7 @@ class VideoTag(Tag):
         )
 
     def __str__(self):
+        # pylint: disable=too-many-format-args
         return '{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10} {:<12}'.format('Name:', self._meta.name,
                                                                'Value type:', self._meta.value_type,
                                                                'Value:', str(self.value),

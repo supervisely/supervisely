@@ -270,13 +270,17 @@ class Bitmap(BitmapBase):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_contour_impl"""
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
-            contours, _ = cv2.findContours(
-                self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
+            contours, _ = cv2.findContours(  # pylint: disable=no-member
+                self.data.astype(np.uint8),
+                cv2.RETR_LIST,  # pylint: disable=no-member
+                cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
             )
         else:
-            _, contours, _ = cv2.findContours(
-                self.data.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+            _, contours, _ = cv2.findContours(  # pylint: disable=no-member
+                self.data.astype(np.uint8),
+                cv2.RETR_LIST,  # pylint: disable=no-member
+                cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
             )
         if contours is not None:
             for cont in contours:
@@ -284,7 +288,9 @@ class Bitmap(BitmapBase):
                     self.origin.col,
                     self.origin.row,
                 )  # cont with shape (rows, ?, 2)
-            cv2.drawContours(bitmap, contours, -1, color, thickness=thickness)
+            cv2.drawContours(  # pylint: disable=no-member
+                bitmap, contours, -1, color, thickness=thickness
+            )
 
     @property
     def area(self) -> float:
@@ -339,7 +345,7 @@ class Bitmap(BitmapBase):
             return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
 
-        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)
+        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] >= 4):
             mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs
         elif len(imdecoded.shape) == 2:
@@ -434,17 +440,17 @@ class Bitmap(BitmapBase):
             figure_contours = figure.to_contours()
         """
         origin, mask = self.origin, self.data
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
-            contours, hier = cv2.findContours(
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
+            contours, hier = cv2.findContours(  # pylint: disable=no-member
                 mask.astype(np.uint8),
-                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
-                method=cv2.CHAIN_APPROX_SIMPLE,
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes # pylint: disable=no-member
+                method=cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
             )
         else:
-            _, contours, hier = cv2.findContours(
+            _, contours, hier = cv2.findContours(  # pylint: disable=no-member
                 mask.astype(np.uint8),
-                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes
-                method=cv2.CHAIN_APPROX_SIMPLE,
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes # pylint: disable=no-member
+                method=cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
             )
         if (hier is None) or (contours is None):
             return []

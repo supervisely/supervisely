@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Optional, List, Dict, Union
+from supervisely.geometry.cuboid_3d import Cuboid3d
 
 
 class Prediction:
@@ -38,3 +39,15 @@ class PredictionPoint(Prediction):
         super().__init__(class_name=class_name)
         self.col = col
         self.row = row
+
+
+class PredictionCuboid3d(Prediction):
+    def __init__(self, class_name: str, cuboid_3d: Cuboid3d, score: Optional[float]):
+        """
+        :param class_name: Predicted class name.
+        :param cuboid_3d: Cuboid3d object.
+        :param score: Confidence score.
+        """
+        super(PredictionCuboid3d, self).__init__(class_name=class_name)
+        self.cuboid_3d = cuboid_3d
+        self.score = score

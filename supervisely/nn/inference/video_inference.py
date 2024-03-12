@@ -71,21 +71,26 @@ class InferenceVideoInterface:
     def _download_video_by_frames(self):
         self._preparing_progress["status"] = "download_frames"
         self._preparing_progress["current"] = 0
+
+        def download_frame(idx, frame_index):
+            frame_path = os.path.join(f"{self._frames_path}", f"frame{idx:06d}.png")
+            if os.path.isfile(frame_path):
+                return
+            img_rgb = self.api.video.frame.download_np(self.video_info.id, frame_index)
+            sly.image.write(frame_path, img_rgb)
+            self.images_paths.append(frame_path)
+            self._preparing_progress["current"] += 1
+
+        if len(self._frames_indexes) == 1:
+            download_frame(0, self._frames_indexes[0])
+            return
+        
         for index, frame_index in tqdm(
             enumerate(self._frames_indexes),
             desc="Downloading frames",
             total=len(self._frames_indexes),
         ):
-            frame_path = os.path.join(f"{self._frames_path}", f"frame{index:06d}.png")
-            self.images_paths.append(frame_path)
-
-            if os.path.isfile(frame_path):
-                continue
-
-            img_rgb = self.api.video.frame.download_np(self.video_info.id, frame_index)
-            # save frame as PNG file
-            sly.image.write(os.path.join(f"{self._frames_path}", f"frame{index:06d}.png"), img_rgb)
-            self._preparing_progress["current"] += 1
+            download_frame(index, frame_index)
 
     def _download_entire_video(self):
         def videos_to_frames(video_path, progress, frames_range=None):

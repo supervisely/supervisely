@@ -27,11 +27,13 @@ class Hidable:
         return self._hide
 
     def hide(self):
+        # pylint: disable=no-member
         self._hide = True
         DataJson()[self.widget_id]["hide"] = self._hide
         DataJson().send_changes()
 
     def show(self):
+        # pylint: disable=no-member
         self._hide = False
         DataJson()[self.widget_id]["hide"] = self._hide
         DataJson().send_changes()
@@ -40,7 +42,7 @@ class Hidable:
         return {"hide": self._hide}
 
     def get_json_state(self):
-        raise {}
+        return {}
 
     def _wrap_hide_html(self, widget_id, html):
         soup = BeautifulSoup(html, features="html.parser")
@@ -64,11 +66,13 @@ class Disableable:
         return self._disabled
 
     def disable(self):
+        # pylint: disable=no-member
         self._disabled = True
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
 
     def enable(self):
+        # pylint: disable=no-member
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
@@ -77,7 +81,7 @@ class Disableable:
         return {"disabled": self._disabled}
 
     def get_json_state(self):
-        raise {}
+        return {}
 
     def _wrap_disable_html(self, widget_id, html):
         soup = BeautifulSoup(html, features="html.parser")
@@ -98,6 +102,7 @@ class Loading:
 
     @loading.setter
     def loading(self, value: bool):
+        # pylint: disable=no-member
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
@@ -258,7 +263,7 @@ class DynamicWidget(Widget):
         self.reload = self.update_template_for_offline_session(self.reload)
         super().__init__(widget_id=widget_id, file_path=file_path)
 
-    def reload(self):
+    def reload(self):  # pylint: disable=method-hidden
         raise NotImplementedError()
 
     def update_template_for_offline_session(self, func):

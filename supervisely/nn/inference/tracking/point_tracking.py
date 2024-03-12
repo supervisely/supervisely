@@ -80,8 +80,7 @@ class PointTracking(Inference, InferenceImageCache):
                     context = request.state.context
                     api: sly.Api = request.state.api
                     track_id = context["trackId"]
-                    api.logger.error("An error occured:")
-                    api.logger.exception(exc)
+                    api.logger.error(f"An error occured: {repr(exc)}")
 
                     api.post(
                         "videos.notify-annotation-tool",

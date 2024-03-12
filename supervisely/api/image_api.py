@@ -8,6 +8,7 @@ import io
 import json
 import re
 import urllib.parse
+from time import sleep
 from typing import (
     Any,
     Callable,
@@ -30,6 +31,7 @@ from supervisely._utils import (
     batched,
     compress_image_url,
     generate_free_name,
+    get_bytes_hash,
     is_development,
 )
 from supervisely.annotation.annotation import Annotation
@@ -189,7 +191,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def __init__(self, api):
         super().__init__(api)
-        self.figure = FigureApi(api) # @TODO: rename to object like in labeling UI
+        self.figure = FigureApi(api)  # @TODO: rename to object like in labeling UI
         self.tag = TagApi(api)
 
     @staticmethod
@@ -2123,19 +2125,58 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return result
 
-    def _download_batch_by_hashes(self, hashes) -> Generator[Tuple[str, Any], None, None]:
-        """ """
+    def _download_batch_by_hashes(
+        self, hashes, retry_attemps=4
+    ) -> Generator[Tuple[str, Any, bool], None, None]:
+        """
+        Download Images with given hashes by batches from Supervisely server.
+
+        :param hashes: List of images hashes in Supervisely.
+        :type hashes: List[str]
+        :param retry_attemps: Number of attempts to download images.
+        :type retry_attemps: int, optional
+        :return: Generator with images hashes, images data and verification status.
+        :rtype: :class:`Generator[Tuple[str, Any, bool], None, None]`
+        """
+
         for batch_hashes in batched(hashes):
-            response = self._api.post(
-                "images.bulk.download-by-hash", {ApiField.HASHES: batch_hashes}
-            )
-            decoder = MultipartDecoder.from_response(response)
-            for part in decoder.parts:
-                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-                # The regex has 2 capture group: one for the prefix and one for the actual name value.
-                h = content_utf8.replace('form-data; name="', "")[:-1]
-                yield h, part
+            for attempt in range(retry_attemps + 1):  # the first attempt is not counted as a retry
+                if len(batch_hashes) == 0:
+                    break
+                successful_hashes = []
+                response = self._api.post(
+                    "images.bulk.download-by-hash", {ApiField.HASHES: batch_hashes}
+                )
+                decoder = MultipartDecoder.from_response(response)
+                for part in decoder.parts:
+                    content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                    # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                    # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                    h = content_utf8.replace('form-data; name="', "")[:-1]
+                    image_data = io.BytesIO(part.content).getvalue()
+                    image_hash = get_bytes_hash(image_data)
+                    verified = False
+                    if image_hash == h:
+                        successful_hashes.append(h)
+                        verified = True
+                    yield h, part, verified
+
+                batch_hashes = [h for h in batch_hashes if h not in successful_hashes]
+                if len(batch_hashes) > 0:
+                    if attempt == retry_attemps:
+                        logger.warning(
+                            "Failed to download images with hashes: %s. Skipping.", batch_hashes
+                        )
+                        break
+                    else:
+                        next_attempt = attempt + 1
+                        logger.warning(
+                            "Failed to download images with hashes: %s. Retrying (%d/%d).",
+                            batch_hashes,
+                            next_attempt,
+                            retry_attemps,
+                        )
+                        sleep(2 ** (next_attempt))
 
     def download_paths_by_hashes(
         self,
@@ -2182,12 +2223,13 @@ class ImageApi(RemoveableBulkModuleApi):
             raise ValueError('Can not match "hashes" and "paths" lists, len(hashes) != len(paths)')
 
         h_to_path = {h: path for h, path in zip(hashes, paths)}
-        for h, resp_part in self._download_batch_by_hashes(list(set(hashes))):
+        for h, resp_part, verified in self._download_batch_by_hashes(list(set(hashes))):
             ensure_base_path(h_to_path[h])
             with open(h_to_path[h], "wb") as w:
                 w.write(resp_part.content)
             if progress_cb is not None:
-                progress_cb(1)
+                if verified:
+                    progress_cb(1)
 
     def download_nps_by_hashes_generator(
         self,
@@ -2201,10 +2243,11 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(hashes) != len(set(hashes)):
             logger.warn("Found nonunique hashes in download task")
 
-        for im_hash, resp_part in self._download_batch_by_hashes(hashes):
+        for im_hash, resp_part, verified in self._download_batch_by_hashes(hashes):
             yield im_hash, sly_image.read_bytes(resp_part.content, keep_alpha)
             if progress_cb is not None:
-                progress_cb(1)
+                if verified:
+                    progress_cb(1)
 
     def download_nps_by_hashes(
         self,

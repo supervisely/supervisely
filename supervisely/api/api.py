@@ -9,6 +9,7 @@ import glob
 import json
 import os
 import shutil
+from logging import Logger
 from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import urljoin, urlparse
@@ -197,7 +198,7 @@ class Api:
         token: str = None,
         retry_count: Optional[int] = 10,
         retry_sleep_sec: Optional[int] = None,
-        external_logger: Optional[logger] = None,
+        external_logger: Optional[Logger] = None,
         ignore_task_id: Optional[bool] = False,
     ):
         if server_address is None and token is None:
@@ -652,7 +653,7 @@ class Api:
                 all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
                 while len(all_backups) > 5:
                     os.remove(all_backups.pop(0))
-            set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, server_address)
+            set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, session.server_address)
             set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
             if session.team_id:
                 set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
