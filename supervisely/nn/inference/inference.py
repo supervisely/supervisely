@@ -1246,7 +1246,9 @@ def clean_up_cuda():
         # torch may not be installed
         import gc
 
-        import torch  # pylint: disable=import-error
+        # pylint: disable=import-error
+        # pylint: disable=method-hidden
+        import torch
 
         gc.collect()
         torch.cuda.empty_cache()
