@@ -183,7 +183,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :param has_gpu: Show only agents with GPU.
         :type has_gpu: bool, optional
         :param type: Filter by agent task type.
-        :type type: str, optional
+        :type type: Literal["import", "import_agent", "export", "train", "inference", "infer_rpc", "custom", "pipeline", "python", "app", "app_gpu", "smarttool"], optional
         :param plugin_version_id: Filter by agent plugin version ID.
         :type plugin_version_id: int, optional
         :param version: Filter by agent version.

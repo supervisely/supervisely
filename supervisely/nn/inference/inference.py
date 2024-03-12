@@ -143,7 +143,7 @@ class Inference:
     def _prepare_device(self, device):
         if device is None:
             try:
-                import torch # pylint: disable=import-error
+                import torch  # pylint: disable=import-error
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
@@ -707,7 +707,7 @@ class Inference:
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
-        preparing_progress={"current": 0, "total": 1}
+        preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -1246,7 +1246,7 @@ def clean_up_cuda():
         # torch may not be installed
         import gc
 
-        import torch
+        import torch  # pylint: disable=import-error
 
         gc.collect()
         torch.cuda.empty_cache()
