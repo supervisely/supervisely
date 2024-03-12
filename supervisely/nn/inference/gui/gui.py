@@ -1,3 +1,7 @@
+# pylint: disable=E0202
+# pylint: disable=import-error
+# pylint: disable=method-hidden
+
 from functools import wraps
 from typing import Callable, Dict, List, Optional, Union
 
@@ -71,9 +75,6 @@ class InferenceGUI(BaseInferenceGUI):
         device_values = []
         device_names = []
         try:
-
-            # pylint: disable=import-error
-            # pylint: disable=method-hidden
             import torch
 
             if torch.cuda.is_available():
@@ -150,9 +151,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._model_full_info_card.collapse()
         self._additional_ui_content = []
-        self.get_ui = self.__add_content_and_model_info_to_default_ui(
-            self._model_full_info_card
-        )  # pylint: disable=E0202
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
 
         tabs_titles = []
         tabs_contents = []
@@ -521,8 +520,6 @@ class ServingGUI:
         device_values = []
         device_names = []
         try:
-            # pylint: disable=import-error
-            # pylint: disable=method-hidden
             import torch
 
             if torch.cuda.is_available():
@@ -599,9 +596,7 @@ class ServingGUI:
 
         self._model_full_info_card.collapse()
         self._additional_ui_content = []
-        self.get_ui = self.__add_content_and_model_info_to_default_ui(
-            self._model_full_info_card
-        )  # pylint: disable=E0202
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
 
         self.on_change_model_callbacks: List[CallbackT] = [ServingGUI._hide_info_after_change]
         self.on_serve_callbacks: List[CallbackT] = []
