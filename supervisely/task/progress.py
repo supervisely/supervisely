@@ -428,6 +428,7 @@ class tqdm_sly(tqdm, Progress):
                 **kwargs,
             )
             self.n = 0
+            self.close()
 
     def __iter__(self):
         """Backward-compatibility to use: for x in tqdm(iterable)"""
