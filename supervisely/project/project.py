@@ -24,21 +24,19 @@ from supervisely.collection.key_indexed_collection import (
     KeyObject,
 )
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     copy_file,
     dir_empty,
     dir_exists,
     ensure_base_path,
-    file_exists,
     get_file_name_with_ext,
-    get_subdirs,
     list_dir_recursively,
     list_files,
     list_files_recursively,
     mkdir,
     silent_remove,
+    subdirs_tree,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, load_json_file
@@ -104,48 +102,93 @@ class Dataset(KeyObject):
     :param directory: Path to dataset directory.
     :type directory: str
     :param mode: Determines working mode for the given dataset.
-    :type mode: :class:`OpenMode<OpenMode>`
+    :type mode: :class:`OpenMode<OpenMode>`, optional. If not provided, dataset_id must be provided.
+    :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+    :type parents: List[str]
+    :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+        If dataset_id is specified then api must be specified as well.
+    :type dataset_id: Optional[int]
+    :param api: API object if the Dataset is opened in API mode.
+    :type api: Optional[:class:`Api<supervis
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
         dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+
+        # To open dataset locally in read mode
         ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+        # To open dataset on API
+        api = sly.Api.from_env()
+        ds = sly.Dataset(dataset_path, dataset_id=1, api=api)
     """
-
-    #: :class:`str`: Items data directory name
-    item_dir_name = "img"
-
-    #: :class:`str`: Annotations directory name
-    ann_dir_name = "ann"
-
-    #: :class:`str`: Items info directory name
-    item_info_dir_name = "img_info"
-
-    #: :class:`str`: Segmentation masks directory name
-    seg_dir_name = "seg"
 
     annotation_class = Annotation
     item_info_class = ImageInfo
 
-    def __init__(self, directory: str, mode: OpenMode):
-        if type(mode) is not OpenMode:
+    item_dir_name = "img"
+    ann_dir_name = "ann"
+    item_info_dir_name = "img_info"
+    seg_dir_name = "seg"
+    meta_dir_name = "meta"
+    datasets_dir_name = "datasets"
+
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[sly.Api] = None,
+    ):
+        if dataset_id is not None:
+            raise NotImplementedError(
+                "Opening dataset from the API is not implemented yet. Please use the local mode "
+                "by providing the 'directory' and 'mode' arguments."
+                "This feature will be available later."
+            )
+        if type(mode) is not OpenMode and mode is not None:
             raise TypeError(
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
             )
+        if mode is None and dataset_id is None:
+            raise ValueError("Either 'mode' or 'dataset_id' must be provided")
+        if dataset_id is not None and api is None:
+            raise ValueError("Argument 'api' must be provided if 'dataset_id' is provided")
+
+        self.parents = parents or []
+
+        self.dataset_id = dataset_id
+        self._api = api
 
         self._directory = directory
         self._item_to_ann = {}  # item file name -> annotation file name
 
-        project_dir, ds_name = os.path.split(directory.rstrip("/"))
-        self._project_dir = project_dir
-        self._name = ds_name
+        parts = directory.split(os.path.sep)
+        project_dir = parts[0]
+        full_ds_name = os.path.join(*[p for p in parts[1:] if p != self.datasets_dir_name])
+        short_ds_name = os.path.basename(directory)
 
-        if mode is OpenMode.READ:
+        self._project_dir = project_dir
+        self._name = full_ds_name
+        self._short_name = short_ds_name
+
+        if self.dataset_id is not None:
+            self._read_api()
+        elif mode is OpenMode.READ:
             self._read()
         else:
             self._create()
+
+    @classmethod
+    def ignorable_dirs(cls) -> List[str]:
+        return [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+
+    @classmethod
+    def datasets_dir(cls) -> List[str]:
+        return cls.datasets_dir_name
 
     @property
     def project_dir(self) -> str:
@@ -169,7 +212,10 @@ class Dataset(KeyObject):
     @property
     def name(self) -> str:
         """
-        Dataset name.
+        Full Dataset name, which includes it's parents,
+        e.g. ds1/ds2/ds3.
+
+        Use :attr:`short_name` to get only the name of the dataset.
 
         :return: Dataset Name.
         :rtype: :class:`str`
@@ -184,6 +230,45 @@ class Dataset(KeyObject):
             # Output: "ds1"
         """
         return self._name
+
+    @property
+    def short_name(self) -> str:
+        """
+        Short dataset name, which does not include it's parents.
+        To get the full name of the dataset, use :attr:`name`.
+
+        :return: Dataset Name.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            print(ds.name)
+            # Output: "ds1"
+        """
+        return self._short_name
+
+    @property
+    def path(self) -> str:
+        """Returns a relative local path to the dataset.
+
+        :return: Relative local path to the dataset.
+        :rtype: :class:`str`
+        """
+        return self._get_dataset_path(self.short_name, self.parents)
+
+    @staticmethod
+    def _get_dataset_path(dataset_name: str, parents: List[dir]):
+        """Returns a relative local path to the dataset.
+
+        :param dataset_name: Dataset name.
+        :type dataset_name: :class:`str`
+        """
+        relative_path = os.path.sep.join(f"{parent}/datasets" for parent in parents)
+        return os.path.join(relative_path, dataset_name)
 
     def key(self):
         # TODO: add docstring
@@ -332,6 +417,26 @@ class Dataset(KeyObject):
         """
         return os.path.join(self.directory, self.seg_dir_name)
 
+    @property
+    def meta_dir(self):
+        """
+        Path to the dataset segmentation masks directory.
+
+        :return: Path to the dataset directory with masks.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.meta_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/meta'
+        """
+        return os.path.join(self.directory, self.meta_dir_name)
+
     @classmethod
     def _has_valid_ext(cls, path: str) -> bool:
         """
@@ -382,6 +487,29 @@ class Dataset(KeyObject):
                 )
             effective_ann_names.add(ann_name)
             self._item_to_ann[img_name] = ann_name
+
+    def _read_api(self) -> None:
+        """Method to read the dataset, which opened from the API."""
+        self._image_infos = self._api.image.get_list(self.dataset_id)
+        img_names = [img_info.name for img_info in self._image_infos]
+        for img_name in img_names:
+            ann_name = f"{img_name}.json"
+            self._item_to_ann[img_name] = ann_name
+
+    @property
+    def image_infos(self) -> List[ImageInfo]:
+        """If the dataset is opened from the API, returns the list of ImageInfo objects.
+        Otherwise raises an exception.
+
+        :raises: ValueError: If the dataset is opened in local mode.
+        :return: List of ImageInfo objects.
+        :rtype: List[:class:`ImageInfo`]
+        """
+        if not self.dataset_id:
+            raise ValueError(
+                "This dataset was open in local mode. It does not have access to the API."
+            )
+        return self._image_infos
 
     def _create(self):
         """
@@ -603,11 +731,38 @@ class Dataset(KeyObject):
             print(ds.get_item_info_path("IMG_0748.jpeg"))
             # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info/IMG_0748.jpeg.json'
         """
-        ann_path = self._item_to_ann.get(item_name, None)
-        if ann_path is None:
+        info_path = self._item_to_ann.get(item_name, None)
+        if info_path is None:
             raise RuntimeError("Item {} not found in the project.".format(item_name))
 
-        return os.path.join(self.item_info_dir, ann_path)
+        return os.path.join(self.item_info_dir, info_path)
+
+    def get_item_meta_path(self, item_name: str) -> str:
+        """
+        Get path to the item info json file without checking if the file exists.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :return: Path to the given item info json file.
+        :rtype: :class:`str`
+        :raises: :class:`RuntimeError` if item not found in the project.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.get_item_info_path("IMG_0748"))
+            # Output: RuntimeError: Item IMG_0748 not found in the project.
+
+            print(ds.get_item_info_path("IMG_0748.jpeg"))
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/ds1/img_info/IMG_0748.jpeg.json'
+        """
+        meta_path = self._item_to_ann.get(item_name, None)
+
+        return os.path.join(self.meta_dir, meta_path)
 
     def get_image_info(self, item_name: str) -> ImageInfo:
         """
@@ -1308,19 +1463,45 @@ class Project:
 
         item_type = Dataset
 
-    def __init__(self, directory: str, mode: OpenMode):
-        if type(mode) is not OpenMode:
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        project_id: Optional[int] = None,
+        api: Optional[sly.Api] = None,
+    ):
+        if project_id is not None:
+            raise NotImplementedError(
+                "Opening project from the API is not implemented yet. Please use local mode "
+                "by providing directory and mode parameters. "
+                "This feature will be implemented later."
+            )
+        if mode is None and project_id is None:
+            raise ValueError("One of the parameters 'mode' or 'project_id' should be set.")
+        if type(mode) is not OpenMode and mode is not None:
             raise TypeError(
                 "Argument 'mode' has type {!r}. Correct type is OpenMode".format(type(mode))
             )
+        if project_id is not None and api is None:
+            raise ValueError("Parameter 'api' should be set if 'project_id' is set.")
 
         parent_dir, name = Project._parse_path(directory)
         self._parent_dir = parent_dir
-        self._name = name
+        self._api = api
+        self.project_id = project_id
+
+        if project_id is not None:
+            self._info = api.project.get_info_by_id(project_id)
+            self._name = self._info.name
+        else:
+            self._info = None
+            self._name = name
         self._datasets = Project.DatasetDict()  # ds_name -> dataset object
         self._meta = None
 
-        if mode is OpenMode.READ:
+        if project_id is not None:
+            self._read_api()
+        elif mode is OpenMode.READ:
             self._read()
         else:
             self._create()
@@ -1423,7 +1604,11 @@ class Project:
                 # Output: ds1
                 #         ds2
         """
-        return self._datasets
+
+        def parent_length(dataset):
+            return len(dataset.parents)
+
+        return sorted(self._datasets, key=parent_length)
 
     @property
     def meta(self) -> ProjectMeta:
@@ -1527,11 +1712,20 @@ class Project:
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
-        possible_datasets = get_subdirs(self.directory)
+        possible_datasets = subdirs_tree(self.directory, Dataset.ignorable_dirs())
+
         for ds_name in possible_datasets:
+            parents = ds_name.split(os.path.sep)
+            parents = [p for p in parents if p != Dataset.datasets_dir()]
+            if len(parents) > 1:
+                parents.pop(-1)
+            else:
+                parents = None
             try:
                 current_dataset = self.dataset_class(
-                    os.path.join(self.directory, ds_name), OpenMode.READ
+                    os.path.join(self.directory, ds_name),
+                    OpenMode.READ,
+                    parents=parents,
                 )
                 self._datasets = self._datasets.add(current_dataset)
             except Exception as ex:
@@ -1539,6 +1733,16 @@ class Project:
 
         if self.total_items == 0:
             raise RuntimeError("Project is empty")
+
+    def _read_api(self):
+        self._meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
+        for parents, dataset_info in self._api.dataset.tree(self.project_id):
+            relative_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            dataset_path = os.path.join(self.directory, relative_path)
+            current_dataset = self.dataset_class(
+                dataset_path, parents=parents, dataset_id=dataset_info.id, api=self._api
+            )
+            self._datasets = self._datasets.add(current_dataset)
 
     def _create(self):
         if dir_exists(self.directory):
@@ -1592,7 +1796,7 @@ class Project:
         for dataset in self._datasets:
             yield dataset
 
-    def create_dataset(self, ds_name: str) -> Dataset:
+    def create_dataset(self, ds_name: str, ds_path: Optional[str] = None) -> Dataset:
         """
         Creates a subdirectory with given name and all intermediate subdirectories for items and annotations in project directory, and also adds created dataset
         to the collection of all datasets in the project.
@@ -1623,7 +1827,12 @@ class Project:
             #         ds2
             #         ds3
         """
-        ds = self.dataset_class(os.path.join(self.directory, ds_name), OpenMode.CREATE)
+        if ds_path is None:
+            ds_path = os.path.join(self.directory, ds_name)
+        else:
+            ds_path = os.path.join(self.directory, ds_path)
+
+        ds = self.dataset_class(ds_path, OpenMode.CREATE)
         self._datasets = self._datasets.add(ds)
         return ds
 
@@ -1971,7 +2180,7 @@ class Project:
             classes_to_remove = []
         if inplace is False:
             raise ValueError(
-                f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
+                "Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
             )
         project = Project(project_dir, OpenMode.READ)
         for dataset in project.datasets:
@@ -2001,7 +2210,7 @@ class Project:
     ):
         if inplace is False:
             raise ValueError(
-                f"Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
+                "Original data will be modified. Please, set 'inplace' argument (inplace=True) directly"
             )
         if without_objects is False and without_tags is False and without_objects_and_tags is False:
             raise ValueError(
@@ -2478,17 +2687,17 @@ def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> s
 
 
 def _download_project(
-    api,
-    project_id,
-    dest_dir,
-    dataset_ids=None,
-    log_progress=False,
-    batch_size=50,
-    only_image_tags=False,
-    save_image_info=False,
-    save_images=True,
-    progress_cb=None,
-    save_image_meta=False,
+    api: sly.Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: Optional[bool] = False,
+    batch_size: Optional[int] = 50,
+    only_image_tags: Optional[bool] = False,
+    save_image_info: Optional[bool] = False,
+    save_images: Optional[bool] = True,
+    progress_cb: Optional[Callable] = None,
+    save_image_meta: Optional[bool] = False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
@@ -2498,20 +2707,14 @@ def _download_project(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
-    for dataset_info in api.dataset.get_list(project_id):
+    for parents, dataset_info in api.dataset.tree(project_id):
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
         dataset_id = dataset_info.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
 
-        dataset_fs = project_fs.create_dataset(dataset_info.name)
+        dataset_fs = project_fs.create_dataset(dataset_info.name, dataset_path)
         images = api.image.get_list(dataset_id)
-
-        if save_image_meta:
-            meta_dir = os.path.join(dest_dir, dataset_info.name, "meta")
-            sly.fs.mkdir(meta_dir)
-            for image_info in images:
-                meta_paths = os.path.join(meta_dir, image_info.name + ".json")
-                sly.json.dump_json_file(image_info.meta, meta_paths)
 
         ds_progress = None
         if log_progress:
@@ -2560,6 +2763,15 @@ def _download_project(
             if progress_cb is not None:
                 progress_cb(len(batch))
 
+        if save_image_meta:
+            meta_dir = dataset_fs.meta_dir
+            for image_info in images:
+                if image_info.meta:
+                    sly.fs.mkdir(meta_dir)
+                    sly.json.dump_json_file(
+                        image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
+                    )
+
 
 def upload_project(
     dir: str,
@@ -2582,10 +2794,19 @@ def upload_project(
     if progress_cb is not None:
         log_progress = False
 
-    image_id_dct, anns_paths_dct = {}, {}
+    # image_id_dct, anns_paths_dct = {}, {}
+    dataset_map = {}
 
     for ds_fs in project_fs.datasets:
-        dataset = api.dataset.create(project.id, ds_fs.name)
+        if len(ds_fs.parents) > 0:
+            parent = f"{os.path.sep}".join(ds_fs.parents)
+            parent_id = dataset_map.get(parent)
+
+        else:
+            parent_id = None
+
+        dataset = api.dataset.create(project.id, ds_fs.short_name, parent_id=parent_id)
+        dataset_map[ds_fs.name] = dataset.id
 
         ds_fs: Dataset
 
@@ -2807,18 +3028,19 @@ def _download_project_optimized(
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
-    logger.info(f"Annotations are not cached (always download latest version from server)")
+    logger.info("Annotations are not cached (always download latest version from server)")
     project_fs = Project(project_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
-    for dataset_info in api.dataset.get_list(project_id):
+    for parents, dataset_info in api.dataset.tree(project_id):
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
         dataset_name = dataset_info.name
         dataset_id = dataset_info.id
         need_download = True
         if datasets_whitelist is not None and dataset_id not in datasets_whitelist:
             need_download = False
         if need_download is True:
-            dataset = project_fs.create_dataset(dataset_name)
+            dataset = project_fs.create_dataset(dataset_name, dataset_path)
             _download_dataset(
                 api,
                 dataset,

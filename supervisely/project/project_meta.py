@@ -3,12 +3,12 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -16,7 +16,6 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.json import JsonSerializable
 from supervisely.project.project_settings import ProjectSettings
 from supervisely.project.project_type import ProjectType
-from supervisely.sly_logger import logger
 
 
 class ProjectMetaJsonFields:
@@ -415,7 +414,7 @@ class ProjectMeta(JsonSerializable):
             obj_classes = ObjClassCollection.from_json(obj_classes_json)
         except Exception as e:
             raise Exception(
-                f"Failed to deserialize classes from Project meta JSON. "
+                "Failed to deserialize classes from Project meta JSON. "
                 "Check the annotation format documentation at: "
                 "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
             ) from e
@@ -428,7 +427,7 @@ class ProjectMeta(JsonSerializable):
                 project_settings = ProjectSettings.from_json(project_settings_json)
             except Exception as e:
                 raise Exception(
-                    f"Failed to deserialize settings from Project meta JSON. "
+                    "Failed to deserialize settings from Project meta JSON. "
                     "Check the annotation format documentation at: "  # TODO
                     "https://developer.supervisely.com/api-references/supervisely-annotation-json-format/project-classes-and-tags"
                 ) from e
