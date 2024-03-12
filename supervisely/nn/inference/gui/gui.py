@@ -71,6 +71,9 @@ class InferenceGUI(BaseInferenceGUI):
         device_values = []
         device_names = []
         try:
+
+            # pylint: disable=import-error
+            # pylint: disable=method-hidden
             import torch
 
             if torch.cuda.is_available():
@@ -516,6 +519,8 @@ class ServingGUI:
         device_values = []
         device_names = []
         try:
+            # pylint: disable=import-error
+            # pylint: disable=method-hidden
             import torch
 
             if torch.cuda.is_available():
