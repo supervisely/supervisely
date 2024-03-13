@@ -162,7 +162,7 @@ class Progress:
             "event_type": EventType.PROGRESS,
             "subtask": self.message,
             "current": math.ceil(self.current),
-            "total": math.ceil(self.current) if self.is_total_unknown else math.ceil(self.total),
+            "total": (math.ceil(self.current) if self.is_total_unknown else math.ceil(self.total)),
         }
 
         if self.is_size:
@@ -336,14 +336,20 @@ def report_dtl_verification_finished(output: str) -> None:
     :param output: str
     """
     logger.info(
-        "Verification finished.", extra={"output": output, "event_type": EventType.TASK_VERIFIED}
+        "Verification finished.",
+        extra={"output": output, "event_type": EventType.TASK_VERIFIED},
     )
 
 
 def _report_metrics(m_type, epoch, metrics):
     logger.info(
         "metrics",
-        extra={"event_type": EventType.METRICS, "type": m_type, "epoch": epoch, "metrics": metrics},
+        extra={
+            "event_type": EventType.METRICS,
+            "type": m_type,
+            "epoch": epoch,
+            "metrics": metrics,
+        },
     )
 
 
@@ -408,6 +414,7 @@ class tqdm_sly(tqdm, Progress):
         else:
             for k, v in {
                 "disable": True,  # do not disable for now
+                "leave": False,  # do not disable for now
                 "delay": 0,  # sec init delay
                 "mininterval": 3,  # sec between reports
                 "miniters": 0,
@@ -415,12 +422,13 @@ class tqdm_sly(tqdm, Progress):
             }.items():
                 kwargs_tqdm.setdefault(k, v)
 
-            tqdm.__init__(
+            # self.disable = True  # now disable tqdm logging
+
+            super().__init__(
                 self,
                 *args,
                 **kwargs_tqdm,
             )
-            self.disable = True  # now disable tqdm logging
 
             kwargs = self._handle_args_and_kwargs_prod(args, kwargs)
             Progress.__init__(
