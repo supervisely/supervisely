@@ -28,6 +28,7 @@ from supervisely.volume_annotation.constants import (
     SPATIAL_FIGURES,
 )
 
+from supervisely.io.json import dump_json_file
 
 class VolumeAnnotation:
     """
@@ -661,6 +662,30 @@ class VolumeAnnotation:
 
         return res_json
 
+    def dump_json(self, path: str, key_id_map: KeyIdMap = None) -> None:
+        """
+        Save the VolumeAnnotation to a json file.
+
+        :param path: Path to the json file.
+        :type path: str
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            volume_ann = sly.VolumeAnnotation(volume_meta)
+            volume_ann.dump_json("/home/admin/work/volumes/vol_01.json")
+        """
+        simple_dict = self.to_json(key_id_map)
+        dump_json_file(simple_dict, path)
+
     def add_objects(
         self, objects: Union[List[VolumeObject], VolumeObjectCollection]
     ) -> VolumeAnnotation:
@@ -698,4 +723,49 @@ class VolumeAnnotation:
         collection = self.objects.add_items(objects)
         new_ann = self.clone(objects=collection)
         new_ann.spatial_figures.extend(sf_figures)
+        return new_ann
+
+    def remove_objects(self, keys: Union[List[uuid.UUID], uuid.UUID]) -> VolumeAnnotation:
+        """
+        Remove objects from a VolumeAnnotation object.
+
+        :param keys: List of object keys or single object key.
+        :type keys: List[uuid.UUID] or uuid.UUID
+        :return: A VolumeAnnotation object containing the original volume objects without the removed objects.
+        :rtype: VolumeAnnotation
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            path = "/vol_01.nrrd"
+            _, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+            volume_ann = sly.VolumeAnnotation(volume_meta)
+            obj_class_heart = sly.ObjClass('heart', sly.Mask3D)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            obj_class_tumor = sly.ObjClass('tumor', sly.Mask3D)
+            volume_obj_tumor = sly.VolumeObject(obj_class_tumor)
+            volume_ann = volume_ann.add_objects([volume_obj_heart, volume_obj_tumor])
+            volume_ann = volume_ann.remove_objects(volume_obj_heart.key())
+
+        """
+        if not isinstance(keys, list):
+            keys = [keys]
+
+        spatial_figures_to_del = []
+        for volume_object in self.objects:
+            if volume_object.key() in keys and volume_object.obj_class.geometry_type in (
+                Mask3D,
+                AnyGeometry,
+            ):
+                for figure in self.spatial_figures:
+                    if figure.parent_object == volume_object:
+                        spatial_figures_to_del.append(figure)
+
+        for spatial_figure in spatial_figures_to_del:
+            self.spatial_figures.remove(spatial_figure)
+
+        collection = self.objects.remove_items(keys)
+        new_ann = self.clone(objects=collection)
         return new_ann
