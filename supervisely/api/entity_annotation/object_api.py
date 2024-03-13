@@ -1,7 +1,9 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, NamedTuple, Dict, Optional
 
+from typing import Dict, List, NamedTuple, Optional
+
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -239,3 +241,41 @@ class ObjectApi(RemoveableBulkModuleApi):
         tag_api.append_to_objects(entity_id, project_id, objects, key_id_map)
 
         return ids
+
+    def remove_batch(self, ids, progress_cb=None, batch_size=50):
+        """
+        Remove objects in batches from the Supervisely server.
+        All entity IDs must belong to the same item (for example image, volume).
+        Therefore, it is necessary to sort IDs before calling this method.
+
+        :param ids: IDs of objects in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for control remove progress.
+        :type progress_cb: Callable
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            # You can connect to API directly
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Or you can use API from environment
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+            object_ids = [19369645, 19369646, 19369647]
+            api.volume.object.remove_batch(object_ids)
+        """
+        for ids_batch in batched(ids, batch_size=batch_size):
+            self._api.post(
+                "annotation-objects.bulk.remove",
+                ids_batch,
+            )
+            if progress_cb is not None:
+                progress_cb(len(ids_batch))
