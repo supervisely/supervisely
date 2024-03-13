@@ -414,6 +414,7 @@ class CustomStdout:
 
     def write(self, msg):
         # Log the message with the desired log level (DEBUG in this case)
+        msg = "########" + msg
         logger.debug(msg)
 
     # def flush(self):
