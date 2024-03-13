@@ -8,8 +8,9 @@ import sys
 from functools import partial, wraps
 from typing import Optional, Union
 
+from tqdm.utils import disp_len
 from tqdm import tqdm
-
+from supervisely.sly_logger import logger
 from supervisely._utils import is_development, is_production, sizeof_fmt
 from supervisely.sly_logger import EventType, logger
 
@@ -93,7 +94,9 @@ class Progress:
 
         self.reported_cnt = 0
         self.logger = logger if ext_logger is None else ext_logger
-        self.report_every = max(1, math.ceil((total_cnt or 0) / 100 * min_report_percent))
+        self.report_every = max(
+            1, math.ceil((total_cnt or 0) / 100 * min_report_percent)
+        )
         self.need_info_log = need_info_log
 
         mb5 = 5 * 1024 * 1024
@@ -117,11 +120,15 @@ class Progress:
     def _refresh_labels(self):
         if self.is_size:
             self.total_label = (
-                sizeof_fmt(self.current) if self.is_total_unknown else sizeof_fmt(self.total)
+                sizeof_fmt(self.current)
+                if self.is_total_unknown
+                else sizeof_fmt(self.total)
             )
             self.current_label = sizeof_fmt(self.current)
         else:
-            self.total_label = str(self.current if self.is_total_unknown else self.total)
+            self.total_label = str(
+                self.current if self.is_total_unknown else self.total
+            )
             self.current_label = str(self.current)
 
     def iter_done(self) -> None:
@@ -163,7 +170,11 @@ class Progress:
             "event_type": EventType.PROGRESS,
             "subtask": self.message,
             "current": math.ceil(self.current),
-            "total": (math.ceil(self.current) if self.is_total_unknown else math.ceil(self.total)),
+            "total": (
+                math.ceil(self.current)
+                if self.is_total_unknown
+                else math.ceil(self.total)
+            ),
         }
 
         if self.is_size:
@@ -172,7 +183,9 @@ class Progress:
 
         self.logger.info("progress", extra=extra)
         if self.need_info_log is True:
-            self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
+            self.logger.info(
+                f"{self.message} [{self.current_label} / {self.total_label}]"
+            )
 
     def need_report(self) -> bool:
         if (
@@ -279,7 +292,9 @@ class Progress:
         else:
             self.iters_done(value - self.current)
 
-    def set(self, current: int, total: Optional[int], report: Optional[bool] = True) -> None:
+    def set(
+        self, current: int, total: Optional[int], report: Optional[bool] = True
+    ) -> None:
         """
         Sets counter current value and total value and logs a message depending on current number of iterations.
 
@@ -362,7 +377,9 @@ def report_metrics_validation(epoch, metrics):
     _report_metrics("val", epoch, metrics)
 
 
-def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_data) -> None:
+def report_checkpoint_saved(
+    checkpoint_idx, subdir, sizeb, best_now, optional_data
+) -> None:
     logger.info(
         "checkpoint",
         extra={
@@ -374,6 +391,34 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
             "optional": optional_data,
         },
     )
+
+
+class CustomStdout:
+    def __init__(self):
+        # Set up logging with a custom logger
+        # self.logger = logging.getLogger("custom_stdout_logger")
+        # self.logger.setLevel(logging.DEBUG)
+
+        # # Create a handler that writes log messages to sys.stdout
+        # log_handler = logging.StreamHandler(sys.stdout)
+        # log_handler.setLevel(logging.DEBUG)
+
+        # # Create a formatter to customize log messages
+        # formatter = logging.Formatter("%(levelname)s: %(message)s")
+        # log_handler.setFormatter(formatter)
+
+        # # Add the handler to the logger
+
+        # self.logger.addHandler(log_handler)
+        pass
+
+    def write(self, msg):
+        # Log the message with the desired log level (DEBUG in this case)
+        logger.debug(msg)
+
+    # def flush(self):
+    #     # Implement the flush method based on your needs
+    #     pass
 
 
 class tqdm_sly(tqdm, Progress):
@@ -419,7 +464,7 @@ class tqdm_sly(tqdm, Progress):
                 "delay": 0,  # sec init delay
                 "mininterval": 3,  # sec between reports
                 "miniters": 0,
-                "file": sys.stdout,
+                "file": CustomStdout(),
             }.items():
                 kwargs_tqdm.setdefault(k, v)
 
@@ -435,7 +480,33 @@ class tqdm_sly(tqdm, Progress):
                 **kwargs,
             )
             self.n = 0
-            self.close()
+            # self.close()
+
+    # @staticmethod
+    # def status_printer(file):
+    #     """
+    #     Manage the printing and in-place updating of a line of characters.
+    #     Note that if the string is longer than a line, then in-place
+    #     updating may not work (it will print a new line at each refresh).
+    #     """
+    #     fp = file
+    #     fp_flush = getattr(fp, "flush", lambda: None)  # pragma: no cover
+    #     if fp in (sys.stderr, sys.stdout):
+    #         getattr(sys.stderr, "flush", lambda: None)()
+    #         getattr(sys.stdout, "flush", lambda: None)()
+
+    #     def fp_write(s):
+    #         fp.write(str(s))
+    #         fp_flush()
+
+    #     last_len = [0]
+
+    #     def print_status(s):
+    #         len_s = disp_len(s)
+    #         fp_write("\r" + s + (" " * max(last_len[0] - len_s, 0)))
+    #         last_len[0] = len_s
+
+    #     return print_status
 
     def __iter__(self):
         """Backward-compatibility to use: for x in tqdm(iterable)"""
@@ -489,33 +560,6 @@ class tqdm_sly(tqdm, Progress):
             Progress.iters_done_report(self, count)
             self.n += count
 
-    def refresh(self, nolock=False, lock_args=None):
-        """
-        Force refresh the display of this bar.
-
-        Parameters
-        ----------
-        nolock  : bool, optional
-            If `True`, does not lock.
-            If [default: `False`]: calls `acquire()` on internal lock.
-        lock_args  : tuple, optional
-            Passed to internal lock's `acquire()`.
-            If specified, will only `display()` if `acquire()` returns `True`.
-        """
-        if self.disable or is_production():
-            return
-
-        if not nolock:
-            if lock_args:
-                if not self._lock.acquire(*lock_args):
-                    return False
-            else:
-                self._lock.acquire()
-        self.display()
-        if not nolock:
-            self._lock.release()
-        return True
-
     def __call__(
         self,
         *args,
@@ -541,7 +585,9 @@ class tqdm_sly(tqdm, Progress):
             if is_development():
                 super().update(self._iteration_value + monitor.bytes_read - self.n)
             else:
-                self.set_current_value(self._iteration_value + monitor.bytes_read, report=False)
+                self.set_current_value(
+                    self._iteration_value + monitor.bytes_read, report=False
+                )
 
         if is_production() and self.need_report():
             self.report_progress()
@@ -610,7 +656,8 @@ class tqdm_sly(tqdm, Progress):
                 kwargs.pop("unit")
         else:
             if (
-                args[11] in ["", "B", "k", "M", "G", "T", "P", "E", "Z"] and args[12] == True
+                args[11] in ["", "B", "k", "M", "G", "T", "P", "E", "Z"]
+                and args[12] == True
             ):  # i.e. unit=="B" and unit_scale==True
                 kwargs["is_size"] = True
 
@@ -620,7 +667,9 @@ class tqdm_sly(tqdm, Progress):
                 kwargs.pop(keyword)
 
         # see original tqdm.__init__ for logic behaviour
-        iterable_is_not_none = False if kwargs.get("iterable") is None and len(args) == 0 else True
+        iterable_is_not_none = (
+            False if kwargs.get("iterable") is None and len(args) == 0 else True
+        )
         if kwargs.get("total_cnt") is None and iterable_is_not_none is True:
             try:
                 iterable = kwargs.get("iterable", args[0])
@@ -683,7 +732,9 @@ def handle_original_tqdm(func):
     @wraps(func)
     def wrapper_original_tqdm(*args, **kwargs):
         cb_name = (
-            "progress_size_cb" if func.__qualname__ == "FileApi.upload_directory" else "progress_cb"
+            "progress_size_cb"
+            if func.__qualname__ == "FileApi.upload_directory"
+            else "progress_cb"
         )
 
         spc = inspect.getfullargspec(func)
