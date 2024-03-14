@@ -392,7 +392,7 @@ def report_checkpoint_saved(
 
 class SlyDisableOnWriteError:
     def __init__(self) -> None:
-        self._pattern = r"(\w+):"
+        self._pattern = "\\r(.*?)\\:"
 
     def write(self, msg):
         match = re.search(self._pattern, msg)
