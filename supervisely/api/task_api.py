@@ -88,8 +88,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """Application is consumed by an agent"""
         STARTED = "started"
         """Application has been started"""
-        RUNNING = "running"
-        """Application is running and ready to accept requests"""
         DEPLOYED = "deployed"
         """Only for Plugins"""
         ERROR = "error"
@@ -912,7 +910,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "timeout": timeout,
             },
             retries=retries,
-            raise_error=raise_error
+            raise_error=raise_error,
         )
         return resp.json()
 

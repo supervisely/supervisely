@@ -517,9 +517,9 @@ class Session(SessionJSON):
         """
         super().__init__(api, task_id, session_url, inference_settings)
 
-    def is_model_served(self):
-        is_served = self.api.task.send_request(self._task_id, "is_served", {})
-        return is_served
+    def is_model_deployed(self):
+        is_deployed = self.api.task.send_request(self._task_id, "is_deployed", {})
+        return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
         if not isinstance(self._model_meta, sly.ProjectMeta):

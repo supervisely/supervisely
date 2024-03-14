@@ -1145,9 +1145,12 @@ class Inference:
                 self.gui._success_label.hide()
                 raise e
 
-        @server.post("/is_served")
-        def _is_served(response: Response, request: Request):
-            return {"served": self._model_served}
+        @server.post("/is_deployed")
+        def _is_deployed(response: Response, request: Request):
+            return {
+                "deployed": self._model_served,
+                "description:": "Model is ready to receive requests",
+            }
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):

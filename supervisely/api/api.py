@@ -395,7 +395,7 @@ class Api:
         :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
-        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
         :type raise_error: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
