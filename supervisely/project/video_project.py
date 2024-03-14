@@ -1050,7 +1050,7 @@ class VideoProject(Project):
         dataset_ids: List[int] = None,
         download_videos: bool = True,
         save_video_info: bool = False,
-        log_progress: bool = False,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
@@ -1174,7 +1174,7 @@ def download_video_project(
     dataset_ids: Optional[List[int]] = None,
     download_videos: Optional[bool] = True,
     save_video_info: Optional[bool] = False,
-    log_progress: Optional[bool] = False,
+    log_progress: Optional[bool] = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
 ) -> None:
@@ -1243,22 +1243,27 @@ def download_video_project(
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
 
-    datasets_infos = []
+    if progress_cb is not None:
+        log_progress = False
+
+    datasets = []
     if dataset_ids is not None:
         for ds_id in dataset_ids:
-            datasets_infos.append(api.dataset.get_info_by_id(ds_id))
+            datasets.append(api.dataset.get_info_by_id(ds_id))
     else:
-        datasets_infos = api.dataset.get_list(project_id)
+        datasets = api.dataset.get_list(project_id)
 
-    for dataset in datasets_infos:
+    for dataset in datasets:
         dataset_fs = project_fs.create_dataset(dataset.name)
         videos = api.video.get_list(dataset.id)
 
-        ds_progress = None
+        ds_progress = progress_cb
         if log_progress:
-            ds_progress = Progress(
-                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(videos)
+            ds_progress = tqdm_sly(
+                desc="Downloading videos from {!r}".format(dataset.name),
+                total=len(videos),
             )
+
         for batch in batched(videos, batch_size=LOG_BATCH_SIZE):
             video_ids = [video_info.id for video_info in batch]
             video_names = [video_info.name for video_info in batch]
@@ -1276,6 +1281,7 @@ def download_video_project(
                     },
                 )
                 raise e
+
             for video_id, video_name, custom_data, ann_json, video_info in zip(
                 video_ids, video_names, custom_datas, ann_jsons, batch
             ):
@@ -1293,15 +1299,15 @@ def download_video_project(
                 if download_videos:
                     try:
                         video_file_size = video_info.file_meta.get("size")
-                        if log_progress and video_file_size is not None:
-                            item_progress = Progress(
-                                f"Downloading {video_name}",
-                                total_cnt=int(video_file_size),
-                                is_size=True,
+                        if ds_progress is not None and video_file_size is not None:
+                            item_progress = tqdm_sly(
+                                desc=f"Downloading '{video_name}'",
+                                total=int(video_file_size),
+                                unit="B",
+                                unit_scale=True,
+                                leave=False,
                             )
-                            api.video.download_path(
-                                video_id, video_file_path, item_progress.iters_done_report
-                            )
+                            api.video.download_path(video_id, video_file_path, item_progress)
                         else:
                             api.video.download_path(video_id, video_file_path)
                     except Exception as e:
