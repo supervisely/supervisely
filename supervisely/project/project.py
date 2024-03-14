@@ -1608,6 +1608,16 @@ class Project:
         return self._datasets
 
     @property
+    def sorted_datasets(self) -> List[Dataset]:
+        """Returns a list of datasets sorted by number of parents
+        starting from the dataset with the smallest number (root).
+        
+        :return: List of datasets
+        :rtype: :class:`List[Dataset]`
+        """
+        return sorted(self._datasets, key=lambda ds: len(ds.parents))
+
+    @property
     def meta(self) -> ProjectMeta:
         """
         Project meta.
@@ -2794,7 +2804,7 @@ def upload_project(
     # image_id_dct, anns_paths_dct = {}, {}
     dataset_map = {}
 
-    for ds_fs in sorted(project_fs.datasets, key=lambda ds: len(ds.parents)):
+    for ds_fs in project_fs.sorted_datasets:
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
