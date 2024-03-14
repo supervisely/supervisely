@@ -500,6 +500,10 @@ class ApiField:
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
     """"""
+    GPU_INFO = "gpuInfo"
+    """"""
+    IS_PUBLIC = "isPublic"
+    """"""
     USAGE = "usage"
     """"""
     PARENT_ID = "parentId"
@@ -507,6 +511,7 @@ class ApiField:
     SRC_ID = "srcId"
     """"""
     DEST_ID = "destId"
+
 
 
 def _get_single_item(items):

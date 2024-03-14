@@ -1,10 +1,22 @@
-<sly-select-app-session
-    :group-id="data.{{{widget.widget_id}}}.teamId"
-    :app-session-id.sync="state.{{{widget.widget_id}}}.sessionId"
-    :options="data.{{{widget.widget_id}}}.ssOptions"
-    :disabled="data.{{{widget.widget_id}}}.disabled"
-    {% if widget._changes_handled == true %}
-    @update:app-session-id="state.{{{widget.widget_id}}}.sessionId = $event; post('/{{{widget.widget_id}}}/value_changed')"
-    {% endif %}
-    >
-</sly-select-app-session>
+<div class="fflex">
+    <sly-select-app-session
+        ref="sly-select-app-session-{{{ widget.widget_id }}}"
+        :group-id="data.{{{widget.widget_id}}}.teamId"
+        :app-session-id.sync="state.{{{widget.widget_id}}}.sessionId"
+        :options="data.{{{widget.widget_id}}}.ssOptions"
+        :disabled="data.{{{widget.widget_id}}}.disabled"
+        {% if widget._changes_handled == true %}
+            @update:app-session-id="state.{{{widget.widget_id}}}.sessionId = $event; post('/{{{widget.widget_id}}}/value_changed')"
+        {% endif %}
+        >
+    </sly-select-app-session>
+
+    <el-tooltip :open-delay="300" :enterable="false" content="Refresh">
+        <el-button
+            type="text"
+            class="ml5"
+            style="padding: 0; font-size: 20px"
+            @click="$refs['sly-select-app-session-{{{ widget.widget_id }}}'].fetchSessions()"
+            ><i class="zmdi zmdi-refresh mr5"></i></el-button
+    ></el-tooltip>
+</div>
