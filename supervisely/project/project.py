@@ -1605,10 +1605,7 @@ class Project:
                 #         ds2
         """
 
-        def parent_length(dataset):
-            return len(dataset.parents)
-
-        return sorted(self._datasets, key=parent_length)
+        return self._datasets
 
     @property
     def meta(self) -> ProjectMeta:
@@ -2797,7 +2794,7 @@ def upload_project(
     # image_id_dct, anns_paths_dct = {}, {}
     dataset_map = {}
 
-    for ds_fs in project_fs.datasets:
+    for ds_fs in sorted(project_fs.datasets, key=lambda ds: len(ds.parents)):
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
