@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import inspect
-import io
 import math
+import re
 from functools import partial, wraps
 from typing import Optional, Union
 
@@ -162,7 +162,7 @@ class Progress:
             "event_type": EventType.PROGRESS,
             "subtask": self.message,
             "current": math.ceil(self.current),
-            "total": math.ceil(self.current) if self.is_total_unknown else math.ceil(self.total),
+            "total": (math.ceil(self.current) if self.is_total_unknown else math.ceil(self.total)),
         }
 
         if self.is_size:
@@ -336,14 +336,20 @@ def report_dtl_verification_finished(output: str) -> None:
     :param output: str
     """
     logger.info(
-        "Verification finished.", extra={"output": output, "event_type": EventType.TASK_VERIFIED}
+        "Verification finished.",
+        extra={"output": output, "event_type": EventType.TASK_VERIFIED},
     )
 
 
 def _report_metrics(m_type, epoch, metrics):
     logger.info(
         "metrics",
-        extra={"event_type": EventType.METRICS, "type": m_type, "epoch": epoch, "metrics": metrics},
+        extra={
+            "event_type": EventType.METRICS,
+            "type": m_type,
+            "epoch": epoch,
+            "metrics": metrics,
+        },
     )
 
 
@@ -367,6 +373,17 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
             "optional": optional_data,
         },
     )
+
+
+class SlyWrapFile:
+    def __init__(self) -> None:
+        self._pattern = "\\r(.*?)\\:"
+
+    def write(self, msg):
+        match = re.search(self._pattern, msg)
+        if match:
+            msg = match.group(1) + "..."
+        logger.info(msg)
 
 
 class tqdm_sly(tqdm, Progress):
@@ -411,7 +428,7 @@ class tqdm_sly(tqdm, Progress):
                 "delay": 0,  # sec init delay
                 "mininterval": 3,  # sec between reports
                 "miniters": 0,
-                "delay": 0,
+                "file": SlyWrapFile(),
             }.items():
                 kwargs_tqdm.setdefault(k, v)
 
