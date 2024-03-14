@@ -1,0 +1,72 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/classes_table/style.css" />
+
+<div v-loading="data.{{{widget.widget_id}}}.loading">
+	<table
+		class="classes-table"
+		v-if="data.{{{widget.widget_id}}}.table_data.length > 0"
+	>
+		<thead>
+			<th v-if="data.{{{widget.widget_id}}}.selectable" width="30px">
+				<el-checkbox
+					:disabled="data.{{{widget.widget_id}}}.disabled"
+					{%
+					if
+					widget._changes_handled
+					%}
+					@change="
+                    state.{{{widget.widget_id}}}.checkboxes = new Array(
+                      data.{{{widget.widget_id}}}.table_data.length
+                    ).fill(state.{{{widget.widget_id}}}.global_checkbox);
+                    post('/{{{widget.widget_id}}}/tag_selected_cb');
+                  "
+					{%
+					else
+					%}
+					@change="
+                    state.{{{widget.widget_id}}}.checkboxes = new Array(
+                      data.{{{widget.widget_id}}}.table_data.length
+                    ).fill(state.{{{widget.widget_id}}}.global_checkbox);
+                  "
+					{%
+					endif
+					%}
+					v-model="state.{{{widget.widget_id}}}.global_checkbox"
+				>
+				</el-checkbox>
+			</th>
+			<th v-for="col_name in data.{{{widget.widget_id}}}.columns">
+				{{ col_name }}
+			</th>
+		</thead>
+		<tbody>
+			<tr v-for="(row, row_index) in data.{{{widget.widget_id}}}.table_data">
+				<td v-if="data.{{{widget.widget_id}}}.selectable" width="30px">
+					<el-checkbox
+						:disabled="data.{{{widget.widget_id}}}.disabled"
+						v-model="state.{{{widget.widget_id}}}.checkboxes[row_index]"
+						{%
+						if
+						widget._changes_handled
+						%}
+						@change="post('/{{{widget.widget_id}}}/tag_selected_cb');"
+						{%
+						endif
+						%}
+					></el-checkbox>
+				</td>
+				<td v-for="col in row">
+					<div class="fflex">
+						<span v-if="col.name === 'TAG'">
+							<i
+								class="zmdi zmdi-circle ml5 mr5"
+								:style="{color: col.color}"
+							></i>
+						</span>
+						<span>{{ col.data }}</span>
+					</div>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<div v-else>Tags table is empty</div>
+</div>

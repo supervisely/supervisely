@@ -48,6 +48,7 @@ from supervisely.sly_logger import logger
 
 # from supervisely.app.fastapi.request import Request
 
+IS_RUNNING = False
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -464,9 +465,11 @@ def _init(
             request.state.state = content.get("state")
             request.state.api_token = content.get(
                 "api_token",
-                request.state.context.get("apiToken")
-                if request.state.context is not None
-                else None,
+                (
+                    request.state.context.get("apiToken")
+                    if request.state.context is not None
+                    else None
+                ),
             )
             # logger.debug(f"middleware request api_token {request.state.api_token}")
             # request.state.server_address = content.get(
@@ -532,6 +535,8 @@ class Application(metaclass=Singleton):
         session_info_extra_content: "Widget" = None,
         session_info_solid: bool = False,
     ):
+        global IS_RUNNING
+
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -592,6 +597,9 @@ class Application(metaclass=Singleton):
             logger.info("Application is running on Supervisely Platform in production mode")
         else:
             logger.info("Application is running on localhost in development mode")
+
+        IS_RUNNING = True
+
         self._process_id = os.getpid()
         logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
@@ -626,6 +634,16 @@ class Application(metaclass=Singleton):
 
                 ContentOrigin().start()
                 resp = run_sync(self.test_client.get("/"))
+
+        server = self.get_server()
+
+        @server.post("/is_running")
+        async def is_running(request: Request):
+            if is_production():
+                # @TODO: set task status to running
+                return {"running": IS_RUNNING, "mode": "production"}
+            else:
+                return {"running": IS_RUNNING, "mode": "development"}
 
     def get_server(self):
         return self._fastapi

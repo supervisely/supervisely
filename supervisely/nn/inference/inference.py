@@ -1,53 +1,56 @@
+import inspect
 import json
 import os
-import sys
-from fastapi.responses import JSONResponse
-import requests
-from requests.structures import CaseInsensitiveDict
-import uuid
-import time
 import re
 import subprocess
-from functools import partial, wraps
+import sys
+import time
+import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Optional, Any, Union
-from fastapi import Form, HTTPException, Response, UploadFile, status
-from supervisely._utils import (
-    is_debug_with_sly_net,
-    rand_str,
-    is_production,
-    add_callback,
-)
-from supervisely.app.exceptions import DialogWindowError
-from supervisely.app.fastapi.subapp import get_name_from_env
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from functools import partial, wraps
+from typing import Any, Dict, List, Optional, Union
 
+import requests
+import yaml
+from fastapi import Form, HTTPException, Request, Response, UploadFile, status
+from fastapi.responses import JSONResponse
+from requests.structures import CaseInsensitiveDict
+
+import supervisely.app.development as sly_app_development
+import supervisely.imaging.image as sly_image
+import supervisely.io.env as env
+import supervisely.io.fs as fs
+import supervisely.nn.inference.gui as GUI
+from supervisely._utils import (
+    add_callback,
+    is_debug_with_sly_net,
+    is_production,
+    rand_str,
+)
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
-import supervisely.imaging.image as sly_image
-import supervisely.io.fs as fs
-from supervisely.sly_logger import logger
-import supervisely.io.env as env
-import yaml
-
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application, call_on_autostart
-from supervisely.app.content import get_data_dir, StateJson
-from fastapi import Request
-
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
-from supervisely.app.widgets import Widget
-from supervisely.nn.prediction_dto import Prediction
-import supervisely.app.development as sly_app_development
-from supervisely.imaging.color import get_predefined_colors
-from supervisely.task.progress import Progress
+from supervisely.app.content import StateJson, get_data_dir
+from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.fastapi.subapp import (
+    Application,
+    call_on_autostart,
+    get_name_from_env,
+)
+from supervisely.app.widgets import Card, Container, Widget
+from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
-import supervisely.nn.inference.gui as GUI
+from supervisely.imaging.color import get_predefined_colors
+from supervisely.nn.prediction_dto import Prediction
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -77,7 +80,7 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
-        self._autostart_delay_time = 5*60  # 5 min
+        self._autostart_delay_time = 5 * 60  # 5 min
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -94,18 +97,39 @@ class Inference:
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
-        if use_gui:
-            self.initialize_gui()
+        self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
+        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
-            def on_serve_callback(gui: GUI.InferenceGUI):
+        if use_gui:
+            initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+            original_initialize_custom_gui_method = getattr(
+                Inference, "initialize_custom_gui", None
+            )
+            if initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
+                self._gui = GUI.ServingGUI()
+                self._user_layout = self.initialize_custom_gui()
+            else:
+                self.initialize_gui()
+
+            def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
-                device = gui.get_device()
-                self.load_on_device(self._model_dir, device)
+
+                if isinstance(self.gui, GUI.ServingGUI):
+                    deploy_params = self.get_params_from_gui()
+                    self.load_model(**deploy_params)
+                    self.update_gui(self._model_served)
+                else:  # GUI.InferenceGUI
+                    device = gui.get_device()
+                    self.load_on_device(self._model_dir, device)
                 gui.show_deployed_model_info(self)
 
-            def on_change_model_callback(gui: GUI.InferenceGUI):
-                self._model_served = False
-                clean_up_cuda()
+            def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+                self.shutdown_model()
+                if isinstance(self.gui, GUI.ServingGUI):
+                    self._api_request_model_layout.unlock()
+                    self._api_request_model_layout.hide()
+                    self.update_gui(self._model_served)
+                    self._user_layout_card.show()
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
@@ -119,7 +143,7 @@ class Inference:
     def _prepare_device(self, device):
         if device is None:
             try:
-                import torch # pylint: disable=import-error
+                import torch  # pylint: disable=import-error
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
@@ -132,6 +156,25 @@ class Inference:
         if not self._use_gui:
             return None
         return self.gui.get_ui()
+
+    def initialize_custom_gui(self) -> Widget:
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def update_gui(self, is_model_deployed: bool = True) -> None:
+        if isinstance(self.gui, GUI.ServingGUI):
+            if is_model_deployed:
+                self._user_layout_card.lock()
+            else:
+                self._user_layout_card.unlock()
+
+    def set_params_to_gui(self, deploy_params: dict) -> None:
+        if isinstance(self.gui, GUI.ServingGUI):
+            self._user_layout_card.hide()
+            self._api_request_model_info.set_text(json.dumps(deploy_params), "json")
+            self._api_request_model_layout.show()
+
+    def get_params_from_gui(self) -> dict:
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
         models = self.get_models()
@@ -168,7 +211,9 @@ class Inference:
     def get_custom_model_link_type(self) -> Literal["file", "folder"]:
         return "file"
 
-    def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
+    def get_models(
+        self,
+    ) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         return []
 
     def download(self, src_path: str, dst_path: str = None):
@@ -307,6 +352,17 @@ class Inference:
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def load_model(self, **kwargs):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def load_model_meta(self, model_tab: str, local_weights_path: str):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def shutdown_model(self):
+        self._model_served = False
+        clean_up_cuda()
+        logger.info("Model has been stopped")
 
     def _on_model_deployed(self):
         pass
@@ -450,7 +506,8 @@ class Inference:
     ):
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
-            "Inferring image_path:", extra={"inference_mode": inference_mode, "path": image_path}
+            "Inferring image_path:",
+            extra={"inference_mode": inference_mode, "path": image_path},
         )
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
@@ -505,7 +562,10 @@ class Inference:
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
         ann.draw_pretty(
-            bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False
+            bitmap=image,
+            thickness=thickness,
+            output_path=vis_path,
+            fill_rectangles=False,
         )
 
     def _inference_image(self, state: dict, file: UploadFile):
@@ -581,7 +641,8 @@ class Inference:
         api.image.download_path(image_id, image_path)
         logger.debug("Inference settings:", extra=settings)
         logger.debug(
-            "Image info:", extra={"id": image_id, "w": image_info.width, "h": image_info.height}
+            "Image info:",
+            extra={"id": image_id, "w": image_info.width, "h": image_info.height},
         )
         logger.debug(f"Downloaded path: {image_path}")
 
@@ -646,7 +707,7 @@ class Inference:
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
-        preparing_progress={"current": 0, "total": 1}
+        preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -766,7 +827,33 @@ class Inference:
         else:
             self._task_id = env.task_id() if is_production() else None
 
-        self._app = Application(layout=self.get_ui())
+        if isinstance(self.gui, GUI.InferenceGUI):
+            self._app = Application(layout=self.get_ui())
+        elif isinstance(self.gui, GUI.ServingGUI):
+            serving_layout = self.get_ui()
+
+            self._user_layout_card = Card(
+                title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
+                content=self._user_layout,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
+            self._api_request_model_info = Editor(
+                height_lines=12,
+                language_mode="json",
+                readonly=True,
+                restore_default_button=False,
+                auto_format=True,
+            )
+            self._api_request_model_layout = Card(
+                title="Model was deployed from API request with the following settings",
+                content=self._api_request_model_info,
+            )
+            self._api_request_model_layout.hide()
+            layout = Container(
+                [self._user_layout_card, self._api_request_model_layout, serving_layout]
+            )
+            self._app = Application(layout=layout)
         server = self._app.get_server()
 
         @call_on_autostart()
@@ -780,6 +867,7 @@ class Inference:
                     if not self._model_served:
                         logger.debug("Deploying the model via autostart...")
                         self.gui.deploy_with_current_params()
+
                 self._executor.submit(delayed_autostart)
             else:
                 # run autostart immediately
@@ -793,7 +881,7 @@ class Inference:
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
         def get_session_info(response: Response):
-                return self.get_info()
+            return self.get_info()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
@@ -967,7 +1055,10 @@ class Inference:
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
             inference_request = self._inference_requests[inference_request_uuid]
             inference_request["cancel_inference"] = True
             return {"message": "Inference will be stopped.", "success": True}
@@ -977,7 +1068,10 @@ class Inference:
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
             del self._inference_requests[inference_request_uuid]
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
@@ -991,6 +1085,72 @@ class Inference:
 
             inference_request = self._inference_requests[inference_request_uuid].copy()
             return inference_request["preparing_progress"]
+
+        @server.post("/get_deploy_settings")
+        def _get_deploy_settings(response: Response, request: Request):
+            """
+            Get deploy settings for the model. Works only for the Sphinx docstring format.
+            """
+            load_model_method = getattr(self, "load_model")
+            method_signature = inspect.signature(load_model_method)
+            docstring = inspect.getdoc(load_model_method) or ""
+            doc_lines = docstring.split("\n")
+
+            param_docs = {}
+            param_type = {}
+            for line in doc_lines:
+                if line.startswith(":param"):
+                    name = line.split(":")[1].strip().split()[1]
+                    doc = line.replace(f":param {name}:", "").strip()
+                    param_docs[name] = doc
+                if line.startswith(":type"):
+                    name = line.split(":")[1].strip().split()[1]
+                    type = line.replace(f":type {name}:", "").strip()
+                    param_type[name] = type
+
+            args_details = []
+            for name, parameter in method_signature.parameters.items():
+                if name == "self":
+                    continue
+                arg_type = param_type.get(name, None)
+                default = (
+                    parameter.default if parameter.default != inspect.Parameter.empty else None
+                )
+                doc = param_docs.get(name, None)
+                args_details.append(
+                    {"name": name, "type": arg_type, "default": default, "doc": doc}
+                )
+
+            return args_details
+
+        @server.post("/deploy_from_api")
+        def _deploy_from_api(response: Response, request: Request):
+            try:
+                if self._model_served:
+                    self.shutdown_model()
+                state = request.state.state
+                deploy_params = state["deploy_params"]
+                self.load_model(**deploy_params)
+                self.update_gui(self._model_served)
+                self.set_params_to_gui(deploy_params)
+
+                # update to set correct device
+                device = deploy_params.get("device", "cpu")
+                self.gui.set_deployed(device)
+
+                self.gui.show_deployed_model_info(self)
+                self._model_served = True
+                return {"result": "model was successfully deployed"}
+            except Exception as e:
+                self.gui._success_label.hide()
+                raise e
+
+        @server.post("/is_deployed")
+        def _is_deployed(response: Response, request: Request):
+            return {
+                "deployed": self._model_served,
+                "description:": "Model is ready to receive requests",
+            }
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
@@ -1067,22 +1227,32 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_key="device",
 )
 
+LOAD_MODEL_DECORATOR = _create_notify_after_complete_decorator(
+    "✅ Model has been successfully deployed on %s device",
+    arg_pos=1,
+    arg_key="device",
+)
+
 
 def get_gpu_count():
     try:
-        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode('utf-8')
-        gpu_count = len(re.findall(r'GPU \d+:', nvidia_smi_output))
+        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode("utf-8")
+        gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
-    
+
 
 def clean_up_cuda():
     try:
         # torch may not be installed
-        import torch # pylint: disable=import-error
         import gc
+
+        # pylint: disable=import-error
+        # pylint: disable=method-hidden
+        import torch
+
         gc.collect()
         torch.cuda.empty_cache()
     except Exception as exc:

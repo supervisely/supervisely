@@ -37,5 +37,10 @@
             state.{{{widget.widget_id}}}.droppedItem = $event;
             post('/{{{widget.widget_id}}}/item_dropped_cb');"
         {% endif %}
+        {% if widget._node_removed_handled %}
+        @node-removed="
+            state.{{{widget.widget_id}}}.removedNode = $event;
+            post('/{{{widget.widget_id}}}/node_removed_cb');"
+        {% endif %}
     />
 </div>
