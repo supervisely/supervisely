@@ -1,3 +1,5 @@
+# pylint: disable=no-member
+
 # case1 # monkeypatchin not working in venv
 from tqdm import tqdm  # isort: skip
 import supervisely as sly  # isort: skip
