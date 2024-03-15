@@ -522,7 +522,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if description is not None:
             data[ApiField.DESCRIPTION] = str(description)
 
-        if images_range is not None:
+        if images_range is not None and images_range != (None, None):
             if len(images_range) != 2:
                 raise RuntimeError("images_range has to contain 2 elements (start, end)")
             images_range = {"start": images_range[0], "end": images_range[1]}
@@ -1263,3 +1263,85 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "jobs.entities.update-review-status",
             {ApiField.JOB_ID: id, ApiField.ENTITY_ID: entity_id, ApiField.STATUS: status},
         )
+
+    def restart(
+        self,
+        id: int,
+        finish_current: bool = True,
+        restart_only_rejected: bool = False,
+        new_title: Optional[str] = None,
+        rewiever_id: Optional[int] = None,
+        assignee_ids: Optional[List[int]] = None,
+    ) -> List[LabelingJobInfo]:
+        """
+        Restart Labeling Job with given ID.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param finish_current: Set status of the current job to completed.
+        :type finish_current: bool, optional
+        :param restart_only_rejected: Restart only with rejected entities. If False unmarked entities will be included as well.
+        :type restart_only_rejected: bool, optional
+        :param new_title: New title for the job
+        :type new_title: str, optional
+        :param rewiever_id: ID of the reviewer
+        :type rewiever_id: int, optional
+        :param assignee_ids: List of User IDs to assign the job
+        :type assignee_ids: List[int], optional
+        :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[LabelingJobInfo]`
+        """
+        job_info = self.get_info_by_id(id)
+
+        if new_title is None:
+            new_title = job_info.name
+        if rewiever_id is None:
+            rewiever_id = job_info.reviewer_id
+        else:
+            self._check_membership([rewiever_id], job_info.team_id)
+        if assignee_ids is None:
+            assignee_ids = [job_info.assigned_to_id]
+        else:
+            self._check_membership(assignee_ids, job_info.team_id)
+
+        if restart_only_rejected:
+            entity_ids = [
+                entity["id"] for entity in job_info.entities if entity["reviewStatus"] == "rejected"
+            ]
+        else:
+            entity_ids = [
+                entity["id"]
+                for entity in job_info.entities
+                if entity["reviewStatus"] in ("rejected", "none")
+            ]
+
+        job_infos = self.create(
+            name=new_title,
+            dataset_id=job_info.dataset_id,
+            user_ids=assignee_ids,
+            readme=job_info.readme,
+            description=job_info.description,
+            classes_to_label=job_info.classes_to_label,
+            objects_limit_per_image=job_info.objects_limit_per_image,
+            tags_to_label=job_info.tags_to_label,
+            tags_limit_per_image=job_info.tags_limit_per_image,
+            include_images_with_tags=job_info.include_images_with_tags,
+            exclude_images_with_tags=job_info.exclude_images_with_tags,
+            images_range=job_info.images_range,
+            reviewer_id=rewiever_id,
+            images_ids=entity_ids,
+            # TODO dynamic_classes=job_info.dynamic_classes,
+            # TODO dynamic_tags=job_info.dynamic_tags,
+        )
+        if finish_current:
+            self.set_status(id, self.Status.COMPLETED.value)
+        return job_infos
+
+    def _check_membership(self, ids, team_id) -> None:
+        for user_id in ids:
+            memberships = self._api.user.get_teams(user_id)
+            team_ids = [team.id for team in memberships]
+            if team_id not in team_ids:
+                raise RuntimeError(
+                    f"User with id {user_id} is not a member of the team with id {team_id}"
+                )
