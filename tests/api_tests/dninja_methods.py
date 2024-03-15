@@ -28,8 +28,7 @@ def images_list(project_id):
 
     for dataset in api.dataset.get_list(project_id):
         start_time = time.time()
-        # api.image.get_list(dataset.id)
-        ImageApi(api).get_list_all_pages(
+        api.image.get_list_all_pages(
             "images.list",
             {
                 ApiField.DATASET_ID: dataset.id,
@@ -60,7 +59,7 @@ def figure_list(project_id):
         "imageId",
         "objectId",
         "classId",
-        "projectId",
+        # "projectId",
         # "datasetId",
         # "geometryType",
         # "geometry",
@@ -72,7 +71,7 @@ def figure_list(project_id):
 
     for dataset in api.dataset.get_list(project_id):
         start_time = time.time()
-        figures_infos = FigureApi(api).get_list_all_pages(
+        figures_infos = api.image.figure.get_list_all_pages(
             "figures.list",
             {
                 ApiField.DATASET_ID: dataset.id,
@@ -99,3 +98,9 @@ if __name__ == "__main__":
     for id in PROJECT_IDS:
         images_list(id)
         figure_list(id)
+        api.image.get_list()
+
+    # api.image.get_list()
+    # annotations, geometry, найти причину тормозов
+    # update renderes
+    # update heatmap
