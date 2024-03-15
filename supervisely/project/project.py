@@ -2807,10 +2807,11 @@ def upload_project(
             parent_id = dataset_map.get(parent)
 
         else:
+            parent = ""
             parent_id = None
 
         dataset = api.dataset.create(project.id, ds_fs.short_name, parent_id=parent_id)
-        dataset_map[ds_fs.name] = dataset.id
+        dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
         ds_fs: Dataset
 
