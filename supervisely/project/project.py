@@ -1463,6 +1463,13 @@ class Project:
 
         item_type = Dataset
 
+        def __next__(self):
+            for dataset in self.items():
+                yield dataset
+
+        def items(self) -> List[KeyObject]:
+            return sorted(self._collection.values(), key=lambda x: x.parents)
+
     def __init__(
         self,
         directory: str,
@@ -1606,16 +1613,6 @@ class Project:
         """
 
         return self._datasets
-
-    @property
-    def sorted_datasets(self) -> List[Dataset]:
-        """Returns a list of datasets sorted by number of parents
-        starting from the dataset with the smallest number (root).
-        
-        :return: List of datasets
-        :rtype: :class:`List[Dataset]`
-        """
-        return sorted(self._datasets, key=lambda ds: len(ds.parents))
 
     @property
     def meta(self) -> ProjectMeta:
@@ -2804,7 +2801,7 @@ def upload_project(
     # image_id_dct, anns_paths_dct = {}, {}
     dataset_map = {}
 
-    for ds_fs in project_fs.sorted_datasets:
+    for ds_fs in project_fs.datasets:
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
