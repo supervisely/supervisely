@@ -1463,6 +1463,13 @@ class Project:
 
         item_type = Dataset
 
+        def __next__(self):
+            for dataset in self.items():
+                yield dataset
+
+        def items(self) -> List[KeyObject]:
+            return sorted(self._collection.values(), key=lambda x: x.parents)
+
     def __init__(
         self,
         directory: str,
@@ -1605,10 +1612,7 @@ class Project:
                 #         ds2
         """
 
-        def parent_length(dataset):
-            return len(dataset.parents)
-
-        return sorted(self._datasets, key=parent_length)
+        return self._datasets
 
     @property
     def meta(self) -> ProjectMeta:
@@ -2803,10 +2807,11 @@ def upload_project(
             parent_id = dataset_map.get(parent)
 
         else:
+            parent = ""
             parent_id = None
 
         dataset = api.dataset.create(project.id, ds_fs.short_name, parent_id=parent_id)
-        dataset_map[ds_fs.name] = dataset.id
+        dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
         ds_fs: Dataset
 
