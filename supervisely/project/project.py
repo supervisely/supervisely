@@ -3214,4 +3214,82 @@ def _download_dataset(
             cache.write_objects(img_paths, img_hashes)
 
 
+def _create_readme(
+    project_dir: str,
+    project_info: Optional[sly.ProjectInfo] = None,
+    api: Optional[sly.Api] = None,
+) -> str:
+    if not project_info.type == sly.ProjectType.IMAGES.value:
+        raise NotImplementedError("Only image projects are supported at the moment")
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(current_path, "readme_template.md")
+    with open(template_path, "r") as file:
+        template = file.read()
+
+    readme_path = os.path.join(project_dir, "README.md")
+    general_info = ""
+
+    for field in project_info._fields:
+        value = getattr(project_info, field)
+        if not value or not isinstance(value, (str, int)):
+            continue
+        general_info += f"\n**{snake_to_human(field)}:** {value}<br>"
+
+    template = template.replace("{{general_info}}", general_info)
+
+    dataset_structure_info = f"🗂️ {project_info.name}<br>"
+
+    IMAGE_LIMIT = 3
+    IMAGE = " 🏞️ "
+    DATASET = " 📂 "
+
+    for parents, dataset_info in api.dataset.tree(project_info.id):
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+        basic_indent = "┃ " * len(parents)
+        dataset_structure_info += (
+            basic_indent + "┣ " + DATASET + f"[{dataset_info.name}]({dataset_path})" + "<br>"
+        )
+        image_infos = api.image.get_list(dataset_info.id)
+        for idx, image_info in enumerate(image_infos):
+            if idx == IMAGE_LIMIT:
+                dataset_structure_info += (
+                    basic_indent + "┃ ┗ ... " + str(len(image_infos) - IMAGE_LIMIT) + " more<br>"
+                )
+                break
+            symbol = "┗" if idx == len(image_infos) - 1 else "┣"
+            dataset_structure_info += (
+                "┃ " * (len(parents) + 1) + symbol + IMAGE + image_info.name + "<br>"
+            )
+
+    template = template.replace("{{dataset_structure_info}}", dataset_structure_info)
+
+    with open(readme_path, "w") as f:
+        f.write(template)
+    return readme_path
+
+
+def snake_to_human(snake_str: str) -> str:
+    components = snake_str.split("_")
+    return " ".join(word.capitalize() for word in components)
+
+
+# def dict_to_md(nested_dict: Dict[Dict], indent="", api: Optional[sly.Api] = None):
+#     IMAGE_LIMIT = 3
+#     IMAGE = "🏞️"
+#     DATASET = "📂"
+#     markdown = ""
+#     for key, value in nested_dict.items():
+#         markdown += f"{indent}┣ {DATASET} {key.name}<br>"
+#         if isinstance(key, sly.DatasetInfo) and api is not None:
+#             image_infos = api.image.get_list(key.id)
+#             for idx, image_info in enumerate(image_infos):
+#                 if idx == IMAGE_LIMIT:
+#                     markdown += f"{indent}┃ ┗ ... {len(image_infos) - IMAGE_LIMIT} more<br>"
+#                     break
+#                 symbol = "┗" if idx == len(image_infos) - 1 else "┣"
+#                 markdown += f"{indent}┃ {symbol} {IMAGE} {image_info.name}<br>"
+#         markdown += dict_to_md(value, indent + "┃ ", api)
+#     return markdown
+
+
 DatasetDict = Project.DatasetDict
