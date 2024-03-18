@@ -502,10 +502,9 @@ class FileApi(ModuleApiBase):
                     limit_exceeded = True
                     break
 
-        
         if limit_exceeded:
             data = data[:limit]
-        
+
         if return_type == "fileinfo":
             results = []
             for info in data:
