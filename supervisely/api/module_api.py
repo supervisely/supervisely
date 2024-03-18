@@ -511,6 +511,12 @@ class ApiField:
     SRC_ID = "srcId"
     """"""
     DEST_ID = "destId"
+    """"""
+    FOLDERS = "folders"
+    """"""
+    WITH_METADATA = "withMetadata"
+    """"""
+    LIMIT = "limit"
 
 
 
