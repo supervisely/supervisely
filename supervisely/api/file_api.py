@@ -364,6 +364,157 @@ class FileApi(ModuleApiBase):
         files_paths = [file["path"] for file in files]
         return files_paths
 
+
+
+    def list_v2(
+        self,
+        team_id: int,
+        path: str,
+        recursive: bool = True,
+        return_type: Literal["dict", "fileinfo"] = "fileinfo",
+        with_metadata: bool = True,
+        include_files: bool = True,
+        include_folders: bool = True,
+        limit: Optional[int] = None,
+    ) -> List[Union[Dict, FileInfo]]:
+        """
+        List of all or limited quantity files from the Team Files or Cloud Storages.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param path: Path to File or Directory.
+        :type path: str
+        :param recursive: If True return all files recursively.
+        :type recursive: bool
+        :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'fileinfo'.
+        :type return_type: str
+        :param with_metadata: If True return files with metadata.
+        :type with_metadata: bool
+        :param include_files: If True return files infos.
+        :type include_files: bool
+        :param include_folders: If True return folders infos.
+        :type include_folders: bool
+        :param limit: Limit the number of files returned.
+        :type limit: int
+        :return: List of all Files with information. See classes info_sequence and FileInfo
+        :rtype: class List[Union[Dict, FileInfo]]
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+
+            team_id = 8
+
+            # Option 1. Get information about files from Team Files:
+            file_path = "/tmp/test_img/"
+            files = api.file.list_v2(team_id, file_path)
+            file = files[0]
+            print(file.name)
+            # Output: berries.jpeg
+
+            print(files)
+            # Output: [
+            #   FileInfo(team_id=8, id=7660, user_id=7, name='00135.json', hash='z7Wv1a7WI...
+            #   FileInfo(team_id=8, id=7661, user_id=7, name='01587.json', hash='La9+XtF2+...
+            # ]
+
+
+            # Option 2. Get information from Cloud Storages (S3, Azure, Google Cloud Storage)
+            file_path = "s3://remote-img-test/test_img/"
+            # or 
+            file_path = "azure://supervisely-test/test_img/"
+            # or 
+            file_path = "google://sly-dev-test/test_img/"
+
+            files = api.file.list_v2(team_id, file_path, return_type="dict", limit=2)
+            print(files)
+            # Output: [
+            #     {
+            #         "type": "file",
+            #         "name": "berries-01.jpeg",
+            #         "prefix": "test_img",
+            #         "path": "azure://supervisely-test/test_img/berries-01.jpeg",
+            #         "updatedAt": "2024-03-08T16:03:41.000Z",
+            #         "meta": {
+            #             "size": 3529930
+            #         }
+            #     },
+            #     {
+            #         "type": "file",
+            #         "name": "berries-02.jpeg",
+            #         "prefix": "test_img",
+            #         "path": "azure://supervisely-test/test_img/berries-02.jpeg",
+            #         "updatedAt": "2024-03-08T16:03:38.000Z",
+            #         "meta": {
+            #             "size": 1311144
+            #         }
+            #     }
+            # ]
+        """
+        if not path.endswith("/"):
+            path += "/"
+        method = "file-storage.v2.list"
+
+        json_body = {
+            ApiField.TEAM_ID: team_id,
+            ApiField.PATH: path,
+            ApiField.RECURSIVE: recursive,
+            ApiField.WITH_METADATA: with_metadata,
+            ApiField.FILES: include_files,
+            ApiField.FOLDERS: include_folders,
+        }
+        if limit is not None:
+            json_body[ApiField.LIMIT] = limit
+
+        first_response = self._api.post(method, json_body).json()
+        data = first_response.get("entities", [])
+
+        continuation_token = first_response.get("continuationToken", None)
+        if continuation_token == "": # FIXME: remove this check after backend fix
+            continuation_token = None
+        limit_exceeded = False
+        if limit is not None and len(data) >= limit:
+            limit_exceeded = True
+
+        if continuation_token is None or limit_exceeded:
+            pass
+        else:
+            while continuation_token is not None:
+                json_body["continuationToken"] = continuation_token
+                temp_resp = self._api.post(method, json_body)
+                temp_data = temp_resp.json().get("entities", [])
+                data.extend(temp_data)
+                continuation_token = temp_resp.json().get("continuationToken", None)
+                if limit is not None and len(data) >= limit:
+                    limit_exceeded = True
+                    break
+
+        
+        if limit_exceeded:
+            data = data[:limit]
+        
+        if return_type == "fileinfo":
+            results = []
+            for info in data:
+                info[ApiField.IS_DIR] = info[ApiField.TYPE] == "folder"
+                results.append(self._convert_json_info(info))
+            return results
+
+        return data
+
     def get_directory_size(self, team_id: int, path: str) -> int:
         """
         Get directory size in the Team Files.
