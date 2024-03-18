@@ -2776,6 +2776,8 @@ def _download_project(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
 
+    create_readme(dest_dir, api.project.get_info_by_id(project_id), api)
+
 
 def upload_project(
     dir: str,
@@ -3214,7 +3216,7 @@ def _download_dataset(
             cache.write_objects(img_paths, img_hashes)
 
 
-def _create_readme(
+def create_readme(
     project_dir: str,
     project_info: Optional[sly.ProjectInfo] = None,
     api: Optional[sly.Api] = None,
@@ -3271,25 +3273,6 @@ def _create_readme(
 def snake_to_human(snake_str: str) -> str:
     components = snake_str.split("_")
     return " ".join(word.capitalize() for word in components)
-
-
-# def dict_to_md(nested_dict: Dict[Dict], indent="", api: Optional[sly.Api] = None):
-#     IMAGE_LIMIT = 3
-#     IMAGE = "🏞️"
-#     DATASET = "📂"
-#     markdown = ""
-#     for key, value in nested_dict.items():
-#         markdown += f"{indent}┣ {DATASET} {key.name}<br>"
-#         if isinstance(key, sly.DatasetInfo) and api is not None:
-#             image_infos = api.image.get_list(key.id)
-#             for idx, image_info in enumerate(image_infos):
-#                 if idx == IMAGE_LIMIT:
-#                     markdown += f"{indent}┃ ┗ ... {len(image_infos) - IMAGE_LIMIT} more<br>"
-#                     break
-#                 symbol = "┗" if idx == len(image_infos) - 1 else "┣"
-#                 markdown += f"{indent}┃ {symbol} {IMAGE} {image_info.name}<br>"
-#         markdown += dict_to_md(value, indent + "┃ ", api)
-#     return markdown
 
 
 DatasetDict = Project.DatasetDict
