@@ -24,6 +24,8 @@ class FigureInfo(NamedTuple):
     geometry: dict
     tags: list
     meta: dict
+    area: str
+    real_area: str
 
 
 class FigureApi(RemoveableBulkModuleApi):
@@ -65,6 +67,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.GEOMETRY,
             ApiField.TAGS,
             ApiField.META,
+            ApiField.AREA,
+            ApiField.REAL_AREA,
         ]
 
     @staticmethod
@@ -339,7 +343,9 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
-    def download(self, dataset_id: int, image_ids: List[int] = None) -> Dict[int, List[FigureInfo]]:
+    def download(
+        self, dataset_id: int, image_ids: List[int] = None
+    ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns dictionary with image ids and list of FigureInfo for given dataset ID. Can be filtered by image IDs.
 
@@ -368,7 +374,13 @@ class FigureApi(RemoveableBulkModuleApi):
         if image_ids is None:
             filters = []
         else:
-            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
+            filters = [
+                {
+                    ApiField.FIELD: ApiField.ENTITY_ID,
+                    "operator": "in",
+                    "value": image_ids,
+                }
+            ]
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
