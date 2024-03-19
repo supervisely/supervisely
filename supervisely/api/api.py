@@ -39,6 +39,7 @@ import supervisely.api.project_api as project_api
 import supervisely.api.remote_storage_api as remote_storage_api
 import supervisely.api.report_api as report_api
 import supervisely.api.role_api as role_api
+import supervisely.api.storage_api as storage_api
 import supervisely.api.task_api as task_api
 import supervisely.api.team_api as team_api
 import supervisely.api.user_api as user_api
@@ -252,6 +253,7 @@ class Api:
         self.pointcloud_episode = pointcloud_episode_api.PointcloudEpisodeApi(self)
         self.app = app_api.AppApi(self)
         self.file = file_api.FileApi(self)
+        self.storage = storage_api.StorageApi(self)
         self.img_ann_tool = image_annotation_tool_api.ImageAnnotationToolApi(self)
         self.vid_ann_tool = video_annotation_tool_api.VideoAnnotationToolApi(self)
         self.advanced = advanced_api.AdvancedApi(self)
