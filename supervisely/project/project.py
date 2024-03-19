@@ -3062,6 +3062,11 @@ def _download_project_optimized(
                 save_images=save_images,
             )
 
+    try:
+        create_readme(project_dir, project_id, api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
+
 
 def _split_images_by_cache(images, cache):
     images_to_download = []
