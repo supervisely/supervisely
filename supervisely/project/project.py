@@ -13,7 +13,7 @@ import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
-from supervisely._utils import abs_url, batched, is_development
+from supervisely._utils import abs_url, batched, is_development, snake_to_human
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -2775,8 +2775,10 @@ def _download_project(
                     sly.json.dump_json_file(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
-
-    create_readme(dest_dir, api.project.get_info_by_id(project_id), api)
+    try:
+        create_readme(dest_dir, api.project.get_info_by_id(project_id), api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
 
 
 def upload_project(
@@ -3218,61 +3220,132 @@ def _download_dataset(
 
 def create_readme(
     project_dir: str,
-    project_info: Optional[sly.ProjectInfo] = None,
-    api: Optional[sly.Api] = None,
+    project_id: int,
+    api: sly.Api,
 ) -> str:
-    if not project_info.type == sly.ProjectType.IMAGES.value:
-        raise NotImplementedError("Only image projects are supported at the moment")
+    """Creates a README.md file using the template, adds general information
+    about the project and creates a dataset structure section.
+
+    :param project_dir: Path to the project directory.
+    :type project_dir: str
+    :param project_id: Project ID.
+    :type project_id: int
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :return: Path to the created README.md file.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+
+        project_id = 123
+        project_dir = "/path/to/project"
+
+        readme_path = sly.create_readme(project_dir, project_id, api)
+
+        print(f"README.md file was created at {readme_path}")
+    """
     current_path = os.path.dirname(os.path.abspath(__file__))
     template_path = os.path.join(current_path, "readme_template.md")
     with open(template_path, "r") as file:
         template = file.read()
 
+    project_info = api.project.get_info_by_id(project_id)
+
+    sly.fs.mkdir(project_dir)
     readme_path = os.path.join(project_dir, "README.md")
-    general_info = ""
 
-    for field in project_info._fields:
-        value = getattr(project_info, field)
-        if not value or not isinstance(value, (str, int)):
-            continue
-        general_info += f"\n**{snake_to_human(field)}:** {value}<br>"
+    template = template.replace("{{general_info}}", _project_info_md(project_info))
 
-    template = template.replace("{{general_info}}", general_info)
-
-    dataset_structure_info = f"🗂️ {project_info.name}<br>"
-
-    IMAGE_LIMIT = 3
-    IMAGE = " 🏞️ "
-    DATASET = " 📂 "
-
-    for parents, dataset_info in api.dataset.tree(project_info.id):
-        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
-        basic_indent = "┃ " * len(parents)
-        dataset_structure_info += (
-            basic_indent + "┣ " + DATASET + f"[{dataset_info.name}]({dataset_path})" + "<br>"
-        )
-        image_infos = api.image.get_list(dataset_info.id)
-        for idx, image_info in enumerate(image_infos):
-            if idx == IMAGE_LIMIT:
-                dataset_structure_info += (
-                    basic_indent + "┃ ┗ ... " + str(len(image_infos) - IMAGE_LIMIT) + " more<br>"
-                )
-                break
-            symbol = "┗" if idx == len(image_infos) - 1 else "┣"
-            dataset_structure_info += (
-                "┃ " * (len(parents) + 1) + symbol + IMAGE + image_info.name + "<br>"
-            )
-
-    template = template.replace("{{dataset_structure_info}}", dataset_structure_info)
+    template = template.replace(
+        "{{dataset_structure_info}}", _dataset_structure_md(project_info, api)
+    )
 
     with open(readme_path, "w") as f:
         f.write(template)
     return readme_path
 
 
-def snake_to_human(snake_str: str) -> str:
-    components = snake_str.split("_")
-    return " ".join(word.capitalize() for word in components)
+def _project_info_md(project_info: sly.ProjectInfo) -> str:
+    """Creates a markdown string with general information about the project
+    using the fields of the ProjectInfo NamedTuple.
+
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :return: Markdown string with general information about the project.
+    :rtype: str
+    """
+    result_md = ""
+    # Iterating over fields of a NamedTuple.
+    for field in project_info._fields:
+        value = getattr(project_info, field)
+        if not value or not isinstance(value, (str, int)):
+            # To avoid useless information in the README.
+            continue
+        result_md += f"\n**{snake_to_human(field)}:** {value}<br>"
+
+    return result_md
+
+
+def _dataset_structure_md(
+    project_info: sly.ProjectInfo, api: sly.Api, entity_limit: Optional[int] = 10
+) -> str:
+    """Creates a markdown string with the dataset structure of the project.
+    Supports only images and videos projects.
+
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :param entity_limit: The maximum number of entities to display in the README.
+    :type entity_limit: int, optional
+    :return: Markdown string with the dataset structure of the project.
+    :rtype: str
+    """
+    # TODO: Add support for other project types.
+    supported_project_types = [sly.ProjectType.IMAGES.value, sly.ProjectType.VIDEOS.value]
+    if project_info.type not in supported_project_types:
+        return ""
+
+    list_functions = {
+        "images": api.image.get_list,
+        "videos": api.video.get_list,
+    }
+    entity_icons = {
+        "images": " 🏞️ ",
+        "videos": " 🎥 ",
+    }
+    dataset_icon = " 📂 "
+    list_function = list_functions[project_info.type]
+    entity_icon = entity_icons[project_info.type]
+
+    result_md = f"🗂️ {project_info.name}<br>"
+
+    for parents, dataset_info in api.dataset.tree(project_info.id):
+        # The dataset path is needed to create a clickable link in the README.
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+        basic_indent = "┃ " * len(parents)
+        result_md += (
+            basic_indent + "┣ " + dataset_icon + f"[{dataset_info.name}]({dataset_path})" + "<br>"
+        )
+        entity_infos = list_function(dataset_info.id)
+        for idx, entity_info in enumerate(entity_infos):
+            if idx == entity_limit:
+                result_md += (
+                    basic_indent + "┃ ┗ ... " + str(len(entity_infos) - entity_limit) + " more<br>"
+                )
+                break
+            symbol = "┗" if idx == len(entity_infos) - 1 else "┣"
+            result_md += (
+                "┃ " * (len(parents) + 1) + symbol + entity_icon + entity_info.name + "<br>"
+            )
+
+    return result_md
 
 
 DatasetDict = Project.DatasetDict
