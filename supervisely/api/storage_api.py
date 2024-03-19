@@ -232,10 +232,11 @@ class StorageApi(FileApi):
            file = api.storage.exists(8, "/999_App_Test/ds1/01587.json") # False
         """
         dir_name = os.path.dirname(remote_path.rstrip("/"))
-        path_infos = self.list(team_id, dir_name, recursive=False)
+        path_infos = self.list(team_id, dir_name, recursive=False, return_type="dict")
         for info in path_infos:
-            if info.path == remote_path:
-                return True
+            if info["type"] == "file":
+                if info["path"].rstrip("/") == remote_path.rstrip("/"):
+                    return True
         return False
 
     def dir_exists(self, team_id: int, remote_directory: str) -> bool:
@@ -261,9 +262,12 @@ class StorageApi(FileApi):
            file = api.storage.dir_exists(8, "/999_App_Test/")   # True
            file = api.storage.dir_exists(8, "/10000_App_Test/") # False
         """
-        files_infos = self.list(team_id, remote_directory, recursive=False)
-        if len(files_infos) > 0:
-            return True
+        parent_dir = os.path.dirname(remote_directory.rstrip("/"))
+        path_infos = self.list(team_id, parent_dir, recursive=False, return_type="dict")
+        for info in path_infos:
+            if info["type"] == "folder":
+                if info["path"].rstrip("/") == remote_directory.rstrip("/"):
+                    return True
         return False
 
     def get_info_by_path(self, team_id: int, remote_path: str) -> FileInfo:
@@ -306,7 +310,7 @@ class StorageApi(FileApi):
         dir_path = os.path.dirname(remote_path.rstrip("/"))
         path_infos = self.list(team_id, dir_path, recursive=False)
         for info in path_infos:
-            if info.path == remote_path:
+            if info.path.rstrip("/") == remote_path.rstrip("/"):
                 return info
         return None
 
