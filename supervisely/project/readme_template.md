@@ -4,11 +4,11 @@ This is a general information about the project.<br>
 {{general_info}}<br>
 
 ## Dataset structure
-In this section, you can find information about the dataset structure. Datasets name are clickable and will redirect you to the corresponding folder.<br>
+In this section, you can find information about the dataset structure. Dataset names are clickable and will redirect you to the corresponding folder.<br>
 {{dataset_structure_info}}<br>
 
 ## Useful links
-Please, visit [Supervisely blog](https://supervisely.com/blog) to keep up with the latest news, updates, and tutorials and subscribe to [Supervisely YouTube channel](https://www.youtube.com/c/Supervisely) to watch video tutorials.<br> 
+Please, visit the [Supervisely blog](https://supervisely.com/blog) to keep up with the latest news, updates, and tutorials and subscribe to [our YouTube channel](https://www.youtube.com/c/Supervisely) to watch video tutorials.<br> 
 
 - [Supervisely Developer Portal](https://developer.supervisely.com/)
 - [Supervisely JSON format](https://docs.supervise.ly/data-organization/00_ann_format_navi)
@@ -19,7 +19,7 @@ Please, visit [Supervisely blog](https://supervisely.com/blog) to keep up with t
 - [Supervisely Ecosystem](https://ecosystem.supervisely.com/)
 
 ## Supervisely JSON format
-In this section you'll find short description of the format and examples of working with it. To learn more about the format, please refer to the [Useful links](#useful-links) section.<br>
+In this section, you'll find a short description of the format and examples of working with it. To learn more about the format, please refer to the [Useful links](#useful-links) section.<br>
 
 
 ### Overview
@@ -33,7 +33,7 @@ A short overview of the format and its main features:
 
 **Project Meta file** - the `meta.json` file contains information about object classes, tags, and other project settings. The `meta.json` file is located in the root directory of the project and is required for the correct operation of the format.
 
-**Entities folder** - depending on the type of data stored in the project, dataset folders will contain one of folders: `img`, `video`, `pointcloud`, `volume`. Each of these folders contains all the data of the corresponding type. For example, the `img` folder contains all images for the dataset.
+**Entities folder** - depending on the type of data stored in the project, dataset folders will contain one of the folders: `img`, `video`, `pointcloud`, `volume`. Each of these folders contains all the data of the corresponding type. For example, the `img` folder contains all images for the dataset.
 
 **Annotations folder** - the `ann` folder contains all annotations for the dataset. Each annotation is stored in a separate file with the same name as the corresponding item. For example, the annotation for the image `img_001.jpg` will be stored in the file `img_001.jpg.json`.
 
@@ -119,7 +119,7 @@ for tag_meta in meta.tag_metas:
 
 ### Working with Tags or Classes
 
-In Supervisely tags provide an option to associate some additional information with the labeled image or the labels on it. Each individual tag can be attached to a single image or asingle annotation only once, but there's not limit on how many times the same tag can be attached to different parts of the scene. There are different lists of tags for images and figures in the annotation file.
+In Supervisely tags provide an option to associate some additional information with the labeled image or the labels on it. Each tag can be attached to a single image or a single annotation only once, but there's no limit on how many times the same tag can be attached to different parts of the scene. There are different lists of tags for images and figures in the annotation file.
 Classes are used to define the types of objects that can be labeled in the project. Each class has a name, a color, and a set of properties. 
 
 Creating a new tag and adding it to the project meta:
@@ -168,7 +168,7 @@ project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
 ann = sly.Annotation.from_json(ann_json, project_meta)
 ```
 
-Add label to the image annotation and update it on the platform:
+Add a label to the image annotation and update it on the platform:
 
 ```python
 import supervisely as sly
@@ -208,6 +208,4 @@ api.annotation.upload_ann(image_id, new_ann)
 
 ## Support and Feedback
 
-If you have any questions or need assistance, please contact us via:
-- [Slack](https://supervisely.slack.com/)
-- [email](mailto:support@supervisely.com)
+If you have any questions or need assistance, please contact us in our [Community Slack](https://supervisely.slack.com/) or via [email](mailto:support@supervisely.com). We are always happy to help!

@@ -2776,7 +2776,7 @@ def _download_project(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
     try:
-        create_readme(dest_dir, api.project.get_info_by_id(project_id), api)
+        create_readme(dest_dir, project_id, api)
     except Exception as e:
         logger.info(f"There was an error while creating README: {e}")
 
