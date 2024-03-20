@@ -142,14 +142,20 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
+            "priority",
             "objectId",
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
-            "tags",
             "meta",
+            "area",
+            "realArea",
+            "tool",
+            "instanceId",
+            "geometryType",
+            "description",
+            "createdBy",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -289,14 +295,20 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
+            "priority",
             "objectId",
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
-            "tags",
             "meta",
+            "area",
+            "realArea",
+            "tool",
+            "instanceId",
+            "geometryType",
+            "description",
+            "createdBy",
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -344,16 +356,22 @@ class FigureApi(RemoveableBulkModuleApi):
                 key_id_map.add_figure(key, figure_id)
 
     def download(
-        self, dataset_id: int, image_ids: List[int] = None
+        self,
+        dataset_id: int,
+        image_ids: List[int] = None,
+        skip_geometry: bool = False,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns dictionary with image ids and list of FigureInfo for given dataset ID. Can be filtered by image IDs.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param image_ids: List of image IDs within given dataset ID.
+        :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Use `sly.batched()` if the `len(image_ids)` limit is exceeded (by default, 500).
         :type image_ids: List[int], optional
-        :return: List of information about Figures. See :class:`FigureInfo<FigureInfo>`
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
+        :type skip_geometry: bool
+
+        :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: :class:`Dict[int, List[FigureInfo]]`
         """
         fields = [
@@ -361,15 +379,23 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
+            "priority",
             "objectId",
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
-            "tags",
             "meta",
+            "area",
+            "realArea",
+            "tool",
+            "instanceId",
+            "geometryType",
+            "description",
+            "createdBy",
         ]
+        if skip_geometry is True:
+            fields = [x for x in fields if x != "geometry"]
 
         if image_ids is None:
             filters = []
