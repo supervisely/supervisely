@@ -45,13 +45,27 @@ class StorageApi(FileApi):
     """
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
+        """
+        Method is not implemented. 
+        Use api.storage.list instead.
+        Additionally, to get list of files in Team Files you can use api.file.list2.
+        """
         raise NotImplementedError(
-            "Method is not implemented. For files in Team Files use api.file.list2 instead."
+            "Method is not implemented. "
+            "Use api.storage.list instead. "
+            "Or use api.file.list2 to get list of files in Team Files."
         )
 
     def listdir(self, team_id: int, path: str, recursive: bool = False) -> List[str]:
+        """
+        Method is not implemented.
+        Use api.storage.list instead.
+        Additionally, to get list of files in Team Files you can use api.file.listdir.
+        """
         raise NotImplementedError(
-            "Method is not implemented. For files in Team Files use api.file.listdir instead."
+            "Method is not implemented. "
+            "Use api.storage.list instead. "
+            "Or use api.file.listdir to get list of files in Team Files."
         )
 
     def list(
