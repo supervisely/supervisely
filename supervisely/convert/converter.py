@@ -14,10 +14,11 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 class ImportManager:
     def __init__(self, input_data: str, project_type: ProjectType):
         self._api = Api.from_env()
+        self._team_id = team_id()
 
         if dir_exists(input_data):
             self._input_data = input_data
-        elif self._api.file.dir_exists(team_id(), input_data):
+        elif len(self._api.storage.list(self._team_id, input_data, recursive=False)) > 0:
             self._input_data = self._download_input_data(input_data)
         else:
             raise RuntimeError(f"Input data does not exist: {input_data}")
@@ -63,11 +64,11 @@ class ImportManager:
 
         dir_name = os.path.basename(os.path.normpath(remote_path))
         local_path = os.path.join(get_data_dir(), dir_name)
-        directory_size= self._api.file.get_directory_size(team_id(), remote_path)
+        directory_size= self._api.storage.get_directory_size(self._team_id, remote_path)
         progress_cb = tqdm(
             total=directory_size, desc="Downloading...", unit='B', unit_scale=True
         ).update
-        self._api.file.download_directory(team_id(), remote_path, local_path, progress_cb=progress_cb)
+        self._api.storage.download_directory(self._team_id, remote_path, local_path, progress_cb=progress_cb)
 
         return local_path
 
