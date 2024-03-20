@@ -104,3 +104,4 @@ class ImportManager:
 # [ ] - merge meta.json if more than one
 # [ ] - prepare test data for each modality and different formats (corner cases)
 # [ ] - # ? add pointcloud shape
+# [ ] - pcd extensions {'.ply', '.las', '.laz', '.xyz', '.pts', '.pcd'} ?

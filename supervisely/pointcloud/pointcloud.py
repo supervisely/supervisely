@@ -12,7 +12,6 @@ from supervisely.sly_logger import logger
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 
-# {'.ply', '.las', '.laz', '.xyz', '.pts', '.pcd'} ?
 ALLOWED_POINTCLOUD_EXTENSIONS = [".pcd"] 
 
 
