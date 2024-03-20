@@ -547,6 +547,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         project_id: Optional[int] = None,
         dataset_id: Optional[int] = None,
         show_disabled: Optional[bool] = False,
+        reviewer_id: Optional[int] = None,
     ) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
@@ -563,6 +564,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type dataset_id: int, optional
         :param show_disabled: Show disabled Labeling Jobs.
         :type show_disabled: bool, optional
+        :param reviewer_id: ID of the User who reviews the LabelingJob.
+        :type reviewer_id: int, optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -671,6 +674,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append(
                 {"field": ApiField.ASSIGNED_TO_ID[0][0], "operator": "=", "value": assigned_to_id}
             )
+        if reviewer_id is not None:
+            filters.append({"field": ApiField.REVIEWER_ID, "operator": "=", "value": reviewer_id})
         if project_id is not None:
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
