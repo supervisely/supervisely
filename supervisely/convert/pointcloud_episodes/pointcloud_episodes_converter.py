@@ -29,8 +29,8 @@ class PointcloudEpisodeConverter(BaseConverter):
             self._custom_data = custom_data if custom_data is not None else {}
 
         @property
-        def frame_count(self) -> int:
-            return self._frame_count
+        def frame_number(self) -> int:
+            return self._frame_number
 
         def create_empty_annotation(self) -> PointcloudEpisodeAnnotation:
             return PointcloudEpisodeAnnotation()
@@ -49,8 +49,13 @@ class PointcloudEpisodeConverter(BaseConverter):
 
     @property
     def format(self):
-        return self.converter.format
+        return self._converter.format
 
+    @property
+    def frame_count(self):
+        if self._frame_count is None:
+            self._frame_count = len(self._items)
+        return self._frame_count
     @property
     def ann_ext(self):
         return None

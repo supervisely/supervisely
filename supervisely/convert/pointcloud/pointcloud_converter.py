@@ -25,10 +25,6 @@ class PointcloudConverter(BaseConverter):
             self._related_images = related_images if related_images is not None else []
             self._custom_data = custom_data if custom_data is not None else {}
 
-        @property
-        def frame_count(self) -> int:
-            return self._frame_count
-
         def create_empty_annotation(self) -> PointcloudAnnotation:
             return PointcloudAnnotation()
 
@@ -44,7 +40,7 @@ class PointcloudConverter(BaseConverter):
 
     @property
     def format(self):
-        return self.converter.format
+        return self._converter.format
 
     @property
     def ann_ext(self):

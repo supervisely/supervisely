@@ -1,4 +1,4 @@
-from supervisely.convert.base_converter import AvailableVideoFormats, BaseConverter
+from supervisely.convert.base_converter import AvailableVideoConverters, BaseConverter
 
 
 class DavisConverter(BaseConverter):
@@ -6,7 +6,7 @@ class DavisConverter(BaseConverter):
         super().__init__(input_data)
 
     def __str__(self):
-        return AvailableVideoFormats.DAVIS
+        return AvailableVideoConverters.DAVIS
 
     def get_meta(self):
         return super().get_meta()

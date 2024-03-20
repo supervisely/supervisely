@@ -50,7 +50,7 @@ class VideoConverter(BaseConverter):
 
     @property
     def format(self):
-        return self.converter.format
+        return self._converter.format
 
     @property
     def ann_ext(self):

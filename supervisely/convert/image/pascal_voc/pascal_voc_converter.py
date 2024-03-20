@@ -24,7 +24,7 @@ class PascalVOCConverter(ImageConverter):
     def key_file_ext(self) -> str:
         return None
 
-    def validate_ann_format(ann_path) -> bool:
+    def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
         tree = ET.parse(ann_path)
         root = tree.getroot()
         if root.tag == "annotation":
