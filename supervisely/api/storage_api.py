@@ -345,23 +345,3 @@ class StorageApi(FileApi):
     
     def get_url(self, file_id: int) -> str:
         raise NotImplementedError()
-
-    def upload_bulk(
-        self,
-        team_id: int,
-        src_paths: List[str],
-        dst_paths: List[str],
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-    ) -> List[FileInfo]:
-        raise NotImplementedError()
-
-    def upload_directory(
-        self,
-        team_id: int,
-        local_dir: str,
-        remote_dir: str,
-        change_name_if_conflict: Optional[bool] = True,
-        progress_size_cb: Optional[Union[tqdm, Callable]] = None,
-        replace_if_conflict: Optional[bool] = False,
-    ) -> str:
-        raise NotImplementedError()
