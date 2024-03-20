@@ -151,7 +151,7 @@ class BaseConverter:
     def get_items(self) -> List[BaseItem]:
         return self._items
 
-    def to_supervisely(self, item: BaseItem, meta: ProjectMeta) -> Annotation:
+    def to_supervisely(self, item: BaseItem, meta: ProjectMeta, *args) -> Annotation:
         """Convert to Supervisely format."""
         return item.create_empty_annotation()
 

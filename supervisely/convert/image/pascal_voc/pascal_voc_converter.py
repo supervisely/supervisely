@@ -31,7 +31,13 @@ class PascalVOCConverter(ImageConverter):
             return True
         return False
 
-    def to_supervisely(self, item: ImageConverter.Item, meta: ProjectMeta) -> Annotation:
+    def to_supervisely(
+            self,
+            item: ImageConverter.Item,
+            meta: ProjectMeta = None,
+            renamed_classes: dict = None,
+            renamed_tags: dict = None,
+    ) -> Annotation:
         raise NotImplementedError()
 
     def validate_format(self) -> bool:
