@@ -82,7 +82,7 @@ class VolumeTagApi(TagApi):
         :param tag_id: Tag ID in Supervisely.
         :type tag_id: int
         :param tag_value: VolumeTag value.
-        :type tag_value: str or int
+        :type tag_value: str or int or None, optional
         :param tag_meta: TagMeta object.
         :type tag_meta: TagMeta, optional
         :return: VolumeTag ID.
@@ -96,7 +96,7 @@ class VolumeTagApi(TagApi):
             os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
-            
+
             volume_id = 19402023
             tag_id = 19402023
             tag_value = 'tag_value'
@@ -116,4 +116,3 @@ class VolumeTagApi(TagApi):
         response = self._api.post("volumes.tags.add", data)
 
         return response.json().get(ApiField.ID)
-

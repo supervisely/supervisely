@@ -1,5 +1,7 @@
 # coding: utf-8
 
+# isort: skip_file
+
 from __future__ import annotations
 from copy import deepcopy
 from re import L
@@ -30,6 +32,7 @@ from supervisely.volume_annotation.constants import (
 )
 
 from supervisely.io.json import dump_json_file
+
 
 class VolumeAnnotation:
     """
@@ -728,7 +731,7 @@ class VolumeAnnotation:
 
     def remove_objects(self, keys: Union[List[uuid.UUID], uuid.UUID]) -> VolumeAnnotation:
         """
-        Remove objects from a VolumeAnnotation object.
+        Remove annotation objects from a VolumeAnnotation object.
 
         :param keys: List of object keys or single object key.
         :type keys: List[uuid.UUID] or uuid.UUID
@@ -755,13 +758,13 @@ class VolumeAnnotation:
             keys = [keys]
 
         spatial_figures_to_del = []
-        for volume_object in self.objects:
-            if volume_object.key() in keys and volume_object.obj_class.geometry_type in (
+        for ann_object in self.objects:
+            if ann_object.key() in keys and ann_object.obj_class.geometry_type in (
                 Mask3D,
                 AnyGeometry,
             ):
                 for figure in self.spatial_figures:
-                    if figure.parent_object == volume_object:
+                    if figure.parent_object == ann_object:
                         spatial_figures_to_del.append(figure)
 
         for spatial_figure in spatial_figures_to_del:
@@ -773,9 +776,9 @@ class VolumeAnnotation:
 
     def add_tags(self, tags: Union[List[VolumeTag], VolumeTagCollection]) -> VolumeAnnotation:
         """
-        Add new tags to a VolumeAnnotation object.
+        Add new VolumeTags to a VolumeAnnotation object.
 
-        :param tags: New volume tags.
+        :param tags: New VolumeTags.
         :type tags: List[VolumeTag] or VolumeTagCollection
         :return: A VolumeAnnotation object containing the original and new volume tags.
         :rtype: VolumeAnnotation
@@ -798,11 +801,11 @@ class VolumeAnnotation:
 
     def remove_tags(self, keys: Union[List[uuid.UUID], uuid.UUID]) -> VolumeAnnotation:
         """
-        Remove tags from a VolumeAnnotation object.
+        Remove VolumeTags from a VolumeAnnotation object.
 
-        :param keys: List of tag keys or single tag key.
+        :param keys: List of VolumeTag keys or single tag key.
         :type keys: List[uuid.UUID] or uuid.UUID
-        :return: A VolumeAnnotation object containing the original volume tags without the removed tags.
+        :return: A VolumeAnnotation object containing the original VolumeTags without the removed VolumeTags.
         :rtype: VolumeAnnotation
         :Usage example:
 

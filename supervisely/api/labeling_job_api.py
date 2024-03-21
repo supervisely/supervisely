@@ -293,6 +293,16 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         return ApiField.IDS
 
+    def _check_membership(self, ids: List[int], team_id: int) -> None:
+        """Check if user is a member of the team in which the Labeling Job is created."""
+        for user_id in ids:
+            memberships = self._api.user.get_teams(user_id)
+            team_ids = [team.id for team in memberships]
+            if team_id not in team_ids:
+                raise RuntimeError(
+                    f"User with id {user_id} is not a member of the team with id {team_id}"
+                )
+
     def create(
         self,
         name: str,
@@ -1294,7 +1304,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         assignee_ids: Optional[List[int]] = None,
     ) -> List[LabelingJobInfo]:
         """
-        Restart Labeling Job with given ID.
+        Clone Labeling Job with given ID.
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
@@ -1350,7 +1360,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         complete_existing: Optional[bool] = True,
         only_rejected_entities: Optional[bool] = True,
         ignore_no_rejected_error: Optional[bool] = False,
-    ) -> List[LabelingJobInfo]:
+    ) -> List[dict]:
         """
         Restart Labeling Job with given ID.
 
@@ -1367,8 +1377,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param only_rejected_entities: If False, all entities that do not have an "accepted" status will be included in new job, all unmarked entities will be rejected for the existing job.
         :type only_rejected_entities: bool, optional
         :param ignore_errors: If True, the job will not be restarted if there are errors in request data.
-        :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[LabelingJobInfo]`
+        :type ignore_errors: bool, optional
+        :return: List of dicts with information about created Labeling Jobs.
+        :rtype: :class:`List[dict]`
         :Usage example:
 
          .. code-block:: python
@@ -1423,12 +1434,3 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         response = self._api.post("jobs.restart", data).json()
         return response
-
-    def _check_membership(self, ids: List[int], team_id: int) -> None:
-        for user_id in ids:
-            memberships = self._api.user.get_teams(user_id)
-            team_ids = [team.id for team in memberships]
-            if team_id not in team_ids:
-                raise RuntimeError(
-                    f"User with id {user_id} is not a member of the team with id {team_id}"
-                )

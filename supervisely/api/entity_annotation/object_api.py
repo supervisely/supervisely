@@ -58,7 +58,7 @@ class ObjectApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -98,7 +98,7 @@ class ObjectApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -246,7 +246,6 @@ class ObjectApi(RemoveableBulkModuleApi):
         """
         Remove objects in batches from the Supervisely server.
         All entity IDs must belong to the same item (for example image, volume).
-        Therefore, it is necessary to sort IDs before calling this method.
 
         :param ids: IDs of objects in Supervisely.
         :type ids: List[int]
@@ -258,13 +257,7 @@ class ObjectApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            # You can connect to API directly
-            address = 'https://app.supervise.ly/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
-
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

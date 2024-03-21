@@ -65,7 +65,7 @@ class KeyIdMap:
     def _remove(self, key_type, key: Optional[uuid.UUID] = None, id: Optional[int] = None):
         """
         Remove given data from self._data dictionary. Raise error if data type of any parameter is invalid.
-        If id is None, remove key from dictionary. If id is not None, remove key with given id from dictionary.
+        If id is not None, remove key by given id from dictionary.
 
         :param key_type: str
         :param key: uuid class object

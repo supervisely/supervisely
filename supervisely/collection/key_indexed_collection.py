@@ -196,6 +196,7 @@ class KeyIndexedCollection:
     def remove_items(self, keys: List[uuid.UUID]) -> KeyIndexedCollection:
         """
         Remove items from collection by given list of keys.
+        Creates a new instance of KeyIndexedCollection.
 
         :param keys: List of keys(item names) in collection.
         :type keys:  List[str]
