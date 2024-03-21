@@ -15,7 +15,7 @@ class AvailableImageConverters:
 class AvailableVideoConverters:
     SLY = "supervisely"
     MOT = "mot"
-    # DAVIS = "davis"
+    DAVIS = "davis"
 
 
 class AvailablePointcloudConverters:
