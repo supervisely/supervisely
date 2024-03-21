@@ -83,12 +83,16 @@ def validate_click_bounds(crop, clicks: list):
     return True
 
 
-def format_bitmap(bitmap: sly.Bitmap, crop):
+def format_bitmap(bitmap: sly.Bitmap, crop=None):
     bitmap_json = bitmap.to_json()["bitmap"]
     bitmap_origin = bitmap_json["origin"]
+    if crop is not None:
+        x_shift, y_shift = crop[0]["x"], crop[0]["y"]
+    else:
+        x_shift, y_shift = 0, 0
     bitmap_origin = {
-        "x": crop[0]["x"] + bitmap_origin[0],
-        "y": crop[0]["y"] + bitmap_origin[1],
+        "x": x_shift + bitmap_origin[0],
+        "y": y_shift + bitmap_origin[1],
     }
     bitmap_data = bitmap_json["data"]
     return bitmap_origin, bitmap_data

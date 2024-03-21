@@ -109,13 +109,19 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                 extra={**request.state.context, "api_token": "***"},
             )
 
+            #########
+            # DEBUG #
+            is_inference_on_crop = False
+
             # Parse request
             try:
                 state = request.state.state
                 settings = self._get_inference_settings(state)
                 smtool_state = request.state.context
                 api = request.state.api
-                crop = smtool_state["crop"]
+                if is_inference_on_crop:
+                    crop = smtool_state["crop"]
+                settings["is_inference_on_crop"] = is_inference_on_crop
                 positive_clicks, negative_clicks = (
                     smtool_state["positive"],
                     smtool_state["negative"],
@@ -137,16 +143,17 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
             # Pre-process clicks
             clicks = [{**click, "is_positive": True} for click in positive_clicks]
             clicks += [{**click, "is_positive": False} for click in negative_clicks]
-            clicks = functional.transform_clicks_to_crop(crop, clicks)
-            is_in_bbox = functional.validate_click_bounds(crop, clicks)
-            if not is_in_bbox:
-                logger.warn(f"Invalid value: click is out of bbox bounds.")
-                return {
-                    "origin": None,
-                    "bitmap": None,
-                    "success": True,
-                    "error": None,
-                }
+            if is_inference_on_crop:
+                clicks = functional.transform_clicks_to_crop(crop, clicks)
+                is_in_bbox = functional.validate_click_bounds(crop, clicks)
+                if not is_in_bbox:
+                    logger.warn(f"Invalid value: click is out of bbox bounds.")
+                    return {
+                        "origin": None,
+                        "bitmap": None,
+                        "success": True,
+                        "error": None,
+                    }
 
             # Download the image if is not in Cache
             app_dir = get_data_dir()
@@ -167,7 +174,10 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                 image_np = self._inference_image_cache.get(hash_str)
 
             # Crop the image
-            image_np = functional.crop_image(crop, image_np)
+            if is_inference_on_crop:
+                image_np = functional.crop_image(crop, image_np)
+
+            # Write image on disk
             image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
             sly_image.write(image_path, image_np)
 
@@ -185,7 +195,8 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                 init_mask = None
             if init_mask is not None:
                 init_mask = functional.bitmap_to_mask(api, init_mask, image_id)
-                init_mask = functional.crop_image(crop, init_mask)
+                if is_inference_on_crop:
+                    init_mask = functional.crop_image(crop, init_mask)
                 assert init_mask.shape[:2] == image_np.shape[:2]
             settings["init_mask"] = init_mask
 
@@ -202,7 +213,10 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
 
             if pred_mask.any():
                 bitmap = Bitmap(pred_mask)
-                bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
+                if is_inference_on_crop:
+                    bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop=crop)
+                else:
+                    bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop=None)
                 logger.debug(f"smart_segmentation inference done!")
                 response = {
                     "origin": bitmap_origin,
