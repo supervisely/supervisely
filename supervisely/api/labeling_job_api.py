@@ -21,6 +21,8 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
+import requests
+
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
@@ -1249,6 +1251,21 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             anns.append(ann)
         return anns
 
+    def reject_annotations(self, id: int, mode: Literal["all", "unmarked"] = "all") -> None:
+        """
+        Reject annotations for all or unmarked entities in the labeling job with given id.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param mode: Reject mode. Can be "all" or "unmarked".
+        :type mode: str, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+
+        data = {ApiField.ID: id, ApiField.MODE: mode}
+        self._api.post("jobs.reject", data)
+
     def set_entity_review_status(
         self, id: int, entity_id: int, status: Literal["none", "done", "accepted", "rejected"]
     ) -> None:
@@ -1269,13 +1286,11 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             {ApiField.JOB_ID: id, ApiField.ENTITY_ID: entity_id, ApiField.STATUS: status},
         )
 
-    def restart(
+    def clone(
         self,
         id: int,
-        finish_current: bool = True,
-        restart_only_rejected: bool = False,
         new_title: Optional[str] = None,
-        rewiever_id: Optional[int] = None,
+        reviewer_id: Optional[int] = None,
         assignee_ids: Optional[List[int]] = None,
     ) -> List[LabelingJobInfo]:
         """
@@ -1283,14 +1298,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :param finish_current: Set status of the current job to completed.
-        :type finish_current: bool, optional
-        :param restart_only_rejected: Restart only with rejected entities. If False unmarked entities will be included as well.
-        :type restart_only_rejected: bool, optional
         :param new_title: New title for the job
         :type new_title: str, optional
-        :param rewiever_id: ID of the reviewer
-        :type rewiever_id: int, optional
+        :param reviewer_id: ID of the reviewer
+        :type reviewer_id: int, optional
         :param assignee_ids: List of User IDs to assign the job
         :type assignee_ids: List[int], optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
@@ -1300,25 +1311,14 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         if new_title is None:
             new_title = job_info.name
-        if rewiever_id is None:
-            rewiever_id = job_info.reviewer_id
+        if reviewer_id is None:
+            reviewer_id = job_info.reviewer_id
         else:
-            self._check_membership([rewiever_id], job_info.team_id)
+            self._check_membership([reviewer_id], job_info.team_id)
         if assignee_ids is None:
             assignee_ids = [job_info.assigned_to_id]
         else:
             self._check_membership(assignee_ids, job_info.team_id)
-
-        if restart_only_rejected:
-            entity_ids = [
-                entity["id"] for entity in job_info.entities if entity["reviewStatus"] == "rejected"
-            ]
-        else:
-            entity_ids = [
-                entity["id"]
-                for entity in job_info.entities
-                if entity["reviewStatus"] in ("rejected", "none")
-            ]
 
         job_infos = self.create(
             name=new_title,
@@ -1333,16 +1333,98 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             include_images_with_tags=job_info.include_images_with_tags,
             exclude_images_with_tags=job_info.exclude_images_with_tags,
             images_range=job_info.images_range,
-            reviewer_id=rewiever_id,
-            images_ids=entity_ids,
+            reviewer_id=reviewer_id,
+            images_ids=[entity["id"] for entity in job_info.entities],
             # TODO dynamic_classes=job_info.dynamic_classes,
             # TODO dynamic_tags=job_info.dynamic_tags,
         )
-        if finish_current:
-            self.set_status(id, self.Status.COMPLETED.value)
+
         return job_infos
 
-    def _check_membership(self, ids, team_id) -> None:
+    def restart(
+        self,
+        id: int,
+        assignee_ids: Optional[List[int]] = None,
+        reviewer_id: Optional[int] = None,
+        title: Optional[str] = None,
+        complete_existing: Optional[bool] = True,
+        only_rejected_entities: Optional[bool] = True,
+        ignore_no_rejected_error: Optional[bool] = False,
+    ) -> List[LabelingJobInfo]:
+        """
+        Restart Labeling Job with given ID.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param assignee_ids: List of User IDs to assign the job. If not set, the job will be assigned to the same user as the existing job.
+        :type assignee_ids: List[int], optional
+        :param reviewer_id: ID of the reviewer
+        :type reviewer_id: int, optional
+        :param title: New title for the job <= 255 characters
+        :type title: str, optional
+        :param complete_existing: If False, existing job will not be completed.
+        :type complete_existing: bool, optional
+        :param only_rejected_entities: If False, all entities that do not have an "accepted" status will be included in new job, all unmarked entities will be rejected for the existing job.
+        :type only_rejected_entities: bool, optional
+        :param ignore_errors: If True, the job will not be restarted if there are errors in request data.
+        :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[LabelingJobInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api("https://app.supervisely.com", "your_api_token")
+
+            job_info_list = api.labeling_job.restart(222)
+
+            print(job_info_list)
+            # Output:
+            #   [
+            #       {
+            #           'id': 940,
+            #           'userId': 342,
+            #           'type': 'annotation',
+            #           'name': 'Annotation Job (#2)'
+            #       }
+            #   ]
+        """
+
+        job_info = self.get_info_by_id(id)
+
+        data = {ApiField.ID: id, ApiField.COMPLETE_EXISTING: complete_existing}
+
+        if assignee_ids is not None:
+            self._check_membership(assignee_ids, job_info.team_id)
+            data[ApiField.USER_IDS] = assignee_ids
+        else:
+            data[ApiField.USER_IDS] = [job_info.assigned_to_id]
+
+        if reviewer_id is not None:
+            self._check_membership([reviewer_id], job_info.team_id)
+            data[ApiField.REVIEWER_ID] = reviewer_id
+
+        if title is not None:
+            data[ApiField.NAME] = title
+
+        if only_rejected_entities is False:
+            self.reject_annotations(id, mode="unmarked")
+
+        if only_rejected_entities is True and ignore_no_rejected_error is True:
+            try:
+                response = self._api.post("jobs.restart", data).json()
+                return response
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 400 and "No images found" in e.response.text:
+                    return []
+                else:
+                    raise e
+
+        response = self._api.post("jobs.restart", data).json()
+        return response
+
+    def _check_membership(self, ids: List[int], team_id: int) -> None:
         for user_id in ids:
             memberships = self._api.user.get_teams(user_id)
             team_ids = [team.id for team in memberships]
