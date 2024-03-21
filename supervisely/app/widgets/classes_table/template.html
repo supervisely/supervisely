@@ -74,7 +74,14 @@
 							:class="col.icon"
 							style="margin-right: 5px"
 						></i>
-						<span>{{ col.data }}</span>
+						<span
+							style="
+								overflow: hidden;
+								text-overflow: ellipsis;
+								max-width: 200px;
+							"
+							>{{ col.data }}</span
+						>
 					</div>
 				</td>
 			</tr>

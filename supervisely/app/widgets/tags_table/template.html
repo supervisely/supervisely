@@ -62,7 +62,14 @@
 								:style="{color: col.color}"
 							></i>
 						</span>
-						<span>{{ col.data }}</span>
+						<span
+							style="
+								overflow: hidden;
+								text-overflow: ellipsis;
+								max-width: 200px;
+							"
+							>{{ col.data }}</span
+						>
 					</div>
 				</td>
 			</tr>
