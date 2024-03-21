@@ -1,9 +1,12 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional
+
 import uuid
+from typing import Dict, List, Optional
 from uuid import UUID
+
 from bidict import bidict
+
 from supervisely.io.json import dump_json_file, load_json_file
 
 TAGS = "tags"
@@ -58,6 +61,34 @@ class KeyIdMap:
         if id is not None and type(id) is not int:
             raise RuntimeError("Id should be of type int")
         self._data[key_type].update(bidict({key: id}))
+
+    def _remove(self, key_type, key: Optional[uuid.UUID] = None, id: Optional[int] = None):
+        """
+        Remove given data from self._data dictionary. Raise error if data type of any parameter is invalid.
+        If id is not None, remove key by given id from dictionary.
+
+        :param key_type: str
+        :param key: uuid class object
+        :param id: int
+        """
+        if key == id == None:
+            raise RuntimeError("Either key or id should be provided")
+
+        if key_type not in ALLOWED_KEY_TYPES:
+            raise RuntimeError(
+                "Key type {!r} is not allowed. Allowed types are {}".format(
+                    key_type, ALLOWED_KEY_TYPES
+                )
+            )
+        if key is not None and type(key) is not uuid.UUID:
+            raise RuntimeError("Key should be of type uuid.UUID")
+
+        if id is not None and type(id) is not int:
+            raise RuntimeError("Id should be of type int")
+        if id is not None:
+            self._data[key_type].inverse.pop(id)
+        else:
+            self._data[key_type].pop(key)
 
     def add_object(self, key: UUID, id: int) -> None:
         """
@@ -178,6 +209,122 @@ class KeyIdMap:
             # }
         """
         self._add(VIDEOS, key, id)
+
+    def remove_object(self, key: Optional[UUID] = None, id: Optional[int] = None) -> None:
+        """
+        Remove :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` with given UUID from KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "0c0033c5b4834d4cbabece4317295f07"
+            key_id_map.add_object(new_uuid, 1)
+            key_id_map.remove_object(new_uuid)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
+        self._remove(OBJECTS, key, id)
+
+    def remove_tag(self, key: Optional[UUID] = None, id: Optional[int] = None) -> None:
+        """
+        Remove :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` with given UUID from KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "697d005df2a94bb386188c78a61b0a86"
+            key_id_map.add_tag(new_uuid, 34)
+            key_id_map.remove_tag(new_uuid)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
+        self._remove(TAGS, key, id)
+
+    def remove_figure(self, key: Optional[UUID] = None, id: Optional[int] = None) -> None:
+        """
+        Remove :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` with given UUID from KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` ID.
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "ac1018e6673d405590086063af8184ca"
+            key_id_map.add_figure(new_uuid, 55)
+            key_id_map.remove_figure(new_uuid)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
+        self._remove(FIGURES, key, id)
+
+    def remove_video(self, key: Optional[UUID] = None, id: Optional[int] = None) -> None:
+        """
+        Remove Video with given UUID from KeyIdMap.
+
+        :param key: UUID object.
+        :type key: UUID
+        :param id: Video ID
+        :type id: int
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4() # "775f2c581cec44ca8c10419c20c52fcc"
+            key_id_map.add_video(new_uuid, 77)
+            key_id_map.remove_video(new_uuid)
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
+        """
+        self._remove(VIDEOS, key, id)
 
     def _get_id_by_key(self, key_type, key: uuid.UUID):
         """
@@ -666,6 +813,274 @@ class KeyIdMap:
             KeyIdMap.add_video_to(key_id_map, new_uuid, new_video_id)
         """
         cls.add_videos_to(key_id_map, [key], [id])
+
+    @classmethod
+    def remove_tags_from(
+        cls,
+        key_id_map: KeyIdMap,
+        keys: Optional[List[UUID]] = None,
+        ids: Optional[List[int]] = None,
+    ) -> None:
+        """
+        Remove :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` type of instances with given keys or ids from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            uuid_2 = uuid.uuid4()
+            KeyIdMap.remove_tags_from(key_id_map, [uuid_1, uuid_2])
+        """
+        if keys == ids == None:
+            raise RuntimeError("At least one of keys or ids should be provided")
+
+        if ids:
+            for id in ids:
+                key_id_map.remove_tag(id=id)
+        else:
+            for key in keys:
+                key_id_map.remove_tag(key=key)
+
+    @classmethod
+    def remove_tag_from(
+        cls, key_id_map: KeyIdMap, key: Optional[UUID] = None, id: Optional[int] = None
+    ) -> None:
+        """
+        Remove :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` type of instance with given key from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            KeyIdMap.remove_tag_from(key_id_map, new_uuid)
+        """
+        if key == id == None:
+            raise RuntimeError("At least one of key or id should be provided")
+
+        cls.remove_tags_from(key_id_map, [key], [id])
+
+    @classmethod
+    def remove_objects_from(
+        cls,
+        key_id_map: KeyIdMap,
+        keys: Optional[List[UUID]] = None,
+        ids: Optional[List[int]] = None,
+    ) -> None:
+        """
+        Remove :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` type of instances with given keys or ids from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            uuid_2 = uuid.uuid4()
+            KeyIdMap.remove_objects_from(key_id_map, [uuid_1, uuid_2])
+        """
+        if keys == ids == None:
+            raise RuntimeError("At least one of keys or ids should be provided")
+
+        if ids:
+            for id in ids:
+                key_id_map.remove_object(id=id)
+        else:
+            for key in keys:
+                key_id_map.remove_object(key=key)
+
+    @classmethod
+    def remove_object_from(
+        cls, key_id_map: KeyIdMap, key: Optional[UUID] = None, id: Optional[int] = None
+    ) -> None:
+        """
+        Remove :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` type of instance with given key from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            KeyIdMap.remove_object_from(key_id_map, new_uuid)
+        """
+        if key == id == None:
+            raise RuntimeError("At least one of key or id should be provided")
+
+        cls.remove_objects_from(key_id_map, [key], [id])
+
+    @classmethod
+    def remove_figures_from(
+        cls,
+        key_id_map: KeyIdMap,
+        keys: Optional[List[UUID]] = None,
+        ids: Optional[List[int]] = None,
+    ) -> None:
+        """
+        Remove :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` type of instances with given keys or ids from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            uuid_2 = uuid.uuid4()
+            KeyIdMap.remove_figures_from(key_id_map, [uuid_1, uuid_2])
+        """
+        if keys == ids == None:
+            raise RuntimeError("At least one of keys or ids should be provided")
+
+        if ids:
+            for id in ids:
+                key_id_map.remove_figure(id=id)
+        else:
+            for key in keys:
+                key_id_map.remove_figure(key=key)
+
+    @classmethod
+    def remove_figure_from(
+        cls, key_id_map: KeyIdMap, key: Optional[UUID] = None, id: Optional[int] = None
+    ) -> None:
+        """
+        Remove :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` type of instance with given key from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            KeyIdMap.remove_figure_from(key_id_map, new_uuid)
+        """
+        if key == id == None:
+            raise RuntimeError("At least one of key or id should be provided")
+
+        cls.remove_figures_from(key_id_map, [key], [id])
+
+    @classmethod
+    def remove_videos_from(
+        cls,
+        key_id_map: KeyIdMap,
+        keys: Optional[List[UUID]] = None,
+        ids: Optional[List[int]] = None,
+    ) -> None:
+        """
+        Remove Video type of instances with given keys or ids from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: List of UUID objects.
+        :type key: List[UUID]
+        :param id: List of Video IDs.
+        :type id: List[int]
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            uuid_1 = uuid.uuid4()
+            uuid_2 = uuid.uuid4()
+            KeyIdMap.remove_videos_from(key_id_map, [uuid_1, uuid_2])
+        """
+        if keys == ids == None:
+            raise RuntimeError("At least one of keys or ids should be provided")
+
+        if ids:
+            for id in ids:
+                key_id_map.remove_video(id=id)
+        else:
+            for key in keys:
+                key_id_map.remove_video(key=key)
+
+    @classmethod
+    def remove_video_from(
+        cls, key_id_map: KeyIdMap, key: Optional[UUID] = None, id: Optional[int] = None
+    ) -> None:
+        """
+        Remove Video type of instance with given key from KeyIdMap object.
+
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
+        :param key: UUID object.
+        :type key: UUID
+        :param id: Video ID.
+        :type id: int
+        :return: :class:`None`
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            key_id_map = KeyIdMap()
+            new_uuid = uuid.uuid4()
+            KeyIdMap.remove_video_from(key_id_map, new_uuid)
+        """
+        if key == id == None:
+            raise RuntimeError("At least one of key or id should be provided")
+
+        cls.remove_videos_from(key_id_map, [key], [id])
 
     @classmethod
     def _merge_key_id_maps(

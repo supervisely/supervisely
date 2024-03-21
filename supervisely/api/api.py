@@ -602,7 +602,12 @@ class Api:
 
     @classmethod
     def from_credentials(
-        cls, server_address: str, login: str, password: str, override: bool = False
+        cls,
+        server_address: str,
+        login: str,
+        password: str,
+        override: bool = False,
+        env_file: str = SUPERVISELY_ENV_FILE,
     ) -> Api:
         """
         Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
@@ -618,6 +623,8 @@ class Api:
         :type password: str
         :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
         :type override: bool, optional
+        :param env_file: Path to your .env file.
+        :type env_file: str, optional
         :return: Api object
 
         :Usage example:
@@ -640,24 +647,24 @@ class Api:
         api = cls(session.server_address, session.api_token, ignore_task_id=True)
 
         if override:
-            if os.path.isfile(SUPERVISELY_ENV_FILE):
+            if os.path.isfile(env_file):
                 # create backup
                 timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-                backup_file = f"{SUPERVISELY_ENV_FILE}_{timestamp}"
-                shutil.copy2(SUPERVISELY_ENV_FILE, backup_file)
-                if api.token != get_key(SUPERVISELY_ENV_FILE, API_TOKEN):
+                backup_file = f"{env_file}_{timestamp}"
+                shutil.copy2(env_file, backup_file)
+                if api.token != get_key(env_file, API_TOKEN):
                     # create new file
-                    os.remove(SUPERVISELY_ENV_FILE)
-                    Path(SUPERVISELY_ENV_FILE).touch()
+                    os.remove(env_file)
+                    Path(env_file).touch()
                 # remove old backups
-                all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
+                all_backups = sorted(glob.glob(f"{env_file}_" + "[0-9]" * 14))
                 while len(all_backups) > 5:
                     os.remove(all_backups.pop(0))
-            set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, session.server_address)
-            set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
+            set_key(env_file, SERVER_ADDRESS, session.server_address)
+            set_key(env_file, API_TOKEN, session.api_token)
             if session.team_id:
-                set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
+                set_key(env_file, "INIT_GROUP_ID", f"{session.team_id}")
             if session.workspace_id:
-                set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
-            load_dotenv(SUPERVISELY_ENV_FILE, override=override)
+                set_key(env_file, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
+            load_dotenv(env_file, override=override)
         return api
