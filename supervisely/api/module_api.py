@@ -501,6 +501,11 @@ class ApiField:
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
     """"""
     USAGE = "usage"
+    """"""
+    COMPLETE_EXISTING = "completeExisting"
+    """"""
+    MODE = "mode"
+    """"""
 
 
 def _get_single_item(items):
