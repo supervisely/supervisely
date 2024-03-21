@@ -1,1 +1,1 @@
-from supervisely.nn.inference.gui.gui import BaseInferenceGUI, InferenceGUI
+from supervisely.nn.inference.gui.gui import BaseInferenceGUI, InferenceGUI, ServingGUI

@@ -382,11 +382,12 @@ class Api:
         data: Dict,
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
+        raise_error: Optional[bool] = False,
     ) -> requests.Response:
         """
         Performs POST request to server with given parameters.
 
-        :param method:
+        :param method: Method name.
         :type method: str
         :param data: Dictionary to send in the body of the :class:`Request`.
         :type data: dict
@@ -394,6 +395,8 @@ class Api:
         :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
+        :type raise_error: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
@@ -428,17 +431,20 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
-                process_requests_exception(
-                    self.logger,
-                    exc,
-                    method,
-                    url,
-                    verbose=True,
-                    swallow_exc=True,
-                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
-                    response=response,
-                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
-                )
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))

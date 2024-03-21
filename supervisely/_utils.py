@@ -64,6 +64,19 @@ def camel_to_snake(name):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
+def snake_to_human(snake_str: str) -> str:
+    """Return a human-readable string from a snake_case string.
+    E.g. 'hello_world' -> 'Hello World'
+
+    :param snake_str: snake_case string
+    :type snake_str: str
+    :return: Human-readable string
+    :rtype: str
+    """
+    components = snake_str.split("_")
+    return " ".join(word.capitalize() for word in components)
+
+
 def take_with_default(v, default):
     return v if v is not None else default
 
