@@ -362,17 +362,18 @@ class FigureApi(RemoveableBulkModuleApi):
         skip_geometry: bool = False,
     ) -> Dict[int, List[FigureInfo]]:
         """
-        Method returns dictionary with image ids and list of FigureInfo for given dataset ID. Can be filtered by image IDs.
+        Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Use `sly.batched()` if the `len(image_ids)` limit is exceeded (by default, 500).
+        :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
+
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
         :type skip_geometry: bool
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: :class:`Dict[int, List[FigureInfo]]`
+        :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         fields = [
             "id",
