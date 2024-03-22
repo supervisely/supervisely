@@ -204,15 +204,14 @@ class SelectDataset(Widget):
         if self._compact is False:
             @self._project_selector.value_changed
             def _update_datasets(project_id):
-                if (
-                    project_id is not None 
-                    and self._multiselect is True 
-                    and self._all_datasets_checkbox.is_checked()
-                ):
-                    datasets = self._api.dataset.get_list(project_id)
-                    ids = [ds.id for ds in datasets]
+                if self._multiselect is True:
+                    if project_id is not None and self._all_datasets_checkbox.is_checked():
+                        datasets = self._api.dataset.get_list(project_id)
+                        ids = [ds.id for ds in datasets]
+                    else:
+                        ids = []
                 else:
-                    ids = []
+                    ids = None
                 StateJson()[self.widget_id]["datasets"] = ids
                 StateJson().send_changes()
                 self._cb_called = True
@@ -220,7 +219,9 @@ class SelectDataset(Widget):
 
         @server.post(route_path)    
         def _click():
-            if self._cb_called is False or self._all_datasets_checkbox.is_checked() is False:
+            if self._cb_called is False or self._multiselect is False:
+                _process()
+            elif self._multiselect and self._all_datasets_checkbox.is_checked() is False:
                 _process()
             self._cb_called = False
 
