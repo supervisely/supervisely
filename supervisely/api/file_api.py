@@ -151,7 +151,11 @@ class FileApi(ModuleApiBase):
                 cur_dir += "/"
             response = self._api.post(
                 "agents.storage.list",
-                {ApiField.ID: agent_id, ApiField.TEAM_ID: team_id, ApiField.PATH: cur_dir},
+                {
+                    ApiField.ID: agent_id,
+                    ApiField.TEAM_ID: team_id,
+                    ApiField.PATH: cur_dir,
+                },
             )
             items = response.json()
             for item in items:
@@ -274,7 +278,11 @@ class FileApi(ModuleApiBase):
 
         response = self._api.post(
             "file-storage.list",
-            {ApiField.TEAM_ID: team_id, ApiField.PATH: path, ApiField.RECURSIVE: recursive},
+            {
+                ApiField.TEAM_ID: team_id,
+                ApiField.PATH: path,
+                ApiField.RECURSIVE: recursive,
+            },
         )
 
         if return_type == "dict":
@@ -578,7 +586,13 @@ class FileApi(ModuleApiBase):
                 return
 
         local_temp_archive = os.path.join(local_save_path, "temp.tar")
-        self.download(team_id, remote_path, local_temp_archive, cache=None, progress_cb=progress_cb)
+        self.download(
+            team_id,
+            remote_path,
+            local_temp_archive,
+            cache=None,
+            progress_cb=progress_cb,
+        )
         tr = tarfile.open(local_temp_archive)
         tr.extractall(local_save_path)
         silent_remove(local_temp_archive)
@@ -734,7 +748,11 @@ class FileApi(ModuleApiBase):
         return resp.json()
 
     def upload(
-        self, team_id: int, src: str, dst: str, progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        team_id: int,
+        src: str,
+        dst: str,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> FileInfo:
         """
         Upload File to Team Files.
@@ -956,7 +974,7 @@ class FileApi(ModuleApiBase):
 
         self.remove(team_id, path)
 
-    def remove_dir(self, team_id: int, path: str) -> None:
+    def remove_dir(self, team_id: int, path: str, silent: bool = False) -> None:
         """
         Removes folder from Team Files.
 
@@ -982,8 +1000,9 @@ class FileApi(ModuleApiBase):
         if not path.endswith("/"):
             raise ValueError("Please add a slash in the end to recognize path as a directory.")
 
-        if not self.dir_exists(team_id, path):
-            raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
+        if silent is False:
+            if not self.dir_exists(team_id, path):
+                raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
 
@@ -1029,7 +1048,8 @@ class FileApi(ModuleApiBase):
                     paths_batch.remove(path)
 
             self._api.post(
-                "file-storage.bulk.remove", {ApiField.TEAM_ID: team_id, ApiField.PATHS: paths_batch}
+                "file-storage.bulk.remove",
+                {ApiField.TEAM_ID: team_id, ApiField.PATHS: paths_batch},
             )
             if progress_cb is not None:
                 progress_cb(len(paths_batch))

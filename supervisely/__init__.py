@@ -146,7 +146,7 @@ from supervisely._utils import (
 )
 
 import supervisely._utils as utils
-from supervisely.tiny_timer import TinyTimer
+from supervisely.tiny_timer import TinyTimer, timeit
 
 from supervisely.aug import aug
 from supervisely.video_annotation.key_id_map import KeyIdMap
