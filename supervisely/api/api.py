@@ -58,7 +58,7 @@ SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
 SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC"
 SERVER_ADDRESS = "SERVER_ADDRESS"
-API_SERVER_ADDRESS = "API_SERVER_ADDRESS"
+SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
@@ -218,7 +218,7 @@ class Api:
         self.server_address = Api.normalize_server_address(server_address)
 
         if api_server_address is None:
-            api_server_address = os.environ.get(API_SERVER_ADDRESS, None)
+            api_server_address = os.environ.get(SUPERVISELY_API_SERVER_ADDRESS, None)
 
         if api_server_address is not None:
             self._api_server_address = Api.normalize_server_address(api_server_address)
