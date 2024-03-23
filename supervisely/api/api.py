@@ -58,6 +58,7 @@ SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
 SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC"
 SERVER_ADDRESS = "SERVER_ADDRESS"
+API_SERVER_ADDRESS = "API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
@@ -200,6 +201,7 @@ class Api:
         retry_sleep_sec: Optional[int] = None,
         external_logger: Optional[Logger] = None,
         ignore_task_id: Optional[bool] = False,
+        api_server_address: str = None,
     ):
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
@@ -214,6 +216,12 @@ class Api:
                 "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
             )
         self.server_address = Api.normalize_server_address(server_address)
+
+        if api_server_address is None:
+            api_server_address = os.environ.get(API_SERVER_ADDRESS, None)
+
+        if api_server_address is not None:
+            self._api_server_address = Api.normalize_server_address(api_server_address)
 
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "10"))
@@ -404,7 +412,7 @@ class Api:
         if retries is None:
             retries = self.retry_count
 
-        url = self.server_address + "/public/api/v3/" + method
+        url = self.api_server_address + "/v3/" + method
         logger.trace(f"POST {url}")
 
         for retry_idx in range(retries):
@@ -477,7 +485,7 @@ class Api:
         if retries is None:
             retries = self.retry_count
 
-        url = self.server_address + "/public/api/v3/" + method
+        url = self.api_server_address + "/v3/" + method
         if use_public_api is False:
             url = os.path.join(self.server_address, method)
         logger.trace(f"GET {url}")
@@ -668,3 +676,27 @@ class Api:
                 set_key(env_file, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
             load_dotenv(env_file, override=override)
         return api
+
+    @property
+    def api_server_address(self) -> str:
+        """
+        Get API server address.
+
+        :return: API server address.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+            print(api.api_server_address)
+            # Output:
+            # 'https://app.supervisely.com/public/api'
+        """
+
+        if self._api_server_address is not None:
+            return self._api_server_address
+
+        return f"{self.server_address}/public/api"
