@@ -217,6 +217,7 @@ class Api:
             )
         self.server_address = Api.normalize_server_address(server_address)
 
+        self._api_server_address = None
         if api_server_address is None:
             api_server_address = os.environ.get(SUPERVISELY_API_SERVER_ADDRESS, None)
 
