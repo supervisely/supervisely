@@ -1633,7 +1633,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                      'None' will return the first page with projects, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
 
-        :param account_type: Type of user account
+        :param account_type: (Deprecated) Type of user account
         :type account_type: str, optional
 
         :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
@@ -1721,7 +1721,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if page is not None and page != "all":
             request_body[ApiField.PAGE] = page
         if account_type is not None:
-            request_body[ApiField.ACCOUNT_TYPE] = account_type
+            logger.warning(
+                "The 'account_type' parameter is deprecated. The result will not be filtered by account type. To filter received ProjectInfos, you could use the 'team_id' from the ProjectInfo object to get TeamInfo and check the account type."
+            )
 
         first_response = self._api.post(method, request_body).json()
 

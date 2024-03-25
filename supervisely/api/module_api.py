@@ -512,14 +512,18 @@ class ApiField:
     """"""
     DEST_ID = "destId"
     """"""
+    COMPLETE_EXISTING = "completeExisting"
+    """"""
+    MODE = "mode"
+    """"""
     FOLDERS = "folders"
     """"""
     WITH_METADATA = "withMetadata"
     """"""
     LIMIT = "limit"
+    """"""
 
-
-
+    
 def _get_single_item(items):
     """_get_single_item"""
     if len(items) == 0:

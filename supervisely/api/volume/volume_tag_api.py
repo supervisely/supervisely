@@ -1,7 +1,10 @@
 # coding: utf-8
-from typing import Union
-from supervisely.api.module_api import ApiField
+from typing import Optional, Union
+
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.api.module_api import ApiField
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class VolumeTagApi(TagApi):
@@ -63,3 +66,53 @@ class VolumeTagApi(TagApi):
             "volumes.tags.update-value",
             {ApiField.ID: tag_id, ApiField.VALUE: tag_value},
         )
+
+    def append_to_volume(
+        self,
+        volume_id: int,
+        tag_id: int,
+        value: Union[str, int, None] = None,
+        tag_meta: Optional[TagMeta] = None,
+    ) -> int:
+        """
+        Add tag to volume.
+
+        :param volume_id: Volume ID in Supervisely.
+        :type volume_id: int
+        :param tag_id: Tag ID in Supervisely.
+        :type tag_id: int
+        :param tag_value: VolumeTag value.
+        :type tag_value: str or int or None, optional
+        :param tag_meta: TagMeta object.
+        :type tag_meta: TagMeta, optional
+        :return: VolumeTag ID.
+        :rtype: int
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_id = 19402023
+            tag_id = 19402023
+            tag_value = 'tag_value'
+            tag_meta = api.tag.get_info_by_id(tag_id).meta
+            id = api.volume.tag.append_to_volume(volume_id, tag_id, tag_value, tag_meta)
+        """
+        data = {
+            ApiField.ENTITY_ID: volume_id,
+            ApiField.TAG_ID: tag_id,
+        }
+
+        if tag_meta:
+            if not tag_meta.is_valid_value(value):
+                raise ValueError("Tag {} can not have value {}".format(tag_meta.name, value))
+        if value is not None:
+            data[ApiField.VALUE] = value
+        response = self._api.post("volumes.tags.add", data)
+
+        return response.json().get(ApiField.ID)
