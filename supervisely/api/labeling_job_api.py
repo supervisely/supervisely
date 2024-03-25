@@ -1415,6 +1415,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if reviewer_id is not None:
             self._check_membership([reviewer_id], job_info.team_id)
             data[ApiField.REVIEWER_ID] = reviewer_id
+        else:
+            data[ApiField.REVIEWER_ID] = job_info.reviewer_id
 
         if title is not None:
             data[ApiField.NAME] = title
