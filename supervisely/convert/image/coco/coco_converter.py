@@ -1,7 +1,6 @@
 import imghdr
 import os
 
-from pycocotools.coco import COCO
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, ProjectMeta
@@ -38,12 +37,26 @@ class COCOConverter(ImageConverter):
         return coco_helper.generate_meta_from_annotation(coco, meta)
 
     def validate_key_file(self, key_file_path) -> bool:
+        try:
+            from pycocotools.coco import COCO
+        except ImportError:
+            raise ImportError(
+                "No module named pycocotools. Please make sure that module is installed from pip and try again."
+            )
+
         coco = COCO(key_file_path)  # wont throw error if not COCO
         if not all(key in coco.dataset for key in COCO_ANN_KEYS):
             return False
         return True
 
     def validate_format(self) -> bool:
+        try:
+            from pycocotools.coco import COCO
+        except ImportError:
+            raise ImportError(
+                "No module named pycocotools. Please make sure that module is installed from pip and try again."
+            )
+
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
         for root, _, files in os.walk(self._input_data):

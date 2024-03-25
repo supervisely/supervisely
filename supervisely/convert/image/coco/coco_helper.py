@@ -4,8 +4,7 @@ from typing import List
 
 import cv2
 import numpy as np
-import pycocotools.mask as mask_util
-from pycocotools.coco import COCO
+
 
 from supervisely import (
     Annotation,
@@ -125,6 +124,12 @@ def create_supervisely_annotation(
 
 
 def convert_rle_mask_to_polygon(coco_ann):
+    try:
+        import pycocotools.mask as mask_util
+    except ImportError:
+        raise ImportError(
+            "No module named pycocotools. Please make sure that module is installed from pip and try again."
+        )
     if type(coco_ann["segmentation"]["counts"]) is str:
         coco_ann["segmentation"]["counts"] = bytes(
             coco_ann["segmentation"]["counts"], encoding="utf-8"
@@ -188,7 +193,16 @@ def convert_polygon_vertices(coco_ann, image_size):
     return figures
 
 
-def generate_meta_from_annotation(coco: COCO, meta: ProjectMeta = None):
+def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
+    try:
+        from pycocotools.coco import COCO
+    except ImportError:
+        raise ImportError(
+            "No module named pycocotools. Please make sure that module is installed from pip and try again."
+        )
+
+    coco: COCO
+
     colors = []
     ann_types = get_ann_types(coco)
     if len(coco.cats) == 0:
@@ -245,7 +259,16 @@ def generate_meta_from_annotation(coco: COCO, meta: ProjectMeta = None):
     return meta
 
 
-def get_ann_types(coco: COCO) -> List[str]:
+def get_ann_types(coco) -> List[str]:
+    try:
+        from pycocotools.coco import COCO
+    except ImportError:
+        raise ImportError(
+            "No module named pycocotools. Please make sure that module is installed from pip and try again."
+        )
+
+    coco: COCO
+
     ann_types = []
     annotation_ids = coco.getAnnIds()
     if any("bbox" in coco.anns[ann_id] for ann_id in annotation_ids):

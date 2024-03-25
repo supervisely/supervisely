@@ -1,12 +1,22 @@
 from supervisely import logger
 
-import laspy
 import numpy as np
-import open3d as o3d
 
 
 def las2pcd(input_path, output_path):
-    las = laspy.read(input_path)
+    try:
+        import laspy
+    except ImportError:
+        raise ImportError(
+            "No module named laspy. Please make sure that module is installed from pip and try again."
+        )
+    try:
+        import open3d as o3d
+    except ImportError:
+        raise ImportError(
+            "No module named open3d. Please make sure that module is installed from pip and try again."
+        )
+
     try:
         las = laspy.read(input_path)
     except Exception as e:
