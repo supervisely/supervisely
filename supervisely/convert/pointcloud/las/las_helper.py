@@ -24,7 +24,12 @@ def las2pcd(input_path, output_path):
             logger.warn(
                 "Could not read LAS file in laspy. Trying to read it without EXTRA_BYTES..."
             )
-            from laspy.point.record import PackedPointRecord
+            try:
+                from laspy.point.record import PackedPointRecord
+            except ImportError:
+                raise ImportError(
+                    "No module named laspy. Please make sure that module is installed from pip and try again."
+                )
 
             @classmethod
             def from_buffer_without_extra_bytes(cls, buffer, point_format, count=-1, offset=0):

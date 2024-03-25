@@ -33,7 +33,7 @@ class COCOConverter(ImageConverter):
         # TODO: implement detailed validation of COCO labels
         pass
 
-    def generate_meta_from_annotation(self, coco: COCO, meta: ProjectMeta = None) -> ProjectMeta:
+    def generate_meta_from_annotation(self, coco, meta: ProjectMeta = None) -> ProjectMeta:
         return coco_helper.generate_meta_from_annotation(coco, meta)
 
     def validate_key_file(self, key_file_path) -> bool:
