@@ -167,9 +167,16 @@ class Dataset(KeyObject):
         self._item_to_ann = {}  # item file name -> annotation file name
 
         parts = directory.split(os.path.sep)
-        project_dir = parts[0]
-        full_ds_name = os.path.join(*[p for p in parts[1:] if p != self.datasets_dir_name])
-        short_ds_name = os.path.basename(directory)
+        if self.datasets_dir_name not in parts:
+            project_dir, ds_name = os.path.split(directory.rstrip("/"))
+            full_ds_name = short_ds_name = ds_name
+        else:
+            nested_ds_dir_index = parts.index(self.datasets_dir_name)
+            ds_dir_index = nested_ds_dir_index - 1
+
+            project_dir = os.path.join(*parts[: ds_dir_index])
+            full_ds_name = os.path.join(*[p for p in parts[ds_dir_index :] if p != self.datasets_dir_name])
+            short_ds_name = os.path.basename(directory)
 
         self._project_dir = project_dir
         self._name = full_ds_name
