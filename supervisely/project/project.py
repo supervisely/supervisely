@@ -1723,10 +1723,13 @@ class Project:
     def _read(self):
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
-        ignore_included = self.dataset_class.ignorable_dirs()
-        ignore_included.pop(ignore_included.index(self.dataset_class.datasets_dir()))
 
-        possible_datasets = subdirs_tree(self.directory, self.dataset_class.ignorable_dirs(), ignore_included)
+        ignore_dirs = self.dataset_class.ignorable_dirs() # dir names that can not be datasets
+
+        ignore_content_dirs = ignore_dirs.copy() # dir names which can not contain datasets
+        ignore_content_dirs.pop(ignore_content_dirs.index(self.dataset_class.datasets_dir()))
+
+        possible_datasets = subdirs_tree(self.directory, ignore_dirs, ignore_content_dirs)
 
         for ds_name in possible_datasets:
             parents = ds_name.split(os.path.sep)

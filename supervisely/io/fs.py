@@ -501,7 +501,7 @@ def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
 def subdirs_tree(
         dir_path: str,
         ignore: Optional[List[str]] = None,
-        ignore_included: Optional[List[str]] = None,
+        ignore_content: Optional[List[str]] = None,
 ) -> Generator[str, None, None]:
     """Generator that yields directories in the directory tree,
     starting from the level below the root directory and then going down the tree.
@@ -514,21 +514,21 @@ def subdirs_tree(
         subdirectories of ignored directories. It will only ignore paths which end with
         the specified directory names.
     :type ignore: List[str]
-    :param ignore_included: List of directories which subdirectories should be ignored too.
-    :type ignore_included: List[str]
+    :param ignore_content: List of directories which subdirectories should be ignored.
+    :type ignore_content: List[str]
     :returns: Generator that yields directories in the directory tree.
     :rtype: Generator[str, None, None]
     """
     tree = get_subdirs_tree(dir_path)
     ignore = ignore or []
-    ignore_included = ignore_included or []
+    ignore_content = ignore_content or []
 
     def _subdirs_tree(tree, path=""):
         for key, value in tree.items():
             new_path = os.path.join(path, key) if path else key
             if not any(new_path.endswith(i) for i in ignore):
                 yield new_path
-            elif any(new_path.endswith(i) for i in ignore_included):
+            if any(new_path.endswith(i) for i in ignore_content):
                 continue
             if value:
                 yield from _subdirs_tree(value, new_path)
