@@ -1729,7 +1729,6 @@ class Project:
         possible_datasets = subdirs_tree(self.directory, self.dataset_class.ignorable_dirs(), ignore_included)
 
         for ds_name in possible_datasets:
-            logger.debug(f"Reading dataset {ds_name}")
             parents = ds_name.split(os.path.sep)
             parents = [p for p in parents if p != self.dataset_class.datasets_dir()]
             if len(parents) > 1:
