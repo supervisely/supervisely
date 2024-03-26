@@ -191,7 +191,8 @@ class Dataset(KeyObject):
 
     @classmethod
     def ignorable_dirs(cls) -> List[str]:
-        return [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+        ignorable_dirs = [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+        return [p for p in ignorable_dirs if isinstance(p, str)]
 
     @classmethod
     def datasets_dir(cls) -> List[str]:
@@ -1722,12 +1723,14 @@ class Project:
     def _read(self):
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
+        ignore_included = self.dataset_class.ignorable_dirs()
+        ignore_included.pop(ignore_included.index(self.dataset_class.datasets_dir()))
 
-        possible_datasets = subdirs_tree(self.directory, Dataset.ignorable_dirs())
+        possible_datasets = subdirs_tree(self.directory, self.dataset_class.ignorable_dirs(), ignore_included)
 
         for ds_name in possible_datasets:
             parents = ds_name.split(os.path.sep)
-            parents = [p for p in parents if p != Dataset.datasets_dir()]
+            parents = [p for p in parents if p != self.dataset_class.datasets_dir()]
             if len(parents) > 1:
                 parents.pop(-1)
             else:
@@ -1748,7 +1751,7 @@ class Project:
     def _read_api(self):
         self._meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
         for parents, dataset_info in self._api.dataset.tree(self.project_id):
-            relative_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            relative_path = self.dataset_class._get_dataset_path(dataset_info.name, parents)
             dataset_path = os.path.join(self.directory, relative_path)
             current_dataset = self.dataset_class(
                 dataset_path, parents=parents, dataset_id=dataset_info.id, api=self._api
