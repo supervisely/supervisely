@@ -185,8 +185,6 @@ class StorageApi(FileApi):
             data = first_response.get("entities", [])
 
             continuation_token = first_response.get("continuationToken", None)
-            if continuation_token == "":  # FIXME: remove this check after backend fix
-                continuation_token = None
             limit_exceeded = False
             if limit is not None and len(data) >= limit:
                 limit_exceeded = True
@@ -332,16 +330,9 @@ class StorageApi(FileApi):
         raise NotImplementedError()
 
     def remove_dir(self, team_id: int, remote_path: str) -> None:
-        # if not remote_path.endswith("/"):
-        #     remote_path += "/"
-        # super().remove_dir(team_id, remote_path)
-        raise NotImplementedError()
+        if not remote_path.endswith("/"):
+            remote_path += "/"
+        super().remove_dir(team_id, remote_path)
 
-    def remove(self, team_id: int, remote_path: str) -> None:
-        raise NotImplementedError()
-    
-    def remove_file(self, team_id: int, remote_path: str) -> None:
-        raise NotImplementedError()
-    
     def get_url(self, file_id: int) -> str:
         raise NotImplementedError()
