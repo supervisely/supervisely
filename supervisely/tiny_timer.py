@@ -13,6 +13,8 @@ class TinyTimer:
 
 
 def timeit(func):
+    """Simple decorator to estimate function performance"""
+
     def wrapper(*args, **kwargs):
         tm = TinyTimer()
         result = func(*args, **kwargs)

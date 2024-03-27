@@ -22,10 +22,10 @@ class FigureInfo(NamedTuple):
     frame_index: int
     geometry_type: str
     geometry: dict
+    geometry_meta: dict
     tags: list
     meta: dict
     area: str
-    real_area: str
 
 
 class FigureApi(RemoveableBulkModuleApi):
@@ -65,10 +65,10 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.FRAME_INDEX,
             ApiField.GEOMETRY_TYPE,
             ApiField.GEOMETRY,
+            ApiField.GEOMETRY_META,
             ApiField.TAGS,
             ApiField.META,
             ApiField.AREA,
-            ApiField.REAL_AREA,
         ]
 
     @staticmethod
@@ -148,10 +148,10 @@ class FigureApi(RemoveableBulkModuleApi):
             "datasetId",
             "geometry",
             "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
             "area",
-            "realArea",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -297,10 +297,10 @@ class FigureApi(RemoveableBulkModuleApi):
             "datasetId",
             "geometry",
             "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
             "area",
-            "realArea",
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -378,10 +378,10 @@ class FigureApi(RemoveableBulkModuleApi):
             "datasetId",
             "geometry",
             "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
             "area",
-            "realArea",
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != "geometry"]
@@ -414,3 +414,6 @@ class FigureApi(RemoveableBulkModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=False):
         return super()._convert_json_info(info, True)
+
+    def to_bbox(self):
+        pass
