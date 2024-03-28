@@ -78,6 +78,6 @@ def validate_geometry_points_fields(json_obj: dict) -> None:
 
 
 def validate_polygon(exterior_polygon, interior_polygon):
-    if interior_polygon.contains_properly(exterior_polygon):
+    if interior_polygon.contains(exterior_polygon):
         return False
     return True
