@@ -11,6 +11,7 @@ from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.inference import Inference
 from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.geometry.helpers import deserialize_geometry
 
 
 class PointTracking(Inference, InferenceImageCache):
@@ -68,6 +69,10 @@ class PointTracking(Inference, InferenceImageCache):
         def start_track(request: Request, task: BackgroundTasks):
             task.add_task(track, request)
             return {"message": "Track task started."}
+
+        @server.post("/track-api")
+        def start_track_api(request: Request, task: BackgroundTasks):
+            return track_api(request)
 
         def send_error_data(func):
             @functools.wraps(func)
@@ -136,7 +141,7 @@ class PointTracking(Inference, InferenceImageCache):
                         )
                     elif isinstance(geom, sly.Polygon):
                         if len(geom.interior) > 0:
-                            raise ValueError("Can't track polygons with iterior.")
+                            raise ValueError("Can't track polygons with interior.")
                         geometries = self._predict_polygon_geometries(
                             geom,
                             video_interface,
@@ -160,6 +165,87 @@ class PointTracking(Inference, InferenceImageCache):
                     if video_interface.global_stop_indicatior:
                         return
 
+        def track_api(request: Request):
+            context = request.state.context
+            api: sly.Api = request.state.api
+            # required fields:
+            context["input_geometries"]
+            context["videoId"]
+            context["frameIndex"]
+            context["frames"]
+            # optional fields:
+            context["trackId"] = "auto"
+            context["objectIds"] = []
+            context["figureIds"] = []
+            if "direction" not in context:
+                context["direction"] = "forward"
+
+            input_geometries: list = context["input_geometries"]
+
+            if self.custom_inference_settings_dict.get("load_all_frames"):
+                load_all_frames = True
+            else:
+                load_all_frames = False
+            video_interface = TrackerInterface(
+                context=context,
+                api=api,
+                load_all_frames=load_all_frames,
+                frame_loader=self.download_frame,
+                bypass_notify=True,
+            )
+
+            range_of_frames = [
+                video_interface.frames_indexes[0],
+                video_interface.frames_indexes[-1],
+            ]
+
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=video_interface.video_id,
+            )
+            api.logger.info("Start tracking.")
+
+            predictions = []
+            for _ in video_interface.frames_loader_generator():
+                for input_geom in input_geometries:
+                    geom_name, geom_json = input_geom['type'], input_geom['data']
+                    geom = deserialize_geometry(geom_name, geom_json)
+                    if isinstance(geom, sly.Point):
+                        geometries = self._predict_point_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    elif isinstance(geom, sly.Polygon):
+                        if len(geom.interior) > 0:
+                            raise ValueError("Can't track polygons with interior.")
+                        geometries = self._predict_polygon_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    elif isinstance(geom, sly.GraphNodes):
+                        geometries = self._predict_graph_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    elif isinstance(geom, sly.Polyline):
+                        geometries = self._predict_polyline_geometries(
+                            geom,
+                            video_interface,
+                        )
+                    else:
+                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+
+                    if video_interface.global_stop_indicatior:
+                        return
+                    
+                    geometries = [g.to_json() for g in geometries]
+                    predictions.append(geometries)
+
+            # predictions must be NxK figures: N=number of frames, K=number of objects
+            predictions = list(map(list, zip(*predictions)))
+            return predictions
+        
     def predict(
         self,
         rgb_images: List[np.ndarray],
