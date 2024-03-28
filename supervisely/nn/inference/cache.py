@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 from cacheout import Cache as CacheOut
 from cachetools import Cache, LRUCache, TTLCache
-from fastapi import FastAPI, Form, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
 from supervisely.io.fs import silent_remove
@@ -333,22 +333,26 @@ class InferenceImageCache:
 
     def add_cache_endpoint(self, server: FastAPI):
         @server.post("/smart_cache")
-        def cache_endpoint(request: Request):
-            return self.cache_task(
+        def cache_endpoint(request: Request, task: BackgroundTasks):
+            task.add_task(
+                self.cache_task,
                 api=request.state.api,
                 state=request.state.state,
             )
+            return {"message": "Cache task started."}
 
     def add_cache_files_endpoint(self, server: FastAPI):
         @server.post("/smart_cache_files")
         async def cache_files_endpoint(
-            request: Request, files: List[UploadFile], settings: str = Form("{}")
+            request: Request, task: BackgroundTasks, files: List[UploadFile], settings: str = Form("{}")
         ):
             state = json.loads(settings)
-            return self.cache_files_task(
+            task.add_task(
+                self.cache_files_task,
                 files=files,
                 state=state,
             )
+            return {"message": "Cache task started."}
 
     def cache_task(self, api: sly.Api, state: dict):
         if "server_address" in state and "api_token" in state:
