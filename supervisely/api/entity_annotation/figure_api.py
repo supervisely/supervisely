@@ -31,6 +31,14 @@ class FigureApi(RemoveableBulkModuleApi):
     Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
 
+    def _remove_batch_api_method_name(self):
+        """_remove_batch_api_method_name"""
+        return "figures.bulk.remove"
+
+    def _remove_batch_field_name(self):
+        """_remove_batch_field_name"""
+        return ApiField.FIGURE_IDS
+
     @staticmethod
     def info_sequence():
         """
