@@ -1,11 +1,12 @@
-import numpy as np
-from typing import Generator, Optional, List, Callable, Dict
-from typing import OrderedDict as OrderedDictType
 from collections import OrderedDict
+from logging import Logger
+from typing import Callable, Dict, Generator, List, Optional
+from typing import OrderedDict as OrderedDictType
+
+import numpy as np
 
 import supervisely as sly
 from supervisely.geometry.geometry import Geometry
-from logging import Logger
 
 
 class TrackerInterface:
@@ -17,6 +18,7 @@ class TrackerInterface:
         notify_in_predict=False,
         per_point_polygon_tracking=True,
         frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
+        should_notify: bool = True,
     ):
         self.api: sly.Api = api
         self.logger: Logger = api.logger
@@ -28,6 +30,7 @@ class TrackerInterface:
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
+        self.should_notify = should_notify
 
         # all geometries
         self.stop = len(self.figure_ids) * self.frames_count
@@ -156,9 +159,7 @@ class TrackerInterface:
             )
             return self._hot_cache[frame_index]
         else:
-            return self._local_cache_loader(
-                self.api, self.video_id, frame_index
-            )
+            return self._local_cache_loader(self.api, self.video_id, frame_index)
 
     def _load_frames(self):
         rgbs = []
@@ -178,6 +179,9 @@ class TrackerInterface:
         fend: Optional[int] = None,
         task: str = "not defined",
     ):
+        if not self.should_notify:
+            return
+
         self.global_pos += 1
 
         if stop:
