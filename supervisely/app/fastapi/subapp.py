@@ -187,7 +187,7 @@ class Event:
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
                 )
-        
+
         class FigureChanged:
             endpoint = "/manual_selected_figure_changed"
 
@@ -208,6 +208,7 @@ class Event:
                 tool: str,
                 user_id: int,
                 job_id: int,
+                previous_figure: dict = None,
             ):
                 self.dataset_id = dataset_id
                 self.team_id = team_id
@@ -224,6 +225,7 @@ class Event:
                 self.tool = tool
                 self.user_id = user_id
                 self.job_id = job_id
+                self.previous_figure = previous_figure
 
             @classmethod
             def from_json(cls, data: dict):
@@ -243,6 +245,9 @@ class Event:
                     tool=data.get(ApiField.LABELING_TOOL),
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
+                    previous_figure=data.get(
+                        "previousFigure", None
+                    ),  # there is no such field in ApiField
                 )
 
 
@@ -464,9 +469,11 @@ def _init(
             request.state.state = content.get("state")
             request.state.api_token = content.get(
                 "api_token",
-                request.state.context.get("apiToken")
-                if request.state.context is not None
-                else None,
+                (
+                    request.state.context.get("apiToken")
+                    if request.state.context is not None
+                    else None
+                ),
             )
             # logger.debug(f"middleware request api_token {request.state.api_token}")
             # request.state.server_address = content.get(
