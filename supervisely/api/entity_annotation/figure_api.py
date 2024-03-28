@@ -7,6 +7,7 @@ from typing import Dict, List, NamedTuple, Optional
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -26,6 +27,17 @@ class FigureInfo(NamedTuple):
     tags: list
     meta: dict
     area: str
+
+    @property
+    def rectangle(self) -> Optional[Rectangle]:
+        """
+        Get Figure's bounding box.
+
+        :return: Rectangle in supervisely format.
+        :rtype: :class: `sly.Rectangle`
+        """
+        if self.geometry_meta is not None:
+            return Rectangle(*self.geometry_meta["bbox"])
 
 
 class FigureApi(RemoveableBulkModuleApi):
@@ -413,7 +425,8 @@ class FigureApi(RemoveableBulkModuleApi):
         return images_figures
 
     def _convert_json_info(self, info: dict, skip_missing=False):
-        return super()._convert_json_info(info, True)
+        res = super()._convert_json_info(info, skip_missing=True)
+        return FigureInfo(**res._asdict())
 
     def to_bbox(self):
         pass
