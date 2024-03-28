@@ -427,6 +427,3 @@ class FigureApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=False):
         res = super()._convert_json_info(info, skip_missing=True)
         return FigureInfo(**res._asdict())
-
-    def to_bbox(self):
-        pass
