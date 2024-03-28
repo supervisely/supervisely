@@ -71,13 +71,13 @@ def validate_geometry_points_fields(json_obj: dict) -> None:
         exterior_polygon = ShapelyPolygon(exterior)
         for interior_component in interior:
             interior_polygon = ShapelyPolygon(interior_component)
-            if validate_polygon(exterior_polygon, interior_polygon) is False:
+            if validate_polygon_contains(exterior_polygon, interior_polygon) is False:
                 raise ValueError(
-                    f"The provided interior polygon points ({interior_component}) are interecting the external border: {exterior}"
+                    f"The provided interior polygon points ({interior_component}) contains the exterior polygon: {exterior}"
                 )
 
 
-def validate_polygon(exterior_polygon, interior_polygon):
-    if interior_polygon.contains(exterior_polygon):
-        return False
-    return True
+def validate_polygon_contains(exterior_polygon, interior_polygon):
+    if exterior_polygon.contains(interior_polygon):
+        return True
+    return False
