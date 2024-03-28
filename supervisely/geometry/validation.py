@@ -1,6 +1,4 @@
 # coding: utf-8
-from shapely.geometry import Polygon as ShapelyPolygon
-
 from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS
 
 
@@ -57,8 +55,7 @@ def validate_geometry_points_fields(json_obj: dict) -> None:
             '"{}" field must contain {} and {} fields.'.format(POINTS, EXTERIOR, INTERIOR)
         )
 
-    exterior = points_obj[EXTERIOR]
-    if not _is_2d_numeric_coords_valid(exterior):
+    if not _is_2d_numeric_coords_valid(points_obj[EXTERIOR]):
         raise TypeError("{} field must be a list of 2 numbers lists.".format(EXTERIOR))
 
     interior = points_obj[INTERIOR]
@@ -66,18 +63,3 @@ def validate_geometry_points_fields(json_obj: dict) -> None:
         _is_2d_numeric_coords_valid(interior_component) for interior_component in interior
     ):
         raise TypeError("{} field must be a list of lists of 2 numbers lists.".format(INTERIOR))
-
-    if len(interior) > 0:
-        exterior_polygon = ShapelyPolygon(exterior)
-        for interior_component in interior:
-            interior_polygon = ShapelyPolygon(interior_component)
-            if validate_polygon_contains(exterior_polygon, interior_polygon) is False:
-                raise ValueError(
-                    f"The provided interior polygon points ({interior_component}) contains the exterior polygon: {exterior}"
-                )
-
-
-def validate_polygon_contains(exterior_polygon, interior_polygon):
-    if exterior_polygon.contains(interior_polygon):
-        return True
-    return False
