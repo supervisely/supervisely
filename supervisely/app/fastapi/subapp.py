@@ -477,10 +477,10 @@ def _init(
                 ),
             )
             # logger.debug(f"middleware request api_token {request.state.api_token}")
-            # request.state.server_address = content.get(
-            #     "server_address", sly_env.server_address(raise_not_found=False)
-            # )
-            request.state.server_address = sly_env.server_address(raise_not_found=False)
+            request.state.server_address = content.get(
+                "server_address", sly_env.server_address(raise_not_found=False)
+            )
+            # request.state.server_address = sly_env.server_address(raise_not_found=False)
             # logger.debug(f"middleware request server_address {request.state.server_address}")
             # logger.debug(f"middleware request context {request.state.context}")
             # logger.debug(f"middleware request state {request.state.state}")
