@@ -83,21 +83,21 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """Status"""
 
         QUEUED = "queued"
-        """"""
+        """Application is queued for execution"""
         CONSUMED = "consumed"
-        """"""
+        """Application is consumed by an agent"""
         STARTED = "started"
-        """"""
+        """Application has been started"""
         DEPLOYED = "deployed"
-        """"""
+        """Only for Plugins"""
         ERROR = "error"
-        """"""
+        """Application has finished with an error"""
         FINISHED = "finished"
-        """"""
+        """Application has finished successfully"""
         TERMINATING = "terminating"
-        """"""
+        """Application is being terminated"""
         STOPPED = "stopped"
-        """"""
+        """Application has been stopped"""
 
     def __init__(self, api):
         ModuleApiBase.__init__(self, api)
@@ -892,6 +892,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         skip_response: bool = False,
         timeout: Optional[int] = 60,
         outside_request: bool = True,
+        retries: int = 10,
+        raise_error: bool = False,
     ):
         """send_request"""
         if type(data) is not dict:
@@ -907,6 +909,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "skipResponse": skip_response,
                 "timeout": timeout,
             },
+            retries=retries,
+            raise_error=raise_error,
         )
         return resp.json()
 

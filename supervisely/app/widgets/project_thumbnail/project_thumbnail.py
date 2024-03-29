@@ -2,6 +2,8 @@ from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely.api.project_api import ProjectInfo
 from supervisely.project.project import Project
+from supervisely import is_development, is_debug_with_sly_net
+from supervisely._utils import abs_url
 
 
 class ProjectThumbnail(Widget):
@@ -41,6 +43,8 @@ class ProjectThumbnail(Widget):
         self._description = f"{info.items_count} {info.type} in project"
         self._url = Project.get_url(info.id)
         self._image_preview_url = info.image_preview_url
+        if is_development() or is_debug_with_sly_net():
+            self._image_preview_url = abs_url(self._image_preview_url)
 
     def set(self, info: ProjectInfo):
         self._set_info(info)

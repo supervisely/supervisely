@@ -129,7 +129,7 @@ class NodesFlow(Widget):
                     "icon": {
                         "backgroundColor": self._icon_background_color,
                         "class": self._icon,
-                    }
+                    },
                 },
             }
 
@@ -143,6 +143,7 @@ class NodesFlow(Widget):
         CONTEXT_MENU_CLICKED = "context_menu_item_click_cb"
         SIDEBAR_TOGGLED = "sidebar_toggled_cb"
         ITEM_DROPPED = "item_dropped_cb"
+        NODE_REMOVED = "node_removed_cb"
 
     def __init__(
         self,
@@ -165,6 +166,15 @@ class NodesFlow(Widget):
         self._show_save = show_save
         if self._dd_menu:
             self._show_dd_area = True
+
+        self._save_handled = False
+        self._flow_change_handled = False
+        self._flow_state_change_handled = False
+        self._contex_menu_item_click_handled = False
+        self._sidebar_toggle_handled = False
+        self._item_dropped_handled = False
+        self._node_removed_handled = False
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
@@ -294,6 +304,18 @@ class NodesFlow(Widget):
         @server.post(route_path)
         def _click():
             item = StateJson()[self.widget_id]["droppedItem"]
+            func(item)
+
+        return _click
+
+    def node_removed(self, func):
+        route_path = self.get_route_path(NodesFlow.Routes.NODE_REMOVED)
+        server = self._sly_app.get_server()
+        self._node_removed_handled = True
+
+        @server.post(route_path)
+        def _click():
+            item = StateJson()[self.widget_id]["removedNode"]
             func(item)
 
         return _click

@@ -500,9 +500,24 @@ class ApiField:
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
     """"""
+    GPU_INFO = "gpuInfo"
+    """"""
+    IS_PUBLIC = "isPublic"
+    """"""
     USAGE = "usage"
+    """"""
+    PARENT_ID = "parentId"
+    """"""
+    SRC_ID = "srcId"
+    """"""
+    DEST_ID = "destId"
+    """"""
+    COMPLETE_EXISTING = "completeExisting"
+    """"""
+    MODE = "mode"
+    """"""
 
-
+    
 def _get_single_item(items):
     """_get_single_item"""
     if len(items) == 0:
@@ -668,7 +683,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             data = self._add_sort_param(data)
         first_response = self._api.post(method, data).json()
         total = first_response["total"]
-        per_page = first_response["perPage"]
+        # per_page = first_response["perPage"]
         after = first_response["after"]
         # pages_count = first_response["pagesCount"]
 

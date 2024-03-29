@@ -58,6 +58,7 @@ SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
 SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC = "SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC"
 SERVER_ADDRESS = "SERVER_ADDRESS"
+SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
@@ -200,6 +201,7 @@ class Api:
         retry_sleep_sec: Optional[int] = None,
         external_logger: Optional[Logger] = None,
         ignore_task_id: Optional[bool] = False,
+        api_server_address: str = None,
     ):
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
@@ -214,6 +216,13 @@ class Api:
                 "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
             )
         self.server_address = Api.normalize_server_address(server_address)
+
+        self._api_server_address = None
+        if api_server_address is None:
+            api_server_address = os.environ.get(SUPERVISELY_API_SERVER_ADDRESS, None)
+
+        if api_server_address is not None:
+            self._api_server_address = Api.normalize_server_address(api_server_address)
 
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "10"))
@@ -382,11 +391,12 @@ class Api:
         data: Dict,
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
+        raise_error: Optional[bool] = False,
     ) -> requests.Response:
         """
         Performs POST request to server with given parameters.
 
-        :param method:
+        :param method: Method name.
         :type method: str
         :param data: Dictionary to send in the body of the :class:`Request`.
         :type data: dict
@@ -394,6 +404,8 @@ class Api:
         :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
+        :type raise_error: bool, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
@@ -401,7 +413,7 @@ class Api:
         if retries is None:
             retries = self.retry_count
 
-        url = self.server_address + "/public/api/v3/" + method
+        url = self.api_server_address + "/v3/" + method
         logger.trace(f"POST {url}")
 
         for retry_idx in range(retries):
@@ -428,17 +440,20 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
-                process_requests_exception(
-                    self.logger,
-                    exc,
-                    method,
-                    url,
-                    verbose=True,
-                    swallow_exc=True,
-                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
-                    response=response,
-                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
-                )
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
@@ -471,7 +486,7 @@ class Api:
         if retries is None:
             retries = self.retry_count
 
-        url = self.server_address + "/public/api/v3/" + method
+        url = self.api_server_address + "/v3/" + method
         if use_public_api is False:
             url = os.path.join(self.server_address, method)
         logger.trace(f"GET {url}")
@@ -596,7 +611,12 @@ class Api:
 
     @classmethod
     def from_credentials(
-        cls, server_address: str, login: str, password: str, override: bool = False
+        cls,
+        server_address: str,
+        login: str,
+        password: str,
+        override: bool = False,
+        env_file: str = SUPERVISELY_ENV_FILE,
     ) -> Api:
         """
         Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
@@ -612,6 +632,8 @@ class Api:
         :type password: str
         :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
         :type override: bool, optional
+        :param env_file: Path to your .env file.
+        :type env_file: str, optional
         :return: Api object
 
         :Usage example:
@@ -634,24 +656,48 @@ class Api:
         api = cls(session.server_address, session.api_token, ignore_task_id=True)
 
         if override:
-            if os.path.isfile(SUPERVISELY_ENV_FILE):
+            if os.path.isfile(env_file):
                 # create backup
                 timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-                backup_file = f"{SUPERVISELY_ENV_FILE}_{timestamp}"
-                shutil.copy2(SUPERVISELY_ENV_FILE, backup_file)
-                if api.token != get_key(SUPERVISELY_ENV_FILE, API_TOKEN):
+                backup_file = f"{env_file}_{timestamp}"
+                shutil.copy2(env_file, backup_file)
+                if api.token != get_key(env_file, API_TOKEN):
                     # create new file
-                    os.remove(SUPERVISELY_ENV_FILE)
-                    Path(SUPERVISELY_ENV_FILE).touch()
+                    os.remove(env_file)
+                    Path(env_file).touch()
                 # remove old backups
-                all_backups = sorted(glob.glob(f"{SUPERVISELY_ENV_FILE}_" + "[0-9]" * 14))
+                all_backups = sorted(glob.glob(f"{env_file}_" + "[0-9]" * 14))
                 while len(all_backups) > 5:
                     os.remove(all_backups.pop(0))
-            set_key(SUPERVISELY_ENV_FILE, SERVER_ADDRESS, session.server_address)
-            set_key(SUPERVISELY_ENV_FILE, API_TOKEN, session.api_token)
+            set_key(env_file, SERVER_ADDRESS, session.server_address)
+            set_key(env_file, API_TOKEN, session.api_token)
             if session.team_id:
-                set_key(SUPERVISELY_ENV_FILE, "INIT_GROUP_ID", f"{session.team_id}")
+                set_key(env_file, "INIT_GROUP_ID", f"{session.team_id}")
             if session.workspace_id:
-                set_key(SUPERVISELY_ENV_FILE, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
-            load_dotenv(SUPERVISELY_ENV_FILE, override=override)
+                set_key(env_file, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
+            load_dotenv(env_file, override=override)
         return api
+
+    @property
+    def api_server_address(self) -> str:
+        """
+        Get API server address.
+
+        :return: API server address.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+            print(api.api_server_address)
+            # Output:
+            # 'https://app.supervisely.com/public/api'
+        """
+
+        if self._api_server_address is not None:
+            return self._api_server_address
+
+        return f"{self.server_address}/public/api"
