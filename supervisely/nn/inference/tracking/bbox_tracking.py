@@ -10,7 +10,7 @@ import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.inference.cache import InferenceImageCache, PersistentImageTTLCache
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionBBox
 
@@ -66,16 +66,14 @@ class BBoxTracking(Inference, InferenceImageCache):
             should_notify=notify_annotation_tool,
         )
 
-        range_of_frames = [
-            video_interface.frames_indexes[0],
-            video_interface.frames_indexes[-1],
-        ]
-
-        self.run_cache_task_manually(
-            api,
-            [range_of_frames],
-            video_id=video_interface.video_id,
-        )
+        try:
+            self.run_cache_task_manually(
+                api,
+                None,
+                video_id=video_interface.video_id,
+            )
+        except ValueError as e:
+            api.logger.warn("Unable to cache the video: %s", str(e))
 
         api.logger.info("Start tracking.")
 
@@ -137,11 +135,20 @@ class BBoxTracking(Inference, InferenceImageCache):
             video_interface.frames_indexes[-1],
         ]
 
-        self.run_cache_task_manually(
-            api,
-            [range_of_frames],
-            video_id=video_interface.video_id,
-        )
+        if isinstance(self._cache, PersistentImageTTLCache):
+            # if cache is persistent, run cache task for whole video
+            self.run_cache_task_manually(
+                api,
+                None,
+                video_id=video_interface.video_id,
+            )
+        else:
+            # if cache is not persistent, run cache task for range of frames
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=video_interface.video_id,
+            )
 
         api.logger.info("Start tracking.")
 
@@ -171,7 +178,9 @@ class BBoxTracking(Inference, InferenceImageCache):
                 )
                 sly_geometry = self._to_sly_geometry(geometry)
 
-                predictions_for_object.append(sly_geometry.to_json())
+                predictions_for_object.append(
+                    {"type": sly_geometry.geometry_name(), "data": sly_geometry.to_json()}
+                )
             predictions.append(predictions_for_object)
 
         # predictions must be NxK bboxes: N=number of frames, K=number of objects
@@ -224,16 +233,6 @@ class BBoxTracking(Inference, InferenceImageCache):
             frames.append(frame)
         sly.logger.info("Start tracking.")
         return self._inference(frames, geometries, state)
-
-    def _track_api_cached(self, request: Request, context: dict):
-        sly.logger.info(f"Start tracking with settings: {context}.")
-        video_id = context["video_id"]
-        frame_indexes = list(
-            range(context["frame_index"], context["frame_index"] + context["frames"] + 1)
-        )
-        geometries = map(self._deserialize_geometry, context["input_geometries"])
-        frames = self.get_frames_from_cache(video_id, frame_indexes)
-        return self._inference(frames, geometries, context)
 
     def serve(self):
         super().serve()
@@ -291,10 +290,6 @@ class BBoxTracking(Inference, InferenceImageCache):
             settings: str = Form("{}"),
         ):
             return self._track_api_files(request, files, settings)
-
-        @server.post("/track-api-cached")
-        def track_api_cached(request: Request):
-            return self._track_api_cached(request, request.state.context)
 
     def initialize(self, init_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> None:
         """

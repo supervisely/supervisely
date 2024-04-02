@@ -10,7 +10,7 @@ import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.inference.cache import InferenceImageCache, PersistentImageTTLCache
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 
@@ -93,11 +93,21 @@ class PointTracking(Inference, InferenceImageCache):
             video_interface.frames_indexes[-1],
         ]
 
-        self.run_cache_task_manually(
-            api,
-            [range_of_frames],
-            video_id=video_interface.video_id,
-        )
+        if isinstance(self._cache, PersistentImageTTLCache):
+            # if cache is persistent, run cache task for whole video
+            self.run_cache_task_manually(
+                api,
+                None,
+                video_id=video_interface.video_id,
+            )
+        else:
+            # if cache is not persistent, run cache task for range of frames
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=video_interface.video_id,
+            )
+
         api.logger.info("Start tracking.")
 
         predictions = []
@@ -132,7 +142,7 @@ class PointTracking(Inference, InferenceImageCache):
                 if video_interface.global_stop_indicatior:
                     return
 
-                geometries = [g.to_json() for g in geometries]
+                geometries = [{"type": g.geometry_name(), "data": g.to_json()} for g in geometries]
                 predictions.append(geometries)
 
         # predictions must be NxK figures: N=number of frames, K=number of objects
@@ -227,11 +237,6 @@ class PointTracking(Inference, InferenceImageCache):
             settings: str = Form("{}"),
         ):
             return self.track_api_files(request, files, settings)
-
-        @server.post("/track-api-cached")
-        def track_api_frames(request: Request):
-            sly.logger.info("Start tracking.")
-            return self.track_api_cached(request, request.state.context)
 
         def send_error_data(func):
             @functools.wraps(func)

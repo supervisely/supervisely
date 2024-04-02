@@ -9,7 +9,7 @@ import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.inference.cache import InferenceImageCache, PersistentImageTTLCache
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import PredictionSegmentation
 
@@ -78,6 +78,27 @@ class MaskTracking(Inference, InferenceImageCache):
             frame_loader=self.download_frame,
             should_notify=False,
         )
+
+        range_of_frames = [
+            self.video_interface.frames_indexes[0],
+            self.video_interface.frames_indexes[-1],
+        ]
+
+        if isinstance(self._cache, PersistentImageTTLCache):
+            # if cache is persistent, run cache task for whole video
+            self.run_cache_task_manually(
+                api,
+                None,
+                video_id=self.video_interface.video_id,
+            )
+        else:
+            # if cache is not persistent, run cache task for range of frames
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=self.video_interface.video_id,
+            )
+
         api.logger.info("Starting tracking process")
         # load frames
         frames = self.video_interface.frames
@@ -127,7 +148,9 @@ class MaskTracking(Inference, InferenceImageCache):
                     else:
                         # frame_idx = j + 1
                         geometry = sly.Bitmap(mask)
-                        predictions_for_label.append(geometry.to_json())
+                        predictions_for_label.append(
+                            {"type": geometry.geometry_name(), "data": geometry.to_json()}
+                        )
                 predictions.append(predictions_for_label)
 
         # predictions must be NxK masks: N=number of frames, K=number of objects
@@ -245,11 +268,6 @@ class MaskTracking(Inference, InferenceImageCache):
             settings: str = Form("{}"),
         ):
             return self._track_api_files(request, files, settings)
-
-        @server.post("/track-api-cached")
-        def track_api_cached(request: Request):
-            sly.logger.info("Start tracking.")
-            return self._track_api_cached(request, request.state.context)
 
         def send_error_data(func):
             @functools.wraps(func)
