@@ -227,7 +227,7 @@ class PointTracking(Inference, InferenceImageCache):
             return {"message": "Track task started."}
 
         @server.post("/track-api")
-        def track_api(request: Request):
+        async def track_api(request: Request):
             return self.track_api(request.state.api, request.state.context)
 
         @server.post("/track-api-files")

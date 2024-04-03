@@ -279,7 +279,7 @@ class BBoxTracking(Inference, InferenceImageCache):
             return {"message": "Track task started."}
 
         @server.post("/track-api")
-        def track_api(request: Request):
+        async def track_api(request: Request):
             sly.logger.info("Start tracking.")
             return self._track_api(request.state.api, request.state.context)
 
