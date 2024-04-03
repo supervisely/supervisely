@@ -115,7 +115,7 @@ class SLYImageConverter(ImageConverter):
             if "annotation" in ann_json:
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
-                ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes)
+                ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return Annotation.from_json(ann_json, meta)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

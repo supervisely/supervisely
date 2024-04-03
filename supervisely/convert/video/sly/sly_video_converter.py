@@ -97,7 +97,11 @@ class SLYVideoConverter(VideoConverter):
         return detected_ann_cnt > 0
 
     def to_supervisely(
-        self, item: VideoConverter.Item, meta: ProjectMeta = None
+            self,
+            item: VideoConverter.Item,
+            meta: ProjectMeta = None,
+            renamed_classes: dict = None,
+            renamed_tags: dict = None,
     ) -> VideoAnnotation:
         """Convert to Supervisely format."""
         if meta is None:
@@ -110,6 +114,8 @@ class SLYVideoConverter(VideoConverter):
             ann_json = load_json_file(item.ann_data)
             if "annotation" in ann_json:
                 ann_json = ann_json["annotation"]
+            if renamed_classes or renamed_tags:
+                ann_json = sly_video_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return VideoAnnotation.from_json(ann_json, meta)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

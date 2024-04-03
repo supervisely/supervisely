@@ -87,7 +87,9 @@ class VideoConverter(BaseConverter):
             curr_meta = ProjectMeta()
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(curr_meta)
+
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
+
         api.project.update_meta(dataset.project_id, meta)
 
         if log_progress:
@@ -114,7 +116,7 @@ class VideoConverter(BaseConverter):
                     item_names.append(item.name)
                 item_paths.append(item.path)
 
-                ann = self.to_supervisely(item, meta)
+                ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 figures_cnt += len(ann.figures)
                 anns.append(ann)
 

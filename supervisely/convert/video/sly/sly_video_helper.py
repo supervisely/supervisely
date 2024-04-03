@@ -87,3 +87,12 @@ def create_classes_from_annotation(
                 meta = meta.delete_obj_class(class_name)
                 meta = meta.add_obj_class(obj_class)
     return meta
+
+def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
+    if renamed_classes:
+        for obj in ann_json["objects"]:
+            obj["classTitle"] = renamed_classes.get(obj["classTitle"], obj["classTitle"])
+    if renamed_tags:
+        for tag in ann_json["tags"]:
+            tag["name"] = renamed_tags.get(tag["name"], tag["name"])
+    return ann_json
