@@ -2,7 +2,7 @@ import os
 from tqdm import tqdm
 from supervisely import Api, logger, ProjectType
 from supervisely.app import get_data_dir
-from supervisely.io.env import team_id
+from supervisely.io.env import team_id as env_team_id
 from supervisely.io.fs import is_archive, silent_remove, unpack_archive, dir_exists
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
@@ -12,9 +12,15 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 
 
 class ImportManager:
-    def __init__(self, input_data: str, project_type: ProjectType):
+    def __init__(self, input_data: str, project_type: ProjectType, team_id: int = None):
         self._api = Api.from_env()
-        self._team_id = team_id()
+        if team_id is not None:
+            team_info = self._api.team.get_info_by_id(team_id)
+            if team_info is None:
+                raise ValueError(f"Team with id {team_id} does not exist or you do not have access to it.")
+        else:
+            self._team_id = env_team_id()
+
 
         if dir_exists(input_data):
             self._input_data = input_data
