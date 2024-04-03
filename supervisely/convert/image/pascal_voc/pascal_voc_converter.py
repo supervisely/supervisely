@@ -62,13 +62,19 @@ class PascalVOCConverter(ImageConverter):
         detected_ann_cnt = 0
 
         def check_function(dir_path):
-            if not dir_exists(os.path.join(dir_path, "ImageSets")):
+            possible_image_dir_names = ["JPEGImages", "Images", "images", "imgs", "img"]
+            if not any([dir_exists(os.path.join(dir_path, p)) for p in possible_image_dir_names]):
                 return False
-            if not dir_exists(os.path.join(dir_path, "ImageSets", "Segmentation")):
-                return False
-            if not dir_exists(os.path.join(dir_path, "JPEGImages")):
-                return False
-            if not dir_exists(os.path.join(dir_path, "SegmentationClass")):
+            possible_segm_dir_names = [
+                "SegmentationClass",
+                "segmentation",
+                "segmentations",
+                "Segmentation",
+                "Segmentations",
+                "masks",
+                "segm",
+            ]
+            if not any([dir_exists(os.path.join(dir_path, p)) for p in possible_segm_dir_names]):
                 return False
             return True
 
