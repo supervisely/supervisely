@@ -244,7 +244,9 @@ class InferenceImageCache:
 
         if name not in self._cache:
             if video_id in self._cache:
-                api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
+                api.logger.debug(
+                    f"Get frame #{frame_index} for video #{video_id} from cache (video file)"
+                )
                 return self.get_frame_from_cache(video_id, frame_index)
 
             self._load_queue.set(name, (video_id, frame_index))
