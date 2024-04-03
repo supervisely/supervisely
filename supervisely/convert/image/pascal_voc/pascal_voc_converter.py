@@ -124,7 +124,6 @@ class PascalVOCConverter(ImageConverter):
                 inst_path = os.path.join(self._inst_dir, item_name_noext + ".png")
                 if file_exists(inst_path):
                     item.set_inst_path(inst_path)
-                    break
             self._items.append(item)
         return detected_ann_cnt > 0
 
