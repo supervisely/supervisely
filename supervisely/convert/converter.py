@@ -23,11 +23,13 @@ class ImportManager:
 
 
         if dir_exists(input_data):
+            logger.info(f"Input data is a local directory: {input_data}")
             self._input_data = input_data
-        elif len(self._api.storage.list(self._team_id, input_data, recursive=False)) > 0:
+        elif self._api.storage.dir_exists(self._team_id, input_data):
+            logger.info(f"Input data is a remote directory: {input_data}")
             self._input_data = self._download_input_data(input_data)
         else:
-            raise RuntimeError(f"Input data does not exist: {input_data}")
+            raise RuntimeError(f"Input data not found: {input_data}")
         self._unpack_archives(self._input_data)
         self._modality = project_type
         self._converter = self.get_converter()
