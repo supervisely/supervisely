@@ -1,26 +1,49 @@
 import os
+
 from tqdm import tqdm
-from supervisely import Api, logger, ProjectType
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
+from supervisely import Api, ProjectType, logger
 from supervisely.app import get_data_dir
-from supervisely.io.env import team_id as env_team_id
-from supervisely.io.fs import is_archive, silent_remove, unpack_archive, dir_exists
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
+from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
+    PointcloudEpisodeConverter,
+)
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
-from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import PointcloudEpisodeConverter
+from supervisely.io.env import team_id as env_team_id
+from supervisely.io.fs import dir_exists, is_archive, silent_remove, unpack_archive
 
 
 class ImportManager:
-    def __init__(self, input_data: str, project_type: ProjectType, team_id: int = None):
+    def __init__(
+        self,
+        input_data: str,
+        project_type: ProjectType,
+        team_id: int = None,
+        lableing_interface: Literal[
+            "default",
+            "multi_view",
+            "multi_spectral",
+            "high_color_depth",
+            "medical_2d",
+        ] = "default",
+    ):
         self._api = Api.from_env()
         if team_id is not None:
             team_info = self._api.team.get_info_by_id(team_id)
             if team_info is None:
-                raise ValueError(f"Team with id {team_id} does not exist or you do not have access to it.")
+                raise ValueError(
+                    f"Team with id {team_id} does not exist or you do not have access to it."
+                )
         else:
             self._team_id = env_team_id()
-
+        self._labeling_interface = lableing_interface
 
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
@@ -48,7 +71,7 @@ class ImportManager:
     def get_converter(self):
         """Return correct converter"""
         if str(self._modality) == ProjectType.IMAGES.value:
-            return ImageConverter(self._input_data)._converter
+            return ImageConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.VIDEOS.value:
             return VideoConverter(self._input_data)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
@@ -72,11 +95,13 @@ class ImportManager:
 
         dir_name = os.path.basename(os.path.normpath(remote_path))
         local_path = os.path.join(get_data_dir(), dir_name)
-        directory_size= self._api.storage.get_directory_size(self._team_id, remote_path)
+        directory_size = self._api.storage.get_directory_size(self._team_id, remote_path)
         progress_cb = tqdm(
-            total=directory_size, desc="Downloading...", unit='B', unit_scale=True
+            total=directory_size, desc="Downloading...", unit="B", unit_scale=True
         ).update
-        self._api.storage.download_directory(self._team_id, remote_path, local_path, progress_cb=progress_cb)
+        self._api.storage.download_directory(
+            self._team_id, remote_path, local_path, progress_cb=progress_cb
+        )
 
         return local_path
 
@@ -101,6 +126,7 @@ class ImportManager:
 
             for archive in archives:
                 silent_remove(archive)
+
 
 # @TODO:
 # [ ] - add timer
