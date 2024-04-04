@@ -333,8 +333,8 @@ class PointTracking(Inference, InferenceImageCache):
         self,
         rgb_images: List[np.ndarray],
         settings: Dict[str, Any],
-        start_object: PredictionPoint,
-    ) -> List[PredictionPoint]:
+        start_object: Union[PredictionPoint, List[PredictionPoint]],
+    ) -> List[List[PredictionPoint]]:
         """
         Track point on given frames.
 
@@ -342,10 +342,10 @@ class PointTracking(Inference, InferenceImageCache):
         :type rgb_images: List[np.array]
         :param settings: model parameters
         :type settings: Dict[str, Any]
-        :param start_objects: point to track on the initial frame
-        :type start_objects: PredictionPoint
+        :param start_objects: point or points to track on the initial frame
+        :type start_objects: Union[PredictionPoint, List[PredictionPoint]]
         :return: predicted points for frame range (0, m]; `m-1` prediction in total
-        :rtype: List[PredictionPoint]
+        :rtype: List[List[PredictionPoint]]
         """
         raise NotImplementedError
 
@@ -385,11 +385,12 @@ class PointTracking(Inference, InferenceImageCache):
         if settings is None:
             settings = self.custom_inference_settings_dict
         pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
-        predicted: List[Prediction] = self.predict(
+        predicted: List[List[Prediction]] = self.predict(
             frames,
             settings,
             pp_geom,
         )
+        predicted = [pred[0] for pred in predicted]
         return F.dto_points_to_sly_points(predicted)
 
     def _predict_polygon_geometries(
@@ -401,19 +402,14 @@ class PointTracking(Inference, InferenceImageCache):
         if settings is None:
             settings = self.custom_inference_settings_dict
         polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
-        exterior_per_time = [[] for _ in range(len(frames) - 1)]
 
-        for pp_geom in polygon_points:
-            points: List[Prediction] = self.predict(
-                frames,
-                settings,
-                pp_geom,
-            )
-            points_loc = F.dto_points_to_point_location(points)
-            for fi, point_loc in enumerate(points_loc[: len(exterior_per_time)]):
-                exterior_per_time[fi].append(point_loc)
-
-        return F.exteriors_to_sly_polygons(exterior_per_time)
+        points: List[List[Prediction]] = self.predict(
+            frames,
+            settings,
+            polygon_points,
+        )
+        points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in points]
+        return F.exteriors_to_sly_polygons(points_loc)
 
     def _predict_graph_geometries(
         self,
@@ -423,21 +419,19 @@ class PointTracking(Inference, InferenceImageCache):
     ) -> List[sly.GraphNodes]:
         if settings is None:
             settings = self.custom_inference_settings_dict
-        nodes_per_time = [[] for _ in range(len(frames) - 1)]
-        points_with_id = F.graph_to_dto_points(geom)
+        points, pids = F.graph_to_dto_points(geom)
 
-        for point, pid in zip(*points_with_id):
-            preds: List[PredictionPoint] = self.predict(
-                frames,
-                settings,
-                point,
-            )
-            nodes = F.dto_points_to_sly_nodes(preds, pid)
-
-            for time, node in enumerate(nodes[: len(nodes_per_time)]):
-                nodes_per_time[time].append(node)
-
-        return F.nodes_to_sly_graph(nodes_per_time)
+        preds: List[List[PredictionPoint]] = self.predict(
+            frames,
+            settings,
+            points,
+        )
+        nodes = [
+            F.dto_points_to_sly_nodes(point_preds, pid)
+            for point_preds, pid in zip(list(zip(*preds)), pids)
+        ]
+        nodes = list(zip(*nodes))
+        return F.nodes_to_sly_graph(nodes)
 
     def _predict_polyline_geometries(
         self,
@@ -448,23 +442,13 @@ class PointTracking(Inference, InferenceImageCache):
         if settings is None:
             settings = self.custom_inference_settings_dict
         polyline_points = F.numpy_to_dto_point(geom.exterior_np, "polyline")
-        lines_per_time = [[] for _ in range(len(frames) - 1)]
-        sly.logger.info("expecting %s predicted points per time", len(lines_per_time))
-        for point in polyline_points:
-            preds: List[PredictionPoint] = self.predict(
-                frames,
-                settings,
-                point,
-            )
-            sly.logger.info("polyline predicted %s points", len(preds))
-            sly_points_loc = F.dto_points_to_point_location(preds)
-            sly.logger.info(
-                "polyline converted %s points to %s sly_point_locs", len(preds), len(sly_points_loc)
-            )
-            for time, point_loc in enumerate(sly_points_loc[: len(lines_per_time)]):
-                lines_per_time[time].append(point_loc)
-
-        return F.exterior_to_sly_polyline(lines_per_time)
+        preds = self.predict(
+            frames,
+            settings,
+            polyline_points,
+        )
+        points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in preds]
+        return F.exterior_to_sly_polyline(points_loc)
 
     def _predictions_to_annotation(
         self, image: np.ndarray, predictions: List[Prediction]

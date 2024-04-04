@@ -2,22 +2,27 @@
 
 # docs
 from __future__ import annotations
-import numpy as np
-import cv2
+
 from copy import deepcopy
-from typing import List, Tuple, Dict, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
+
+import cv2
+import numpy as np
+
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    ID,
+    LABELER_LOGIN,
+    UPDATED_AT,
+)
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.image_rotator import ImageRotator
-
-
-from supervisely.imaging.color import rgb2hex, hex2rgb, _validate_color
-from supervisely.io.json import JsonSerializable
-
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.geometry import Geometry
-from supervisely.geometry.constants import LABELER_LOGIN, CREATED_AT, UPDATED_AT, ID, CLASS_ID
-
+from supervisely.imaging.color import _validate_color, hex2rgb, rgb2hex
+from supervisely.io.json import JsonSerializable
 
 EDGES = "edges"
 NODES = "nodes"
@@ -208,7 +213,7 @@ class GraphNodes(Geometry):
             created_at=created_at,
         )
         self._nodes = nodes
-        if isinstance(nodes, list):
+        if isinstance(nodes, (list, tuple)):
             self._nodes = {}
             for i, node in enumerate(nodes):
                 if node._label is not None:
