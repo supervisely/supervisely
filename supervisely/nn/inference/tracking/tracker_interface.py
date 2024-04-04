@@ -18,6 +18,7 @@ class TrackerInterface:
         notify_in_predict=False,
         per_point_polygon_tracking=True,
         frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
+        frames_loader: Callable[[sly.Api, int, List[int]], List[np.ndarray]] = None,
         should_notify: bool = True,
     ):
         self.api: sly.Api = api
@@ -52,10 +53,12 @@ class TrackerInterface:
 
         self._hot_cache: Dict[int, np.ndarray] = {}
         self._local_cache_loader = frame_loader
+        self._local_cache_frames_loader = frames_loader
 
         if self.load_all_frames:
             if notify_in_predict:
                 self.stop += self.frames_count + 1
+            self._load_frames_to_hot_cache()
             self._load_frames()
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
@@ -73,9 +76,20 @@ class TrackerInterface:
             yield
             return
 
+        _batch_size = 10
+        self._load_frames_to_hot_cache(
+            self.frames_indexes[: min(_batch_size + 1, len(self.frames_indexes))]
+        )
         ind = self.frames_indexes[0]
         frame = self._load_frame(ind)
-        for next_ind in self.frames_indexes[1:]:
+        for next_ind_pos, next_ind in enumerate(self.frames_indexes[1:]):
+            if next_ind not in self._hot_cache:
+                self._load_frames_to_hot_cache(
+                    self.frames_indexes[
+                        next_ind_pos
+                        + 1 : min(next_ind_pos + 1 + _batch_size, len(self.frames_indexes))
+                    ]
+                )
             next_frame = self._load_frame(next_ind)
             self._frames = np.array([frame, next_frame])
             self.frames_count = 1
@@ -150,6 +164,22 @@ class TrackerInterface:
         if self.load_all_frames:
             self.stop += len(self.frames_indexes)
 
+    def _load_frames_to_hot_cache(self, frames_indexes: List[int] = None):
+        if self._local_cache_frames_loader is not None:
+            if frames_indexes is None:
+                frames_indexes = self.frames_indexes
+            frames_to_load = []
+            self.logger.info(f"Loading {frames_to_load} frames to hot cache.")
+            for frame_index in frames_indexes:
+                if frame_index not in self._hot_cache:
+                    frames_to_load.append(frame_index)
+            if len(frames_to_load) == 0:
+                return
+            loaded_rgbs = self._local_cache_frames_loader(self.api, self.video_id, frames_to_load)
+            for rgb, loaded_frame_index in zip(loaded_rgbs, frames_to_load):
+                self._hot_cache[loaded_frame_index] = rgb
+            self.logger.info(f"{frames_to_load} frames loaded to hot cache.")
+
     def _load_frame(self, frame_index):
         if frame_index in self._hot_cache:
             return self._hot_cache[frame_index]
@@ -178,11 +208,12 @@ class TrackerInterface:
         fstart: Optional[int] = None,
         fend: Optional[int] = None,
         task: str = "not defined",
+        pos_increment: int = 1,
     ):
         if not self.should_notify:
             return
 
-        self.global_pos += 1
+        self.global_pos += pos_increment
 
         if stop:
             pos = self.stop

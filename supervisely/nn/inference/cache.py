@@ -84,8 +84,9 @@ class PersistentImageTTLCache(TTLCache):
         self.__del_file(key)
         return super().__delitem__(key)
 
-    def __del_file(self, key: Any):
-        filepath = self._base_dir / f"{str(key)}.png"
+    def __del_file(self, key: str):
+        cache_getitme = Cache.__getitem__
+        filepath = cache_getitme(self, key)
         silent_remove(filepath)
 
     def __get_keys(self):
@@ -93,13 +94,27 @@ class PersistentImageTTLCache(TTLCache):
         return self._TTLCache__links.keys()
 
     def expire(self, time=None):
+        """Remove expired items from the cache."""
         existing = set(self.__get_keys())
-        super().expire(time)
+        if time is None:
+            # pylint: disable=no-member
+            time = self._TTLCache__timer()
+        # pylint: disable=no-member
+        root = self._TTLCache__root
+        curr = root.next
+        # pylint: disable=no-member
+        links = self._TTLCache__links
+        cache_delitem = Cache.__delitem__
+        while curr is not root and curr.expire < time:
+            self.__del_file(curr.key)
+            cache_delitem(self, curr.key)
+            del links[curr.key]
+            next = curr.next
+            curr.unlink()
+            curr = next
         deleted = existing.difference(self.__get_keys())
-        sly.logger.debug(f"Deleted keys: {deleted}")
-
-        for key in deleted:
-            self.__del_file(key)
+        if len(deleted) > 0:
+            sly.logger.debug(f"Deleted keys: {deleted}")
 
     def clear(self, rm_base_folder=True) -> None:
         while self.currsize > 0:
@@ -111,10 +126,10 @@ class PersistentImageTTLCache(TTLCache):
         video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
-        super(PersistentImageTTLCache, self).__setitem__(video_id, video_path)
+        super().__setitem__(video_id, video_path)
 
     def get_video_path(self, video_id: int) -> Path:
-        return super(PersistentImageTTLCache, self).__getitem__(video_id)
+        return super().__getitem__(video_id)
 
 
 class InferenceImageCache:
@@ -247,7 +262,12 @@ class InferenceImageCache:
                 api.logger.debug(
                     f"Get frame #{frame_index} for video #{video_id} from cache (video file)"
                 )
-                return self.get_frame_from_cache(video_id, frame_index)
+                try:
+                    return self.get_frame_from_cache(video_id, frame_index)
+                except:
+                    sly.logger.warning(
+                        f"Frame {frame_index} not found in video {video_id}", exc_info=True
+                    )
 
             self._load_queue.set(name, (video_id, frame_index))
             frame = api.video.frame.download_np(video_id, frame_index)
@@ -264,7 +284,12 @@ class InferenceImageCache:
         return_images = kwargs.get("return_images", True)
 
         if video_id in self._cache:
-            return self.get_frames_from_cache(video_id, frame_indexes)
+            try:
+                return self.get_frames_from_cache(video_id, frame_indexes)
+            except:
+                sly.logger.warning(
+                    f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
+                )
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -316,12 +341,11 @@ class InferenceImageCache:
         self._wait_if_in_queue(video_id, api.logger)
         if not video_id in self._cache:
             self._load_queue.set(video_id, video_id)
+            sly.logger.debug("Downloading video #%s", video_id)
             video_info = api.video.get_info_by_id(video_id)
-            video_path = Path("/tmp/smart_cache").joinpath(
-                self._video_name(video_id, video_info.name)
-            )
-            api.video.download_path(video_id, video_path)
-            self.add_video_to_cache(video_id, video_path)
+            temp_video_path = Path("/tmp/smart_cache").joinpath(video_info.name)
+            api.video.download_path(video_id, temp_video_path)
+            self.add_video_to_cache(video_id, temp_video_path)
         if return_images:
             return self.get_frames_from_cache(video_id, list(range(video_info.frames_count)))
 
@@ -396,13 +420,12 @@ class InferenceImageCache:
                 self.add_frame_to_cache(frame, video_id, frame_index)
         elif task_type is InferenceImageCache._LoadType.Video:
             video_id = image_ids
-            name = self._video_name(video_id, files[0].filename)
-            video_path = Path("/tmp/smart_cache").joinpath(name)
-            with open(video_path, "wb") as f:
+            temp_video_path = Path("/tmp/smart_cache").joinpath(files[0].file.name)
+            with open(temp_video_path, "wb") as f:
                 shutil.copyfileobj(files[0].file, f)
             self._wait_if_in_queue(video_id, sly.logger)
             self._load_queue.set(video_id, video_id)
-            self.add_video_to_cache(video_id, str(video_path))
+            self.add_video_to_cache(video_id, str(temp_video_path))
 
     def run_cache_task_manually(
         self,

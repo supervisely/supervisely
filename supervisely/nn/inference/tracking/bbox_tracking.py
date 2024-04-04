@@ -127,6 +127,7 @@ class BBoxTracking(Inference, InferenceImageCache):
             api=api,
             load_all_frames=False,
             frame_loader=self.download_frame,
+            frames_loader=self.download_frames,
             should_notify=False,
         )
 
