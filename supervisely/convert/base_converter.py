@@ -194,9 +194,15 @@ class BaseConverter:
         if len(found_formats) == 1:
             return found_formats[0]
 
-    def merge_metas_with_conflicts(
-        self, meta1: ProjectMeta, meta2: ProjectMeta
-    ) -> Tuple[ProjectMeta, dict, dict]:
+    def merge_metas_with_conflicts(self, api: Api, dataset_id: int) -> Tuple[ProjectMeta, dict, dict]:
+
+        # get meta1 from project and meta2 from converter
+        dataset = api.dataset.get_info_by_id(dataset_id)
+        meta1_json = api.project.get_meta(dataset.project_id)
+        meta1 = ProjectMeta.from_json(meta1_json)
+        meta2 = self._meta or ProjectMeta()
+
+        # merge classes and tags from meta1 (unchanged) and meta2 (renamed if conflict)
         new_obj_classes = []
         renamed_classes = {}
         new_tags = []
@@ -244,4 +250,8 @@ class BaseConverter:
                 new_tags.append(new_tag)
 
         new_meta = meta1.clone(obj_classes=new_obj_classes, tag_metas=new_tags)
+
+        # update project meta
+        api.project.update_meta(dataset.project_id, new_meta)
+
         return new_meta, renamed_classes, renamed_tags

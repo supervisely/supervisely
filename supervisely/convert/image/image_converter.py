@@ -97,18 +97,9 @@ class ImageConverter(BaseConverter):
     ) -> None:
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([img.name for img in api.image.get_list(dataset.id)])
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        api.project.update_meta(dataset.project_id, meta)
-
+        existing_names = set([img.name for img in api.image.get_list(dataset_id)])
         if log_progress:
             progress = tqdm(total=self.items_count, desc="Uploading images...")
             progress_cb = progress.update
@@ -147,7 +138,7 @@ class ImageConverter(BaseConverter):
 
         if log_progress:
             progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
 
 
 # @TODO:
