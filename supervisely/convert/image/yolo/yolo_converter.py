@@ -164,11 +164,6 @@ class YOLOConverter(ImageConverter):
                 elif imghdr.what(full_path):
                     images_list.append(full_path)
 
-        if config_path is None:
-            self.yaml_info = {
-                "names": yolo_helper.coco_classes,
-                "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
-            }
         meta = ProjectMeta()
 
         # create Items
@@ -187,7 +182,13 @@ class YOLOConverter(ImageConverter):
                     item.set_ann_data(ann_path)
                     detected_ann_cnt += 1
             self._items.append(item)
-        self._meta = self.generate_meta()
+        if detected_ann_cnt > 0:
+            if config_path is None:
+                self.yaml_info = {
+                    "names": yolo_helper.coco_classes,
+                    "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
+                }
+            self._meta = self.generate_meta()
         return detected_ann_cnt > 0
 
     def generate_meta(self) -> ProjectMeta:

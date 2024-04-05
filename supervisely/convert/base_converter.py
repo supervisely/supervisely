@@ -11,6 +11,7 @@ class AvailableImageConverters:
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
     MULTISPECTRAL = "multispectral"
+    MASKS = "images_with_masks"
 
 
 class AvailableVideoConverters:
