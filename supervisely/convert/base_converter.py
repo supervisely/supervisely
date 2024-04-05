@@ -10,6 +10,7 @@ class AvailableImageConverters:
     COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
+    MASKS = "images_with_masks"
 
 
 class AvailableVideoConverters:
