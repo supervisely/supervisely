@@ -7,6 +7,7 @@ import yaml
 from supervisely import (
     Annotation,
     AnyGeometry,
+    GraphNodes,
     Label,
     ObjClass,
     Polygon,
@@ -26,9 +27,10 @@ class YOLOConverter(ImageConverter):
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
-        self.yaml_info: dict = None
-        self.class_index_to_geometry: dict = {}
-        self.coco_classes_dict: dict = {}
+        self._yaml_info: dict = None
+        self._with_keypoint = False
+        self._class_index_to_geometry: dict = {}
+        self._coco_classes_dict: dict = {}
 
     def __str__(self) -> str:
         return AvailableImageConverters.YOLO
@@ -52,7 +54,7 @@ class YOLOConverter(ImageConverter):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
-                        if class_index not in self.coco_classes_dict:
+                        if class_index not in self._coco_classes_dict:
                             logger.warn(
                                 f"Class index {class_index} not found in the config yaml file: {ann_path}"
                             )
@@ -62,25 +64,35 @@ class YOLOConverter(ImageConverter):
                                 f"The bounding coordinates must be in normalized xywh format (from 0 to 1): {ann_path}"
                             )
                             return False
-                        if len(coords) != 4 and (len(coords) % 2 != 0 or len(coords) < 6):
+                        if (
+                            len(coords) != 4
+                            and (len(coords) % 2 != 0 or len(coords) < 6)
+                            and not self._with_keypoint
+                        ):
                             logger.warn(
                                 f"Invalid coordinates for rectangle or polygon geometry: {ann_path}"
                             )
                             return False
 
                         # collect geometry types for each class
+                        geometry = None
                         if len(coords) == 4:
                             geometry = Rectangle
-                        elif len(coords) >= 6 and len(coords) % 2 == 0:
-                            geometry = Polygon
+                        elif len(coords) >= 6:
+                            if len(coords) % 2 == 0 and not self._with_keypoint:
+                                geometry = Polygon
+                            elif (
+                                self._with_keypoint
+                                and len(coords) == self._num_dims * self._num_kpts + 4
+                            ):
+                                geometry = GraphNodes
 
-                        if class_index not in self.class_index_to_geometry:
-                            self.class_index_to_geometry[class_index] = geometry
+                        if class_index not in self._class_index_to_geometry:
+                            self._class_index_to_geometry[class_index] = geometry
                             continue
-                        geometry = AnyGeometry
-                        existing_geometry = self.class_index_to_geometry[class_index]
+                        existing_geometry = self._class_index_to_geometry[class_index]
                         if geometry != existing_geometry:
-                            self.class_index_to_geometry[class_index] = geometry
+                            self._class_index_to_geometry[class_index] = AnyGeometry
 
             return True
         except:
@@ -97,6 +109,14 @@ class YOLOConverter(ImageConverter):
                     )
                 classes = config_yaml.get("names", yolo_helper.coco_classes)
                 result["names"] = classes
+                if "kpt_shape" in config_yaml:
+                    kpt_shape = config_yaml.get("kpt_shape")
+                    if not isinstance(kpt_shape, list):
+                        return False
+                    self._with_keypoint = True
+                    self._num_kpts = int(kpt_shape[0])
+                    self._num_dims = int(kpt_shape[1])
+                    result["kpt_shape"] = kpt_shape
 
                 nc = config_yaml.get("nc", len(classes))
                 if nc is not None:
@@ -137,8 +157,8 @@ class YOLOConverter(ImageConverter):
                     if os.path.isdir(cur_dataset_path):
                         result["datasets"].append((t, cur_dataset_path))
 
-                self.yaml_info = result
-                self.coco_classes_dict = {i: classes[i] for i in range(len(classes))}
+                self._yaml_info = result
+                self._coco_classes_dict = {i: classes[i] for i in range(len(classes))}
             return True
         except:
             return False
@@ -184,7 +204,7 @@ class YOLOConverter(ImageConverter):
             self._items.append(item)
         if detected_ann_cnt > 0:
             if config_path is None:
-                self.yaml_info = {
+                self._yaml_info = {
                     "names": yolo_helper.coco_classes,
                     "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
                 }
@@ -192,26 +212,35 @@ class YOLOConverter(ImageConverter):
         return detected_ann_cnt > 0
 
     def generate_meta(self) -> ProjectMeta:
+
         meta = ProjectMeta()
 
         classes = []
-        for class_index, class_name in self.coco_classes_dict.items():
-            color = self.yaml_info["colors"][class_index]
-            geometry = self.class_index_to_geometry.get(class_index)
+        for class_index, class_name in self._coco_classes_dict.items():
+            geometry_config = None
+            color = self._yaml_info["colors"][class_index]
+            geometry = self._class_index_to_geometry.get(class_index)
             if geometry is None:
                 geometry = Rectangle
-                self.class_index_to_geometry[class_index] = geometry
-            obj_cls = ObjClass(name=class_name, geometry_type=geometry, color=color)
+                self._class_index_to_geometry[class_index] = geometry
+            if geometry == GraphNodes:
+                geometry_config = yolo_helper.create_geometry_config(self._num_kpts)
+            obj_cls = ObjClass(
+                name=class_name,
+                geometry_type=geometry,
+                color=color,
+                geometry_config=geometry_config,
+            )
             classes.append(obj_cls)
         meta = meta.add_obj_classes(classes)
         return meta
 
     def to_supervisely(
-            self,
-            item: ImageConverter.Item,
-            meta: ProjectMeta = None,
-            renamed_classes: dict = None,
-            renamed_tags: dict = None,
+        self,
+        item: ImageConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:
@@ -231,12 +260,18 @@ class YOLOConverter(ImageConverter):
                         class_index, coords = yolo_helper.get_coordinates(line)
                         if len(coords) == 4:
                             geometry = yolo_helper.convert_rectangle(height, width, *coords)
-                        elif len(coords) >= 6 and len(coords) % 2 == 0:
+                        elif len(coords) >= 6 and len(coords) % 2 == 0 and not self._with_keypoint:
                             geometry = yolo_helper.convert_polygon(height, width, *coords)
+                        elif len(coords) == self._num_dims * self._num_kpts + 4:
+                            geometry = yolo_helper.convert_keypoints(
+                                height, width, self._num_kpts, self._num_dims, *coords
+                            )
+                            if geometry is None:
+                                continue
                         else:
                             continue
 
-                        class_name = self.coco_classes_dict[class_index]
+                        class_name = self._coco_classes_dict[class_index]
                         if renamed_classes is not None:
                             if class_name in renamed_classes:
                                 class_name = renamed_classes[class_name]
