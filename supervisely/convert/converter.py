@@ -26,7 +26,7 @@ class ImportManager:
         input_data: str,
         project_type: ProjectType,
         team_id: int = None,
-        lableing_interface: Literal[
+        labeling_interface: Literal[
             "default",
             "multi_view",
             "multi_spectral",
@@ -43,7 +43,7 @@ class ImportManager:
                 )
         else:
             self._team_id = env_team_id()
-        self._labeling_interface = lableing_interface
+        self._labeling_interface = labeling_interface
 
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
