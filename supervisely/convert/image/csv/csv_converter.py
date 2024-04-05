@@ -14,6 +14,7 @@ class CSVConverter(ImageConverter):
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
         self._csv_reader = None
+        self._team_id = None
 
     def __str__(self):
         return AvailableImageConverters.CSV
@@ -21,6 +22,16 @@ class CSVConverter(ImageConverter):
     @property
     def key_file_ext(self) -> str:
         return [".csv", ".txt"]
+
+    @property
+    def team_id(self) -> int:
+        return self._team_id
+
+    @team_id.setter
+    def team_id(self, value: int):
+        if not isinstance(value, int):
+            raise TypeError("team_id must be an integer")
+        self._team_id = value
 
     def validate_key_file(self, key_file_path: str) -> bool:
         try:

@@ -10,6 +10,7 @@ except ImportError:
 from supervisely import Api, ProjectType, logger
 from supervisely.app import get_data_dir
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
@@ -56,6 +57,8 @@ class ImportManager:
         self._unpack_archives(self._input_data)
         self._modality = project_type
         self._converter = self.get_converter()
+        if isinstance(self._converter, CSVConverter):
+            self._converter.team_id = self._team_id
 
     @property
     def modality(self):
