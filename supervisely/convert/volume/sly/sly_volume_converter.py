@@ -11,10 +11,11 @@ from supervisely.volume.volume import is_valid_ext as validate_volume_ext
 
 
 class SLYVolumeConverter(VolumeConverter):
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data
         self._items: List[VolumeConverter.Item] = []
         self._meta: ProjectMeta = None
+        self._labeling_interface: str = labeling_interface
 
     def __str__(self) -> str:
         return AvailableVolumeConverters.SLY
