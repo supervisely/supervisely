@@ -73,13 +73,13 @@ class ImportManager:
         if str(self._modality) == ProjectType.IMAGES.value:
             return ImageConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.VIDEOS.value:
-            return VideoConverter(self._input_data)._converter
+            return VideoConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
-            return PointcloudConverter(self._input_data)._converter
+            return PointcloudConverter(self._input_data, self._labeling_interface)._converter
         elif str(self.modality) == ProjectType.VOLUMES.value:
-            return VolumeConverter(self._input_data)._converter
+            return VolumeConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
-            return PointcloudEpisodeConverter(self._input_data)._converter
+            return PointcloudEpisodeConverter(self._input_data, self._labeling_interface)._converter
         else:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
 
