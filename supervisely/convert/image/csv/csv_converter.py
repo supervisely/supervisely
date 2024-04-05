@@ -13,7 +13,7 @@ class CSVConverter(ImageConverter):
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
-        self._csv_table = None
+        self._csv_reader = None
 
     def __str__(self):
         return AvailableImageConverters.CSV
@@ -24,9 +24,7 @@ class CSVConverter(ImageConverter):
 
     def validate_key_file(self, key_file_path: str) -> bool:
         try:
-            self._csv_table, self._meta, csv_reader = csv_helper.validate_and_collect_items(
-                key_file_path
-            )
+            self._meta, self._csv_reader = csv_helper.validate_and_collect_items(key_file_path)
             return True
         except Exception:
             return False
@@ -49,22 +47,35 @@ class CSVConverter(ImageConverter):
             full_path = csv_full_path
 
         if self.validate_key_file(full_path):
-            self._items = self.collect_items(self._csv_table)
+            self.collect_items()
             return True
         else:
             return False
 
     def collect_items(self):
-        items = []
-        for row in self._csv_table:
-            item_path = row[0]
-            ann_data = row[1]
+        for row in self._csv_reader:
+            possible_paths = (
+                csv_helper.possible_image_path_col_names + csv_helper.possible_image_url_col_names
+            )
+            for possible_path in possible_paths:
+                if possible_path in row:
+                    item_path = row.get(possible_path)
+                    if possible_path in csv_helper.possible_image_path_col_names:
+                        tf = True
+                    else:
+                        tf = False
+                    break
+            if item_path is None:
+                logger.warn(f"Failed to find image path in row: {row}. Skipping.")
+                continue
+            ann_data = row.get("tag")
             item = ImageConverter.Item(
                 item_path=item_path,
                 ann_data=ann_data,
+                local=False,
+                tf=tf,
             )
-            items.append(item)
-        return items
+            self._items.append(item)
 
     def to_supervisely(
         self,

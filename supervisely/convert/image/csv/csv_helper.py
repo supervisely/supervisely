@@ -218,7 +218,8 @@ def validate_and_collect_items(csv_path) -> Tuple[dict, sly.ProjectMeta, list]:
 
         # images_paths = [row[image_col_name] for row in stripped_reader]
 
-    return csv_table, project_meta, csv_reader
+    return project_meta, csv_reader
+    # csv_table,
     # images_paths,
     # total_tags,
     # need_tag,

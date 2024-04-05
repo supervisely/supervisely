@@ -36,7 +36,9 @@ class ImageConverter(BaseConverter):
             self._ann_data: Union[str,] = ann_data
             self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"
-            if shape is None:
+            self._local: bool = local
+            self._tf: bool = tf
+            if shape is None and local is True:
                 img = image.read(item_path)
                 self._shape: Union[Tuple, List] = img.shape[:2]
             else:
@@ -46,6 +48,14 @@ class ImageConverter(BaseConverter):
         @property
         def meta(self) -> Union[str, dict]:
             return self._meta_data
+
+        @property
+        def local(self) -> bool:
+            return self._local
+
+        @property
+        def tf(self) -> bool:
+            return self._tf
 
         def set_meta_data(self, meta_data: Union[str, dict]) -> None:
             self._meta_data = meta_data
@@ -204,7 +214,7 @@ class ImageConverter(BaseConverter):
         image_infos = [
             self.process_remote_image(
                 api,
-                api.team.id,
+                self.team_id,
                 image_path,
                 image_name,
                 dataset_id,
