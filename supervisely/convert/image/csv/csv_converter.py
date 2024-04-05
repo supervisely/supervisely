@@ -16,7 +16,7 @@ class CSVConverter(ImageConverter):
         self._csv_table = None
 
     def __str__(self):
-        return AvailableImageConverters.SLY
+        return AvailableImageConverters.CSV
 
     @property
     def key_file_ext(self) -> str:
