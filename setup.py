@@ -65,6 +65,7 @@ INSTALL_REQUIRES = [
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
+    "tifffile",
 ]
 
 ALT_INSTALL_REQUIRES = {

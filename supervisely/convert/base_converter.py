@@ -1,7 +1,7 @@
 import os
 from typing import List, Tuple, Union
 
-from supervisely import Annotation, Api, ProjectMeta, logger, TagValueType
+from supervisely import Annotation, Api, ProjectMeta, TagValueType, logger
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 
 
@@ -10,6 +10,7 @@ class AvailableImageConverters:
     COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
+    MULTISPECTRAL = "multispectral"
 
 
 class AvailableVideoConverters:
@@ -162,6 +163,7 @@ class BaseConverter:
     def _detect_format(self):
         found_formats = []
         all_converters = self.__class__.__subclasses__()
+        print([converter.__name__ for converter in all_converters])
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
@@ -175,15 +177,19 @@ class BaseConverter:
                     )
 
         if len(found_formats) == 0:
-            logger.warn(f"No valid dataset formats detected. Only items will be processed")
+            logger.warn(
+                f"No valid dataset formats detected. Only items will be processed"
+            )
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
                     ext = get_file_ext(full_path)
                     if file in JUNK_FILES:
                         continue
-                    if ext in self.allowed_exts: # pylint: disable=no-member
-                        self._items.append(self.Item(full_path)) # pylint: disable=no-member
+                    if ext in self.allowed_exts:  # pylint: disable=no-member
+                        self._items.append(
+                            self.Item(full_path)
+                        )  # pylint: disable=no-member
             if self.items_count == 0:
                 raise RuntimeError(f"No valid items found in the input data")
             return self
@@ -192,7 +198,7 @@ class BaseConverter:
             return found_formats[0]
 
     def merge_metas_with_conflicts(
-            self, meta1: ProjectMeta, meta2: ProjectMeta
+        self, meta1: ProjectMeta, meta2: ProjectMeta
     ) -> Tuple[ProjectMeta, dict, dict]:
         new_obj_classes = []
         renamed_classes = {}
@@ -205,7 +211,10 @@ class BaseConverter:
             new_name = new_cls.name
             matched = False
             while meta1.obj_classes.get(new_name) is not None:
-                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                if (
+                    meta1.obj_classes.get(new_name).geometry_type
+                    == new_cls.geometry_type
+                ):
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"
@@ -228,7 +237,10 @@ class BaseConverter:
                     if new_tag.value_type != TagValueType.ONEOF_STRING:
                         matched = True
                         break
-                    if meta1.tag_metas[new_name].possible_values == new_tag.possible_values:
+                    if (
+                        meta1.tag_metas[new_name].possible_values
+                        == new_tag.possible_values
+                    ):
                         matched = True
                         break
                 new_name = f"{new_tag.name}_{i}"

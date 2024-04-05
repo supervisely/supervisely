@@ -97,11 +97,11 @@ class SLYImageConverter(ImageConverter):
         return detected_ann_cnt > 0
 
     def to_supervisely(
-            self,
-            item: ImageConverter.Item,
-            meta: ProjectMeta = None,
-            renamed_classes: dict = None,
-            renamed_tags: dict = None,
+        self,
+        item: ImageConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:

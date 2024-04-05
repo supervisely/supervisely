@@ -3,7 +3,14 @@ from typing import List, Optional, Tuple, Union
 from tqdm import tqdm
 
 import supervisely.imaging.image as image
-from supervisely import Annotation, Api, batched, generate_free_name, logger, ProjectMeta
+from supervisely import (
+    Annotation,
+    Api,
+    ProjectMeta,
+    batched,
+    generate_free_name,
+    logger,
+)
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.json import load_json_file
@@ -25,11 +32,17 @@ class ImageConverter(BaseConverter):
             self._ann_data: Union[str,] = ann_data
             self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"
-            if shape is None:
-                img = image.read(item_path)
-                self._shape: Union[Tuple, List] = img.shape[:2]
-            else:
-                self._shape: Union[Tuple, List] = shape
+            # TODO: Fix the issue to open different images (tiff, multichannel, nrrd) and remove the try-except block.
+            try:
+                if shape is None:
+                    img = image.read(item_path)
+                    self._shape: Union[Tuple, List] = img.shape[:2]
+                else:
+                    self._shape: Union[Tuple, List] = shape
+            except Exception as e:
+                logger.warning(f"Failed to read image shape: {e}, shape is set to [0, 0]")
+                self._shape = [0, 0]
+            # TODO: End of the block with the issue.
             self._custom_data: dict = custom_data if custom_data is not None else {}
 
         @property
@@ -43,9 +56,9 @@ class ImageConverter(BaseConverter):
             return Annotation(self._shape)
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: str,
+        self,
+        input_data: str,
+        labeling_interface: str,
     ):
         self._input_data: str = input_data
         self._meta: ProjectMeta = None
@@ -97,7 +110,7 @@ class ImageConverter(BaseConverter):
         api.project.update_meta(dataset.project_id, meta)
 
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading images...")
+            progress = tqdm(total=self.items_count, desc="Uploading images...")
             progress_cb = progress.update
         else:
             progress_cb = None
@@ -142,4 +155,5 @@ class ImageConverter(BaseConverter):
 # [ ] - Implement detailed coco label validation
 # Supervisely
 # [x] - Implement keypoints generation (when meta not found)
+# [ ] - Add ann keys validation to method `generate_meta_from_annotation()`
 # [ ] - Add ann keys validation to method `generate_meta_from_annotation()`
