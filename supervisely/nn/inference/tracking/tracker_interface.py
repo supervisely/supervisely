@@ -169,12 +169,12 @@ class TrackerInterface:
             if frames_indexes is None:
                 frames_indexes = self.frames_indexes
             frames_to_load = []
-            self.logger.info(f"Loading {frames_to_load} frames to hot cache.")
             for frame_index in frames_indexes:
                 if frame_index not in self._hot_cache:
                     frames_to_load.append(frame_index)
             if len(frames_to_load) == 0:
                 return
+            self.logger.info(f"Loading {frames_to_load} frames to hot cache.")
             loaded_rgbs = self._local_cache_frames_loader(self.api, self.video_id, frames_to_load)
             for rgb, loaded_frame_index in zip(loaded_rgbs, frames_to_load):
                 self._hot_cache[loaded_frame_index] = rgb

@@ -150,7 +150,7 @@ class InferenceImageCache:
         self._maxsize = maxsize
         self._ttl = ttl
         self._lock = Lock()
-        self._load_queue = CacheOut(ttl=5)
+        self._load_queue = CacheOut(10 * 60)
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -343,7 +343,9 @@ class InferenceImageCache:
             self._load_queue.set(video_id, video_id)
             sly.logger.debug("Downloading video #%s", video_id)
             video_info = api.video.get_info_by_id(video_id)
-            temp_video_path = Path("/tmp/smart_cache").joinpath(video_info.name)
+            temp_video_path = Path("/tmp/smart_cache").joinpath(
+                f"_{sly.rand_str(6)}_" + video_info.name
+            )
             api.video.download_path(video_id, temp_video_path)
             self.add_video_to_cache(video_id, temp_video_path)
         if return_images:
@@ -420,7 +422,9 @@ class InferenceImageCache:
                 self.add_frame_to_cache(frame, video_id, frame_index)
         elif task_type is InferenceImageCache._LoadType.Video:
             video_id = image_ids
-            temp_video_path = Path("/tmp/smart_cache").joinpath(files[0].file.name)
+            temp_video_path = Path("/tmp/smart_cache").joinpath(
+                f"_{sly.rand_str(6)}_" + files[0].file.name
+            )
             with open(temp_video_path, "wb") as f:
                 shutil.copyfileobj(files[0].file, f)
             self._wait_if_in_queue(video_id, sly.logger)
