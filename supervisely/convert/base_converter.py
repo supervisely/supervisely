@@ -1,6 +1,11 @@
 import os
 from typing import List, Tuple, Union
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 from supervisely import Annotation, Api, ProjectMeta, TagValueType, logger
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 
@@ -108,10 +113,21 @@ class BaseConverter:
         def create_empty_annotation(self) -> Annotation:
             raise NotImplementedError()
 
-    def __init__(self, input_data: str):
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Literal[
+                "default",
+                "multi_view",
+                "multi_spectral",
+                "high_color_depth",
+                "medical_2d",
+            ] = "default",
+        ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
+        self._labeling_interface: str = labeling_interface
 
     @property
     def format(self) -> str:
@@ -128,6 +144,9 @@ class BaseConverter:
     @property
     def key_file_ext(self) -> str:
         raise NotImplementedError()
+    
+    def validate_labeling_interface(self) -> bool:
+        return self._labeling_interface == "default"
 
     def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
@@ -168,12 +187,14 @@ class BaseConverter:
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
-            converter = converter(self._input_data)
+            converter = converter(self._input_data, self._labeling_interface)
+            if not converter.validate_labeling_interface():
+                continue
             if converter.validate_format():
                 found_formats.append(converter)
                 if len(found_formats) > 1:
                     raise RuntimeError(
-                        f"Multiple formats detected: {found_formats}. "
+                        f"Multiple formats detected: {[str(f) for f in found_formats]}. "
                         "Mixed formats are not supported yet."
                     )
 

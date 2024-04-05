@@ -23,7 +23,7 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
 
 class YOLOConverter(ImageConverter):
 
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
@@ -31,6 +31,7 @@ class YOLOConverter(ImageConverter):
         self._with_keypoint = False
         self._class_index_to_geometry: dict = {}
         self._coco_classes_dict: dict = {}
+        self._labeling_interface = labeling_interface
 
     def __str__(self) -> str:
         return AvailableImageConverters.YOLO

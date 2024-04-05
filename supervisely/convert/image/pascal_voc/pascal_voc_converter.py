@@ -41,7 +41,7 @@ class PascalVOCConverter(ImageConverter):
         def set_inst_path(self, inst_path: str) -> None:
             self._inst_path = inst_path
 
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
@@ -50,6 +50,7 @@ class PascalVOCConverter(ImageConverter):
         self._imgs_dir = None
         self._segm_dir = None
         self._inst_dir = None
+        self._labeling_interface = labeling_interface
 
     def __str__(self) -> str:
         return AvailableImageConverters.PASCAL_VOC

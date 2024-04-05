@@ -20,13 +20,18 @@ ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
 
 
 class MultiSpectralImageConverter(ImageConverter):
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
+        self._labeling_interface = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.MULTISPECTRAL
+
+    def validate_labeling_interface(self) -> bool:
+        """Only multispectral labeling interface can be used for multispectral images."""
+        return self._labeling_interface == "multi_spectral"
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
