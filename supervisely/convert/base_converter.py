@@ -178,9 +178,7 @@ class BaseConverter:
                     )
 
         if len(found_formats) == 0:
-            logger.warn(
-                f"No valid dataset formats detected. Only items will be processed"
-            )
+            logger.warn("No valid dataset formats detected. Only items will be processed")
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
@@ -188,11 +186,9 @@ class BaseConverter:
                     if file in JUNK_FILES:
                         continue
                     if ext in self.allowed_exts:  # pylint: disable=no-member
-                        self._items.append(
-                            self.Item(full_path)
-                        )  # pylint: disable=no-member
+                        self._items.append(self.Item(full_path))  # pylint: disable=no-member
             if self.items_count == 0:
-                raise RuntimeError(f"No valid items found in the input data")
+                raise RuntimeError("No valid items found in the input data")
             return self
 
         if len(found_formats) == 1:
@@ -212,10 +208,7 @@ class BaseConverter:
             new_name = new_cls.name
             matched = False
             while meta1.obj_classes.get(new_name) is not None:
-                if (
-                    meta1.obj_classes.get(new_name).geometry_type
-                    == new_cls.geometry_type
-                ):
+                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"
@@ -238,10 +231,7 @@ class BaseConverter:
                     if new_tag.value_type != TagValueType.ONEOF_STRING:
                         matched = True
                         break
-                    if (
-                        meta1.tag_metas[new_name].possible_values
-                        == new_tag.possible_values
-                    ):
+                    if meta1.tag_metas[new_name].possible_values == new_tag.possible_values:
                         matched = True
                         break
                 new_name = f"{new_tag.name}_{i}"
