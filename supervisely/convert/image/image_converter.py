@@ -110,25 +110,27 @@ class ImageConverter(BaseConverter):
             for item in batch:
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
 
+                name = item.name
                 if item.name in existing_names:
-                    new_name = generate_free_name(
+                    name = generate_free_name(
                         existing_names, item.name, with_ext=True, extend_used_names=True
                     )
                     logger.warn(
-                        f"Image with name '{item.name}' already exists, renaming to '{new_name}'"
+                        f"Image with name '{item.name}' already exists, renaming to '{name}'"
                     )
-                    item_names.append(new_name)
-                else:
-                    item_names.append(item.name)
+                item_names.append(name)
+                existing_names.add(name)
                 item_paths.append(item.path)
                 item_metas.append(load_json_file(item.meta) if item.meta else {})
-                anns.append(ann)
+                if ann is not None:
+                    anns.append(ann)
 
             img_infos = api.image.upload_paths(
                 dataset_id, item_names, item_paths, progress_cb, item_metas
             )
             img_ids = [img_info.id for img_info in img_infos]
-            api.annotation.upload_anns(img_ids, anns)
+            if len(anns) == len(img_ids):
+                api.annotation.upload_anns(img_ids, anns)
 
         if log_progress:
             progress.close()
