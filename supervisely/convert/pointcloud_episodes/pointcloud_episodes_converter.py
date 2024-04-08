@@ -38,13 +38,14 @@ class PointcloudEpisodeConverter(BaseConverter):
         def set_related_images(self, related_images: dict) -> None:
             self._related_images.append(related_images)
 
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data
         self._items: List[self.Item] = []
         self._meta: ProjectMeta = None
         self._annotation = None
         self._frame_pointcloud_map = None
         self._frame_count = None
+        self._labeling_interface: str = labeling_interface
         self._converter = self._detect_format()
 
     @property

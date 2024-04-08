@@ -69,10 +69,11 @@ class VolumeConverter(BaseConverter):
         def set_interpolation_dir(self, interpolation_dir: str) -> None:
             self._interpolation_dir = interpolation_dir
 
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data
         self._meta: ProjectMeta = None
         self._items: List[self.Item] = []
+        self._labeling_interface: str = labeling_interface
         self._converter = self._detect_format()
         self._batch_size: int = 1
 
