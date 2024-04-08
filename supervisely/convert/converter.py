@@ -17,7 +17,7 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.env import team_id as env_team_id
-from supervisely.io.fs import dir_exists, is_archive, silent_remove, unpack_archive
+from supervisely.io.fs import dir_exists, is_archive, silent_remove, unpack_archive, remove_junk_from_dir
 
 
 class ImportManager:
@@ -26,12 +26,12 @@ class ImportManager:
         input_data: str,
         project_type: ProjectType,
         team_id: int = None,
-        lableing_interface: Literal[
+        labeling_interface: Literal[
             "default",
             "multi_view",
-            "multi_spectral",
-            "high_color_depth",
-            "medical_2d",
+            "multispectral",
+            "images_with_16_color",
+            "medical_imaging_single",
         ] = "default",
     ):
         self._api = Api.from_env()
@@ -43,7 +43,7 @@ class ImportManager:
                 )
         else:
             self._team_id = env_team_id()
-        self._labeling_interface = lableing_interface
+        self._labeling_interface = labeling_interface
 
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
@@ -54,6 +54,7 @@ class ImportManager:
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
         self._unpack_archives(self._input_data)
+        remove_junk_from_dir(self._input_data)
         self._modality = project_type
         self._converter = self.get_converter()
 
@@ -73,13 +74,13 @@ class ImportManager:
         if str(self._modality) == ProjectType.IMAGES.value:
             return ImageConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.VIDEOS.value:
-            return VideoConverter(self._input_data)._converter
+            return VideoConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
-            return PointcloudConverter(self._input_data)._converter
+            return PointcloudConverter(self._input_data, self._labeling_interface)._converter
         elif str(self.modality) == ProjectType.VOLUMES.value:
-            return VolumeConverter(self._input_data)._converter
+            return VolumeConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
-            return PointcloudEpisodeConverter(self._input_data)._converter
+            return PointcloudEpisodeConverter(self._input_data, self._labeling_interface)._converter
         else:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
 

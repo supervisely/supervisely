@@ -10,6 +10,8 @@ RUN pip install open3d==0.15.2 scikit-learn==0.24.1
 RUN pip install laspy==2.0.1 lazrs==0.3.0
 RUN pip install git+https://github.com/autonomousvision/kitti360Scripts.git transforms3d==0.4.1
 RUN pip install gdcm==1.1 pylibjpeg==1.4.0 pylibjpeg-libjpeg==1.3.1
+RUN pip install pillow-avif-plugin==1.4.3 pillow-heif==0.15.0
+RUN pip install tifffile
 
 # Export
 RUN pip install lxml==4.6.3

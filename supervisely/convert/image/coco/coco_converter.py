@@ -11,11 +11,12 @@ COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
-    def __init__(self, input_data):
+    def __init__(self, input_data, labeling_interface):
         self._input_data = input_data
         self._items = []
         self._meta = None
         self._coco_categories = []
+        self._labeling_interface = labeling_interface
 
     def __str__(self) -> str:
         return AvailableImageConverters.COCO

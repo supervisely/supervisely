@@ -11,10 +11,11 @@ from supervisely.io.json import load_json_file
 
 
 class SLYImageConverter(ImageConverter):
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
+        self._labeling_interface = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.SLY
@@ -97,11 +98,11 @@ class SLYImageConverter(ImageConverter):
         return detected_ann_cnt > 0
 
     def to_supervisely(
-            self,
-            item: ImageConverter.Item,
-            meta: ProjectMeta = None,
-            renamed_classes: dict = None,
-            renamed_tags: dict = None,
+        self,
+        item: ImageConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:
