@@ -113,17 +113,10 @@ class ImageConverter(BaseConverter):
             anns = []
             for item in batch:
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-
-                name = item.name
-                if item.name in existing_names:
-                    name = generate_free_name(
-                        existing_names, item.name, with_ext=True, extend_used_names=True
-                    )
-                    logger.warn(
-                        f"Image with name '{item.name}' already exists, renaming to '{name}'"
-                    )
+                name = generate_free_name(
+                    existing_names, item.name, with_ext=True, extend_used_names=True
+                )
                 item_names.append(name)
-                existing_names.add(name)
                 item_paths.append(item.path)
                 item_metas.append(load_json_file(item.meta) if item.meta else {})
                 if ann is not None:
