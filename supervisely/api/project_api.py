@@ -78,6 +78,7 @@ class ProjectInfo(NamedTuple):
     backup_archive: dict
     team_id: int
     settings: dict
+    import_settings: dict
 
     @property
     def image_preview_url(self):
@@ -147,10 +148,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         created_at='2020-11-17T17:44:28.158Z',
                         updated_at='2021-03-01T10:51:57.545Z',
                         type='images',
-                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
                         custom_data={},
                         backup_archive={},
-                        team_id=2
+                        team_id=2,
+                        import_settings={}
+                        )
         """
         return [
             ApiField.ID,
@@ -170,6 +173,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.BACKUP_ARCHIVE,
             ApiField.TEAM_ID,
             ApiField.SETTINGS,
+            ApiField.IMPORT_SETTINGS,
         ]
 
     @staticmethod
@@ -230,7 +234,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             type='images',
             #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #             custom_data={},
-            #             backup_archive={}),
+            #             backup_archive={},
+            #             import_settings={}
+            #           ),
             # ProjectInfo(id=999,
             #             name='Cat_breeds',
             #             description='',
@@ -243,9 +249,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-17T17:44:28.158Z',
             #             updated_at='2021-03-01T10:51:57.545Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #             custom_data={},
-            #             backup_archive={})
+            #             backup_archive={},
+            #             import_settings={}
+            #           )
             # ]
 
             # Filtered Project list
@@ -263,9 +271,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-17T17:44:28.158Z',
             #                     updated_at='2021-03-01T10:51:57.545Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
             # ]
 
         """
@@ -322,9 +332,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
 
 
         """
@@ -376,9 +388,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
         """
 
         fields = [
@@ -577,9 +591,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2021-03-11T09:28:42.585Z',
             #                     updated_at='2021-03-11T09:28:42.585Z',
             #                     type='images',
-            #                     reference_image_url=None),
+            #                     reference_image_url=None,
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
 
         """
         effective_name = self._get_effective_new_name(
@@ -1343,7 +1359,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             workspace_id=58,
             #             created_at='2020-11-09T18:21:32.356Z',
             #             updated_at='2020-11-09T18:21:32.356Z',
-            #             type='images',),
+            #             type='images',
+            #             ...
+            #             ),
             # ProjectInfo(id=777,
             #             name='Trucks',
             #             size='76154769',
@@ -1362,7 +1380,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     workspace_id=58,
             #                     created_at='2021-07-077T17:44:28.158Z',
             #                     updated_at='2023-07-15T12:33:45.747Z',
-            #                     type='images',)
+            #                     type='images',
+            #                     ...
+            #                     )
             # ]
 
         """
@@ -1683,7 +1703,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None,
-            #                       teamd_id = 1),
+            #                       teamd_id = 1,
+            #                       import_settings = {},
+            #                   ),
             #                   ProjectInfo(id = 23,
             #                       name = 'lemons_test',
             #                       description = None,
@@ -1699,7 +1721,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None),
-            #                       teamd_id = 1)
+            #                       teamd_id = 1,
+            #                       import_settings = {},
+            #                   )
             #                 ]
             # }
 
