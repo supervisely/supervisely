@@ -1,6 +1,7 @@
 import os
 from typing import List, Tuple, Union
 
+
 try:
     from typing import Literal
 except ImportError:
@@ -18,6 +19,9 @@ class AvailableImageConverters:
     MULTISPECTRAL = "multispectral"
     MASKS = "images_with_masks"
     MULTI_VIEW = "multi_view"
+    PDF = "pdf"
+    CITYSCAPES = "cityscapes"
+
 
 
 class AvailableVideoConverters:
