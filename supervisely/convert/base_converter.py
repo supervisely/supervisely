@@ -16,11 +16,13 @@ class AvailableImageConverters:
     COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
+    CSV = "csv"
     MULTISPECTRAL = "multispectral"
     MASKS = "images_with_masks"
     MULTI_VIEW = "multi_view"
     PDF = "pdf"
     CITYSCAPES = "cityscapes"
+
 
 
 

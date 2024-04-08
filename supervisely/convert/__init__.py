@@ -13,10 +13,12 @@ from supervisely.convert.image.cityscapes.cityscapes_converter import (
 
 # Image
 from supervisely.convert.image.coco.coco_converter import COCOConverter
+from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.multispectral.multispectral_converter import (
     MultiSpectralImageConverter,
 )
 from supervisely.convert.image.masks.images_with_masks_converter import ImagesWithMasksConverter
+
 from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCConverter
 from supervisely.convert.image.pdf.pdf_converter import PDFConverter
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
