@@ -1,7 +1,7 @@
 import os
 from typing import List, Tuple, Union
 
-from supervisely import Annotation, Api, ProjectMeta, logger, TagValueType
+from supervisely import Annotation, Api, ProjectMeta, TagValueType, logger
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 
 
@@ -10,6 +10,8 @@ class AvailableImageConverters:
     COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
+    PDF = "pdf"
+    CITYSCAPES = "cityscapes"
 
 
 class AvailableVideoConverters:
@@ -182,8 +184,8 @@ class BaseConverter:
                     ext = get_file_ext(full_path)
                     if file in JUNK_FILES:
                         continue
-                    if ext in self.allowed_exts: # pylint: disable=no-member
-                        self._items.append(self.Item(full_path)) # pylint: disable=no-member
+                    if ext in self.allowed_exts:  # pylint: disable=no-member
+                        self._items.append(self.Item(full_path))  # pylint: disable=no-member
             if self.items_count == 0:
                 raise RuntimeError(f"No valid items found in the input data")
             return self
@@ -192,7 +194,7 @@ class BaseConverter:
             return found_formats[0]
 
     def merge_metas_with_conflicts(
-            self, meta1: ProjectMeta, meta2: ProjectMeta
+        self, meta1: ProjectMeta, meta2: ProjectMeta
     ) -> Tuple[ProjectMeta, dict, dict]:
         new_obj_classes = []
         renamed_classes = {}

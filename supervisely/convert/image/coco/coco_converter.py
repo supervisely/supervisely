@@ -1,7 +1,6 @@
 import imghdr
 import os
 
-
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
@@ -76,7 +75,10 @@ class COCOConverter(ImageConverter):
         ann_dict = {}
         meta = ProjectMeta()
         for ann_path in ann_paths:
-            coco = COCO(ann_path)
+            try:
+                coco = COCO(ann_path)
+            except:
+                continue
             if not all(key in coco.dataset for key in COCO_ANN_KEYS):
                 continue
             coco_anns = coco.imgToAnns
@@ -120,11 +122,11 @@ class COCOConverter(ImageConverter):
         return self._items
 
     def to_supervisely(
-            self,
-            item: ImageConverter.Item,
-            meta: ProjectMeta = None,
-            renamed_classes: dict = None,
-            renamed_tags: dict = None,
+        self,
+        item: ImageConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if item.ann_data is None:

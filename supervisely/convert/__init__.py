@@ -6,16 +6,20 @@ from supervisely.convert.base_converter import (
     BaseConverter,
 )
 from supervisely.convert.converter import ImportManager
+from supervisely.convert.image.cityscapes.cityscapes_converter import (
+    CityscapesConverter,
+)
 
 # Image
 from supervisely.convert.image.coco.coco_converter import COCOConverter
 from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCConverter
+from supervisely.convert.image.pdf.pdf_converter import PDFConverter
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
 from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
 from supervisely.convert.pointcloud.las.las_converter import LasConverter
-from supervisely.convert.pointcloud.ply.ply_converter import PlyConverter
 
 # Pointcloud
+from supervisely.convert.pointcloud.ply.ply_converter import PlyConverter
 from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import (
     SLYPointcloudConverter,
 )
