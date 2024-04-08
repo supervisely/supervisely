@@ -17,7 +17,7 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.env import team_id as env_team_id
-from supervisely.io.fs import dir_exists, is_archive, silent_remove, unpack_archive
+from supervisely.io.fs import dir_exists, is_archive, silent_remove, unpack_archive, remove_junk_from_dir
 
 
 class ImportManager:
@@ -54,6 +54,7 @@ class ImportManager:
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
         self._unpack_archives(self._input_data)
+        remove_junk_from_dir(self._input_data)
         self._modality = project_type
         self._converter = self.get_converter()
 
