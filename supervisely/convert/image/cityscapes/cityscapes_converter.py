@@ -1,3 +1,4 @@
+import imghdr
 import os
 from pathlib import Path
 from typing import List
@@ -17,7 +18,7 @@ from supervisely import (
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import get_file_name
+from supervisely.io.fs import JUNK_FILES, get_file_name
 from supervisely.io.json import load_json_file
 
 
@@ -102,36 +103,26 @@ class CityscapesConverter(ImageConverter):
         detected_ann_cnt = 0
         images_list, ann_dict = [], {}
         for root, _, files in os.walk(self._input_data):
-            current_root_dir_name = os.path.basename(root)
-
             for file in files:
+                full_path = os.path.join(root, file)
+                dir_name = os.path.basename(root)
+                file_name = get_file_name(full_path)
                 if file.lower() == "class_to_id.json":
                     success = self.validate_key_file(os.path.join(root, file))
                     if not success:
                         logger.warn(
                             f"Failed to validate key file: '{file}'. Will use default cityscapes classes."
                         )
-
-            if current_root_dir_name == "gtFine":  # anns
-                datasets = os.listdir(root)
-                for dataset in datasets:
-                    if dataset == "train":
-                        for root, _, files in os.walk(os.path.join(root, dataset)):
-                            for file in files:
-                                if file.endswith("gtFine_polygons.json"):
-                                    success = self.validate_ann_file(os.path.join(root, file))
-                                    if success:
-                                        detected_ann_cnt += 1
-                                        ann_dict[file] = os.path.join(root, file)
-
-            if current_root_dir_name == "leftImg8bit":  # images
-                datasets = os.listdir(root)
-                for dataset in datasets:
-                    if dataset == "train":
-                        for root, _, files in os.walk(os.path.join(root, dataset)):
-                            for file in files:
-                                if file.endswith(".png"):
-                                    images_list.append(os.path.join(root, file))
+                if file in JUNK_FILES:
+                    continue
+                if file.endswith("_gtFine_polygons.json"):
+                    success = self.validate_ann_file(full_path)
+                    if success:
+                        detected_ann_cnt += 1
+                        ann_dict[file] = full_path
+                if file_name.endswith("_leftImg8bit"):
+                    if imghdr.what(full_path):
+                        images_list.append(full_path)
 
         self._items = []
         for image_path in images_list:
