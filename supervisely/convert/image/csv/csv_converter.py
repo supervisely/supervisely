@@ -198,7 +198,7 @@ class CSVConverter(ImageConverter):
 
         extension = os.path.splitext(image_path)[1]
         if not extension:
-            logger.warn(f"Image [{image_path}] doesn't have extension in path\url")
+            logger.warn(f"Image [{image_path}] doesn't have extension in path(url)")
 
         try:
             image_info = api.image.upload_link(
