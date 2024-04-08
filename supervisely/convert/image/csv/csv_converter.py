@@ -17,7 +17,7 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import get_file_ext
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 
 
@@ -35,6 +35,7 @@ class CSVConverter(ImageConverter):
             team_files: bool = False,
         ):
             self._path: str = item_path
+            self._name: str = get_file_name_with_ext(self._path)
             self._ann_data: Union[str,] = ann_data
             self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"
@@ -53,17 +54,23 @@ class CSVConverter(ImageConverter):
         def shape(self) -> bool:
             return self._shape
 
-        @shape.setter
-        def shape(self, value: Tuple | List):
+        @property
+        def name(self) -> str:
+            return self._name
+
+        def set_shape(self, value: Tuple | List):
             self._shape = value
 
-    def __init__(self, input_data: str):
+        def set_name(self, name: str):
+            self._name = name
+
+    def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
         self._csv_reader = None
         self._team_id = None
-        # self._labeling_interface: str = labeling_interface
+        self._labeling_interface: str = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.CSV
@@ -248,20 +255,11 @@ class CSVConverter(ImageConverter):
     ) -> None:
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([img.name for img in api.image.get_list(dataset.id)])
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        api.project.update_meta(dataset.project_id, meta)
-
+        existing_names = set([img.name for img in api.image.get_list(dataset_id)])
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading images")
+            progress = tqdm(total=self.items_count, desc="Uploading images")
             progress_cb = progress.update
         else:
             progress_cb = None
@@ -272,20 +270,16 @@ class CSVConverter(ImageConverter):
             item_metas = []
             is_team_files = []
             anns = []
-
+            success = True
             for item in batch:
                 item: CSVConverter.Item
 
-                if item.name in existing_names:
-                    new_name = generate_free_name(
+                item.set_name(
+                    generate_free_name(
                         existing_names, item.name, with_ext=True, extend_used_names=True
                     )
-                    logger.warn(
-                        f"Image with name '{item.name}' already exists, renaming to '{new_name}'"
-                    )
-                    item_names.append(new_name)
-                else:
-                    item_names.append(item.name)
+                )
+                item_names.append(item.name)
                 item_paths.append(item.path)
                 item_metas.append(load_json_file(item.meta) if item.meta else {})
                 is_team_files.append(item.team_files)
@@ -297,11 +291,13 @@ class CSVConverter(ImageConverter):
 
             for item, info in zip(batch, img_infos):
                 if info is None:
+                    success = False
                     continue
                 if item.name != info.name:
                     logger.warn(
                         f"Batched image name '{item.name}' doesn't match uploaded image name '{info.name}'"
                     )
+                    success = False
                 item: CSVConverter.Item
                 if item.shape is None or item.shape == [None, None]:
                     item.set_shape([info.height, info.width])
@@ -318,4 +314,7 @@ class CSVConverter(ImageConverter):
         if log_progress:
             progress.close()
             progress_ann.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        if success:
+            logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
+        else:
+            logger.warn(f"Dataset ID:'{dataset_id}' has been uploaded.")
