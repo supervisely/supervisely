@@ -17,6 +17,7 @@ from supervisely.convert.image.masks.images_with_masks_converter import ImagesWi
 from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCConverter
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
 from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
+from supervisely.convert.image.multi_view.multi_view import MultiViewImageConverter
 
 # Pointcloud
 from supervisely.convert.pointcloud.sly.sly_pointcloud_converter import SLYPointcloudConverter
