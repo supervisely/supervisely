@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from tqdm import tqdm
 
-from supervisely import Api, logger, ProjectMeta
+from supervisely import Api, ProjectMeta, generate_free_name, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
@@ -68,24 +68,17 @@ class MultiViewImageConverter(ImageConverter):
             logger.info(f"Found files in {group_path}.")
 
             group_name = os.path.basename(group_path.rstrip("/"))
-            images = [os.path.join(group_path, image) for image in image_group]
-            checked_images = []
-            for image in images:
-                if os.path.basename(image) in existing_names:
-                    name, ext = os.path.splitext(os.path.basename(image))
-                    i = 1
-                    new_name = f"{os.path.basename(name)}_{i}{ext}"
-                    while new_name in existing_names:
-                        new_name = f"{os.path.basename(name)}_{i}{ext}"
-                        i += 1
-                    logger.warn(f"Image '{image}' already exists. Renamed to '{new_name}'.")
+            images = []
+            for image in image_group:
+                name = os.path.basename(image)
+                new_name = generate_free_name(
+                    existing_names, name, with_ext=True, extend_used_names=True
+                )
+                if new_name != name:
+                    logger.warn(f"Image '{name}' already exists. Renamed to '{new_name}'.")
                     os.rename(image, os.path.join(group_path, new_name))
                     image = os.path.join(group_path, new_name)
-                    existing_names.append(new_name)
-                else:
-                    existing_names.append(os.path.basename(image))
-                checked_images.append(image)
-            images = checked_images
+                images.append(image)
 
             api.image.upload_multiview_images(
                 dataset.id, group_name, images, progress_cb=progress_cb
