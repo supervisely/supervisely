@@ -30,7 +30,7 @@ def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
 
 def convert_txt_to_csv(txt_file_path: str, csv_file_path: str, delimiter: str = DEFAULT_DELIMITER):
     data = pd.read_csv(txt_file_path, delimiter=delimiter)
-    data.to_csv(csv_file_path, index=False)
+    data.to_csv(csv_file_path, index=False, sep=delimiter)
 
 
 # ------------------------------------------- Validate ------------------------------------------- #
