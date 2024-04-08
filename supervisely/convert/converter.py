@@ -29,9 +29,9 @@ class ImportManager:
         labeling_interface: Literal[
             "default",
             "multi_view",
-            "multi_spectral",
-            "high_color_depth",
-            "medical_2d",
+            "multispectral",
+            "images_with_16_color",
+            "medical_imaging_single",
         ] = "default",
     ):
         self._api = Api.from_env()

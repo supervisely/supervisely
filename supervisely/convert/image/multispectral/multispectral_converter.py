@@ -31,7 +31,7 @@ class MultiSpectralImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multispectral labeling interface can be used for multispectral images."""
-        return self._labeling_interface == "multi_spectral"
+        return self._labeling_interface == "multispectral"
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
