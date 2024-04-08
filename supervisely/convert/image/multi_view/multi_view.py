@@ -4,8 +4,7 @@ from typing import Dict, List
 
 from tqdm import tqdm
 
-from supervisely import Api, ProjectMeta, TagMeta, TagValueType, logger
-from supervisely.api.project_api import _MULTIVIEW_TAG_NAME
+from supervisely import Api, logger, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
@@ -55,16 +54,7 @@ class MultiViewImageConverter(ImageConverter):
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset = api.dataset.get_info_by_id(dataset_id)
-        meta = ProjectMeta.from_json(api.project.get_meta(dataset.project_id))
-        group_tag_meta = meta.get_tag_meta(_MULTIVIEW_TAG_NAME)
-        if group_tag_meta is None:
-            group_tag_meta: TagMeta
-            if group_tag_meta.value_type != TagValueType.ANY_STRING:
-                raise ValueError(
-                    f"Tag '{_MULTIVIEW_TAG_NAME}' should have value type 'any_string', "
-                    f"but got '{group_tag_meta.value_type}'."
-                )
-            api.project.set_multiview_settings(dataset.project_id)
+        api.project.set_multiview_settings(dataset.project_id)
 
         existing_names = [info.name for info in api.image.get_list(dataset.id)]
         items_count = sum(len(images) for images in self._group_map.values())
