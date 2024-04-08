@@ -5,8 +5,8 @@ from typing import Tuple
 
 import pandas as pd
 
-import supervisely as sly
-from supervisely import logger
+from supervisely import ProjectMeta, TagMeta, TagMetaCollection, TagValueType, logger
+from supervisely.io.fs import silent_remove
 
 DEFAULT_DELIMITER = ";"
 INCORRECT_COLUMN_DELIMITER = ","
@@ -62,10 +62,10 @@ def flat_tag_list(total_tags):
 def create_project_meta_from_csv_tags(total_tags):
     tag_metas = []
     for tag_name in total_tags:
-        tag_meta = sly.TagMeta(tag_name, sly.TagValueType.NONE)
+        tag_meta = TagMeta(tag_name, TagValueType.NONE)
         tag_metas.append(tag_meta)
-    tag_meta_col = sly.TagMetaCollection(tag_metas)
-    project_meta = sly.ProjectMeta(tag_metas=tag_meta_col)
+    tag_meta_col = TagMetaCollection(tag_metas)
+    project_meta = ProjectMeta(tag_metas=tag_meta_col)
     return project_meta
 
 
@@ -136,10 +136,10 @@ def handle_csv_header(csv_path):
                 has_tags = True
                 break
         if first_line_is_url(first_line):
-            sly.logger.info("Headless csv detected. Adding 'url' column name to the first line.")
+            logger.info("Headless csv detected. Adding 'url' column name to the first line.")
             new_header = "url" + DEFAULT_DELIMITER + "tag\n" if has_tags else "url\n"
         elif first_line_is_path(first_line):
-            sly.logger.info("Headless csv detected. Adding 'path' column name to the first line.")
+            logger.info("Headless csv detected. Adding 'path' column name to the first line.")
             new_header = "path" + DEFAULT_DELIMITER + "tag\n" if has_tags else "path\n"
         if new_header is None:
             first_line = content[1]
@@ -160,12 +160,12 @@ def handle_csv_header(csv_path):
             updated = True
 
     if updated:
-        sly.fs.silent_remove(csv_path)
+        silent_remove(csv_path)
         with open(csv_path, "w") as file:
             file.writelines(content)
 
 
-def validate_and_collect_items(csv_path) -> Tuple[dict, sly.ProjectMeta, list]:
+def validate_and_collect_items(csv_path) -> Tuple[dict, ProjectMeta, list]:
     csv_table = {"columns": [], "data": []}
 
     if os.path.getsize(csv_path) == 0:
@@ -185,7 +185,7 @@ def validate_and_collect_items(csv_path) -> Tuple[dict, sly.ProjectMeta, list]:
         stripped_reader = []
         if len(reader) == 0:
             raise ValueError(f"File '{csv_path}' is empty")
-        sly.logger.info(f"Total rows in csv file: {len(reader)}")
+        logger.info(f"Total rows in csv file: {len(reader)}")
         for row in reader:
             stripped_row = {
                 k: v.strip() for k, v in row.items() if k is not None and type(v) == str
@@ -208,18 +208,11 @@ def validate_and_collect_items(csv_path) -> Tuple[dict, sly.ProjectMeta, list]:
                 list(set([row.get(tag_col_name) for row in stripped_reader]))
             )
             project_meta = create_project_meta_from_csv_tags(total_tags)
-            # need_tag = "add"
         else:
             csv_table["columns"] = ["row", image_col_name]
             for idx, row in enumerate(stripped_reader):
                 csv_table["data"].append([idx + 1, row[image_col_name]])
             total_tags = 0
-            # need_tag = "ignore"
-
-        # images_paths = [row[image_col_name] for row in stripped_reader]
+            project_meta = ProjectMeta()
 
     return project_meta, csv_reader
-    # csv_table,
-    # images_paths,
-    # total_tags,
-    # need_tag,
