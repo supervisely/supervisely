@@ -136,10 +136,10 @@ def handle_csv_header(csv_path):
                 has_tags = True
                 break
         if first_line_is_url(first_line):
-            logger.info("Headless csv detected. Adding 'url' column name to the first line.")
+            logger.debug("Headless csv detected. Adding 'url' column name to the first line.")
             new_header = "url" + DEFAULT_DELIMITER + "tag\n" if has_tags else "url\n"
         elif first_line_is_path(first_line):
-            logger.info("Headless csv detected. Adding 'path' column name to the first line.")
+            logger.debug("Headless csv detected. Adding 'path' column name to the first line.")
             new_header = "path" + DEFAULT_DELIMITER + "tag\n" if has_tags else "path\n"
         if new_header is None:
             first_line = content[1]
@@ -185,7 +185,7 @@ def validate_and_collect_items(csv_path) -> Tuple[dict, ProjectMeta, list]:
         stripped_reader = []
         if len(reader) == 0:
             raise ValueError(f"File '{csv_path}' is empty")
-        logger.info(f"Total rows in csv file: {len(reader)}")
+        logger.debug(f"Total rows in csv file: {len(reader)}")
         for row in reader:
             stripped_row = {
                 k: v.strip() for k, v in row.items() if k is not None and type(v) == str
