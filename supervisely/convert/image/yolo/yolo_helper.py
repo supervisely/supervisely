@@ -1,5 +1,6 @@
+from supervisely import GraphNodes, Polygon, Rectangle, logger
+from supervisely.geometry.graph import KeypointsTemplate, Node
 from supervisely.imaging.color import generate_rgb
-from supervisely import Polygon, Rectangle
 
 coco_classes = [
     "person",
@@ -92,10 +93,12 @@ def generate_colors(count):
         colors.append(new_color)
     return colors
 
+
 def get_coordinates(line):
     class_index = int(line[0])
     coords = list(map(float, line[1:]))
     return class_index, coords
+
 
 def convert_rectangle(img_height, img_width, x_center, y_center, ann_width, ann_height):
     x_center = float(x_center)
@@ -121,6 +124,7 @@ def convert_rectangle(img_height, img_width, x_center, y_center, ann_width, ann_
 
     return Rectangle(top, left, bottom, right)
 
+
 def convert_polygon(img_height, img_width, *coords):
     exterior = []
     for i in range(0, len(coords), 2):
@@ -130,3 +134,32 @@ def convert_polygon(img_height, img_width, *coords):
         px_y = min(img_height, max(0, int(y * img_height)))
         exterior.append([px_y, px_x])
     return Polygon(exterior=exterior)
+
+
+def convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords):
+    nodes = []
+    step = 3 if num_dims == 3 else 2
+    shift = 4
+    for i in range(shift, num_keypoints + shift, step):
+        x = coords[i]
+        y = coords[i + 1]
+        visibility = int(coords[i + 2]) if num_dims == 3 else 2
+        if visibility in [0, 1]:
+            continue  # skip invisible keypoints
+        px_x = min(img_width, max(0, int(x * img_width)))
+        px_y = min(img_height, max(0, int(y * img_height)))
+        node = Node(row=px_x, col=px_y)  # , disabled=v)
+        nodes.append(node)
+    if len(nodes) > 0:
+        return GraphNodes(nodes)
+
+
+def create_geometry_config(num_keypoints=None):
+    i, j = 0, 0
+    template = KeypointsTemplate()
+    for p in list(range(num_keypoints)):
+        template.add_point(label=str(p), row=i, col=j)
+        j += 1
+        i += 1
+
+    return template

@@ -2606,6 +2606,7 @@ class ImageApi(RemoveableBulkModuleApi):
         image_name: str,
         channels: Optional[List[np.ndarray]] = None,
         rgb_images: Optional[List[str]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
         """Uploads multispectral image to Supervisely, if channels are provided, they will
         be uploaded as separate images. If rgb_images are provided, they will be uploaded without
@@ -2619,6 +2620,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type channels: List[np.ndarray], optional
         :param rgb_images: list of paths to RGB images which will be uploaded as is
         :type rgb_images: List[str], optional
+        :param progress_cb: function for tracking upload progress
+        :type progress_cb: tqdm or callable, optional
         :return: list of uploaded images infos
         :rtype: List[ImageInfo]
         :Usage example:
@@ -2665,7 +2668,7 @@ class ImageApi(RemoveableBulkModuleApi):
             anns.append(Annotation(np_for_upload.shape).add_tag(group_tag))
             names.append(f"{image_basename}_{i}.png")
 
-        image_infos = self.upload_nps(dataset_id, names, nps_for_upload)
+        image_infos = self.upload_nps(dataset_id, names, nps_for_upload, progress_cb=progress_cb)
         image_ids = [image_info.id for image_info in image_infos]
 
         self._api.annotation.upload_anns(image_ids, anns)

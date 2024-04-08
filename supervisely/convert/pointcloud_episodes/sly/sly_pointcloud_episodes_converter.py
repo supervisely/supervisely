@@ -12,10 +12,11 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
-    def __init__(self, input_data: str):
+    def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data
         self._items: List[PointcloudEpisodeConverter.Item] = []
         self._meta: ProjectMeta = None
+        self._labeling_interface: str = labeling_interface
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY

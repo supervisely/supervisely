@@ -522,6 +522,8 @@ class ApiField:
     """"""
     LIMIT = "limit"
     """"""
+    IMPORT_SETTINGS = "importSettings"
+    """"""
 
     
 def _get_single_item(items):

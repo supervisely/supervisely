@@ -1,6 +1,12 @@
 import os
 from typing import List, Tuple, Union
 
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 from supervisely import Annotation, Api, ProjectMeta, TagValueType, logger
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 
@@ -11,6 +17,10 @@ class AvailableImageConverters:
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
     CSV = "csv"
+    MULTISPECTRAL = "multispectral"
+    MASKS = "images_with_masks"
+    MULTI_VIEW = "multi_view"
+
 
 
 class AvailableVideoConverters:
@@ -107,10 +117,21 @@ class BaseConverter:
         def create_empty_annotation(self) -> Annotation:
             raise NotImplementedError()
 
-    def __init__(self, input_data: str):
+    def __init__(
+        self,
+        input_data: str,
+        labeling_interface: Literal[
+            "default",
+            "multi_view",
+            "multispectral",
+            "images_with_16_color",
+            "medical_imaging_single",
+        ] = "default",
+    ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
+        self._labeling_interface: str = labeling_interface
 
     @property
     def format(self) -> str:
@@ -127,6 +148,9 @@ class BaseConverter:
     @property
     def key_file_ext(self) -> str:
         raise NotImplementedError()
+
+    def validate_labeling_interface(self) -> bool:
+        return self._labeling_interface == "default"
 
     def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
@@ -163,20 +187,23 @@ class BaseConverter:
     def _detect_format(self):
         found_formats = []
         all_converters = self.__class__.__subclasses__()
+        print([converter.__name__ for converter in all_converters])
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
-            converter = converter(self._input_data)
+            converter = converter(self._input_data, self._labeling_interface)
+            if not converter.validate_labeling_interface():
+                continue
             if converter.validate_format():
                 found_formats.append(converter)
                 if len(found_formats) > 1:
                     raise RuntimeError(
-                        f"Multiple formats detected: {found_formats}. "
+                        f"Multiple formats detected: {[str(f) for f in found_formats]}. "
                         "Mixed formats are not supported yet."
                     )
 
         if len(found_formats) == 0:
-            logger.warn(f"No valid dataset formats detected. Only items will be processed")
+            logger.warn("No valid dataset formats detected. Only items will be processed")
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
@@ -186,15 +213,23 @@ class BaseConverter:
                     if ext in self.allowed_exts:  # pylint: disable=no-member
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
             if self.items_count == 0:
-                raise RuntimeError(f"No valid items found in the input data")
+                raise RuntimeError("No valid items found in the input data")
             return self
 
         if len(found_formats) == 1:
             return found_formats[0]
 
     def merge_metas_with_conflicts(
-        self, meta1: ProjectMeta, meta2: ProjectMeta
+        self, api: Api, dataset_id: int
     ) -> Tuple[ProjectMeta, dict, dict]:
+
+        # get meta1 from project and meta2 from converter
+        dataset = api.dataset.get_info_by_id(dataset_id)
+        meta1_json = api.project.get_meta(dataset.project_id)
+        meta1 = ProjectMeta.from_json(meta1_json)
+        meta2 = self._meta or ProjectMeta()
+
+        # merge classes and tags from meta1 (unchanged) and meta2 (renamed if conflict)
         new_obj_classes = []
         renamed_classes = {}
         new_tags = []
@@ -242,4 +277,8 @@ class BaseConverter:
                 new_tags.append(new_tag)
 
         new_meta = meta1.clone(obj_classes=new_obj_classes, tag_metas=new_tags)
+
+        # update project meta
+        api.project.update_meta(dataset.project_id, new_meta)
+
         return new_meta, renamed_classes, renamed_tags

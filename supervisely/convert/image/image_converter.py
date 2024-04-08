@@ -32,11 +32,17 @@ class ImageConverter(BaseConverter):
             self._ann_data: Union[str,] = ann_data
             self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"
-            if shape is None:
-                img = image.read(item_path)
-                self._shape: Union[Tuple, List] = img.shape[:2]
-            else:
-                self._shape: Union[Tuple, List] = shape
+            # TODO: Fix the issue to open different images (tiff, multichannel, nrrd) and remove the try-except block.
+            try:
+                if shape is None:
+                    img = image.read(item_path)
+                    self._shape: Union[Tuple, List] = img.shape[:2]
+                else:
+                    self._shape: Union[Tuple, List] = shape
+            except Exception as e:
+                logger.warning(f"Failed to read image shape: {e}, shape is set to [0, 0]")
+                self._shape = [0, 0]
+            # TODO: End of the block with the issue.
             self._custom_data: dict = custom_data if custom_data is not None else {}
 
         @property
@@ -91,20 +97,11 @@ class ImageConverter(BaseConverter):
     ) -> None:
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([img.name for img in api.image.get_list(dataset.id)])
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        api.project.update_meta(dataset.project_id, meta)
-
+        existing_names = set([img.name for img in api.image.get_list(dataset_id)])
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading images...")
+            progress = tqdm(total=self.items_count, desc="Uploading images...")
             progress_cb = progress.update
         else:
             progress_cb = None
@@ -117,29 +114,31 @@ class ImageConverter(BaseConverter):
             for item in batch:
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
 
+                name = item.name
                 if item.name in existing_names:
-                    new_name = generate_free_name(
+                    name = generate_free_name(
                         existing_names, item.name, with_ext=True, extend_used_names=True
                     )
                     logger.warn(
-                        f"Image with name '{item.name}' already exists, renaming to '{new_name}'"
+                        f"Image with name '{item.name}' already exists, renaming to '{name}'"
                     )
-                    item_names.append(new_name)
-                else:
-                    item_names.append(item.name)
+                item_names.append(name)
+                existing_names.add(name)
                 item_paths.append(item.path)
                 item_metas.append(load_json_file(item.meta) if item.meta else {})
-                anns.append(ann)
+                if ann is not None:
+                    anns.append(ann)
 
             img_infos = api.image.upload_paths(
                 dataset_id, item_names, item_paths, progress_cb, item_metas
             )
             img_ids = [img_info.id for img_info in img_infos]
-            api.annotation.upload_anns(img_ids, anns)
+            if len(anns) == len(img_ids):
+                api.annotation.upload_anns(img_ids, anns)
 
         if log_progress:
             progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
 
 
 # @TODO:
@@ -149,4 +148,5 @@ class ImageConverter(BaseConverter):
 # [ ] - Implement detailed coco label validation
 # Supervisely
 # [x] - Implement keypoints generation (when meta not found)
+# [ ] - Add ann keys validation to method `generate_meta_from_annotation()`
 # [ ] - Add ann keys validation to method `generate_meta_from_annotation()`
