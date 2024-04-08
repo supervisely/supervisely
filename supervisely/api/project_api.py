@@ -1499,10 +1499,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param sync: if True images will have synchronized view and labeling
         :type sync: bool
         """
-        group_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
-        project_meta = ProjectMeta.from_json(self.get_meta(id))
-        project_meta = project_meta.add_tag_meta(group_tag_meta)
-        self.update_meta(id, project_meta)
+        meta = ProjectMeta.from_json(self.get_meta(id))
+        existing_tag_meta = meta.get_tag_meta(tag_name)
+        if existing_tag_meta is not None:
+            if existing_tag_meta.value_type != TagValueType.ANY_STRING:
+                raise ValueError(
+                    f"Tag '{tag_name}' should have value type 'any_string', "
+                    f"but got '{existing_tag_meta.value_type}' value type."
+                )
+        else:
+            new_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+            project_meta = meta.add_tag_meta(new_tag_meta)
+            self.update_meta(id, project_meta)
         self.images_grouping(id, enable=group_images, tag_name=tag_name, sync=sync)
 
     def set_multispectral_settings(self, project_id: int) -> None:
