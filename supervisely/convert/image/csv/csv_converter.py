@@ -74,9 +74,9 @@ class CSVConverter(ImageConverter):
                 if possible_path in row:
                     item_path = row.get(possible_path)
                     if possible_path in csv_helper.possible_image_path_col_names:
-                        tf = True
+                        team_files = True
                     else:
-                        tf = False
+                        team_files = False
                     break
             if item_path is None:
                 logger.warn(f"Failed to find image path in row: {row}. Skipping.")
@@ -86,7 +86,7 @@ class CSVConverter(ImageConverter):
                 item_path=item_path,
                 ann_data=ann_data,
                 local=False,
-                tf=tf,
+                team_files=team_files,
             )
             self._items.append(item)
 
@@ -103,6 +103,8 @@ class CSVConverter(ImageConverter):
             meta = self._meta
 
         try:
+            if item.ann_data is None:
+                return item.create_empty_annotation()
             tag_names = item.ann_data.split(csv_helper.TAGS_DELIMITER)
             tag_metas = [
                 meta.get_tag_meta(tag_name.strip())
