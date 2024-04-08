@@ -2,8 +2,6 @@ from logging import Logger
 from pathlib import Path
 from typing import Tuple, Union
 
-import fitz
-
 
 def pages_to_images(
     doc_path: Union[Path, str],
@@ -12,6 +10,13 @@ def pages_to_images(
     logger: Logger,
     filetype: str = "pdf",
 ) -> bool:
+    try:
+        import fitz
+    except ImportError:
+        raise ImportError(
+            "No module named fitz. Please make sure that module is installed from pip and try again."
+        )
+
     doc_path = Path(doc_path)
     save_path = Path(save_path)
 
