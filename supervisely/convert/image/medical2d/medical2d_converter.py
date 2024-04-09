@@ -12,7 +12,12 @@ from supervisely import Api, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import is_valid_ext
-from supervisely.io.fs import dirs_filter, get_file_ext, list_files
+from supervisely.io.fs import (
+    dirs_filter,
+    get_file_ext,
+    list_files,
+    list_files_recursively,
+)
 
 SPLIT_TO_CHANNELS_DIR_NAME = "split"
 UPLOAD_AS_IMAGES_DIR_NAME = "images"
@@ -20,7 +25,7 @@ ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
 
 
 class Medical2DImageConverter(ImageConverter):
-    allowed_exts = ["nrrd", "dcm"]
+    allowed_exts = ["nrrd", "dcm", "DCM", "dicom", "DICOM", "nii", "nii.gz"]
 
     def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
@@ -37,7 +42,17 @@ class Medical2DImageConverter(ImageConverter):
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
-        return False
+
+        files = list_files_recursively(self._input_data, valid_extensions=self.allowed_exts)
+
+        tmp = self._find2d()
+
+        if tmp is None:
+            logger.debug(f"No medical images in 2D format were found in {self._input_data!r}.")
+            return False
+        else:
+            logger.debug(f"The medical images in 2D format were found in {self._input_data!r}.")
+            return True
         # group_map = self._find_image_directories()
         # if not group_map:
         #     logger.debug(f"No multispectral images found in {self._input_data}.")
@@ -46,6 +61,9 @@ class Medical2DImageConverter(ImageConverter):
         #     self._group_map = group_map
         #     logger.debug(f"Found multispectral images in {self._input_data}.")
         #     return True
+
+    def _find2d(self):
+        pass
 
     # def _find_image_directories(self) -> Dict[str, ImageGroup]:
     #     group_map = defaultdict(ImageGroup)
