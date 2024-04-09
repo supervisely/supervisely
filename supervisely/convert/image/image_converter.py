@@ -1,5 +1,9 @@
 from typing import List, Optional, Tuple, Union
 
+import cv2
+import nrrd
+import numpy as np
+import tifffile
 from tqdm import tqdm
 
 import supervisely.imaging.image as image
@@ -12,12 +16,13 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.imaging.image import SUPPORTED_IMG_EXTS
+from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
+from supervisely.io.fs import get_file_ext
 from supervisely.io.json import load_json_file
 
 
 class ImageConverter(BaseConverter):
-    allowed_exts = SUPPORTED_IMG_EXTS
+    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"]
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -32,27 +37,44 @@ class ImageConverter(BaseConverter):
             self._ann_data: Union[str,] = ann_data
             self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"
-            # TODO: Fix the issue to open different images (tiff, multichannel, nrrd) and remove the try-except block.
-            try:
-                if shape is None:
-                    img = image.read(item_path)
-                    self._shape: Union[Tuple, List] = img.shape[:2]
-                else:
-                    self._shape: Union[Tuple, List] = shape
-            except Exception as e:
-                logger.warning(f"Failed to read image shape: {e}, shape is set to [0, 0]")
-                self._shape = [0, 0]
-            # TODO: End of the block with the issue.
+            self._shape: Optional[Union[Tuple, List]] = shape
             self._custom_data: dict = custom_data if custom_data is not None else {}
 
         @property
         def meta(self) -> Union[str, dict]:
             return self._meta_data
 
+        def set_shape(self, shape: Tuple[int, int] = None) -> Tuple[int, int]:
+            try:
+                if shape is not None:
+                    self._shape = shape
+                elif self._shape is None:
+                    image = None
+                    file_ext = get_file_ext(self.path).lower()
+                    if file_ext == ".nrrd":
+                        logger.debug(f"Found nrrd file: {self.path}.")
+                        image, _ = nrrd.read(self.path)
+                    elif file_ext == ".tif":
+                        logger.debug(f"Found tiff file: {self.path}.")
+                        image = tifffile.imread(self.path)
+                    elif is_valid_ext(file_ext):
+                        logger.debug(f"Found image file: {self.path}.")
+                        image = cv2.imread(self.path)
+
+                    if image is not None:
+                        self._shape = image.shape[:2]
+                    else:
+                        self._shape = [0, 0]
+            except Exception as e:
+                logger.warning(f"Failed to read image shape: {e}, shape is set to [0, 0]")
+                self._shape = [0, 0]
+
         def set_meta_data(self, meta_data: Union[str, dict]) -> None:
             self._meta_data = meta_data
 
         def create_empty_annotation(self) -> Annotation:
+            if self._shape is None:
+                self.set_shape()
             return Annotation(self._shape)
 
     def __init__(

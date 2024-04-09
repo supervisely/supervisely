@@ -137,6 +137,7 @@ class COCOConverter(ImageConverter):
         if item.ann_data is None:
             return Annotation.from_img_path(item.path)
         else:
+            item.set_shape()
             ann = coco_helper.create_supervisely_annotation(
                 item,
                 meta,
