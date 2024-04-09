@@ -17,7 +17,12 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.imaging.image import SUPPORTED_IMG_EXTS
+from supervisely.io.fs import (
+    get_file_ext,
+    get_file_name_with_ext,
+    list_files_recursively,
+)
 from supervisely.io.json import load_json_file
 
 
@@ -102,17 +107,12 @@ class CSVConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
-        files = [
-            f
-            for f in os.listdir(self._input_data)
-            if os.path.isfile(os.path.join(self._input_data, f))
-        ]
-        valid_files = [f for f in files if os.path.splitext(f)[1] in self.key_file_ext]
+        valid_files = list_files_recursively(self._input_data, self.key_file_ext)
 
         if len(valid_files) != 1:
             return False
 
-        full_path = os.path.join(self._input_data, valid_files[0])
+        full_path = valid_files[0]
 
         file_ext = get_file_ext(full_path)
         if file_ext in self.conversion_functions:
@@ -212,7 +212,12 @@ class CSVConverter(ImageConverter):
 
         extension = os.path.splitext(image_path)[1]
         if not extension:
-            logger.warn(f"Image [{image_path}] doesn't have extension in path(url)")
+            logger.warn(f"FYI: Image [{image_path}] doesn't have extension.")
+        elif extension.lower() not in SUPPORTED_IMG_EXTS:
+            logger.warn(
+                f"Image [{image_path}] has unsupported extension [{extension}]. Skipping..."
+            )
+            return None
 
         try:
             image_info = api.image.upload_link(
@@ -300,9 +305,9 @@ class CSVConverter(ImageConverter):
                 if info is None:
                     success = False
                     continue
-                if item.name != info.name:
+                if item.name not in info.name:
                     logger.warn(
-                        f"Batched image name '{item.name}' doesn't match uploaded image name '{info.name}'"
+                        f"Batched image with name '{item.name}' doesn't match uploaded image name '{info.name}'"
                     )
                     success = False
                 item: CSVConverter.Item
