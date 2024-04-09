@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, NamedTuple, Optional
 
 import supervisely as sly
 from supervisely.app import DataJson
@@ -190,6 +190,21 @@ class AugmentationsNew(Widget):
 
 
 class AugmentationsWithTabsNew(Widget):
+    class Tab(NamedTuple):
+        """Custom Tab class for AugmentationsWithTabsNew widget.
+
+        :param tab_title: The title of the tab.
+        :param content_title: The title of the Field, when the tab is selected.
+        :param content_description: The description of the Field, when the tab is selected.
+        :param content: The content of the tab, list of widgets.
+        """
+
+        tab_title: str
+        tab_description: str
+        content_title: str
+        content_description: str
+        content: List[Widget]
+
     def __init__(
         self,
         api: sly.Api,
@@ -198,6 +213,7 @@ class AugmentationsWithTabsNew(Widget):
         image_info: sly.ImageInfo = None,
         task_type: Optional[Literal["detection", "segmentation"]] = None,
         temp_dir: Optional[str] = None,
+        additional_tabs: Optional[List[Tab]] = None,
         widget_id=None,
     ):
         self._image_info = image_info
@@ -224,25 +240,44 @@ class AugmentationsWithTabsNew(Widget):
             placeholder="select me",
         )
         self._button_template_update = Button("Load template from file")
+
+        self._titles = ["From template", "Custom pipeline"]
+        contents = [
+            Field(
+                title="Template",
+                content=Container([self._template_selector, self._augs1]),
+            ),
+            Field(
+                title="Path to JSON configuration",
+                description="Copy path in Team Files",
+                content=Container(
+                    [self._template_path_input, self._button_template_update, self._augs2]
+                ),
+            ),
+        ]
+        descriptions = [
+            "Choose one of the prepared templates",
+            "Use ImgAug Studio appto configure and save custom augmentations",
+        ]
+        if additional_tabs is not None:
+            for idx, tab in enumerate(additional_tabs):
+                augs_idx = idx + 3
+                augs = AugmentationsNew(api, project_id, image_info=image_info, task_type=task_type)
+                setattr(self, f"_augs{augs_idx}", augs)
+                self._titles.append(tab.tab_title)
+                contents.append(
+                    Field(
+                        title=tab.content_title,
+                        description=tab.content_description,
+                        content=Container(tab.content + [augs]),
+                    )
+                )
+                descriptions.append(tab.tab_description)
+
         self._radio_tabs = RadioTabs(
-            titles=["From template", "Custom pipeline"],
-            contents=[
-                Field(
-                    title="Template",
-                    content=Container([self._template_selector, self._augs1]),
-                ),
-                Field(
-                    title="Path to JSON configuration",
-                    description="Copy path in Team Files",
-                    content=Container(
-                        [self._template_path_input, self._button_template_update, self._augs2]
-                    ),
-                ),
-            ],
-            descriptions=[
-                "Choose one of the prepared templates",
-                "Use ImgAug Studio appto configure and save custom augmentations",
-            ],
+            titles=self._titles,
+            contents=contents,
+            descriptions=descriptions,
         )
 
         self._current_augs = self._augs1
@@ -250,10 +285,7 @@ class AugmentationsWithTabsNew(Widget):
 
         @self._radio_tabs.value_changed
         def tab_toggle(tab_title):
-            if tab_title == "Custom pipeline":
-                self._current_augs = self._augs2
-            else:
-                self._current_augs = self._augs1
+            self._current_augs = self.get_augs(tab_title)
 
         @self._template_selector.value_changed
         def selector_value_changed(value=None):
@@ -273,6 +305,13 @@ class AugmentationsWithTabsNew(Widget):
 
         self._content = Container([self._radio_tabs])
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def get_augs(self, tab_title: str) -> AugmentationsNew:
+        tab_index = self._titles.index(tab_title)
+        return getattr(self, f"_augs{tab_index+1}")
+
+    def get_editor(self, tab_title: str) -> Editor:
+        return self.get_augs(tab_title)._editor
 
     def get_json_data(self) -> Dict:
         return {}
