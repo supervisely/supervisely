@@ -10,8 +10,6 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.fs import get_file_ext, list_files
 
-DEFAULT_GROUP_NAME = "group"
-
 
 class MultiViewImageConverter(ImageConverter):
     def __init__(self, input_data: str, labeling_interface: str) -> None:
