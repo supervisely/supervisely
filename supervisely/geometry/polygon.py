@@ -3,31 +3,33 @@
 
 # docs
 from __future__ import annotations
+
+from typing import Dict, List, Optional, Tuple, Union
+
 import cv2
 import numpy as np
-from typing import List, Dict, Optional, Union, Tuple
-from supervisely.geometry.point_location import PointLocation
-from supervisely.geometry.rectangle import Rectangle
+from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import mapping
 
-from shapely.geometry import mapping, Polygon as ShapelyPolygon
-
+from supervisely.geometry import validation
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    EXTERIOR,
+    ID,
+    INTERIOR,
+    LABELER_LOGIN,
+    POINTS,
+    UPDATED_AT,
+)
 from supervisely.geometry.conversions import shapely_figure_to_coords_list
 from supervisely.geometry.point_location import (
-    row_col_list_to_points,
+    PointLocation,
     points_to_row_col_list,
+    row_col_list_to_points,
 )
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.vector_geometry import VectorGeometry
-from supervisely.geometry.constants import (
-    EXTERIOR,
-    INTERIOR,
-    POINTS,
-    LABELER_LOGIN,
-    UPDATED_AT,
-    CREATED_AT,
-    ID,
-    CLASS_ID,
-)
-from supervisely.geometry import validation
 from supervisely.sly_logger import logger
 
 
@@ -68,31 +70,32 @@ class Polygon(VectorGeometry):
 
     @staticmethod
     def geometry_name():
-        """
-        """
+        """ """
         return "polygon"
 
     def __init__(
-            self,
-            exterior: Union[
-                List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
-            ],
-            interior: Union[
-                List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
-            ] = [],
-            sly_id: Optional[int] = None,
-            class_id: Optional[int] = None,
-            labeler_login: Optional[int] = None,
-            updated_at: Optional[str] = None,
-            created_at: Optional[str] = None,
+        self,
+        exterior: Union[List[PointLocation], List[List[int, int]], List[Tuple[int, int]]],
+        interior: Union[
+            List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+        ] = [],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
     ):
         if len(exterior) < 3:
             exterior.extend([exterior[-1]] * (3 - len(exterior)))
-            logger.warn(f'"{EXTERIOR}" field must contain at least 3 points to create "Polygon" object.')
+            logger.warn(
+                f'"{EXTERIOR}" field must contain at least 3 points to create "Polygon" object.'
+            )
             # raise ValueError('"{}" field must contain at least 3 points to create "Polygon" object.'.format(EXTERIOR))
         for element in interior:
             if len(element) < 3:
-                logger.warn(f'"{element}" interior field must contain at least 3 points to create "Polygon" object.')
+                logger.warn(
+                    f'"{element}" interior field must contain at least 3 points to create "Polygon" object.'
+                )
                 element.extend([element[-1]] * (3 - len(element)))
         # if any(len(element) < 3 for element in interior):
         #    raise ValueError('"{}" element must contain at least 3 points.'.format(INTERIOR))
@@ -148,12 +151,9 @@ class Polygon(VectorGeometry):
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
         return cls(
-            exterior=row_col_list_to_points(
-                data[POINTS][EXTERIOR], flip_row_col_order=True
-            ),
+            exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
             interior=[
-                row_col_list_to_points(i, flip_row_col_order=True)
-                for i in data[POINTS][INTERIOR]
+                row_col_list_to_points(i, flip_row_col_order=True) for i in data[POINTS][INTERIOR]
             ],
             sly_id=sly_id,
             class_id=class_id,
@@ -212,23 +212,20 @@ class Polygon(VectorGeometry):
         out_polygons = []
         for intersection in intersections:
             if (
-                    isinstance(intersection, list)
-                    and len(intersection) > 0
-                    and len(intersection[0]) >= 3
+                isinstance(intersection, list)
+                and len(intersection) > 0
+                and len(intersection[0]) >= 3
             ):
                 exterior = row_col_list_to_points(intersection[0], do_round=True)
                 interiors = []
                 for interior_contour in intersection[1:]:
                     if len(interior_contour) > 2:
-                        interiors.append(
-                            row_col_list_to_points(interior_contour, do_round=True)
-                        )
+                        interiors.append(row_col_list_to_points(interior_contour, do_round=True))
                 out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
+        """ """
         exterior = self.exterior_np[:, ::-1]
         interior = [x[:, ::-1] for x in self.interior_np]
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
@@ -238,24 +235,19 @@ class Polygon(VectorGeometry):
         bitmap[bool_mask] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
+        """ """
         exterior = self.exterior_np[:, ::-1]
         interior = [x[:, ::-1] for x in self.interior_np]
 
         poly_lines = [exterior] + interior
-        cv2.polylines(
-            bitmap, pts=poly_lines, isClosed=True, color=color, thickness=thickness
-        )
+        cv2.polylines(bitmap, pts=poly_lines, isClosed=True, color=color, thickness=thickness)
 
-    # @TODO: extend possibilities, consider interior
-    # returns area of exterior figure only
     @property
     def area(self) -> float:
         """
         Polygon area.
 
-        :return: Area of current Polygon object (exterior figure only).
+        :return: Area of current Polygon object.
         :rtype: :class:`float`
 
         :Usage Example:
@@ -265,16 +257,18 @@ class Polygon(VectorGeometry):
             print(figure.area)
             # Output: 7288.0
         """
-        exterior = self.exterior_np
-        return self._get_area_by_gauss_formula(exterior[:, 0], exterior[:, 1])
+        exterior_area = self._get_area_by_gauss_formula(
+            self.exterior_np[:, 0], self.exterior_np[:, 1]
+        )
+        interior_area = 0
+        for hole in self.interior_np:
+            interior_area += self._get_area_by_gauss_formula(hole[:, 0], hole[:, 1])
+        return exterior_area - interior_area
 
     @staticmethod
     def _get_area_by_gauss_formula(rows, cols):
-        """
-        """
-        return 0.5 * np.abs(
-            np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1))
-        )
+        """ """
+        return 0.5 * np.abs(np.dot(rows, np.roll(cols, 1)) - np.dot(cols, np.roll(rows, 1)))
 
     def approx_dp(self, epsilon: float) -> Polygon:
         """
@@ -292,12 +286,9 @@ class Polygon(VectorGeometry):
             # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
             approx_figure = figure.approx_dp(0.75)
         """
-        exterior_np = self._approx_ring_dp(
-            self.exterior_np, epsilon, closed=True
-        ).tolist()
+        exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         interior_np = [
-            self._approx_ring_dp(x, epsilon, closed=True).tolist()
-            for x in self.interior_np
+            self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np
         ]
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         interior = [row_col_list_to_points(x, do_round=True) for x in interior_np]
@@ -305,10 +296,9 @@ class Polygon(VectorGeometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
+        """ """
         from supervisely.geometry.any_geometry import AnyGeometry
-        from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.bitmap import Bitmap
+        from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle, Bitmap]

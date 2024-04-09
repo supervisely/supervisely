@@ -513,6 +513,11 @@ class ApiField:
     SRC_ID = "srcId"
     """"""
     DEST_ID = "destId"
+    """"""
+    COMPLETE_EXISTING = "completeExisting"
+    """"""
+    MODE = "mode"
+    """"""
 
 
 def _get_single_item(items):

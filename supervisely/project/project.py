@@ -13,7 +13,7 @@ import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
-from supervisely._utils import abs_url, batched, is_development
+from supervisely._utils import abs_url, batched, is_development, snake_to_human
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -167,9 +167,16 @@ class Dataset(KeyObject):
         self._item_to_ann = {}  # item file name -> annotation file name
 
         parts = directory.split(os.path.sep)
-        project_dir = parts[0]
-        full_ds_name = os.path.join(*[p for p in parts[1:] if p != self.datasets_dir_name])
-        short_ds_name = os.path.basename(directory)
+        if self.datasets_dir_name not in parts:
+            project_dir, ds_name = os.path.split(directory.rstrip("/"))
+            full_ds_name = short_ds_name = ds_name
+        else:
+            nested_ds_dir_index = parts.index(self.datasets_dir_name)
+            ds_dir_index = nested_ds_dir_index - 1
+
+            project_dir = os.path.join(*parts[: ds_dir_index])
+            full_ds_name = os.path.join(*[p for p in parts[ds_dir_index :] if p != self.datasets_dir_name])
+            short_ds_name = os.path.basename(directory)
 
         self._project_dir = project_dir
         self._name = full_ds_name
@@ -184,7 +191,8 @@ class Dataset(KeyObject):
 
     @classmethod
     def ignorable_dirs(cls) -> List[str]:
-        return [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+        ignorable_dirs = [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+        return [p for p in ignorable_dirs if isinstance(p, str)]
 
     @classmethod
     def datasets_dir(cls) -> List[str]:
@@ -1716,11 +1724,16 @@ class Project:
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
-        possible_datasets = subdirs_tree(self.directory, Dataset.ignorable_dirs())
+        ignore_dirs = self.dataset_class.ignorable_dirs() # dir names that can not be datasets
+
+        ignore_content_dirs = ignore_dirs.copy() # dir names which can not contain datasets
+        ignore_content_dirs.pop(ignore_content_dirs.index(self.dataset_class.datasets_dir()))
+
+        possible_datasets = subdirs_tree(self.directory, ignore_dirs, ignore_content_dirs)
 
         for ds_name in possible_datasets:
             parents = ds_name.split(os.path.sep)
-            parents = [p for p in parents if p != Dataset.datasets_dir()]
+            parents = [p for p in parents if p != self.dataset_class.datasets_dir()]
             if len(parents) > 1:
                 parents.pop(-1)
             else:
@@ -1741,7 +1754,7 @@ class Project:
     def _read_api(self):
         self._meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
         for parents, dataset_info in self._api.dataset.tree(self.project_id):
-            relative_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            relative_path = self.dataset_class._get_dataset_path(dataset_info.name, parents)
             dataset_path = os.path.join(self.directory, relative_path)
             current_dataset = self.dataset_class(
                 dataset_path, parents=parents, dataset_id=dataset_info.id, api=self._api
@@ -2775,6 +2788,10 @@ def _download_project(
                     sly.json.dump_json_file(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
+    try:
+        create_readme(dest_dir, project_id, api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
 
 
 def upload_project(
@@ -3058,6 +3075,11 @@ def _download_project_optimized(
                 save_images=save_images,
             )
 
+    try:
+        create_readme(project_dir, project_id, api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
+
 
 def _split_images_by_cache(images, cache):
     images_to_download = []
@@ -3212,6 +3234,136 @@ def _download_dataset(
         if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]
             cache.write_objects(img_paths, img_hashes)
+
+
+def create_readme(
+    project_dir: str,
+    project_id: int,
+    api: sly.Api,
+) -> str:
+    """Creates a README.md file using the template, adds general information
+    about the project and creates a dataset structure section.
+
+    :param project_dir: Path to the project directory.
+    :type project_dir: str
+    :param project_id: Project ID.
+    :type project_id: int
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :return: Path to the created README.md file.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+
+        project_id = 123
+        project_dir = "/path/to/project"
+
+        readme_path = sly.create_readme(project_dir, project_id, api)
+
+        print(f"README.md file was created at {readme_path}")
+    """
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(current_path, "readme_template.md")
+    with open(template_path, "r") as file:
+        template = file.read()
+
+    project_info = api.project.get_info_by_id(project_id)
+
+    sly.fs.mkdir(project_dir)
+    readme_path = os.path.join(project_dir, "README.md")
+
+    template = template.replace("{{general_info}}", _project_info_md(project_info))
+
+    template = template.replace(
+        "{{dataset_structure_info}}", _dataset_structure_md(project_info, api)
+    )
+
+    with open(readme_path, "w") as f:
+        f.write(template)
+    return readme_path
+
+
+def _project_info_md(project_info: sly.ProjectInfo) -> str:
+    """Creates a markdown string with general information about the project
+    using the fields of the ProjectInfo NamedTuple.
+
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :return: Markdown string with general information about the project.
+    :rtype: str
+    """
+    result_md = ""
+    # Iterating over fields of a NamedTuple.
+    for field in project_info._fields:
+        value = getattr(project_info, field)
+        if not value or not isinstance(value, (str, int)):
+            # To avoid useless information in the README.
+            continue
+        result_md += f"\n**{snake_to_human(field)}:** {value}<br>"
+
+    return result_md
+
+
+def _dataset_structure_md(
+    project_info: sly.ProjectInfo, api: sly.Api, entity_limit: Optional[int] = 10
+) -> str:
+    """Creates a markdown string with the dataset structure of the project.
+    Supports only images and videos projects.
+
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :param entity_limit: The maximum number of entities to display in the README.
+    :type entity_limit: int, optional
+    :return: Markdown string with the dataset structure of the project.
+    :rtype: str
+    """
+    # TODO: Add support for other project types.
+    supported_project_types = [sly.ProjectType.IMAGES.value, sly.ProjectType.VIDEOS.value]
+    if project_info.type not in supported_project_types:
+        return ""
+
+    list_functions = {
+        "images": api.image.get_list,
+        "videos": api.video.get_list,
+    }
+    entity_icons = {
+        "images": " 🏞️ ",
+        "videos": " 🎥 ",
+    }
+    dataset_icon = " 📂 "
+    list_function = list_functions[project_info.type]
+    entity_icon = entity_icons[project_info.type]
+
+    result_md = f"🗂️ {project_info.name}<br>"
+
+    for parents, dataset_info in api.dataset.tree(project_info.id):
+        # The dataset path is needed to create a clickable link in the README.
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+        basic_indent = "┃ " * len(parents)
+        result_md += (
+            basic_indent + "┣ " + dataset_icon + f"[{dataset_info.name}]({dataset_path})" + "<br>"
+        )
+        entity_infos = list_function(dataset_info.id)
+        for idx, entity_info in enumerate(entity_infos):
+            if idx == entity_limit:
+                result_md += (
+                    basic_indent + "┃ ┗ ... " + str(len(entity_infos) - entity_limit) + " more<br>"
+                )
+                break
+            symbol = "┗" if idx == len(entity_infos) - 1 else "┣"
+            result_md += (
+                "┃ " * (len(parents) + 1) + symbol + entity_icon + entity_info.name + "<br>"
+            )
+
+    return result_md
 
 
 DatasetDict = Project.DatasetDict

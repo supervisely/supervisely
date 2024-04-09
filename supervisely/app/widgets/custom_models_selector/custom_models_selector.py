@@ -57,6 +57,12 @@ class CustomModelsSelector(Widget):
             self._task_type = task_type
 
             task_id = checkpoint.session_id
+            if type(task_id) is str:
+                if task_id.isdigit():
+                    task_id = int(task_id)
+                else:
+                    raise ValueError(f"Task id {task_id} is not a number")
+
             task_path = checkpoint.session_path
             training_project_name = checkpoint.training_project_name
             checkpoints = checkpoint.checkpoints
@@ -372,14 +378,16 @@ class CustomModelsSelector(Widget):
         """Method to generate table rows from remote path to training app save directory"""
         table_rows = []
         for checkpoint_info in checkpoint_infos:
-            table_rows.append(
-                CustomModelsSelector.ModelRow(
+            try:
+                model_row = CustomModelsSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
                     checkpoint=checkpoint_info,
                     task_type=checkpoint_info.task_type,
                 )
-            )
+                table_rows.append(model_row)
+            except:
+                continue
         return table_rows
 
     def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
