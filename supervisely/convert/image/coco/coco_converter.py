@@ -44,7 +44,11 @@ class COCOConverter(ImageConverter):
                 "No module named pycocotools. Please make sure that module is installed from pip and try again."
             )
 
+        # TODO: find a way to block print in COCO constructor
+        # sys.stdout = open(os.devnull, 'w') # block print (will enable after next line)
         coco = COCO(key_file_path)  # wont throw error if not COCO
+        # sys.stdout = sys.__stdout__ # enable print
+
         if not all(key in coco.dataset for key in COCO_ANN_KEYS):
             return False
         return True
