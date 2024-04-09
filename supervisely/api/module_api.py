@@ -212,6 +212,8 @@ class ApiField:
     """"""
     GEOMETRY = "geometry"
     """"""
+    GEOMETRY_META = "geometryMeta"
+    """"""
     OBJECT_ID = "objectId"
     """"""
     FRAME = "frame"
@@ -517,7 +519,7 @@ class ApiField:
     MODE = "mode"
     """"""
 
-    
+
 def _get_single_item(items):
     """_get_single_item"""
     if len(items) == 0:

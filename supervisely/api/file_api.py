@@ -956,7 +956,7 @@ class FileApi(ModuleApiBase):
 
         self.remove(team_id, path)
 
-    def remove_dir(self, team_id: int, path: str) -> None:
+    def remove_dir(self, team_id: int, path: str, silent: bool = False) -> None:
         """
         Removes folder from Team Files.
 
@@ -964,6 +964,9 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to folder in Team Files.
         :type path: str
+        :param silent: Ignore if directory not exists.
+        :type silent: bool
+
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -982,8 +985,9 @@ class FileApi(ModuleApiBase):
         if not path.endswith("/"):
             raise ValueError("Please add a slash in the end to recognize path as a directory.")
 
-        if not self.dir_exists(team_id, path):
-            raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
+        if silent is False:
+            if not self.dir_exists(team_id, path):
+                raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
 
