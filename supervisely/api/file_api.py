@@ -964,6 +964,9 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to folder in Team Files.
         :type path: str
+        :param silent: Ignore if directory not exists.
+        :type silent: bool
+
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:

@@ -29,7 +29,7 @@ class FigureInfo(NamedTuple):
     area: str
 
     @property
-    def rectangle(self) -> Optional[Rectangle]:
+    def bbox(self) -> Optional[Rectangle]:
         """
         Get Figure's bounding box.
 
