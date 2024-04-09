@@ -17,6 +17,7 @@ class AvailableImageConverters:
     PASCAL_VOC = "pascal_voc"
     MULTISPECTRAL = "multispectral"
     MASKS = "images_with_masks"
+    MEDICAL2D = "medical_2d"
 
 
 class AvailableVideoConverters:
@@ -114,16 +115,16 @@ class BaseConverter:
             raise NotImplementedError()
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Literal[
-                "default",
-                "multi_view",
-                "multi_spectral",
-                "high_color_depth",
-                "medical_2d",
-            ] = "default",
-        ):
+        self,
+        input_data: str,
+        labeling_interface: Literal[
+            "default",
+            "multi_view",
+            "multi_spectral",
+            "high_color_depth",
+            "medical_2d",
+        ] = "default",
+    ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
@@ -144,7 +145,7 @@ class BaseConverter:
     @property
     def key_file_ext(self) -> str:
         raise NotImplementedError()
-    
+
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == "default"
 
@@ -215,7 +216,9 @@ class BaseConverter:
         if len(found_formats) == 1:
             return found_formats[0]
 
-    def merge_metas_with_conflicts(self, api: Api, dataset_id: int) -> Tuple[ProjectMeta, dict, dict]:
+    def merge_metas_with_conflicts(
+        self, api: Api, dataset_id: int
+    ) -> Tuple[ProjectMeta, dict, dict]:
 
         # get meta1 from project and meta2 from converter
         dataset = api.dataset.get_info_by_id(dataset_id)

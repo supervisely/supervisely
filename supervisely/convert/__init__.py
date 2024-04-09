@@ -13,6 +13,7 @@ from supervisely.convert.image.coco.coco_converter import COCOConverter
 from supervisely.convert.image.multispectral.multispectral_converter import (
     MultiSpectralImageConverter,
 )
+from supervisely.convert.image.medical2d.medical2d_converter import Medical2DImageConverter
 from supervisely.convert.image.masks.images_with_masks_converter import ImagesWithMasksConverter
 from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCConverter
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
