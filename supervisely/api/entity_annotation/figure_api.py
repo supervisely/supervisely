@@ -401,13 +401,7 @@ class FigureApi(RemoveableBulkModuleApi):
         if image_ids is None:
             filters = []
         else:
-            filters = [
-                {
-                    ApiField.FIELD: ApiField.ENTITY_ID,
-                    "operator": "in",
-                    "value": image_ids,
-                }
-            ]
+            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,

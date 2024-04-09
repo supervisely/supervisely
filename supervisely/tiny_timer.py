@@ -1,7 +1,5 @@
 import time
 
-from supervisely.sly_logger import logger
-
 
 class TinyTimer:
     def __init__(self):
