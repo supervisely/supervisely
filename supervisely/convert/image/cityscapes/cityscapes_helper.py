@@ -64,10 +64,11 @@ def convert_points(simple_points):
     return [PointLocation(int(p[1]), int(p[0])) for p in simple_points]
 
 
-def create_ann_from_file(ann: Annotation, ann_path: str, meta: ProjectMeta) -> Annotation:
+def create_ann_from_file(ann: Annotation, ann_path: str, meta: ProjectMeta, renamed_classes: dict) -> Annotation:
     ann_data = load_json_file(ann_path)
     for obj in ann_data["objects"]:
         class_name = obj["label"]
+        class_name = renamed_classes.get(class_name, class_name)
         if class_name == "out of roi":
             polygon = obj["polygon"][:5]
             interiors = [obj["polygon"][5:]]

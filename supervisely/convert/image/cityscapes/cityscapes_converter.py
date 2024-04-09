@@ -151,15 +151,16 @@ class CityscapesConverter(ImageConverter):
 
         ann = item.create_empty_annotation()
 
-        tag_meta = meta.get_tag_meta("split")
+        split_tag_name = renamed_tags.get("split", "split") if renamed_tags is not None else "split"
+        tag_meta = meta.get_tag_meta(split_tag_name)
         path_parts = [ppart.lower() for ppart in Path(item.path).parts]
         if helper.VAL_TAG in path_parts:
-            tag_name = helper.VAL_TAG
+            tag_value = helper.VAL_TAG
         elif helper.TEST_TAG in path_parts:
-            tag_name = helper.TEST_TAG
+            tag_value = helper.TEST_TAG
         else:
-            tag_name = helper.TRAIN_TAG
-        split_tag = Tag(tag_meta, tag_name)
+            tag_value = helper.TRAIN_TAG
+        split_tag = Tag(tag_meta, tag_value)
 
         ann = ann.add_tag(split_tag)
 
@@ -168,7 +169,7 @@ class CityscapesConverter(ImageConverter):
         ann_path = item.ann_data
         try:
             if ann_path is not None:
-                ann = helper.create_ann_from_file(ann, ann_path, meta)
+                ann = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
             return ann
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
