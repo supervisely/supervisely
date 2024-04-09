@@ -20,6 +20,8 @@ ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
 
 
 class Medical2DImageConverter(ImageConverter):
+    allowed_exts = ["nrrd", "dcm"]
+
     def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
@@ -35,14 +37,15 @@ class Medical2DImageConverter(ImageConverter):
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
-        group_map = self._find_image_directories()
-        if not group_map:
-            logger.debug(f"No multispectral images found in {self._input_data}.")
-            return False
-        else:
-            self._group_map = group_map
-            logger.debug(f"Found multispectral images in {self._input_data}.")
-            return True
+        return False
+        # group_map = self._find_image_directories()
+        # if not group_map:
+        #     logger.debug(f"No multispectral images found in {self._input_data}.")
+        #     return False
+        # else:
+        #     self._group_map = group_map
+        #     logger.debug(f"Found multispectral images in {self._input_data}.")
+        #     return True
 
     # def _find_image_directories(self) -> Dict[str, ImageGroup]:
     #     group_map = defaultdict(ImageGroup)
