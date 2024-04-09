@@ -190,7 +190,6 @@ class BaseConverter:
     def _detect_format(self):
         found_formats = []
         all_converters = self.__class__.__subclasses__()
-        print([converter.__name__ for converter in all_converters])
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
@@ -198,6 +197,7 @@ class BaseConverter:
             if not converter.validate_labeling_interface():
                 continue
             if converter.validate_format():
+                logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)
                 if len(found_formats) > 1:
                     raise RuntimeError(
@@ -206,7 +206,7 @@ class BaseConverter:
                     )
 
         if len(found_formats) == 0:
-            logger.warn("No valid dataset formats detected. Only items will be processed")
+            logger.warn("Not found any valid annotation formats. Only items will be processed")
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
