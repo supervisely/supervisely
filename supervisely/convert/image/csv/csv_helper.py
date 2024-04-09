@@ -28,8 +28,13 @@ def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
     return ann_json
 
 
-def convert_txt_to_csv(txt_file_path: str, csv_file_path: str, delimiter: str = DEFAULT_DELIMITER):
-    data = pd.read_csv(txt_file_path, delimiter=delimiter)
+def convert_txt_to_csv(txt_file_path: str, csv_file_path: str, delimiter: str = r"\s{2,}|\t+|;"):
+    data = pd.read_csv(txt_file_path, delimiter=delimiter, engine="python")
+    data.to_csv(csv_file_path, index=False, sep=DEFAULT_DELIMITER)
+
+
+def convert_tsv_to_csv(tsv_file_path: str, csv_file_path: str, delimiter: str = DEFAULT_DELIMITER):
+    data = pd.read_csv(tsv_file_path, delimiter="\t")
     data.to_csv(csv_file_path, index=False, sep=delimiter)
 
 

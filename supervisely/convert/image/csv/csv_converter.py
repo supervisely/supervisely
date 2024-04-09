@@ -64,6 +64,11 @@ class CSVConverter(ImageConverter):
         def set_name(self, name: str):
             self._name = name
 
+    conversion_functions = {
+        ".txt": csv_helper.convert_txt_to_csv,
+        ".tsv": csv_helper.convert_tsv_to_csv,
+    }
+
     def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data
         self._items: List[ImageConverter.Item] = []
@@ -77,7 +82,7 @@ class CSVConverter(ImageConverter):
 
     @property
     def key_file_ext(self) -> str:
-        return [".csv", ".txt"]
+        return [".csv", ".txt", ".tsv"]
 
     @property
     def team_id(self) -> int:
@@ -108,9 +113,11 @@ class CSVConverter(ImageConverter):
             return False
 
         full_path = os.path.join(self._input_data, valid_files[0])
-        if get_file_ext(full_path) == ".txt":
+
+        file_ext = get_file_ext(full_path)
+        if file_ext in self.conversion_functions:
             csv_full_path = os.path.splitext(full_path)[0] + ".csv"
-            csv_helper.convert_txt_to_csv(full_path, csv_full_path)
+            self.conversion_functions[file_ext](full_path, csv_full_path)
             full_path = csv_full_path
 
         if self.validate_key_file(full_path):
