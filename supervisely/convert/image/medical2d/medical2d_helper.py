@@ -24,27 +24,55 @@ def is_nifti_file(filepath: str) -> bool:
         return False
 
 
-def convert_nifti_to_nrrd(input_nii_path: str, converted_dir: str) -> Tuple[str, str]:
+def convert_nifti_to_nrrd(input_nii_path: str, converted_dir: str) -> Tuple[List[str], str]:
+    """Converts nifti file to nrrd format.
+    Then slices nrrd file into 2D slices if it is 3D.
+    Returns image paths and image names.
+
+    This function always slices 3D nifti files into 2D slices by axial orientation because source data automatically gets converted to RAS coordinate system.
+    """
+
     nii_img = nib.load(input_nii_path)
     canonical_img = nib.as_closest_canonical(nii_img)
     nii_data = canonical_img.get_fdata()
     affine = canonical_img.affine
     orientation = nib.aff2axcodes(affine)
-    nrrd_header = {
-        "space": "".join(orientation),
-        "space directions": canonical_img.affine[:3, :3].tolist(),
-        "sizes": nii_data.shape,
-        "type": "float",
-        "dimension": len(nii_data.shape),
-    }
     output_name = get_file_name(input_nii_path)
     if get_file_ext(output_name) == ".nii":
         output_name = get_file_name(output_name)
 
-    output_nrrd_path = os.path.join(converted_dir, f"nifti_{output_name}.nrrd")
-    nrrd.write(output_nrrd_path, nii_data, nrrd_header)
+    output_paths = []
+    output_names = []
+    if len(nii_data.shape) >= 3:
+        indices = [slice(None)] * 3 + [0] * (nii_data.ndim - 3)
 
-    return output_nrrd_path, output_name
+        for i in range(nii_data.shape[2]):
+            indices[2] = i
+            slice_data = nii_data[tuple(indices)]
+
+            nrrd_header = {
+                "sizes": slice_data.shape,
+                "type": "float",
+                "dimension": len(slice_data.shape),
+            }
+            output_nrrd_path = os.path.join(converted_dir, f"nifti_{output_name}_{i}.nrrd")
+            output_names.append(get_file_name_with_ext(output_nrrd_path))
+            nrrd.write(output_nrrd_path, slice_data, nrrd_header)
+            output_paths.append(output_nrrd_path)
+    else:
+        nrrd_header = {
+            "space": "".join(orientation),
+            "space directions": canonical_img.affine[:2, :2].tolist(),
+            "sizes": nii_data.shape,
+            "type": "float",
+            "dimension": len(nii_data.shape),
+        }
+        output_nrrd_path = os.path.join(converted_dir, f"nifti_{output_name}.nrrd")
+        output_names.append(get_file_name_with_ext(output_nrrd_path))
+        nrrd.write(output_nrrd_path, nii_data, nrrd_header)
+        output_paths.append(output_nrrd_path)
+
+    return output_paths, output_names
 
 
 def is_dicom_file(path: str) -> bool:
@@ -158,3 +186,53 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
         save_paths.append(save_path)
         image_names.append(image_name)
     return save_paths, image_names
+
+
+def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> List[str]:
+    """Slices nrrd file into 2D slices if it is 3D. Returns image paths and image names.
+
+    This function always slices 3D nrrd files into 2D slices by axial orientation because source data automatically gets converted to RAS coordinate system.
+    Data with dimensions more than 3 will be truncated to 3D.
+    """
+    data, header = nrrd.read(nrrd_file_path)
+    output_paths = []
+    output_names = []
+
+    if "kinds" in header:
+        kinds = header.get("kinds")
+        non_domain_indices = [i for i, kind in enumerate(kinds) if kind != "domain"]
+
+        # Move all non-domain dimensions to the end to be truncated later
+        for idx in non_domain_indices:
+            data = np.moveaxis(data, idx, -1)
+
+    if len(data.shape) >= 3:
+        # If shape is 3D and space is not RAS, then we need to transpose the data
+        if len(data.shape) == 3 and "space" in header:
+            if (
+                header.get("space").lower() != "right-anterior-superior"
+                or header.get("space").lower() != "ras"
+            ):
+                data = np.transpose(data, (2, 1, 0))
+
+        indices = [slice(None)] * 3 + [0] * (data.ndim - 3)
+        for i in range(data.shape[2]):
+            indices[2] = i
+            slice_data = data[tuple(indices)]
+
+            new_header = {
+                "sizes": slice_data.shape,
+                "type": header.get("type", "float"),
+                "dimension": len(slice_data.shape),
+            }
+            output_nrrd_path = os.path.join(
+                output_dir, f"{os.path.basename(nrrd_file_path).replace('.nrrd', '')}_{i}.nrrd"
+            )
+            output_name = get_file_name_with_ext(output_nrrd_path)
+            nrrd.write(output_nrrd_path, slice_data, new_header)
+            output_paths.append(output_nrrd_path)
+            output_names.append(output_name)
+    else:
+        output_paths.append(nrrd_file_path)
+        output_names.append(get_file_name_with_ext(nrrd_file_path))
+    return output_paths, output_names

@@ -1,15 +1,15 @@
 import os
 from typing import List, Union
 
+import magic
 import nrrd
 import numpy as np
-import magic
 
 from supervisely import Annotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.medical2d import medical2d_helper as helper
-from supervisely.io.fs import get_file_ext, clean_dir, mkdir
+from supervisely.io.fs import clean_dir, get_file_ext, mkdir
 
 
 # @TODO: add group tags?
@@ -45,17 +45,20 @@ class Medical2DImageConverter(ImageConverter):
                 ext = get_file_ext(path).lower()
                 mime = magic.from_file(path, mime=True)
                 if mime == "application/dicom":
-                    if helper.is_dicom_file(path): # is dicom
+                    if helper.is_dicom_file(path):  # is dicom
                         paths, names = helper.convert_dcm_to_nrrd(path, converted_dir)
                         for path, name in zip(paths, names):
                             nrrd[name] = path
                 elif ext == ".nrrd":
-                    if helper.check_nrrd(path):
-                        nrrd[file] = path # is nrrd
+                    if helper.check_nrrd(path):  # is nrrd
+                        paths, names = helper.slice_nrrd_file(path, converted_dir)
+                        for path, name in zip(paths, names):
+                            nrrd[name] = path
                 elif mime == "application/gzip" or mime == "application/octet-stream":
-                    if helper.is_nifti_file(path): # is nifti
-                        path, name = helper.convert_nifti_to_nrrd(path, converted_dir)
-                        nrrd[name] = path
+                    if helper.is_nifti_file(path):  # is nifti
+                        paths, names = helper.convert_nifti_to_nrrd(path, converted_dir)
+                        for path, name in zip(paths, names):
+                            nrrd[name] = path
 
         self._items = []
         for name, path in nrrd.items():
