@@ -2,7 +2,11 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import nibabel as nib
+try:
+    import nibabel as nib
+except ImportError:
+    raise ImportError("No module named nibabel. Please make sure that module is installed from pip and try again.")
+
 import nrrd
 import numpy as np
 import pydicom
