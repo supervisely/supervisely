@@ -13,6 +13,7 @@ from supervisely import (
     ProjectMeta,
     batched,
     generate_free_name,
+    is_development,
     logger,
 )
 from supervisely.convert.base_converter import BaseConverter
@@ -123,8 +124,7 @@ class ImageConverter(BaseConverter):
 
         existing_names = set([img.name for img in api.image.get_list(dataset_id)])
         if log_progress:
-            progress = tqdm(total=self.items_count, desc="Uploading images...")
-            progress_cb = progress.update
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading images...")
         else:
             progress_cb = None
 
@@ -152,7 +152,8 @@ class ImageConverter(BaseConverter):
                 api.annotation.upload_anns(img_ids, anns)
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
         logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
 
 

@@ -7,8 +7,17 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely import Annotation, Api, ProjectMeta, TagValueType, logger
+from supervisely import (
+    Annotation,
+    Api,
+    Progress,
+    ProjectMeta,
+    TagValueType,
+    is_production,
+    logger,
+)
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
+from tqdm import tqdm
 
 
 class AvailableImageConverters:
@@ -22,8 +31,6 @@ class AvailableImageConverters:
     MULTI_VIEW = "multi_view"
     PDF = "pdf"
     CITYSCAPES = "cityscapes"
-
-
 
 
 class AvailableVideoConverters:
@@ -267,7 +274,10 @@ class BaseConverter:
                     if new_tag.value_type != TagValueType.ONEOF_STRING:
                         matched = True
                         break
-                    if meta1.tag_metas[new_name].possible_values == new_tag.possible_values:
+                    if (
+                        meta1.tag_metas[new_name].possible_values
+                        == new_tag.possible_values
+                    ):
                         matched = True
                         break
                 new_name = f"{new_tag.name}_{i}"
@@ -285,3 +295,14 @@ class BaseConverter:
         api.project.update_meta(dataset.project_id, new_meta)
 
         return new_meta, renamed_classes, renamed_tags
+
+    def get_progress(
+        self, items_count: int, message: str = "Processing items..."
+    ) -> tuple:
+        if is_production():
+            progress = Progress(message, items_count)
+            progress_cb = progress.iters_done_report
+        else:
+            progress = tqdm(total=items_count, desc=message)
+            progress_cb = progress.update
+        return progress, progress_cb
