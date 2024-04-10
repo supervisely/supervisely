@@ -14,7 +14,6 @@ from supervisely.io.fs import get_file_ext, clean_dir, mkdir
 
 # @TODO: add group tags?
 class Medical2DImageConverter(ImageConverter):
-    allowed_exts = [".nrrd", ".dcm", ".dicom", ".nii", ".nii.gz"]
 
     def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
@@ -37,9 +36,7 @@ class Medical2DImageConverter(ImageConverter):
         converted_dir = os.path.join(self._input_data, converted_dir_name)
         mkdir(converted_dir, remove_content_if_exists=True)
 
-        dicom = {}
         nrrd = {}
-        nifti = {}
         for root, _, files in os.walk(self._input_data):
             if converted_dir_name in root:
                 continue
@@ -48,12 +45,10 @@ class Medical2DImageConverter(ImageConverter):
                 ext = get_file_ext(path).lower()
                 mime = magic.from_file(path, mime=True)
                 if mime == "application/dicom":
-                    if helper.is_dicom_file(path):
-                        dicom[file] = path # is dicom
+                    if helper.is_dicom_file(path): # is dicom
                         paths, names = helper.convert_dcm_to_nrrd(path, converted_dir)
                         for path, name in zip(paths, names):
                             nrrd[name] = path
-                # elif mime in ["image/nrrd", "application/octet-stream"]:
                 elif ext == ".nrrd":
                     if helper.check_nrrd(path):
                         nrrd[file] = path # is nrrd
