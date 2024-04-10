@@ -1,33 +1,20 @@
 import os
-from collections import defaultdict, namedtuple
-from typing import Dict, List
+from typing import List, Union
 
-import cv2
 import nrrd
 import numpy as np
-import pydicom
-import tifffile
-from tqdm import tqdm
+import magic
 
-from supervisely import Api, ProjectMeta, logger
+from supervisely import Annotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.imaging.image import is_valid_ext
-from supervisely.io.fs import (
-    dirs_filter,
-    get_file_ext,
-    get_file_name_with_ext,
-    list_files,
-    list_files_recursively,
-)
-
-SPLIT_TO_CHANNELS_DIR_NAME = "split"
-UPLOAD_AS_IMAGES_DIR_NAME = "images"
-ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
+from supervisely.convert.image.medical2d import medical2d_helper as helper
+from supervisely.io.fs import get_file_ext, clean_dir, mkdir
 
 
+# @TODO: add group tags?
 class Medical2DImageConverter(ImageConverter):
-    allowed_exts = [".nrrd", ".dcm", ".DCM", ".dicom", ".DICOM", ".nii", ".nii.gz"]
+    allowed_exts = [".nrrd", ".dcm", ".dicom", ".nii", ".nii.gz"]
 
     def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
@@ -46,75 +33,44 @@ class Medical2DImageConverter(ImageConverter):
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
 
-        files = list_files_recursively(self._input_data, valid_extensions=self.allowed_exts)
-        self._filtered = self._filter2d(files)
+        converted_dir_name = "converted"
+        converted_dir = os.path.join(self._input_data, converted_dir_name)
+        mkdir(converted_dir, remove_content_if_exists=True)
 
-        if len(files) == 0:
-            logger.debug(f"No medical images in 2D format were found in {self._input_data!r}.")
-            return False
-        else:
-            logger.debug(f"The medical images in 2D format were found in {self._input_data!r}.")
-            return True
+        dicom = {}
+        nrrd = {}
+        nifti = {}
+        for root, _, files in os.walk(self._input_data):
+            if converted_dir_name in root:
+                continue
+            for file in files:
+                path = os.path.join(root, file)
+                ext = get_file_ext(path).lower()
+                mime = magic.from_file(path, mime=True)
+                if mime == "application/dicom":
+                    if helper.is_dicom_file(path):
+                        dicom[file] = path # is dicom
+                        paths, names = helper.convert_dcm_to_nrrd(path, converted_dir)
+                        for path, name in zip(paths, names):
+                            nrrd[name] = path
+                # elif mime in ["image/nrrd", "application/octet-stream"]:
+                elif ext == ".nrrd":
+                    if helper.check_nrrd(path):
+                        nrrd[file] = path # is nrrd
+                elif mime == "application/gzip" or mime == "application/octet-stream":
+                    if helper.is_nifti_file(path): # is nifti
+                        path, name = helper.convert_nifti_to_nrrd(path, converted_dir)
+                        nrrd[name] = path
 
-    def _filter2d(self, files):
-        for i, file in enumerate(files):
-            if get_file_ext(file).lower() == ".dcm":
-                ds = pydicom.dcmread(file)
-                num_frames = ds.get("NumberOfFrames", 1)
-                if num_frames > 1:
-                    files.pop(i)
-        return files
+        self._items = []
+        for name, path in nrrd.items():
+            item = self.Item(item_path=path)
+            self._items.append(item)
 
-    def upload_dataset(
-        self,
-        api: Api,
-        dataset_id: int,
-        batch_size: int = 50,
-        log_progress=True,
-    ) -> None:
-        """Upload converted data to Supervisely"""
-        # TODO: Move this part of the code to some preparation method
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+        if not self._items:
+            clean_dir(converted_dir)
 
-        api.project.update_meta(dataset.project_id, meta)
-
-        # TODO: take multiview settings from tags in .dcm
-        # api.project.set_multiview_settings(dataset.project_id)
-
-        if log_progress:
-            progress = tqdm(total=self.items_count, desc="Uploading images...")
-            progress_cb = progress.update
-        else:
-            progress_cb = None
-
-        names = [get_file_name_with_ext(x) for x in self._filtered]
-        api.image.upload_paths(dataset.id, names, self._filtered, progress_cb)
-
-        # for group_path, image_group in self._group_map.items():
-        #     logger.info(f"Found files in {group_path}.")
-
-        #     images = []
-        #     channels = []
-
-        #     images_to_split, images_to_upload = image_group.split, image_group.upload
-
-        #     group_name = os.path.basename(group_path)
-        #     for image_to_upload in images_to_upload:
-        #         images.append(os.path.join(group_path, image_to_upload))
-        #     for image_to_split in images_to_split:
-        #         channels.extend(self._get_image_channels(os.path.join(group_path, image_to_split)))
-        #     api.image.upload_multispectral(dataset.id, group_name, channels, images, progress_cb)
-
-        if log_progress:
-            progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        return self.items_count > 0
 
     def _get_image_channels(self, file_path: str) -> List[np.ndarray]:
         file_ext = get_file_ext(file_path).lower()
@@ -125,14 +81,7 @@ class Medical2DImageConverter(ImageConverter):
             image, _ = nrrd.read(file_path)
         elif file_ext == ".dcm":
             pass
-        # elif file_ext == ".tif":
-        #     logger.debug(f"Found tiff file: {file_path}.")
-        #     image = tifffile.imread(file_path)
-        # elif is_valid_ext(file_ext):
-        #     logger.debug(f"Found image file: {file_path}.")
-        #     image = cv2.imread(file_path)
-        # else:
-        #     logger.warning(f"File {file_path} has unsupported extension.")
-        #     return
-
         return [image[:, :, i] for i in range(image.shape[2])]
+
+    def to_supervisely(self, item, meta, *args) -> Union[Annotation, None]:
+        return None
