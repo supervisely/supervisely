@@ -806,7 +806,7 @@ class Inference:
                 results = []
                 break
             logger.debug(
-                f"Inferring frames {batch_i * batch_size}-{batch_i * (batch_size + 1) - 1}:",
+                f"Inferring frames {batch_i * batch_size}-{(batch_i+1) * batch_size - 1}:",
                 extra={"images_paths": batch},
             )
             data_to_return = {}
@@ -815,15 +815,23 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
-            batch_results = [
-                {"annotation": ann.to_json(), "data": {"slides": image_slides}}
-                for ann, image_slides in zip(anns, data_to_return["slides"])
-            ]
+            logger.debug(
+                f"self._inference_images_batch done for batch #{batch_i}",
+                extra={"anns": [ann.to_json() for ann in anns]},
+            )
+            try:
+                batch_results = [
+                    {"annotation": ann.to_json(), "data": data_to_return} for ann in anns
+                ]
+            except:
+                logger.error("Error in batch_results creation", exc_info=True)
+                raise
+            logger.debug("batch_results:", extra={"batch_results": batch_results})
             results.extend(batch_results)
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
-            logger.debug(f"Frames {batch_i * batch_size}-{batch_i * (batch_size + 1) - 1} done.")
+            logger.debug(f"Frames {batch_i * batch_size}-{(batch_i + 1) * batch_size - 1} done.")
         fs.remove_dir(video_images_path)
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
