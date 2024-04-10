@@ -22,25 +22,24 @@ def is_nifti_file(filepath: str) -> bool:
 
 def convert_nifti_to_nrrd(input_nii_path: str, converted_dir: str) -> Tuple[str, str]:
     nii_img = nib.load(input_nii_path)
-    nii_data = nii_img.get_fdata()
-    affine = nii_img.affine
+    canonical_img = nib.as_closest_canonical(nii_img)
+    nii_data = canonical_img.get_fdata()
+    affine = canonical_img.affine
     orientation = nib.aff2axcodes(affine)
-    desired_orientation = ("R", "A", "S")
-    if orientation != desired_orientation:
-        permutation = [
-            orientation.index(axis) for axis in desired_orientation if axis in orientation
-        ]
-        for i in range(len(nii_data.shape)):
-            if i not in permutation:
-                permutation.append(i)
-        nii_data = np.transpose(nii_data, permutation)
-    nrrd_header = {"space": "right-anteriror-superior"}
+    nrrd_header = {
+        "space": "".join(orientation),
+        "space directions": canonical_img.affine[:3, :3].tolist(),
+        "sizes": nii_data.shape,
+        "type": "float",
+        "dimension": len(nii_data.shape),
+    }
     output_name = get_file_name(input_nii_path)
     if get_file_ext(output_name) == ".nii":
         output_name = get_file_name(output_name)
 
     output_nrrd_path = os.path.join(converted_dir, f"nifti_{output_name}.nrrd")
     nrrd.write(output_nrrd_path, nii_data, nrrd_header)
+
     return output_nrrd_path, output_name
 
 
