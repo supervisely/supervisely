@@ -2671,7 +2671,7 @@ class ImageApi(RemoveableBulkModuleApi):
         image_infos = self.upload_nps(dataset_id, names, nps_for_upload, progress_cb=progress_cb)
         image_ids = [image_info.id for image_info in image_infos]
 
-        self._api.annotation.upload_anns(image_ids, anns, progress_cb=progress_cb)
+        self._api.annotation.upload_anns(image_ids, anns)
 
         return image_infos
 

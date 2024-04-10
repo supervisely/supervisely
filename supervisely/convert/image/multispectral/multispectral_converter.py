@@ -8,7 +8,7 @@ import numpy as np
 import tifffile
 from tqdm import tqdm
 
-from supervisely import Api, ProjectMeta, logger
+from supervisely import Api, logger, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import is_valid_ext
@@ -31,7 +31,7 @@ class MultiSpectralImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multispectral labeling interface can be used for multispectral images."""
-        return self._labeling_interface == "multi_spectral"
+        return self._labeling_interface == "multispectral"
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
@@ -79,22 +79,12 @@ class MultiSpectralImageConverter(ImageConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
-        # TODO: Move this part of the code to some preparation method
         dataset = api.dataset.get_info_by_id(dataset_id)
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
-
-        api.project.update_meta(dataset.project_id, meta)
         api.project.set_multispectral_settings(dataset.project_id)
-        # TODO: End of the code to move
 
+        items_count = sum(len(group.split) + len(group.upload) for group in self._group_map.values())
         if log_progress:
-            progress = tqdm(total=self.items_count, desc="Uploading images...")
+            progress = tqdm(total=items_count, desc="Uploading images...")
             progress_cb = progress.update
         else:
             progress_cb = None

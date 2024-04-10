@@ -15,9 +15,13 @@ class AvailableImageConverters:
     COCO = "coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
+    CSV = "csv"
     MULTISPECTRAL = "multispectral"
     MASKS = "images_with_masks"
     MEDICAL2D = "medical_2d"
+    MULTI_VIEW = "multi_view"
+    PDF = "pdf"
+    CITYSCAPES = "cityscapes"
 
 
 class AvailableVideoConverters:
@@ -120,9 +124,9 @@ class BaseConverter:
         labeling_interface: Literal[
             "default",
             "multi_view",
-            "multi_spectral",
-            "high_color_depth",
-            "medical_2d",
+            "multispectral",
+            "images_with_16_color",
+            "medical_imaging_single",
         ] = "default",
     ):
         self._input_data: str = input_data
@@ -184,7 +188,6 @@ class BaseConverter:
     def _detect_format(self):
         found_formats = []
         all_converters = self.__class__.__subclasses__()
-        print([converter.__name__ for converter in all_converters])
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
@@ -192,6 +195,7 @@ class BaseConverter:
             if not converter.validate_labeling_interface():
                 continue
             if converter.validate_format():
+                logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)
                 if len(found_formats) > 1:
                     raise RuntimeError(
@@ -200,7 +204,7 @@ class BaseConverter:
                     )
 
         if len(found_formats) == 0:
-            logger.warn("No valid dataset formats detected. Only items will be processed")
+            logger.warn("Not found any valid annotation formats. Only items will be processed")
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)

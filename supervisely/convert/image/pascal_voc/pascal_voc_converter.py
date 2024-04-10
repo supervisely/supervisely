@@ -139,6 +139,7 @@ class PascalVOCConverter(ImageConverter):
             meta = self._meta
 
         try:
+            item.set_shape()
             ann = pascal_voc_helper.get_ann(item, self.color2class_name, renamed_classes)
             return ann
 

@@ -252,6 +252,7 @@ class YOLOConverter(ImageConverter):
 
         try:
             labels = []
+            item.set_shape()
             height, width = item.shape
             with open(item.ann_data, "r") as ann_file:
                 lines = ann_file.readlines()

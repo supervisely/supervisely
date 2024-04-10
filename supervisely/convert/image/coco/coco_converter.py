@@ -1,7 +1,6 @@
 import imghdr
 import os
 
-
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
@@ -45,7 +44,11 @@ class COCOConverter(ImageConverter):
                 "No module named pycocotools. Please make sure that module is installed from pip and try again."
             )
 
+        # TODO: find a way to block print in COCO constructor
+        # sys.stdout = open(os.devnull, 'w') # block print (will enable after next line)
         coco = COCO(key_file_path)  # wont throw error if not COCO
+        # sys.stdout = sys.__stdout__ # enable print
+
         if not all(key in coco.dataset for key in COCO_ANN_KEYS):
             return False
         return True
@@ -77,7 +80,10 @@ class COCOConverter(ImageConverter):
         ann_dict = {}
         meta = ProjectMeta()
         for ann_path in ann_paths:
-            coco = COCO(ann_path)
+            try:
+                coco = COCO(ann_path)
+            except:
+                continue
             if not all(key in coco.dataset for key in COCO_ANN_KEYS):
                 continue
             coco_anns = coco.imgToAnns
@@ -121,16 +127,17 @@ class COCOConverter(ImageConverter):
         return self._items
 
     def to_supervisely(
-            self,
-            item: ImageConverter.Item,
-            meta: ProjectMeta = None,
-            renamed_classes: dict = None,
-            renamed_tags: dict = None,
+        self,
+        item: ImageConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if item.ann_data is None:
             return Annotation.from_img_path(item.path)
         else:
+            item.set_shape()
             ann = coco_helper.create_supervisely_annotation(
                 item,
                 meta,

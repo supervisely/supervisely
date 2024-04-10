@@ -9,6 +9,7 @@ except ImportError:
 
 from supervisely import Api, ProjectType, logger
 from supervisely.app import get_data_dir
+from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
@@ -17,7 +18,15 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.env import team_id as env_team_id
-from supervisely.io.fs import dir_exists, is_archive, silent_remove, unpack_archive
+from supervisely.io.fs import (
+    dir_exists,
+    file_exists,
+    is_archive,
+    mkdir,
+    remove_junk_from_dir,
+    silent_remove,
+    unpack_archive,
+)
 
 
 class ImportManager:
@@ -29,9 +38,9 @@ class ImportManager:
         labeling_interface: Literal[
             "default",
             "multi_view",
-            "multi_spectral",
-            "high_color_depth",
-            "medical_2d",
+            "multispectral",
+            "images_with_16_color",
+            "medical_imaging_single",
         ] = "default",
     ):
         self._api = Api.from_env()
@@ -48,14 +57,23 @@ class ImportManager:
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
             self._input_data = input_data
+        elif file_exists(input_data):
+            logger.info(f"Input data is a local file: {input_data}")
+            self._input_data = os.path.dirname(input_data)
+        elif self._api.storage.exists(self._team_id, input_data):
+            logger.info(f"Input data is a remote file: {input_data}")
+            self._input_data = self._download_input_data(input_data)
         elif self._api.storage.dir_exists(self._team_id, input_data):
             logger.info(f"Input data is a remote directory: {input_data}")
-            self._input_data = self._download_input_data(input_data)
+            self._input_data = self._download_input_data(input_data, is_dir=True)
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
         self._unpack_archives(self._input_data)
+        remove_junk_from_dir(self._input_data)
         self._modality = project_type
         self._converter = self.get_converter()
+        if isinstance(self._converter, CSVConverter):
+            self._converter.team_id = self._team_id
 
     @property
     def modality(self):
@@ -90,18 +108,34 @@ class ImportManager:
     # def validate_format(self):
     #     raise NotImplementedError
 
-    def _download_input_data(self, remote_path):
+    def _download_input_data(self, remote_path, is_dir=False):
         """Download input data from Supervisely"""
 
-        dir_name = os.path.basename(os.path.normpath(remote_path))
-        local_path = os.path.join(get_data_dir(), dir_name)
-        directory_size = self._api.storage.get_directory_size(self._team_id, remote_path)
-        progress_cb = tqdm(
-            total=directory_size, desc="Downloading...", unit="B", unit_scale=True
-        ).update
-        self._api.storage.download_directory(
-            self._team_id, remote_path, local_path, progress_cb=progress_cb
-        )
+        if not is_dir:
+            dir_name = "Import data"
+            local_path = os.path.join(get_data_dir(), dir_name)
+            mkdir(local_path, remove_content_if_exists=True)
+            save_path = os.path.join(local_path, os.path.basename(remote_path))
+        else:
+            dir_name = os.path.basename(os.path.normpath(remote_path))
+            local_path = os.path.join(get_data_dir(), dir_name)
+
+        if not is_dir:
+            files_size = self._api.storage.get_info_by_path(self._team_id, remote_path).sizeb
+            progress_cb = tqdm(
+                total=files_size, desc="Downloading...", unit="B", unit_scale=True
+            ).update
+            self._api.storage.download(
+                self._team_id, remote_path, save_path, progress_cb=progress_cb
+            )
+        else:
+            directory_size = self._api.storage.get_directory_size(self._team_id, remote_path)
+            progress_cb = tqdm(
+                total=directory_size, desc="Downloading...", unit="B", unit_scale=True
+            ).update
+            self._api.storage.download_directory(
+                self._team_id, remote_path, local_path, progress_cb=progress_cb
+            )
 
         return local_path
 
