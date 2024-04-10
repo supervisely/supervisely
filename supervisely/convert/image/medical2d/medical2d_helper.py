@@ -5,7 +5,9 @@ from typing import Dict, List, Tuple
 try:
     import nibabel as nib
 except ImportError:
-    raise ImportError("No module named nibabel. Please make sure that module is installed from pip and try again.")
+    raise ImportError(
+        "No module named nibabel. Please make sure that module is installed from pip and try again."
+    )
 
 import nrrd
 import numpy as np
@@ -24,7 +26,7 @@ def is_nifti_file(filepath: str) -> bool:
         return False
 
 
-def convert_nifti_to_nrrd(input_nii_path: str, converted_dir: str) -> Tuple[List[str], str]:
+def convert_nifti_to_nrrd(input_nii_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
     """Converts nifti file to nrrd format.
     Then slices nrrd file into 2D slices if it is 3D.
     Returns image paths and image names.
@@ -188,7 +190,7 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
     return save_paths, image_names
 
 
-def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> List[str]:
+def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], List[str]]:
     """Slices nrrd file into 2D slices if it is 3D. Returns image paths and image names.
 
     This function always slices 3D nrrd files into 2D slices by axial orientation because source data automatically gets converted to RAS coordinate system.
