@@ -16,6 +16,7 @@ from supervisely.imaging.image import is_valid_ext
 from supervisely.io.fs import (
     dirs_filter,
     get_file_ext,
+    get_file_name_with_ext,
     list_files,
     list_files_recursively,
 )
@@ -33,19 +34,20 @@ class Medical2DImageConverter(ImageConverter):
         self._items: List[ImageConverter.Item] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface
+        self._filtered = None
 
     def __str__(self):
         return AvailableImageConverters.MEDICAL2D
 
     def validate_labeling_interface(self) -> bool:
         """Only medical labeling interface can be used for medical images."""
-        return self._labeling_interface == "medical_2d"
+        return self._labeling_interface == "medical_imaging_single"
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
 
         files = list_files_recursively(self._input_data, valid_extensions=self.allowed_exts)
-        self._filter2d(files)
+        self._filtered = self._filter2d(files)
 
         if len(files) == 0:
             logger.debug(f"No medical images in 2D format were found in {self._input_data!r}.")
@@ -61,33 +63,7 @@ class Medical2DImageConverter(ImageConverter):
                 num_frames = ds.get("NumberOfFrames", 1)
                 if num_frames > 1:
                     files.pop(i)
-
-    # def _find_image_directories(self) -> Dict[str, ImageGroup]:
-    #     group_map = defaultdict(ImageGroup)
-    #     for checked_directory in dirs_filter(self._input_data, self._check_directory):
-    #         split_images = []
-    #         upload_images = []
-
-    #         split_dir = os.path.join(checked_directory, SPLIT_TO_CHANNELS_DIR_NAME)
-
-    #         images_dir = os.path.join(checked_directory, UPLOAD_AS_IMAGES_DIR_NAME)
-
-    #         if os.path.isdir(split_dir):
-    #             split_images = list_files(split_dir)
-    #         if os.path.isdir(images_dir):
-    #             upload_images = list_files(images_dir)
-
-    #         group_map[checked_directory] = ImageGroup(split_images, upload_images)
-
-    #     return group_map
-
-    # def _check_directory(self, path: str) -> bool:
-    #     split_dir = os.path.join(path, SPLIT_TO_CHANNELS_DIR_NAME)
-    #     images_dir = os.path.join(path, UPLOAD_AS_IMAGES_DIR_NAME)
-
-    #     if os.path.isdir(split_dir) or os.path.isdir(images_dir):
-    #         return True
-    #     return False
+        return files
 
     def upload_dataset(
         self,
@@ -105,11 +81,12 @@ class Medical2DImageConverter(ImageConverter):
             curr_meta = ProjectMeta()
         meta_json = api.project.get_meta(dataset.project_id)
         meta = ProjectMeta.from_json(meta_json)
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         api.project.update_meta(dataset.project_id, meta)
-        # api.project.set_multispectral_settings(dataset.project_id)
-        # # TODO: End of the code to move
+
+        # TODO: take multiview settings from tags in .dcm
+        # api.project.set_multiview_settings(dataset.project_id)
 
         if log_progress:
             progress = tqdm(total=self.items_count, desc="Uploading images...")
@@ -117,20 +94,23 @@ class Medical2DImageConverter(ImageConverter):
         else:
             progress_cb = None
 
-        for group_path, image_group in self._group_map.items():
-            logger.info(f"Found files in {group_path}.")
+        names = [get_file_name_with_ext(x) for x in self._filtered]
+        api.image.upload_paths(dataset.id, names, self._filtered, progress_cb)
 
-            images = []
-            channels = []
+        # for group_path, image_group in self._group_map.items():
+        #     logger.info(f"Found files in {group_path}.")
 
-            images_to_split, images_to_upload = image_group.split, image_group.upload
+        #     images = []
+        #     channels = []
 
-            group_name = os.path.basename(group_path)
-            for image_to_upload in images_to_upload:
-                images.append(os.path.join(group_path, image_to_upload))
-            for image_to_split in images_to_split:
-                channels.extend(self._get_image_channels(os.path.join(group_path, image_to_split)))
-            api.image.upload_multispectral(dataset.id, group_name, channels, images, progress_cb)
+        #     images_to_split, images_to_upload = image_group.split, image_group.upload
+
+        #     group_name = os.path.basename(group_path)
+        #     for image_to_upload in images_to_upload:
+        #         images.append(os.path.join(group_path, image_to_upload))
+        #     for image_to_split in images_to_split:
+        #         channels.extend(self._get_image_channels(os.path.join(group_path, image_to_split)))
+        #     api.image.upload_multispectral(dataset.id, group_name, channels, images, progress_cb)
 
         if log_progress:
             progress.close()
