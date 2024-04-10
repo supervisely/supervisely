@@ -5,6 +5,7 @@ from typing import Dict, List
 import cv2
 import nrrd
 import numpy as np
+import pydicom
 import tifffile
 from tqdm import tqdm
 
@@ -25,7 +26,7 @@ ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
 
 
 class Medical2DImageConverter(ImageConverter):
-    allowed_exts = ["nrrd", "dcm", "DCM", "dicom", "DICOM", "nii", "nii.gz"]
+    allowed_exts = [".nrrd", ".dcm", ".DCM", ".dicom", ".DICOM", ".nii", ".nii.gz"]
 
     def __init__(self, input_data: str, labeling_interface: str) -> None:
         self._input_data: str = input_data
@@ -44,26 +45,22 @@ class Medical2DImageConverter(ImageConverter):
         logger.debug(f"Validating format: {self.__str__()}")
 
         files = list_files_recursively(self._input_data, valid_extensions=self.allowed_exts)
+        self._filter2d(files)
 
-        tmp = self._find2d()
-
-        if tmp is None:
+        if len(files) == 0:
             logger.debug(f"No medical images in 2D format were found in {self._input_data!r}.")
             return False
         else:
             logger.debug(f"The medical images in 2D format were found in {self._input_data!r}.")
             return True
-        # group_map = self._find_image_directories()
-        # if not group_map:
-        #     logger.debug(f"No multispectral images found in {self._input_data}.")
-        #     return False
-        # else:
-        #     self._group_map = group_map
-        #     logger.debug(f"Found multispectral images in {self._input_data}.")
-        #     return True
 
-    def _find2d(self):
-        pass
+    def _filter2d(self, files):
+        for i, file in enumerate(files):
+            if get_file_ext(file).lower() == ".dcm":
+                ds = pydicom.dcmread(file)
+                num_frames = ds.get("NumberOfFrames", 1)
+                if num_frames > 1:
+                    files.pop(i)
 
     # def _find_image_directories(self) -> Dict[str, ImageGroup]:
     #     group_map = defaultdict(ImageGroup)
