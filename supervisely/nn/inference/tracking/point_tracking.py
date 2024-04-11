@@ -334,7 +334,7 @@ class PointTracking(Inference, InferenceImageCache):
         rgb_images: List[np.ndarray],
         settings: Dict[str, Any],
         start_object: Union[PredictionPoint, List[PredictionPoint]],
-    ) -> List[List[PredictionPoint]]:
+    ) -> List[PredictionPoint]:
         """
         Track point on given frames.
 
@@ -342,8 +342,28 @@ class PointTracking(Inference, InferenceImageCache):
         :type rgb_images: List[np.array]
         :param settings: model parameters
         :type settings: Dict[str, Any]
-        :param start_objects: point or points to track on the initial frame
-        :type start_objects: Union[PredictionPoint, List[PredictionPoint]]
+        :param start_object: point to track on the initial frame
+        :type start_object: PredictionPoint
+        :return: predicted points for frame range (0, m]; `m-1` prediction in total
+        :rtype: List[PredictionPoint]
+        """
+        raise NotImplementedError
+
+    def predict_batch(
+        self,
+        rgb_images: List[np.ndarray],
+        settings: Dict[str, Any],
+        start_objects: List[PredictionPoint],
+    ) -> List[List[PredictionPoint]]:
+        """
+        Track points on given frames.
+
+        :param rgb_images: RGB frames, `m` frames
+        :type rgb_images: List[np.array]
+        :param settings: model parameters
+        :type settings: Dict[str, Any]
+        :param start_objects: points to track on the initial frame
+        :type start_objects: List[PredictionPoint]
         :return: predicted points for frame range (0, m]; `m-1` prediction in total
         :rtype: List[List[PredictionPoint]]
         """
@@ -385,12 +405,20 @@ class PointTracking(Inference, InferenceImageCache):
         if settings is None:
             settings = self.custom_inference_settings_dict
         pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
-        predicted: List[List[Prediction]] = self.predict(
-            frames,
-            settings,
-            pp_geom,
-        )
-        predicted = [pred[0] for pred in predicted]
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            predicted = self.predict(
+                frames,
+                settings,
+                pp_geom,
+            )
+        else:
+            predicted = self.predict_batch(
+                frames,
+                settings,
+                pp_geom,
+            )
+            predicted = [pred[0] for pred in predicted]
         return F.dto_points_to_sly_points(predicted)
 
     def _predict_polygon_geometries(
@@ -403,11 +431,22 @@ class PointTracking(Inference, InferenceImageCache):
             settings = self.custom_inference_settings_dict
         polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
 
-        points: List[List[Prediction]] = self.predict(
-            frames,
-            settings,
-            polygon_points,
-        )
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            points = list(
+                zip(
+                    *[
+                        self.predict(frames, settings, polygon_point)
+                        for polygon_point in polygon_points
+                    ]
+                )
+            )
+        else:
+            points: List[List[Prediction]] = self.predict_batch(
+                frames,
+                settings,
+                polygon_points,
+            )
         points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in points]
         return F.exteriors_to_sly_polygons(points_loc)
 
@@ -421,16 +460,23 @@ class PointTracking(Inference, InferenceImageCache):
             settings = self.custom_inference_settings_dict
         points, pids = F.graph_to_dto_points(geom)
 
-        preds: List[List[PredictionPoint]] = self.predict(
-            frames,
-            settings,
-            points,
-        )
-        nodes = [
-            F.dto_points_to_sly_nodes(point_preds, pid)
-            for point_preds, pid in zip(list(zip(*preds)), pids)
-        ]
-        nodes = list(zip(*nodes))
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            preds = list(zip(*[self.predict(frames, settings, point) for point in points]))
+        else:
+            preds: List[List[PredictionPoint]] = self.predict_batch(
+                frames,
+                settings,
+                points,
+            )
+
+        nodes = []
+        for frame_preds in preds:
+            frame_nodes = []
+            for pred, pid in zip(frame_preds, pids):
+                frame_nodes.extend(F.dto_points_to_sly_nodes([pred], pid))
+            nodes.append(frame_nodes)
+
         return F.nodes_to_sly_graph(nodes)
 
     def _predict_polyline_geometries(
@@ -442,11 +488,22 @@ class PointTracking(Inference, InferenceImageCache):
         if settings is None:
             settings = self.custom_inference_settings_dict
         polyline_points = F.numpy_to_dto_point(geom.exterior_np, "polyline")
-        preds = self.predict(
-            frames,
-            settings,
-            polyline_points,
-        )
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            preds = list(
+                zip(
+                    *[
+                        self.predict(frames, settings, polyline_point)
+                        for polyline_point in polyline_points
+                    ]
+                )
+            )
+        else:
+            preds = self.predict_batch(
+                frames,
+                settings,
+                polyline_points,
+            )
         points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in preds]
         return F.exterior_to_sly_polyline(points_loc)
 
