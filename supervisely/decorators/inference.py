@@ -1,22 +1,25 @@
-import os
-import numpy
 import functools
-from typing import Tuple, List, Optional
-from supervisely.sly_logger import logger
-from supervisely.io.fs import silent_remove
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.imaging import image as sly_image
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.graph import GraphNodes, Node
+import os
+from typing import List, Optional, Tuple
+
+import numpy
+
+from supervisely import TinyTimer
 from supervisely._utils import rand_str as sly_rand_str
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.point_location import PointLocation
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.sliding_windows_fuzzy import (
-    SlidingWindowsFuzzy,
     SlidingWindowBorderStrategy,
+    SlidingWindowsFuzzy,
 )
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import silent_remove
+from supervisely.sly_logger import logger
 
 
 def _process_image_path(image_path: str, rect: Rectangle) -> Tuple[str, Tuple[int, int]]:
@@ -162,7 +165,7 @@ def process_image_roi(func):
     return wrapper_inference
 
 
-def process_image_sliding_window(func):
+def process_image_sliding_window(func, batch: bool = False):
     @functools.wraps(func)
     def wrapper_inference(*args, **kwargs):
         settings = kwargs["settings"]
@@ -229,5 +232,199 @@ def process_image_sliding_window(func):
             ann = ann.add_labels(all_labels)
             data_to_return["slides"].append(all_labels_slide)
         return ann
+
+    return wrapper_inference
+
+
+def process_images_batch_roi(func):
+    @functools.wraps(func)
+    def wrapper_inference(*args, **kwargs):
+        tm = TinyTimer()
+        settings = kwargs["settings"]
+        rectangle_json = settings.get("rectangle")
+
+        if rectangle_json is None:
+            tm2 = TinyTimer()
+            ann = func(*args, **kwargs)
+            delta_inner = TinyTimer.get_sec(tm2)
+            delta_total = TinyTimer.get_sec(tm)
+            logger.debug(
+                "process_images_batch_roi time: %s sec",
+                delta_total,
+                extra={"time": delta_total, "inner": delta_inner},
+            )
+            return ann
+
+        rectangle = Rectangle.from_json(rectangle_json)
+        if "images_nps" in kwargs.keys():
+            images_nps = kwargs["images_nps"]
+            for image_np in images_nps:
+                if not isinstance(image_np, numpy.ndarray):
+                    raise ValueError("Invalid input. Image path must be numpy.ndarray")
+            original_images_sizes = [image_np.shape[:2] for image_np in images_nps]
+            images_crops_nps = [sly_image.crop(image_np, rectangle) for image_np in images_nps]
+            kwargs["images_nps"] = images_crops_nps
+            tm2 = TinyTimer()
+            anns = func(*args, **kwargs)
+            delta_inner = TinyTimer.get_sec(tm2)
+            anns = [
+                _scale_ann_to_original_size(ann, original_image_size, rectangle)
+                for ann, original_image_size in zip(anns, original_images_sizes)
+            ]
+        elif "images_paths" in kwargs.keys():
+            images_paths = kwargs["images_paths"]
+            for image_path in images_paths:
+                if not isinstance(image_path, str):
+                    raise ValueError("Invalid input. Image path must be str")
+            images_crops_paths, original_images_sizes = zip(
+                *[_process_image_path(image_path, rectangle) for image_path in images_paths]
+            )
+            kwargs["images_paths"] = images_crops_paths
+            tm2 = TinyTimer()
+            anns = func(*args, **kwargs)
+            delta_inner = TinyTimer.get_sec(tm2)
+            anns = [
+                _scale_ann_to_original_size(ann, original_image_size, rectangle)
+                for original_image_size, ann in zip(original_images_sizes, anns)
+            ]
+            for image_crop_path in images_crops_paths:
+                silent_remove(image_crop_path)
+        else:
+            raise ValueError("image_np or image_path not provided!")
+
+        delta_total = TinyTimer.get_sec(tm)
+        logger.debug(
+            "process_images_batch_roi time: %s sec",
+            delta_total,
+            extra={"time": delta_total, "inner": delta_inner},
+        )
+        return anns
+
+    return wrapper_inference
+
+
+def process_images_batch_sliding_window(func):
+    @functools.wraps(func)
+    def wrapper_inference(*args, **kwargs):
+        tm = TinyTimer()
+        settings = kwargs["settings"]
+        data_to_return = kwargs["data_to_return"]
+        inference_mode = settings.get("inference_mode", "full_image")
+        if inference_mode != "sliding_window":
+            tm2 = TinyTimer()
+            anns = func(*args, **kwargs)
+            delta_inner = TinyTimer.get_sec(tm2)
+            delta_total = TinyTimer.get_sec(tm)
+            logger.debug(
+                "process_images_batch_sliding_window time: %s sec",
+                delta_total,
+                extra={"time": delta_total, "inner": delta_inner},
+            )
+            return anns
+        sliding_window_mode = settings.get("sliding_window_mode", "basic")
+        if sliding_window_mode == "none":
+            tm2 = TinyTimer()
+            anns = func(*args, **kwargs)
+            delta_inner = TinyTimer.get_sec(tm2)
+            delta_total = TinyTimer.get_sec(tm)
+            logger.debug(
+                "process_images_batch_sliding_window time: %s sec",
+                delta_total,
+                extra={"total": delta_total, "inner": delta_inner},
+            )
+            return anns
+
+        sliding_window_params = settings["sliding_window_params"]
+        images_paths = kwargs["images_paths"]
+        data_to_return["slides"] = []
+        anns = []
+
+        images_crops_paths = []
+        original_images_sizes = []
+        images_slices_lengths = []
+        images_shapes = []
+        for image_path in images_paths:
+            img = sly_image.read(image_path)
+            img_h, img_w = img.shape[:2]
+            images_shapes.append((img_h, img_w))
+            windowHeight = sliding_window_params.get("windowHeight", img_h)
+            windowWidth = sliding_window_params.get("windowWidth", img_w)
+            overlapY = sliding_window_params.get("overlapY", 0)
+            overlapX = sliding_window_params.get("overlapX", 0)
+            borderStrategy = sliding_window_params.get("borderStrategy", "shift_window")
+
+            slider = SlidingWindowsFuzzy(
+                [windowHeight, windowWidth], [overlapY, overlapX], borderStrategy
+            )
+            rectangles = []
+            for window in slider.get(img.shape[:2]):
+                rectangles.append(window)
+
+            for rect in rectangles:
+                image_crop_path, original_image_size = _process_image_path(image_path, rect)
+                images_crops_paths.append(image_crop_path)
+                original_images_sizes.append(original_image_size)
+            images_slices_lengths.append(len(rectangles))
+
+            ann = Annotation.from_img_path(image_path)
+            anns.append(ann)
+
+        kwargs["images_paths"] = images_crops_paths
+        tm2 = TinyTimer()
+        slices_anns: List[Annotation] = func(*args, **kwargs)
+        delta_inner = TinyTimer.get_sec(tm2)
+        slices_anns = [
+            _scale_ann_to_original_size(slice_ann, original_image_size, rect)
+            for slice_ann in slices_anns
+        ]
+        for i in range(len(images_slices_lengths)):
+            i_from = sum(images_slices_lengths[:i])
+            i_to = sum(images_slices_lengths[: min(len(images_slices_lengths), i + 1)])
+            image_rects = rectangles[i_from * i_to]
+            image_slices = slices_anns[i_from * i_to]
+            data_to_return["slides"].append(
+                [
+                    {"rectangle": rect.to_json(), "labels": [l.to_json() for l in slice_ann.labels]}
+                    for rect, slice_ann in zip(image_rects, image_slices)
+                ]
+            )
+
+        for i, img_shape, image_slides in zip(
+            range(len(images_shapes)), images_shapes, data_to_return["slides"]
+        ):
+            img_h, img_w = img_shape
+            all_json_labels = [slide["labels"] for slide in image_slides]
+            full_rect = Rectangle(0, 0, img_h, img_w)
+            all_labels_slide = {"rectangle": full_rect.to_json(), "labels": all_json_labels}
+            data_to_return["slides"][i].append(all_labels_slide)  # for visualization
+
+        for i in range(len(images_slices_lengths)):
+            i_from = sum(images_slices_lengths[:i])
+            i_to = sum(images_slices_lengths[: min(len(images_slices_lengths), i + 1)])
+            image_slices = slices_anns[i_from * i_to]
+
+            all_labels = []
+            for slice_ann in image_slices:
+                all_labels.extend(slice_ann.labels)
+            if sliding_window_mode == "advanced":
+                labels_after_nms = _apply_agnostic_nms(all_labels)
+                anns[i] = anns[i].add_labels(labels_after_nms)
+                all_labels_after_nms_slide = {
+                    "rectangle": full_rect.to_json(),
+                    "labels": [l.to_json() for l in labels_after_nms],
+                }
+                data_to_return["slides"][i].append(all_labels_after_nms_slide)
+            else:
+                ann = ann.add_labels(all_labels)
+                data_to_return["slides"][i].append(all_labels_slide)
+
+        delta_total = TinyTimer.get_sec(tm)
+        logger.debug(
+            "process_images_batch_sliding_window time: %s sec",
+            delta_total,
+            extra={"time": delta_total, "inner": delta_inner},
+        )
+        logger.debug()
+        return anns
 
     return wrapper_inference
