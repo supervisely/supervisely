@@ -1,30 +1,15 @@
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple
-from tqdm import tqdm
-
-try:
-    import nibabel as nib
-except ImportError:
-    raise ImportError(
-        "No module named nibabel. Please make sure that module is installed from pip and try again."
-    )
 
 import nrrd
 import numpy as np
 import pydicom
 from pydicom import FileDataset
+from tqdm import tqdm
 
 from supervisely import image, logger, volume
 from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext, mkdir
-
-
-def is_nifti_file(filepath: str) -> bool:
-    try:
-        nib.load(filepath)
-        return True
-    except nib.filebasedimages.ImageFileError:
-        return False
 
 
 def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:

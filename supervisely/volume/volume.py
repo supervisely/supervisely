@@ -783,7 +783,12 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
 
-    import nibabel as nib
+    try:
+        import nibabel as nib
+    except ImportError:
+        raise ImportError(
+            "No module named nibabel. Please make sure that module is installed from pip and try again."
+        )
 
     nifti = nib.load(path)
     reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
@@ -798,3 +803,25 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         "dimension": len(data.shape),
     }
     return data, header
+
+
+def is_nifti_file(path: str) -> bool:
+    """Check if the file is a NIFTI file.
+
+    :param filepath: Path to the file.
+    :type filepath: str
+    :return: True if the file is a NIFTI file, False otherwise.
+    :rtype: bool
+    """
+    try:
+        import nibabel as nib
+    except ImportError:
+        raise ImportError(
+            "No module named nibabel. Please make sure that module is installed from pip and try again."
+        )
+
+    try:
+        nib.load(path)
+        return True
+    except nib.filebasedimages.ImageFileError:
+        return False

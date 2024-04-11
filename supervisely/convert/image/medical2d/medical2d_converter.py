@@ -10,6 +10,7 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.medical2d import medical2d_helper as helper
 from supervisely.io.fs import clean_dir, get_file_ext, mkdir
+from supervisely.volume.volume import is_nifti_file
 
 
 # @TODO: add group tags?
@@ -55,7 +56,7 @@ class Medical2DImageConverter(ImageConverter):
                         for path, name in zip(paths, names):
                             nrrd[name] = path
                 elif mime == "application/gzip" or mime == "application/octet-stream":
-                    if helper.is_nifti_file(path):  # is nifti
+                    if is_nifti_file(path):  # is nifti
                         paths, names = helper.slice_nifti_file(path, converted_dir)
                         for path, name in zip(paths, names):
                             nrrd[name] = path
