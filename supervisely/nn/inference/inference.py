@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
 import requests
 import yaml
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
@@ -492,7 +493,10 @@ class Inference:
 
         # create annotation with correct image resolution
         tm = TinyTimer()
-        ann = Annotation.from_img_path(image_path)
+        if isinstance(image_path, str):
+            ann = Annotation.from_img_path(image_path)
+        elif isinstance(image_path, np.ndarray):
+            ann = Annotation(image_path.shape[:2])
         delta = TinyTimer.get_sec(tm)
         logger.debug("Annotation from_img_path time: %s sec", delta, extra={"time": delta})
         tm = TinyTimer()
@@ -546,40 +550,64 @@ class Inference:
     @process_images_batch_sliding_window
     def _inference_images_batch(
         self,
-        images_paths: List[str],
+        source: List,
         settings: Dict,
         data_to_return: Dict,  # for decorators
     ) -> List[Annotation]:
         total = TinyTimer()
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
-            "Inferring images_paths:",
-            extra={"inference_mode": inference_mode, "paths": images_paths},
+            "Inferring images batch:",
+            extra={"inference_mode": inference_mode, "items": len(source)},
         )
+        if len(source) == 0:
+            return []
 
+        images_paths = None
         tm = TinyTimer()
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             if type(self).predict_batch_raw == Inference.predict_batch_raw:
+                temp_dir = None
+                if isinstance(source[0], np.ndarray):
+                    temp_dir = os.path.join(get_data_dir(), rand_str(10))
+                    fs.mkdir(temp_dir)
+                    images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
+                    for img_path, img in zip(images_paths, source):
+                        sly_image.write(img_path, img)
+                else:
+                    images_paths = source
                 predictions = [
                     self.predict(image_path=img_path, settings=settings)
                     for img_path in images_paths
                 ]
+                if temp_dir is not None:
+                    fs.remove_dir(temp_dir)
             else:
-                predictions = self.predict_batch_raw(images_paths=images_paths, settings=settings)
+                predictions = self.predict_batch_raw(source=source, settings=settings)
         else:
             if type(self).predict_batch == Inference.predict_batch:
+                temp_dir = None
+                if isinstance(source[0], np.ndarray):
+                    temp_dir = os.path.join(get_data_dir(), rand_str(10))
+                    images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
+                    for img_path, img in zip(images_paths, source):
+                        sly_image.write(img_path, img)
+                else:
+                    images_paths = source
                 predictions = [
                     self.predict(image_path=img_path, settings=settings)
                     for img_path in images_paths
                 ]
+                if temp_dir is not None:
+                    fs.remove_dir(temp_dir)
             else:
-                predictions = self.predict_batch(source=images_paths, settings=settings)
+                predictions = self.predict_batch(source=source, settings=settings)
         delta = TinyTimer.get_sec(tm)
         logger.debug("predict_batch_time: %s sec", delta, extra={"time": delta})
         tm = TinyTimer()
         anns = [
             self._predictions_to_annotation(image_path, prediction)
-            for image_path, prediction in zip(images_paths, predictions)
+            for image_path, prediction in zip(source, predictions)
         ]
         delta = TinyTimer.get_sec(tm)
         logger.debug("predictions_to_annotations_time: %s sec", delta, extra={"time": delta})
@@ -611,9 +639,7 @@ class Inference:
         If source is a list of numpy arrays, it should be in BGR format"""
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_batch_raw(
-        self, images_paths: List[str], settings: Dict[str, Any]
-    ) -> List[List[Prediction]]:
+    def predict_batch_raw(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
         """Predict batch of images. source can be either list of image paths or list of numpy arrays.
         If source is a list of numpy arrays, it should be in BGR format"""
         raise NotImplementedError(
@@ -676,17 +702,21 @@ class Inference:
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
-        paths = []
-        temp_dir = os.path.join(get_data_dir(), rand_str(10))
-        fs.mkdir(temp_dir)
-        for file in files:
-            image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-            image_np = sly_image.read_bytes(file.file.read())
-            sly_image.write(image_path, image_np)
-            paths.append(image_path)
-        results = self._inference_images_dir(paths, state)
-        fs.remove_dir(temp_dir)
-        return results
+        if type(self).predict_batch == Inference.predict_batch:
+            paths = []
+            temp_dir = os.path.join(get_data_dir(), rand_str(10))
+            fs.mkdir(temp_dir)
+            for file in files:
+                image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+                image_np = sly_image.read_bytes(file.file.read())
+                sly_image.write(image_path, image_np)
+                paths.append(image_path)
+            results = self._inference_images_dir(paths, state)
+            fs.remove_dir(temp_dir)
+            return results
+        else:
+            images = [sly_image.read_bytes(file.file.read()) for file in files]
+            return self._inference_images_dir(images, state)
 
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
@@ -708,17 +738,31 @@ class Inference:
         logger.debug("Inferring images_dir (or batch)...")
         settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra=settings)
-        n_imgs = len(img_paths)
         results = []
-        for i, image_path in enumerate(img_paths):
-            data_to_return = {}
-            logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
-            )
-            results.append({"annotation": ann.to_json(), "data": data_to_return})
+        data_to_return = {}
+        if type(self).predict_batch == Inference.predict_batch:
+            n_imgs = len(img_paths)
+            for i, image_path in enumerate(img_paths):
+                data_to_return = {}
+                logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
+                ann = self._inference_image_path(
+                    image_path=image_path,
+                    settings=settings,
+                    data_to_return=data_to_return,
+                )
+                results.append({"annotation": ann.to_json(), "data": data_to_return})
+        else:
+            anns = self._inference_images_batch(img_paths, settings, data_to_return=data_to_return)
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
         return results
 
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
@@ -852,7 +896,7 @@ class Inference:
             data_to_return = {}
             tm = TinyTimer()
             anns = self._inference_images_batch(
-                images_paths=frames,
+                source=frames,
                 settings=settings,
                 data_to_return=data_to_return,
             )
