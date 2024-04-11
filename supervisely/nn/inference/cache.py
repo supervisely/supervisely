@@ -226,12 +226,15 @@ class InferenceImageCache:
             raise KeyError(f"Video {video_id} not found in cache")
         cap = cv2.VideoCapture(str(video_path))
         frames = []
+        prev_idx = -1
         for frame_index in frame_indexes:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            if frame_index != prev_idx + 1:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
             ret, frame = cap.read()
             if not ret:
                 raise KeyError(f"Frame {frame_index} not found in video {video_id}")
-            frames.append(frame)
+            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            prev_idx = frame_index
         cap.release()
         return frames
 
