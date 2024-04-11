@@ -50,6 +50,7 @@ from supervisely.decorators.inference import (
     process_images_batch_sliding_window,
 )
 from supervisely.imaging.color import get_predefined_colors
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -142,6 +143,13 @@ class Inference:
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
         self.get_info = self._check_serve_before_call(self.get_info)
+
+        self.cache = InferenceImageCache(
+            maxsize=env.smart_cache_size(),
+            ttl=env.smart_cache_ttl(),
+            is_persistent=True,
+            base_folder=env.smart_cache_container_dir(),
+        )
 
     def _prepare_device(self, device):
         if device is None:
@@ -551,9 +559,21 @@ class Inference:
 
         tm = TinyTimer()
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
-            predictions = self.predict_batch_raw(images_paths=images_paths, settings=settings)
+            if type(self).predict_batch_raw == Inference.predict_batch_raw:
+                predictions = [
+                    self.predict(image_path=img_path, settings=settings)
+                    for img_path in images_paths
+                ]
+            else:
+                predictions = self.predict_batch_raw(images_paths=images_paths, settings=settings)
         else:
-            predictions = self.predict_batch(images_paths=images_paths, settings=settings)
+            if type(self).predict_batch == Inference.predict_batch:
+                predictions = [
+                    self.predict(image_path=img_path, settings=settings)
+                    for img_path in images_paths
+                ]
+            else:
+                predictions = self.predict_batch(source=images_paths, settings=settings)
         delta = TinyTimer.get_sec(tm)
         logger.debug("predict_batch_time: %s sec", delta, extra={"time": delta})
         tm = TinyTimer()
@@ -586,14 +606,16 @@ class Inference:
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
-    def predict_batch(
-        self, images_paths: List[str], settings: Dict[str, Any]
-    ) -> List[List[Prediction]]:
+    def predict_batch(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
+        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
+        If source is a list of numpy arrays, it should be in BGR format"""
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_batch_raw(
         self, images_paths: List[str], settings: Dict[str, Any]
     ) -> List[List[Prediction]]:
+        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
+        If source is a list of numpy arrays, it should be in BGR format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
@@ -793,26 +815,25 @@ class Inference:
             preparing_progress = inference_request["preparing_progress"]
 
         # progress
-        inf_video_interface = InferenceVideoInterface(
-            api=api,
-            start_frame_index=state.get("startFrameIndex", 0),
-            frames_count=state.get("framesCount", video_info.frames_count - 1),
-            frames_direction=state.get("framesDirection", "forward"),
-            video_info=video_info,
-            imgs_dir=video_images_path,
-            preparing_progress=preparing_progress,
-        )
-        inf_video_interface.download_frames()
+        preparing_progress["status"] = "download_video"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = int(video_info.file_meta["size"])
+
+        def _progress_cb(chunk_size):
+            preparing_progress["current"] += chunk_size
+
+        self.cache.download_video(api, video_info.id, return_images=False, progress_cb=_progress_cb)
+        preparing_progress["status"] = "inference"
 
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
 
-        n_frames = len(inf_video_interface.images_paths)
+        n_frames = video_info.frames_count
         logger.debug(f"Total frames to infer: {n_frames}")
 
         results = []
-        batch_size = 10
-        for batch_i, batch in enumerate(batched(inf_video_interface.images_paths, batch_size)):
+        batch_size = 16
+        for batch in batched(range(video_info.frames_count), batch_size):
             tm_i = TinyTimer()
             if (
                 async_inference_request_uuid is not None
@@ -825,13 +846,13 @@ class Inference:
                 results = []
                 break
             logger.debug(
-                f"Inferring frames {batch_i * batch_size}-{(batch_i+1) * batch_size - 1}:",
-                extra={"images_paths": batch},
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
+            frames = self.cache.download_frames(api, video_info.id, batch)
             data_to_return = {}
             tm = TinyTimer()
             anns = self._inference_images_batch(
-                images_paths=batch,
+                images_paths=frames,
                 settings=settings,
                 data_to_return=data_to_return,
             )
@@ -839,12 +860,22 @@ class Inference:
             logger.debug(
                 "self._inference_images_batch() time: %s sec", delta, extra={"time": delta}
             )
-            batch_results = [{"annotation": ann.to_json(), "data": data_to_return} for ann in anns]
+            batch_results = []
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                batch_results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
             results.extend(batch_results)
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
-            logger.debug(f"Frames {batch_i * batch_size}-{(batch_i + 1) * batch_size - 1} done.")
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
             delta_i = TinyTimer.get_sec(tm_i)
             logger.debug("_inference_video_id batch time: %s", delta_i, extra={"time": delta_i})
         fs.remove_dir(video_images_path)

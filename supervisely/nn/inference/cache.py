@@ -340,6 +340,7 @@ class InferenceImageCache:
         If "return_images" in kwargs and is True, returns list of frames.
         """
         return_images = kwargs.get("return_images", True)
+        progress_cb = kwargs.get("progress_cb", None)
 
         self._wait_if_in_queue(video_id, api.logger)
         if not video_id in self._cache:
@@ -349,7 +350,7 @@ class InferenceImageCache:
             temp_video_path = Path("/tmp/smart_cache").joinpath(
                 f"_{sly.rand_str(6)}_" + video_info.name
             )
-            api.video.download_path(video_id, temp_video_path)
+            api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
             self.add_video_to_cache(video_id, temp_video_path)
         if return_images:
             return self.get_frames_from_cache(video_id, list(range(video_info.frames_count)))
