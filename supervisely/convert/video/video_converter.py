@@ -85,8 +85,7 @@ class VideoConverter(BaseConverter):
         existing_names = set([vid.name for vid in api.video.get_list(dataset_id)])
 
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading videos...")
-            progress_cb = progress.update
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
         else:
             progress_cb = None
 

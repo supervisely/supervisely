@@ -75,8 +75,7 @@ class PointcloudConverter(BaseConverter):
         existing_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset_id)])
 
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading pointclouds...")
-            progress_cb = progress.update
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading pointclouds...")
         else:
             progress_cb = None
 

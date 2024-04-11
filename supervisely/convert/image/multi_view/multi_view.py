@@ -57,8 +57,7 @@ class MultiViewImageConverter(ImageConverter):
         existing_names = set([info.name for info in api.image.get_list(dataset.id)])
         items_count = sum(len(images) for images in self._group_map.values())
         if log_progress:
-            progress = tqdm(total=items_count, desc="Uploading images...")
-            progress_cb = progress.update
+            progress, progress_cb = self.get_progress(items_count, "Uploading images...")
         else:
             progress_cb = None
 

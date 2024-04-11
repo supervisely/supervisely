@@ -83,8 +83,7 @@ class PointcloudEpisodeConverter(BaseConverter):
         existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset_id)])
 
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading pointcloud episodes...")
-            progress_cb = progress.update
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading pointcloud episodes...")
         else:
             progress_cb = None
 

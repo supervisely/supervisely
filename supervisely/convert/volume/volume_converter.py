@@ -113,8 +113,7 @@ class VolumeConverter(BaseConverter):
         existing_names = set([vol.name for vol in api.volume.get_list(dataset_id)])
 
         if log_progress:
-            progress = tqdm(total=self.items_count, desc=f"Uploading volumes...")
-            progress_cb = progress.update
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading volumes...")
         else:
             progress_cb = None
 
