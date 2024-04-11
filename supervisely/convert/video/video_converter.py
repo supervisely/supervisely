@@ -3,7 +3,7 @@ import cv2
 from tqdm import tqdm
 from typing import List
 
-from supervisely import Api, batched, generate_free_name, KeyIdMap, logger, ProjectMeta, VideoAnnotation
+from supervisely import Api, batched, generate_free_name, KeyIdMap, logger, is_development, ProjectMeta, VideoAnnotation
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
@@ -132,6 +132,7 @@ class VideoConverter(BaseConverter):
                 api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
             ann_progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")

@@ -3,7 +3,7 @@ from typing import List, Optional, OrderedDict, Union
 import nrrd
 from tqdm import tqdm
 
-from supervisely import Api, batched, generate_free_name, logger, ProjectMeta, VolumeAnnotation
+from supervisely import Api, batched, generate_free_name, is_development, logger, ProjectMeta, VolumeAnnotation
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
@@ -155,7 +155,8 @@ class VolumeConverter(BaseConverter):
                 )
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
 

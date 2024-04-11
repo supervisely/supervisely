@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from tqdm import tqdm
 
-from supervisely import Api, PointcloudEpisodeAnnotation, ProjectMeta, batched, generate_free_name, logger
+from supervisely import Api, PointcloudEpisodeAnnotation, ProjectMeta, batched, generate_free_name, is_development, logger
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
@@ -153,5 +153,6 @@ class PointcloudEpisodeConverter(BaseConverter):
             api.pointcloud_episode.annotation.append(dataset_id, ann, frame_to_pointcloud_ids)
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")

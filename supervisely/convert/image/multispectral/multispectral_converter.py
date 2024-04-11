@@ -8,7 +8,7 @@ import numpy as np
 import tifffile
 from tqdm import tqdm
 
-from supervisely import Api, logger, ProjectMeta
+from supervisely import Api, is_development, logger, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import is_valid_ext
@@ -104,7 +104,8 @@ class MultiSpectralImageConverter(ImageConverter):
             api.image.upload_multispectral(dataset.id, group_name, channels, images, progress_cb)
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
         logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
 
     def _get_image_channels(self, file_path: str) -> List[np.ndarray]:

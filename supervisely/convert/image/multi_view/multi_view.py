@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from tqdm import tqdm
 
-from supervisely import Api, ProjectMeta, generate_free_name, logger
+from supervisely import Api, ProjectMeta, generate_free_name, is_development, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
@@ -82,5 +82,6 @@ class MultiViewImageConverter(ImageConverter):
             )
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
         logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")

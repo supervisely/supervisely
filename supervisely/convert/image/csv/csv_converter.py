@@ -9,11 +9,12 @@ import supervisely.convert.image.csv.csv_helper as csv_helper
 from supervisely import (
     Annotation,
     Api,
-    ProjectMeta,
-    TagCollection,
     batched,
     generate_free_name,
+    is_development,
     logger,
+    ProjectMeta,
+    TagCollection,
 )
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
@@ -323,7 +324,8 @@ class CSVConverter(ImageConverter):
             api.annotation.upload_anns(img_ids, anns, progress_ann_cb)
 
         if log_progress:
-            progress.close()
+            if is_development():
+                progress.close()
             progress_ann.close()
         if success:
             logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
