@@ -275,7 +275,7 @@ class BaseConverter:
                         matched = True
                         break
                     if (
-                        meta1.tag_metas[new_name].possible_values
+                        meta1.tag_metas.get(new_name).possible_values
                         == new_tag.possible_values
                     ):
                         matched = True
