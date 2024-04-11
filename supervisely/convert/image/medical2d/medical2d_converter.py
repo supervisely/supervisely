@@ -56,7 +56,7 @@ class Medical2DImageConverter(ImageConverter):
                             nrrd[name] = path
                 elif mime == "application/gzip" or mime == "application/octet-stream":
                     if helper.is_nifti_file(path):  # is nifti
-                        paths, names = helper.convert_nifti_to_nrrd(path, converted_dir)
+                        paths, names = helper.slice_nifti_file(path, converted_dir)
                         for path, name in zip(paths, names):
                             nrrd[name] = path
 

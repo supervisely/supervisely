@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple
+from tqdm import tqdm
 
 try:
     import nibabel as nib
@@ -26,53 +27,42 @@ def is_nifti_file(filepath: str) -> bool:
         return False
 
 
-def convert_nifti_to_nrrd(input_nii_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
-    """Converts nifti file to nrrd format.
-    Then slices nrrd file into 2D slices if it is 3D.
+def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
+    """Slices file into 2D slices if it is 3D.
     Returns image paths and image names.
 
     This function always slices 3D nifti files into 2D slices by axial orientation because source data automatically gets converted to RAS coordinate system.
     """
 
-    nii_img = nib.load(input_nii_path)
-    canonical_img = nib.as_closest_canonical(nii_img)
-    nii_data = canonical_img.get_fdata()
-    affine = canonical_img.affine
-    orientation = nib.aff2axcodes(affine)
-    output_name = get_file_name(input_nii_path)
+    output_name = get_file_name(nii_file_path)
     if get_file_ext(output_name) == ".nii":
         output_name = get_file_name(output_name)
 
+    data, header = volume.convert_nifti_to_nrrd(nii_file_path)
+
     output_paths = []
     output_names = []
-    if len(nii_data.shape) >= 3:
-        indices = [slice(None)] * 3 + [0] * (nii_data.ndim - 3)
+    if len(data.shape) >= 3:
+        indices = [slice(None)] * 3 + [0] * (data.ndim - 3)
 
-        for i in range(nii_data.shape[2]):
+        for i in range(data.shape[2]):
             indices[2] = i
-            slice_data = nii_data[tuple(indices)]
+            slice_data = data[tuple(indices)]
 
-            nrrd_header = {
+            new_header = {
                 "sizes": slice_data.shape,
-                "type": "float",
+                "type": header.get("type", "float"),
                 "dimension": len(slice_data.shape),
             }
-            output_nrrd_path = os.path.join(converted_dir, f"nifti_{output_name}_{i}.nrrd")
-            output_names.append(get_file_name_with_ext(output_nrrd_path))
-            nrrd.write(output_nrrd_path, slice_data, nrrd_header)
-            output_paths.append(output_nrrd_path)
+            output_path = os.path.join(converted_dir, f"nifti_{output_name}_{i}.nrrd")
+            output_names.append(get_file_name_with_ext(output_path))
+            nrrd.write(output_path, slice_data, new_header)
+            output_paths.append(output_path)
     else:
-        nrrd_header = {
-            "space": "".join(orientation),
-            "space directions": canonical_img.affine[:2, :2].tolist(),
-            "sizes": nii_data.shape,
-            "type": "float",
-            "dimension": len(nii_data.shape),
-        }
-        output_nrrd_path = os.path.join(converted_dir, f"nifti_{output_name}.nrrd")
-        output_names.append(get_file_name_with_ext(output_nrrd_path))
-        nrrd.write(output_nrrd_path, nii_data, nrrd_header)
-        output_paths.append(output_nrrd_path)
+        output_path = os.path.join(converted_dir, f"nifti_{output_name}.nrrd")
+        output_names.append(get_file_name_with_ext(output_path))
+        nrrd.write(output_path, data, header)
+        output_paths.append(output_path)
 
     return output_paths, output_names
 
@@ -90,7 +80,7 @@ def is_dicom_file(path: str) -> bool:
 
 def check_nrrd(path):
     try:
-        img = nrrd.read(path)
+        nrrd.read(path)
         return True
     except:
         return False
@@ -200,40 +190,56 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
     output_paths = []
     output_names = []
 
-    if "kinds" in header:
-        kinds = header.get("kinds")
-        non_domain_indices = [i for i, kind in enumerate(kinds) if kind != "domain"]
+    if header.get("dimension", 0) > 2:
+        logger.info(f"File [{nrrd_file_path}] have more than 2 dimensions.")
+        try:
+            domain_count = 0
+            if "kinds" in header:
+                kinds = header.get("kinds")
+                domain_indices = [i for i, kind in enumerate(kinds) if kind == "domain"]
+                domain_count = len(domain_indices)
+            else:
+                domain_indices = [0, 1, 2]
+                domain_count = 3
 
-        # Move all non-domain dimensions to the end to be truncated later
-        for idx in non_domain_indices:
-            data = np.moveaxis(data, idx, -1)
+            # If there are more than three domain dimensions, ignore the extra ones
+            domain_indices = domain_indices[:3]
 
-    if len(data.shape) >= 3:
-        # If shape is 3D and space is not RAS, then we need to transpose the data
-        if len(data.shape) == 3 and "space" in header:
-            if (
-                header.get("space").lower() != "right-anterior-superior"
-                or header.get("space").lower() != "ras"
-            ):
-                data = np.transpose(data, (2, 1, 0))
+            # Create a new array with only the first three domain dimensions
+            indices = [0] * data.ndim
+            for idx in domain_indices:
+                indices[idx] = slice(None)
+            data = data[tuple(indices)]
+            domain_indices = [0, 1, 2]
 
-        indices = [slice(None)] * 3 + [0] * (data.ndim - 3)
-        for i in range(data.shape[2]):
-            indices[2] = i
-            slice_data = data[tuple(indices)]
+            # If shape is 3D and space is not RAS, then we need to transpose the data
+            if domain_count == 3 and "space" in header:
+                if header.get("space").lower() not in ["right-anterior-superior", "ras"]:
+                    domain_indices = domain_indices[::-1]
+                    data = np.transpose(data, domain_indices)
 
-            new_header = {
-                "sizes": slice_data.shape,
-                "type": header.get("type", "float"),
-                "dimension": len(slice_data.shape),
-            }
-            output_nrrd_path = os.path.join(
-                output_dir, f"{os.path.basename(nrrd_file_path).replace('.nrrd', '')}_{i}.nrrd"
-            )
-            output_name = get_file_name_with_ext(output_nrrd_path)
-            nrrd.write(output_nrrd_path, slice_data, new_header)
-            output_paths.append(output_nrrd_path)
-            output_names.append(output_name)
+            progress = tqdm(range(data.shape[-1]), desc="Slicing images")
+
+            for i in range(data.shape[-1]):
+                slice_data = np.take(data, i, axis=len(data.shape) - 1)
+
+                new_header = {
+                    "sizes": slice_data.shape,
+                    "type": header.get("type", "float"),
+                    "dimension": len(slice_data.shape),
+                }
+
+                output_nrrd_path = os.path.join(
+                    output_dir, f"{os.path.basename(nrrd_file_path).replace('.nrrd', '')}_{i}.nrrd"
+                )
+                output_name = get_file_name_with_ext(output_nrrd_path)
+                nrrd.write(output_nrrd_path, slice_data, new_header)
+                output_paths.append(output_nrrd_path)
+                output_names.append(output_name)
+                progress.update(1)
+            progress.close()
+        except Exception:
+            logger.warn(f"File [{nrrd_file_path}] is not supported. Skipping...")
     else:
         output_paths.append(nrrd_file_path)
         output_names.append(get_file_name_with_ext(nrrd_file_path))
