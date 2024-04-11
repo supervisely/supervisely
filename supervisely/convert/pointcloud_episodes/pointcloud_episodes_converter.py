@@ -78,16 +78,9 @@ class PointcloudEpisodeConverter(BaseConverter):
     ):
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset.id)])
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(curr_meta)
-        api.project.update_meta(dataset.project_id, meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+
+        existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset_id)])
 
         if log_progress:
             progress = tqdm(total=self.items_count, desc=f"Uploading pointcloud episodes...")
@@ -157,9 +150,9 @@ class PointcloudEpisodeConverter(BaseConverter):
                         continue
 
         if self.items_count > 0:
-            ann = self.to_supervisely(self._items[0], meta)
-            api.pointcloud_episode.annotation.append(dataset.id, ann, frame_to_pointcloud_ids)
+            ann = self.to_supervisely(self._items[0], meta, renamed_classes, renamed_tags)
+            api.pointcloud_episode.annotation.append(dataset_id, ann, frame_to_pointcloud_ids)
 
         if log_progress:
             progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")

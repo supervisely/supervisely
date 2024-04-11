@@ -80,18 +80,9 @@ class VideoConverter(BaseConverter):
     ):
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([vid.name for vid in api.video.get_list(dataset.id)])
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(meta, curr_meta)
-
-        api.project.update_meta(dataset.project_id, meta)
+        existing_names = set([vid.name for vid in api.video.get_list(dataset_id)])
 
         if log_progress:
             progress = tqdm(total=self.items_count, desc=f"Uploading videos...")
@@ -137,9 +128,11 @@ class VideoConverter(BaseConverter):
                 ann_progress_cb = None
 
             for video_id, ann in zip(vid_ids, anns):
+                if ann is None:
+                    ann = VideoAnnotation(item.shape, item.frame_count)
                 api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
 
         if log_progress:
             progress.close()
             ann_progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")

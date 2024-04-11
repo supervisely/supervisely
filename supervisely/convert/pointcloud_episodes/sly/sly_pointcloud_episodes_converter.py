@@ -135,10 +135,18 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         return ann_or_rimg_detected
 
     def to_supervisely(
-        self, item: PointcloudEpisodeConverter.Item, meta: ProjectMeta = None
+        self,
+        item: PointcloudEpisodeConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> PointcloudEpisodeAnnotation:
         """Convert to Supervisely format."""
         if self._annotation is not None:
+            if renamed_classes or renamed_tags:
+                ann_json = self._annotation.to_json()
+                ann_json = sly_episodes_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
+                self._annotation = PointcloudEpisodeAnnotation.from_json(ann_json, meta)
             return self._annotation
         else:
             return item.create_empty_annotation()

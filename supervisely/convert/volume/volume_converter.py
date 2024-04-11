@@ -108,13 +108,9 @@ class VolumeConverter(BaseConverter):
     ):
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([vol.name for vol in api.volume.get_list(dataset.id)])
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(self._meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        api.project.update_meta(dataset.project_id, meta)
+        existing_names = set([vol.name for vol in api.volume.get_list(dataset_id)])
 
         if log_progress:
             progress = tqdm(total=self.items_count, desc=f"Uploading volumes...")
@@ -144,11 +140,8 @@ class VolumeConverter(BaseConverter):
                 mask_dirs.append(item.mask_dir)
                 interpolation_dirs.append(item.interpolation_dir)
 
-                # ann = self.to_supervisely(item, meta)
-                # anns.append(ann)
-
-            # for .dcm
-            # api.volume.upload_dicom_serie_paths()
+                ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                anns.append(ann)
 
             vol_infos = api.volume.upload_nrrd_series_paths(
                 dataset_id,
@@ -157,13 +150,14 @@ class VolumeConverter(BaseConverter):
                 progress_cb=progress_cb,
             )
             vol_ids = [vol_info.id for vol_info in vol_infos]
-            api.volume.annotation.upload_paths(
-                vol_ids, anns, meta, interpolation_dirs=interpolation_dirs, mask_dirs=mask_dirs
-            )
+            if all(ann is not None for ann in anns):
+                api.volume.annotation.upload_paths(
+                    vol_ids, anns, meta, interpolation_dirs=interpolation_dirs, mask_dirs=mask_dirs
+                )
 
         if log_progress:
             progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
 
 # @TODO:

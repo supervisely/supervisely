@@ -70,16 +70,9 @@ class PointcloudConverter(BaseConverter):
     ):
         """Upload converted data to Supervisely"""
 
-        dataset = api.dataset.get_info_by_id(dataset_id)
-        existing_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset.id)])
-        if self._meta is not None:
-            curr_meta = self._meta
-        else:
-            curr_meta = ProjectMeta()
-        meta_json = api.project.get_meta(dataset.project_id)
-        meta = ProjectMeta.from_json(meta_json)
-        meta = meta.merge(curr_meta)
-        api.project.update_meta(dataset.project_id, meta)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+
+        existing_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset_id)])
 
         if log_progress:
             progress = tqdm(total=self.items_count, desc=f"Uploading pointclouds...")
@@ -104,7 +97,7 @@ class PointcloudConverter(BaseConverter):
                     item_names.append(item.name)
                 item_paths.append(item.path)
 
-                ann = self.to_supervisely(item, meta)
+                ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
 
             pcd_infos = api.pointcloud.upload_paths(
@@ -116,7 +109,8 @@ class PointcloudConverter(BaseConverter):
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
 
             for pcd_id, ann in zip(pcd_ids, anns):
-                api.pointcloud.annotation.append(pcd_id, ann)
+                if ann is not None:
+                    api.pointcloud.annotation.append(pcd_id, ann)
 
                 rimg_infos = []
                 camera_names = []
@@ -153,4 +147,4 @@ class PointcloudConverter(BaseConverter):
 
         if log_progress:
             progress.close()
-        logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
+        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")

@@ -43,7 +43,11 @@ class LasConverter(PointcloudConverter):
         return self.items_count > 0
 
     def to_supervisely(
-        self, item: PointcloudConverter.Item, meta: ProjectMeta = None
+        self,
+        item: PointcloudConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> PointcloudAnnotation:
         """Convert to Supervisely format."""
         return item.create_empty_annotation()

@@ -117,7 +117,11 @@ class SLYPointcloudConverter(PointcloudConverter):
         return detected_ann_cnt > 0
 
     def to_supervisely(
-        self, item: PointcloudConverter.Item, meta: ProjectMeta = None
+        self,
+        item: PointcloudConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> PointcloudAnnotation:
         """Convert to Supervisely format."""
         if meta is None:
@@ -130,6 +134,8 @@ class SLYPointcloudConverter(PointcloudConverter):
             ann_json = load_json_file(item.ann_data)
             if "annotation" in ann_json:
                 ann_json = ann_json["annotation"]
+            if renamed_classes or renamed_tags:
+                ann_json = sly_pointcloud_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return PointcloudAnnotation.from_json(ann_json, meta)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

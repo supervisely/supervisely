@@ -124,7 +124,11 @@ class SLYVolumeConverter(VolumeConverter):
         return detected_ann_cnt > 0
 
     def to_supervisely(
-        self, item: VolumeConverter.Item, meta: ProjectMeta = None
+        self,
+        item: VolumeConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> VolumeAnnotation:
         """Convert to Supervisely format."""
         if meta is None:
@@ -135,6 +139,8 @@ class SLYVolumeConverter(VolumeConverter):
 
         try:
             ann_json = load_json_file(item.ann_data)
+            if renamed_classes or renamed_tags:
+                ann_json = sly_volume_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return VolumeAnnotation.from_json(ann_json, meta)  # , KeyIdMap())
         except Exception as e:
             logger.warn(f"Failed to read annotation: {repr(e)}")

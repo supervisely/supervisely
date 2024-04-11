@@ -98,11 +98,11 @@ class SLYVideoConverter(VideoConverter):
         return detected_ann_cnt > 0
 
     def to_supervisely(
-            self,
-            item: VideoConverter.Item,
-            meta: ProjectMeta = None,
-            renamed_classes: dict = None,
-            renamed_tags: dict = None,
+        self,
+        item: VideoConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> VideoAnnotation:
         """Convert to Supervisely format."""
         if meta is None:
