@@ -17,6 +17,9 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         self._items: List[PointcloudEpisodeConverter.Item] = []
         self._meta: ProjectMeta = None
         self._labeling_interface: str = labeling_interface
+        self._annotation = None
+        self._frame_pointcloud_map = None
+        self._frame_count = None
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY
