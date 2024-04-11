@@ -40,7 +40,11 @@ class DICOMConverter(VolumeConverter):
         return len(series_infos) > 0
 
     def to_supervisely(
-        self, item: VolumeConverter.Item, meta: ProjectMeta = None
+        self,
+        item: VolumeConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
     ) -> VolumeAnnotation:
         """Convert to Supervisely format."""
         return None
