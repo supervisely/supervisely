@@ -13,6 +13,7 @@ RUN pip install gdcm==1.1 pylibjpeg==1.4.0 pylibjpeg-libjpeg==1.3.1
 RUN pip install pillow-avif-plugin==1.4.3 pillow-heif==0.15.0
 RUN pip install tifffile
 RUN pip install pymupdf==1.22.5
+RUN pip install nibabel==5.2.1
 
 # Export
 RUN pip install lxml==4.6.3

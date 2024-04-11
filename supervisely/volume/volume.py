@@ -12,7 +12,7 @@ import stringcase
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
-from supervisely.io.fs import get_file_ext, list_files_recursively
+from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -763,3 +763,65 @@ def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple[np.ndarray, dict]:
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
+
+
+def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
+    """Convert NIFTI volume to NRRD format.
+    Volume automatically reordered to RAS orientation as closest to canonical.
+
+    :param path: Path to NIFTI volume file.
+    :type path: str
+    :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
+    :rtype: Tuple[np.ndarray, dict]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nii"
+        data, header = sly.volume.convert_nifti_to_nrrd(path)
+    """
+
+    try:
+        import nibabel as nib
+    except ImportError:
+        raise ImportError(
+            "No module named nibabel. Please make sure that module is installed from pip and try again."
+        )
+
+    nifti = nib.load(path)
+    reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
+    data = reordered_to_ras_nifti.get_fdata()
+    affine = reordered_to_ras_nifti.affine
+    orientation = nib.aff2axcodes(affine)
+    header = {
+        "space": "".join(orientation),
+        "space directions": affine.tolist(),
+        "sizes": data.shape,
+        "type": str(data.dtype),
+        "dimension": len(data.shape),
+    }
+    return data, header
+
+
+def is_nifti_file(path: str) -> bool:
+    """Check if the file is a NIFTI file.
+
+    :param filepath: Path to the file.
+    :type filepath: str
+    :return: True if the file is a NIFTI file, False otherwise.
+    :rtype: bool
+    """
+    try:
+        import nibabel as nib
+    except ImportError:
+        raise ImportError(
+            "No module named nibabel. Please make sure that module is installed from pip and try again."
+        )
+
+    try:
+        nib.load(path)
+        return True
+    except nib.filebasedimages.ImageFileError:
+        return False
