@@ -520,6 +520,16 @@ class Inference:
         else:
             return yaml.safe_load(self._custom_inference_settings)
 
+    def _handle_error_in_async(self, uuid, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            inf_request = self._inference_requests.get(uuid, None)
+            if inf_request is not None:
+                inf_request["exception"] = str(e)
+            logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+            raise e
+
     @process_image_sliding_window
     @process_image_roi
     def _inference_image_path(
@@ -935,6 +945,7 @@ class Inference:
             "result": None,
             "pending_results": [],
             "preparing_progress": {"current": 0, "total": 1},
+            "exception": None,
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
@@ -1112,6 +1123,8 @@ class Inference:
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 self._inference_image_id,
                 request.state.api,
                 request.state.state,
@@ -1138,6 +1151,8 @@ class Inference:
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 self._inference_video_id,
                 request.state.api,
                 request.state.state,
