@@ -1,6 +1,9 @@
 import functools
 import json
+import time
 from pathlib import Path
+from queue import Queue
+from threading import Event, Thread
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -293,41 +296,82 @@ class PointTracking(Inference, InferenceImageCache):
             )
             api.logger.info("Start tracking.")
 
-            for _ in video_interface.frames_loader_generator():
-                for (fig_id, geom), obj_id in zip(
-                    video_interface.geometries.items(),
-                    video_interface.object_ids,
-                ):
-                    if isinstance(geom, sly.Point):
-                        geometries = self._predict_point_geometries(
-                            geom,
-                            video_interface.frames_with_notification,
-                        )
-                    elif isinstance(geom, sly.Polygon):
-                        if len(geom.interior) > 0:
-                            raise ValueError("Can't track polygons with interior.")
-                        geometries = self._predict_polygon_geometries(
-                            geom,
-                            video_interface.frames_with_notification,
-                        )
-                    elif isinstance(geom, sly.GraphNodes):
-                        geometries = self._predict_graph_geometries(
-                            geom,
-                            video_interface.frames_with_notification,
-                        )
-                    elif isinstance(geom, sly.Polyline):
-                        geometries = self._predict_polyline_geometries(
-                            geom,
-                            video_interface.frames_with_notification,
-                        )
-                    else:
-                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+            def _upload_loop(q: Queue, stop_event: Event, video_interface: TrackerInterface):
+                try:
+                    while True:
+                        items = []
+                        while not q.empty():
+                            items.append(q.get_nowait())
+                        if len(items) > 0:
+                            video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                        if stop_event.is_set():
+                            video_interface._notify(True, task="stop tracking")
+                            return
+                        time.sleep(1)
+                except Exception as e:
+                    api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                    video_interface._notify(True, task="stop tracking")
+                    video_interface.global_stop_indicatior = True
+                    raise
 
-                    video_interface.add_object_geometries(geometries, obj_id, fig_id)
-                    api.logger.info(f"Object #{obj_id} tracked.")
+            upload_queue = Queue()
+            stop_upload_event = Event()
+            Thread(
+                target=_upload_loop,
+                args=[upload_queue, stop_upload_event, video_interface],
+                daemon=True,
+            ).start()
+            try:
+                for _ in video_interface.frames_loader_generator():
+                    for (fig_id, geom), obj_id in zip(
+                        video_interface.geometries.items(),
+                        video_interface.object_ids,
+                    ):
+                        if isinstance(geom, sly.Point):
+                            geometries = self._predict_point_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.Polygon):
+                            if len(geom.interior) > 0:
+                                stop_upload_event.set()
+                                raise ValueError("Can't track polygons with interior.")
+                            geometries = self._predict_polygon_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.GraphNodes):
+                            geometries = self._predict_graph_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.Polyline):
+                            geometries = self._predict_polyline_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        else:
+                            raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
-                    if video_interface.global_stop_indicatior:
-                        return
+                        for frame_idx, geometry in zip(
+                            video_interface._cur_frames_indexes, geometries
+                        ):
+                            upload_queue.put(
+                                (
+                                    geometry,
+                                    obj_id,
+                                    frame_idx,
+                                )
+                            )
+                        api.logger.info(f"Object #{obj_id} tracked.")
+
+                        if video_interface.global_stop_indicatior:
+                            stop_upload_event.set()
+                            return
+            except Exception:
+                stop_upload_event.set()
+                raise
+            stop_upload_event.set()
 
     def predict(
         self,

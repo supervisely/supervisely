@@ -1,5 +1,8 @@
 import functools
 import json
+import time
+from queue import Queue
+from threading import Event, Thread
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -318,76 +321,113 @@ class MaskTracking(Inference, InferenceImageCache):
             i = 0
             label2id = {}
 
-            for (fig_id, geometry), obj_id in zip(
-                self.video_interface.geometries.items(),
-                self.video_interface.object_ids,
-            ):
-                original_geometry = geometry.clone()
-                if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
-                    raise TypeError(
-                        f"This app does not support {geometry.geometry_name()} tracking"
-                    )
-                # convert polygon to bitmap
-                if isinstance(geometry, sly.Polygon):
-                    polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                    polygon_label = sly.Label(geometry, polygon_obj_class)
-                    bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                    bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
-                    geometry = bitmap_label.geometry
-                if i == 0:
-                    multilabel_mask = geometry.data.astype(int)
-                    multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
-                    geometry.draw(bitmap=multilabel_mask, color=[1, 1, 1])
-                    i += 1
-                else:
-                    i += 1
-                    geometry.draw(bitmap=multilabel_mask, color=[i, i, i])
-                label2id[i] = {
-                    "fig_id": fig_id,
-                    "obj_id": obj_id,
-                    "original_geometry": original_geometry.geometry_name(),
-                }
-            # run tracker
-            tracked_multilabel_masks = self.predict(
-                frames=frames, input_mask=multilabel_mask[:, :, 0]
-            )
-            tracked_multilabel_masks = np.array(tracked_multilabel_masks)
-            # decompose multilabel masks into binary masks
-            for i in np.unique(tracked_multilabel_masks):
-                if i != 0:
-                    binary_masks = tracked_multilabel_masks == i
-                    fig_id = label2id[i]["fig_id"]
-                    obj_id = label2id[i]["obj_id"]
-                    geometry_type = label2id[i]["original_geometry"]
-                    for j, mask in enumerate(binary_masks[1:]):
-                        # check if mask is not empty
-                        if not np.any(mask):
-                            api.logger.info(
-                                f"Skipping empty mask on frame {self.video_interface.frame_index + j + 1}"
-                            )
-                            # update progress bar anyway (otherwise it will not be finished)
-                            self.video_interface._notify(task="add geometry on frame")
-                        else:
-                            if geometry_type == "polygon":
-                                bitmap_geometry = sly.Bitmap(mask)
-                                bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                                bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
-                                polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                                polygon_labels = bitmap_label.convert(polygon_obj_class)
-                                geometries = [label.geometry for label in polygon_labels]
-                            else:
-                                geometries = [sly.Bitmap(mask)]
-                            for l, geometry in enumerate(geometries):
-                                if l == len(geometries) - 1:
-                                    notify = True
-                                else:
-                                    notify = False
-                                self.video_interface.add_object_geometry_on_frame(
-                                    geometry,
-                                    obj_id,
-                                    self.video_interface.frames_indexes[j + 1],
-                                    notify=notify,
+            def _upload_loop(q: Queue, stop_event: Event, video_interface: TrackerInterface):
+                try:
+                    while True:
+                        items = []
+                        while not q.empty():
+                            items.append(q.get_nowait())
+                        if len(items) > 0:
+                            video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                        if stop_event.is_set():
+                            video_interface._notify(True, task="stop tracking")
+                            return
+                        time.sleep(1)
+                except Exception as e:
+                    api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                    video_interface._notify(True, task="stop tracking")
+                    video_interface.global_stop_indicatior = True
+                    raise
+
+            upload_queue = Queue()
+            stop_upload_event = Event()
+            Thread(
+                target=_upload_loop,
+                args=[upload_queue, stop_upload_event, self.video_interface],
+                daemon=True,
+            ).start()
+
+            try:
+                for (fig_id, geometry), obj_id in zip(
+                    self.video_interface.geometries.items(),
+                    self.video_interface.object_ids,
+                ):
+                    original_geometry = geometry.clone()
+                    if not isinstance(geometry, sly.Bitmap) and not isinstance(
+                        geometry, sly.Polygon
+                    ):
+                        stop_upload_event.set()
+                        raise TypeError(
+                            f"This app does not support {geometry.geometry_name()} tracking"
+                        )
+                    # convert polygon to bitmap
+                    if isinstance(geometry, sly.Polygon):
+                        polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                        polygon_label = sly.Label(geometry, polygon_obj_class)
+                        bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+                        bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
+                        geometry = bitmap_label.geometry
+                    if i == 0:
+                        multilabel_mask = geometry.data.astype(int)
+                        multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
+                        geometry.draw(bitmap=multilabel_mask, color=[1, 1, 1])
+                        i += 1
+                    else:
+                        i += 1
+                        geometry.draw(bitmap=multilabel_mask, color=[i, i, i])
+                    label2id[i] = {
+                        "fig_id": fig_id,
+                        "obj_id": obj_id,
+                        "original_geometry": original_geometry.geometry_name(),
+                    }
+                # run tracker
+                tracked_multilabel_masks = self.predict(
+                    frames=frames, input_mask=multilabel_mask[:, :, 0]
+                )
+                tracked_multilabel_masks = np.array(tracked_multilabel_masks)
+                # decompose multilabel masks into binary masks
+                for i in np.unique(tracked_multilabel_masks):
+                    if i != 0:
+                        binary_masks = tracked_multilabel_masks == i
+                        fig_id = label2id[i]["fig_id"]
+                        obj_id = label2id[i]["obj_id"]
+                        geometry_type = label2id[i]["original_geometry"]
+                        for j, mask in enumerate(binary_masks[1:]):
+                            # check if mask is not empty
+                            if not np.any(mask):
+                                api.logger.info(
+                                    f"Skipping empty mask on frame {self.video_interface.frame_index + j + 1}"
                                 )
-                    if self.video_interface.global_stop_indicatior:
-                        return
-                    api.logger.info(f"Figure with id {fig_id} was successfully tracked")
+                                # update progress bar anyway (otherwise it will not be finished)
+                                self.video_interface._notify(task="add geometry on frame")
+                            else:
+                                if geometry_type == "polygon":
+                                    bitmap_geometry = sly.Bitmap(mask)
+                                    bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+                                    bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
+                                    polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                                    polygon_labels = bitmap_label.convert(polygon_obj_class)
+                                    geometries = [label.geometry for label in polygon_labels]
+                                else:
+                                    geometries = [sly.Bitmap(mask)]
+                                for l, geometry in enumerate(geometries):
+                                    if l == len(geometries) - 1:
+                                        notify = True
+                                    else:
+                                        notify = False
+                                    upload_queue.put(
+                                        (
+                                            geometry,
+                                            obj_id,
+                                            self.video_interface.frames_indexes[j + 1],
+                                            notify,
+                                        )
+                                    )
+                        if self.video_interface.global_stop_indicatior:
+                            stop_upload_event.set()
+                            return
+                        api.logger.info(f"Figure with id {fig_id} was successfully tracked")
+            except Exception:
+                stop_upload_event.set()
+                raise
+            stop_upload_event.set()
