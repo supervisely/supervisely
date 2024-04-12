@@ -72,8 +72,6 @@ class BaseConverter:
 
         @property
         def name(self) -> str:
-            if self._name is not None:
-                return self._name
             return get_file_name_with_ext(self._path)
 
         @property
@@ -303,12 +301,20 @@ class BaseConverter:
         return new_meta, renamed_classes, renamed_tags
 
     def get_progress(
-        self, items_count: int, message: str = "Processing items..."
+        self,
+        total: int,
+        message: str = "Processing items...",
+        is_size: bool = False,
     ) -> tuple:
         if is_production():
-            progress = Progress(message, items_count)
+            progress = Progress(message, total, is_size=is_size)
             progress_cb = progress.iters_done_report
         else:
-            progress = tqdm(total=items_count, desc=message)
+            progress = tqdm(
+                total=total,
+                desc=message,
+                unit="B" if is_size else "it",
+                unit_scale=is_size
+            )
             progress_cb = progress.update
         return progress, progress_cb
