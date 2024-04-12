@@ -123,10 +123,9 @@ class VideoConverter(BaseConverter):
         if log_progress:
             file_sizes = [get_file_size(item.path) for item in self._items]
             has_large_files = any([self._check_video_file_size(file_size) for file_size in file_sizes])
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
             if has_large_files:
-                progress, progress_cb = self._get_video_upload_progress(api, sum(file_sizes))
-            else:
-                progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
+                size_progress, size_progress_cb = self._get_video_upload_progress(api, sum(file_sizes))
         else:
             has_large_files = False
             progress_cb = None
@@ -154,8 +153,8 @@ class VideoConverter(BaseConverter):
                 dataset_id,
                 item_names,
                 item_paths,
-                progress_cb=progress_cb if log_progress and has_large_files else None,
-                item_progress=progress_cb if log_progress and has_large_files else None,
+                progress_cb=progress_cb if log_progress else None,
+                item_progress=size_progress_cb if log_progress and has_large_files else None,
             )
             vid_ids = [vid_info.id for vid_info in vid_infos]
 
@@ -173,8 +172,10 @@ class VideoConverter(BaseConverter):
                 progress_cb(len(batch))
 
         if log_progress and is_development():
-            if isinstance(progress, tqdm):
+            if progress is not None:
                 progress.close()
+            if size_progress is not None:
+                size_progress.close()
             if ann_progress is not None:
                 ann_progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
@@ -251,24 +252,24 @@ class VideoConverter(BaseConverter):
     def _check_video_file_size(self, file_size):
         return file_size > 1000000#0 # > 10MB
 
-    def _update_progress(self, count, index, api: Api, task_id, progress: Progress):
-        # hack slight inaccuracies in size convertion
-        count = min(count, progress.total - progress.current)
-        progress.iters_done(count)
-
-
     def _set_progress(self, current, index, api: Api, task_id, progress: Progress):
         # if current > progress.total:
         #    current = progress.total
         old_value = progress.current
         delta = current - old_value
-        self._update_progress(delta, index, api, task_id, progress)
+        # hack slight inaccuracies in size convertion
+        delta = min(delta, progress.total - progress.current)
+        progress.iters_done(delta)
 
 
     def _get_video_upload_progress(self, api, total, is_size=True):
-        progress = Progress("Uploading videos...", total, is_size=is_size)
-        progress_cb = partial(
-            self._set_progress, index=2, api=api, task_id=task_id(), progress=progress
-        )
-        progress_cb(0)
+        if is_development():
+            progress = tqdm(total=total, desc="Uploading videos...")
+            progress_cb = progress.update
+        else:
+            progress = Progress("Uploading videos...", total, is_size=is_size)
+            progress_cb = partial(
+                self._set_progress, index=2, api=api, task_id=task_id(), progress=progress
+            )
+            progress_cb(0)
         return progress, progress_cb
