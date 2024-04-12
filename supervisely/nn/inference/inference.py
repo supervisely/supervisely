@@ -762,7 +762,9 @@ class Inference:
                 )
                 results.append({"annotation": ann.to_json(), "data": data_to_return})
         else:
-            anns = self._inference_images_batch(img_paths, settings, data_to_return=data_to_return)
+            anns = self._inference_images_batch(
+                source=img_paths, settings=settings, data_to_return=data_to_return
+            )
             for i, ann in enumerate(anns):
                 data = {}
                 if "slides" in data_to_return:
