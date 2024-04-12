@@ -125,7 +125,9 @@ class VideoConverter(BaseConverter):
             has_large_files = any([self._check_video_file_size(file_size) for file_size in file_sizes])
             progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
             if has_large_files:
-                size_progress, size_progress_cb = self._get_video_upload_progress(api, sum(file_sizes))
+                upload_progress = []
+                size_progress_cb = self._get_video_upload_progress(upload_progress)
+                # size_progress, size_progress_cb = self._get_video_upload_progress(api, sum(file_sizes))
         else:
             has_large_files = False
             progress_cb = None
@@ -174,8 +176,6 @@ class VideoConverter(BaseConverter):
         if log_progress and is_development():
             if progress is not None:
                 progress.close()
-            if size_progress is not None:
-                size_progress.close()
             if ann_progress is not None:
                 ann_progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
@@ -252,24 +252,36 @@ class VideoConverter(BaseConverter):
     def _check_video_file_size(self, file_size):
         return file_size > 1000000#0 # > 10MB
 
-    def _set_progress(self, current, index, api: Api, task_id, progress: Progress):
-        # if current > progress.total:
-        #    current = progress.total
-        old_value = progress.current
-        delta = current - old_value
-        # hack slight inaccuracies in size convertion
-        delta = min(delta, progress.total - progress.current)
-        progress.iters_done(delta)
+    def _get_video_upload_progress(self, upload_progress):
+        upload_progress = []
 
+        def _print_progress(monitor, upload_progress):
+            if len(upload_progress) == 0:
+                upload_progress.append(
+                    Progress(
+                        message="Upload videos...",
+                        total_cnt=monitor,
+                        ext_logger=logger,
+                        is_size=True,
+                    )
+                )
+            upload_progress[0].set_current_value(monitor)
+        
+        return lambda m: _print_progress(m, upload_progress)
 
-    def _get_video_upload_progress(self, api, total, is_size=True):
-        if is_development():
-            progress = tqdm(total=total, desc="Uploading videos...")
-            progress_cb = progress.update
-        else:
-            progress = Progress("Uploading videos...", total, is_size=is_size)
-            progress_cb = partial(
-                self._set_progress, index=2, api=api, task_id=task_id(), progress=progress
-            )
-            progress_cb(0)
-        return progress, progress_cb
+    # def _set_progress(self, current, index, api: Api, task_id, progress: Progress):
+    #     # if current > progress.total:
+    #     #    current = progress.total
+    #     old_value = progress.current
+    #     delta = current - old_value
+    #     # hack slight inaccuracies in size convertion
+    #     delta = min(delta, progress.total - progress.current)
+    #     progress.iters_done(delta)
+
+    # def _get_video_upload_progress(self, api, total, is_size=True):
+#         progress = Progress("Uploading videos...", total, is_size=is_size)
+#         progress_cb = partial(
+#             self._set_progress, index=2, api=api, task_id=task_id(), progress=progress
+#         )
+#         progress_cb(0)
+    #     return progress, progress_cb
