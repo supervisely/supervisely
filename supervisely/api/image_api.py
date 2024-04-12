@@ -1168,6 +1168,49 @@ class ImageApi(RemoveableBulkModuleApi):
         )
         return self.upload_hashes(dataset_id, names, hashes, metas=metas)
 
+    def upload_bytes(
+        self, dataset_id: int, name: str, img_bytes: bytes, meta: Optional[Dict] = None
+    ) -> ImageInfo:
+        """Uploads single image from bytes to dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param name: Image name with extension.
+        :type name: str
+        :param img_bytes: Image bytes.
+        :type img_bytes: bytes
+        :param meta: Image metadata.
+        :type meta: dict, optional
+        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            example_image = "example.jpg"
+
+            img: np.ndarray = sly.image.read(example_image)
+            img_bytes: bytes = sly.image.write_bytes(img, sly.fs.get_file_ext(example_image))
+
+            dataset_id = 123
+            image_info = api.image.upload_bytes(dataset_id, "example.jpg", img_bytes)
+        """
+        response = self._api.post(
+            "images.upload",
+            data=img_bytes,
+        )
+
+        if not response.ok or response.json().get("hash") is None:
+            raise RuntimeError(f"Failed to upload image, response: {response.text}")
+
+        meta = meta if meta is not None else {}
+
+        image_hash = response.json()["hash"]
+        return self.upload_hashes(dataset_id, [name], [image_hash], metas=[meta])[0]
+
     def upload_link(
         self,
         dataset_id: int,
