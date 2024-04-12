@@ -1,5 +1,6 @@
 import os
 import subprocess
+from functools import partial
 from typing import List
 
 import cv2
@@ -19,6 +20,7 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.fs import get_file_name, get_file_name_with_ext, silent_remove, get_file_size
+from supervisely.io.env import task_id
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
@@ -121,8 +123,10 @@ class VideoConverter(BaseConverter):
         if log_progress:
             file_sizes = [get_file_size(item.path) for item in self._items]
             has_large_files = any([self._check_video_file_size(file_size) for file_size in file_sizes])
-            total = sum(file_sizes) if has_large_files else self.items_count
-            progress, progress_cb = self.get_progress(total, "Uploading videos...", is_size=True)
+            if has_large_files:
+                progress, progress_cb = self._get_video_upload_progress(api, sum(file_sizes))
+            else:
+                progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
         else:
             has_large_files = False
             progress_cb = None
@@ -169,7 +173,7 @@ class VideoConverter(BaseConverter):
                 progress_cb(len(batch))
 
         if log_progress and is_development():
-            if progress is not None:
+            if isinstance(progress, tqdm):
                 progress.close()
             if ann_progress is not None:
                 ann_progress.close()
@@ -246,3 +250,25 @@ class VideoConverter(BaseConverter):
 
     def _check_video_file_size(self, file_size):
         return file_size > 1000000#0 # > 10MB
+
+    def _update_progress(self, count, index, api: Api, task_id, progress: Progress):
+        # hack slight inaccuracies in size convertion
+        count = min(count, progress.total - progress.current)
+        progress.iters_done(count)
+
+
+    def _set_progress(self, current, index, api: Api, task_id, progress: Progress):
+        # if current > progress.total:
+        #    current = progress.total
+        old_value = progress.current
+        delta = current - old_value
+        self._update_progress(delta, index, api, task_id, progress)
+
+
+    def _get_video_upload_progress(self, api, total, is_size=True):
+        progress = Progress("Uploading videos...", total, is_size=is_size)
+        progress_cb = partial(
+            self._set_progress, index=2, api=api, task_id=task_id(), progress=progress
+        )
+        progress_cb(0)
+        return progress, progress_cb
