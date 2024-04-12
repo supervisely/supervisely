@@ -165,7 +165,7 @@ def process_image_roi(func):
     return wrapper_inference
 
 
-def process_image_sliding_window(func, batch: bool = False):
+def process_image_sliding_window(func):
     @functools.wraps(func)
     def wrapper_inference(*args, **kwargs):
         settings = kwargs["settings"]
