@@ -309,7 +309,6 @@ class BaseConverter:
         is_size: bool = False,
     ) -> tuple:
         if is_production():
-            total = total // 1024 if is_size else total # TODO: check if it's correct
             progress = Progress(message, total, is_size=is_size)
             progress_cb = progress.iters_done_report
         else:
