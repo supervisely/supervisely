@@ -134,21 +134,7 @@ class Bitmap(BitmapBase):
         created_at: Optional[str] = None,
     ):
         if data.dtype != np.bool:
-            unique, counts = np.unique(data, return_counts=True)
-            if len(unique) != 2:
-                raise ValueError(
-                    f"Bitmap mask data must have only 2 unique values. Instead got {len(np.unique(data, return_counts=True)[0])}."
-                )
-
-            if list(unique) not in [[0, 1], [0, 255]]:
-                raise ValueError(
-                    f"Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}."
-                )
-
-            if list(unique) == [0, 1]:
-                data = np.array(data, dtype=bool)
-            elif list(unique) == [0, 255]:
-                data = np.array(data / 255, dtype=bool)
+            data = np.array(data, dtype=bool)
 
         # Call base constructor first to do the basic dimensionality checks.
         super().__init__(
