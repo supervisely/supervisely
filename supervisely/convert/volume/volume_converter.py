@@ -3,11 +3,19 @@ from typing import List, Optional, OrderedDict, Union
 import nrrd
 from tqdm import tqdm
 
-from supervisely import Api, batched, generate_free_name, is_development, logger, ProjectMeta, VolumeAnnotation
+from supervisely import (
+    Api,
+    ProjectMeta,
+    VolumeAnnotation,
+    batched,
+    generate_free_name,
+    is_development,
+    logger,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
-from supervisely.volume.volume import read_nrrd_serie_volume, ALLOWED_VOLUME_EXTENSIONS
+from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie_volume
 
 
 class VolumeConverter(BaseConverter):
@@ -146,13 +154,15 @@ class VolumeConverter(BaseConverter):
                 dataset_id,
                 item_names,
                 item_paths,
-                progress_cb=progress_cb,
             )
             vol_ids = [vol_info.id for vol_info in vol_infos]
             if all(ann is not None for ann in anns):
                 api.volume.annotation.upload_paths(
                     vol_ids, anns, meta, interpolation_dirs=interpolation_dirs, mask_dirs=mask_dirs
                 )
+
+            if log_progress:
+                progress_cb(len(batch))
 
         if log_progress:
             if is_development():

@@ -6,6 +6,8 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+from tqdm import tqdm
+
 from supervisely import (
     Annotation,
     Api,
@@ -16,7 +18,6 @@ from supervisely import (
     logger,
 )
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
-from tqdm import tqdm
 
 
 class AvailableImageConverters:
@@ -201,6 +202,8 @@ class BaseConverter:
     def _detect_format(self):
         found_formats = []
         all_converters = self.__class__.__subclasses__()
+
+        progress, progress_cb = self.get_progress(1, "Detecting annotation format")
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
@@ -215,6 +218,8 @@ class BaseConverter:
                         f"Multiple formats detected: {[str(f) for f in found_formats]}. "
                         "Mixed formats are not supported yet."
                     )
+
+        progress_cb(1)
 
         if len(found_formats) == 0:
             logger.warn("Not found any valid annotation formats. Only items will be processed")
@@ -278,10 +283,7 @@ class BaseConverter:
                     if new_tag.value_type != TagValueType.ONEOF_STRING:
                         matched = True
                         break
-                    if (
-                        meta1.tag_metas.get(new_name).possible_values
-                        == new_tag.possible_values
-                    ):
+                    if meta1.tag_metas.get(new_name).possible_values == new_tag.possible_values:
                         matched = True
                         break
                 new_name = f"{new_tag.name}_{i}"

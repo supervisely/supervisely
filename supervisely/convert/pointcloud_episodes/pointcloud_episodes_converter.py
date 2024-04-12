@@ -2,7 +2,15 @@ from typing import List, Optional
 
 from tqdm import tqdm
 
-from supervisely import Api, PointcloudEpisodeAnnotation, ProjectMeta, batched, generate_free_name, is_development, logger
+from supervisely import (
+    Api,
+    PointcloudEpisodeAnnotation,
+    ProjectMeta,
+    batched,
+    generate_free_name,
+    is_development,
+    logger,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
@@ -57,6 +65,7 @@ class PointcloudEpisodeConverter(BaseConverter):
         if self._frame_count is None:
             self._frame_count = len(self._items)
         return self._frame_count
+
     @property
     def ann_ext(self):
         return None
@@ -83,7 +92,9 @@ class PointcloudEpisodeConverter(BaseConverter):
         existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset_id)])
 
         if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading pointcloud episodes...")
+            progress, progress_cb = self.get_progress(
+                self.items_count, "Uploading pointcloud episodes..."
+            )
         else:
             progress_cb = None
 
@@ -109,7 +120,6 @@ class PointcloudEpisodeConverter(BaseConverter):
                 dataset_id,
                 item_names,
                 item_paths,
-                progress_cb=progress_cb,
             )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
 
@@ -147,6 +157,9 @@ class PointcloudEpisodeConverter(BaseConverter):
                             f"Failed to upload related image or add it to pointcloud episo: {repr(e)}"
                         )
                         continue
+
+            if log_progress:
+                progress_cb(len(batch))
 
         if self.items_count > 0:
             ann = self.to_supervisely(self._items[0], meta, renamed_classes, renamed_tags)
