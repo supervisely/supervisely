@@ -127,7 +127,6 @@ class VideoConverter(BaseConverter):
             if has_large_files:
                 upload_progress = []
                 size_progress_cb = self._get_video_upload_progress(upload_progress)
-                # size_progress, size_progress_cb = self._get_video_upload_progress(api, sum(file_sizes))
         else:
             has_large_files = False
             progress_cb = None
@@ -250,7 +249,7 @@ class VideoConverter(BaseConverter):
         )
 
     def _check_video_file_size(self, file_size):
-        return file_size > 1000000#0 # > 10MB
+        return file_size > 20 * 1024 * 1024 # 20 MB
 
     def _get_video_upload_progress(self, upload_progress):
         upload_progress = []
@@ -267,20 +266,3 @@ class VideoConverter(BaseConverter):
             upload_progress[0].set_current_value(monitor)
         
         return lambda m: _print_progress(m, upload_progress)
-
-    # def _set_progress(self, current, index, api: Api, task_id, progress: Progress):
-    #     # if current > progress.total:
-    #     #    current = progress.total
-    #     old_value = progress.current
-    #     delta = current - old_value
-    #     # hack slight inaccuracies in size convertion
-    #     delta = min(delta, progress.total - progress.current)
-    #     progress.iters_done(delta)
-
-    # def _get_video_upload_progress(self, api, total, is_size=True):
-#         progress = Progress("Uploading videos...", total, is_size=is_size)
-#         progress_cb = partial(
-#             self._set_progress, index=2, api=api, task_id=task_id(), progress=progress
-#         )
-#         progress_cb(0)
-    #     return progress, progress_cb
