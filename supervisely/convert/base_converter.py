@@ -64,6 +64,7 @@ class BaseConverter:
             custom_data: dict = {},
         ):
             self._path: str = item_path
+            self._name : str = None
             self._ann_data: Union[str, dict] = ann_data
             self._type: str = None
             self._shape: Union[Tuple, List] = shape
@@ -71,6 +72,8 @@ class BaseConverter:
 
         @property
         def name(self) -> str:
+            if self._name is not None:
+                return self._name
             return get_file_name_with_ext(self._path)
 
         @property
@@ -95,6 +98,9 @@ class BaseConverter:
 
         def set_path(self, path) -> None:
             self._path = path
+
+        def set_name(self, name) -> None:
+            self._name = name
 
         def set_ann_data(self, ann_data) -> None:
             self._ann_data = ann_data
