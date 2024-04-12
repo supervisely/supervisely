@@ -150,6 +150,7 @@ class VideoConverter(BaseConverter):
                 dataset_id,
                 item_names,
                 item_paths,
+                progress_cb=progress_cb if log_progress and has_large_files else None,
                 item_progress=progress_cb if log_progress and has_large_files else None,
             )
             vid_ids = [vid_info.id for vid_info in vid_infos]
