@@ -144,12 +144,13 @@ class ImageConverter(BaseConverter):
                 if ann is not None:
                     anns.append(ann)
 
-            img_infos = api.image.upload_paths(
-                dataset_id, item_names, item_paths, progress_cb, item_metas
-            )
+            img_infos = api.image.upload_paths(dataset_id, item_names, item_paths, item_metas)
             img_ids = [img_info.id for img_info in img_infos]
             if len(anns) == len(img_ids):
                 api.annotation.upload_anns(img_ids, anns)
+
+            if log_progress:
+                progress_cb(len(batch))
 
         if log_progress:
             if is_development():

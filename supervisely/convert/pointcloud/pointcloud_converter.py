@@ -1,7 +1,16 @@
 from typing import List, Optional
+
 from tqdm import tqdm
 
-from supervisely import Api, batched, generate_free_name, is_development, logger, PointcloudAnnotation, ProjectMeta
+from supervisely import (
+    Api,
+    PointcloudAnnotation,
+    ProjectMeta,
+    batched,
+    generate_free_name,
+    is_development,
+    logger,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
@@ -103,7 +112,6 @@ class PointcloudConverter(BaseConverter):
                 dataset_id,
                 item_names,
                 item_paths,
-                progress_cb=progress_cb,
             )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
 
@@ -117,13 +125,9 @@ class PointcloudConverter(BaseConverter):
                     meta_json = load_json_file(rimg_ann_path)
                     try:
                         if ApiField.META not in meta_json:
-                            raise ValueError(
-                                "Related image meta not found in json file."
-                            )
+                            raise ValueError("Related image meta not found in json file.")
                         if ApiField.NAME not in meta_json:
-                            raise ValueError(
-                                "Related image name not found in json file."
-                            )
+                            raise ValueError("Related image name not found in json file.")
                         img = api.pointcloud.upload_related_image(img_path)
                         if "deviceId" not in meta_json[ApiField.META].keys():
                             camera_names.append(f"CAM_{str(img_ind).zfill(2)}")
@@ -143,6 +147,9 @@ class PointcloudConverter(BaseConverter):
                             f"Failed to upload related image or add it to pointcloud: {repr(e)}"
                         )
                         continue
+
+            if log_progress:
+                progress_cb(len(batch))
 
         if log_progress:
             if is_development():
