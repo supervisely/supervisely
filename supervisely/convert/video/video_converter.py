@@ -1,15 +1,26 @@
-import cv2
-import magic
-import subprocess
 import os
-
-from tqdm import tqdm
+import subprocess
 from typing import List
 
-from supervisely import Api, batched, generate_free_name, KeyIdMap, logger, is_development, Progress, ProjectMeta, VideoAnnotation
+import cv2
+import magic
+from tqdm import tqdm
+
+from supervisely import (
+    Api,
+    KeyIdMap,
+    Progress,
+    ProjectMeta,
+    VideoAnnotation,
+    batched,
+    generate_free_name,
+    is_development,
+    logger,
+)
 from supervisely.convert.base_converter import BaseConverter
+from supervisely.io.fs import get_file_name, get_file_name_with_ext, silent_remove
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
-from supervisely.io.fs import get_file_ext, get_file_name
+
 
 class VideoConverter(BaseConverter):
     allowed_exts = ALLOWED_VIDEO_EXTENSIONS
@@ -25,6 +36,7 @@ class VideoConverter(BaseConverter):
             frame_count=None,
         ):
             self._path = item_path
+            self._name: str = None
             self._ann_data = ann_data
             self._type = "video"
             if shape is None:
@@ -42,6 +54,12 @@ class VideoConverter(BaseConverter):
         @property
         def frame_count(self) -> int:
             return self._frame_count
+
+        @property
+        def name(self) -> str:
+            if self._name is not None:
+                return self._name
+            return get_file_name_with_ext(self._path)
 
         def create_empty_annotation(self) -> VideoAnnotation:
             return VideoAnnotation(self._shape, self._frame_count)
@@ -80,7 +98,7 @@ class VideoConverter(BaseConverter):
         self,
         api: Api,
         dataset_id: int,
-        batch_size: int = 1,
+        batch_size: int = 10,
         log_progress=True,
     ):
         """Upload converted data to Supervisely"""
@@ -89,10 +107,26 @@ class VideoConverter(BaseConverter):
 
         existing_names = set([vid.name for vid in api.video.get_list(dataset_id)])
 
+        # check video codecs, mimetypes and convert if needed
+        convert_progress, convert_progress_cb = self.get_progress(self.items_count, "Converting videos...")
+        for item in self._items:
+            item_name, item_path = self.convert_to_mp4_if_needed(item.path)
+            item.set_name(item_name)
+            item.set_path(item_path)
+            convert_progress_cb(1)
+            if is_development():
+                convert_progress.close()
+
+
         if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
+            file_sizes = [os.path.getsize(item.path) for item in self._items]
+            has_large_files = any([self._check_video_file_size(file_size) for file_size in file_sizes])
+            total = sum(file_sizes) if has_large_files else self.items_count
+            progress, progress_cb = self.get_progress(total, "Uploading videos...", is_size=True)
         else:
+            has_large_files = False
             progress_cb = None
+        batch_size = 1 if has_large_files else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -100,10 +134,11 @@ class VideoConverter(BaseConverter):
             anns = []
             figures_cnt = 0
             for item in batch:
-                item_name, item_path = self.convert_to_mp4_if_needed(item.path)
-                item_name = generate_free_name(existing_names, item_name, with_ext=True, extend_used_names=True)
-                item.set_name(item_name)
-                item.set_path(item_path)
+                item.set_name(
+                    generate_free_name(
+                        existing_names, item_name, with_ext=True, extend_used_names=True
+                    )
+                )
                 item_paths.append(item_path)
                 item_names.append(item_name)
 
@@ -115,32 +150,33 @@ class VideoConverter(BaseConverter):
                 dataset_id,
                 item_names,
                 item_paths,
-                item_progress=progress_cb,
+                item_progress=progress_cb if log_progress and has_large_files else None,
             )
             vid_ids = [vid_info.id for vid_info in vid_infos]
 
-            if log_progress:
-                ann_progress = tqdm(total=figures_cnt, desc=f"Uploading annotations...")
-                ann_progress_cb = ann_progress.update
+            if log_progress and has_large_files and figures_cnt > 0:
+                ann_progress, ann_progress_cb = self.get_progress(figures_cnt, "Uploading annotations...")
             else:
-                ann_progress_cb = None
+                ann_progress, ann_progress_cb = None, None
 
             for video_id, ann in zip(vid_ids, anns):
                 if ann is None:
                     ann = VideoAnnotation(item.shape, item.frame_count)
                 api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
 
-        if log_progress:
-            if is_development():
-                progress.close()
-            ann_progress.close()
-        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
+            if log_progress and not has_large_files:
+                progress_cb(len(batch))
 
+        if log_progress and is_development():
+            if progress is not None:
+                progress.close()
+            if ann_progress is not None:
+                ann_progress.close()
+        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def convert_to_mp4_if_needed(self, video_path):
         video_name = get_file_name(video_path)
         # convert
-        convert_progress = Progress(message=f"Converting {video_name}", total_cnt=1)
         output_video_name = f"{get_file_name(video_name)}{self.base_video_extension}"
         output_video_path = os.path.splitext(video_path)[0] + "_h264" + self.base_video_extension
 
@@ -157,23 +193,24 @@ class VideoConverter(BaseConverter):
         # read video meta_data
         try:
             vid_meta = get_info(video_path)
-            need_video_transc, need_audio_transc = self.check_codecs(vid_meta)
+            need_video_transc, need_audio_transc = self._check_codecs(vid_meta)
         except:
             need_video_transc, need_audio_transc = True, True
 
         # convert videos
-        self.convert(
+        self._convert(
             input_path=video_path,
             output_path=output_video_path,
             need_video_transc=need_video_transc,
             need_audio_transc=need_audio_transc,
         )
-        convert_progress.iter_done_report()
+        if os.path.exists(output_video_path):
+            logger.info(f"Video {video_name} has been converted.")
+            silent_remove(video_path)
 
         return output_video_name, output_video_path
 
-
-    def check_codecs(self, video_meta):
+    def _check_codecs(self, video_meta):
         need_video_transc, need_audio_transc = False, False
         for stream in video_meta["streams"]:
             codec_type = stream["codecType"]
@@ -181,19 +218,14 @@ class VideoConverter(BaseConverter):
                 continue
             codec_name = stream["codecName"]
             if codec_type == "video" and codec_name != "h264":
-                logger.info(
-                    f"Video codec is not h264, transcoding is required: {codec_name}"
-                )
+                logger.info(f"Video codec is not h264, transcoding is required: {codec_name}")
                 need_video_transc = True
             elif codec_type == "audio" and codec_name != "aac":
-                logger.info(
-                    f"Audio codec is not aac, transcoding is required: {codec_name}"
-                )
+                logger.info(f"Audio codec is not aac, transcoding is required: {codec_name}")
                 need_audio_transc = True
         return need_video_transc, need_audio_transc
 
-
-    def convert(self, input_path, output_path, need_video_transc, need_audio_transc):
+    def _convert(self, input_path, output_path, need_video_transc, need_audio_transc):
         video_codec = "libx264" if need_video_transc else "copy"
         audio_codec = "aac" if need_audio_transc else "copy"
         logger.info("Converting video...")
@@ -210,3 +242,6 @@ class VideoConverter(BaseConverter):
                 f"{output_path}",
             ]
         )
+
+    def _check_video_file_size(self, file_size):
+        return file_size > 10000000 # > 10MB
