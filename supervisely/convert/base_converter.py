@@ -65,6 +65,7 @@ class BaseConverter:
             custom_data: dict = {},
         ):
             self._path: str = item_path
+            self._name : str = None
             self._ann_data: Union[str, dict] = ann_data
             self._type: str = None
             self._shape: Union[Tuple, List] = shape
@@ -96,6 +97,9 @@ class BaseConverter:
 
         def set_path(self, path) -> None:
             self._path = path
+
+        def set_name(self, name) -> None:
+            self._name = name
 
         def set_ann_data(self, ann_data) -> None:
             self._ann_data = ann_data
@@ -298,11 +302,21 @@ class BaseConverter:
 
         return new_meta, renamed_classes, renamed_tags
 
-    def get_progress(self, items_count: int, message: str = "Processing items...") -> tuple:
+    def get_progress(
+        self,
+        total: int,
+        message: str = "Processing items...",
+        is_size: bool = False,
+    ) -> tuple:
         if is_production():
-            progress = Progress(message, items_count)
+            progress = Progress(message, total, is_size=is_size)
             progress_cb = progress.iters_done_report
         else:
-            progress = tqdm(total=items_count, desc=message)
+            progress = tqdm(
+                total=total,
+                desc=message,
+                unit="B" if is_size else "it",
+                unit_scale=is_size
+            )
             progress_cb = progress.update
         return progress, progress_cb
