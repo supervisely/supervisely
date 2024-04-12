@@ -7,7 +7,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely import Api, ProjectType, logger
+from supervisely import Api, is_production, logger, Progress, ProjectType
 from supervisely.app import get_data_dir
 from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.image_converter import ImageConverter
@@ -122,20 +122,20 @@ class ImportManager:
 
         if not is_dir:
             files_size = self._api.storage.get_info_by_path(self._team_id, remote_path).sizeb
-            progress_cb = tqdm(
-                total=files_size, desc="Downloading...", unit="B", unit_scale=True
-            ).update
+            progress, progress_cb = self._get_progress(files_size)
             self._api.storage.download(
                 self._team_id, remote_path, save_path, progress_cb=progress_cb
             )
+            if not is_production():
+                progress.close()
         else:
             directory_size = self._api.storage.get_directory_size(self._team_id, remote_path)
-            progress_cb = tqdm(
-                total=directory_size, desc="Downloading...", unit="B", unit_scale=True
-            ).update
+            progress, progress_cb = self._get_progress(directory_size)
             self._api.storage.download_directory(
                 self._team_id, remote_path, local_path, progress_cb=progress_cb
             )
+            if not is_production():
+                progress.close()
 
         return local_path
 
@@ -160,6 +160,25 @@ class ImportManager:
 
             for archive in archives:
                 silent_remove(archive)
+
+    def _get_progress(
+        self,
+        total: int,
+        message: str = "Downloading...",
+        is_size: bool = True,
+    ) -> tuple:
+        if is_production():
+            progress = Progress(message, total, is_size=is_size)
+            progress_cb = progress.iters_done_report
+        else:
+            progress = tqdm(
+                total=total,
+                desc=message,
+                unit="B" if is_size else "it",
+                unit_scale=is_size
+            )
+            progress_cb = progress.update
+        return progress, progress_cb
 
 
 # @TODO:
