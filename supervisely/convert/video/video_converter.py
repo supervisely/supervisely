@@ -260,7 +260,6 @@ class VideoConverter(BaseConverter):
                 upload_progress.append(
                     Progress(
                         message="Upload videos...",
-                        total_cnt=monitor,
                         ext_logger=logger,
                         is_size=True,
                     )
