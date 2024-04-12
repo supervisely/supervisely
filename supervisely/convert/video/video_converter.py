@@ -18,7 +18,7 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_name, get_file_name_with_ext, silent_remove
+from supervisely.io.fs import get_file_name, get_file_name_with_ext, silent_remove, get_file_size
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
@@ -114,12 +114,12 @@ class VideoConverter(BaseConverter):
             item.set_name(item_name)
             item.set_path(item_path)
             convert_progress_cb(1)
-            if is_development():
-                convert_progress.close()
+        if is_development():
+            convert_progress.close()
 
 
         if log_progress:
-            file_sizes = [os.path.getsize(item.path) for item in self._items]
+            file_sizes = [get_file_size(item.path) for item in self._items]
             has_large_files = any([self._check_video_file_size(file_size) for file_size in file_sizes])
             total = sum(file_sizes) if has_large_files else self.items_count
             progress, progress_cb = self.get_progress(total, "Uploading videos...", is_size=True)
@@ -245,4 +245,4 @@ class VideoConverter(BaseConverter):
         )
 
     def _check_video_file_size(self, file_size):
-        return file_size > 10000000 # > 10MB
+        return file_size > 1000000#0 # > 10MB
