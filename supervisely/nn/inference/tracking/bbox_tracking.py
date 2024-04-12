@@ -1,6 +1,9 @@
 import functools
 import json
+import time
 from pathlib import Path
+from queue import Queue
+from threading import Event, Thread
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -77,40 +80,75 @@ class BBoxTracking(Inference, InferenceImageCache):
 
         api.logger.info("Start tracking.")
 
-        for fig_id, obj_id in zip(
-            video_interface.geometries.keys(),
-            video_interface.object_ids,
-        ):
-            init = False
-            for _ in video_interface.frames_loader_generator():
-                geom = video_interface.geometries[fig_id]
-                if not isinstance(geom, sly.Rectangle):
-                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+        def _upload_loop(q: Queue, stop_event: Event, video_interface: TrackerInterface):
+            try:
+                while True:
+                    items = []
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                    if stop_event.is_set():
+                        video_interface._notify(True, task="stop tracking")
+                        return
+                    time.sleep(1)
+            except Exception as e:
+                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                video_interface._notify(True, task="stop tracking")
+                video_interface.global_stop_indicatior = True
+                raise
 
-                imgs = video_interface.frames
-                target = PredictionBBox(
-                    "",  # TODO: can this be useful?
-                    [geom.top, geom.left, geom.bottom, geom.right],
-                    None,
-                )
+        upload_queue = Queue()
+        stop_upload_event = Event()
+        Thread(
+            target=_upload_loop,
+            args=[upload_queue, stop_upload_event, video_interface],
+            daemon=True,
+        ).start()
 
-                if not init:
-                    self.initialize(imgs[0], target)
-                    init = True
+        try:
+            for fig_id, obj_id in zip(
+                video_interface.geometries.keys(),
+                video_interface.object_ids,
+            ):
+                init = False
+                for _ in video_interface.frames_loader_generator():
+                    geom = video_interface.geometries[fig_id]
+                    if not isinstance(geom, sly.Rectangle):
+                        stop_upload_event.set()
+                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
-                geometry = self.predict(
-                    rgb_image=imgs[-1],
-                    prev_rgb_image=imgs[0],
-                    target_bbox=target,
-                    settings=self.custom_inference_settings_dict,
-                )
-                sly_geometry = self._to_sly_geometry(geometry)
-                video_interface.add_object_geometries([sly_geometry], obj_id, fig_id)
+                    imgs = video_interface.frames
+                    target = PredictionBBox(
+                        "",  # TODO: can this be useful?
+                        [geom.top, geom.left, geom.bottom, geom.right],
+                        None,
+                    )
 
-                if video_interface.global_stop_indicatior:
-                    return
+                    if not init:
+                        self.initialize(imgs[0], target)
+                        init = True
 
-            api.logger.info(f"Figure #{fig_id} tracked.")
+                    geometry = self.predict(
+                        rgb_image=imgs[-1],
+                        prev_rgb_image=imgs[0],
+                        target_bbox=target,
+                        settings=self.custom_inference_settings_dict,
+                    )
+                    sly_geometry = self._to_sly_geometry(geometry)
+                    upload_queue.put(
+                        (sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])
+                    )
+
+                    if video_interface.global_stop_indicatior:
+                        stop_upload_event.set()
+                        return
+
+                api.logger.info(f"Figure #{fig_id} tracked.")
+        except Exception:
+            stop_upload_event.set()
+            raise
+        stop_upload_event.set()
 
     def _track_api(self, api: sly.Api, context: dict):
         # unused fields:

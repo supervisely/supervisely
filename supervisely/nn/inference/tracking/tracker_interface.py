@@ -1,3 +1,4 @@
+import uuid
 from collections import OrderedDict
 from logging import Logger
 from typing import Callable, Dict, Generator, List, Optional
@@ -6,7 +7,9 @@ from typing import OrderedDict as OrderedDictType
 import numpy as np
 
 import supervisely as sly
+from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
+from supervisely.video_annotation.video_figure import VideoFigure
 
 
 class TrackerInterface:
@@ -101,6 +104,44 @@ class TrackerInterface:
             if self.global_stop_indicatior:
                 self.clear_cache()
                 return
+
+    def add_object_geometries_on_frames(
+        self,
+        geometries: List[Geometry],
+        object_ids: List[int],
+        frame_indexes: List[int],
+        notify: bool = True,
+    ):
+        def _split(geometries: List[Geometry], object_ids: List[int], frame_indexes: List[int]):
+            result = {}
+            for geometry, object_id, frame_index in zip(geometries, object_ids, frame_indexes):
+                result.setdefault(object_id, []).append((geometry, frame_index))
+            return result
+
+        geometries_by_object = _split(geometries, object_ids, frame_indexes)
+
+        for object_id, geometries_frame_indexes in geometries_by_object.items():
+            figures_json = [
+                {
+                    ApiField.OBJECT_ID: object_id,
+                    ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
+                    ApiField.GEOMETRY: geometry.to_json(),
+                    ApiField.META: {ApiField.FRAME: frame_index},
+                    ApiField.TRACK_ID: self.track_id,
+                }
+                for geometry, frame_index in geometries_frame_indexes
+            ]
+            figures_keys = [uuid.uuid4() for _ in figures_json]
+            key_id_map = sly.KeyIdMap()
+            self.api.video.figure._append_bulk(
+                entity_id=self.video_id,
+                figures_json=figures_json,
+                figures_keys=figures_keys,
+                key_id_map=key_id_map,
+            )
+            self.logger.debug(f"Added {len(figures_json)} geometries to object #{object_id}")
+            if notify:
+                self._notify(task="add geometry on frame", pos_increment=len(figures_json))
 
     def add_object_geometry_on_frame(
         self,
