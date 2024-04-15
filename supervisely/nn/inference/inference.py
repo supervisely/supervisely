@@ -23,7 +23,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import TinyTimer, batched
+from supervisely import batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -477,7 +477,6 @@ class Inference:
     def _predictions_to_annotation(
         self, image_path: str, predictions: List[Prediction]
     ) -> Annotation:
-        tm = TinyTimer()
         labels = []
         for prediction in predictions:
             label = self._create_label(prediction)
@@ -488,21 +487,13 @@ class Inference:
                 labels.extend(label)
                 continue
             labels.append(label)
-        delta = TinyTimer.get_sec(tm)
-        logger.debug("Creating labels time: %s sec", delta, extra={"time": delta})
 
         # create annotation with correct image resolution
-        tm = TinyTimer()
         if isinstance(image_path, str):
             ann = Annotation.from_img_path(image_path)
         elif isinstance(image_path, np.ndarray):
             ann = Annotation(image_path.shape[:2])
-        delta = TinyTimer.get_sec(tm)
-        logger.debug("Annotation from_img_path time: %s sec", delta, extra={"time": delta})
-        tm = TinyTimer()
         ann = ann.add_labels(labels)
-        delta = TinyTimer.get_sec(tm)
-        logger.debug("Adding labels time: %s sec", delta, extra={"time": delta})
         return ann
 
     @property
@@ -564,7 +555,6 @@ class Inference:
         settings: Dict,
         data_to_return: Dict,  # for decorators
     ) -> List[Annotation]:
-        total = TinyTimer()
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
             "Inferring images batch:",
@@ -574,7 +564,6 @@ class Inference:
             return []
 
         images_paths = None
-        tm = TinyTimer()
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             if type(self).predict_batch_raw == Inference.predict_batch_raw:
                 temp_dir = None
@@ -612,15 +601,10 @@ class Inference:
                     fs.remove_dir(temp_dir)
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
-        delta = TinyTimer.get_sec(tm)
-        logger.debug("predict_batch_time: %s sec", delta, extra={"time": delta})
-        tm = TinyTimer()
         anns = [
             self._predictions_to_annotation(image_path, prediction)
             for image_path, prediction in zip(source, predictions)
         ]
-        delta = TinyTimer.get_sec(tm)
-        logger.debug("predictions_to_annotations_time: %s sec", delta, extra={"time": delta})
 
         logger.debug(
             f"Inferring image_path done. pred_annotations:",
@@ -631,8 +615,6 @@ class Inference:
                 ]
             },
         )
-        delta = TinyTimer.get_sec(total)
-        logger.debug("Total inference time: %s sec", delta, extra={"time": delta})
         return anns
 
     # pylint: disable=method-hidden
@@ -890,7 +872,6 @@ class Inference:
         results = []
         batch_size = 16
         for batch in batched(range(video_info.frames_count), batch_size):
-            tm_i = TinyTimer()
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
@@ -906,15 +887,10 @@ class Inference:
             )
             frames = self.cache.download_frames(api, video_info.id, batch)
             data_to_return = {}
-            tm = TinyTimer()
             anns = self._inference_images_batch(
                 source=frames,
                 settings=settings,
                 data_to_return=data_to_return,
-            )
-            delta = TinyTimer.get_sec(tm)
-            logger.debug(
-                "self._inference_images_batch() time: %s sec", delta, extra={"time": delta}
             )
             batch_results = []
             for i, ann in enumerate(anns):
@@ -932,8 +908,6 @@ class Inference:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
-            delta_i = TinyTimer.get_sec(tm_i)
-            logger.debug("_inference_video_id batch time: %s", delta_i, extra={"time": delta_i})
         fs.remove_dir(video_images_path)
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
