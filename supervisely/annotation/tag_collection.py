@@ -3,12 +3,13 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict, Iterator, Any
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
-from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollection
+from typing import Dict, Iterator, List, Optional
+
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollection
 
 
 class TagCollection(MultiKeyIndexedCollection):
@@ -288,3 +289,49 @@ class TagCollection(MultiKeyIndexedCollection):
 
     def __iter__(self) -> Iterator[Tag]:
         return next(self)
+
+    def add_items(self, items: List[Tag]) -> TagCollection:
+        """
+        Add tags from given list to collection.
+        If a tag with the same name and meta already exists, it will be replaced by a new one with its value.
+        If the tag has a different meta, AssertionError will be raised.
+
+        :param items: List of Tag objects to add to the collection.
+        :type items: List[Tag]
+        :return: New TagCollection object with added tags.
+        :rtype: TagCollection
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+
+            #! Remember that KeyIndexedCollection object is immutable, and we need to assign new instance of KeyIndexedCollection to a new variable
+
+            item_dog = sly.ObjClass('dog', sly.Rectangle)
+            item_mouse = sly.ObjClass('mouse', sly.Bitmap)
+            new_collection = collection.add_items([item_dog, item_mouse])
+
+        """
+
+        if len(items) == 0:
+            return self
+
+        items_dict = {item.name: item for item in self.items()}
+        if len(items_dict) == 0:
+            new_items = items
+        else:
+            for new_item in items:
+                if items_dict.get(new_item.name).meta == new_item.meta:
+                    items_dict[new_item.name] = new_item
+                else:
+                    raise AssertionError(
+                        f"Tag with the same name {new_item.name} already exists and has different meta"
+                    )
+            new_items = list(items_dict.values())
+        return self.clone(new_items)
