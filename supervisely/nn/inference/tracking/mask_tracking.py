@@ -313,6 +313,7 @@ class MaskTracking(Inference, InferenceImageCache):
                 notify_in_predict=True,
                 per_point_polygon_tracking=False,
                 frame_loader=self.download_frame,
+                frames_loader=self.download_frames,
             )
             api.logger.info("Starting tracking process")
             # load frames

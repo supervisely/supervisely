@@ -354,7 +354,7 @@ class PointTracking(Inference, InferenceImageCache):
                             raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
                         for frame_idx, geometry in zip(
-                            video_interface._cur_frames_indexes, geometries
+                            video_interface._cur_frames_indexes[1:], geometries
                         ):
                             upload_queue.put(
                                 (
