@@ -198,7 +198,7 @@ class CSVConverter(ImageConverter):
         dataset_id: int,
         is_team_file: bool,
         progress_cb: Optional[callable] = None,
-        force_metadata: bool = True,
+        force_metadata: bool = False,
     ):
         image_path = image_path.strip()
         if is_team_file:
