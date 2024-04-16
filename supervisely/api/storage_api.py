@@ -220,6 +220,17 @@ class StorageApi(FileApi):
 
         return data
 
+    def _exists(self, team_id: int, remote_path: str, path_type: str) -> bool:
+        """Checks if file or directory exists in Team Files."""
+
+        parent_dir = os.path.dirname(remote_path.rstrip("/"))
+        path_infos = self.list(team_id, parent_dir, recursive=False, return_type="dict")
+        for info in path_infos:
+            if info["type"] == path_type:
+                if info["path"].rstrip("/") == remote_path.rstrip("/"):
+                    return True
+        return False
+
     def exists(self, team_id: int, remote_path: str) -> bool:
         """
         Checks if file exists in Team Files.
@@ -243,13 +254,7 @@ class StorageApi(FileApi):
            file = api.storage.exists(8, "/999_App_Test/ds1/02163.json") # True
            file = api.storage.exists(8, "/999_App_Test/ds1/01587.json") # False
         """
-        dir_name = os.path.dirname(remote_path.rstrip("/"))
-        path_infos = self.list(team_id, dir_name, recursive=False, return_type="dict")
-        for info in path_infos:
-            if info["type"] == "file":
-                if info["path"].rstrip("/") == remote_path.rstrip("/"):
-                    return True
-        return False
+        return self._exists(team_id, remote_path, "file")
 
     def dir_exists(self, team_id: int, remote_directory: str) -> bool:
         """
@@ -274,13 +279,7 @@ class StorageApi(FileApi):
            file = api.storage.dir_exists(8, "/999_App_Test/")   # True
            file = api.storage.dir_exists(8, "/10000_App_Test/") # False
         """
-        parent_dir = os.path.dirname(remote_directory.rstrip("/"))
-        path_infos = self.list(team_id, parent_dir, recursive=False, return_type="dict")
-        for info in path_infos:
-            if info["type"] == "folder":
-                if info["path"].rstrip("/") == remote_directory.rstrip("/"):
-                    return True
-        return False
+        return self._exists(team_id, remote_directory, "folder")
 
     def get_info_by_path(self, team_id: int, remote_path: str) -> FileInfo:
         """
