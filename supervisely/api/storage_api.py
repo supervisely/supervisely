@@ -204,7 +204,7 @@ class StorageApi(FileApi):
 
         except requests.exceptions.RequestException as e:
             if self.is_on_agent(path) is True:
-                logger.warn(f"Failed to list files on agent {path}: {e}")
+                logger.warn(f"Failed to list files on agent {path}: {repr(e)}", exc_info=True)
                 return []
             else:
                 raise e
@@ -221,7 +221,7 @@ class StorageApi(FileApi):
         return data
 
     def _exists(self, team_id: int, remote_path: str, path_type: str) -> bool:
-        """Checks if file or directory exists in Team Files."""
+        """Checks if file or directory exists in Team Files / Cloud Storage / Agent."""
 
         parent_dir = os.path.dirname(remote_path.rstrip("/"))
         path_infos = self.list(team_id, parent_dir, recursive=False, return_type="dict")
@@ -233,7 +233,7 @@ class StorageApi(FileApi):
 
     def exists(self, team_id: int, remote_path: str) -> bool:
         """
-        Checks if file exists in Team Files.
+        Checks if file exists in Team Files / Cloud Storage / Agent.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -258,7 +258,7 @@ class StorageApi(FileApi):
 
     def dir_exists(self, team_id: int, remote_directory: str) -> bool:
         """
-        Checks if directory exists in Team Files.
+        Checks if directory exists in Team Files / Cloud Storage / Agent.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -283,7 +283,7 @@ class StorageApi(FileApi):
 
     def get_info_by_path(self, team_id: int, remote_path: str) -> FileInfo:
         """
-        Gets File information by path in Team Files.
+        Gets File information by path in Team Files / Cloud Storage / Agent.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
@@ -326,7 +326,8 @@ class StorageApi(FileApi):
         return None
 
     def get_info_by_id(self, id: int) -> FileInfo:
-        raise NotImplementedError()
+        """This method available only for Team Files."""
+        return super().get_info_by_id(id)
 
     def remove_dir(self, team_id: int, remote_path: str) -> None:
         if not remote_path.endswith("/"):
