@@ -783,12 +783,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
 
-    try:
-        import nibabel as nib
-    except ImportError:
-        raise ImportError(
-            "No module named nibabel. Please make sure that module is installed from pip and try again."
-        )
+    import nibabel as nib
 
     nifti = nib.load(path)
     reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
