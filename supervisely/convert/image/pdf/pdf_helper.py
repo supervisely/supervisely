@@ -10,7 +10,7 @@ def pages_to_images(
     logger: Logger,
     filetype: str = "pdf",
 ) -> bool:
-    import fitz
+    import fitz # pylint: disable=import-error
 
     doc_path = Path(doc_path)
     save_path = Path(save_path)

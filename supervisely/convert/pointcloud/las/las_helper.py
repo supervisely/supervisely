@@ -4,14 +4,14 @@ import numpy as np
 
 
 def las2pcd(input_path, output_path):
-    import laspy
-    import open3d as o3d
+    import laspy # pylint: disable=import-error
+    import open3d as o3d # pylint: disable=import-error
 
     try:
         las = laspy.read(input_path)
     except Exception as e:
         if "buffer size must be a multiple of element size" in str(e):
-            from laspy.point.record import PackedPointRecord
+            from laspy.point.record import PackedPointRecord # pylint: disable=import-error
             logger.warn(
                 "Could not read LAS file in laspy. Trying to read it without EXTRA_BYTES..."
             )

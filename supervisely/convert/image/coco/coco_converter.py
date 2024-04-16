@@ -37,7 +37,7 @@ class COCOConverter(ImageConverter):
         return coco_helper.generate_meta_from_annotation(coco, meta)
 
     def validate_key_file(self, key_file_path) -> bool:
-        from pycocotools.coco import COCO
+        from pycocotools.coco import COCO # pylint: disable=import-error
 
         # TODO: find a way to block print in COCO constructor
         # sys.stdout = open(os.devnull, 'w') # block print (will enable after next line)
@@ -49,7 +49,7 @@ class COCOConverter(ImageConverter):
         return True
 
     def validate_format(self) -> bool:
-        from pycocotools.coco import COCO
+        from pycocotools.coco import COCO # pylint: disable=import-error
 
         detected_ann_cnt = 0
         images_list, ann_paths = [], []

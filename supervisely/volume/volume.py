@@ -783,7 +783,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
 
-    import nibabel as nib
+    import nibabel as nib # pylint: disable=import-error
 
     nifti = nib.load(path)
     reordered_to_ras_nifti = nib.as_closest_canonical(nifti)

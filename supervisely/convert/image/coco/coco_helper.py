@@ -124,7 +124,7 @@ def create_supervisely_annotation(
 
 
 def convert_rle_mask_to_polygon(coco_ann):
-    import pycocotools.mask as mask_util
+    import pycocotools.mask as mask_util # pylint: disable=import-error
 
     if type(coco_ann["segmentation"]["counts"]) is str:
         coco_ann["segmentation"]["counts"] = bytes(
@@ -190,7 +190,7 @@ def convert_polygon_vertices(coco_ann, image_size):
 
 
 def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
-    from pycocotools.coco import COCO
+    from pycocotools.coco import COCO # pylint: disable=import-error
 
     coco: COCO
 
@@ -251,7 +251,7 @@ def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
 
 
 def get_ann_types(coco) -> List[str]:
-    from pycocotools.coco import COCO
+    from pycocotools.coco import COCO # pylint: disable=import-error
 
     coco: COCO
 
