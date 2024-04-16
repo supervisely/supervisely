@@ -283,16 +283,19 @@ def process_images_batch_sliding_window(func):
             return anns
 
         sliding_window_params = settings["sliding_window_params"]
-        images_paths = kwargs["images_paths"]  # TODO: images_patsh -> source
+        source = kwargs["source"]
         data_to_return["slides"] = []
         anns = []
 
-        images_crops_paths = []
+        images_crops = []
         original_images_sizes = []
         images_slices_lengths = []
         images_shapes = []
-        for image_path in images_paths:
-            img = sly_image.read(image_path)
+        for src in source:
+            if isinstance(src, str):
+                img = sly_image.read(src)
+            else:
+                img = src
             img_h, img_w = img.shape[:2]
             images_shapes.append((img_h, img_w))
             windowHeight = sliding_window_params.get("windowHeight", img_h)
@@ -309,15 +312,16 @@ def process_images_batch_sliding_window(func):
                 rectangles.append(window)
 
             for rect in rectangles:
-                image_crop_path, original_image_size = _process_image_path(image_path, rect)
-                images_crops_paths.append(image_crop_path)
+                original_image_size = (img_h, img_w)
+                image_crop = sly_image.crop(img, rect)
+                images_crops.append(image_crop)
                 original_images_sizes.append(original_image_size)
             images_slices_lengths.append(len(rectangles))
 
-            ann = Annotation.from_img_path(image_path)
+            ann = Annotation((img_h, img_w))
             anns.append(ann)
 
-        kwargs["images_paths"] = images_crops_paths
+        kwargs["source"] = images_crops
         slices_anns: List[Annotation] = func(*args, **kwargs)
         slices_anns = [
             _scale_ann_to_original_size(slice_ann, original_image_size, rect)
