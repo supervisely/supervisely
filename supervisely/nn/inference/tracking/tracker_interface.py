@@ -73,15 +73,14 @@ class TrackerInterface:
 
         self.geometries[start_fig] = geometries[-1]
 
-    def frames_loader_generator(self) -> Generator[None, None, None]:
+    def frames_loader_generator(self, batch_size=16) -> Generator[None, None, None]:
         if self.load_all_frames:
             self._cur_frames_indexes = self.frames_indexes
             yield
             return
 
-        _batch_size = 10
         self._load_frames_to_hot_cache(
-            self.frames_indexes[: min(_batch_size + 1, len(self.frames_indexes))]
+            self.frames_indexes[: min(batch_size + 1, len(self.frames_indexes))]
         )
         ind = self.frames_indexes[0]
         frame = self._load_frame(ind)
@@ -90,7 +89,7 @@ class TrackerInterface:
                 self._load_frames_to_hot_cache(
                     self.frames_indexes[
                         next_ind_pos
-                        + 1 : min(next_ind_pos + 1 + _batch_size, len(self.frames_indexes))
+                        + 1 : min(next_ind_pos + 1 + batch_size, len(self.frames_indexes))
                     ]
                 )
             next_frame = self._load_frame(next_ind)
