@@ -4,32 +4,17 @@ import numpy as np
 
 
 def las2pcd(input_path, output_path):
-    try:
-        import laspy
-    except ImportError:
-        raise ImportError(
-            "No module named laspy. Please make sure that module is installed from pip and try again."
-        )
-    try:
-        import open3d as o3d
-    except ImportError:
-        raise ImportError(
-            "No module named open3d. Please make sure that module is installed from pip and try again."
-        )
+    import laspy
+    import open3d as o3d
 
     try:
         las = laspy.read(input_path)
     except Exception as e:
         if "buffer size must be a multiple of element size" in str(e):
+            from laspy.point.record import PackedPointRecord
             logger.warn(
                 "Could not read LAS file in laspy. Trying to read it without EXTRA_BYTES..."
             )
-            try:
-                from laspy.point.record import PackedPointRecord
-            except ImportError:
-                raise ImportError(
-                    "No module named laspy. Please make sure that module is installed from pip and try again."
-                )
 
             @classmethod
             def from_buffer_without_extra_bytes(cls, buffer, point_format, count=-1, offset=0):

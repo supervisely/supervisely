@@ -11,11 +11,11 @@ from tqdm import tqdm
 from supervisely import (
     Annotation,
     Api,
+    logger,
+    is_production,
     Progress,
     ProjectMeta,
     TagValueType,
-    is_production,
-    logger,
 )
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 
@@ -67,7 +67,6 @@ class BaseConverter:
             self._path: str = item_path
             self._name : str = None
             self._ann_data: Union[str, dict] = ann_data
-            self._type: str = None
             self._shape: Union[Tuple, List] = shape
             self._custom_data: dict = custom_data
 
@@ -75,17 +74,24 @@ class BaseConverter:
         def name(self) -> str:
             return get_file_name_with_ext(self._path)
 
+        @name.setter
+        def name(self, name: str) -> None:
+            self._name = name
+
         @property
         def path(self) -> str:
             return self._path
 
+        @path.setter
+        def path(self, path: str) -> None:
+            self._path = path
         @property
         def ann_data(self) -> Union[str, dict]:
             return self._ann_data
 
-        @property
-        def type(self) -> str:
-            return self._type
+        @ann_data.setter
+        def ann_data(self, ann_data: Union[str, dict]) -> None:
+            self._ann_data = ann_data
 
         @property
         def shape(self) -> Union[Tuple, List]:
@@ -95,20 +101,12 @@ class BaseConverter:
         def custom_data(self) -> dict:
             return self._custom_data
 
-        def set_path(self, path) -> None:
-            self._path = path
-
-        def set_name(self, name) -> None:
-            self._name = name
-
-        def set_ann_data(self, ann_data) -> None:
-            self._ann_data = ann_data
+        @custom_data.setter
+        def custom_data(self, custom_data: dict) -> None:
+            self._custom_data = custom_data
 
         def set_shape(self, shape) -> None:
             self._shape = shape
-
-        def set_custom_data(self, custom_data: dict) -> None:
-            self.custom_data = custom_data
 
         def update_custom_data(self, custom_data: dict) -> None:
             self.custom_data.update(custom_data)
@@ -121,9 +119,9 @@ class BaseConverter:
             custom_data: dict = {},
         ) -> None:
             if item_path is not None:
-                self.set_path(item_path)
+                self.path = item_path
             if ann_data is not None:
-                self.set_ann_data(ann_data)
+                self.ann_data = ann_data
             if shape is not None:
                 self.set_shape(shape)
             if custom_data:
@@ -246,15 +244,14 @@ class BaseConverter:
         dataset = api.dataset.get_info_by_id(dataset_id)
         meta1_json = api.project.get_meta(dataset.project_id)
         meta1 = ProjectMeta.from_json(meta1_json)
-        meta2 = self._meta or ProjectMeta()
+        meta2 = self._meta
+
+        if meta2 is None:
+            return meta1, {}, {}
 
         # merge classes and tags from meta1 (unchanged) and meta2 (renamed if conflict)
-        new_obj_classes = []
         renamed_classes = {}
-        new_tags = []
         renamed_tags = {}
-        for existing_cls in meta1.obj_classes:
-            new_obj_classes.append(existing_cls)
         for new_cls in meta2.obj_classes:
             i = 1
             new_name = new_cls.name
@@ -268,12 +265,10 @@ class BaseConverter:
             if new_name != new_cls.name:
                 logger.warn(f"Class {new_cls.name} renamed to {new_name}")
                 renamed_classes[new_cls.name] = new_name
-                new_cls = new_cls.clone(name=new_name)
             if not matched:
-                new_obj_classes.append(new_cls)
+                new_cls = new_cls.clone(name=new_name)
+                meta1 = meta1.add_obj_class(new_cls)
 
-        for existing_tag in meta1.tag_metas:
-            new_tags.append(existing_tag)
         for new_tag in meta2.tag_metas:
             i = 1
             new_name = new_tag.name
@@ -291,16 +286,15 @@ class BaseConverter:
             if new_name != new_tag.name:
                 logger.warn(f"Tag {new_tag.name} renamed to {new_name}")
                 renamed_tags[new_tag.name] = new_name
-                new_tag = new_tag.clone(name=new_name)
             if not matched:
-                new_tags.append(new_tag)
+                new_tag = new_tag.clone(name=new_name)
+                meta1 = meta1.add_tag_meta(new_tag)
 
-        new_meta = meta1.clone(obj_classes=new_obj_classes, tag_metas=new_tags)
 
         # update project meta
-        api.project.update_meta(dataset.project_id, new_meta)
+        api.project.update_meta(dataset.project_id, meta1)
 
-        return new_meta, renamed_classes, renamed_tags
+        return meta1, renamed_classes, renamed_tags
 
     def get_progress(
         self,

@@ -37,12 +37,7 @@ class COCOConverter(ImageConverter):
         return coco_helper.generate_meta_from_annotation(coco, meta)
 
     def validate_key_file(self, key_file_path) -> bool:
-        try:
-            from pycocotools.coco import COCO
-        except ImportError:
-            raise ImportError(
-                "No module named pycocotools. Please make sure that module is installed from pip and try again."
-            )
+        from pycocotools.coco import COCO
 
         # TODO: find a way to block print in COCO constructor
         # sys.stdout = open(os.devnull, 'w') # block print (will enable after next line)
@@ -54,12 +49,7 @@ class COCOConverter(ImageConverter):
         return True
 
     def validate_format(self) -> bool:
-        try:
-            from pycocotools.coco import COCO
-        except ImportError:
-            raise ImportError(
-                "No module named pycocotools. Please make sure that module is installed from pip and try again."
-            )
+        from pycocotools.coco import COCO
 
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
@@ -114,7 +104,7 @@ class COCOConverter(ImageConverter):
                 ann_data = ann_dict[item.name]
                 # is_valid = self.validate_ann_file(ann_data, self._meta) in case of more detailed validation
                 # if is_valid:
-                item.set_ann_data(ann_data)
+                item.ann_data = ann_data
             self._items.append(item)
 
         self._meta = meta

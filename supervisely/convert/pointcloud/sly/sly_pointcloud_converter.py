@@ -97,7 +97,7 @@ class SLYPointcloudConverter(PointcloudConverter):
                     meta = self.generate_meta_from_annotation(ann_path, meta)
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
-                    item.set_ann_data(ann_path)
+                    item.ann_data = ann_path
                     ann_or_rimg_detected = True
             for ext in used_img_ext:
                 rimg_name = f"{item.name}{ext}"

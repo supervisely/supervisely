@@ -91,7 +91,7 @@ class SLYVideoConverter(VideoConverter):
                     meta = self.generate_meta_from_annotation(ann_path, meta)
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
-                    item.set_ann_data(ann_path)
+                    item.ann_data = ann_path
                     detected_ann_cnt += 1
             self._items.append(item)
         self._meta = meta

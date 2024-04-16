@@ -115,10 +115,10 @@ class SLYVolumeConverter(VolumeConverter):
                     meta = self.generate_meta_from_annotation(ann_path, meta)
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
-                    item.set_ann_data(ann_path)
+                    item.ann_data = ann_path
                     detected_ann_cnt += 1
-            item.set_mask_dir(mask_dict.get(item.name))
-            item.set_interpolation_dir(stl_dict.get(item.name))
+            item.mask_dir = mask_dict.get(item.name)
+            item.interpolation_dir = stl_dict.get(item.name)
             self._items.append(item)
         self._meta = meta
         return detected_ann_cnt > 0

@@ -35,10 +35,12 @@ class PascalVOCConverter(ImageConverter):
         def inst_path(self) -> str:
             return self._inst_path
 
-        def set_segm_path(self, segm_path: str) -> None:
+        @segm_path.setter
+        def segm_path(self, segm_path: str) -> None:
             self._segm_path = segm_path
 
-        def set_inst_path(self, inst_path: str) -> None:
+        @inst_path.setter
+        def inst_path(self, inst_path: str) -> None:
             self._inst_path = inst_path
 
     def __init__(self, input_data: str, labeling_interface: str) -> None:
@@ -119,12 +121,12 @@ class PascalVOCConverter(ImageConverter):
             item_name_noext = get_file_name(item.name)
             segm_path = os.path.join(self._segm_dir, item_name_noext + ".png")
             if file_exists(segm_path):
-                item.set_segm_path(segm_path)
+                item.segm_path = segm_path
                 detected_ann_cnt += 1
             if self.with_instances:
                 inst_path = os.path.join(self._inst_dir, item_name_noext + ".png")
                 if file_exists(inst_path):
-                    item.set_inst_path(inst_path)
+                    item.inst_path = inst_path
             self._items.append(item)
         return detected_ann_cnt > 0
 

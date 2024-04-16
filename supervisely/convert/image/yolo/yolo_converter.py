@@ -200,7 +200,7 @@ class YOLOConverter(ImageConverter):
                 ann_path = ann_dict[ann_name]
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
-                    item.set_ann_data(ann_path)
+                    item.ann_data = ann_path
                     detected_ann_cnt += 1
             self._items.append(item)
         if detected_ann_cnt > 0:

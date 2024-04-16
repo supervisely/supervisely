@@ -63,18 +63,6 @@ class ImagesWithMasksConverter(ImageConverter):
         dataset_paths = [d for d in dirs_filter(project_dir, _search_for_dss)]
         dataset_names = [os.path.basename(d.rstrip("/")) for d in dataset_paths]
 
-        # dataset_names = []
-        # dataset_paths = []
-        # for dataset_name in os.listdir(project_dir):
-        #     dataset_path = os.path.join(project_dir, dataset_name)
-        #     if dir_exists(dataset_path):
-        #         if dataset_name in helper.MASK_DIRS:
-        #             dataset_names.append(project_dir_name)
-        #             dataset_paths.append(project_dir)
-        #         else:
-        #             dataset_names.append(dataset_name)
-        #             dataset_paths.append(dataset_path)
-
         self._items = []
         for dataset_path, dataset_name in zip(dataset_paths, dataset_names):
             img_dir = os.path.join(dataset_path, helper.IMAGE_DIR_NAME)
@@ -116,7 +104,7 @@ class ImagesWithMasksConverter(ImageConverter):
                             ann_data["inst_masks"] = inst_masks
                 if ann_detected:
                     detected_ann_cnt += 1
-                    item.set_ann_data(ann_data)
+                    item.ann_data = ann_data
                     self._items.append(item)
 
         return detected_ann_cnt > 0

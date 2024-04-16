@@ -286,10 +286,8 @@ class CSVConverter(ImageConverter):
             for item in batch:
                 item: CSVConverter.Item
 
-                item.set_name(
-                    generate_free_name(
-                        existing_names, item.name, with_ext=True, extend_used_names=True
-                    )
+                item.name = generate_free_name(
+                    existing_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
                 item_paths.append(item.path)

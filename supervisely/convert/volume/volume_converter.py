@@ -65,17 +65,20 @@ class VolumeConverter(BaseConverter):
         def interpolation_dir(self) -> str:
             return self._interpolation_dir
 
-        def create_empty_annotation(self) -> VolumeAnnotation:
-            return VolumeAnnotation(self._volume_meta)
-
-        def set_volume_meta(self, meta: dict) -> None:
+        @volume_meta.setter
+        def volume_meta(self, meta: Union[dict, OrderedDict]) -> None:
             self._volume_meta = meta
 
-        def set_mask_dir(self, mask_dir: str) -> None:
+        @mask_dir.setter
+        def mask_dir(self, mask_dir: str) -> None:
             self._mask_dir = mask_dir
 
-        def set_interpolation_dir(self, interpolation_dir: str) -> None:
+        @interpolation_dir.setter
+        def interpolation_dir(self, interpolation_dir: str) -> None:
             self._interpolation_dir = interpolation_dir
+
+        def create_empty_annotation(self) -> VolumeAnnotation:
+            return VolumeAnnotation(self._volume_meta)
 
     def __init__(self, input_data: str, labeling_interface: str):
         self._input_data: str = input_data

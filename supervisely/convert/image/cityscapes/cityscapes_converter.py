@@ -134,7 +134,7 @@ class CityscapesConverter(ImageConverter):
             item = self.Item(image_path)
             ann_path = ann_dict.get(f"{image_name}_gtFine_polygons.json")
             if ann_path is not None:
-                item._ann_data = ann_path
+                item.ann_data = ann_path
             self._items.append(item)
         return detected_ann_cnt > 0
 

@@ -10,12 +10,7 @@ def pages_to_images(
     logger: Logger,
     filetype: str = "pdf",
 ) -> bool:
-    try:
-        import fitz
-    except ImportError:
-        raise ImportError(
-            "No module named fitz. Please make sure that module is installed from pip and try again."
-        )
+    import fitz
 
     doc_path = Path(doc_path)
     save_path = Path(save_path)

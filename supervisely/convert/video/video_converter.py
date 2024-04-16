@@ -63,6 +63,10 @@ class VideoConverter(BaseConverter):
                 return self._name
             return get_file_name_with_ext(self._path)
 
+        @name.setter
+        def name(self, name: str):
+            self._name = name
+
         def create_empty_annotation(self) -> VideoAnnotation:
             return VideoAnnotation(self._shape, self._frame_count)
 
@@ -113,8 +117,8 @@ class VideoConverter(BaseConverter):
         convert_progress, convert_progress_cb = self.get_progress(self.items_count, "Converting videos...")
         for item in self._items:
             item_name, item_path = self.convert_to_mp4_if_needed(item.path)
-            item.set_name(item_name)
-            item.set_path(item_path)
+            item.name = item_name
+            item.path = item_path
             convert_progress_cb(1)
         if is_development():
             convert_progress.close()
@@ -138,10 +142,8 @@ class VideoConverter(BaseConverter):
             anns = []
             figures_cnt = 0
             for item in batch:
-                item.set_name(
-                    generate_free_name(
-                        existing_names, item_name, with_ext=True, extend_used_names=True
-                    )
+                item.name = generate_free_name(
+                    existing_names, item_name, with_ext=True, extend_used_names=True
                 )
                 item_paths.append(item_path)
                 item_names.append(item_name)

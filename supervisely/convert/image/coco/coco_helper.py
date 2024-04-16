@@ -124,12 +124,8 @@ def create_supervisely_annotation(
 
 
 def convert_rle_mask_to_polygon(coco_ann):
-    try:
-        import pycocotools.mask as mask_util
-    except ImportError:
-        raise ImportError(
-            "No module named pycocotools. Please make sure that module is installed from pip and try again."
-        )
+    import pycocotools.mask as mask_util
+
     if type(coco_ann["segmentation"]["counts"]) is str:
         coco_ann["segmentation"]["counts"] = bytes(
             coco_ann["segmentation"]["counts"], encoding="utf-8"
@@ -194,12 +190,7 @@ def convert_polygon_vertices(coco_ann, image_size):
 
 
 def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
-    try:
-        from pycocotools.coco import COCO
-    except ImportError:
-        raise ImportError(
-            "No module named pycocotools. Please make sure that module is installed from pip and try again."
-        )
+    from pycocotools.coco import COCO
 
     coco: COCO
 
@@ -260,12 +251,7 @@ def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
 
 
 def get_ann_types(coco) -> List[str]:
-    try:
-        from pycocotools.coco import COCO
-    except ImportError:
-        raise ImportError(
-            "No module named pycocotools. Please make sure that module is installed from pip and try again."
-        )
+    from pycocotools.coco import COCO
 
     coco: COCO
 
