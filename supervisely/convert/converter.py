@@ -54,22 +54,10 @@ class ImportManager:
             self._team_id = env_team_id()
         self._labeling_interface = labeling_interface
 
-        if dir_exists(input_data):
-            logger.info(f"Input data is a local directory: {input_data}")
-            self._input_data = input_data
-        elif file_exists(input_data):
-            logger.info(f"Input data is a local file: {input_data}")
-            self._input_data = os.path.dirname(input_data)
-        elif self._api.storage.exists(self._team_id, input_data):
-            logger.info(f"Input data is a remote file: {input_data}")
-            self._input_data = self._download_input_data(input_data)
-        elif self._api.storage.dir_exists(self._team_id, input_data):
-            logger.info(f"Input data is a remote directory: {input_data}")
-            self._input_data = self._download_input_data(input_data, is_dir=True)
-        else:
-            raise RuntimeError(f"Input data not found: {input_data}")
+        self._input_data = self._prepare_input_data(input_data)
         self._unpack_archives(self._input_data)
         remove_junk_from_dir(self._input_data)
+    
         self._modality = project_type
         self._converter = self.get_converter()
         if isinstance(self._converter, CSVConverter):
@@ -107,6 +95,22 @@ class ImportManager:
 
     # def validate_format(self):
     #     raise NotImplementedError
+
+    def _prepare_input_data(self, input_data):
+        if dir_exists(input_data):
+            logger.info(f"Input data is a local directory: {input_data}")
+            return input_data
+        elif file_exists(input_data):
+            logger.info(f"Input data is a local file: {input_data}. Will use its directory")
+            return os.path.dirname(input_data)
+        elif self._api.storage.exists(self._team_id, input_data):
+            logger.info(f"Input data is a remote file: {input_data}")
+            return self._download_input_data(input_data)
+        elif self._api.storage.dir_exists(self._team_id, input_data):
+            logger.info(f"Input data is a remote directory: {input_data}")
+            return self._download_input_data(input_data, is_dir=True)
+        else:
+            raise RuntimeError(f"Input data not found: {input_data}")
 
     def _download_input_data(self, remote_path, is_dir=False):
         """Download input data from Supervisely"""
