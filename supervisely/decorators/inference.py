@@ -238,46 +238,31 @@ def process_image_sliding_window(func):
 def process_images_batch_roi(func):
     @functools.wraps(func)
     def wrapper_inference(*args, **kwargs):
+        """
+        Process images batch with ROI cropping before inference and scaling back to original size after inference.
+        Pass settings with rectangle or rectangles to crop images and annotations.
+        If rectangle provided, crop all images with the same rectangle.
+        If rectangles provided, crop each image with corresponding rectangle.
+        """
+        source = kwargs["source"]
         settings = kwargs["settings"]
-        rectangle_json = settings.get("rectangle")
-
-        if rectangle_json is None:
-            ann = func(*args, **kwargs)
-            return ann
-
-        rectangle = Rectangle.from_json(rectangle_json)
-        if "images_nps" in kwargs.keys():
-            images_nps = kwargs["images_nps"]
-            for image_np in images_nps:
-                if not isinstance(image_np, numpy.ndarray):
-                    raise ValueError("Invalid input. Image path must be numpy.ndarray")
-            original_images_sizes = [image_np.shape[:2] for image_np in images_nps]
-            images_crops_nps = [sly_image.crop(image_np, rectangle) for image_np in images_nps]
-            kwargs["images_nps"] = images_crops_nps
-            anns = func(*args, **kwargs)
-            anns = [
-                _scale_ann_to_original_size(ann, original_image_size, rectangle)
-                for ann, original_image_size in zip(anns, original_images_sizes)
-            ]
-        elif "images_paths" in kwargs.keys():
-            images_paths = kwargs["images_paths"]
-            for image_path in images_paths:
-                if not isinstance(image_path, str):
-                    raise ValueError("Invalid input. Image path must be str")
-            images_crops_paths, original_images_sizes = zip(
-                *[_process_image_path(image_path, rectangle) for image_path in images_paths]
-            )
-            kwargs["images_paths"] = images_crops_paths
-            anns = func(*args, **kwargs)
-            anns = [
-                _scale_ann_to_original_size(ann, original_image_size, rectangle)
-                for original_image_size, ann in zip(original_images_sizes, anns)
-            ]
-            for image_crop_path in images_crops_paths:
-                silent_remove(image_crop_path)
+        if "rectangles" in settings:
+            rectangles = [Rectangle.from_json(rect_json) for rect_json in settings["rectangles"]]
+        elif "rectangle" in settings:
+            rectangles = [Rectangle.from_json(settings["rectangle"]) for _ in source]
         else:
-            raise ValueError("image_np or image_path not provided!")
+            return func(*args, **kwargs)
 
+        original_images_sizes = [image_np.shape[:2] for image_np in source]
+        images_crops_nps = [
+            sly_image.crop(image_np, rect) for image_np, rect in zip(source, rectangles)
+        ]
+        kwargs["source"] = images_crops_nps
+        anns = func(*args, **kwargs)
+        anns = [
+            _scale_ann_to_original_size(ann, original_image_size, rect)
+            for ann, original_image_size, rect in zip(anns, original_images_sizes, rectangles)
+        ]
         return anns
 
     return wrapper_inference
@@ -298,7 +283,7 @@ def process_images_batch_sliding_window(func):
             return anns
 
         sliding_window_params = settings["sliding_window_params"]
-        images_paths = kwargs["images_paths"]
+        images_paths = kwargs["images_paths"]  # TODO: images_patsh -> source
         data_to_return["slides"] = []
         anns = []
 

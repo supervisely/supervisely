@@ -367,7 +367,7 @@ class InferenceImageCache:
 
     def add_cache_files_endpoint(self, server: FastAPI):
         @server.post("/smart_cache_files")
-        async def cache_files_endpoint(
+        def cache_files_endpoint(
             request: Request,
             task: BackgroundTasks,
             files: List[UploadFile],

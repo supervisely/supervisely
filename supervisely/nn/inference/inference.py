@@ -9,7 +9,7 @@ import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import requests
@@ -563,42 +563,31 @@ class Inference:
         if len(source) == 0:
             return []
 
-        images_paths = None
+        def _predict(source: List, predict_func: Callable):
+            temp_dir = None
+            if isinstance(source[0], np.ndarray):
+                temp_dir = os.path.join(get_data_dir(), rand_str(10))
+                fs.mkdir(temp_dir)
+                images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
+                for img_path, img in zip(images_paths, source):
+                    sly_image.write(img_path, img)
+            else:
+                images_paths = source
+            predictions = [
+                predict_func(image_path=img_path, settings=settings) for img_path in images_paths
+            ]
+            if temp_dir is not None:
+                fs.remove_dir(temp_dir)
+            return predictions
+
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
             if type(self).predict_batch_raw == Inference.predict_batch_raw:
-                temp_dir = None
-                if isinstance(source[0], np.ndarray):
-                    temp_dir = os.path.join(get_data_dir(), rand_str(10))
-                    fs.mkdir(temp_dir)
-                    images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
-                    for img_path, img in zip(images_paths, source):
-                        sly_image.write(img_path, img)
-                else:
-                    images_paths = source
-                predictions = [
-                    self.predict(image_path=img_path, settings=settings)
-                    for img_path in images_paths
-                ]
-                if temp_dir is not None:
-                    fs.remove_dir(temp_dir)
+                predictions = _predict(source, self.predict_raw)
             else:
                 predictions = self.predict_batch_raw(source=source, settings=settings)
         else:
             if type(self).predict_batch == Inference.predict_batch:
-                temp_dir = None
-                if isinstance(source[0], np.ndarray):
-                    temp_dir = os.path.join(get_data_dir(), rand_str(10))
-                    images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
-                    for img_path, img in zip(images_paths, source):
-                        sly_image.write(img_path, img)
-                else:
-                    images_paths = source
-                predictions = [
-                    self.predict(image_path=img_path, settings=settings)
-                    for img_path in images_paths
-                ]
-                if temp_dir is not None:
-                    fs.remove_dir(temp_dir)
+                predictions = _predict(source, self.predict)
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
         anns = [
