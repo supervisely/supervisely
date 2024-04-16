@@ -156,14 +156,3 @@ class ImageConverter(BaseConverter):
             if is_development():
                 progress.close()
         logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
-
-
-# @TODO:
-# COCO
-# [x] - Implement Skeleton support
-# [x] - Implement binding of bboxes and masks
-# [ ] - Implement detailed coco label validation
-# Supervisely
-# [x] - Implement keypoints generation (when meta not found)
-# [ ] - Add ann keys validation to method `generate_meta_from_annotation()`
-# [ ] - Add ann keys validation to method `generate_meta_from_annotation()`

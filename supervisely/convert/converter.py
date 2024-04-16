@@ -179,16 +179,3 @@ class ImportManager:
             )
             progress_cb = progress.update
         return progress, progress_cb
-
-
-# @TODO:
-# [ ] - add timer
-# [ ] - detect remote data format
-# [ ] - windows junk if endswith Zone.Identifier?
-# [x] - check if archive and unpack
-# [x] - LAS format
-# [ ] - preserve meta infos
-# [ ] - merge meta.json if more than one
-# [ ] - prepare test data for each modality and different formats (corner cases)
-# [ ] - # ? add pointcloud shape
-# [ ] - pcd extensions {'.ply', '.las', '.laz', '.xyz', '.pts', '.pcd'} ?

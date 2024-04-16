@@ -168,8 +168,3 @@ class VolumeConverter(BaseConverter):
             if is_development():
                 progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
-
-
-# @TODO:
-# [ ] - add DICOM support
-# [ ] - add support volumes without .ext
