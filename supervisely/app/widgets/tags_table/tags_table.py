@@ -1,11 +1,11 @@
 from typing import Any, Callable, Dict, List, Optional
 
 import supervisely as sly
+from supervisely.annotation.tag_meta import TagValueType
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
-from supervisely.annotation.tag_meta import TagValueType
 
 
 class TagsTable(Widget):
@@ -49,10 +49,10 @@ class TagsTable(Widget):
         project_id: Optional[int] = None,
         project_fs: Optional[sly.Project] = None,
         allowed_types: Optional[List[TagValueType]] = None,
-        selectable: Optional[bool] = True,
-        disabled: Optional[bool] = False,
+        selectable: bool = True,
+        disabled: bool = False,
         widget_id: Optional[str] = None,
-        truncate_long_names: Optional[bool] = False,
+        truncate_long_names: bool = False,
     ):
         if project_id is not None and project_fs is not None:
             raise ValueError(

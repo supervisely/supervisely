@@ -68,10 +68,10 @@ class ClassesTable(Widget):
         project_id: Optional[int] = None,
         project_fs: Optional[sly.Project] = None,
         allowed_types: Optional[List[Geometry]] = None,
-        selectable: Optional[bool] = True,
-        disabled: Optional[bool] = False,
+        selectable: bool = True,
+        disabled: bool = False,
         widget_id: Optional[str] = None,
-        truncate_long_names: Optional[bool] = False,
+        truncate_long_names: bool = False,
     ):
         if project_id is not None and project_fs is not None:
             raise ValueError(
