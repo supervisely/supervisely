@@ -121,6 +121,7 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.workspace_api import WorkspaceInfo
 from supervisely.api.team_api import TeamInfo
+from supervisely.api.entity_annotation.figure_api import FigureInfo
 
 from supervisely.cli import _handle_creds_error_to_console
 
@@ -175,22 +176,30 @@ from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAn
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_frame import PointcloudEpisodeFrame
+from supervisely.pointcloud_annotation.pointcloud_episode_frame import (
+    PointcloudEpisodeFrame,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
     PointcloudEpisodeFrameCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_object import PointcloudEpisodeObject
+from supervisely.pointcloud_annotation.pointcloud_episode_object import (
+    PointcloudEpisodeObject,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
     PointcloudEpisodeObjectCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_tag import PointcloudEpisodeTag
+from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
+    PointcloudEpisodeTag,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
     PointcloudEpisodeTagCollection,
 )
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
-from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
+    PointcloudTagCollection,
+)
 from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,
@@ -228,9 +237,9 @@ from supervisely.aug import imgaug_utils
 import supervisely.volume as volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.volume_annotation.volume_object_collection import (
-    VolumeObjectCollection,
-)
+from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
+from supervisely.volume_annotation.volume_tag import VolumeTag
+from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.plane import Plane
@@ -240,6 +249,9 @@ from supervisely.project.volume_project import (
     download_volume_project,
     upload_volume_project,
 )
+
+from supervisely.convert.converter import ImportManager
+from supervisely.convert.base_converter import AvailableImageConverters, BaseConverter
 
 from supervisely.geometry.bitmap import SkeletonizeMethod
 

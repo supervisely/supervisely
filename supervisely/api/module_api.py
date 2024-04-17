@@ -212,6 +212,8 @@ class ApiField:
     """"""
     GEOMETRY = "geometry"
     """"""
+    GEOMETRY_META = "geometryMeta"
+    """"""
     OBJECT_ID = "objectId"
     """"""
     FRAME = "frame"
@@ -511,7 +513,19 @@ class ApiField:
     SRC_ID = "srcId"
     """"""
     DEST_ID = "destId"
-
+    """"""
+    COMPLETE_EXISTING = "completeExisting"
+    """"""
+    MODE = "mode"
+    """"""
+    FOLDERS = "folders"
+    """"""
+    WITH_METADATA = "withMetadata"
+    """"""
+    LIMIT = "limit"
+    """"""
+    IMPORT_SETTINGS = "importSettings"
+    """"""
 
 
 def _get_single_item(items):
