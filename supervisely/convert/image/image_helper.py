@@ -73,8 +73,8 @@ def convert_to_jpg(path) -> tuple:
     Convert image to jpg.
     """
     # * do not remove folllowing imports, it is used to register avif/heic formats
-    import pillow_avif  # pylint: disable=unused-import
-    from pillow_heif import register_heif_opener
+    import pillow_avif  # pylint: disable=import-error
+    from pillow_heif import register_heif_opener # pylint: disable=import-error
 
     register_heif_opener()
 
