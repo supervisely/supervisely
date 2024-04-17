@@ -22,6 +22,8 @@ def validate_image(path: str) -> tuple:
     """
     try:
         ext = get_file_ext(path)
+        if ext == ".nrrd":
+            return path
         name = get_file_name_with_ext(path)
         if ext.lower() in EXT_TO_CONVERT:
             path = convert_to_jpg(path)
