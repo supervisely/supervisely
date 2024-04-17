@@ -11,7 +11,7 @@ RUN pip install laspy==2.0.1 lazrs==0.3.0
 RUN pip install git+https://github.com/autonomousvision/kitti360Scripts.git transforms3d==0.4.1
 RUN pip install gdcm==1.1 pylibjpeg==1.4.0 pylibjpeg-libjpeg==1.3.1
 RUN pip install pillow-avif-plugin==1.4.3 pillow-heif==0.15.0
-RUN pip install tifffile==2024.2.12
+RUN pip install tifffile==2023.7.10
 RUN pip install pymupdf==1.22.5
 RUN pip install nibabel==5.2.1
 
