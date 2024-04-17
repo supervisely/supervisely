@@ -1,4 +1,3 @@
-import imghdr
 import os
 from pathlib import Path
 from typing import List
@@ -18,7 +17,7 @@ from supervisely import (
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import JUNK_FILES, get_file_name
+from supervisely.io.fs import JUNK_FILES, get_file_name, get_file_ext
 from supervisely.io.json import load_json_file
 
 
@@ -123,7 +122,7 @@ class CityscapesConverter(ImageConverter):
                         detected_ann_cnt += 1
                         ann_dict[file] = full_path
                 if file_name.endswith("_leftImg8bit"):
-                    if imghdr.what(full_path):
+                    if get_file_ext(full_path) in self.allowed_exts:
                         images_list.append(full_path)
 
         self._items = []

@@ -83,6 +83,8 @@ def get_ann(item, color2class_name, renamed_classes=None):
     height, width = item.shape
 
     ann = Annotation(img_size=(height, width))
+    if segm_path is None and inst_path is None:
+        return ann
 
     segmentation_img = read(segm_path)
 

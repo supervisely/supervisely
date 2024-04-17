@@ -2,10 +2,8 @@ from typing import List, Optional, Tuple, Union
 
 import cv2
 import nrrd
-import numpy as np
-from tqdm import tqdm
 
-import supervisely.imaging.image as image
+import supervisely.convert.image.image_helper as image_helper
 from supervisely import (
     Annotation,
     Api,
@@ -17,12 +15,12 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.fs import get_file_ext
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 
 
 class ImageConverter(BaseConverter):
-    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"]
+    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"] + [".heic", ".avif"]
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -135,6 +133,8 @@ class ImageConverter(BaseConverter):
             item_metas = []
             anns = []
             for item in batch:
+                item.path = self.validate_image(item.path)
+                item.name = get_file_name_with_ext(item.path)
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
@@ -157,3 +157,6 @@ class ImageConverter(BaseConverter):
             if is_development():
                 progress.close()
         logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
+
+    def validate_image(self, path: str) -> Tuple[str, str]:
+        return image_helper.validate_image(path)
