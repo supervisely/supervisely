@@ -5,8 +5,6 @@ from typing import Dict, List
 import cv2
 import nrrd
 import numpy as np
-import tifffile
-from tqdm import tqdm
 
 from supervisely import Api, is_development, logger, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
@@ -116,6 +114,8 @@ class MultiSpectralImageConverter(ImageConverter):
             logger.debug(f"Found nrrd file: {file_path}.")
             image, _ = nrrd.read(file_path)
         elif file_ext == ".tif":
+            import tifffile
+
             logger.debug(f"Found tiff file: {file_path}.")
             image = tifffile.imread(file_path)
         elif is_valid_ext(file_ext):
