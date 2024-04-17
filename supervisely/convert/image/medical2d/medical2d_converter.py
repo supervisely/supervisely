@@ -28,7 +28,7 @@ class Medical2DImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only medical labeling interface can be used for medical images."""
-        return self._labeling_interface == "medical_imaging_single"
+        return self._labeling_interface in ["medical_imaging_single", "images_with_16_color"]
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
