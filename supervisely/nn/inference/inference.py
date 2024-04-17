@@ -73,6 +73,7 @@ class Inference:
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
+        multithread_inference: Optional[bool] = True,
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
@@ -140,7 +141,8 @@ class Inference:
             self.gui.on_serve_callbacks.append(on_serve_callback)
 
         self._inference_requests = {}
-        self._executor = ThreadPoolExecutor(max_workers=1)
+        max_workers = 1 if not multithread_inference else None
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
         self.get_info = self._check_serve_before_call(self.get_info)
