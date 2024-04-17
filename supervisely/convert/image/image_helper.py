@@ -69,7 +69,7 @@ def convert_to_jpg(path) -> tuple:
 
     register_heif_opener()
 
-    new_path = Path(path).with_suffix(".jpeg")
+    new_path = Path(path).with_suffix(".jpeg").as_posix()
     with Image.open(path) as image:
         image.convert("RGB").save(new_path)
     silent_remove(path)
