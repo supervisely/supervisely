@@ -1341,7 +1341,9 @@ class FileApi(ModuleApiBase):
         dir_parts = local_dir.strip("/").split("/")
         for file in local_files:
             path_parts = file.strip("/").split("/")
-            remote_file = os.path.join(res_remote_dir, "/".join(path_parts[len(dir_parts) :]))
+            path_parts = path_parts[len(dir_parts) :]
+            remote_parts = [res_remote_dir.rstrip("/")] + path_parts
+            remote_file = "/".join(remote_parts)
             remote_files.append(remote_file)
             
 
