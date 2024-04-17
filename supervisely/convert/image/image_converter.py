@@ -3,7 +3,6 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import nrrd
 import numpy as np
-import tifffile
 from tqdm import tqdm
 
 import supervisely.imaging.image as image
@@ -56,6 +55,8 @@ class ImageConverter(BaseConverter):
                         logger.debug(f"Found nrrd file: {self.path}.")
                         image, _ = nrrd.read(self.path)
                     elif file_ext == ".tif":
+                        import tifffile
+
                         logger.debug(f"Found tiff file: {self.path}.")
                         image = tifffile.imread(self.path)
                     elif is_valid_ext(file_ext):
