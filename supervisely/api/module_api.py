@@ -518,6 +518,14 @@ class ApiField:
     """"""
     MODE = "mode"
     """"""
+    FOLDERS = "folders"
+    """"""
+    WITH_METADATA = "withMetadata"
+    """"""
+    LIMIT = "limit"
+    """"""
+    IMPORT_SETTINGS = "importSettings"
+    """"""
 
 
 def _get_single_item(items):
