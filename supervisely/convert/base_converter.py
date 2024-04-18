@@ -228,7 +228,7 @@ class BaseConverter:
                     ext = get_file_ext(full_path)
                     if file in JUNK_FILES:
                         continue
-                    if ext in self.allowed_exts:  # pylint: disable=no-member
+                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
             if self.items_count == 0:
                 raise RuntimeError("No valid items found in the input data")

@@ -143,10 +143,10 @@ class VideoConverter(BaseConverter):
             figures_cnt = 0
             for item in batch:
                 item.name = generate_free_name(
-                    existing_names, item_name, with_ext=True, extend_used_names=True
+                    existing_names, item.name, with_ext=True, extend_used_names=True
                 )
-                item_paths.append(item_path)
-                item_names.append(item_name)
+                item_paths.append(item.path)
+                item_names.append(item.name)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 figures_cnt += len(ann.figures)
@@ -192,7 +192,7 @@ class VideoConverter(BaseConverter):
             mime = magic.Magic(mime=True)
             mime_type = mime.from_file(video_path)
             if mime_type == "video/mp4":
-                logger.info(
+                logger.debug(
                     f'Video "{video_name}" is already in mp4 format, conversion is not required.'
                 )
                 return output_video_name, video_path

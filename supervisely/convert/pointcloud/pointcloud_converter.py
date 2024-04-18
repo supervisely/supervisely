@@ -14,6 +14,7 @@ from supervisely import (
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
+from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 
 
@@ -93,6 +94,7 @@ class PointcloudConverter(BaseConverter):
             item_paths = []
             anns = []
             for item in batch:
+                item.name = f"{get_file_name(item.name)}{get_file_ext(item.name).lower()}"
                 if item.name in existing_names:
                     new_name = generate_free_name(
                         existing_names, item.name, with_ext=True, extend_used_names=True
@@ -100,9 +102,8 @@ class PointcloudConverter(BaseConverter):
                     logger.warn(
                         f"Video with name '{item.name}' already exists, renaming to '{new_name}'"
                     )
-                    item_names.append(new_name)
-                else:
-                    item_names.append(item.name)
+                    item.name = new_name
+                item_names.append(item.name)
                 item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)

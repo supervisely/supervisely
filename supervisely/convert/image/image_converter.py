@@ -17,7 +17,7 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 
 
@@ -136,7 +136,7 @@ class ImageConverter(BaseConverter):
             anns = []
             for item in batch:
                 item.path = self.validate_image(item.path)
-                item.name = get_file_name_with_ext(item.path)
+                item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
@@ -171,4 +171,4 @@ class ImageConverter(BaseConverter):
         mime = magic.Magic(mime=True)
         mimetype = mime.from_file(path)
         file_ext = mimetypes.guess_extension(mimetype)
-        return file_ext in self.allowed_exts
+        return file_ext.lower() in self.allowed_exts
