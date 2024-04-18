@@ -14,6 +14,7 @@ from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
     LABELER_LOGIN,
+    TRACK_ID,
     UPDATED_AT,
 )
 from supervisely.geometry.geometry import Geometry
@@ -414,7 +415,7 @@ class VideoFigure:
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
-        track_id = data.get("trackId", None)
+        track_id = data.get(TRACK_ID, None)
 
         return cls(
             object,
