@@ -243,6 +243,11 @@ class BaseConverter:
 
         # get meta1 from project and meta2 from converter
         dataset = api.dataset.get_info_by_id(dataset_id)
+        if dataset is None:
+            raise RuntimeError(
+                f"Dataset ID:{dataset_id} not found. "
+                "Please check if the dataset exists and try again."
+            )
         meta1_json = api.project.get_meta(dataset.project_id)
         meta1 = ProjectMeta.from_json(meta1_json)
         meta2 = self._meta
