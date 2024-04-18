@@ -5,7 +5,6 @@ from supervisely import Annotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.pascal_voc import pascal_voc_helper
-from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.fs import (
     dir_exists,
     dirs_filter,
@@ -112,7 +111,7 @@ class PascalVOCConverter(ImageConverter):
                 break
         self._meta = ProjectMeta(obj_classes=obj_classes)
 
-        images_list = list_files_recursively(self._imgs_dir, valid_extensions=SUPPORTED_IMG_EXTS)
+        images_list = list_files_recursively(self._imgs_dir, valid_extensions=self.allowed_exts)
 
         # create Items
         self._items = []

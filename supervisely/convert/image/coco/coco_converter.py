@@ -1,4 +1,3 @@
-import imghdr
 import os
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
@@ -61,7 +60,7 @@ class COCOConverter(ImageConverter):
                     ann_paths.append(full_path)
                 elif file in JUNK_FILES:
                     continue
-                elif imghdr.what(full_path):
+                elif self.is_image(full_path):
                     images_list.append(full_path)
 
         if len(ann_paths) == 0:

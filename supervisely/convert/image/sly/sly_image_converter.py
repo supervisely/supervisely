@@ -1,4 +1,3 @@
-import imghdr
 import os
 from typing import List
 
@@ -70,7 +69,7 @@ class SLYImageConverter(ImageConverter):
                         img_meta_dict[file] = full_path
                     else:
                         ann_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif self.is_image(full_path):
                     images_list.append(full_path)
 
         if self._meta is not None:

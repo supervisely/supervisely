@@ -64,11 +64,12 @@ class CSVConverter(ImageConverter):
         def name(self) -> str:
             return self._name
 
+        @name.setter
+        def name(self, value: str):
+            self._name = value
+
         def set_shape(self, value: Tuple | List):
             self._shape = value
-
-        def set_name(self, name: str):
-            self._name = name
 
     conversion_functions = {
         ".txt": csv_helper.convert_txt_to_csv,

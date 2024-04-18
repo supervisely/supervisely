@@ -1,4 +1,3 @@
-import imghdr
 import os
 from typing import List
 
@@ -182,7 +181,7 @@ class YOLOConverter(ImageConverter):
                     continue
                 elif ext == self.ann_ext:
                     ann_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif self.is_image(full_path):
                     images_list.append(full_path)
 
         meta = ProjectMeta()
