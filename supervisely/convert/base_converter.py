@@ -11,11 +11,11 @@ from tqdm import tqdm
 from supervisely import (
     Annotation,
     Api,
-    logger,
-    is_production,
     Progress,
     ProjectMeta,
     TagValueType,
+    is_production,
+    logger,
 )
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 
@@ -65,7 +65,7 @@ class BaseConverter:
             custom_data: dict = {},
         ):
             self._path: str = item_path
-            self._name : str = None
+            self._name: str = None
             self._ann_data: Union[str, dict] = ann_data
             self._shape: Union[Tuple, List] = shape
             self._custom_data: dict = custom_data
@@ -85,6 +85,7 @@ class BaseConverter:
         @path.setter
         def path(self, path: str) -> None:
             self._path = path
+
         @property
         def ann_data(self) -> Union[str, dict]:
             return self._ann_data
@@ -220,7 +221,7 @@ class BaseConverter:
         progress_cb(1)
 
         if len(found_formats) == 0:
-            logger.warn("Not found any valid annotation formats. Only items will be processed")
+            logger.info("Not found any valid annotation formats. Only items will be processed")
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
@@ -290,7 +291,6 @@ class BaseConverter:
                 new_tag = new_tag.clone(name=new_name)
                 meta1 = meta1.add_tag_meta(new_tag)
 
-
         # update project meta
         api.project.update_meta(dataset.project_id, meta1)
 
@@ -307,10 +307,7 @@ class BaseConverter:
             progress_cb = progress.iters_done_report
         else:
             progress = tqdm(
-                total=total,
-                desc=message,
-                unit="B" if is_size else "it",
-                unit_scale=is_size
+                total=total, desc=message, unit="B" if is_size else "it", unit_scale=is_size
             )
             progress_cb = progress.update
         return progress, progress_cb

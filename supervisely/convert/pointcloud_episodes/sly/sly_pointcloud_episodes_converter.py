@@ -5,7 +5,9 @@ from typing import List
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
 from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailablePointcloudEpisodesConverters
-from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import PointcloudEpisodeConverter
+from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
+    PointcloudEpisodeConverter,
+)
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -104,12 +106,15 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             if is_valid:
                 ann_or_rimg_detected = True
 
-        self._items = []            
+        self._items = []
         updated_frames_pcd_map = {}
         if frames_pcd_map:
             list_of_pcd_names = list(frames_pcd_map.values())
         else:
             list_of_pcd_names = sorted(pcd_dict.keys())
+            logger.warn(
+                "Mappping of frames to pointclouds not found. Using sorted list of pointclouds."
+            )
 
         for i, pcd_name in enumerate(list_of_pcd_names):
             if pcd_name in pcd_dict:
@@ -133,8 +138,9 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         self._frame_pointcloud_map = updated_frames_pcd_map
         self._frame_count = len(self._frame_pointcloud_map)
 
-
         self._meta = meta
+        if self._frame_pointcloud_map is not None and len(self._items) > 0:
+            ann_or_rimg_detected = True
         return ann_or_rimg_detected
 
     def to_supervisely(
@@ -148,7 +154,9 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         if self._annotation is not None:
             if renamed_classes or renamed_tags:
                 ann_json = self._annotation.to_json()
-                ann_json = sly_episodes_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
+                ann_json = sly_episodes_helper.rename_in_json(
+                    ann_json, renamed_classes, renamed_tags
+                )
                 self._annotation = PointcloudEpisodeAnnotation.from_json(ann_json, meta)
             return self._annotation
         else:
