@@ -122,7 +122,7 @@ class CityscapesConverter(ImageConverter):
                         detected_ann_cnt += 1
                         ann_dict[file] = full_path
                 if file_name.endswith("_leftImg8bit"):
-                    if get_file_ext(full_path) in self.allowed_exts:
+                    if self.is_image(full_path):
                         images_list.append(full_path)
 
         self._items = []

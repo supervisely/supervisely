@@ -60,7 +60,7 @@ class COCOConverter(ImageConverter):
                     ann_paths.append(full_path)
                 elif file in JUNK_FILES:
                     continue
-                elif get_file_ext(full_path) in self.allowed_exts:
+                elif self.is_image(full_path):
                     images_list.append(full_path)
 
         if len(ann_paths) == 0:

@@ -160,3 +160,8 @@ class ImageConverter(BaseConverter):
 
     def validate_image(self, path: str) -> Tuple[str, str]:
         return image_helper.validate_image(path)
+
+    def is_image(self, path: str) -> bool:
+        new_name = image_helper.validate_mimetypes(get_file_name_with_ext(path), path)
+        ext = get_file_ext(new_name)
+        return ext in self.allowed_exts
