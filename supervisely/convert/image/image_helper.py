@@ -13,7 +13,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 
-EXT_TO_CONVERT = [".heic", ".avif"]
+EXT_TO_CONVERT = [".heic", ".avif", ".heif"]
 
 
 def validate_image(path: str) -> tuple:
@@ -58,7 +58,6 @@ def validate_mimetypes(name: str, path: str) -> list:
     )
 
     return new_img_name
-
 
 def convert_to_jpg(path) -> tuple:
     """Convert image to jpg."""

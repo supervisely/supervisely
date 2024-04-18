@@ -1,6 +1,8 @@
 from typing import List, Optional, Tuple, Union
 
 import cv2
+import magic
+import mimetypes
 import nrrd
 
 import supervisely.convert.image.image_helper as image_helper
@@ -20,7 +22,7 @@ from supervisely.io.json import load_json_file
 
 
 class ImageConverter(BaseConverter):
-    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"] + [".heic", ".avif"]
+    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"] + image_helper.EXT_TO_CONVERT
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -162,6 +164,11 @@ class ImageConverter(BaseConverter):
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
-        new_name = image_helper.validate_mimetypes(get_file_name_with_ext(path), path)
-        ext = get_file_ext(new_name)
-        return ext in self.allowed_exts
+        mimetypes.add_type("image/heic", ".heic")  # to extend types_map
+        mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
+        mimetypes.add_type("image/avif", ".avif")  # to extend types_map
+
+        mime = magic.Magic(mime=True)
+        mimetype = mime.from_file(path)
+        file_ext = mimetypes.guess_extension(mimetype)
+        return file_ext in self.allowed_exts
