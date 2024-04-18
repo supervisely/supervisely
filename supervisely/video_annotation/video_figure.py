@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from uuid import UUID
-
-from bidict import bidict
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
@@ -20,7 +18,7 @@ from supervisely.geometry.constants import (
 )
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.video_annotation.constants import ID, KEY, META, OBJECT_ID, OBJECT_KEY
+from supervisely.video_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
@@ -95,6 +93,7 @@ class VideoFigure:
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        track_id: Optional[str] = None,
     ):
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
@@ -104,6 +103,7 @@ class VideoFigure:
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
+        self.track_id = track_id
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
@@ -414,6 +414,7 @@ class VideoFigure:
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
+        track_id = data.get("trackId", None)
 
         return cls(
             object,
@@ -424,6 +425,7 @@ class VideoFigure:
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            track_id=track_id,
         )
 
     def clone(
@@ -553,7 +555,9 @@ class VideoFigure:
                 details["slice_index"] = self.slice_index  # pylint: disable=no-member
                 details["plane"] = self.plane_name  # pylint: disable=no-member
             details_str = ", ".join([f"{k}={v}" for k, v in details.items()])
-            raise OutOfImageBoundsException(f"Figure is out of image bounds. Figure details: {details_str}.")
+            raise OutOfImageBoundsException(
+                f"Figure is out of image bounds. Figure details: {details_str}."
+            )
 
         if _auto_correct is True:
             geometries_after_crop = [

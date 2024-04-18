@@ -2,14 +2,15 @@
 
 # docs
 from __future__ import annotations
-from typing import Tuple, Dict, Optional, List
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+
+from typing import Dict, List, Optional, Tuple
 
 from supervisely._utils import take_with_default
-from supervisely.video_annotation.constants import FIGURES, INDEX
-from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.collection.key_indexed_collection import KeyObject
+from supervisely.video_annotation.constants import FIGURES, INDEX
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 
 class Frame(KeyObject):
@@ -60,9 +61,10 @@ class Frame(KeyObject):
         #     ]
         # }
     """
+
     figure_type = VideoFigure
 
-    def __init__(self, index: int, figures: Optional[List[VideoFigure]]=None):
+    def __init__(self, index: int, figures: Optional[List[VideoFigure]] = None):
         self._index = index
         self._figures = take_with_default(figures, [])
 
@@ -121,7 +123,7 @@ class Frame(KeyObject):
         """
         return self._figures.copy()
 
-    def validate_figures_bounds(self, img_size: Optional[Tuple[int, int]]=None) -> None:
+    def validate_figures_bounds(self, img_size: Optional[Tuple[int, int]] = None) -> None:
         """
         Checks if image with given size contains a figure.
 
@@ -211,7 +213,13 @@ class Frame(KeyObject):
         return data_json
 
     @classmethod
-    def from_json(cls, data: Dict, objects: VideoObjectCollection, frames_count: Optional[int]=None, key_id_map: Optional[KeyIdMap]=None) -> Frame:
+    def from_json(
+        cls,
+        data: Dict,
+        objects: VideoObjectCollection,
+        frames_count: Optional[int] = None,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> Frame:
         """
         Convert a json dict to Frame. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -252,9 +260,7 @@ class Frame(KeyObject):
         if frames_count is not None:
             if index > frames_count:
                 raise ValueError(
-                    "Item contains {} frames. Frame index is {}".format(
-                        frames_count, index
-                    )
+                    "Item contains {} frames. Frame index is {}".format(frames_count, index)
                 )
 
         figures = []
@@ -263,7 +269,9 @@ class Frame(KeyObject):
             figures.append(figure)
         return cls(index=index, figures=figures)
 
-    def clone(self, index: Optional[int] = None, figures: Optional[List[VideoFigure]] = None) -> Frame:
+    def clone(
+        self, index: Optional[int] = None, figures: Optional[List[VideoFigure]] = None
+    ) -> Frame:
         """
         Makes a copy of Frame with new fields, if fields are given, otherwise it will use fields of the original Frame.
 
@@ -295,5 +303,7 @@ class Frame(KeyObject):
             #     "figures": []
             # }
         """
-        return self.__class__(index=take_with_default(index, self.index),
-                              figures=take_with_default(figures, self.figures))
+        return self.__class__(
+            index=take_with_default(index, self.index),
+            figures=take_with_default(figures, self.figures),
+        )
