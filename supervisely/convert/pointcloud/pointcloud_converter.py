@@ -95,12 +95,6 @@ class PointcloudConverter(BaseConverter):
             item_paths = []
             anns = []
             for item in batch:
-                ext = get_file_ext(item.path)
-                if ext.lower() != ext:
-                    new_path = Path(item.path).with_suffix(ext.lower()).as_posix()
-                    os.rename(item.path, new_path)
-                    item.path = new_path
-                item.name = get_file_name_with_ext(item.path)
                 item.name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
