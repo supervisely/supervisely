@@ -77,7 +77,10 @@ def _scale_ann_to_original_size(
 
 
 def _apply_agnostic_nms(labels: List[Label], iou_thres: Optional[float] = 0.5) -> List[Label]:
+    # pylint: disable=import-error
     import torch
+
+    # pylint: disable=import-error
     import torchvision
 
     # TODO: where we can get iou_th and conf_th?

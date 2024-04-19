@@ -730,7 +730,11 @@ class Inference:
                 )
                 results.append({"annotation": ann.to_json(), "data": data_to_return})
         else:
-            anns = self._inference_images_batch(source=img_paths, settings=settings)
+            anns = self._inference_images_batch(
+                source=img_paths,
+                settings=settings,
+                # data_to_return=data_to_return # removed because sliding window decorator is not implemented
+            )
             for i, ann in enumerate(anns):
                 data = {}
                 if "slides" in data_to_return:
@@ -874,7 +878,7 @@ class Inference:
             anns = self._inference_images_batch(
                 source=frames,
                 settings=settings,
-                data_to_return=data_to_return,
+                # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
             )
             batch_results = []
             for i, ann in enumerate(anns):
