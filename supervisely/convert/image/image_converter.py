@@ -137,7 +137,6 @@ class ImageConverter(BaseConverter):
             item_metas = []
             anns = []
             for item in batch:
-                logger.warn(f"Item: {item.path}")
                 item.path = self.validate_image(item.path)
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
@@ -150,7 +149,6 @@ class ImageConverter(BaseConverter):
                 if ann is not None:
                     anns.append(ann)
 
-            logger.warn(f"Items: {len(item_names)} | {item_names} | {item_paths}")
             img_infos = api.image.upload_paths(dataset_id, item_names, item_paths, metas=item_metas)
             img_ids = [img_info.id for img_info in img_infos]
             if len(anns) == len(img_ids):
@@ -173,18 +171,12 @@ class ImageConverter(BaseConverter):
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
 
-        logger.warn(f"Checking if {path} is an image?")
         mime = magic.Magic(mime=True)
         mimetype = mime.from_file(path)
         file_ext = mimetypes.guess_extension(mimetype)
         if file_ext is None:
-            logger.warn(f"File extension not found for mimetype: {mimetype}")
             return False
         else:
-            logger.warn(f"File extension found: {file_ext}")
             if file_ext.lower() == ".bin" and get_file_ext(path).lower() == ".avif":
-                logger.warn(
-                    f"File extension ends with '.avif' but mimetype is '.bin' - returning True"
-                )
                 return True
             return file_ext.lower() in self.allowed_exts
