@@ -47,8 +47,6 @@ from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
-    process_images_batch_roi,
-    process_images_batch_sliding_window,
 )
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
@@ -549,13 +547,10 @@ class Inference:
         )
         return ann
 
-    @process_images_batch_roi
-    @process_images_batch_sliding_window
     def _inference_images_batch(
         self,
         source: List,
         settings: Dict,
-        data_to_return: Dict,  # for decorators
     ) -> List[Annotation]:
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
@@ -735,9 +730,7 @@ class Inference:
                 )
                 results.append({"annotation": ann.to_json(), "data": data_to_return})
         else:
-            anns = self._inference_images_batch(
-                source=img_paths, settings=settings, data_to_return=data_to_return
-            )
+            anns = self._inference_images_batch(source=img_paths, settings=settings)
             for i, ann in enumerate(anns):
                 data = {}
                 if "slides" in data_to_return:
