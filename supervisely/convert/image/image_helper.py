@@ -31,8 +31,10 @@ def validate_image(path: str) -> tuple:
             new_name = validate_mimetypes(name, path)
             if new_name != name:
                 img = read(path, remove_alpha_channel=False)
-                path = Path(path).with_name(new_name).as_posix()
-                write(path, img, remove_alpha_channel=False)
+                new_path = Path(path).with_name(new_name).as_posix()
+                write(new_path, img, remove_alpha_channel=False)
+                silent_remove(path)
+                return new_path
         return path
     except Exception as e:
         logger.warning(f"Skip image: {repr(e)}", extra={"file_path": path})
