@@ -19,8 +19,14 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_name, get_file_name_with_ext, silent_remove, get_file_size
 from supervisely.io.env import task_id
+from supervisely.io.fs import (
+    get_file_ext,
+    get_file_name,
+    get_file_name_with_ext,
+    get_file_size,
+    silent_remove,
+)
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
@@ -183,6 +189,13 @@ class VideoConverter(BaseConverter):
 
     def convert_to_mp4_if_needed(self, video_path):
         video_name = get_file_name(video_path)
+        video_ext = get_file_ext(video_path)
+        if video_ext.lower() != video_ext:
+            # rename video file to make extension lowercase
+            new_video_path = os.path.splitext(video_path)[0] + video_ext.lower()
+            os.rename(video_path, new_video_path)
+            video_path = new_video_path
+
         # convert
         output_video_name = f"{get_file_name(video_name)}{self.base_video_extension}"
         output_video_path = os.path.splitext(video_path)[0] + "_h264" + self.base_video_extension
