@@ -1,8 +1,8 @@
+import mimetypes
 from typing import List, Optional, Tuple, Union
 
 import cv2
 import magic
-import mimetypes
 import nrrd
 
 import supervisely.convert.image.image_helper as image_helper
@@ -22,7 +22,9 @@ from supervisely.io.json import load_json_file
 
 
 class ImageConverter(BaseConverter):
-    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"] + image_helper.EXT_TO_CONVERT
+    allowed_exts = [
+        ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"
+    ] + image_helper.EXT_TO_CONVERT
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -135,6 +137,7 @@ class ImageConverter(BaseConverter):
             item_metas = []
             anns = []
             for item in batch:
+                logger.warn(f"Item: {item.path}")
                 item.path = self.validate_image(item.path)
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
@@ -147,6 +150,7 @@ class ImageConverter(BaseConverter):
                 if ann is not None:
                     anns.append(ann)
 
+            logger.warn(f"Items: {len(item_names)} | {item_names} | {item_paths}")
             img_infos = api.image.upload_paths(dataset_id, item_names, item_paths, metas=item_metas)
             img_ids = [img_info.id for img_info in img_infos]
             if len(anns) == len(img_ids):

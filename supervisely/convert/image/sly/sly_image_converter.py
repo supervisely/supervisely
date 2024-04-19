@@ -54,6 +54,7 @@ class SLYImageConverter(ImageConverter):
         images_list, ann_dict, img_meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
             for file in files:
+                logger.warn(f"[SLY] Processing File: {file}")
                 full_path = os.path.join(root, file)
                 dir_name = os.path.basename(root)
                 if file == "meta.json":
@@ -72,6 +73,11 @@ class SLYImageConverter(ImageConverter):
                 elif self.is_image(full_path):
                     images_list.append(full_path)
 
+                if file in images_list:
+                    logger.warn(f"[SLY] File added to list: {file}")
+                else:
+                    logger.warn(f"[SLY] File skipped: {file}")
+
         if self._meta is not None:
             meta = self._meta
         else:
@@ -80,7 +86,9 @@ class SLYImageConverter(ImageConverter):
         # create Items
         self._items = []
         for image_path in images_list:
+            logger.warn(f"[SLY] Image path: {image_path}")
             item = self.Item(image_path)
+            logger.warn(f"[SLY] item created: {item.name}")
             ann_name = f"{item.name}.json"
             if ann_name in ann_dict:
                 ann_path = ann_dict[ann_name]
@@ -94,6 +102,9 @@ class SLYImageConverter(ImageConverter):
                 item.set_meta_data(img_meta_dict[ann_name])
             self._items.append(item)
         self._meta = meta
+        logger.warn(
+            f"[SLY] Created items: {len(self._items)} | {[item.name for item in self._items]}"
+        )
         return detected_ann_cnt > 0
 
     def to_supervisely(
