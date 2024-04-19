@@ -1,23 +1,26 @@
+import json
 import os
 import threading
 import time
+from typing import Any, Dict, List, Optional, Union
+
 from cacheout import Cache
 from cachetools import LRUCache
-from fastapi import Response, Request, status
+from fastapi import Form, Request, Response, UploadFile, status
+from fastapi.responses import JSONResponse
 
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionSegmentation
-from supervisely.sly_logger import logger
-from supervisely.imaging import image as sly_image
-from supervisely.io.fs import silent_remove
+from supervisely import Label, ObjClass, ProjectMeta
+from supervisely import env as sly_env
 from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import silent_remove
 from supervisely.nn.inference import Inference
-from supervisely import ProjectMeta, ObjClass, Label, env as sly_env
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.interactive_segmentation import functional
-
-from typing import Dict, List, Any, Optional, Union
+from supervisely.nn.prediction_dto import PredictionSegmentation
+from supervisely.sly_logger import logger
 
 try:
     from typing import Literal
@@ -58,6 +61,13 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         self._inference_image_lock = threading.Lock()
         self._inference_image_cache = Cache(ttl=_fast_cache_ttl)
         self._init_mask_cache = LRUCache(maxsize=100)  # cache of sly.Bitmaps
+
+        if not self._use_gui:
+            try:
+                self.load_on_device(model_dir, "cuda")
+            except RuntimeError:
+                self.load_on_device(model_dir, "cpu")
+                logger.warn("Failed to load model on CUDA device.")
 
         logger.debug(
             "Smart cache params",
@@ -184,7 +194,9 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
             else:
                 init_mask = None
             if init_mask is not None:
-                init_mask = functional.bitmap_to_mask(api, init_mask, image_id)
+                img_info = api.image.get_info_by_id(image_id)
+                h, w = img_info.height, img_info.width
+                init_mask = functional.bitmap_to_mask(init_mask, h, w)
                 init_mask = functional.crop_image(crop, init_mask)
                 assert init_mask.shape[:2] == image_np.shape[:2]
             settings["init_mask"] = init_mask
@@ -219,3 +231,247 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                     "error": None,
                 }
             return response
+
+        @server.post("/smart_segmentation_batch")
+        def smart_segmentation_batch(response: Response, request: Request):
+            result = []
+            logger.debug(
+                f"smart_segmentation inference: context=",
+                extra={**request.state.context, "api_token": "***"},
+            )
+
+            # Parse request
+            try:
+                state = request.state.state
+                settings = self._get_inference_settings(state)
+                api = request.state.api
+                smtool_states = request.state.context.get("states", [])
+            except Exception as exc:
+                logger.warn("Error parsing request:" + str(exc), exc_info=True)
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "400: Bad request.", "success": False}
+
+            for smtool_state in smtool_states:
+                crop = smtool_state["crop"]
+                positive_clicks, negative_clicks = (
+                    smtool_state["positive"],
+                    smtool_state["negative"],
+                )
+                if len(positive_clicks) + len(negative_clicks) == 0:
+                    logger.warn("No clicks received.")
+                    result.append(
+                        {
+                            "origin": None,
+                            "bitmap": None,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+                    continue
+
+                # Pre-process clicks
+                clicks = [{**click, "is_positive": True} for click in positive_clicks]
+                clicks += [{**click, "is_positive": False} for click in negative_clicks]
+                clicks = functional.transform_clicks_to_crop(crop, clicks)
+                is_in_bbox = functional.validate_click_bounds(crop, clicks)
+                if not is_in_bbox:
+                    logger.warn(f"Invalid value: click is out of bbox bounds.")
+                    result.append(
+                        {
+                            "origin": None,
+                            "bitmap": None,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+                    continue
+
+                # Download the image if is not in Cache
+                app_dir = get_data_dir()
+                hash_str = functional.get_hash_from_context(smtool_state)
+                if hash_str not in self._inference_image_cache:
+                    logger.debug(f"downloading image: {hash_str}")
+                    image_np = functional.download_image_from_context(
+                        smtool_state,
+                        api,
+                        app_dir,
+                        self.download_image,
+                        self.download_frame,
+                        self.download_image_by_hash,
+                    )
+                    self._inference_image_cache.set(hash_str, image_np)
+                else:
+                    logger.debug(f"image found in cache: {hash_str}")
+                    image_np = self._inference_image_cache.get(hash_str)
+
+                # Crop the image
+                image_np = functional.crop_image(crop, image_np)
+                image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
+                sly_image.write(image_path, image_np)
+
+                # Prepare init_mask (only for images)
+                figure_id = smtool_state.get("figure_id")
+                image_id = smtool_state.get("image_id")
+                if smtool_state.get("init_figure") is True and image_id is not None:
+                    # Download and save in Cache
+                    init_mask = functional.download_init_mask(api, figure_id, image_id)
+                    self._init_mask_cache[figure_id] = init_mask
+                elif self._init_mask_cache.get(figure_id) is not None:
+                    # Load from Cache
+                    init_mask = self._init_mask_cache[figure_id]
+                else:
+                    init_mask = None
+                if init_mask is not None:
+                    img_info = api.image.get_info_by_id(image_id)
+                    h, w = img_info.height, img_info.width
+                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
+                    init_mask = functional.crop_image(crop, init_mask)
+                    assert init_mask.shape[:2] == image_np.shape[:2]
+                settings["init_mask"] = init_mask
+
+                # Predict
+                self._inference_image_lock.acquire()
+                try:
+                    logger.debug(f"predict: {smtool_state['request_uid']}")
+                    clicks_to_predict = [
+                        self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks
+                    ]
+                    pred_mask = self.predict(image_path, clicks_to_predict, settings).mask
+                finally:
+                    logger.debug(f"predict done: {smtool_state['request_uid']}")
+                    self._inference_image_lock.release()
+                    silent_remove(image_path)
+
+                if pred_mask.any():
+                    bitmap = Bitmap(pred_mask)
+                    bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
+                    logger.debug(f"smart_segmentation inference done!")
+                    result.append(
+                        {
+                            "origin": bitmap_origin,
+                            "bitmap": bitmap_data,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+                else:
+                    logger.debug(f"Predicted mask is empty.")
+                    result.append(
+                        {
+                            "origin": None,
+                            "bitmap": None,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+            return result
+
+        @server.post("/smart_segmentation_files")
+        def smart_segmentation_files(
+            request: Request, files: List[UploadFile], settings: str = Form("{}")
+        ):
+            result = []
+            settings = json.loads(settings)
+            logger.debug(
+                f"smart_segmentation inference: context=",
+                extra={settings},
+            )
+            smtool_states = settings.get("state", [])
+            inf_settings = self._get_inference_settings(settings)
+            for file, smtool_state in zip(files, smtool_states):
+                # Parse request
+                try:
+                    crop = smtool_state["crop"]
+                    positive_clicks, negative_clicks = (
+                        smtool_state["positive"],
+                        smtool_state["negative"],
+                    )
+                    if len(positive_clicks) + len(negative_clicks) == 0:
+                        logger.warn("No clicks received.")
+                        result.append(
+                            {
+                                "origin": None,
+                                "bitmap": None,
+                                "success": True,
+                                "error": None,
+                            }
+                        )
+                        continue
+                except Exception as exc:
+                    logger.warn("Error parsing request:" + str(exc), exc_info=True)
+                    return JSONResponse(
+                        {"message": "400: Bad request.", "success": False}, status_code=400
+                    )
+
+                # Pre-process clicks
+                clicks = [{**click, "is_positive": True} for click in positive_clicks]
+                clicks += [{**click, "is_positive": False} for click in negative_clicks]
+                clicks = functional.transform_clicks_to_crop(crop, clicks)
+                is_in_bbox = functional.validate_click_bounds(crop, clicks)
+                if not is_in_bbox:
+                    logger.warn(f"Invalid value: click is out of bbox bounds.")
+                    result.append(
+                        {
+                            "origin": None,
+                            "bitmap": None,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+                    continue
+
+                # Crop the image
+                app_dir = get_data_dir()
+                image_np = sly_image.read_bytes(file.file.read())
+                hash_str = functional.get_hash_from_context(smtool_state)
+                self._inference_image_cache.set(hash_str, image_np)
+                image_np = functional.crop_image(crop, image_np)
+                image_path = os.path.join(app_dir, f"{time.time()}_{rand_str(10)}.jpg")
+                sly_image.write(image_path, image_np)
+
+                # Prepare init_mask (only for images)
+                geom_data = smtool_state.get("geometry")
+                init_mask = Bitmap.from_json(geom_data) if geom_data is not None else None
+                if init_mask is not None:
+                    h, w = image_np.shape[:2]
+                    init_mask = functional.bitmap_to_mask(init_mask, h, w)
+                    init_mask = functional.crop_image(crop, init_mask)
+                    assert init_mask.shape[:2] == image_np.shape[:2]
+                inf_settings["init_mask"] = init_mask
+
+                # Predict
+                self._inference_image_lock.acquire()
+                try:
+                    logger.debug(f"predict: {smtool_state['request_uid']}")
+                    clicks_to_predict = [
+                        self.Click(c["x"], c["y"], c["is_positive"]) for c in clicks
+                    ]
+                    pred_mask = self.predict(image_path, clicks_to_predict, settings).mask
+                finally:
+                    logger.debug(f"predict done: {smtool_state['request_uid']}")
+                    self._inference_image_lock.release()
+                    silent_remove(image_path)
+
+                if pred_mask.any():
+                    bitmap = Bitmap(pred_mask)
+                    bitmap_origin, bitmap_data = functional.format_bitmap(bitmap, crop)
+                    logger.debug(f"smart_segmentation inference done!")
+                    result.append(
+                        {
+                            "origin": bitmap_origin,
+                            "bitmap": bitmap_data,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+                else:
+                    logger.debug(f"Predicted mask is empty.")
+                    result.append(
+                        {
+                            "origin": None,
+                            "bitmap": None,
+                            "success": True,
+                            "error": None,
+                        }
+                    )
+            return result

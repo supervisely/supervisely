@@ -480,7 +480,7 @@ def autostart() -> bool:
     """
     return _parse_from_env(
         name="autostart",
-        keys=["modal.state.autostart"],
+        keys=["modal.state.autostart", "AUTOSTART"],
         default=False,
         raise_not_found=False,
         postprocess_fn=flag_from_env,

@@ -1,16 +1,21 @@
-import numpy as np
 import functools
-from fastapi import Request, BackgroundTasks
-from typing import Any, Dict, List, Optional, Union
+import json
+import time
 from pathlib import Path
+from queue import Queue
+from threading import Event, Thread
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
+from fastapi import BackgroundTasks, Form, Request, UploadFile
 
 import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
-from supervisely.annotation.label import Label
-from supervisely.nn.prediction_dto import Prediction, PredictionPoint
-from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
+from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.inference.cache import InferenceImageCache, PersistentImageTTLCache
+from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
+from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 
 
 class PointTracking(Inference, InferenceImageCache):
@@ -49,6 +54,11 @@ class PointTracking(Inference, InferenceImageCache):
             },
         )
 
+    def _deserialize_geometry(self, data: dict):
+        geometry_type_str = data["type"]
+        geometry_json = data["data"]
+        return sly.deserialize_geometry(geometry_type_str, geometry_json)
+
     def get_info(self):
         info = super().get_info()
         info["task type"] = "tracking"
@@ -59,15 +69,177 @@ class PointTracking(Inference, InferenceImageCache):
         # info["device"] = ""
         return info
 
+    def track_api(self, api: sly.Api, context: dict):
+        # unused fields:
+        context["trackId"] = "auto"
+        context["objectIds"] = []
+        context["figureIds"] = []
+        if "direction" not in context:
+            context["direction"] = "forward"
+
+        input_geometries: list = context["input_geometries"]
+
+        if self.custom_inference_settings_dict.get("load_all_frames"):
+            load_all_frames = True
+        else:
+            load_all_frames = False
+        video_interface = TrackerInterface(
+            context=context,
+            api=api,
+            load_all_frames=load_all_frames,
+            frame_loader=self.download_frame,
+            should_notify=False,
+        )
+
+        range_of_frames = [
+            video_interface.frames_indexes[0],
+            video_interface.frames_indexes[-1],
+        ]
+
+        if isinstance(self._cache, PersistentImageTTLCache):
+            # if cache is persistent, run cache task for whole video
+            self.run_cache_task_manually(
+                api,
+                None,
+                video_id=video_interface.video_id,
+            )
+        else:
+            # if cache is not persistent, run cache task for range of frames
+            self.run_cache_task_manually(
+                api,
+                [range_of_frames],
+                video_id=video_interface.video_id,
+            )
+
+        api.logger.info("Start tracking.")
+
+        predictions = []
+        for _ in video_interface.frames_loader_generator():
+            for input_geom in input_geometries:
+                geom = self._deserialize_geometry(input_geom)
+                if isinstance(geom, sly.Point):
+                    geometries = self._predict_point_geometries(
+                        geom,
+                        video_interface.frames,
+                    )
+                elif isinstance(geom, sly.Polygon):
+                    if len(geom.interior) > 0:
+                        raise ValueError("Can't track polygons with interior.")
+                    geometries = self._predict_polygon_geometries(
+                        geom,
+                        video_interface.frames,
+                    )
+                elif isinstance(geom, sly.GraphNodes):
+                    geometries = self._predict_graph_geometries(
+                        geom,
+                        video_interface.frames,
+                    )
+                elif isinstance(geom, sly.Polyline):
+                    geometries = self._predict_polyline_geometries(
+                        geom,
+                        video_interface.frames,
+                    )
+                else:
+                    raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+
+                if video_interface.global_stop_indicatior:
+                    return
+
+                geometries = [{"type": g.geometry_name(), "data": g.to_json()} for g in geometries]
+                predictions.append(geometries)
+
+        # predictions must be NxK figures: N=number of frames, K=number of objects
+        predictions = list(map(list, zip(*predictions)))
+        return predictions
+
+    def _inference(self, frames: List[np.ndarray], geometries: List[Geometry], settings: dict):
+        updated_settings = {
+            **self.custom_inference_settings_dict,
+            **settings,
+        }
+        results = [[] for _ in range(len(frames) - 1)]
+        for geometry in geometries:
+            if isinstance(geometry, sly.Point):
+                predictions = self._predict_point_geometries(geometry, frames, updated_settings)
+            elif isinstance(geometry, sly.Polygon):
+                if len(geometry.interior) > 0:
+                    raise ValueError("Can't track polygons with interior.")
+                predictions = self._predict_polygon_geometries(
+                    geometry,
+                    frames,
+                    updated_settings,
+                )
+            elif isinstance(geometry, sly.GraphNodes):
+                predictions = self._predict_graph_geometries(
+                    geometry,
+                    frames,
+                    updated_settings,
+                )
+            elif isinstance(geometry, sly.Polyline):
+                predictions = self._predict_polyline_geometries(
+                    geometry,
+                    frames,
+                    updated_settings,
+                )
+            else:
+                raise TypeError(f"Tracking does not work with {geometry.geometry_name()}.")
+
+            for i, prediction in enumerate(predictions):
+                results[i].append({"type": geometry.geometry_name(), "data": prediction.to_json()})
+
+        return results
+
+    def track_api_cached(self, request: Request, context: dict):
+        sly.logger.info(f"Start tracking with settings: {context}.")
+        video_id = context["video_id"]
+        frame_indexes = list(
+            range(context["frame_index"], context["frame_index"] + context["frames"] + 1)
+        )
+        geometries = map(self._deserialize_geometry, context["input_geometries"])
+        frames = self.get_frames_from_cache(video_id, frame_indexes)
+        return self._inference(frames, geometries, context)
+
+    def track_api_files(
+        self, request: Request, files: List[UploadFile], settings: str = Form("{}")
+    ):
+        state = json.loads(settings)
+        sly.logger.info(f"Start tracking with settings: {state}.")
+        video_id = state["video_id"]
+        frame_indexes = list(
+            range(state["frame_index"], state["frame_index"] + state["frames"] + 1)
+        )
+        geometries = map(self._deserialize_geometry, state["input_geometries"])
+        frames = []
+        for file, frame_idx in zip(files, frame_indexes):
+            img_bytes = file.file.read()
+            frame = sly.image.read_bytes(img_bytes)
+            self.add_frame_to_cache(frame, video_id, frame_idx)
+            frames.append(frame)
+        sly.logger.info("Start tracking.")
+        return self._inference(frames, geometries, state)
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
         self.add_cache_endpoint(server)
+        self.add_cache_files_endpoint(server)
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
             task.add_task(track, request)
             return {"message": "Track task started."}
+
+        @server.post("/track-api")
+        async def track_api(request: Request):
+            return self.track_api(request.state.api, request.state.context)
+
+        @server.post("/track-api-files")
+        async def track_api_frames_files(
+            request: Request,
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+        ):
+            return self.track_api_files(request, files, settings)
 
         def send_error_data(func):
             @functools.wraps(func)
@@ -124,47 +296,88 @@ class PointTracking(Inference, InferenceImageCache):
             )
             api.logger.info("Start tracking.")
 
-            for _ in video_interface.frames_loader_generator():
-                for (fig_id, geom), obj_id in zip(
-                    video_interface.geometries.items(),
-                    video_interface.object_ids,
-                ):
-                    if isinstance(geom, sly.Point):
-                        geometries = self._predict_point_geometries(
-                            geom,
-                            video_interface,
-                        )
-                    elif isinstance(geom, sly.Polygon):
-                        if len(geom.interior) > 0:
-                            raise ValueError("Can't track polygons with iterior.")
-                        geometries = self._predict_polygon_geometries(
-                            geom,
-                            video_interface,
-                        )
-                    elif isinstance(geom, sly.GraphNodes):
-                        geometries = self._predict_graph_geometries(
-                            geom,
-                            video_interface,
-                        )
-                    elif isinstance(geom, sly.Polyline):
-                        geometries = self._predict_polyline_geometries(
-                            geom,
-                            video_interface,
-                        )
-                    else:
-                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+            def _upload_loop(q: Queue, stop_event: Event, video_interface: TrackerInterface):
+                try:
+                    while True:
+                        items = []
+                        while not q.empty():
+                            items.append(q.get_nowait())
+                        if len(items) > 0:
+                            video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                        if stop_event.is_set():
+                            video_interface._notify(True, task="stop tracking")
+                            return
+                        time.sleep(1)
+                except Exception as e:
+                    api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                    video_interface._notify(True, task="stop tracking")
+                    video_interface.global_stop_indicatior = True
+                    raise
 
-                    video_interface.add_object_geometries(geometries, obj_id, fig_id)
-                    api.logger.info(f"Object #{obj_id} tracked.")
+            upload_queue = Queue()
+            stop_upload_event = Event()
+            Thread(
+                target=_upload_loop,
+                args=[upload_queue, stop_upload_event, video_interface],
+                daemon=True,
+            ).start()
+            try:
+                for _ in video_interface.frames_loader_generator():
+                    for (fig_id, geom), obj_id in zip(
+                        video_interface.geometries.items(),
+                        video_interface.object_ids,
+                    ):
+                        if isinstance(geom, sly.Point):
+                            geometries = self._predict_point_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.Polygon):
+                            if len(geom.interior) > 0:
+                                stop_upload_event.set()
+                                raise ValueError("Can't track polygons with interior.")
+                            geometries = self._predict_polygon_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.GraphNodes):
+                            geometries = self._predict_graph_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.Polyline):
+                            geometries = self._predict_polyline_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        else:
+                            raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
-                    if video_interface.global_stop_indicatior:
-                        return
+                        for frame_idx, geometry in zip(
+                            video_interface._cur_frames_indexes[1:], geometries
+                        ):
+                            upload_queue.put(
+                                (
+                                    geometry,
+                                    obj_id,
+                                    frame_idx,
+                                )
+                            )
+                        api.logger.info(f"Object #{obj_id} tracked.")
+
+                        if video_interface.global_stop_indicatior:
+                            stop_upload_event.set()
+                            return
+            except Exception:
+                stop_upload_event.set()
+                raise
+            stop_upload_event.set()
 
     def predict(
         self,
         rgb_images: List[np.ndarray],
         settings: Dict[str, Any],
-        start_object: PredictionPoint,
+        start_object: Union[PredictionPoint, List[PredictionPoint]],
     ) -> List[PredictionPoint]:
         """
         Track point on given frames.
@@ -173,10 +386,30 @@ class PointTracking(Inference, InferenceImageCache):
         :type rgb_images: List[np.array]
         :param settings: model parameters
         :type settings: Dict[str, Any]
-        :param start_objects: point to track on the initial frame
-        :type start_objects: PredictionPoint
+        :param start_object: point to track on the initial frame
+        :type start_object: PredictionPoint
         :return: predicted points for frame range (0, m]; `m-1` prediction in total
         :rtype: List[PredictionPoint]
+        """
+        raise NotImplementedError
+
+    def predict_batch(
+        self,
+        rgb_images: List[np.ndarray],
+        settings: Dict[str, Any],
+        start_objects: List[PredictionPoint],
+    ) -> List[List[PredictionPoint]]:
+        """
+        Track points on given frames.
+
+        :param rgb_images: RGB frames, `m` frames
+        :type rgb_images: List[np.array]
+        :param settings: model parameters
+        :type settings: Dict[str, Any]
+        :param start_objects: points to track on the initial frame
+        :type start_objects: List[PredictionPoint]
+        :return: predicted points for frame range (0, m]; `m-1` prediction in total
+        :rtype: List[List[PredictionPoint]]
         """
         raise NotImplementedError
 
@@ -210,77 +443,113 @@ class PointTracking(Inference, InferenceImageCache):
     def _predict_point_geometries(
         self,
         geom: sly.Point,
-        interface: TrackerInterface,
+        frames: List[np.ndarray],
+        settings: Dict[str, Any] = None,
     ) -> List[sly.Point]:
+        if settings is None:
+            settings = self.custom_inference_settings_dict
         pp_geom = PredictionPoint("point", col=geom.col, row=geom.row)
-        predicted: List[Prediction] = self.predict(
-            interface.frames_with_notification,
-            self.custom_inference_settings_dict,
-            pp_geom,
-        )
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            predicted = self.predict(
+                frames,
+                settings,
+                pp_geom,
+            )
+        else:
+            predicted = self.predict_batch(
+                frames,
+                settings,
+                pp_geom,
+            )
+            predicted = [pred[0] for pred in predicted]
         return F.dto_points_to_sly_points(predicted)
 
     def _predict_polygon_geometries(
         self,
         geom: sly.Polygon,
-        interface: TrackerInterface,
+        frames: List[np.ndarray],
+        settings: Dict[str, Any] = None,
     ) -> List[sly.Polygon]:
+        if settings is None:
+            settings = self.custom_inference_settings_dict
         polygon_points = F.numpy_to_dto_point(geom.exterior_np, "polygon")
-        exterior_per_time = [[] for _ in range(interface.frames_count)]
 
-        for pp_geom in polygon_points:
-            points: List[Prediction] = self.predict(
-                interface.frames_with_notification,
-                self.custom_inference_settings_dict,
-                pp_geom,
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            points = list(
+                zip(
+                    *[
+                        self.predict(frames, settings, polygon_point)
+                        for polygon_point in polygon_points
+                    ]
+                )
             )
-            points_loc = F.dto_points_to_point_location(points)
-            for fi, point_loc in enumerate(points_loc):
-                exterior_per_time[fi].append(point_loc)
-
-        return F.exteriors_to_sly_polygons(exterior_per_time)
+        else:
+            points: List[List[Prediction]] = self.predict_batch(
+                frames,
+                settings,
+                polygon_points,
+            )
+        points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in points]
+        return F.exteriors_to_sly_polygons(points_loc)
 
     def _predict_graph_geometries(
         self,
         geom: sly.GraphNodes,
-        interface: TrackerInterface,
-    ) -> sly.GraphNodes:
-        nodes_per_time = [[] for _ in range(interface.frames_count)]
-        points_with_id = F.graph_to_dto_points(geom)
+        frames: List[np.ndarray],
+        settings: Dict[str, Any] = None,
+    ) -> List[sly.GraphNodes]:
+        if settings is None:
+            settings = self.custom_inference_settings_dict
+        points, pids = F.graph_to_dto_points(geom)
 
-        for point, pid in zip(*points_with_id):
-            preds: List[PredictionPoint] = self.predict(
-                interface.frames_with_notification,
-                self.custom_inference_settings_dict,
-                point,
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            preds = list(zip(*[self.predict(frames, settings, point) for point in points]))
+        else:
+            preds: List[List[PredictionPoint]] = self.predict_batch(
+                frames,
+                settings,
+                points,
             )
-            nodes = F.dto_points_to_sly_nodes(preds, pid)
 
-            for time, node in enumerate(nodes):
-                nodes_per_time[time].append(node)
+        nodes = []
+        for frame_preds in preds:
+            frame_nodes = []
+            for pred, pid in zip(frame_preds, pids):
+                frame_nodes.extend(F.dto_points_to_sly_nodes([pred], pid))
+            nodes.append(frame_nodes)
 
-        return F.nodes_to_sly_graph(nodes_per_time)
+        return F.nodes_to_sly_graph(nodes)
 
     def _predict_polyline_geometries(
         self,
         geom: sly.Polyline,
-        interface: TrackerInterface,
+        frames: List[np.ndarray],
+        settings: Dict[str, Any] = None,
     ) -> List[sly.Polyline]:
+        if settings is None:
+            settings = self.custom_inference_settings_dict
         polyline_points = F.numpy_to_dto_point(geom.exterior_np, "polyline")
-        lines_per_time = [[] for _ in range(interface.frames_count)]
-
-        for point in polyline_points:
-            preds: List[PredictionPoint] = self.predict(
-                interface.frames_with_notification,
-                self.custom_inference_settings_dict,
-                point,
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            preds = list(
+                zip(
+                    *[
+                        self.predict(frames, settings, polyline_point)
+                        for polyline_point in polyline_points
+                    ]
+                )
             )
-            sly_points_loc = F.dto_points_to_point_location(preds)
-
-            for time, point_loc in enumerate(sly_points_loc):
-                lines_per_time[time].append(point_loc)
-
-        return F.exterior_to_sly_polyline(lines_per_time)
+        else:
+            preds = self.predict_batch(
+                frames,
+                settings,
+                polyline_points,
+            )
+        points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in preds]
+        return F.exterior_to_sly_polyline(points_loc)
 
     def _predictions_to_annotation(
         self, image: np.ndarray, predictions: List[Prediction]

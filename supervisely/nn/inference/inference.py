@@ -9,8 +9,9 @@ import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
+import numpy as np
 import requests
 import yaml
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
@@ -22,6 +23,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
+from supervisely import batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -47,6 +49,7 @@ from supervisely.decorators.inference import (
     process_image_sliding_window,
 )
 from supervisely.imaging.color import get_predefined_colors
+from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -68,6 +71,7 @@ class Inference:
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
+        multithread_inference: Optional[bool] = True,
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
@@ -135,10 +139,18 @@ class Inference:
             self.gui.on_serve_callbacks.append(on_serve_callback)
 
         self._inference_requests = {}
-        self._executor = ThreadPoolExecutor()
+        max_workers = 1 if not multithread_inference else None
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
         self.get_info = self._check_serve_before_call(self.get_info)
+
+        self.cache = InferenceImageCache(
+            maxsize=env.smart_cache_size(),
+            ttl=env.smart_cache_ttl(),
+            is_persistent=True,
+            base_folder=env.smart_cache_container_dir(),
+        )
 
     def _prepare_device(self, device):
         if device is None:
@@ -477,7 +489,10 @@ class Inference:
             labels.append(label)
 
         # create annotation with correct image resolution
-        ann = Annotation.from_img_path(image_path)
+        if isinstance(image_path, str):
+            ann = Annotation.from_img_path(image_path)
+        elif isinstance(image_path, np.ndarray):
+            ann = Annotation(image_path.shape[:2])
         ann = ann.add_labels(labels)
         return ann
 
@@ -495,6 +510,16 @@ class Inference:
             return self._custom_inference_settings
         else:
             return yaml.safe_load(self._custom_inference_settings)
+
+    def _handle_error_in_async(self, uuid, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            inf_request = self._inference_requests.get(uuid, None)
+            if inf_request is not None:
+                inf_request["exception"] = str(e)
+            logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+            raise e
 
     @process_image_sliding_window
     @process_image_roi
@@ -522,11 +547,79 @@ class Inference:
         )
         return ann
 
+    def _inference_images_batch(
+        self,
+        source: List,
+        settings: Dict,
+    ) -> List[Annotation]:
+        inference_mode = settings.get("inference_mode", "full_image")
+        logger.debug(
+            "Inferring images batch:",
+            extra={"inference_mode": inference_mode, "items": len(source)},
+        )
+        if len(source) == 0:
+            return []
+
+        def _predict(source: List, predict_func: Callable):
+            temp_dir = None
+            if isinstance(source[0], np.ndarray):
+                temp_dir = os.path.join(get_data_dir(), rand_str(10))
+                fs.mkdir(temp_dir)
+                images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
+                for img_path, img in zip(images_paths, source):
+                    sly_image.write(img_path, img)
+            else:
+                images_paths = source
+            predictions = [
+                predict_func(image_path=img_path, settings=settings) for img_path in images_paths
+            ]
+            if temp_dir is not None:
+                fs.remove_dir(temp_dir)
+            return predictions
+
+        if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
+            if type(self).predict_batch_raw == Inference.predict_batch_raw:
+                predictions = _predict(source, self.predict_raw)
+            else:
+                predictions = self.predict_batch_raw(source=source, settings=settings)
+        else:
+            if type(self).predict_batch == Inference.predict_batch:
+                predictions = _predict(source, self.predict)
+            else:
+                predictions = self.predict_batch(source=source, settings=settings)
+        anns = [
+            self._predictions_to_annotation(image_path, prediction)
+            for image_path, prediction in zip(source, predictions)
+        ]
+
+        logger.debug(
+            f"Inferring image_path done. pred_annotations:",
+            extra={
+                "annotations": [
+                    dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels))
+                    for ann in anns
+                ]
+            },
+        )
+        return anns
+
     # pylint: disable=method-hidden
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
+
+    def predict_batch(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
+        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
+        If source is a list of numpy arrays, it should be in BGR format"""
+        raise NotImplementedError("Have to be implemented in child class")
+
+    def predict_batch_raw(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
+        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
+        If source is a list of numpy arrays, it should be in BGR format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
@@ -587,17 +680,21 @@ class Inference:
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
-        paths = []
-        temp_dir = os.path.join(get_data_dir(), rand_str(10))
-        fs.mkdir(temp_dir)
-        for file in files:
-            image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-            image_np = sly_image.read_bytes(file.file.read())
-            sly_image.write(image_path, image_np)
-            paths.append(image_path)
-        results = self._inference_images_dir(paths, state)
-        fs.remove_dir(temp_dir)
-        return results
+        if type(self).predict_batch == Inference.predict_batch:
+            paths = []
+            temp_dir = os.path.join(get_data_dir(), rand_str(10))
+            fs.mkdir(temp_dir)
+            for file in files:
+                image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+                image_np = sly_image.read_bytes(file.file.read())
+                sly_image.write(image_path, image_np)
+                paths.append(image_path)
+            results = self._inference_images_dir(paths, state)
+            fs.remove_dir(temp_dir)
+            return results
+        else:
+            images = [sly_image.read_bytes(file.file.read()) for file in files]
+            return self._inference_images_dir(images, state)
 
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
@@ -619,17 +716,35 @@ class Inference:
         logger.debug("Inferring images_dir (or batch)...")
         settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra=settings)
-        n_imgs = len(img_paths)
         results = []
-        for i, image_path in enumerate(img_paths):
-            data_to_return = {}
-            logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
-            ann = self._inference_image_path(
-                image_path=image_path,
+        data_to_return = {}
+        if type(self).predict_batch == Inference.predict_batch:
+            n_imgs = len(img_paths)
+            for i, image_path in enumerate(img_paths):
+                data_to_return = {}
+                logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
+                ann = self._inference_image_path(
+                    image_path=image_path,
+                    settings=settings,
+                    data_to_return=data_to_return,
+                )
+                results.append({"annotation": ann.to_json(), "data": data_to_return})
+        else:
+            anns = self._inference_images_batch(
+                source=img_paths,
                 settings=settings,
-                data_to_return=data_to_return,
+                # data_to_return=data_to_return # removed because sliding window decorator is not implemented
             )
-            results.append({"annotation": ann.to_json(), "data": data_to_return})
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
         return results
 
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
@@ -726,25 +841,25 @@ class Inference:
             preparing_progress = inference_request["preparing_progress"]
 
         # progress
-        inf_video_interface = InferenceVideoInterface(
-            api=api,
-            start_frame_index=state.get("startFrameIndex", 0),
-            frames_count=state.get("framesCount", video_info.frames_count - 1),
-            frames_direction=state.get("framesDirection", "forward"),
-            video_info=video_info,
-            imgs_dir=video_images_path,
-            preparing_progress=preparing_progress,
-        )
-        inf_video_interface.download_frames()
+        preparing_progress["status"] = "download_video"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = int(video_info.file_meta["size"])
+
+        def _progress_cb(chunk_size):
+            preparing_progress["current"] += chunk_size
+
+        self.cache.download_video(api, video_info.id, return_images=False, progress_cb=_progress_cb)
+        preparing_progress["status"] = "inference"
 
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
 
-        n_frames = len(inf_video_interface.images_paths)
+        n_frames = video_info.frames_count
         logger.debug(f"Total frames to infer: {n_frames}")
 
         results = []
-        for i, image_path in enumerate(inf_video_interface.images_paths):
+        batch_size = 16
+        for batch in batched(range(video_info.frames_count), batch_size):
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
@@ -755,20 +870,32 @@ class Inference:
                 )
                 results = []
                 break
-            logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
-            data_to_return = {}
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
+            logger.debug(
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
-            result = {"annotation": ann.to_json(), "data": data_to_return}
+            frames = self.cache.download_frames(api, video_info.id, batch)
+            data_to_return = {}
+            anns = self._inference_images_batch(
+                source=frames,
+                settings=settings,
+                # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
+            )
+            batch_results = []
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                batch_results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
+            results.extend(batch_results)
             if async_inference_request_uuid is not None:
-                sly_progress.iter_done()
-                inference_request["pending_results"].append(result)
-            results.append(result)
-            logger.debug(f"Frame {i+1} done.")
-
+                sly_progress.iters_done(len(batch))
+                inference_request["pending_results"].extend(batch_results)
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         fs.remove_dir(video_images_path)
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
@@ -782,6 +909,7 @@ class Inference:
             "result": None,
             "pending_results": [],
             "preparing_progress": {"current": 0, "total": 1},
+            "exception": None,
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
@@ -959,6 +1087,8 @@ class Inference:
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 self._inference_image_id,
                 request.state.api,
                 request.state.state,
@@ -985,6 +1115,8 @@ class Inference:
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 self._inference_video_id,
                 request.state.api,
                 request.state.state,

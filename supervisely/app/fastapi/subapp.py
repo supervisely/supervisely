@@ -188,7 +188,7 @@ class Event:
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
                 )
-        
+
         class FigureChanged:
             endpoint = "/manual_selected_figure_changed"
 
@@ -209,6 +209,7 @@ class Event:
                 tool: str,
                 user_id: int,
                 job_id: int,
+                previous_figure: dict = None,
             ):
                 self.dataset_id = dataset_id
                 self.team_id = team_id
@@ -225,6 +226,7 @@ class Event:
                 self.tool = tool
                 self.user_id = user_id
                 self.job_id = job_id
+                self.previous_figure = previous_figure
 
             @classmethod
             def from_json(cls, data: dict):
@@ -244,6 +246,9 @@ class Event:
                     tool=data.get(ApiField.LABELING_TOOL),
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
+                    previous_figure=data.get(
+                        "previousFigure", None
+                    ),  # there is no such field in ApiField
                 )
 
 
@@ -472,10 +477,10 @@ def _init(
                 ),
             )
             # logger.debug(f"middleware request api_token {request.state.api_token}")
-            # request.state.server_address = content.get(
-            #     "server_address", sly_env.server_address(raise_not_found=False)
-            # )
-            request.state.server_address = sly_env.server_address(raise_not_found=False)
+            request.state.server_address = content.get(
+                "server_address", sly_env.server_address(raise_not_found=False)
+            )
+            # request.state.server_address = sly_env.server_address(raise_not_found=False)
             # logger.debug(f"middleware request server_address {request.state.server_address}")
             # logger.debug(f"middleware request context {request.state.context}")
             # logger.debug(f"middleware request state {request.state.state}")

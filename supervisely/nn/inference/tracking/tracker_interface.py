@@ -1,11 +1,15 @@
-import numpy as np
-from typing import Generator, Optional, List, Callable, Dict
-from typing import OrderedDict as OrderedDictType
+import uuid
 from collections import OrderedDict
+from logging import Logger
+from typing import Callable, Dict, Generator, List, Optional
+from typing import OrderedDict as OrderedDictType
+
+import numpy as np
 
 import supervisely as sly
+from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
-from logging import Logger
+from supervisely.video_annotation.video_figure import VideoFigure
 
 
 class TrackerInterface:
@@ -17,6 +21,8 @@ class TrackerInterface:
         notify_in_predict=False,
         per_point_polygon_tracking=True,
         frame_loader: Callable[[sly.Api, int, int], np.ndarray] = None,
+        frames_loader: Callable[[sly.Api, int, List[int]], List[np.ndarray]] = None,
+        should_notify: bool = True,
     ):
         self.api: sly.Api = api
         self.logger: Logger = api.logger
@@ -28,6 +34,7 @@ class TrackerInterface:
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
+        self.should_notify = should_notify
 
         # all geometries
         self.stop = len(self.figure_ids) * self.frames_count
@@ -49,10 +56,12 @@ class TrackerInterface:
 
         self._hot_cache: Dict[int, np.ndarray] = {}
         self._local_cache_loader = frame_loader
+        self._local_cache_frames_loader = frames_loader
 
         if self.load_all_frames:
             if notify_in_predict:
                 self.stop += self.frames_count + 1
+            self._load_frames_to_hot_cache()
             self._load_frames()
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
@@ -64,15 +73,25 @@ class TrackerInterface:
 
         self.geometries[start_fig] = geometries[-1]
 
-    def frames_loader_generator(self) -> Generator[None, None, None]:
+    def frames_loader_generator(self, batch_size=16) -> Generator[None, None, None]:
         if self.load_all_frames:
             self._cur_frames_indexes = self.frames_indexes
             yield
             return
 
+        self._load_frames_to_hot_cache(
+            self.frames_indexes[: min(batch_size + 1, len(self.frames_indexes))]
+        )
         ind = self.frames_indexes[0]
         frame = self._load_frame(ind)
-        for next_ind in self.frames_indexes[1:]:
+        for next_ind_pos, next_ind in enumerate(self.frames_indexes[1:]):
+            if next_ind not in self._hot_cache:
+                self._load_frames_to_hot_cache(
+                    self.frames_indexes[
+                        next_ind_pos
+                        + 1 : min(next_ind_pos + 1 + batch_size, len(self.frames_indexes))
+                    ]
+                )
             next_frame = self._load_frame(next_ind)
             self._frames = np.array([frame, next_frame])
             self.frames_count = 1
@@ -84,6 +103,44 @@ class TrackerInterface:
             if self.global_stop_indicatior:
                 self.clear_cache()
                 return
+
+    def add_object_geometries_on_frames(
+        self,
+        geometries: List[Geometry],
+        object_ids: List[int],
+        frame_indexes: List[int],
+        notify: bool = True,
+    ):
+        def _split(geometries: List[Geometry], object_ids: List[int], frame_indexes: List[int]):
+            result = {}
+            for geometry, object_id, frame_index in zip(geometries, object_ids, frame_indexes):
+                result.setdefault(object_id, []).append((geometry, frame_index))
+            return result
+
+        geometries_by_object = _split(geometries, object_ids, frame_indexes)
+
+        for object_id, geometries_frame_indexes in geometries_by_object.items():
+            figures_json = [
+                {
+                    ApiField.OBJECT_ID: object_id,
+                    ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
+                    ApiField.GEOMETRY: geometry.to_json(),
+                    ApiField.META: {ApiField.FRAME: frame_index},
+                    ApiField.TRACK_ID: self.track_id,
+                }
+                for geometry, frame_index in geometries_frame_indexes
+            ]
+            figures_keys = [uuid.uuid4() for _ in figures_json]
+            key_id_map = sly.KeyIdMap()
+            self.api.video.figure._append_bulk(
+                entity_id=self.video_id,
+                figures_json=figures_json,
+                figures_keys=figures_keys,
+                key_id_map=key_id_map,
+            )
+            self.logger.debug(f"Added {len(figures_json)} geometries to object #{object_id}")
+            if notify:
+                self._notify(task="add geometry on frame", pos_increment=len(figures_json))
 
     def add_object_geometry_on_frame(
         self,
@@ -147,6 +204,22 @@ class TrackerInterface:
         if self.load_all_frames:
             self.stop += len(self.frames_indexes)
 
+    def _load_frames_to_hot_cache(self, frames_indexes: List[int] = None):
+        if self._local_cache_frames_loader is not None:
+            if frames_indexes is None:
+                frames_indexes = self.frames_indexes
+            frames_to_load = []
+            for frame_index in frames_indexes:
+                if frame_index not in self._hot_cache:
+                    frames_to_load.append(frame_index)
+            if len(frames_to_load) == 0:
+                return
+            self.logger.info(f"Loading {frames_to_load} frames to hot cache.")
+            loaded_rgbs = self._local_cache_frames_loader(self.api, self.video_id, frames_to_load)
+            for rgb, loaded_frame_index in zip(loaded_rgbs, frames_to_load):
+                self._hot_cache[loaded_frame_index] = rgb
+            self.logger.info(f"{frames_to_load} frames loaded to hot cache.")
+
     def _load_frame(self, frame_index):
         if frame_index in self._hot_cache:
             return self._hot_cache[frame_index]
@@ -156,9 +229,7 @@ class TrackerInterface:
             )
             return self._hot_cache[frame_index]
         else:
-            return self._local_cache_loader(
-                self.api, self.video_id, frame_index
-            )
+            return self._local_cache_loader(self.api, self.video_id, frame_index)
 
     def _load_frames(self):
         rgbs = []
@@ -177,8 +248,12 @@ class TrackerInterface:
         fstart: Optional[int] = None,
         fend: Optional[int] = None,
         task: str = "not defined",
+        pos_increment: int = 1,
     ):
-        self.global_pos += 1
+        if not self.should_notify:
+            return
+
+        self.global_pos += pos_increment
 
         if stop:
             pos = self.stop
