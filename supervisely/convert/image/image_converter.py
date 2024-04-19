@@ -181,5 +181,10 @@ class ImageConverter(BaseConverter):
             logger.warn(f"File extension not found for mimetype: {mimetype}")
             return False
         else:
-            logger.warn(f"File extension found: {file_ext}.")
+            logger.warn(f"File extension found: {file_ext}")
+            if file_ext.lower() == ".bin" and get_file_ext(path).lower() == ".avif":
+                logger.warn(
+                    f"File extension ends with '.avif' but mimetype is '.bin' - returning True"
+                )
+                return True
             return file_ext.lower() in self.allowed_exts
