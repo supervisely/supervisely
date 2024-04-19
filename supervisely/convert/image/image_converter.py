@@ -23,8 +23,8 @@ from supervisely.io.json import load_json_file
 
 class ImageConverter(BaseConverter):
     allowed_exts = [
-        ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"
-    ] + image_helper.EXT_TO_CONVERT
+        ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
+    ]
 
     class Item(BaseConverter.BaseItem):
         def __init__(
