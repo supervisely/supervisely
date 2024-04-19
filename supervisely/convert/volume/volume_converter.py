@@ -1,7 +1,7 @@
-from typing import List, Optional, OrderedDict, Union
+import os
 
-import nrrd
-from tqdm import tqdm
+from pathlib import Path
+from typing import List, Optional, OrderedDict, Union
 
 from supervisely import (
     Api,
@@ -12,9 +12,8 @@ from supervisely import (
     is_development,
     logger,
 )
-from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie_volume
 
 
@@ -135,7 +134,12 @@ class VolumeConverter(BaseConverter):
             mask_dirs = []
             interpolation_dirs = []
             for item in batch:
-                item.name = f"{get_file_name(item.name)}{get_file_ext(item.name).lower()}"
+                ext = get_file_ext(item.path)
+                if ext.lower() != ext:
+                    new_volume_path = Path(item.path).with_suffix(ext.lower()).as_posix()
+                    os.rename(item.path, new_volume_path)
+                    item.path = new_volume_path
+                item.name = get_file_name_with_ext(item.path)
                 item.name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
