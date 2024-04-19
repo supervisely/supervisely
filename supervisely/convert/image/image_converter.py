@@ -173,12 +173,12 @@ class ImageConverter(BaseConverter):
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
 
-        logger.warn(f"Checking if {path} is an image.")
+        logger.warn(f"Checking if {path} is an image?")
         mime = magic.Magic(mime=True)
         mimetype = mime.from_file(path)
         file_ext = mimetypes.guess_extension(mimetype)
         if file_ext is None:
-            logger.warn(f"File extension not found for {mimetype}.")
+            logger.warn(f"File extension not found for mimetype: {mimetype}")
             return False
         else:
             logger.warn(f"File extension found: {file_ext}.")
