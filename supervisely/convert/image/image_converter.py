@@ -1,8 +1,8 @@
+import mimetypes
 from typing import List, Optional, Tuple, Union
 
 import cv2
 import magic
-import mimetypes
 import nrrd
 
 import supervisely.convert.image.image_helper as image_helper
@@ -17,12 +17,14 @@ from supervisely import (
 )
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 
 
 class ImageConverter(BaseConverter):
-    allowed_exts = [ext for ext in SUPPORTED_IMG_EXTS if ext != ".nrrd"] + image_helper.EXT_TO_CONVERT
+    allowed_exts = [
+        ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
+    ]
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -136,7 +138,7 @@ class ImageConverter(BaseConverter):
             anns = []
             for item in batch:
                 item.path = self.validate_image(item.path)
-                item.name = get_file_name_with_ext(item.path)
+                item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
@@ -165,10 +167,16 @@ class ImageConverter(BaseConverter):
 
     def is_image(self, path: str) -> bool:
         mimetypes.add_type("image/heic", ".heic")  # to extend types_map
+        mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
 
         mime = magic.Magic(mime=True)
         mimetype = mime.from_file(path)
         file_ext = mimetypes.guess_extension(mimetype)
-        return file_ext in self.allowed_exts
+        if file_ext is None:
+            return False
+        else:
+            if file_ext.lower() == ".bin" and get_file_ext(path).lower() == ".avif":
+                return True
+            return file_ext.lower() in self.allowed_exts

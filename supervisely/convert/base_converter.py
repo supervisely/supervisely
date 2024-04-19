@@ -228,7 +228,7 @@ class BaseConverter:
                     ext = get_file_ext(full_path)
                     if file in JUNK_FILES:
                         continue
-                    if ext in self.allowed_exts:  # pylint: disable=no-member
+                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
             if self.items_count == 0:
                 raise RuntimeError("No valid items found in the input data")
@@ -243,6 +243,11 @@ class BaseConverter:
 
         # get meta1 from project and meta2 from converter
         dataset = api.dataset.get_info_by_id(dataset_id)
+        if dataset is None:
+            raise RuntimeError(
+                f"Dataset ID:{dataset_id} not found. "
+                "Please check if the dataset exists and try again."
+            )
         meta1_json = api.project.get_meta(dataset.project_id)
         meta1 = ProjectMeta.from_json(meta1_json)
         meta2 = self._meta

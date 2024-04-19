@@ -1,3 +1,6 @@
+import os
+
+from pathlib import Path
 from typing import List, Optional
 
 from supervisely import (
@@ -12,8 +15,8 @@ from supervisely import (
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
-from tqdm import tqdm
 
 
 class PointcloudEpisodeConverter(BaseConverter):
@@ -107,16 +110,10 @@ class PointcloudEpisodeConverter(BaseConverter):
             item_paths = []
             item_metas = []
             for item in batch:
-                if item.name in existing_names:
-                    new_name = generate_free_name(
-                        existing_names, item.name, with_ext=True, extend_used_names=True
-                    )
-                    logger.warn(
-                        f"Video with name '{item.name}' already exists, renaming to '{new_name}'"
-                    )
-                    item_names.append(new_name)
-                else:
-                    item_names.append(item.name)
+                item.name = generate_free_name(
+                    existing_names, item.name, with_ext=True, extend_used_names=True
+                )
+                item_names.append(item.name)
                 item_paths.append(item.path)
 
             pcd_infos = api.pointcloud_episode.upload_paths(
