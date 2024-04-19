@@ -169,6 +169,7 @@ class ImageConverter(BaseConverter):
 
     def is_image(self, path: str) -> bool:
         mimetypes.add_type("image/heic", ".heic")  # to extend types_map
+        mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
 
