@@ -30,6 +30,7 @@ class PointcloudConverter(BaseConverter):
             related_images: Optional[list] = None,
             custom_data: Optional[dict] = None,
         ):
+            self._name: str = None
             self._path = item_path
             self._ann_data = ann_data
             self._type = "point_cloud"

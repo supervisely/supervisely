@@ -72,6 +72,8 @@ class BaseConverter:
 
         @property
         def name(self) -> str:
+            if self._name is not None:
+                return self._name
             return get_file_name_with_ext(self._path)
 
         @name.setter

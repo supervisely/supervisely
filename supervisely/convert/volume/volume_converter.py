@@ -32,6 +32,7 @@ class VolumeConverter(BaseConverter):
             interpolation_dir: str = None,
         ):
             self._path: str = item_path
+            self._name: str = None
             self._ann_data: str = ann_data
             if volume_meta is None:
                 sitk_volume, meta = read_nrrd_serie_volume(item_path)
