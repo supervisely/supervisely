@@ -2,11 +2,17 @@ import os
 from typing import List
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
-from supervisely import Annotation, ProjectMeta, logger
+from supervisely import Annotation, Dataset, OpenMode, Project, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import JUNK_FILES, get_file_ext
+from supervisely.io.fs import (
+    JUNK_FILES,
+    dirs_filter,
+    file_exists,
+    get_file_ext
+)
 from supervisely.io.json import load_json_file
+from supervisely.project.project import find_project_dirs
 
 
 class SLYImageConverter(ImageConverter):
@@ -49,8 +55,13 @@ class SLYImageConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.read_sly_project(self._input_data):
+            return True
+
+        if self.read_sly_dataset(self._input_data):
+            return True
+
         detected_ann_cnt = 0
-        meta_path = None
         images_list, ann_dict, img_meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
             for file in files:
@@ -120,3 +131,73 @@ class SLYImageConverter(ImageConverter):
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
+
+    def read_sly_project(self, input_data: str) -> bool:
+        try:
+            self._items = []
+            self._meta = None
+            logger.info("Trying to find Supervisely project format in the input data")
+            project_dirs = [d for d in find_project_dirs(input_data)]
+            if len(project_dirs) > 1:
+                logger.info("Found multiple Supervisely projects")
+            meta = ProjectMeta()
+            for project_dir in project_dirs:
+                project_fs = Project(project_dir, mode=OpenMode.READ)
+                if len(project_fs.datasets) > 1:
+                    meta = meta.merge(project_fs.meta)
+                    for dataset in project_fs.datasets:
+                        for name in dataset.get_items_names():
+                            img_path, ann_path = dataset.get_item_paths(name)
+                            meta_path = dataset.get_item_meta_path(name)
+                            item = self.Item(img_path)
+                            if file_exists(ann_path):
+                                if self.validate_ann_file(ann_path, meta):
+                                    item.ann_data = ann_path
+                            if file_exists(meta_path):
+                                item.set_meta_data(meta_path)
+                            self._items.append(item)
+            if self.items_count > 0:
+                self._meta = meta
+                return True
+            else:
+                return False
+        except Exception as e:
+            logger.info(f"Not a Supervisely project: {repr(e)}")
+            return False
+
+    def read_sly_dataset(self, input_data: str) -> bool:
+        try:
+            self._items = []
+            self._meta = None
+            logger.debug("Trying to read Supervisely datasets")
+
+            def _check_function(path):
+                try:
+                    dataset_ds = Dataset(path, OpenMode.READ)
+                    return len(dataset_ds.get_items_names()) > 0
+                except:
+                    return False
+
+            meta = ProjectMeta()
+            dataset_dirs = [d for d in dirs_filter(input_data, _check_function)]
+            for dataset_dir in dataset_dirs:
+                dataset_ds = Dataset(dataset_dir, OpenMode.READ)
+                for name in dataset_ds.get_items_names():
+                    img_path, ann_path = dataset_ds.get_item_paths(name)
+                    meta_path = dataset_ds.get_item_meta_path(name)
+                    item = self.Item(img_path)
+                    if file_exists(ann_path):
+                        if self.validate_ann_file(ann_path, meta):
+                            item.ann_data = ann_path
+                        meta = self.generate_meta_from_annotation(ann_path, meta)
+                    if file_exists(meta_path):
+                        item.set_meta_data(meta_path)
+                    self._items.append(item)
+            if self.items_count > 0:
+                self._meta = meta
+                return True
+            else:
+                return False
+        except Exception as e:
+            logger.debug(f"Failed to read Supervisely datasets: {repr(e)}")
+            return False
