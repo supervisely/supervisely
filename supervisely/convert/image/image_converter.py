@@ -25,6 +25,8 @@ class ImageConverter(BaseConverter):
     allowed_exts = [
         ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
     ]
+    unsupported_exts = [".gif", ".html"]
+    modality = "images"
 
     class Item(BaseConverter.BaseItem):
         def __init__(
