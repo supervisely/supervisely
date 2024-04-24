@@ -19,7 +19,6 @@ from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie
 
 class VolumeConverter(BaseConverter):
     allowed_exts = ALLOWED_VOLUME_EXTENSIONS
-    unsupported_exts = [".html", ".htm"]
     modality = "volumes"
 
     class Item(BaseConverter.BaseItem):

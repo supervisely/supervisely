@@ -21,7 +21,6 @@ from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 
 class PointcloudEpisodeConverter(BaseConverter):
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
-    unsupported_exts = [".html", ".htm"]
     modality = "pointcloud episodes"
 
     class Item(BaseConverter.BaseItem):

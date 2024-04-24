@@ -33,7 +33,6 @@ from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 class VideoConverter(BaseConverter):
     allowed_exts = ALLOWED_VIDEO_EXTENSIONS
     base_video_extension = ".mp4"
-    unsupported_exts = [".gif", ".html", ".htm"]
     modality = "videos"
 
     class Item(BaseConverter.BaseItem):

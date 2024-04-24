@@ -57,7 +57,7 @@ class AvailableVolumeConverters:
 
 class BaseConverter:
     allowed_exts = []
-    unsupported_exts = []
+    unsupported_exts = [".gif", ".html", ".htm"]
     modality = "items"
 
     class BaseItem:
