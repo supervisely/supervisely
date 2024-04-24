@@ -226,10 +226,10 @@ class BaseConverter:
 
         if len(found_formats) == 0:
             logger.warn(
-                "Annotations not found. "
+                "Annotations not found. " # pylint: disable=no-member
                 f"Uploading data without annotations (only {self.modality}). "
                 "If you need assistance to upload data with annotations, please contact our support team."
-            )  # pylint: disable=no-member
+            )
             unsupported_exts = set()
             for root, _, files in os.walk(self._input_data):
                 for file in files:
@@ -246,7 +246,7 @@ class BaseConverter:
                     raise RuntimeError(
                         f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
                         f"Unsupported file extensions detected: {unsupported_exts}. "
-                        f"Convert your data to one of the supported formats: {self.allowed_exts}"  # pylint: disable=no-member
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
                     )
                 raise RuntimeError("No valid items found in the input data")
             return self
