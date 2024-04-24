@@ -136,7 +136,7 @@ class SLYImageConverter(ImageConverter):
         try:
             self._items = []
             self._meta = None
-            logger.info("Trying to find Supervisely project format in the input data")
+            logger.debug("Trying to find Supervisely project format in the input data")
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
                 logger.info("Found multiple Supervisely projects")
@@ -162,7 +162,7 @@ class SLYImageConverter(ImageConverter):
             else:
                 return False
         except Exception as e:
-            logger.info(f"Not a Supervisely project: {repr(e)}")
+            logger.debug(f"Not a Supervisely project: {repr(e)}")
             return False
 
     def read_sly_dataset(self, input_data: str) -> bool:
