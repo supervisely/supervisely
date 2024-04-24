@@ -56,6 +56,10 @@ class AvailableVolumeConverters:
 
 
 class BaseConverter:
+    allowed_exts = []
+    unsupported_exts = []
+    modality = "items"
+
     class BaseItem:
         def __init__(
             self,
@@ -223,7 +227,11 @@ class BaseConverter:
         progress_cb(1)
 
         if len(found_formats) == 0:
-            logger.info("Not found any valid annotation formats. Only items will be processed")
+            logger.warn(
+                "Annotations not found. "
+                f"Uploading data without annotations (only {self.modality}). "
+                "If you need assistance to upload data with annotations, please contact our support team."
+            )
             unsupported_exts = set()
             for root, _, files in os.walk(self._input_data):
                 for file in files:
@@ -231,7 +239,7 @@ class BaseConverter:
                     ext = get_file_ext(full_path)
                     if file in JUNK_FILES:
                         continue
-                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
+                    if ext.lower() in self.allowed_exts:
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
                     if ext.lower() in self.unsupported_exts:
                         unsupported_exts.add(ext)
