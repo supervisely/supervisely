@@ -7,11 +7,6 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
 
 
-# suppress pycocotools logging and prints
-def suppressed_print(*args, **kwargs):
-    pass
-
-
 COCO_ANN_KEYS = ["images", "annotations"]
 
 
@@ -42,18 +37,17 @@ class COCOConverter(ImageConverter):
         return coco_helper.generate_meta_from_annotation(coco, meta)
 
     def validate_key_file(self, key_file_path) -> bool:
-        import pycocotools  # pylint: disable=import-error
+        from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        pycocotools.print = suppressed_print
-        coco = pycocotools.coco.COCO(key_file_path)  # wont throw error if not COCO
+        with coco_helper.HiddenCocoPrints():
+            coco = COCO(key_file_path)  # wont throw error if not COCO
         if not all(key in coco.dataset for key in COCO_ANN_KEYS):
             return False
         return True
 
     def validate_format(self) -> bool:
-        import pycocotools  # pylint: disable=import-error
+        from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        pycocotools.print = suppressed_print
 
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
@@ -75,7 +69,8 @@ class COCOConverter(ImageConverter):
         meta = ProjectMeta()
         for ann_path in ann_paths:
             try:
-                coco = pycocotools.coco.COCO(ann_path)
+                with coco_helper.HiddenCocoPrints():
+                    coco = COCO(ann_path)
             except:
                 continue
             if not all(key in coco.dataset for key in COCO_ANN_KEYS):
