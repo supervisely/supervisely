@@ -56,9 +56,7 @@ class AvailableVolumeConverters:
 
 
 class BaseConverter:
-    allowed_exts = []
     unsupported_exts = [".gif", ".html", ".htm"]
-    modality = "items"
 
     class BaseItem:
         def __init__(
@@ -229,7 +227,7 @@ class BaseConverter:
         if len(found_formats) == 0:
             logger.warn(
                 "Annotations not found. "
-                f"Uploading data without annotations (only {self.modality}). "
+                f"Uploading data without annotations (only {self.modality}). "  # pylint: disable=no-member
                 "If you need assistance to upload data with annotations, please contact our support team."
             )
             unsupported_exts = set()
@@ -239,16 +237,16 @@ class BaseConverter:
                     ext = get_file_ext(full_path)
                     if file in JUNK_FILES:
                         continue
-                    if ext.lower() in self.allowed_exts:
+                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
                     if ext.lower() in self.unsupported_exts:
                         unsupported_exts.add(ext)
             if self.items_count == 0:
                 if unsupported_exts:
                     raise RuntimeError(
-                        f"Not found any {self.modality} to upload. "
+                        f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
                         f"Unsupported file extensions detected: {unsupported_exts}. "
-                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"  # pylint: disable=no-member
                     )
                 raise RuntimeError("No valid items found in the input data")
             return self
