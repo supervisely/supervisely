@@ -27,6 +27,7 @@ class FigureInfo(NamedTuple):
     tags: list
     meta: dict
     area: str
+    track_id: str
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -89,6 +90,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.TAGS,
             ApiField.META,
             ApiField.AREA,
+            ApiField.TRACK_ID,
         ]
 
     @staticmethod
