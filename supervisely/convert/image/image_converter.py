@@ -25,6 +25,7 @@ class ImageConverter(BaseConverter):
     allowed_exts = [
         ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
     ]
+    modality = "images"
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -36,6 +37,7 @@ class ImageConverter(BaseConverter):
             custom_data: Optional[dict] = None,
         ):
             self._path: str = item_path
+            self._name: str = None
             self._ann_data: Union[str,] = ann_data
             self._meta_data: Union[str, dict] = meta_data
             self._type: str = "image"

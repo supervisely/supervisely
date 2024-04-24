@@ -1,9 +1,20 @@
+import os, sys
 import uuid
 from copy import deepcopy
 from typing import List
 
 import cv2
 import numpy as np
+
+
+class HiddenCocoPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 
 from supervisely import (

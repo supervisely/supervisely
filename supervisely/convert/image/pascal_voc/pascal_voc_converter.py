@@ -52,6 +52,7 @@ class PascalVOCConverter(ImageConverter):
         self._segm_dir = None
         self._inst_dir = None
         self._labeling_interface = labeling_interface
+        self._bbox_classes_map = {}
 
     def __str__(self) -> str:
         return AvailableImageConverters.PASCAL_VOC
@@ -111,7 +112,12 @@ class PascalVOCConverter(ImageConverter):
                 break
         self._meta = ProjectMeta(obj_classes=obj_classes)
 
+        # list all images and collect xml annotations
         images_list = list_files_recursively(self._imgs_dir, valid_extensions=self.allowed_exts)
+        img_ann_map = {}
+        for path in list_files_recursively(possible_pascal_voc_dir, valid_extensions=[".xml"]):
+            img_ann_map[get_file_name(path)] = path
+        existing_cls_names = set([cls.name for cls in self._meta.obj_classes])
 
         # create Items
         self._items = []
@@ -126,6 +132,14 @@ class PascalVOCConverter(ImageConverter):
                 inst_path = os.path.join(self._inst_dir, item_name_noext + ".png")
                 if file_exists(inst_path):
                     item.inst_path = inst_path
+            ann_path = img_ann_map.get(item_name_noext)
+            if ann_path is None:
+                ann_path = img_ann_map.get(item.name)
+            if ann_path is not None and file_exists(ann_path):
+                self._meta = pascal_voc_helper.update_meta_from_xml(
+                    ann_path, self._meta, existing_cls_names, self._bbox_classes_map
+                )
+                item.ann_data = ann_path
             self._items.append(item)
         return detected_ann_cnt > 0
 
@@ -141,7 +155,9 @@ class PascalVOCConverter(ImageConverter):
 
         try:
             item.set_shape()
-            ann = pascal_voc_helper.get_ann(item, self.color2class_name, renamed_classes)
+            ann = pascal_voc_helper.get_ann(
+                item, self.color2class_name, meta, self._bbox_classes_map, renamed_classes
+            )
             return ann
 
         except Exception as e:

@@ -19,6 +19,7 @@ from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie
 
 class VolumeConverter(BaseConverter):
     allowed_exts = ALLOWED_VOLUME_EXTENSIONS
+    modality = "volumes"
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -32,6 +33,7 @@ class VolumeConverter(BaseConverter):
             interpolation_dir: str = None,
         ):
             self._path: str = item_path
+            self._name: str = None
             self._ann_data: str = ann_data
             if volume_meta is None:
                 sitk_volume, meta = read_nrrd_serie_volume(item_path)
