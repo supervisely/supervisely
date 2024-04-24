@@ -227,9 +227,9 @@ class BaseConverter:
         if len(found_formats) == 0:
             logger.warn(
                 "Annotations not found. "
-                f"Uploading data without annotations (only {self.modality}). "  # pylint: disable=no-member
+                f"Uploading data without annotations (only {self.modality}). "
                 "If you need assistance to upload data with annotations, please contact our support team."
-            )
+            )  # pylint: disable=no-member
             unsupported_exts = set()
             for root, _, files in os.walk(self._input_data):
                 for file in files:
