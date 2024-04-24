@@ -1,23 +1,26 @@
 from __future__ import annotations
+
+import asyncio
 import copy
-import os
 import enum
 import json
-import threading
+import os
 import queue
+import threading
 import time
 import traceback
+
 import jsonpatch
-import asyncio
 from fastapi import Request
+
+from supervisely._utils import is_production
+from supervisely.api.api import Api
+from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.singleton import Singleton
+from supervisely.io import env as sly_env
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
-from supervisely.app.singleton import Singleton
-from supervisely.app.fastapi import run_sync
-from supervisely._utils import is_production
-from supervisely.io import env as sly_env
-from supervisely.api.api import Api
 
 
 class Field(str, enum.Enum):
@@ -204,16 +207,17 @@ class ContentOrigin(metaclass=Singleton):
 
             if patches or last_state is not None:
                 try:
-                    merged_patch = None
-                    data = copy.deepcopy(self._last_sent_data)
-                    for patch in [failed_patch, *patches]:
-                        if patch is None:
-                            continue
-                        patch.apply(data, in_place=True)
-                    merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
-                    self._send(data_patch=merged_patch, state=last_state)
-                    self._last_sent_data = copy.deepcopy(data)
-                    failed_patch = None
+                    if not sly_env.disable_offline_session():
+                        merged_patch = None
+                        data = copy.deepcopy(self._last_sent_data)
+                        for patch in [failed_patch, *patches]:
+                            if patch is None:
+                                continue
+                            patch.apply(data, in_place=True)
+                        merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
+                        self._send(data_patch=merged_patch, state=last_state)
+                        self._last_sent_data = copy.deepcopy(data)
+                        failed_patch = None
                 except Exception as exc:
                     failed_patch = merged_patch
                     logger.error(

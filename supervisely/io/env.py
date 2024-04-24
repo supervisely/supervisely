@@ -522,3 +522,19 @@ def apps_cache_dir():
         default="/apps_cache",
         raise_not_found=False,
     )
+
+
+def disable_offline_session() -> bool:
+    """Returns disable offline session flag from environment variable using following keys:
+        - DISABLE_OFFLINE_SESSION
+
+    :return: disable offline session flag
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="disable_offline_session",
+        keys=["DISABLE_OFFLINE_SESSION"],
+        postprocess_fn=flag_from_env,
+        default=False,
+        raise_not_found=False,
+    )
