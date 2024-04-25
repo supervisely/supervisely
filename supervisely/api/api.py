@@ -176,6 +176,13 @@ class Api:
     :type external_logger: logger, optional
     :param ignore_task_id:
     :type ignore_task_id: bool, optional
+    :param api_server_address: Address of the API server.
+    :type api_server_address: str, optional
+    :param check_instance_version: Check if the given version is lower or equal to the current
+        Supervisely instance version. If set to True, will try to read the version from the environment variable
+        "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
+        If set to False, will skip the check.
+    :type check_instance_version: bool or str, optional
     :raises: :class:`ValueError`, if token is None or it length != 128
     :Usage example:
 
@@ -205,6 +212,7 @@ class Api:
         external_logger: Optional[Logger] = None,
         ignore_task_id: Optional[bool] = False,
         api_server_address: str = None,
+        check_instance_version: Union[bool, str] = False,
     ):
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
@@ -280,31 +288,33 @@ class Api:
 
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
-        version_check = self.is_version_supported()
-        if version_check is None:
-            logger.debug(
-                "Failed to check if the instance version meets the minimum requirements "
-                "of current SDK version. "
-                "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
-                "Usually you can ignore this message, but if you're adding new features, "
-                "which will require upgrade of the Supervisely instance, you should update "
-                "it supervisely.__init__.py file."
-            )
-        if version_check is False:
-            message = (
-                "The current version of the Supervisely instance is not supported by the SDK. "
-                "Some features may not work correctly."
-            )
-            if not is_community():
-                message += (
-                    " Please upgrade the Supervisely instance to the latest version (recommended) "
-                    "or downgrade the SDK to the version that supports the current instance (not recommended)."
-                    "Refer to this docs for more information: "
-                    "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade"
-                    "Check out changelog for the latest version of Supervisely: "
-                    "https://app.supervisely.com/changelog"
+        if check_instance_version:
+            version_to_check = None if check_instance_version is True else check_instance_version
+            check_result = self.is_version_supported(version_to_check)
+            if check_result is None:
+                logger.debug(
+                    "Failed to check if the instance version meets the minimum requirements "
+                    "of current SDK version. "
+                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                    "Usually you can ignore this message, but if you're adding new features, "
+                    "which will require upgrade of the Supervisely instance, you should update "
+                    "it supervisely.__init__.py file."
                 )
-            logger.warning(message)
+            if check_result is False:
+                message = (
+                    "The current version of the Supervisely instance is not supported by the SDK. "
+                    "Some features may not work correctly."
+                )
+                if not is_community():
+                    message += (
+                        " Please upgrade the Supervisely instance to the latest version (recommended) "
+                        "or downgrade the SDK to the version that supports the current instance (not recommended)."
+                        "Refer to this docs for more information: "
+                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade"
+                        "Check out changelog for the latest version of Supervisely: "
+                        "https://app.supervisely.com/changelog"
+                    )
+                logger.warning(message)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -320,6 +330,7 @@ class Api:
         retry_count: int = 10,
         ignore_task_id: bool = False,
         env_file: str = SUPERVISELY_ENV_FILE,
+        check_instance_version: Union[bool, str] = False,
     ) -> Api:
         """
         Initialize API use environment variables.
@@ -328,8 +339,11 @@ class Api:
         :type retry_count: int
         :param ignore_task_id:
         :type ignore_task_id: bool
-        :param path: Path to your .env file.
-        :type path: str
+        :param env_file: Path to your .env file.
+        :type env_file: str
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            version of the Supervisely instance.
+        :type check_instance_version: bool or str, optional
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
@@ -721,6 +735,7 @@ class Api:
         password: str,
         override: bool = False,
         env_file: str = SUPERVISELY_ENV_FILE,
+        check_instance_version: Union[bool, str] = False,
     ) -> Api:
         """
         Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
@@ -738,6 +753,9 @@ class Api:
         :type override: bool, optional
         :param env_file: Path to your .env file.
         :type env_file: str, optional
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            version of the Supervisely instance.
+        :type check_instance_version: bool or str, optional
         :return: Api object
 
         :Usage example:
