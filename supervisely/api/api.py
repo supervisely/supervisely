@@ -480,7 +480,8 @@ class Api:
         return parse_version(instance_version) >= parse_version(version)
 
     def _check_version(self, version: Optional[str] = None) -> None:
-        """Check if the given version is lower or equal to the current Supervisely instance version.
+        """Check if the given version is compatible with the current Supervisely instance version.
+        Compatible means that the given version is lower or equal to the current Supervisely instance version.
         If check was not successful, log a debug message, if the version is not supported, log a warning message.
 
         :param version: Version to check.
