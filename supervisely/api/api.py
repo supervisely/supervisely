@@ -415,13 +415,13 @@ class Api:
         return version
 
     def is_version_supported(self, version: str) -> bool:
-        """Check if the given version is higher or equal to the current Supervisely instance version.
-        If the version is higher or equal, return True, otherwise False.
+        """Check if the given version is lower or equal to the current Supervisely instance version.
+        If the version is lower or equal, return True, otherwise False.
         If the version of the instance cannot be determined, return False.
 
         :param version: Version to check.
         :type version: str, e.g. "6.9.13"
-        :return: True if the given version is higher or equal to the current Supervisely
+        :return: True if the given version is lower or equal to the current Supervisely
             instance version, otherwise False.
         :rtype: bool
 
@@ -455,11 +455,11 @@ class Api:
 
         for v1, v2 in zip(instance_version_parts, version_parts):
             if v1 > v2:
-                return False
-            elif v1 < v2:
                 return True
+            elif v1 < v2:
+                return False
 
-        return len(instance_version_parts) <= len(version_parts)
+        return len(instance_version_parts) >= len(version_parts)
 
     def post(
         self,
