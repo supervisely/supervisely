@@ -306,4 +306,4 @@ except Exception as e:
 # If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
 # set a new value for the environment variable SDK_MINIMUM_INSTANCE_VERSION, otherwise
 # users can face compatibility issues, if the instance version is lower than the SDK version.
-os.environ["SDK_MINIMUM_INSTANCE_VERSION"] = "6.9.14"
+os.environ["SDK_MINIMUM_INSTANCE_VERSION"] = "6.9.13"
