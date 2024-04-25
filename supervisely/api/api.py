@@ -516,7 +516,9 @@ class Api:
                     )
                     logger.warning(message)
         except Exception as e:
-            logger.debug(f"Tried to check version compatibility for {version} but failed: {e}")
+            logger.debug(
+                f"Tried to check version compatibility between SDK and instance, but failed: {e}"
+            )
 
     def post(
         self,
