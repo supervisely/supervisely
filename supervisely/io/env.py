@@ -522,3 +522,18 @@ def apps_cache_dir():
         default="/apps_cache",
         raise_not_found=False,
     )
+
+
+def sdk_minimum_instance_version():
+    """Returns minimum instance version required by the SDK from environment variable using following
+        - SDK_MINIMUM_INSTANCE_VERSION
+
+    :return: minimum instance version required by the SDK
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="sdk_minimum_instance_version",
+        keys=["SDK_MINIMUM_INSTANCE_VERSION"],
+        postprocess_fn=lambda x: x,
+        raise_not_found=False,
+    )

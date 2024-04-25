@@ -11,7 +11,7 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from urllib.parse import urljoin, urlparse
 
 import jwt
@@ -48,7 +48,7 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_development
+from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
@@ -279,6 +279,29 @@ class Api:
 
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
+        version_check = self.is_version_supported()
+        if version_check is None:
+            logger.debug(
+                "Failed to check if the instance version meets the minimum requirements "
+                "of current SDK version. "
+                "Ensure that the SDK_MINIMUM_INSTANCE_VERSION environment variable is set. "
+                "Usually you can ignore this message, but if you're adding new features, "
+                "which will require upgrade of the Supervisely instance, you should update "
+                "it supervisely.__init__.py file."
+            )
+        if version_check is False:
+            message = (
+                "The current version of the Supervisely instance is not supported by the SDK. "
+                "Some features may not work correctly."
+            )
+            if not is_community():
+                message += (
+                    " Please upgrade the Supervisely instance to the latest version. "
+                    "Refer to this docs for more information: "
+                    "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade"
+                )
+            logger.warning(message)
+
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
         """ """
@@ -414,13 +437,14 @@ class Api:
             version = "unknown"
         return version
 
-    def is_version_supported(self, version: str) -> bool:
+    def is_version_supported(self, version: Optional[str] = None) -> Union[bool, None]:
         """Check if the given version is lower or equal to the current Supervisely instance version.
+        If the version omitted, will try to read it from the environment variable "SDK_MINIMUM_INSTANCE_VERSION".
         If the version is lower or equal, return True, otherwise False.
         If the version of the instance cannot be determined, return False.
 
         :param version: Version to check.
-        :type version: str, e.g. "6.9.13"
+        :type version: Optional[str], e.g. "6.9.13"
         :return: True if the given version is lower or equal to the current Supervisely
             instance version, otherwise False.
         :rtype: bool
@@ -439,9 +463,18 @@ class Api:
         """
         instance_version = self.instance_version
         if instance_version == "unknown":
-            return False
+            return
 
         instance_version_parts = list(map(int, instance_version.split(".")))
+
+        if not version:
+            version = sly_env.sdk_minimum_instance_version()
+            if not version:
+                logger.debug(
+                    "Cant find SDK_MINIMUM_INSTANCE_VERSION in environment variables, "
+                    "check of the minimum version is skipped."
+                )
+                return
 
         try:
             version = str(version)
@@ -451,7 +484,7 @@ class Api:
                 f"Provided version {version!r} is not a valid version string "
                 f"(expected format: 'x.y.z'). The output of this function will be incorrect."
             )
-            return False
+            return
 
         for v1, v2 in zip(instance_version_parts, version_parts):
             if v1 > v2:
