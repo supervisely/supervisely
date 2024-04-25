@@ -17,6 +17,7 @@ from urllib.parse import urljoin, urlparse
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
+from pkg_resources import parse_version
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -468,8 +469,6 @@ class Api:
         if instance_version == "unknown":
             return
 
-        instance_version_parts = list(map(int, instance_version.split(".")))
-
         if not version:
             version = sly_env.mininum_instance_version_for_sdk()
             if not version:
@@ -481,7 +480,6 @@ class Api:
 
         try:
             version = str(version)
-            version_parts = list(map(int, version.split(".")))
         except Exception:
             logger.warning(
                 f"Provided version {version!r} is not a valid version string "
@@ -489,13 +487,7 @@ class Api:
             )
             return
 
-        for v1, v2 in zip(instance_version_parts, version_parts):
-            if v1 > v2:
-                return True
-            elif v1 < v2:
-                return False
-
-        return len(instance_version_parts) >= len(version_parts)
+        return parse_version(instance_version) >= parse_version(version)
 
     def post(
         self,
