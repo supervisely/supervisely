@@ -308,9 +308,9 @@ class Api:
                 if not is_community():
                     message += (
                         " Please upgrade the Supervisely instance to the latest version (recommended) "
-                        "or downgrade the SDK to the version that supports the current instance (not recommended)."
+                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
                         "Refer to this docs for more information: "
-                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade"
+                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
                         "Check out changelog for the latest version of Supervisely: "
                         "https://app.supervisely.com/changelog"
                     )
@@ -395,6 +395,7 @@ class Api:
             token,
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
+            check_instance_version=check_instance_version,
         )
 
     def add_header(self, key: str, value: str) -> None:
@@ -775,7 +776,12 @@ class Api:
         del password
         gc.collect()
 
-        api = cls(session.server_address, session.api_token, ignore_task_id=True)
+        api = cls(
+            session.server_address,
+            session.api_token,
+            ignore_task_id=True,
+            check_instance_version=check_instance_version,
+        )
 
         if override:
             if os.path.isfile(env_file):
