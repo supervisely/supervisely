@@ -297,6 +297,7 @@ class Api:
             if not is_community():
                 message += (
                     " Please upgrade the Supervisely instance to the latest version. "
+                    "Or downgrade the SDK to the version that supports the current instance."
                     "Refer to this docs for more information: "
                     "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade"
                 )
