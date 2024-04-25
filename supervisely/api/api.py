@@ -49,6 +49,7 @@ import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_development
+from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
@@ -387,6 +388,79 @@ class Api:
         """
         self.additional_fields[key] = value
 
+    @property
+    def instance_version(self) -> str:
+        """Return Supervisely instance version, e.g. "6.9.13".
+        If the version cannot be determined, return "unknown".
+
+        :return: Supervisely instance version or "unknown" if the version cannot be determined.
+        :rtype: str
+
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                print(api.instance_version)
+                # Output:
+                # '6.9.13'
+        """
+        try:
+            version = self.post("instance.version", {}).json().get(ApiField.VERSION)
+        except Exception as e:
+            logger.warning(f"Failed to get instance version from server: {e}")
+            version = "unknown"
+        return version
+
+    def is_version_supported(self, version: str) -> bool:
+        """Check if the given version is higher or equal to the current Supervisely instance version.
+        If the version is higher or equal, return True, otherwise False.
+        If the version of the instance cannot be determined, return False.
+
+        :param version: Version to check.
+        :type version: str, e.g. "6.9.13"
+        :return: True if the given version is higher or equal to the current Supervisely
+            instance version, otherwise False.
+        :rtype: bool
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+            version_to_check = "6.9.13"
+            print(api.is_version_supported(version_to_check))
+            # Output:
+            # True
+        """
+        instance_version = self.instance_version
+        if instance_version == "unknown":
+            return False
+
+        instance_version_parts = list(map(int, instance_version.split(".")))
+
+        try:
+            version = str(version)
+            version_parts = list(map(int, version.split(".")))
+        except Exception:
+            logger.warning(
+                f"Provided version {version!r} is not a valid version string "
+                f"(expected format: 'x.y.z'). The output of this function will be incorrect."
+            )
+            return False
+
+        for v1, v2 in zip(instance_version_parts, version_parts):
+            if v1 > v2:
+                return False
+            elif v1 < v2:
+                return True
+
+        return len(instance_version_parts) <= len(version_parts)
+
     def post(
         self,
         method: str,
@@ -586,7 +660,7 @@ class Api:
                 message = details[0].get(MESSAGE_FIELD, default_message)
 
             return error, message
-        except Exception as e:
+        except Exception:
             return "", ""
 
     def pop_header(self, key: str) -> str:
