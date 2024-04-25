@@ -289,32 +289,7 @@ class Api:
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
         if check_instance_version:
-            version_to_check = None if check_instance_version is True else check_instance_version
-            check_result = self.is_version_supported(version_to_check)
-            if check_result is None:
-                logger.debug(
-                    "Failed to check if the instance version meets the minimum requirements "
-                    "of current SDK version. "
-                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
-                    "Usually you can ignore this message, but if you're adding new features, "
-                    "which will require upgrade of the Supervisely instance, you should update "
-                    "it supervisely.__init__.py file."
-                )
-            if check_result is False:
-                message = (
-                    "The current version of the Supervisely instance is not supported by the SDK. "
-                    "Some features may not work correctly."
-                )
-                if not is_community():
-                    message += (
-                        " Please upgrade the Supervisely instance to the latest version (recommended) "
-                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
-                        "Refer to this docs for more information: "
-                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
-                        "Check out changelog for the latest version of Supervisely: "
-                        "https://app.supervisely.com/changelog"
-                    )
-                logger.warning(message)
+            self._check_version(None if check_instance_version is True else check_instance_version)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -504,6 +479,45 @@ class Api:
 
         return parse_version(instance_version) >= parse_version(version)
 
+    def _check_version(self, version: Optional[str] = None) -> None:
+        """Check if the given version is lower or equal to the current Supervisely instance version.
+        If check was not successful, log a debug message, if the version is not supported, log a warning message.
+
+        :param version: Version to check.
+        :type version: Optional[str], e.g. "6.9.13"
+        """
+
+        # Since it's a informational message, we don't raise an exception if the check fails
+        # in any case, we don't want to interrupt the user's workflow.
+        try:
+            check_result = self.is_version_supported(version)
+            if check_result is None:
+                logger.debug(
+                    "Failed to check if the instance version meets the minimum requirements "
+                    "of current SDK version. "
+                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                    "Usually you can ignore this message, but if you're adding new features, "
+                    "which will require upgrade of the Supervisely instance, you should update "
+                    "it supervisely.__init__.py file."
+                )
+            if check_result is False:
+                message = (
+                    "The current version of the Supervisely instance is not supported by the SDK. "
+                    "Some features may not work correctly."
+                )
+                if not is_community():
+                    message += (
+                        " Please upgrade the Supervisely instance to the latest version (recommended) "
+                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
+                        "Refer to this docs for more information: "
+                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
+                        "Check out changelog for the latest version of Supervisely: "
+                        "https://app.supervisely.com/changelog"
+                    )
+                    logger.warning(message)
+        except Exception as e:
+            logger.debug(f"Tried to check version compatibility for {version} but failed: {e}")
+
     def post(
         self,
         method: str,
@@ -556,6 +570,7 @@ class Api:
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                    self._check_version()
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
