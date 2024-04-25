@@ -500,7 +500,7 @@ class InferenceImageCache:
         elif "image_hashes" in state:
             return state["image_hashes"], InferenceImageCache._LoadType.ImageHash
         elif "video_id" in state:
-            if "frame_ranges" is state:
+            if "frame_ranges" in state:
                 frame_ranges = state["frame_ranges"]
                 frames = []
                 for fr_range in frame_ranges:
