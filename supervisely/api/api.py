@@ -284,7 +284,7 @@ class Api:
             logger.debug(
                 "Failed to check if the instance version meets the minimum requirements "
                 "of current SDK version. "
-                "Ensure that the SDK_MINIMUM_INSTANCE_VERSION environment variable is set. "
+                "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
                 "Usually you can ignore this message, but if you're adding new features, "
                 "which will require upgrade of the Supervisely instance, you should update "
                 "it supervisely.__init__.py file."
@@ -440,7 +440,7 @@ class Api:
 
     def is_version_supported(self, version: Optional[str] = None) -> Union[bool, None]:
         """Check if the given version is lower or equal to the current Supervisely instance version.
-        If the version omitted, will try to read it from the environment variable "SDK_MINIMUM_INSTANCE_VERSION".
+        If the version omitted, will try to read it from the environment variable "MINIMUM_INSTANCE_VERSION_FOR_SDK".
         If the version is lower or equal, return True, otherwise False.
         If the version of the instance cannot be determined, return False.
 
@@ -469,10 +469,10 @@ class Api:
         instance_version_parts = list(map(int, instance_version.split(".")))
 
         if not version:
-            version = sly_env.sdk_minimum_instance_version()
+            version = sly_env.mininum_instance_version_for_sdk()
             if not version:
                 logger.debug(
-                    "Cant find SDK_MINIMUM_INSTANCE_VERSION in environment variables, "
+                    "Cant find MINIMUM_INSTANCE_VERSION_FOR_SDK in environment variables, "
                     "check of the minimum version is skipped."
                 )
                 return

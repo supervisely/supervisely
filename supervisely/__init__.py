@@ -304,6 +304,6 @@ except Exception as e:
     logger.warn(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)
 
 # If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
-# set a new value for the environment variable SDK_MINIMUM_INSTANCE_VERSION, otherwise
+# set a new value for the environment variable MINIMUM_INSTANCE_VERSION_FOR_SDK, otherwise
 # users can face compatibility issues, if the instance version is lower than the SDK version.
-os.environ["SDK_MINIMUM_INSTANCE_VERSION"] = "6.9.13"
+os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.9.13"
