@@ -2,14 +2,58 @@ from typing import Dict, List, Union
 
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.widgets import (
-    Widget,
-)
+from supervisely.app.widgets import Widget
 
 # arch_type_key = "archType"
 
 
 class PretrainedModelsSelector(Widget):
+    """Widget for selecting pretrained models from a list of models. Groups models by architecture and task type.
+
+    :param models_list: List of models to display in the widget. See usage example for the expected format.
+    :type models_list: List[Dict]
+    :param widget_id: Unique identifier for the widget. If not provided, a unique ID will be generated.
+    :type widget_id: str, optional
+    :param sort_tasks: Whether to sort the models within each task type by name. Default is True.
+    :type sort_tasks: bool, optional
+    :param sort_models: Whether to sort the task types within each architecture by name. Default is True.
+    :type sort_models: bool, optional
+
+    Usage example:
+
+    .. code-block:: python
+
+        from supervisely.app.widgets import PretrainedModelsSelector
+
+        models_list = [
+            {
+                "Model": "YOLOv8n-det",
+                "Size (pixels)": "640",
+                "mAP": "37.3",
+                "params (M)": "3.2",
+                "FLOPs (B)": "8.7",
+                "meta": {
+                    "taskType": "object detection",
+                    "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n.pt",
+                },
+            },
+            {
+                "Model": "YOLOv8s-det",
+                "Size (pixels)": "640",
+                "mAP": "44.9",
+                "params (M)": "11.2",
+                "FLOPs (B)": "28.6",
+                "meta": {
+                    "taskType": "object detection",
+                    "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s.pt",
+                },
+            },
+        ]
+
+        pretrained_models_selector = PretrainedModelsSelector(models_list=models_list, sort_tasks = False, sort_models = False)
+
+    """
+
     class Routes:
         ARCH_TYPE_CHANGED = "arch_type_changed"
         TASK_TYPE_CHANGED = "task_type_changed"
@@ -19,11 +63,13 @@ class PretrainedModelsSelector(Widget):
         self,
         models_list: List[Dict],
         widget_id: str = None,
+        sort_tasks: bool = True,
+        sort_models: bool = True,
     ):
         self._api = Api.from_env()
 
         self._models = models_list
-        filtered_models = self._filter_and_sort_models(self._models)
+        filtered_models = self._filter_and_sort_models(self._models, sort_tasks, sort_models)
 
         self._table_data = filtered_models
         self._model_architectures = list(filtered_models.keys())
@@ -129,7 +175,9 @@ class PretrainedModelsSelector(Widget):
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
-    def _filter_and_sort_models(self, models: List[Dict]) -> Dict:
+    def _filter_and_sort_models(
+        self, models: List[Dict], sort_tasks: bool = True, sort_models: bool = True
+    ) -> Dict:
         filtered_models = {}
 
         for model in models:
@@ -146,13 +194,17 @@ class PretrainedModelsSelector(Widget):
             # Add model to the appropriate category
             filtered_models[arch_type][task_type].append(model)
 
-        # Sort the dictionary by architecture and then by task types
-        sorted_filtered_models = {
-            arch: {task: models for task, models in sorted(tasks.items())}
-            for arch, tasks in sorted(filtered_models.items())
-        }
+        if sort_models:
+            # Sort the models within each task type by name.
+            for arch, tasks in filtered_models.items():
+                for task, models in tasks.items():
+                    filtered_models[arch][task] = sorted(models, key=lambda x: x.get("Model"))
+        if sort_tasks:
+            # Sort the task types within each architecture by name.
+            for arch, tasks in filtered_models.items():
+                filtered_models[arch] = dict(sorted(tasks.items()))
 
-        return sorted_filtered_models
+        return filtered_models
 
     def set_models(self, models_list: List[Dict]):
         self._models = models_list
