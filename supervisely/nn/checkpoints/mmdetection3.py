@@ -19,6 +19,7 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
         checkpoints_infos = [file for file in session_dir_files if file["name"].endswith(".pth")]
         if not api.file.exists(team_id, join(task_file_info["path"], "config.py")):
             continue
+        config_url = join(task_file_info["path"], "config.py")
         api.file.download(team_id, join(task_file_info["path"], "config.py"), "model_config.txt")
         with open("model_config.txt", "r") as f:
             lines = f.readlines()
@@ -42,6 +43,7 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
             task_type=task_type,
             training_project_name=project_name,
             checkpoints=checkpoints_infos,
+            config=config_url,
         )
         checkpoints.append(checkpoint_info)
     return checkpoints

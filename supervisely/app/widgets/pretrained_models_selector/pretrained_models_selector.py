@@ -103,6 +103,11 @@ class PretrainedModelsSelector(Widget):
         if len(self._model_architectures) > 1:
             arch_type = self.get_selected_arch_type()
             model_params["arch_type"] = arch_type
+
+        config_url = selected_model.get("meta", {}).get("configURL")
+        if config_url is not None:
+            model_params["config_url"] = config_url
+
         return model_params
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:

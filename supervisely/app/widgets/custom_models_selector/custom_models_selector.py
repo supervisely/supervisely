@@ -67,6 +67,7 @@ class CustomModelsSelector(Widget):
             training_project_name = checkpoint.training_project_name
             checkpoints = checkpoint.checkpoints
             session_link = checkpoint.session_link
+            config = checkpoint.config
 
             # col 1 task
             self._task_id = task_id
@@ -75,6 +76,7 @@ class CustomModelsSelector(Widget):
             self._task_date_iso = task_info["startedAt"]
             self._task_date = self._normalize_date()
             self._task_link = self._create_task_link()
+            self._config = config
 
             # col 2 project
             self._training_project_name = training_project_name
@@ -137,6 +139,10 @@ class CustomModelsSelector(Widget):
         @property
         def session_link(self) -> str:
             return self._session_link
+
+        @property
+        def config(self) -> str:
+            return self._config
 
         def get_selected_checkpoint_path(self) -> str:
             return self._checkpoints_widget.get_value()
@@ -415,6 +421,8 @@ class CustomModelsSelector(Widget):
             task_type = selected_model.task_type
             checkpoint_filename = selected_model.get_selected_checkpoint_name()
             checkpoint_url = selected_model.get_selected_checkpoint_path()
+            if selected_model.config is not None:
+                config_url = selected_model.config
         else:
             task_type = self.get_custom_checkpoint_task_type()
             checkpoint_filename = self.get_custom_checkpoint_name()
@@ -426,6 +434,10 @@ class CustomModelsSelector(Widget):
             "checkpoint_name": checkpoint_filename,
             "checkpoint_url": checkpoint_url,
         }
+
+        if config_url is not None:
+            model_params["config_url"] = config_url
+
         return model_params
 
     def set_active_row(self, row_index: int) -> None:
