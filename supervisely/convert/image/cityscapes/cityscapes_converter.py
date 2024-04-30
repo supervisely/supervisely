@@ -92,7 +92,9 @@ class CityscapesConverter(ImageConverter):
                 if self._meta is None:
                     self._meta = ProjectMeta(obj_classes=obj_class_collection, tag_metas=[tag_meta])
                 else:
-                    self._meta.add_obj_classes(obj_classes)
+                    if not self._meta.tag_metas.has_key("split"):
+                        self._meta = self._meta.add_tag_meta(tag_meta)
+                    self._meta = self._meta.add_obj_classes(obj_classes)
                 return True
             else:
                 return False
@@ -125,6 +127,7 @@ class CityscapesConverter(ImageConverter):
                     if self.is_image(full_path):
                         images_list.append(full_path)
 
+        meta = ProjectMeta() or self._meta
         self._items = []
         for image_path in images_list:
             image_name = get_file_name(image_path)
@@ -133,9 +136,26 @@ class CityscapesConverter(ImageConverter):
             item = self.Item(image_path)
             ann_path = ann_dict.get(f"{image_name}_gtFine_polygons.json")
             if ann_path is not None:
+                meta = self._generate_meta_from_ann(ann_path, meta)
                 item.ann_data = ann_path
             self._items.append(item)
+
+        if detected_ann_cnt > 0:
+            tag_meta = TagMeta("split", TagValueType.ANY_STRING)
+            if not meta.tag_metas.has_key(tag_meta.name):
+                meta = meta.add_tag_meta(tag_meta)
+            self._meta = meta
         return detected_ann_cnt > 0
+
+    def _generate_meta_from_ann(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
+        ann_data = load_json_file(ann_path)
+        for obj in ann_data["objects"]:
+            class_name = obj["label"]
+            obj_class = meta.get_obj_class(class_name)
+            if obj_class is None:
+                obj_class = ObjClass(class_name, Polygon)
+                meta = meta.add_obj_class(obj_class)
+        return meta
 
     def to_supervisely(
         self,
@@ -168,7 +188,7 @@ class CityscapesConverter(ImageConverter):
         ann_path = item.ann_data
         try:
             if ann_path is not None:
-                ann = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
+                ann, meta = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
             return ann
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

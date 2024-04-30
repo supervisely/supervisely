@@ -1,6 +1,4 @@
-from supervisely import Annotation, Label, PointLocation, Polygon, ProjectMeta, logger
-from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import get_file_name
+from supervisely import Annotation, Label, PointLocation, Polygon, ProjectMeta, logger, ObjClass
 from supervisely.io.json import load_json_file
 
 COLOR_MAP_FILE_NAME = "class_to_id.json"
@@ -85,5 +83,7 @@ def create_ann_from_file(ann: Annotation, ann_path: str, meta: ProjectMeta, rena
         interiors = [convert_points(interior) for interior in interiors]
         polygon = Polygon(convert_points(polygon), interiors)
         obj_class = meta.get_obj_class(class_name)
+        if obj_class is None:
+            meta = meta.add_obj_class(ObjClass(class_name, Polygon))
         ann = ann.add_label(Label(polygon, obj_class))
-    return ann
+    return ann, meta
