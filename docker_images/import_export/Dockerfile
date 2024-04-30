@@ -14,6 +14,8 @@ RUN pip install pillow-avif-plugin==1.4.3 pillow-heif==0.15.0
 RUN pip install tifffile==2023.7.10
 RUN pip install pymupdf==1.22.5
 RUN pip install nibabel==5.2.1
+RUN pip install bagpy==0.5
+RUN pip install imagecodecs==2024.1.1
 
 # Export
 RUN pip install lxml==4.6.3

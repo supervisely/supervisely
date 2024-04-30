@@ -44,10 +44,12 @@ class AvailablePointcloudConverters:
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
+    BAG = "rosbag"
 
 
 class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
+    BAG = "rosbag"
 
 
 class AvailableVolumeConverters:
