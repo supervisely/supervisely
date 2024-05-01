@@ -5,6 +5,7 @@ from contextlib import suppress
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
+from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
@@ -638,7 +639,7 @@ class Application(metaclass=Singleton):
                 from supervisely.app.content import ContentOrigin
 
                 ContentOrigin().start()
-                resp = run_sync(self.test_client.get("/"))
+                Thread(target=run_sync, args=(self.test_client.get("/"),)).start()
 
         server = self.get_server()
 
