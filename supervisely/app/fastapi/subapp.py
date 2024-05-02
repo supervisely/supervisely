@@ -502,6 +502,9 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
+            logger.debug("Index page is requested", extra={"query_params": str(request.query_params)})
+            if len(request.query_params) == 0:
+                return JSONResponse(content={"message": "App is running"}, status_code=200)
             return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
         @app.on_event("shutdown")
