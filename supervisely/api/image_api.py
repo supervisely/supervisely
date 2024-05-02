@@ -2894,6 +2894,7 @@ class ImageApi(RemoveableBulkModuleApi):
         quality: int = 70,
     ) -> str:
         """Returns a URL to a resized image with given parameters.
+        Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
         :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
         :type full_storage_url: str
