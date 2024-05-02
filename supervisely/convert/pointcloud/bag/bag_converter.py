@@ -151,11 +151,11 @@ class BagConverter(PointcloudConverter):
 
         datasets = []
         if multiple_items:
-            project_info = api.project.get_info_by_id(dataset_id)
+            dataset_info = api.dataset.get_info_by_id(dataset_id)
             for item in self._items:
                 ds_name = get_file_name(item.path)
                 ds = api.dataset.create(
-                    project_info.id, ds_name, change_name_if_conflict=True, parent_id=dataset_id
+                    dataset_info.project_id, ds_name, change_name_if_conflict=True, parent_id=dataset_id
                 )
                 datasets.append(ds)
 
