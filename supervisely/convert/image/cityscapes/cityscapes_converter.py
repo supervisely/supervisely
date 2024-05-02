@@ -127,7 +127,7 @@ class CityscapesConverter(ImageConverter):
                     if self.is_image(full_path):
                         images_list.append(full_path)
 
-        meta = ProjectMeta() or self._meta
+        meta = self._meta if self._meta is not None else ProjectMeta()
         self._items = []
         for image_path in images_list:
             image_name = get_file_name(image_path)
