@@ -51,7 +51,7 @@ class BagConverter(PointcloudConverter):
         return ".bag"
 
     def validate_format(self) -> bool:
-        import rosbag
+        import rosbag # pylint: disable=import-error
 
         def _filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
@@ -78,7 +78,7 @@ class BagConverter(PointcloudConverter):
                         cloud_msg_cnt += msg_count
 
                         if self._is_pcd_episode:
-                            item = self.Item(item_path=bag_file, frame_number=cloud_msg_cnt)
+                            item = self.Item(item_path=bag_file, frame_number=cloud_msg_cnt) # pylint: disable=unexpected-keyword-arg
                         else:
                             item = self.Item(item_path=bag_file)
                         item.topic = topic
@@ -88,8 +88,8 @@ class BagConverter(PointcloudConverter):
         return self.items_count > 0
 
     def convert(self, item: Item, log_progress=True):
-        import rosbag
-        import sensor_msgs.point_cloud2 as pc2
+        import rosbag # pylint: disable=import-error
+        import sensor_msgs.point_cloud2 as pc2 # pylint: disable=import-error
 
         paths = []
         index = 0
