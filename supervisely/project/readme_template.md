@@ -106,14 +106,12 @@ meta: sly.ProjectMeta
 for obj_class in meta.obj_classes:
     # Each obj_class is an instance of sly.ObjClass, with a lot of useful fields and methods.
     # Check out [this section]() in the SDK Reference to learn more about ObjClass.
-    obj_class: sly.ObjClass
     print(obj_class.name)
 
 # We can iterate over tags in a similar way.
 for tag_meta in meta.tag_metas:
     # Each tag_meta is an instance of sly.TagMeta, it also has a lot of useful fields and methods.
     # Check out [this section]() in the SDK Reference to learn more about TagMeta.
-    tag_meta: sly.TagMeta
     print(tag_meta.name)
 ```
 
