@@ -2922,7 +2922,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(image_id)
 
             img_resized_url = api.image.resize_image_url(
-                img_info.full_storage_url, ext="jpeg",method="fill", width=512, height=256)
+                img_info.full_storage_url, ext="jpeg", method="fill", width=512, height=256)
         """
         # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
         # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
