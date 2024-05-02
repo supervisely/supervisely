@@ -16,6 +16,7 @@ from typing import (
     Generator,
     Iterator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -2874,7 +2875,44 @@ class ImageApi(RemoveableBulkModuleApi):
         for dir_path in dir_paths:
             image_infos.extend(
                 self.upload_dir(
-                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
+                    dataset_id,
+                    dir_path,
+                    recursive,
+                    change_name_if_conflict,
+                    progress_cb,
                 )
             )
         return image_infos
+
+    def resize_image_url(
+        self,
+        full_storage_url: str,
+        ext: Literal["jpeg", "png"] = "jpeg",
+        method: Literal["fit", "fill", "fill-down", "force", "auto"] = "auto",
+        width: int = 256,
+        height: int = 0,
+        quality: int = 70,
+    ) -> str:
+        """Returns a URL to a resized image with given parameters.
+
+        :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
+        :type full_storage_url: str
+        :param ext: Image extension, jpeg or png.
+        :type ext: Literal["jpeg", "png"], optional
+        :param method: Resize type, fit, fill, fill-down, force, auto.
+        :type method: Literal["fit", "fill", "fill-down", "force", "auto"], optional
+        :param width: Width of the resized image.
+        :type width: int, optional
+        :param height: Height of the resized image.
+        :type height: int, optional
+        :param quality: Quality of the resized image.
+        :type quality: int, optional
+        :return: Full URL to a resized image.
+        """
+        # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+        # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+        # to add: previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/
+        server_address = self._api.server_address
+        resize_string = f"previews/q/ext:{ext}/resize:{method}:{width}:{height}:0/q:{quality}/plain"
+        url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
+        return url
