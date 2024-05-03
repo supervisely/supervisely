@@ -65,7 +65,7 @@ class PretrainedModelsSelector(Widget):
     def get_selected_arch_type(self) -> str:
         return StateJson()[self.widget_id]["selectedArchType"]
 
-    def get_selected_row(self, state=StateJson()) -> Union[List, None]:
+    def get_selected_row(self, state=StateJson()) -> Union[Dict, None]:
         arch_type = self.get_selected_arch_type()
         task_type = self.get_selected_task_type()
         if arch_type is None or task_type is None:
@@ -88,7 +88,7 @@ class PretrainedModelsSelector(Widget):
                 "Could not find model name. Make sure you have column 'Model' in your models list."
             )
         checkpoint_filename = f"{model_name.lower()}.pt"
-        checkpoint_url = selected_model.get("meta", {}).get("weightsURL")
+        checkpoint_url = selected_model.get("meta", {}).get("weights_url")
         if checkpoint_url is None:
             pass
 
@@ -104,7 +104,7 @@ class PretrainedModelsSelector(Widget):
             arch_type = self.get_selected_arch_type()
             model_params["arch_type"] = arch_type
 
-        config_url = selected_model.get("meta", {}).get("configURL")
+        config_url = selected_model.get("meta", {}).get("config_url")
         if config_url is not None:
             model_params["config_url"] = config_url
 
