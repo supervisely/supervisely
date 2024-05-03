@@ -242,7 +242,7 @@ class CustomModelsSelector(Widget):
             task_types.append(model_row.task_type)
             self._rows_html[model_row.task_type].append(model_row.to_html())
 
-        self._task_types = list(set(task_types))
+        self._task_types = self._filter_task_types(task_types)
         if len(self._task_types) == 0:
             self.__default_selected_task_type = None
         else:
@@ -336,14 +336,11 @@ class CustomModelsSelector(Widget):
         }
 
     def get_json_state(self) -> Dict:
-        if self._show_custom_checkpoint_path:
-            return {
-                "selectedRow": 0,
-                "selectedTaskType": self.__default_selected_task_type,
-                "useCustomPath": False,
-            }
-        else:
-            return {"selectedRow": 0}
+        return {
+            "selectedRow": 0,
+            "selectedTaskType": self.__default_selected_task_type,
+            "useCustomPath": False,
+        }
 
     def set_active_task_type(self, task_type: str):
         if task_type not in self._task_types:
@@ -395,6 +392,20 @@ class CustomModelsSelector(Widget):
             except:
                 continue
         return table_rows
+
+    def _filter_task_types(self, task_types: List[str]):
+        sorted_tt = []
+        if "object detection" in task_types:
+            sorted_tt.append("object detection")
+        if "instance segmentation" in task_types:
+            sorted_tt.append("instance segmentation")
+        if "pose estimation" in task_types:
+            sorted_tt.append("pose estimation")
+        other_tasks = sorted(
+            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
+        )
+        sorted_tt.extend(other_tasks)
+        return sorted_tt
 
     def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
         if len(self._rows) == 0:
