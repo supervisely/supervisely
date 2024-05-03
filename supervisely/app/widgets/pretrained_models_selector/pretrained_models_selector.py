@@ -22,21 +22,21 @@ class PretrainedModelsSelector(Widget):
 
         self._models = models_list
         filtered_models = self._filter_and_sort_models(self._models)
-
         self._table_data = filtered_models
-        self._model_architectures = list(filtered_models.keys())
+        self._task_types = self._filter_task_types(list(filtered_models.keys()))
+        self._arch_types = sorted(
+            {arch for task_type in self._task_types for arch in filtered_models[task_type].keys()}
+        )
 
         self._arch_changes_handled = False
         self._task_changes_handled = False
         self._model_changes_handled = False
 
         self.__default_selected_arch_type = (
-            self._model_architectures[0] if len(self._model_architectures) > 0 else None
+            self._arch_types[0] if len(self._arch_types) > 0 else None
         )
         self.__default_selected_task_type = (
-            list(filtered_models[self.__default_selected_arch_type].keys())[0]
-            if self.__default_selected_arch_type is not None
-            else None
+            self._task_types[0] if len(self._task_types) > 0 else None
         )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -53,9 +53,17 @@ class PretrainedModelsSelector(Widget):
     def get_json_state(self) -> Dict:
         return {
             "selectedRow": 0,
+            "taskTypes": self._task_types,
+            "archTypes": self._arch_types,
             "selectedTaskType": self.__default_selected_task_type,
             "selectedArchType": self.__default_selected_arch_type,
         }
+
+    def get_available_task_types(self) -> List[str]:
+        return StateJson()[self.widget_id]["taskTypes"]
+
+    def get_available_arch_types(self) -> List[str]:
+        return StateJson()[self.widget_id]["archTypes"]
 
     def get_selected_task_type(self) -> str:
         return StateJson()[self.widget_id]["selectedTaskType"]
@@ -64,12 +72,12 @@ class PretrainedModelsSelector(Widget):
         return StateJson()[self.widget_id]["selectedArchType"]
 
     def get_selected_row(self, state=StateJson()) -> Union[Dict, None]:
-        arch_type = self.get_selected_arch_type()
         task_type = self.get_selected_task_type()
-        if arch_type is None or task_type is None:
+        arch_type = self.get_selected_arch_type()
+        if task_type is None or arch_type is None:
             return
 
-        models = self._table_data[arch_type][task_type]
+        models = self._table_data[task_type][arch_type]
         if len(models) == 0:
             return
         widget_actual_state = state[self.widget_id]
@@ -98,7 +106,7 @@ class PretrainedModelsSelector(Widget):
             "checkpoint_url": checkpoint_url,
         }
 
-        if len(self._model_architectures) > 1:
+        if len(self._arch_types) > 1:
             arch_type = self.get_selected_arch_type()
             model_params["arch_type"] = arch_type
 
@@ -115,7 +123,7 @@ class PretrainedModelsSelector(Widget):
             return widget_actual_state["selectedRow"]
 
     def set_active_arch_type(self, arch_type: str):
-        if arch_type not in self._model_architectures:
+        if arch_type not in self._arch_types:
             raise ValueError(f'Architecture type "{arch_type}" does not exist')
         StateJson()[self.widget_id]["selectedArchType"] = arch_type
         StateJson().send_changes()
@@ -141,29 +149,48 @@ class PretrainedModelsSelector(Widget):
             task_type = model.get("meta", {}).get("task_type", model.get("task_type", "other"))
 
             # Initialize nested dictionary structure if not already present
-            if arch_type not in filtered_models:
-                filtered_models[arch_type] = {}
-            if task_type not in filtered_models[arch_type]:
-                filtered_models[arch_type][task_type] = []
+            if task_type not in filtered_models:
+                filtered_models[task_type] = {}
+            if arch_type not in filtered_models[task_type]:
+                filtered_models[task_type][arch_type] = []
 
             # Add model to the appropriate category
-            filtered_models[arch_type][task_type].append(model)
+            filtered_models[task_type][arch_type].append(model)
 
-        # Sort the dictionary by architecture and then by task types
+        # Sort the dictionary by task type and then by architecture
         sorted_filtered_models = {
-            arch: {task: models for task, models in sorted(tasks.items())}
-            for arch, tasks in sorted(filtered_models.items())
+            task: {arch: models for arch, models in sorted(archs.items())}
+            for task, archs in sorted(filtered_models.items())
         }
 
         return sorted_filtered_models
+
+    def _filter_task_types(self, task_types: List[str]):
+        sorted_tt = []
+        if "object detection" in task_types:
+            sorted_tt.append("object detection")
+        if "instance segmentation" in task_types:
+            sorted_tt.append("instance segmentation")
+        if "pose estimation" in task_types:
+            sorted_tt.append("pose estimation")
+        other_tasks = sorted(
+            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
+        )
+        sorted_tt.extend(other_tasks)
+        return sorted_tt
 
     def set_models(self, models_list: List[Dict]):
         self._models = models_list
         filtered_models = self._filter_and_sort_models(self._models)
         self._table_data = filtered_models
-        self._model_architectures = list(filtered_models.keys())
+
+        self._task_types = self._filter_task_types(list(filtered_models.keys()))
+        self._arch_types = sorted(
+            {arch for task_type in self._task_types for arch in filtered_models[task_type].keys()}
+        )
+
         self.__default_selected_arch_type = (
-            self._model_architectures[0] if len(self._model_architectures) > 0 else None
+            self._arch_types[0] if len(self._arch_types) > 0 else None
         )
         self.__default_selected_task_type = (
             list(filtered_models[self.__default_selected_arch_type].keys())[0]
@@ -174,6 +201,8 @@ class PretrainedModelsSelector(Widget):
         DataJson().send_changes()
 
         StateJson()[self.widget_id]["selectedRow"] = 0
+        StateJson()[self.widget_id]["taskTypes"] = self._task_types
+        StateJson()[self.widget_id]["archTypes"] = self._arch_types
         StateJson()[self.widget_id]["selectedTaskType"] = self.__default_selected_task_type
         StateJson()[self.widget_id]["selectedArchType"] = self.__default_selected_arch_type
         StateJson().send_changes()
