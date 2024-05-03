@@ -6,8 +6,6 @@ from supervisely.app.widgets import (
     Widget,
 )
 
-# arch_type_key = "archType"
-
 
 class PretrainedModelsSelector(Widget):
     class Routes:
@@ -139,8 +137,8 @@ class PretrainedModelsSelector(Widget):
 
         for model in models:
             # Extract architecture type and task type, defaulting to 'other' if not specified
-            arch_type = model.get("meta", {}).get("archType", "other")
-            task_type = model.get("meta", {}).get("taskType", model.get("taskType", "other"))
+            arch_type = model.get("meta", {}).get("arch_type", "other")
+            task_type = model.get("meta", {}).get("task_type", model.get("task_type", "other"))
 
             # Initialize nested dictionary structure if not already present
             if arch_type not in filtered_models:
