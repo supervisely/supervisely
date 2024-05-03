@@ -1,11 +1,24 @@
+from collections import defaultdict
 from pathlib import Path
 from typing import List
 
-from supervisely import ProjectMeta, batched, generate_free_name, is_development, logger
-from supervisely.api.api import Api
+from supervisely import (
+    Api,
+    ObjClass,
+    PointcloudAnnotation,
+    PointcloudEpisodeAnnotation,
+    PointcloudEpisodeFrame,
+    PointcloudEpisodeObject,
+    PointcloudFigure,
+    ProjectMeta,
+    generate_free_name,
+    is_development,
+    logger,
+)
 from supervisely.convert.base_converter import AvailablePointcloudConverters
-from supervisely.convert.pointcloud.bag.bag_helper import pc2_to_pcd
+from supervisely.convert.pointcloud.bag.bag_helper import process_msg
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
+from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name,
@@ -51,7 +64,7 @@ class BagConverter(PointcloudConverter):
         return ".bag"
 
     def validate_format(self) -> bool:
-        import rosbag # pylint: disable=import-error
+        import rosbag  # pylint: disable=import-error
 
         def _filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
@@ -73,90 +86,104 @@ class BagConverter(PointcloudConverter):
                     bag_msg_cnt.append(list(topics_info.values())[i][1])
 
                 topics = zip(topics_info, types, bag_msg_cnt)
+                pcd_topic = None
+                ann_topic = None
                 for topic, topic_type, msg_count in topics:
                     if topic_type == "sensor_msgs/PointCloud2":
+                        if "SlyAnnotations" in topic:
+                            ann_topic = topic
+                            continue
                         cloud_msg_cnt += msg_count
+                        pcd_topic = topic
 
-                        if self._is_pcd_episode:
-                            item = self.Item(item_path=bag_file, frame_number=cloud_msg_cnt) # pylint: disable=unexpected-keyword-arg
-                        else:
-                            item = self.Item(item_path=bag_file)
-                        item.topic = topic
-                        self._items.append(item)
+                if pcd_topic is not None:
+                    if self._is_pcd_episode:
+                        item = self.Item(
+                            item_path=bag_file, frame_number=cloud_msg_cnt
+                        )  # pylint: disable=unexpected-keyword-arg
+                    else:
+                        item = self.Item(item_path=bag_file)
+                    item.topic = pcd_topic
+                    item.ann_data = ann_topic
+                    self._items.append(item)
                 self._total_msg_count += cloud_msg_cnt
 
         return self.items_count > 0
 
-    def convert(self, item: Item, log_progress=True):
-        import rosbag # pylint: disable=import-error
-        import sensor_msgs.point_cloud2 as pc2 # pylint: disable=import-error
+    def convert(self, item: Item, meta: ProjectMeta):
+        import rosbag  # pylint: disable=import-error
 
-        paths = []
-        index = 0
         bag_path = Path(item.path)
         topic = item.topic
+        ann_topic = item.ann_data
 
         with rosbag.Bag(item.path) as bag:
             msg_count = bag.get_message_count(topic_filters=item.topic)
-            if log_progress:
-                convert_progress, convert_progress_cb = self.get_progress(
-                    msg_count,
-                    f"Convert {topic} topic from {bag_path.name} to pointclouds...",
+            progress, progress_cb = self.get_progress(
+                msg_count, f"Convert {topic} topic from {bag_path.name} to pcd"
+            )
+
+            time_to_data = defaultdict(dict)
+            for _, msg, rostime in bag.read_messages(topics=[item.topic]):
+                process_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False)
+
+                progress_cb(1)
+            if is_development():
+                progress.close()
+
+            # get annotations
+            if ann_topic is not None:
+                msg_count = bag.get_message_count(topic_filters=item.ann_data)
+                progress, progress_cb = self.get_progress(
+                    msg_count, f"Convert {item.ann_data} topic to JSON annotations"
                 )
-            else:
-                convert_progress_cb = None
 
-            for _, msg, _ in bag.read_messages(
-                topics=[item.topic]
-            ):  # read_messages return generator
-                p_ = []
-                gen = pc2.read_points(msg, skip_nans=True, field_names=("x", "y", "z"))
+                for _, msg, rostime in bag.read_messages(topics=[item.ann_data]):
+                    process_msg(time_to_data, msg, rostime, bag_path, ann_topic, meta, is_ann=True)
+                    progress_cb(1)
+                if is_development():
+                    progress.close()
 
-                for p in gen:
-                    p_.append(p)
-
-                topic = topic.replace("/", "_")  # replace / with _ to avoid path issues
-                pcd_path = bag_path.parent / bag_path.stem / topic / f"{index:06d}.pcd"
-                if not pcd_path.parent.exists():
-                    pcd_path.parent.mkdir(parents=True, exist_ok=True)
-                pc2_to_pcd(p_, pcd_path.as_posix())
-                index = index + 1
-                paths.append(pcd_path)
-                if log_progress:
-                    convert_progress_cb(1)
-
-        if log_progress and is_development():
-            convert_progress.close()
-        return paths
+        return time_to_data
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
-        self._upload_dataset(
-            api, dataset_id, batch_size, log_progress, is_episodes=self._is_pcd_episode
-        )
+        self._upload_dataset(api, dataset_id, log_progress, is_episodes=self._is_pcd_episode)
 
     def _upload_dataset(
         self,
         api: Api,
         dataset_id: int,
-        batch_size: int = 1,
         log_progress=True,
         is_episodes=False,
     ):
-        """Converts and uploads bag files to Supervisely dataset."""
+        """
+        Converts and uploads bag files to Supervisely dataset.
+        Note: This method is used by both the BagConverter and the BagEpisodeConverter.
+        """
+        obj_cls = ObjClass("object", Cuboid3d)
+        self._meta = ProjectMeta(obj_classes=[obj_cls])
+        meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
         multiple_items = self.items_count > 1
-        if multiple_items:
-            logger.info(f"Found {self.items_count} topics in the input data.")
-            logger.info(f"Will create dataset in parent dataset for each topic.")
-
         datasets = []
+        dataset_info = api.dataset.get_info_by_id(dataset_id)
+
         if multiple_items:
-            dataset_info = api.dataset.get_info_by_id(dataset_id)
+            logger.info(
+                f"Found {self.items_count} topics in the input data."
+                "Will create dataset in parent dataset for each topic."
+            )
+            nested_datasets = api.dataset.get_list(dataset_info.project_id, parent_id=dataset_id)
+            existing_ds_names = set([ds.name for ds in nested_datasets])
             for item in self._items:
-                ds_name = get_file_name(item.path)
+                ds_name = generate_free_name(existing_ds_names, get_file_name(item.path))
                 ds = api.dataset.create(
-                    dataset_info.project_id, ds_name, change_name_if_conflict=True, parent_id=dataset_id
+                    dataset_info.project_id,
+                    ds_name,
+                    change_name_if_conflict=True,
+                    parent_id=dataset_id,
                 )
+                existing_ds_names.add(ds.name)
                 datasets.append(ds)
 
         if log_progress:
@@ -165,34 +192,64 @@ class BagConverter(PointcloudConverter):
             progress_cb = None
 
         for idx, item in enumerate(self._items):
-            current_dataset_id = dataset_id if not multiple_items else datasets[idx].id
-            pcd_paths = self.convert(item, log_progress=log_progress)
+            current_dataset = dataset_info if not multiple_items else datasets[idx]
+            current_dataset_id = current_dataset.id
+            time_to_data = self.convert(item, meta)
 
             existing_names = set([pcd.name for pcd in api.pointcloud.get_list(current_dataset_id)])
 
-            for batch in batched(pcd_paths, batch_size=batch_size):
-                pcd_names = []
-                pcd_paths = []
-                for pcd_path in batch:
-                    pcd_name = generate_free_name(
-                        existing_names, pcd_path.name, with_ext=True, extend_used_names=True
-                    )
-                    pcd_names.append(pcd_name)
-                    pcd_paths.append(pcd_path)
+            ann_episode = PointcloudEpisodeAnnotation()
+            frame_to_pointcloud_ids = {}
+            for idx, (time, data) in enumerate(time_to_data.items()):
+                pcd_path = data["pcd"].as_posix()
+                ann_path = data["ann"].as_posix() if data["ann"] is not None else None
+                pcd_meta = data["meta"]
 
-                upload_fn = (
-                    api.pointcloud_episode.upload_paths
-                    if is_episodes
-                    else api.pointcloud.upload_paths
+                pcd_name = generate_free_name(
+                    existing_names, f"{time}.pcd", with_ext=True, extend_used_names=True
                 )
-                upload_fn(current_dataset_id, pcd_names, pcd_paths)
+                if is_episodes:
+                    pcd_meta["frame"] = idx
+                upload_fn = (
+                    api.pointcloud_episode.upload_path
+                    if is_episodes
+                    else api.pointcloud.upload_path
+                )
+                info = upload_fn(current_dataset_id, pcd_name, pcd_path, pcd_meta)
+                pcd_id = info.id
+                frame_to_pointcloud_ids[idx] = pcd_id
 
+                if ann_path is not None:
+                    ann = PointcloudAnnotation.load_json_file(ann_path, meta)
+                    if is_episodes:
+                        objects = ann_episode.objects
+                        figures = []
+                        for fig in ann.figures:
+                            obj_cls = meta.get_obj_class(fig.parent_object.obj_class.name)
+                            if obj_cls is not None:
+                                obj = PointcloudEpisodeObject(obj_cls)
+                                objects = objects.add(obj)
+                                figure = PointcloudFigure(obj, fig.geometry, frame_index=idx)
+                                figures.append(figure)
+                        frames = ann_episode.frames
+                        frames = frames.add(PointcloudEpisodeFrame(idx, figures))
+                        ann_episode = ann_episode.clone(objects=objects, frames=frames)
+                    else:
+                        api.pointcloud.annotation.append(pcd_id, ann)
+
+                silent_remove(pcd_path)
+                if ann_path is not None:
+                    silent_remove(ann_path)
                 if log_progress:
-                    progress_cb(len(batch))
+                    progress_cb(1)
+
+            if is_episodes:
+                ann_episode = ann_episode.clone(frames_count=len(time_to_data))
+                api.pointcloud_episode.annotation.append(
+                    current_dataset_id, ann_episode, frame_to_pointcloud_ids
+                )
 
             logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
-            for pcd_path in pcd_paths:
-                silent_remove(pcd_path)
 
         if log_progress:
             if is_development():
