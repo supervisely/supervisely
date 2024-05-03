@@ -498,14 +498,25 @@ def _init(
         return response
 
     if headless is False:
+        app.cached_template = None
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            logger.debug("Index page is requested", extra={"query_params": str(request.query_params)})
+            logger.debug(
+                f"Index page is requested. Is cached: {app.cached_template is not None}",
+                extra={
+                    "query_params": request.query_params._dict,
+                    "is_cached": app.cached_template is not None,
+                },
+            )
             if len(request.query_params) == 0:
                 return JSONResponse(content={"message": "App is running"}, status_code=200)
-            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+            if app.cached_template is None:
+                app.cached_template = Jinja2Templates().TemplateResponse(
+                    "index.html", {"request": request}
+                )
+            return app.cached_template
 
         @app.on_event("shutdown")
         def shutdown():
@@ -642,7 +653,7 @@ class Application(metaclass=Singleton):
                 from supervisely.app.content import ContentOrigin
 
                 ContentOrigin().start()
-                Thread(target=run_sync, args=(self.test_client.get("/"),)).start()
+                Thread(target=run_sync, args=(self.test_client.get("/?saveOfflineSession=true"),)).start()
 
         server = self.get_server()
 
