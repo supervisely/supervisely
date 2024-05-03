@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
+from supervisely import TinyTimer
 from supervisely._utils import (
     is_debug_with_sly_net,
     is_development,
@@ -595,10 +596,12 @@ class Application(metaclass=Singleton):
                 "Only one of the arguments has to be defined: 'layout' or 'templates_dir'. 'layout' argument is recommended."
             )
         if layout is not None:
+            logger.debug("Creating application with layout")
+            tm = TinyTimer()
             templates_dir = os.path.join(Path(__file__).parent.absolute(), "templates")
             from supervisely.app.widgets import Identity
-
             main_layout = Identity(layout, widget_id="__app_main_layout__")
+            logger.debug("Created layout", extra={"time": tm.get_sec()})
             logger.info(
                 "Application is running in no-html mode", extra={"templates_dir": templates_dir}
             )
@@ -653,7 +656,9 @@ class Application(metaclass=Singleton):
                 from supervisely.app.content import ContentOrigin
 
                 ContentOrigin().start()
-                Thread(target=run_sync, args=(self.test_client.get("/?saveOfflineSession=true"),)).start()
+                Thread(
+                    target=run_sync, args=(self.test_client.get("/?saveOfflineSession=true"),)
+                ).start()
 
         server = self.get_server()
 
