@@ -1,22 +1,25 @@
 from __future__ import annotations
+
 import os
-from pathlib import Path
-from bs4 import BeautifulSoup
 import re
 import time
 import uuid
-from typing import Union, List
-from varname import varname
-from jinja2 import Environment
+from pathlib import Path
+from typing import List, Union
+
 import markupsafe
-from supervisely.app.jinja2 import create_env
-from supervisely.app.content import DataJson, StateJson
-from fastapi import FastAPI
-from supervisely.app.fastapi import _MainServer
-from supervisely.app.widgets_context import JinjaWidgets
-from supervisely._utils import generate_free_name, rand_str
 from async_asgi_testclient import TestClient
+from bs4 import BeautifulSoup
+from fastapi import FastAPI
+from jinja2 import Environment
+from varname import varname
+
+from supervisely._utils import generate_free_name, rand_str
+from supervisely.app.content import DataJson, StateJson
+from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.jinja2 import create_env
+from supervisely.app.widgets_context import JinjaWidgets
 
 
 class Hidable:
@@ -95,7 +98,7 @@ class Disableable:
 class Loading:
     def __init__(self):
         self._loading = False
-    
+
     @property
     def loading(self):
         return self._loading
@@ -149,10 +152,14 @@ class Widget(Hidable, Disableable, Loading):
             else:
                 try:
                     self.widget_id = varname(frame=2)
-                except Exception as e:  # Caller doesn\\\'t assign the result directly to variable(s).
+                except (
+                    Exception
+                ) as e:  # Caller doesn\\\'t assign the result directly to variable(s).
                     try:
                         self.widget_id = varname(frame=3)
-                    except Exception as e:  # VarnameRetrievingError('Unable to retrieve the ast node.')
+                    except (
+                        Exception
+                    ) as e:  # VarnameRetrievingError('Unable to retrieve the ast node.')
                         self.widget_id = generate_id(type(self).__name__)
 
         self._register()
@@ -234,7 +241,9 @@ class Widget(Hidable, Disableable, Loading):
 
 
 class ConditionalWidget(Widget):
-    def __init__(self, items: List[ConditionalItem], widget_id: str = None, file_path: str = __file__):
+    def __init__(
+        self, items: List[ConditionalItem], widget_id: str = None, file_path: str = __file__
+    ):
         self._items = items
         super().__init__(widget_id=widget_id, file_path=file_path)
 
@@ -271,7 +280,9 @@ class DynamicWidget(Widget):
             func()
             # to update template for offline session
             from supervisely.app.fastapi.subapp import Application
+
             os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "False"
+            self._sly_app.get_server().cached_template = None
             client = Application().test_client
             _ = run_sync(client.get("/"))
 
