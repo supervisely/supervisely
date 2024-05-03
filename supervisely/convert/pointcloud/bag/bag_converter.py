@@ -99,8 +99,8 @@ class BagConverter(PointcloudConverter):
                 if pcd_topic is not None:
                     if self._is_pcd_episode:
                         item = self.Item(
-                            item_path=bag_file, frame_number=cloud_msg_cnt
-                        )  # pylint: disable=unexpected-keyword-arg
+                            item_path=bag_file, frame_number=cloud_msg_cnt # pylint: disable=unexpected-keyword-arg
+                        )
                     else:
                         item = self.Item(item_path=bag_file)
                     item.topic = pcd_topic
