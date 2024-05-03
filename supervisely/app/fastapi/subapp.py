@@ -511,7 +511,7 @@ def _init(
                     "is_cached": app.cached_template is not None,
                 },
             )
-            if len(request.query_params) == 0:
+            if request.query_params.get("ping", False) in ("true", "True", True, 1, "1"):
                 return JSONResponse(content={"message": "App is running"}, status_code=200)
             if app.cached_template is None:
                 app.cached_template = Jinja2Templates().TemplateResponse(
@@ -600,6 +600,7 @@ class Application(metaclass=Singleton):
             tm = TinyTimer()
             templates_dir = os.path.join(Path(__file__).parent.absolute(), "templates")
             from supervisely.app.widgets import Identity
+
             main_layout = Identity(layout, widget_id="__app_main_layout__")
             logger.debug("Created layout", extra={"time": tm.get_sec()})
             logger.info(
@@ -657,7 +658,7 @@ class Application(metaclass=Singleton):
 
                 ContentOrigin().start()
                 Thread(
-                    target=run_sync, args=(self.test_client.get("/?saveOfflineSession=true"),)
+                    target=run_sync, args=(self.test_client.get("/"),)
                 ).start()
 
         server = self.get_server()
