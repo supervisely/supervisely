@@ -4,11 +4,13 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
+from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
@@ -23,7 +25,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import batched
+from supervisely import ProjectInfo, batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -47,10 +49,13 @@ from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
+    process_images_batch_roi,
+    process_images_batch_sliding_window,
 )
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
+from supervisely.project import ProjectType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -547,10 +552,13 @@ class Inference:
         )
         return ann
 
+    @process_images_batch_sliding_window
+    @process_images_batch_roi
     def _inference_images_batch(
         self,
         source: List,
         settings: Dict,
+        data_to_return: Dict,  # for decorators
     ) -> List[Annotation]:
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
@@ -593,7 +601,7 @@ class Inference:
         ]
 
         logger.debug(
-            f"Inferring image_path done. pred_annotations:",
+            f"Inferring images batch done. pred_annotations:",
             extra={
                 "annotations": [
                     dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels))
@@ -733,7 +741,7 @@ class Inference:
             anns = self._inference_images_batch(
                 source=img_paths,
                 settings=settings,
-                # data_to_return=data_to_return # removed because sliding window decorator is not implemented
+                data_to_return=data_to_return,
             )
             for i, ann in enumerate(anns):
                 data = {}
@@ -878,7 +886,7 @@ class Inference:
             anns = self._inference_images_batch(
                 source=frames,
                 settings=settings,
-                # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
+                data_to_return=data_to_return,
             )
             batch_results = []
             for i, ann in enumerate(anns):
@@ -899,6 +907,150 @@ class Inference:
         fs.remove_dir(video_images_path)
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
+        return results
+
+    def _inference_project_id(
+        self,
+        api: Api,
+        state: dict,
+        project_info: ProjectInfo = None,
+        async_inference_request_uuid: str = None,
+    ):
+        """Inference project images.
+        If "output_project_id" in state, upload images and annotations to the output project.
+        If "output_project_id" equal to source project id, upload annotations to the source project.
+        If "output_project_id" is None, write annotations to inference request object.
+        """
+        logger.debug("Inferring project...", extra={"state": state})
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+            sly_progress: Progress = inference_request["progress"]
+
+            sly_progress.total = state["framesCount"]
+
+        if project_info is None:
+            project_info = api.project.get_info_by_id(state["projectId"])
+        project_meta = ProjectMeta.from_json(api.project.get_meta(project_info.id))
+        output_project_id = state.get("output_project_id", None)
+        output_project_meta = None
+        if output_project_id is not None:
+            if output_project_id == project_info.id:
+                output_project_meta = project_meta
+            else:
+                output_project_meta = ProjectMeta.from_json(
+                    api.project.merge_metas(project_info.id, output_project_id)
+                )
+        datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
+        images_infos_dict = {}
+
+        # to start downloading images in parallel
+        for dataset_info in datasets_infos:
+            images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
+            image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
+            threading.Thread(
+                self.cache.download_images(api, dataset_id=dataset_info.id, image_ids=image_ids)
+            ).start()
+
+        def _upload_results_to_source(results: List[Dict]):
+            for result in results:
+                image_id = result["image_id"]
+                ann = Annotation.from_json(result["annotation"], project_meta)
+                api.annotation.append_labels(image_id, ann.labels)
+
+        def _upload_results_to_other(results: List[Dict]):
+            if len(results) == 0:
+                return
+            dataset_id = results[0]["dataset_id"]
+            image_ids = [result["image_id"] for result in results]
+            image_names = [result["image_name"] for result in results]
+            image_infos = api.image.upload_ids(dataset_id, names=image_names, ids=image_ids)
+            for image_info, result in zip(image_infos, results):
+                ann = Annotation.from_json(result["annotation"], output_project_meta)
+                api.annotation.upload_ann(image_info.id, ann)
+
+        def _add_results_to_request(results: List[Dict]):
+            inference_request["pending_results"].extend(results)
+
+        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
+            try:
+                while True:
+                    items = []
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        upload_f(items)
+                        if async_inference_request_uuid is not None:
+                            sly_progress.iters_done(len(items))
+                        continue
+                    if stop_event.is_set():
+                        return
+                    time.sleep(1)
+            except Exception as e:
+                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                raise
+
+        if output_project_id is None:
+            upload_f = _add_results_to_request
+        elif output_project_id != project_info.id:
+            upload_f = _upload_results_to_other
+        else:
+            upload_f = _upload_results_to_source
+
+        upload_queue = Queue()
+        stop_upload_event = threading.Event()
+        threading.Thread(
+            target=_upload_loop,
+            args=[upload_queue, stop_upload_event, api, upload_f],
+            daemon=True,
+        ).start()
+
+        settings = state.copy()
+        results = []
+        data_to_return = {}
+        try:
+            for dataset_info in datasets_infos:
+                for images_infos_batch in batched(
+                    images_infos_dict[dataset_info.id], batch_size=16
+                ):
+                    images_nps = self.cache.download_frames(
+                        api, dataset_info.id, images_infos_batch, return_images=True
+                    )
+                    anns = self._inference_images_batch(
+                        source=images_nps,
+                        settings=settings,
+                        data_to_return=data_to_return,
+                    )
+                    batch_results = []
+                    for i, ann in enumerate(anns):
+                        data = {}
+                        if "slides" in data_to_return:
+                            data = data_to_return["slides"][i]
+                        batch_results.append(
+                            {
+                                "annotation": ann.to_json(),
+                                "data": data,
+                                "image_id": images_infos_batch[i].id,
+                                "image_name": images_infos_batch[i].name,
+                                "dataset_id": dataset_info.id,
+                            }
+                        )
+                    results.extend(batch_results)
+                    upload_queue.put(batch_results)
+        except Exception:
+            stop_upload_event.set()
+            raise
+        if async_inference_request_uuid is not None and len(results) > 0:
+            inference_request["result"] = {"ann": results}
+        stop_upload_event.set()
         return results
 
     def _on_inference_start(self, inference_request_uuid):
@@ -1128,6 +1280,42 @@ class Inference:
             future.add_done_callback(end_callback)
             logger.debug(
                 "Inference has scheduled from 'inference_video_id_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
+
+        @server.post("/inference_project_id_async")
+        def inference_project_id_async(request: Request):
+            logger.debug(
+                f"'inference_project_id_async' request in json format:{request.state.state}"
+            )
+            project_id = request.state.state["projectId"]
+            project_info = request.state.api.project.get_info_by_id(project_id)
+            if project_info.type != str(ProjectType.IMAGES):
+                raise ValueError("Only images projects are supported.")
+
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                self._inference_project_id,
+                request.state.api,
+                request.state.state,
+                project_info,
+                inference_request_uuid,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+            logger.debug(
+                "Inference has scheduled from 'inference_project_id_async' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
             )
             return {
