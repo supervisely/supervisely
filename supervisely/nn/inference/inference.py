@@ -954,7 +954,9 @@ class Inference:
                     output_project_meta = output_project_meta.add_tag_meta(tag_meta)
                     changed = True
             if changed:
-                api.project.update_meta(output_project_id, output_project_meta)
+                output_project_meta = api.project.update_meta(
+                    output_project_id, output_project_meta
+                )
 
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         images_infos_dict = {}
