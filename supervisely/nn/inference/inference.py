@@ -922,6 +922,8 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring project...", extra={"state": state})
+        if project_info is None:
+            project_info = api.project.get_info_by_id(state["projectId"])
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -935,20 +937,25 @@ class Inference:
                 )
             sly_progress: Progress = inference_request["progress"]
 
-            sly_progress.total = state["framesCount"]
+            sly_progress.total = project_info.items_count
 
-        if project_info is None:
-            project_info = api.project.get_info_by_id(state["projectId"])
-        project_meta = ProjectMeta.from_json(api.project.get_meta(project_info.id))
         output_project_id = state.get("output_project_id", None)
         output_project_meta = None
         if output_project_id is not None:
-            if output_project_id == project_info.id:
-                output_project_meta = project_meta
-            else:
-                output_project_meta = ProjectMeta.from_json(
-                    api.project.merge_metas(project_info.id, output_project_id)
-                )
+            logger.debug("Merging project meta...")
+            output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
+            changed = False
+            for obj_class in self.model_meta.obj_classes:
+                if output_project_meta.obj_classes.get(obj_class.name, None) is None:
+                    output_project_meta = output_project_meta.add_obj_class(obj_class)
+                    changed = True
+            for tag_meta in self.model_meta.tag_metas:
+                if output_project_meta.tag_metas.get(tag_meta.name, None) is None:
+                    output_project_meta = output_project_meta.add_tag_meta(tag_meta)
+                    changed = True
+            if changed:
+                api.project.update_meta(output_project_id, output_project_meta)
+
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         images_infos_dict = {}
 
@@ -957,14 +964,18 @@ class Inference:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
             image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
             threading.Thread(
-                self.cache.download_images(api, dataset_id=dataset_info.id, image_ids=image_ids)
+                target=self.cache.download_images,
+                args=(api, dataset_info.id, image_ids),
+                daemon=True,
             ).start()
 
         def _upload_results_to_source(results: List[Dict]):
             for result in results:
                 image_id = result["image_id"]
-                ann = Annotation.from_json(result["annotation"], project_meta)
+                ann = Annotation.from_json(result["annotation"], output_project_meta)
                 api.annotation.append_labels(image_id, ann.labels)
+                if async_inference_request_uuid is not None:
+                    sly_progress.iters_done(1)
 
         def _upload_results_to_other(results: List[Dict]):
             if len(results) == 0:
@@ -973,12 +984,20 @@ class Inference:
             image_ids = [result["image_id"] for result in results]
             image_names = [result["image_name"] for result in results]
             image_infos = api.image.upload_ids(dataset_id, names=image_names, ids=image_ids)
-            for image_info, result in zip(image_infos, results):
-                ann = Annotation.from_json(result["annotation"], output_project_meta)
-                api.annotation.upload_ann(image_info.id, ann)
+            api.annotation.upload_anns(
+                img_ids=[info.id for info in image_infos],
+                anns=[
+                    Annotation.from_json(result["annotation"], output_project_meta)
+                    for result in results
+                ],
+            )
+            if async_inference_request_uuid is not None:
+                sly_progress.iters_done(results)
 
         def _add_results_to_request(results: List[Dict]):
             inference_request["pending_results"].extend(results)
+            if async_inference_request_uuid is not None:
+                sly_progress.iters_done(results)
 
         def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
             try:
@@ -987,9 +1006,8 @@ class Inference:
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
-                        upload_f(items)
-                        if async_inference_request_uuid is not None:
-                            sly_progress.iters_done(len(items))
+                        for batch in items:
+                            upload_f(batch)
                         continue
                     if stop_event.is_set():
                         return
@@ -1013,7 +1031,8 @@ class Inference:
             daemon=True,
         ).start()
 
-        settings = state.copy()
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
         results = []
         data_to_return = {}
         try:
@@ -1021,8 +1040,11 @@ class Inference:
                 for images_infos_batch in batched(
                     images_infos_dict[dataset_info.id], batch_size=16
                 ):
-                    images_nps = self.cache.download_frames(
-                        api, dataset_info.id, images_infos_batch, return_images=True
+                    images_nps = self.cache.download_images(
+                        api,
+                        dataset_info.id,
+                        [info.id for info in images_infos_batch],
+                        return_images=True,
                     )
                     anns = self._inference_images_batch(
                         source=images_nps,
