@@ -300,6 +300,35 @@ class SessionJSON:
         )
         return frame_iterator
 
+    def inference_project_id_async(
+        self, project_id: int, dest_project_id: int = None, process_fn=None
+    ):
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "inference_project_id_async"
+        url = f"{self._base_url}/{endpoint}"
+        json_body = self._get_default_json_body()
+        state = json_body["state"]
+        state["projectId"] = project_id
+        state["output_project_id"] = dest_project_id
+        resp = self._post(url, json=json_body).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=process_fn
+        )
+        return frame_iterator
+
     def stop_async_inference(self) -> Dict[str, Any]:
         endpoint = "stop_inference"
         resp = self._get_from_endpoint_for_async_inference(endpoint)
@@ -324,7 +353,7 @@ class SessionJSON:
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
-        logger.info("The video is preparing on the server, this may take a while...")
+        logger.info("The inference is preparing on the server, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
@@ -582,6 +611,30 @@ class Session(SessionJSON):
             process_fn=self._convert_to_sly_annotation,
         )
         return frame_iterator
+
+    def inference_project_id_async(
+        self,
+        project_id: int,
+        dest_project_id: int = None,
+    ):
+        frame_iterator = super().inference_project_id_async(
+            project_id,
+            dest_project_id,
+            process_fn=self._convert_to_sly_ann_info,
+        )
+        return frame_iterator
+
+    def _convert_to_sly_ann_info(self, pred_json: dict):
+        image_id = pred_json["image_id"]
+        image_name = pred_json["image_name"]
+        annotation = pred_json["annotation"]
+        return sly.api.annotation_api.AnnotationInfo(
+            image_id=image_id,
+            image_name=image_name,
+            annotation=annotation,
+            created_at=None,
+            updated_at=None,
+        )
 
     def _convert_to_sly_annotation(self, pred_json: dict):
         model_meta = self.get_model_meta()
