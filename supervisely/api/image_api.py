@@ -16,7 +16,6 @@ from typing import (
     Generator,
     Iterator,
     List,
-    Literal,
     NamedTuple,
     Optional,
     Tuple,
