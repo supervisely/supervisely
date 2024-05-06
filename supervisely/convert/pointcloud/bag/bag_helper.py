@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 
 from supervisely import ProjectMeta
@@ -24,24 +22,15 @@ def pc2_to_pcd(points, path):
     o3d.io.write_point_cloud(path, pcd)
 
 
-def get_cuboid_from_points(points: list):
-    """Get a cuboid from a list of 8 points."""
+def get_cuboid_from_points(coords: list):
+    """Greates a cuboid from a list xyz center, size, and rotation."""
+    center, size, rotation = coords
 
-    all_x = list(sorted(set([point[0] for point in points])))
-    all_y = list(sorted(set([point[1] for point in points])))
-    all_z = list(sorted(set([point[2] for point in points])))
-    min_x, min_y, min_z = all_x[0], all_y[0], all_z[0]
-    max_x, max_y, max_z = all_x[-1], all_y[-1], all_z[-1]
+    center = Vector3d(center[0], center[1], center[2])
+    size = Vector3d(size[0], size[1], size[2])
+    rotation = Vector3d(rotation[0], rotation[1], rotation[2])
 
-    center = Vector3d((min_x + max_x) / 2, (min_y + max_y) / 2, (min_z + max_z) / 2)
-    size = Vector3d(max_x - min_x, max_y - min_y, max_z - min_z)
-    yaw = math.atan2(points[1][1] - points[0][1], points[1][0] - points[0][0])
-    pitch = math.atan2(points[2][2] - points[0][2], points[2][0] - points[0][0])
-    roll = math.atan2(points[4][2] - points[0][2], points[4][1] - points[0][1])
-
-    rotation = Vector3d(pitch, roll, yaw)
-    cuboid = Cuboid3d(center, rotation, size)
-    return cuboid
+    return Cuboid3d(center, rotation, size)
 
 
 def pc2_to_ann(points: np.ndarray, path: str, meta: ProjectMeta) -> ProjectMeta:
@@ -52,11 +41,11 @@ def pc2_to_ann(points: np.ndarray, path: str, meta: ProjectMeta) -> ProjectMeta:
     objects = PointcloudObjectCollection()
     points = o3d.utility.Vector3dVector(points)
 
-    if len(points) % 8 == 0:
-        for i in range(0, len(points), 8):
-            corners = [points[j] for j in range(i, i + 8)]
+    if len(points) % 3 == 0:
+        for i in range(0, len(points), 3):
+            coords = np.array([points[j] for j in range(i, i + 3)])
 
-            cuboid = get_cuboid_from_points(corners)
+            cuboid = get_cuboid_from_points(coords)
             obj_cls = meta.get_obj_class("object")
             pcd_obj = PointcloudObject(obj_cls)
             objects = objects.add(pcd_obj)
