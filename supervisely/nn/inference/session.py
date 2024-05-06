@@ -329,6 +329,14 @@ class SessionJSON:
         )
         return frame_iterator
 
+    def inference_project_id(self, project_id: int, dest_project_id: int = None):
+        return [
+            pred
+            for pred in self.inference_project_id_async(
+                project_id, dest_project_id, process_fn=None
+            )
+        ]
+
     def stop_async_inference(self) -> Dict[str, Any]:
         endpoint = "stop_inference"
         resp = self._get_from_endpoint_for_async_inference(endpoint)
@@ -623,6 +631,9 @@ class Session(SessionJSON):
             process_fn=self._convert_to_sly_ann_info,
         )
         return frame_iterator
+
+    def inference_project_id(self, project_id: int, dest_project_id: int = None):
+        return [pred for pred in self.inference_project_id_async(project_id, dest_project_id)]
 
     def _convert_to_sly_ann_info(self, pred_json: dict):
         image_id = pred_json["image_id"]
