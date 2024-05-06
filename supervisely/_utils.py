@@ -239,57 +239,57 @@ def compress_image_url(
         f"/previews/{width}x{height},jpeg,q{quality}/image-converter",
     )
 
-    def resize_image_url(
-        self,
-        full_storage_url: str,
-        ext: Literal["jpeg", "png"] = "jpeg",
-        method: Literal["fit", "fill", "fill-down", "force", "auto"] = "auto",
-        width: int = 256,
-        height: int = 0,
-        quality: int = 70,
-    ) -> str:
-        """Returns a URL to a resized image with given parameters.
-        Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
-        :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
-        :type full_storage_url: str
-        :param ext: Image extension, jpeg or png.
-        :type ext: Literal["jpeg", "png"], optional
-        :param method: Resize type, fit, fill, fill-down, force, auto.
-        :type method: Literal["fit", "fill", "fill-down", "force", "auto"], optional
-        :param width: Width of the resized image.
-        :type width: int, optional
-        :param height: Height of the resized image.
-        :type height: int, optional
-        :param quality: Quality of the resized image.
-        :type quality: int, optional
-        :return: Full URL to a resized image.
-        :rtype: str
+def resize_image_url(
+    full_storage_url: str,
+    ext: Literal["jpeg", "png"] = "jpeg",
+    method: Literal["fit", "fill", "fill-down", "force", "auto"] = "auto",
+    width: int = 256,
+    height: int = 0,
+    quality: int = 70,
+) -> str:
+    """Returns a URL to a resized image with given parameters.
+    Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
-        :Usage example:
+    :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
+    :type full_storage_url: str
+    :param ext: Image extension, jpeg or png.
+    :type ext: Literal["jpeg", "png"], optional
+    :param method: Resize type, fit, fill, fill-down, force, auto.
+    :type method: Literal["fit", "fill", "fill-down", "force", "auto"], optional
+    :param width: Width of the resized image.
+    :type width: int, optional
+    :param height: Height of the resized image.
+    :type height: int, optional
+    :param quality: Quality of the resized image.
+    :type quality: int, optional
+    :return: Full URL to a resized image.
+    :rtype: str
 
-        .. code-block:: python
+    :Usage example:
 
-            import supervisely as sly
+    .. code-block:: python
 
-            api = sly.Api(server_address, token)
+        import supervisely as sly
 
-            image_id = 376729
-            img_info = api.image.get_info_by_id(image_id)
+        api = sly.Api(server_address, token)
 
-            img_resized_url = api.image.resize_image_url(
-                img_info.full_storage_url, ext="jpeg", method="fill", width=512, height=256)
-        """
-        # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
-        # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
-        # to add: previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/
+        image_id = 376729
+        img_info = api.image.get_info_by_id(image_id)
 
-        parsed_url = urllib.parse.urlparse(full_storage_url)
-        server_address = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        img_resized_url = api.image.resize_image_url(
+            img_info.full_storage_url, ext="jpeg", method="fill", width=512, height=256)
+    """
+    # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+    # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+    # to add: previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/
 
-        resize_string = f"previews/q/ext:{ext}/resize:{method}:{width}:{height}:0/q:{quality}/plain"
-        url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
-        return url
+    parsed_url = urllib.parse.urlparse(full_storage_url)
+    server_address = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+    resize_string = f"previews/q/ext:{ext}/resize:{method}:{width}:{height}:0/q:{quality}/plain"
+    url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
+    return url
 
 
 def get_preview_link(title="preview"):
