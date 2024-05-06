@@ -188,7 +188,7 @@ class CityscapesConverter(ImageConverter):
         ann_path = item.ann_data
         try:
             if ann_path is not None:
-                ann, meta = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
+                ann = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
             return ann
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
