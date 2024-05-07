@@ -23,6 +23,8 @@ from supervisely.app.widgets import (
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 from supervisely import env
 from supervisely.io.fs import get_file_name_with_ext
+from supervisely._utils import abs_url
+
 
 WEIGHTS_DIR = "weights"
 
@@ -167,7 +169,7 @@ class CustomModelsSelector(Widget):
             remote_path = os.path.join(self._task_path, "open_app.lnk")
             task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
             if task_file is not None:
-                return f"{self._api.server_address}/files/{task_file.id}"
+                return abs_url(f"/files/{task_file.id}")
             else:
                 return ""
 
