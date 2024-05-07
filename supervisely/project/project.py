@@ -1746,7 +1746,7 @@ class Project:
                 )
                 self._datasets = self._datasets.add(current_dataset)
             except Exception as ex:
-                logger.warning(ex, exc_info=True)
+                logger.warning(ex)
 
         if self.total_items == 0:
             raise RuntimeError("Project is empty")
