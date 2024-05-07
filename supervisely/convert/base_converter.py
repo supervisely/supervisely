@@ -250,7 +250,10 @@ class BaseConverter:
                         f"Unsupported file extensions detected: {unsupported_exts}. "
                         f"Convert your data to one of the supported formats: {self.allowed_exts}"
                     )
-                raise RuntimeError("No valid items found in the input data")
+                raise RuntimeError(
+                    "Please refer to the app overview and documentation for annotation formats, "
+                    "and ensure that your data contains valid information"
+                )
             return self
 
         if len(found_formats) == 1:
