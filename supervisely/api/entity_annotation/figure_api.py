@@ -9,6 +9,7 @@ from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from collections import defaultdict
 
 
 class FigureInfo(NamedTuple):
@@ -417,14 +418,19 @@ class FigureApi(RemoveableBulkModuleApi):
         }
         resp = self._api.post("figures.list", data)
         infos = resp.json()
-        images_figures = {}
-        for info in infos["entities"]:
-            figure_info = self._convert_json_info(info, True)
-            if figure_info.entity_id in images_figures:
+        images_figures = defaultdict(list)
+
+        total_pages = infos["pagesCount"]
+        for page in range(1, total_pages + 1):
+            if page > 1:
+                data.update({ApiField.PAGE: page})
+                resp = self._api.post("figures.list", data)
+                infos = resp.json()
+            for info in infos["entities"]:
+                figure_info = self._convert_json_info(info, True)
                 images_figures[figure_info.entity_id].append(figure_info)
-            else:
-                images_figures[figure_info.entity_id] = [figure_info]
-        return images_figures
+
+        return dict(images_figures)
 
     def _convert_json_info(self, info: dict, skip_missing=False):
         res = super()._convert_json_info(info, skip_missing=True)
