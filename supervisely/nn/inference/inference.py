@@ -985,7 +985,15 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                self.cache.download_images(api, dataset_info.id, image_ids)
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    for image_id in image_ids:
+                        executor.submit(
+                            self.cache.download_images,
+                            api,
+                            dataset_info.id,
+                            [image_id],
+                            return_images=False,
+                        )
 
         # start downloading in parallel
         threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
@@ -1101,7 +1109,9 @@ class Inference:
                             }
                         )
                     results.extend(batch_results)
-                    logger.debug("Batch predict time:", extra={"time": f"{bp_time.get_sec():.3f} sec"})
+                    logger.debug(
+                        "Batch predict time:", extra={"time": f"{bp_time.get_sec():.3f} sec"}
+                    )
                     upload_queue.put((batch_results, b_time.t))
                 logger.debug(
                     "Inference dataset time:",
