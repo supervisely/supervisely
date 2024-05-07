@@ -236,11 +236,12 @@ class CustomModelsSelector(Widget):
         self._rows = table_rows
         # self._rows_html = #[row.to_html() for row in self._rows]
 
-        task_types = []
+        task_types = [task_type for task_type in table_rows]
         self._rows_html = defaultdict(list)
-        for model_row in table_rows:
-            task_types.append(model_row.task_type)
-            self._rows_html[model_row.task_type].append(model_row.to_html())
+        for task_type in table_rows:
+            self._rows_html[task_type].extend(
+                [model_row.to_html() for model_row in table_rows[task_type]]
+            )
 
         self._task_types = self._filter_task_types(task_types)
         if len(self._task_types) == 0:
@@ -379,7 +380,7 @@ class CustomModelsSelector(Widget):
 
     def _generate_table_rows(self, checkpoint_infos: List[CheckpointInfo]) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
-        table_rows = []
+        table_rows = defaultdict(list)
         for checkpoint_info in checkpoint_infos:
             try:
                 model_row = CustomModelsSelector.ModelRow(
@@ -388,9 +389,10 @@ class CustomModelsSelector(Widget):
                     checkpoint=checkpoint_info,
                     task_type=checkpoint_info.task_type,
                 )
-                table_rows.append(model_row)
+                table_rows[checkpoint_info.task_type].append(model_row)
             except:
                 continue
+        table_rows = dict(table_rows)
         return table_rows
 
     def _filter_task_types(self, task_types: List[str]):
@@ -412,9 +414,10 @@ class CustomModelsSelector(Widget):
             return
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
+        task_type = widget_actual_state["selectedTaskType"]
         if widget_actual_state is not None and widget_actual_data is not None:
             selected_row_index = int(widget_actual_state["selectedRow"])
-            return self._rows[selected_row_index]
+            return self._rows[task_type][selected_row_index]
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
         widget_actual_state = state[self.widget_id]
