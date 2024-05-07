@@ -56,7 +56,7 @@ def pc2_to_ann(points: np.ndarray, path: str, meta: ProjectMeta) -> ProjectMeta:
     dump_json_file(ann.to_json(), path)
 
 
-def process_vector3_msg(time_to_data, vectors_dict, bag_path, meta, topic):
+def process_vector3_msg(time_to_data, vectors_dict, bag_path, meta, topic, progress_cb):
     """Convert a list of Vector3d to an annotation file."""
     for time, vectors_list in vectors_dict.items():
         objects = PointcloudObjectCollection()
@@ -79,6 +79,8 @@ def process_vector3_msg(time_to_data, vectors_dict, bag_path, meta, topic):
             path.parent.mkdir(parents=True, exist_ok=True)
         dump_json_file(ann.to_json(), path.as_posix())
         time_to_data[time]["ann"] = path
+        progress_cb(1)
+
 
 def process_pc2_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False):
     """Process a ROS message and save it as a PCD file or JSON annotation file."""

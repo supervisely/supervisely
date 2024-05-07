@@ -92,7 +92,10 @@ class BagConverter(PointcloudConverter):
                 for topic, topic_type, msg_count in topics:
                     if topic_type == "sensor_msgs/PointCloud2":
                         if "SlyAnnotations" in topic:
-                            ann_topic = topic
+                            logger.warn(
+                                f"{topic} topic: only [geometry_msgs/Vector3Stamped] supported for Supervisely annotations"
+                            )
+                            # ann_topic = topic
                             continue
                         cloud_msg_cnt += msg_count
                         pcd_topic = topic
@@ -154,10 +157,13 @@ class BagConverter(PointcloudConverter):
                         if re.match(r"\d+\.\d+", frame_id):
                             time_to_vectors[frame_id].append(msg)
                     elif ann_topic_type == "sensor_msgs/PointCloud2":
-                        process_pc2_msg(time_to_data, msg, rostime, bag_path, ann_topic, meta, is_ann=True)
+                        logger.warn(
+                            f"{item.ann_data} topic: only [geometry_msgs/Vector3Stamped] supported for Supervisely annotations"
+                        )
+                        # process_pc2_msg(time_to_data, msg, rostime, bag_path, ann_topic, meta, is_ann=True)
                         progress_cb(1)
                 if len(time_to_vectors) > 0:
-                    process_vector3_msg(time_to_data, time_to_vectors, bag_path, meta, ann_topic)
+                    process_vector3_msg(time_to_data, time_to_vectors, bag_path, meta, ann_topic, progress_cb)
 
                 if is_development():
                     progress.close()
