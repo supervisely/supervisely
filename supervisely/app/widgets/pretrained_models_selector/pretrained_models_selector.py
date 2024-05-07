@@ -3,6 +3,7 @@ from typing import Dict, List, Union
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
+from supervisely.io.fs import get_file_ext
 
 
 class PretrainedModelsSelector(Widget):
@@ -141,16 +142,18 @@ class PretrainedModelsSelector(Widget):
             raise ValueError(
                 "Could not find model name. Make sure you have column 'Model' in your models list."
             )
-        checkpoint_filename = f"{model_name.lower()}.pt"
         checkpoint_url = selected_model.get("meta", {}).get("weights_url")
         if checkpoint_url is None:
             pass
+
+        checkpoint_ext = get_file_ext(checkpoint_url)
+        checkpoint_name = f"{model_name.lower()}{checkpoint_ext}"
 
         task_type = self.get_selected_task_type()
         model_params = {
             "model_source": "Pretrained models",
             "task_type": task_type,
-            "checkpoint_name": checkpoint_filename,
+            "checkpoint_name": checkpoint_name,
             "checkpoint_url": checkpoint_url,
         }
 
@@ -177,7 +180,7 @@ class PretrainedModelsSelector(Widget):
         StateJson().send_changes()
 
     def set_active_task_type(self, task_type: str):
-        if task_type not in self._table_data[self.get_selected_arch_type()]:
+        if task_type not in self._task_types:
             raise ValueError(f'Task type "{task_type}" does not exist')
         StateJson()[self.widget_id]["selectedTaskType"] = task_type
         StateJson().send_changes()
