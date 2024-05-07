@@ -23,7 +23,7 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 class AvailableImageConverters:
     SLY = "supervisely"
     COCO = "coco"
-    FAST_COCO = "'light' coco"
+    FAST_COCO = "coco (fast)"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
     CSV = "csv"
