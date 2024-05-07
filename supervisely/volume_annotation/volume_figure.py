@@ -96,6 +96,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        **kwargs,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
         if not isinstance(geometry, (Mask3D, ClosedSurfaceMesh)):

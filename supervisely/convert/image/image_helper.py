@@ -52,12 +52,11 @@ def validate_mimetypes(name: str, path: str) -> list:
         return name
 
     new_img_ext = mimetypes.guess_extension(mimetype)
-    if new_img_ext == ".bin":
+    if new_img_ext == ".bin" or new_img_ext is None:
         new_img_ext = ".jpeg"
     new_img_name = f"{get_file_name(name)}{new_img_ext}"
-    logger.warn(
-        f"Image {name} extension doesn't have correct mimetype {mimetype}. "
-        f"Image will be converted to {new_img_ext}"
+    logger.info(
+        f"Image {name} with mimetype {mimetype} will be converted to {new_img_ext}"
     )
 
     return new_img_name

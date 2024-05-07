@@ -112,9 +112,6 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             list_of_pcd_names = list(frames_pcd_map.values())
         else:
             list_of_pcd_names = sorted(pcd_dict.keys())
-            logger.warn(
-                "Mappping of frames to pointclouds not found. Using sorted list of pointclouds."
-            )
 
         for i, pcd_name in enumerate(list_of_pcd_names):
             if pcd_name in pcd_dict:
