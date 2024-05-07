@@ -1069,12 +1069,26 @@ class Inference:
         data_to_return = {}
         logger.info("Start downloaders time:", extra={"time": f"{tm.get_sec():.3f} sec"})
         tm = TinyTimer()
+        stop = False
         try:
             for dataset_info in datasets_infos:
                 d_tm = TinyTimer()
+                if stop:
+                    break
                 for images_infos_batch in batched(
                     images_infos_dict[dataset_info.id], batch_size=16
                 ):
+                    if (
+                        async_inference_request_uuid is not None
+                        and inference_request["cancel_inference"] is True
+                    ):
+                        logger.debug(
+                            f"Cancelling inference project...",
+                            extra={"inference_request_uuid": async_inference_request_uuid},
+                        )
+                        results = []
+                        stop = True
+                        break
                     b_time = TinyTimer()
                     bd_time = TinyTimer()
                     images_nps = self.cache.download_images(
