@@ -79,7 +79,7 @@ def process_vector3_msg(time_to_data, vectors_dict, bag_path, meta, topic, progr
             path.parent.mkdir(parents=True, exist_ok=True)
         dump_json_file(ann.to_json(), path.as_posix())
         time_to_data[time]["ann"] = path
-        progress_cb(1)
+        progress_cb(len(vectors_list))
 
 
 def process_pc2_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False):
