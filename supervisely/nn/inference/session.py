@@ -301,7 +301,11 @@ class SessionJSON:
         return frame_iterator
 
     def inference_project_id_async(
-        self, project_id: int, dest_project_id: int = None, process_fn=None
+        self,
+        project_id: int,
+        dataset_ids: List[int],
+        output_project_id: int = None,
+        process_fn=None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -317,7 +321,8 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["projectId"] = project_id
-        state["output_project_id"] = dest_project_id
+        state["output_project_id"] = output_project_id
+        state["dataset_ids"] = dataset_ids
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -329,11 +334,13 @@ class SessionJSON:
         )
         return frame_iterator
 
-    def inference_project_id(self, project_id: int, dest_project_id: int = None):
+    def inference_project_id(
+        self, project_id: int, dataset_ids: List[int] = None, output_project_id: int = None
+    ):
         return [
             pred
             for pred in self.inference_project_id_async(
-                project_id, dest_project_id, process_fn=None
+                project_id, dataset_ids, output_project_id, process_fn=None
             )
         ]
 
@@ -361,7 +368,7 @@ class SessionJSON:
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
-        logger.info("The inference is preparing on the server, this may take a while...")
+        logger.info("Preparing data on the model, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
@@ -623,17 +630,24 @@ class Session(SessionJSON):
     def inference_project_id_async(
         self,
         project_id: int,
-        dest_project_id: int = None,
+        dataset_ids: List[int] = None,
+        output_project_id: int = None,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
-            dest_project_id,
+            dataset_ids,
+            output_project_id,
             process_fn=self._convert_to_sly_ann_info,
         )
         return frame_iterator
 
-    def inference_project_id(self, project_id: int, dest_project_id: int = None):
-        return [pred for pred in self.inference_project_id_async(project_id, dest_project_id)]
+    def inference_project_id(
+        self, project_id: int, dataset_ids: List[int] = None, output_project_id: int = None
+    ):
+        return [
+            pred
+            for pred in self.inference_project_id_async(project_id, dataset_ids, output_project_id)
+        ]
 
     def _convert_to_sly_ann_info(self, pred_json: dict):
         image_id = pred_json["image_id"]

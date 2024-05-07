@@ -25,7 +25,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import ProjectInfo, batched
+from supervisely import DatasetInfo, ProjectInfo, batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -924,6 +924,13 @@ class Inference:
         logger.debug("Inferring project...", extra={"state": state})
         if project_info is None:
             project_info = api.project.get_info_by_id(state["projectId"])
+        dataset_ids = state.get("dataset_ids", None)
+
+        datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
+        if dataset_ids is not None:
+            datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
+
+        preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -938,6 +945,13 @@ class Inference:
             sly_progress: Progress = inference_request["progress"]
 
             sly_progress.total = project_info.items_count
+            inference_request["preparing_progress"]["total"] = len(datasets_infos)
+            preparing_progress = inference_request["preparing_progress"]
+
+        # progress
+        preparing_progress["status"] = "download_info"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = len(datasets_infos)
 
         output_project_id = state.get("output_project_id", None)
         output_project_meta = None
@@ -958,18 +972,20 @@ class Inference:
                     output_project_id, output_project_meta
                 )
 
-        datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         images_infos_dict = {}
-
-        # to start downloading images in parallel
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
-            image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-            threading.Thread(
-                target=self.cache.download_images,
-                args=(api, dataset_info.id, image_ids),
-                daemon=True,
-            ).start()
+            preparing_progress["current"] += 1
+
+        preparing_progress["status"] = "inference"
+
+        def _download_images(datasets_infos: List[DatasetInfo]):
+            for dataset_info in datasets_infos:
+                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
+                self.cache.download_images(api, dataset_info.id, image_ids)
+
+        # start downloading in parallel
+        threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
         def _upload_results_to_source(results: List[Dict]):
             for result in results:
