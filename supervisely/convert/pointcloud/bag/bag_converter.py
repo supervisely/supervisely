@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import List
@@ -16,7 +17,7 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import AvailablePointcloudConverters
-from supervisely.convert.pointcloud.bag.bag_helper import process_msg
+from supervisely.convert.pointcloud.bag.bag_helper import process_pc2_msg, process_vector3_msg
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.fs import (
@@ -95,6 +96,10 @@ class BagConverter(PointcloudConverter):
                             continue
                         cloud_msg_cnt += msg_count
                         pcd_topic = topic
+                    elif topic_type == "geometry_msgs/Vector3Stamped":
+                        if "SlyAnnotations" in topic:
+                            ann_topic = topic
+                            continue
 
                 if pcd_topic is not None:
                     if self._is_pcd_episode:
@@ -119,13 +124,17 @@ class BagConverter(PointcloudConverter):
 
         with rosbag.Bag(item.path) as bag:
             msg_count = bag.get_message_count(topic_filters=item.topic)
+            if ann_topic is not None:
+                ann_topics_info = bag.get_type_and_topic_info(topic_filters=[item.ann_data])[1]
+                ann_topic_type = list(ann_topics_info.values())[0][0]
             progress, progress_cb = self.get_progress(
                 msg_count, f"Convert {topic} topic from {bag_path.name} to pcd"
             )
 
             time_to_data = defaultdict(dict)
+
             for _, msg, rostime in bag.read_messages(topics=[item.topic]):
-                process_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False)
+                process_pc2_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False)
 
                 progress_cb(1)
             if is_development():
@@ -138,9 +147,18 @@ class BagConverter(PointcloudConverter):
                     msg_count, f"Convert {item.ann_data} topic to JSON annotations"
                 )
 
+                time_to_vectors = defaultdict(list)
                 for _, msg, rostime in bag.read_messages(topics=[item.ann_data]):
-                    process_msg(time_to_data, msg, rostime, bag_path, ann_topic, meta, is_ann=True)
-                    progress_cb(1)
+                    if ann_topic_type == "geometry_msgs/Vector3Stamped":
+                        frame_id = msg.header.frame_id
+                        if re.match(r"\d+\.\d+", frame_id):
+                            time_to_vectors[frame_id].append(msg)
+                    elif ann_topic_type == "sensor_msgs/PointCloud2":
+                        process_pc2_msg(time_to_data, msg, rostime, bag_path, ann_topic, meta, is_ann=True)
+                        progress_cb(1)
+                if len(time_to_vectors) > 0:
+                    process_vector3_msg(time_to_data, time_to_vectors, bag_path, meta, ann_topic)
+
                 if is_development():
                     progress.close()
 

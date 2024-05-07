@@ -56,7 +56,33 @@ def pc2_to_ann(points: np.ndarray, path: str, meta: ProjectMeta) -> ProjectMeta:
     dump_json_file(ann.to_json(), path)
 
 
-def process_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False):
+def process_vector3_msg(time_to_data, vectors_dict, bag_path, meta, topic):
+    """Convert a list of Vector3d to an annotation file."""
+    from geometry_msgs.msg import Vector3, Vector3Stamped
+
+    for time, vectors_list in vectors_dict.items():
+        objects = PointcloudObjectCollection()
+        figures = []
+        for i in range(0, len(vectors_list), 3):
+            msg_1, msg_2, msg_3 = vectors_list[i : i + 3]
+            center = Vector3d(msg_1.vector.x, msg_1.vector.y, msg_1.vector.z)
+            size = Vector3d(msg_2.vector.x, msg_2.vector.y, msg_2.vector.z)
+            rotation = Vector3d(msg_3.vector.x, msg_3.vector.y, msg_3.vector.z)
+            cuboid = Cuboid3d(center, rotation, size)
+            obj_cls = meta.get_obj_class("object")
+            pcd_obj = PointcloudObject(obj_cls)
+            objects = objects.add(pcd_obj)
+            figure = PointcloudFigure(pcd_obj, cuboid)
+            figures.append(figure)
+
+        ann = PointcloudAnnotation(objects=objects, figures=figures)
+        path = bag_path.parent / bag_path.stem / topic / time
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+        dump_json_file(ann.to_json(), path.as_posix())
+        time_to_data[time]["ann"] = path
+
+def process_pc2_msg(time_to_data, msg, rostime, bag_path, topic, meta, is_ann=False):
     """Process a ROS message and save it as a PCD file or JSON annotation file."""
     import sensor_msgs.point_cloud2 as pc2  # pylint: disable=import-error
 
