@@ -538,3 +538,19 @@ def disable_offline_session() -> bool:
         default=False,
         raise_not_found=False,
     )
+
+
+def sly_cloud_server_address(raise_not_found: bool = True) -> str:
+    """Returns cloud server address from environment variable using following keys:
+        - SLY_CLOUD_SERVER_URL
+
+    :return: Supervisely cloud server address
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="sly_cloud_server_address",
+        keys=["SLY_CLOUD_SERVER_URL"],
+        postprocess_fn=lambda x: x,
+        default=None,
+        raise_not_found=raise_not_found,
+    )
