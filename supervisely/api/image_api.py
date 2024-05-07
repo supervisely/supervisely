@@ -2874,7 +2874,11 @@ class ImageApi(RemoveableBulkModuleApi):
         for dir_path in dir_paths:
             image_infos.extend(
                 self.upload_dir(
-                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
+                    dataset_id,
+                    dir_path,
+                    recursive,
+                    change_name_if_conflict,
+                    progress_cb,
                 )
             )
         return image_infos

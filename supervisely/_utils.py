@@ -13,7 +13,7 @@ import urllib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
@@ -212,6 +212,24 @@ def compress_image_url(
     height: Optional[int] = None,
     quality: Optional[int] = 70,
 ) -> str:
+    """NOTE: This function is deprecated. Use resize_image_url instead.
+    Returns a URL to a compressed image with given parameters.
+
+    :param url: Full Image storage URL, can be obtained from ImageInfo.
+    :type url: str
+    :param width: Width of the compressed image.
+    :type width: int, optional
+    :param height: Height of the compressed image.
+    :type height: int, optional
+    :param quality: Quality of the compressed image.
+    :type quality: int, optional
+    :return: Full URL to a compressed image.
+    :rtype: str
+    """
+    logger.warning(
+        "compress_image_url is deprecated. Use resize_image_url instead. "
+        "NOTE: compress_image_url returning INCORRECT RESULTS already."
+    )
     if width is None:
         width = ""
     if height is None:
@@ -220,6 +238,61 @@ def compress_image_url(
         "/image-converter",
         f"/previews/{width}x{height},jpeg,q{quality}/image-converter",
     )
+
+
+def resize_image_url(
+    full_storage_url: str,
+    ext: Literal["jpeg", "png"] = "jpeg",
+    method: Literal["fit", "fill", "fill-down", "force", "auto"] = "auto",
+    width: int = 256,
+    height: int = 0,
+    quality: int = 70,
+) -> str:
+    """Returns a URL to a resized image with given parameters.
+    Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
+
+    :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
+    :type full_storage_url: str
+    :param ext: Image extension, jpeg or png.
+    :type ext: Literal["jpeg", "png"], optional
+    :param method: Resize type, fit, fill, fill-down, force, auto.
+    :type method: Literal["fit", "fill", "fill-down", "force", "auto"], optional
+    :param width: Width of the resized image.
+    :type width: int, optional
+    :param height: Height of the resized image.
+    :type height: int, optional
+    :param quality: Quality of the resized image.
+    :type quality: int, optional
+    :return: Full URL to a resized image.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+        from supervisely_utils import resize_image_url
+
+        api = sly.Api(server_address, token)
+
+        image_id = 376729
+        img_info = api.image.get_info_by_id(image_id)
+
+        img_resized_url = resize_image_url(
+            img_info.full_storage_url, ext="jpeg", method="fill", width=512, height=256)
+        print(img_resized_url)
+        # Output: https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:512:256:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+    """
+    # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+    # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+    # to add: previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/
+
+    parsed_url = urllib.parse.urlparse(full_storage_url)
+    server_address = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+    resize_string = f"previews/q/ext:{ext}/resize:{method}:{width}:{height}:0/q:{quality}/plain"
+    url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
+    return url
 
 
 def get_preview_link(title="preview"):
