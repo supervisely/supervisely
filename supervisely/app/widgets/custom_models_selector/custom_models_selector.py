@@ -431,6 +431,7 @@ class CustomModelsSelector(Widget):
         return StateJson()[self.widget_id]["selectedTaskType"]
 
     def get_selected_model_params(self) -> Union[Dict, None]:
+        config_url = None
         is_custom_path = self.use_custom_checkpoint_path()
         if not is_custom_path:
             selected_model = self.get_selected_row()
