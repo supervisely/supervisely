@@ -999,7 +999,7 @@ class Inference:
         def _add_results_to_request(results: List[Dict]):
             inference_request["pending_results"].extend(results)
             if async_inference_request_uuid is not None:
-                sly_progress.iters_done(results)
+                sly_progress.iters_done(len(results))
 
         def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
             try:
