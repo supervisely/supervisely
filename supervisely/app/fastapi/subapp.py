@@ -427,6 +427,7 @@ def _init(
     static_dir=None,
     hot_reload=False,
     before_shutdown_callbacks=None,
+    index_function: Optional[Callable] = None,
 ) -> FastAPI:
     from supervisely.app.content import DataJson, StateJson
     from supervisely.app.fastapi import available_after_shutdown
@@ -501,6 +502,7 @@ def _init(
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
+            index_function()
             return Jinja2Templates().TemplateResponse("index.html", {"request": request})
 
         @app.on_event("shutdown")
@@ -539,6 +541,7 @@ class Application(metaclass=Singleton):
         hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
         session_info_extra_content: "Widget" = None,
         session_info_solid: bool = False,
+        index_function: Optional[Callable] = None,
     ):
         global IS_RUNNING
 
@@ -615,6 +618,7 @@ class Application(metaclass=Singleton):
             static_dir=static_dir,
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
+            index_function=index_function,
         )
         self.test_client = TestClient(self._fastapi)
 
