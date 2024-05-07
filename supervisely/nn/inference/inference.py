@@ -990,11 +990,10 @@ class Inference:
                 with ThreadPoolExecutor(max_workers=batch_size) as executor:
                     for image_id in image_ids:
                         executor.submit(
-                            self.cache.download_images,
+                            self.cache.download_image,
                             api,
                             dataset_info.id,
-                            [image_id],
-                            return_images=False,
+                            image_id,
                         )
 
         # start downloading in parallel
