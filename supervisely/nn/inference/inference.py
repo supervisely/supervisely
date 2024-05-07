@@ -926,6 +926,8 @@ class Inference:
             project_info = api.project.get_info_by_id(state["projectId"])
         dataset_ids = state.get("dataset_ids", None)
 
+        batch_size = state.get("batch_size", 16)
+
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         if dataset_ids is not None:
             datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
@@ -982,7 +984,14 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                self.cache.download_images(api, dataset_info.id, image_ids)
+                with ThreadPoolExecutor() as executor:
+                    for image_id in image_ids:
+                        executor.submit(
+                            self.cache.download_image,
+                            api,
+                            dataset_info.id,
+                            image_id,
+                        )
 
         # start downloading in parallel
         threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
@@ -1053,11 +1062,25 @@ class Inference:
         logger.debug(f"Inference settings:", extra=settings)
         results = []
         data_to_return = {}
+        stop = False
         try:
             for dataset_info in datasets_infos:
+                if stop:
+                    break
                 for images_infos_batch in batched(
-                    images_infos_dict[dataset_info.id], batch_size=16
+                    images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
+                    if (
+                        async_inference_request_uuid is not None
+                        and inference_request["cancel_inference"] is True
+                    ):
+                        logger.debug(
+                            f"Cancelling inference project...",
+                            extra={"inference_request_uuid": async_inference_request_uuid},
+                        )
+                        results = []
+                        stop = True
+                        break
                     images_nps = self.cache.download_images(
                         api,
                         dataset_info.id,
