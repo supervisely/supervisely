@@ -112,6 +112,12 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_images = {img_info.name: img_info for img_info in api.image.get_list(dataset_id)}
+        if len(existing_images) == 0:
+            raise RuntimeError(
+                "Failed to upload COCO annotations, you have no images in the dataset. "
+                "To add annotations to your dataset, please start import process from dataset with images. "
+                "Or you can upload images and annotations together. "
+            )
         if log_progress:
             progress, progress_cb = self.get_progress(
                 self.items_count, "Adding COCO annotations..."
