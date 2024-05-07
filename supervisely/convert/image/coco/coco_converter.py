@@ -93,7 +93,6 @@ class COCOConverter(ImageConverter):
                     ann_dict[image_name] = coco_ann
                 else:
                     ann_dict[image_name].extend(coco_ann)
-            detected_ann_cnt += 1
 
         # create Items
         self._items = []
@@ -104,6 +103,7 @@ class COCOConverter(ImageConverter):
                 # is_valid = self.validate_ann_file(ann_data, self._meta) in case of more detailed validation
                 # if is_valid:
                 item.ann_data = ann_data
+                detected_ann_cnt += 1
             self._items.append(item)
 
         self._meta = meta

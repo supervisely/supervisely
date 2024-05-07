@@ -13,6 +13,7 @@ from supervisely.convert.image.cityscapes.cityscapes_converter import (
     CityscapesConverter,
 )
 from supervisely.convert.image.coco.coco_converter import COCOConverter
+from supervisely.convert.image.coco.coco_anntotation_converter import FastCOCOConverter
 from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.multispectral.multispectral_converter import (
     MultiSpectralImageConverter,
