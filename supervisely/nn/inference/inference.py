@@ -931,6 +931,8 @@ class Inference:
         if dataset_ids is not None:
             datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
 
+        batch_size = state.get("batch_size", 16)
+
         preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
             try:
@@ -985,7 +987,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(max_workers=16) as executor:
+                with ThreadPoolExecutor(max_workers=batch_size) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_images,
@@ -1074,7 +1076,7 @@ class Inference:
             for dataset_info in datasets_infos:
                 d_tm = TinyTimer()
                 for images_infos_batch in batched(
-                    images_infos_dict[dataset_info.id], batch_size=16
+                    images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
                     b_time = TinyTimer()
                     bd_time = TinyTimer()
