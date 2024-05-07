@@ -58,8 +58,6 @@ def pc2_to_ann(points: np.ndarray, path: str, meta: ProjectMeta) -> ProjectMeta:
 
 def process_vector3_msg(time_to_data, vectors_dict, bag_path, meta, topic):
     """Convert a list of Vector3d to an annotation file."""
-    from geometry_msgs.msg import Vector3, Vector3Stamped
-
     for time, vectors_list in vectors_dict.items():
         objects = PointcloudObjectCollection()
         figures = []
