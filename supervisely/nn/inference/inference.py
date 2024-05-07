@@ -25,7 +25,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import DatasetInfo, ProjectInfo, TinyTimer, batched
+from supervisely import DatasetInfo, ProjectInfo, batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -921,7 +921,6 @@ class Inference:
         If "output_project_id" equal to source project id, upload annotations to the source project.
         If "output_project_id" is None, write annotations to inference request object.
         """
-        tm = TinyTimer()
         logger.debug("Inferring project...", extra={"state": state})
         if project_info is None:
             project_info = api.project.get_info_by_id(state["projectId"])
@@ -979,8 +978,6 @@ class Inference:
             preparing_progress["current"] += 1
 
         preparing_progress["status"] = "inference"
-        logger.info("Preparing data time:", extra={"time": f"{tm.get_sec():.3f} sec"})
-        tm = TinyTimer()
 
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
@@ -997,18 +994,16 @@ class Inference:
         # start downloading in parallel
         threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
-        def _upload_results_to_source(results: List[Dict], t: float):
+        def _upload_results_to_source(results: List[Dict]):
             for result in results:
                 image_id = result["image_id"]
                 ann = Annotation.from_json(result["annotation"], output_project_meta)
                 api.annotation.append_labels(image_id, ann.labels)
                 if async_inference_request_uuid is not None:
                     sly_progress.iters_done(1)
-            logger.info("Inference batch time:", extra={"time": f"{time.time()-t:.3f} sec"})
 
-        def _upload_results_to_other(results: List[Dict], t: float):
+        def _upload_results_to_other(results: List[Dict]):
             if len(results) == 0:
-                logger.info("Inference batch time:", extra={"time": f"{time.time()-t:.3f} sec"})
                 return
             dataset_id = results[0]["dataset_id"]
             image_ids = [result["image_id"] for result in results]
@@ -1023,13 +1018,11 @@ class Inference:
             )
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(results)
-            logger.info("Inference batch time:", extra={"time": f"{time.time()-t:.3f} sec"})
 
-        def _add_results_to_request(results: List[Dict], t: float):
+        def _add_results_to_request(results: List[Dict]):
             inference_request["pending_results"].extend(results)
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(results))
-            logger.info("Inference batch time:", extra={"time": f"{time.time()-t:.3f} sec"})
 
         def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
             try:
@@ -1038,8 +1031,8 @@ class Inference:
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
-                        for batch, t in items:
-                            upload_f(batch, t)
+                        for batch in items:
+                            upload_f(batch)
                         continue
                     if stop_event.is_set():
                         return
@@ -1067,12 +1060,9 @@ class Inference:
         logger.debug(f"Inference settings:", extra=settings)
         results = []
         data_to_return = {}
-        logger.info("Start downloaders time:", extra={"time": f"{tm.get_sec():.3f} sec"})
-        tm = TinyTimer()
         stop = False
         try:
             for dataset_info in datasets_infos:
-                d_tm = TinyTimer()
                 if stop:
                     break
                 for images_infos_batch in batched(
@@ -1089,19 +1079,12 @@ class Inference:
                         results = []
                         stop = True
                         break
-                    b_time = TinyTimer()
-                    bd_time = TinyTimer()
                     images_nps = self.cache.download_images(
                         api,
                         dataset_info.id,
                         [info.id for info in images_infos_batch],
                         return_images=True,
                     )
-                    logger.info(
-                        "Download images batch time:",
-                        extra={"time": f"{bd_time.get_sec():.3f} sec"},
-                    )
-                    bp_time = TinyTimer()
                     anns = self._inference_images_batch(
                         source=images_nps,
                         settings=settings,
@@ -1122,19 +1105,10 @@ class Inference:
                             }
                         )
                     results.extend(batch_results)
-                    logger.info(
-                        "Batch predict time:", extra={"time": f"{bp_time.get_sec():.3f} sec"}
-                    )
-                    upload_queue.put((batch_results, b_time.t))
-                logger.info(
-                    "Inference dataset time:",
-                    extra={"dataset_id": dataset_info.id, "time": f"{d_tm.get_sec():.3f} sec"},
-                )
+                    upload_queue.put(batch_results)
         except Exception:
             stop_upload_event.set()
             raise
-        finally:
-            logger.info("Inference total time:", extra={"time": f"{tm.get_sec():.3f} sec"})
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         stop_upload_event.set()
