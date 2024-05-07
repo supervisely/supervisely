@@ -23,6 +23,7 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 class AvailableImageConverters:
     SLY = "supervisely"
     COCO = "coco"
+    FAST_COCO = "'light' coco"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
     CSV = "csv"
@@ -70,7 +71,7 @@ class BaseConverter:
         ):
             self._path: str = item_path
             self._name: str = None
-            self._ann_data: Union[str, dict] = ann_data
+            self._ann_data: Union[str, dict, list] = ann_data
             self._shape: Union[Tuple, List] = shape
             self._custom_data: dict = custom_data
 
@@ -97,7 +98,7 @@ class BaseConverter:
             return self._ann_data
 
         @ann_data.setter
-        def ann_data(self, ann_data: Union[str, dict]) -> None:
+        def ann_data(self, ann_data: Union[str, dict, list]) -> None:
             self._ann_data = ann_data
 
         @property

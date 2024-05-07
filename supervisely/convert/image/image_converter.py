@@ -48,7 +48,7 @@ class ImageConverter(BaseConverter):
         def meta(self) -> Union[str, dict]:
             return self._meta_data
 
-        def set_shape(self, shape: Tuple[int, int] = None) -> Tuple[int, int]:
+        def set_shape(self, shape: Tuple[int, int] = None) -> None:
             try:
                 if shape is not None:
                     self._shape = shape
