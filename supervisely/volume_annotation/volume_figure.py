@@ -96,7 +96,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
-        track_id: Optional[int] = None,
+        **kwargs,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
         if not isinstance(geometry, (Mask3D, ClosedSurfaceMesh)):
@@ -120,7 +120,6 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
-            track_id=track_id,
         )
         from supervisely.volume_annotation.plane import Plane
 

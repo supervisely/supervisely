@@ -81,7 +81,7 @@ class PointcloudFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
-        track_id: Optional[int] = None,
+        **kwargs,
     ):
         super().__init__(
             parent_object,
@@ -92,7 +92,6 @@ class PointcloudFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
-            track_id=track_id,
         )
         # @TODO: validate geometry - allowed: only cuboid_3d + point_cloud
 
