@@ -226,10 +226,6 @@ def compress_image_url(
     :return: Full URL to a compressed image.
     :rtype: str
     """
-    logger.warning(
-        "compress_image_url is deprecated. Use resize_image_url instead. "
-        "NOTE: compress_image_url returning INCORRECT RESULTS already."
-    )
     if width is None:
         width = ""
     if height is None:
