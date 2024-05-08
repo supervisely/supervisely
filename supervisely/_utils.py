@@ -288,13 +288,16 @@ def resize_image_url(
     # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
     # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
     # to add: previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/
+    try:
+        parsed_url = urllib.parse.urlparse(full_storage_url)
+        server_address = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-    parsed_url = urllib.parse.urlparse(full_storage_url)
-    server_address = f"{parsed_url.scheme}://{parsed_url.netloc}"
-
-    resize_string = f"previews/q/ext:{ext}/resize:{method}:{width}:{height}:0/q:{quality}/plain"
-    url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
-    return url
+        resize_string = f"previews/q/ext:{ext}/resize:{method}:{width}:{height}:0/q:{quality}/plain"
+        url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
+        return url
+    except Exception as e:
+        logger.debug(f"Failed to resize image with url: {full_storage_url}: {e}")
+        return full_storage_url
 
 
 def get_preview_link(title="preview"):

@@ -28,12 +28,9 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
 from supervisely._utils import (
-    abs_url,
     batched,
-    compress_image_url,
     generate_free_name,
     get_bytes_hash,
-    is_development,
     resize_image_url,
 )
 from supervisely.annotation.annotation import Annotation
