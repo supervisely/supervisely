@@ -126,6 +126,10 @@ def convert_rectangle(img_height, img_width, x_center, y_center, ann_width, ann_
 
 
 def convert_polygon(img_height, img_width, *coords):
+    if coords[0] == coords[-2] and coords[1] == coords[-1]:
+        if len(coords) == 6:
+            return None
+        coords = coords[:-2]
     exterior = []
     for i in range(0, len(coords), 2):
         x = coords[i]

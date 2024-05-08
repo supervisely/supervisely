@@ -43,7 +43,7 @@ class YOLOConverter(ImageConverter):
     def key_file_ext(self) -> str:
         return ".yaml"
 
-    def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
+    def validate_ann_file(self, ann_path: str, meta: ProjectMeta = None) -> bool:
         try:
             with open(ann_path, "r") as ann_file:
                 lines = ann_file.readlines()
@@ -184,7 +184,12 @@ class YOLOConverter(ImageConverter):
                 elif self.is_image(full_path):
                     images_list.append(full_path)
 
-        meta = ProjectMeta()
+        if config_path is None:
+            self._yaml_info = {
+                "names": yolo_helper.coco_classes,
+                "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
+            }
+            self._coco_classes_dict = {i: c for i, c in enumerate(yolo_helper.coco_classes)}
 
         # create Items
         self._items = []
@@ -197,18 +202,13 @@ class YOLOConverter(ImageConverter):
                 ann_name = f"{get_file_name(item.name)}.txt"
             if ann_name:
                 ann_path = ann_dict[ann_name]
-                is_valid = self.validate_ann_file(ann_path, meta)
+                is_valid = self.validate_ann_file(ann_path)
                 if is_valid:
                     item.ann_data = ann_path
                     detected_ann_cnt += 1
             self._items.append(item)
-        if detected_ann_cnt > 0:
-            if config_path is None:
-                self._yaml_info = {
-                    "names": yolo_helper.coco_classes,
-                    "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
-                }
-            self._meta = self.generate_meta()
+
+        self._meta = self.generate_meta()
         return detected_ann_cnt > 0
 
     def generate_meta(self) -> ProjectMeta:
@@ -259,17 +259,27 @@ class YOLOConverter(ImageConverter):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
-                        if len(coords) == 4:
+                        geometry_type = self._class_index_to_geometry.get(class_index)
+                        geometry = None
+                        if (
+                            geometry_type == Rectangle
+                            or len(coords) == 4
+                            and geometry_type == AnyGeometry
+                        ):
                             geometry = yolo_helper.convert_rectangle(height, width, *coords)
-                        elif len(coords) >= 6 and len(coords) % 2 == 0 and not self._with_keypoint:
+                        elif geometry_type == Polygon or (
+                            len(coords) >= 6
+                            and len(coords) % 2 == 0
+                            and not self._with_keypoint
+                            and geometry_type == AnyGeometry
+                        ):
                             geometry = yolo_helper.convert_polygon(height, width, *coords)
-                        elif len(coords) == self._num_dims * self._num_kpts + 4:
-                            geometry = yolo_helper.convert_keypoints(
-                                height, width, self._num_kpts, self._num_dims, *coords
-                            )
-                            if geometry is None:
-                                continue
-                        else:
+                        elif geometry in [GraphNodes, AnyGeometry]:
+                            if len(coords) == self._num_dims * self._num_kpts + 4:
+                                geometry = yolo_helper.convert_keypoints(
+                                    height, width, self._num_kpts, self._num_dims, *coords
+                                )
+                        if geometry is None:
                             continue
 
                         class_name = self._coco_classes_dict[class_index]
