@@ -244,11 +244,13 @@ def resize_image_url(
     full_storage_url: str,
     ext: Literal["jpeg", "png"] = "jpeg",
     method: Literal["fit", "fill", "fill-down", "force", "auto"] = "auto",
-    width: int = 256,
+    width: int = 0,
     height: int = 0,
     quality: int = 70,
 ) -> str:
     """Returns a URL to a resized image with given parameters.
+    Default sizes are 0, which means that the image will not be resized,
+    just compressed if the extension is jpeg to the given quality.
     Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
     :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.

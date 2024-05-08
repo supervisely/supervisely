@@ -33,6 +33,7 @@ from supervisely._utils import (
     generate_free_name,
     get_bytes_hash,
     is_development,
+    resize_image_url,
 )
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
@@ -155,11 +156,7 @@ class ImageInfo(NamedTuple):
         :return: Image preview URL.
         :rtype: :class:`str`
         """
-        res = self.full_storage_url
-        if is_development():
-            res = abs_url(res)
-        res = compress_image_url(url=res)
-        return res
+        return resize_image_url(self.full_storage_url)
 
 
 class ImageApi(RemoveableBulkModuleApi):
