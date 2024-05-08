@@ -526,6 +526,10 @@ class ApiField:
     """"""
     IMPORT_SETTINGS = "importSettings"
     """"""
+    ADVANCED_SETTINGS = "advancedSettings"
+    """"""
+    LIMIT_BY_WORKSPACE = "limitByWorkspace"
+    """"""
 
 
 def _get_single_item(items):
