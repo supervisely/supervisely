@@ -56,6 +56,7 @@ from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.project import ProjectType
+from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -925,12 +926,18 @@ class Inference:
         if project_info is None:
             project_info = api.project.get_info_by_id(state["projectId"])
         dataset_ids = state.get("dataset_ids", None)
+        cache_project_on_model = state.get("cache_project_on_model", False)
+        batch_size = state.get("batch_size", 16)
 
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         if dataset_ids is not None:
             datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
 
+        # progress
         preparing_progress = {"current": 0, "total": 1}
+        preparing_progress["status"] = "download_info"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = len(datasets_infos)
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -943,15 +950,15 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
+            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
 
-            sly_progress.total = project_info.items_count
             inference_request["preparing_progress"]["total"] = len(datasets_infos)
             preparing_progress = inference_request["preparing_progress"]
 
-        # progress
-        preparing_progress["status"] = "download_info"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
+            if cache_project_on_model:
+                progress_cb = sly_progress.iters_done
+                preparing_progress["total"] = sly_progress.total
+                preparing_progress["status"] = "download_project"
 
         output_project_id = state.get("output_project_id", None)
         output_project_meta = None
@@ -972,17 +979,22 @@ class Inference:
                     output_project_id, output_project_meta
                 )
 
+        if cache_project_on_model:
+            download_to_cache(api, project_info.id, datasets_infos, progress_cb=progress_cb)
+
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
-            preparing_progress["current"] += 1
+            if not cache_project_on_model:
+                preparing_progress["current"] += 1
 
         preparing_progress["status"] = "inference"
+        preparing_progress["current"] = 0
 
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(max_workers=16) as executor:
+                with ThreadPoolExecutor() as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -991,8 +1003,9 @@ class Inference:
                             image_id,
                         )
 
-        # start downloading in parallel
-        threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+        if not cache_project_on_model:
+            # start downloading in parallel
+            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
         def _upload_results_to_source(results: List[Dict]):
             for result in results:
@@ -1066,7 +1079,7 @@ class Inference:
                 if stop:
                     break
                 for images_infos_batch in batched(
-                    images_infos_dict[dataset_info.id], batch_size=16
+                    images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
                     if (
                         async_inference_request_uuid is not None
@@ -1079,12 +1092,21 @@ class Inference:
                         results = []
                         stop = True
                         break
-                    images_nps = self.cache.download_images(
-                        api,
-                        dataset_info.id,
-                        [info.id for info in images_infos_batch],
-                        return_images=True,
-                    )
+                    if cache_project_on_model:
+                        images_nps, _ = zip(
+                            *read_from_cached_project(
+                                project_info.id,
+                                dataset_info.name,
+                                [ii.name for ii in images_infos_batch],
+                            )
+                        )
+                    else:
+                        images_nps = self.cache.download_images(
+                            api,
+                            dataset_info.id,
+                            [info.id for info in images_infos_batch],
+                            return_images=True,
+                        )
                     anns = self._inference_images_batch(
                         source=images_nps,
                         settings=settings,

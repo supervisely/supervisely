@@ -305,6 +305,7 @@ class SessionJSON:
         project_id: int,
         dataset_ids: List[int],
         output_project_id: int = None,
+        cache_project_on_model: bool = False,
         process_fn=None,
     ):
         if self._async_inference_uuid:
@@ -322,6 +323,7 @@ class SessionJSON:
         state = json_body["state"]
         state["projectId"] = project_id
         state["output_project_id"] = output_project_id
+        state["cache_project_on_model"] = cache_project_on_model
         state["dataset_ids"] = dataset_ids
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
@@ -335,12 +337,20 @@ class SessionJSON:
         return frame_iterator
 
     def inference_project_id(
-        self, project_id: int, dataset_ids: List[int] = None, output_project_id: int = None
+        self,
+        project_id: int,
+        dataset_ids: List[int] = None,
+        output_project_id: int = None,
+        cache_project_on_model: bool = False,
     ):
         return [
             pred
             for pred in self.inference_project_id_async(
-                project_id, dataset_ids, output_project_id, process_fn=None
+                project_id,
+                dataset_ids,
+                output_project_id,
+                cache_project_on_model=cache_project_on_model,
+                process_fn=None,
             )
         ]
 
@@ -632,21 +642,29 @@ class Session(SessionJSON):
         project_id: int,
         dataset_ids: List[int] = None,
         output_project_id: int = None,
+        cache_project_on_model: bool = False,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
             dataset_ids,
             output_project_id,
+            cache_project_on_model=cache_project_on_model,
             process_fn=self._convert_to_sly_ann_info,
         )
         return frame_iterator
 
     def inference_project_id(
-        self, project_id: int, dataset_ids: List[int] = None, output_project_id: int = None
+        self,
+        project_id: int,
+        dataset_ids: List[int] = None,
+        output_project_id: int = None,
+        cache_project_on_model: bool = False,
     ):
         return [
             pred
-            for pred in self.inference_project_id_async(project_id, dataset_ids, output_project_id)
+            for pred in self.inference_project_id_async(
+                project_id, dataset_ids, output_project_id, cache_project_on_model
+            )
         ]
 
     def _convert_to_sly_ann_info(self, pred_json: dict):
