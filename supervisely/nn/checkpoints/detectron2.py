@@ -1,5 +1,6 @@
 from os.path import join
 from typing import List
+from supervisely._utils import abs_url
 
 from supervisely.api.api import Api
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
@@ -17,9 +18,7 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
     for task_file_info in task_files_infos:
         task_id = task_file_info["name"].split("_")[0]
         project_name = task_file_info["name"].split("_")[1]
-
-        session_link = f"{api.server_address}/apps/sessions/{task_id}"
-
+        session_link = abs_url(f"/apps/sessions/{task_id}")
         paths_to_checkpoints = join(task_file_info["path"], weights_dir_name)
         checkpoints_infos = [
             file

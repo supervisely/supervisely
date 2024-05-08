@@ -1,5 +1,6 @@
 from os.path import basename, join
 from typing import List
+from supervisely._utils import abs_url
 
 from supervisely.api.api import Api
 from supervisely.io.fs import silent_remove
@@ -22,7 +23,7 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
         session_dir_files = api.file.list(
             team_id, join(task_file_info["path"], weights_dir_name), recursive=False
         )
-        session_link = f"{api.server_address}/apps/sessions/{task_id}"
+        session_link = abs_url(f"/apps/sessions/{task_id}")
         checkpoints_infos = [file for file in session_dir_files if file["name"].endswith(".pth")]
         config_path = join(task_file_info["path"], weights_dir_name, "train_args.json")
         if not api.file.exists(team_id, config_path):

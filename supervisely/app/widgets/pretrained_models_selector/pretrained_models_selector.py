@@ -13,9 +13,7 @@ class PretrainedModelsSelector(Widget):
     :type models_list: List[Dict]
     :param widget_id: Unique identifier for the widget. If not provided, a unique ID will be generated.
     :type widget_id: str, optional
-    :param sort_tasks: Whether to sort the models within each task type by name. Default is True.
-    :type sort_tasks: bool, optional
-    :param sort_models: Whether to sort the task types within each architecture by name. Default is True.
+    :param sort_models: Whether to sort the task types within each architecture by name. Default is False.
     :type sort_models: bool, optional
 
     Usage example:
@@ -49,7 +47,7 @@ class PretrainedModelsSelector(Widget):
             },
         ]
 
-        pretrained_models_selector = PretrainedModelsSelector(models_list=models_list, sort_tasks = False, sort_models = False)
+        pretrained_models_selector = PretrainedModelsSelector(models_list=models_list, sort_models=False)
 
     """
 
@@ -62,20 +60,21 @@ class PretrainedModelsSelector(Widget):
         self,
         models_list: List[Dict],
         widget_id: str = None,
-        sort_tasks: bool = True,
-        sort_models: bool = True,
+        sort_models: bool = False,
     ):
         self._api = Api.from_env()
 
         self._models = models_list
-        filtered_models = self._filter_and_sort_models(self._models)
-        # filtered_models = self._filter_and_sort_models(self._models, sort_tasks, sort_models)
+        filtered_models = self._filter_and_sort_models(self._models, sort_models)
 
         self._table_data = filtered_models
         self._task_types = self._filter_task_types(list(filtered_models.keys()))
-        self._arch_types = sorted(
-            {arch for task_type in self._task_types for arch in filtered_models[task_type].keys()}
-        )
+        self._arch_types = []
+        # maintain correct order of arch types
+        for task_type in self._task_types:
+            for arch_type in filtered_models[task_type].keys():
+                if arch_type not in self._arch_types:
+                    self._arch_types.append(arch_type)
 
         self._arch_changes_handled = False
         self._task_changes_handled = False
@@ -191,41 +190,29 @@ class PretrainedModelsSelector(Widget):
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
-    def _filter_and_sort_models(
-        self, models: List[Dict]  # , sort_tasks: bool = True, sort_models: bool = True
-    ) -> Dict:
+    def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
         filtered_models = {}
 
         for model in models:
-            # Extract architecture type and task type, defaulting to 'other' if not specified
             arch_type = model.get("meta", {}).get("arch_type", "other")
             task_type = model.get("meta", {}).get("task_type", model.get("task_type", "other"))
 
-            # Initialize nested dictionary structure if not already present
             if task_type not in filtered_models:
                 filtered_models[task_type] = {}
             if arch_type not in filtered_models[task_type]:
                 filtered_models[task_type][arch_type] = []
-
-            # Add model to the appropriate category
             filtered_models[task_type][arch_type].append(model)
 
-        # Sort the dictionary by task type and then by architecture
-        sorted_filtered_models = {
-            task: {arch: models for arch, models in sorted(archs.items())}
-            for task, archs in sorted(filtered_models.items())
-        }
-
-        # if sort_models:
-        #     # Sort the models within each task type by name.
-        #     for arch, tasks in filtered_models.items():
-        #         for task, models in tasks.items():
-        #             filtered_models[arch][task] = sorted(models, key=lambda x: x.get("Model"))
-        # if sort_tasks:
-        #     # Sort the task types within each architecture by name.
-        #     for arch, tasks in filtered_models.items():
-        #         filtered_models[arch] = dict(sorted(tasks.items()))
-
+        if sort_models:
+            sorted_filtered_models = {
+                task: {arch: models for arch, models in sorted(archs.items())}
+                for task, archs in sorted(filtered_models.items())
+            }
+        else:
+            sorted_filtered_models = {
+                task: {arch: models for arch, models in archs.items()}
+                for task, archs in filtered_models.items()
+            }
         return sorted_filtered_models
 
     def _filter_task_types(self, task_types: List[str]):
@@ -242,15 +229,18 @@ class PretrainedModelsSelector(Widget):
         sorted_tt.extend(other_tasks)
         return sorted_tt
 
-    def set_models(self, models_list: List[Dict]):
+    def set_models(self, models_list: List[Dict], sort_models: bool = False):
         self._models = models_list
-        filtered_models = self._filter_and_sort_models(self._models)
+        filtered_models = self._filter_and_sort_models(self._models, sort_models)
         self._table_data = filtered_models
 
         self._task_types = self._filter_task_types(list(filtered_models.keys()))
-        self._arch_types = sorted(
-            {arch for task_type in self._task_types for arch in filtered_models[task_type].keys()}
-        )
+        self._arch_types = []
+        # maintain correct order of arch types
+        for task_type in self._task_types:
+            for arch_type in filtered_models[task_type].keys():
+                if arch_type not in self._arch_types:
+                    self._arch_types.append(arch_type)
 
         self.__default_selected_arch_type = (
             self._arch_types[0] if len(self._arch_types) > 0 else None
