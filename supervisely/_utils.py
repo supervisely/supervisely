@@ -292,7 +292,7 @@ def resize_image_url(
         url = full_storage_url.replace(server_address, f"{server_address}/{resize_string}")
         return url
     except Exception as e:
-        logger.debug(f"Failed to resize image with url: {full_storage_url}: {e}")
+        logger.debug(f"Failed to resize image with url: {full_storage_url}: {repr(e)}")
         return full_storage_url
 
 
