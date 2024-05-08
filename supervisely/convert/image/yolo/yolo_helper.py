@@ -1,6 +1,10 @@
-from supervisely import GraphNodes, Polygon, Rectangle, logger
+from supervisely import AnyGeometry, GraphNodes, Polygon, Rectangle, logger
 from supervisely.geometry.graph import KeypointsTemplate, Node
 from supervisely.imaging.color import generate_rgb
+
+YOLO_DETECTION_COORDS_NUM = 4
+YOLO_SEGM_MIN_COORDS_NUM = 6
+YOLO_KEYPOINTS_MIN_COORDS_NUM = 6
 
 coco_classes = [
     "person",
@@ -95,12 +99,18 @@ def generate_colors(count):
 
 
 def get_coordinates(line):
+    """
+    Parse coordinates from a line in the YOLO format.
+    """
     class_index = int(line[0])
     coords = list(map(float, line[1:]))
     return class_index, coords
 
 
 def convert_rectangle(img_height, img_width, x_center, y_center, ann_width, ann_height):
+    """
+    Convert rectangle coordinates from relative (0-1) to absolute (px) values.
+    """
     x_center = float(x_center)
     y_center = float(y_center)
     ann_width = float(ann_width)
@@ -125,11 +135,25 @@ def convert_rectangle(img_height, img_width, x_center, y_center, ann_width, ann_
     return Rectangle(top, left, bottom, right)
 
 
-def convert_polygon(img_height, img_width, *coords):
+def validate_polygon_coords(coords):
+    """
+    Check and correct polygon coordinates:
+    - remove the last point if it is the same as the first one
+    """
     if coords[0] == coords[-2] and coords[1] == coords[-1]:
-        if len(coords) == 6:
-            return None
-        coords = coords[:-2]
+        return coords[:-2]
+    return coords
+
+
+def convert_polygon(img_height, img_width, *coords):
+    """
+    Convert polygon coordinates from relative (0-1) to absolute (px) values.
+    """
+    coords = validate_polygon_coords(coords)
+    if len(coords) < 6:
+        logger.warning("Polygon has less than 3 points. Skipping.")
+        return None
+
     exterior = []
     for i in range(0, len(coords), 2):
         x = coords[i]
@@ -141,6 +165,9 @@ def convert_polygon(img_height, img_width, *coords):
 
 
 def convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords):
+    """
+    Convert keypoints coordinates from relative (0-1) to absolute (px) values.
+    """
     nodes = []
     step = 3 if num_dims == 3 else 2
     shift = 4
@@ -159,6 +186,9 @@ def convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords):
 
 
 def create_geometry_config(num_keypoints=None):
+    """
+    Create a template for keypoints with the specified number of keypoints.
+    """
     i, j = 0, 0
     template = KeypointsTemplate()
     for p in list(range(num_keypoints)):
@@ -167,3 +197,56 @@ def create_geometry_config(num_keypoints=None):
         i += 1
 
     return template
+
+
+def get_geometry(
+    geometry_type, img_height, img_width, with_keypoint, num_keypoints, num_dims, *coords
+):
+    """
+    Convert coordinates from relative (0-1) to absolute (px) values.
+    """
+    geometry = None
+    if geometry_type == Rectangle:
+        geometry = convert_rectangle(img_height, img_width, *coords)
+    elif geometry_type == Polygon:
+        geometry = convert_polygon(img_height, img_width, *coords)
+    elif geometry_type == GraphNodes:
+        geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords)
+    elif geometry_type == AnyGeometry:
+        if is_applicable_for_rectangles(coords):
+            geometry = convert_rectangle(img_height, img_width, *coords)
+        elif is_applicable_for_polygons(with_keypoint, coords):
+            geometry = convert_polygon(img_height, img_width, *coords)
+        elif is_applicable_for_keypoints(with_keypoint, num_keypoints, num_dims, coords):
+            geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords)
+    return geometry
+
+
+def is_applicable_for_rectangles(coords):
+    """
+    Check if the coordinates are applicable for rectangles.
+    """
+    return len(coords) == YOLO_DETECTION_COORDS_NUM
+
+
+def is_applicable_for_polygons(with_keypoint, coords):
+    """
+    Check if the coordinates are applicable for polygons.
+
+    :param with_keypoint: Whether the YAML config file contains keypoints.
+    :type with_keypoint: bool
+    """
+    if with_keypoint:
+        return False
+    return len(coords) >= YOLO_SEGM_MIN_COORDS_NUM and len(coords) % 2 == 0
+
+
+def is_applicable_for_keypoints(with_keypoint, num_keypoints, num_dims, coords):
+    """
+    Check if the coordinates are applicable for keypoints.
+    """
+    if not with_keypoint:
+        return False
+    if len(coords) < YOLO_KEYPOINTS_MIN_COORDS_NUM:
+        return False
+    return len(coords) == num_keypoints * num_dims + 4

@@ -76,16 +76,14 @@ class YOLOConverter(ImageConverter):
 
                         # collect geometry types for each class
                         geometry = None
-                        if len(coords) == 4:
+                        if yolo_helper.is_applicable_for_rectangles(coords):
                             geometry = Rectangle
-                        elif len(coords) >= 6:
-                            if len(coords) % 2 == 0 and not self._with_keypoint:
-                                geometry = Polygon
-                            elif (
-                                self._with_keypoint
-                                and len(coords) == self._num_dims * self._num_kpts + 4
-                            ):
-                                geometry = GraphNodes
+                        elif yolo_helper.is_applicable_for_polygons(self._with_keypoint, coords):
+                            geometry = Polygon
+                        elif yolo_helper.is_applicable_for_keypoints(
+                            self._with_keypoint, self._num_kpts, self._num_dims, coords
+                        ):
+                            geometry = GraphNodes
 
                         if class_index not in self._class_index_to_geometry:
                             self._class_index_to_geometry[class_index] = geometry
@@ -260,25 +258,15 @@ class YOLOConverter(ImageConverter):
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
                         geometry_type = self._class_index_to_geometry.get(class_index)
-                        geometry = None
-                        if (
-                            geometry_type == Rectangle
-                            or len(coords) == 4
-                            and geometry_type == AnyGeometry
-                        ):
-                            geometry = yolo_helper.convert_rectangle(height, width, *coords)
-                        elif geometry_type == Polygon or (
-                            len(coords) >= 6
-                            and len(coords) % 2 == 0
-                            and not self._with_keypoint
-                            and geometry_type == AnyGeometry
-                        ):
-                            geometry = yolo_helper.convert_polygon(height, width, *coords)
-                        elif geometry in [GraphNodes, AnyGeometry]:
-                            if len(coords) == self._num_dims * self._num_kpts + 4:
-                                geometry = yolo_helper.convert_keypoints(
-                                    height, width, self._num_kpts, self._num_dims, *coords
-                                )
+                        geometry = yolo_helper.get_geometry(
+                            geometry_type,
+                            height,
+                            width,
+                            self._with_keypoint,
+                            self._num_kpts,
+                            self._num_dims,
+                            coords,
+                        )
                         if geometry is None:
                             continue
 
