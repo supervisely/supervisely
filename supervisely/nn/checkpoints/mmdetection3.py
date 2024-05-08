@@ -1,9 +1,9 @@
 from os.path import join
 from typing import List
-from supervisely._utils import abs_url
 
 from supervisely.api.api import Api
 from supervisely.io.fs import silent_remove
+from supervisely._utils import abs_url, is_development
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 
@@ -16,7 +16,10 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
     for task_file_info in task_files_infos:
         task_id = task_file_info["name"].split("_")[0]
         session_dir_files = api.file.list(team_id, task_file_info["path"], recursive=False)
-        session_link = abs_url(f"/apps/sessions/{task_id}")
+        if is_development():
+            session_link = abs_url(f"/apps/sessions/{task_id}")
+        else:
+            session_link = f"/apps/sessions/{task_id}"
         checkpoints_infos = [file for file in session_dir_files if file["name"].endswith(".pth")]
         if not api.file.exists(team_id, join(task_file_info["path"], "config.py")):
             continue

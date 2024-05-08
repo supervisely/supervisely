@@ -3,7 +3,7 @@ from typing import List
 
 from supervisely.api.api import Api
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
-from supervisely._utils import abs_url
+from supervisely._utils import abs_url, is_development
 
 
 def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
@@ -21,7 +21,10 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
             if task_file_info["name"] == "images":
                 continue
             task_id = task_file_info["name"]
-            session_link = abs_url(f"/apps/sessions/{task_id}")
+            if is_development():
+                session_link = abs_url(f"/apps/sessions/{task_id}")
+            else:
+                session_link = f"/apps/sessions/{task_id}"
             paths_to_checkpoints = join(task_file_info["path"], weights_dir_name)
             checkpoints_infos = api.file.list(team_id, paths_to_checkpoints, recursive=False)
             if len(checkpoints_infos) == 0:
