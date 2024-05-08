@@ -31,6 +31,8 @@ class YOLOConverter(ImageConverter):
         self._class_index_to_geometry: dict = {}
         self._coco_classes_dict: dict = {}
         self._labeling_interface = labeling_interface
+        self._num_kpts = None
+        self._num_dims = None
 
     def __str__(self) -> str:
         return AvailableImageConverters.YOLO

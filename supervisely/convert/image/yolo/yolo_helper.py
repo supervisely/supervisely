@@ -107,10 +107,11 @@ def get_coordinates(line):
     return class_index, coords
 
 
-def convert_rectangle(img_height, img_width, x_center, y_center, ann_width, ann_height):
+def convert_rectangle(img_height, img_width, coords):
     """
     Convert rectangle coordinates from relative (0-1) to absolute (px) values.
     """
+    x_center, y_center, ann_width, ann_height = coords
     x_center = float(x_center)
     y_center = float(y_center)
     ann_width = float(ann_width)
@@ -145,7 +146,7 @@ def validate_polygon_coords(coords):
     return coords
 
 
-def convert_polygon(img_height, img_width, *coords):
+def convert_polygon(img_height, img_width, coords):
     """
     Convert polygon coordinates from relative (0-1) to absolute (px) values.
     """
@@ -164,7 +165,7 @@ def convert_polygon(img_height, img_width, *coords):
     return Polygon(exterior=exterior)
 
 
-def convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords):
+def convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords):
     """
     Convert keypoints coordinates from relative (0-1) to absolute (px) values.
     """
@@ -200,25 +201,25 @@ def create_geometry_config(num_keypoints=None):
 
 
 def get_geometry(
-    geometry_type, img_height, img_width, with_keypoint, num_keypoints, num_dims, *coords
+    geometry_type, img_height, img_width, with_keypoint, num_keypoints, num_dims, coords
 ):
     """
     Convert coordinates from relative (0-1) to absolute (px) values.
     """
     geometry = None
     if geometry_type == Rectangle:
-        geometry = convert_rectangle(img_height, img_width, *coords)
+        geometry = convert_rectangle(img_height, img_width, coords)
     elif geometry_type == Polygon:
-        geometry = convert_polygon(img_height, img_width, *coords)
+        geometry = convert_polygon(img_height, img_width, coords)
     elif geometry_type == GraphNodes:
-        geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords)
+        geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords)
     elif geometry_type == AnyGeometry:
         if is_applicable_for_rectangles(coords):
-            geometry = convert_rectangle(img_height, img_width, *coords)
+            geometry = convert_rectangle(img_height, img_width, coords)
         elif is_applicable_for_polygons(with_keypoint, coords):
-            geometry = convert_polygon(img_height, img_width, *coords)
+            geometry = convert_polygon(img_height, img_width, coords)
         elif is_applicable_for_keypoints(with_keypoint, num_keypoints, num_dims, coords):
-            geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, *coords)
+            geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords)
     return geometry
 
 
@@ -245,7 +246,7 @@ def is_applicable_for_keypoints(with_keypoint, num_keypoints, num_dims, coords):
     """
     Check if the coordinates are applicable for keypoints.
     """
-    if not with_keypoint:
+    if not with_keypoint or not num_keypoints or not num_dims:
         return False
     if len(coords) < YOLO_KEYPOINTS_MIN_COORDS_NUM:
         return False
