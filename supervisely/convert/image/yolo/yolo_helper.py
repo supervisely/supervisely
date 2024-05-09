@@ -109,7 +109,12 @@ def get_coordinates(line: str) -> Tuple[int, List[float]]:
     return class_index, coords
 
 
-def convert_rectangle(img_height: int, img_width: int, coords: List[float]) -> Rectangle:
+def convert_rectangle(
+    img_height: int,
+    img_width: int,
+    coords: List[float],
+    **kwargs,
+) -> Rectangle:
     """
     Convert rectangle coordinates from relative (0-1) to absolute (px) values.
     """
@@ -148,7 +153,12 @@ def validate_polygon_coords(coords: List[float]) -> List[float]:
     return coords
 
 
-def convert_polygon(img_height: int, img_width: int, coords: List[float]) -> Union[Polygon, None]:
+def convert_polygon(
+    img_height: int,
+    img_width: int,
+    coords: List[float],
+    **kwargs,
+) -> Union[Polygon, None]:
     """
     Convert polygon coordinates from relative (0-1) to absolute (px) values.
     """
@@ -173,6 +183,7 @@ def convert_keypoints(
     num_keypoints: int,
     num_dims: int,
     coords: List[float],
+    **kwargs,
 ) -> Union[GraphNodes, None]:
     """
     Convert keypoints coordinates from relative (0-1) to absolute (px) values.
@@ -208,55 +219,18 @@ def create_geometry_config(num_keypoints: int = None) -> KeypointsTemplate:
     return template
 
 
-def detect_geometry(
-    coords: List[float], with_keypoint: bool, num_kpts: int, num_dims: int
-) -> Union[Rectangle, Polygon, GraphNodes, None]:
-    if is_applicable_for_rectangles(coords):
-        return Rectangle
-    elif is_applicable_for_polygons(with_keypoint, coords):
-        return Polygon
-    elif is_applicable_for_keypoints(with_keypoint, num_kpts, num_dims, coords):
-        return GraphNodes
-    return None
-
-
-def get_geometry(
-    geometry_type: Union[Rectangle, Polygon, GraphNodes, AnyGeometry],
-    img_height: int,
-    img_width: int,
-    with_keypoint: bool,
-    num_keypoints: int,
-    num_dims: int,
-    coords: List[float],
-) -> Union[Rectangle, Polygon, GraphNodes, None]:
-    """
-    Convert coordinates from relative (0-1) to absolute (px) values.
-    """
-    geometry = None
-    if geometry_type == Rectangle:
-        geometry = convert_rectangle(img_height, img_width, coords)
-    elif geometry_type == Polygon:
-        geometry = convert_polygon(img_height, img_width, coords)
-    elif geometry_type == GraphNodes:
-        geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords)
-    elif geometry_type == AnyGeometry:
-        if is_applicable_for_rectangles(coords):
-            geometry = convert_rectangle(img_height, img_width, coords)
-        elif is_applicable_for_polygons(with_keypoint, coords):
-            geometry = convert_polygon(img_height, img_width, coords)
-        elif is_applicable_for_keypoints(with_keypoint, num_keypoints, num_dims, coords):
-            geometry = convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords)
-    return geometry
-
-
-def is_applicable_for_rectangles(coords: List[float]) -> bool:
+def is_applicable_for_rectangles(coords: List[float], **kwargs) -> bool:
     """
     Check if the coordinates are applicable for rectangles.
     """
     return len(coords) == YOLO_DETECTION_COORDS_NUM
 
 
-def is_applicable_for_polygons(with_keypoint: bool, coords: List[float]) -> bool:
+def is_applicable_for_polygons(
+    with_keypoint: bool,
+    coords: List[float],
+    **kwargs,
+) -> bool:
     """
     Check if the coordinates are applicable for polygons.
 
@@ -273,6 +247,7 @@ def is_applicable_for_keypoints(
     num_keypoints: int,
     num_dims: int,
     coords: List[float],
+    **kwargs,
 ) -> bool:
     """
     Check if the coordinates are applicable for keypoints.
@@ -282,3 +257,68 @@ def is_applicable_for_keypoints(
     if len(coords) < YOLO_KEYPOINTS_MIN_COORDS_NUM:
         return False
     return len(coords) == num_keypoints * num_dims + 4
+
+
+APPLICABLE_GEOMETRIES_MAP = {
+    Rectangle: is_applicable_for_rectangles,
+    Polygon: is_applicable_for_polygons,
+    GraphNodes: is_applicable_for_keypoints,
+}
+
+
+def detect_geometry(
+    coords: List[float],
+    with_keypoint: bool,
+    num_keypoints: int,
+    num_dims: int,
+) -> Union[Rectangle, Polygon, GraphNodes, None]:
+    """
+    Detect the geometry type based on the coordinates and the configuration.
+    """
+    for geometry, is_applicable in APPLICABLE_GEOMETRIES_MAP.items():
+        if is_applicable(
+            with_keypoint=with_keypoint,
+            num_keypoints=num_keypoints,
+            num_dims=num_dims,
+            coords=coords,
+        ):
+            return geometry
+
+
+GEOMETRY_CONVERTERS = {
+    Rectangle: convert_rectangle,
+    Polygon: convert_polygon,
+    GraphNodes: convert_keypoints,
+}
+
+
+def get_geometry(
+    geometry_type: Union[Rectangle, Polygon, GraphNodes, AnyGeometry],
+    img_height: int,
+    img_width: int,
+    with_keypoint: bool,
+    num_keypoints: int,
+    num_dims: int,
+    coords: List[float],
+) -> Union[Rectangle, Polygon, GraphNodes, None]:
+    """
+    Get the geometry object based on the geometry type.
+    """
+    if geometry_type not in GEOMETRY_CONVERTERS:
+        geometry_type = detect_geometry(
+            coords=coords,
+            with_keypoint=with_keypoint,
+            num_keypoints=num_keypoints,
+            num_dims=num_dims,
+        )
+
+    if geometry_type is None:
+        return None
+
+    return GEOMETRY_CONVERTERS[geometry_type](
+        img_height=img_height,
+        img_width=img_width,
+        coords=coords,
+        num_keypoints=num_keypoints,
+        num_dims=num_dims,
+    )
