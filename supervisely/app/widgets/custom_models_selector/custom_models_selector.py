@@ -23,6 +23,8 @@ from supervisely.app.widgets import (
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 from supervisely import env
 from supervisely.io.fs import get_file_name_with_ext
+from supervisely._utils import abs_url, is_development
+
 
 WEIGHTS_DIR = "weights"
 
@@ -63,21 +65,17 @@ class CustomModelsSelector(Widget):
                 else:
                     raise ValueError(f"Task id {task_id} is not a number")
 
-            task_path = checkpoint.session_path
-            training_project_name = checkpoint.training_project_name
-            checkpoints = checkpoint.checkpoints
-            session_link = checkpoint.session_link
-
             # col 1 task
             self._task_id = task_id
-            self._task_path = task_path
+            self._task_path = checkpoint.session_path
             task_info = self._api.task.get_info_by_id(task_id)
             self._task_date_iso = task_info["startedAt"]
             self._task_date = self._normalize_date()
             self._task_link = self._create_task_link()
+            self._config = checkpoint.config
 
             # col 2 project
-            self._training_project_name = training_project_name
+            self._training_project_name = checkpoint.training_project_name
 
             project_info = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
@@ -85,7 +83,7 @@ class CustomModelsSelector(Widget):
             self._training_project_info = project_info
 
             # col 3 checkpoints
-            self._checkpoints = checkpoints
+            self._checkpoints = checkpoint.checkpoints
             self._checkpoints_names = [
                 checkpoint_info["name"] for checkpoint_info in self._checkpoints
             ]
@@ -94,7 +92,7 @@ class CustomModelsSelector(Widget):
             ]
 
             # col 4 session
-            self._session_link = session_link
+            self._session_link = checkpoint.session_link
 
             # widgets
             self._task_widget = self._create_task_widget()
@@ -138,6 +136,10 @@ class CustomModelsSelector(Widget):
         def session_link(self) -> str:
             return self._session_link
 
+        @property
+        def config(self) -> str:
+            return self._config
+
         def get_selected_checkpoint_path(self) -> str:
             return self._checkpoints_widget.get_value()
 
@@ -161,7 +163,10 @@ class CustomModelsSelector(Widget):
             remote_path = os.path.join(self._task_path, "open_app.lnk")
             task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
             if task_file is not None:
-                return f"{self._api.server_address}/files/{task_file.id}"
+                if is_development():
+                    return abs_url(f"/files/{task_file.id}")
+                else:
+                    return f"/files/{task_file.id}"
             else:
                 return ""
 
@@ -230,13 +235,14 @@ class CustomModelsSelector(Widget):
         self._rows = table_rows
         # self._rows_html = #[row.to_html() for row in self._rows]
 
-        task_types = []
+        task_types = [task_type for task_type in table_rows]
         self._rows_html = defaultdict(list)
-        for model_row in table_rows:
-            task_types.append(model_row.task_type)
-            self._rows_html[model_row.task_type].append(model_row.to_html())
+        for task_type in table_rows:
+            self._rows_html[task_type].extend(
+                [model_row.to_html() for model_row in table_rows[task_type]]
+            )
 
-        self._task_types = list(set(task_types))
+        self._task_types = self._filter_task_types(task_types)
         if len(self._task_types) == 0:
             self.__default_selected_task_type = None
         else:
@@ -319,7 +325,7 @@ class CustomModelsSelector(Widget):
         return self._columns
 
     @property
-    def rows(self) -> List[ModelRow]:
+    def rows(self) -> Dict[str, List[ModelRow]]:
         return self._rows
 
     def get_json_data(self) -> Dict:
@@ -330,14 +336,11 @@ class CustomModelsSelector(Widget):
         }
 
     def get_json_state(self) -> Dict:
-        if self._show_custom_checkpoint_path:
-            return {
-                "selectedRow": 0,
-                "selectedTaskType": self.__default_selected_task_type,
-                "useCustomPath": False,
-            }
-        else:
-            return {"selectedRow": 0}
+        return {
+            "selectedRow": 0,
+            "selectedTaskType": self.__default_selected_task_type,
+            "useCustomPath": False,
+        }
 
     def set_active_task_type(self, task_type: str):
         if task_type not in self._task_types:
@@ -349,13 +352,15 @@ class CustomModelsSelector(Widget):
         return self._task_types
 
     def disable_table(self) -> None:
-        for row in self._rows:
-            row.checkpoints_selector.disable()
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
+                row.checkpoints_selector.disable()
         super().disable()
 
     def enable_table(self) -> None:
-        for row in self._rows:
-            row.checkpoints_selector.enable()
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
+                row.checkpoints_selector.enable()
         super().enable()
 
     def enable(self):
@@ -376,7 +381,7 @@ class CustomModelsSelector(Widget):
 
     def _generate_table_rows(self, checkpoint_infos: List[CheckpointInfo]) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
-        table_rows = []
+        table_rows = defaultdict(list)
         for checkpoint_info in checkpoint_infos:
             try:
                 model_row = CustomModelsSelector.ModelRow(
@@ -385,19 +390,35 @@ class CustomModelsSelector(Widget):
                     checkpoint=checkpoint_info,
                     task_type=checkpoint_info.task_type,
                 )
-                table_rows.append(model_row)
+                table_rows[checkpoint_info.task_type].append(model_row)
             except:
                 continue
+        table_rows = dict(table_rows)
         return table_rows
+
+    def _filter_task_types(self, task_types: List[str]):
+        sorted_tt = []
+        if "object detection" in task_types:
+            sorted_tt.append("object detection")
+        if "instance segmentation" in task_types:
+            sorted_tt.append("instance segmentation")
+        if "pose estimation" in task_types:
+            sorted_tt.append("pose estimation")
+        other_tasks = sorted(
+            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
+        )
+        sorted_tt.extend(other_tasks)
+        return sorted_tt
 
     def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
         if len(self._rows) == 0:
             return
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
+        task_type = widget_actual_state["selectedTaskType"]
         if widget_actual_state is not None and widget_actual_data is not None:
             selected_row_index = int(widget_actual_state["selectedRow"])
-            return self._rows[selected_row_index]
+            return self._rows[task_type][selected_row_index]
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
         widget_actual_state = state[self.widget_id]
@@ -409,12 +430,15 @@ class CustomModelsSelector(Widget):
         return StateJson()[self.widget_id]["selectedTaskType"]
 
     def get_selected_model_params(self) -> Union[Dict, None]:
+        config_url = None
         is_custom_path = self.use_custom_checkpoint_path()
         if not is_custom_path:
             selected_model = self.get_selected_row()
             task_type = selected_model.task_type
             checkpoint_filename = selected_model.get_selected_checkpoint_name()
             checkpoint_url = selected_model.get_selected_checkpoint_path()
+            if selected_model.config is not None:
+                config_url = selected_model.config
         else:
             task_type = self.get_custom_checkpoint_task_type()
             checkpoint_filename = self.get_custom_checkpoint_name()
@@ -426,6 +450,10 @@ class CustomModelsSelector(Widget):
             "checkpoint_name": checkpoint_filename,
             "checkpoint_url": checkpoint_url,
         }
+
+        if config_url is not None:
+            model_params["config_url"] = config_url
+
         return model_params
 
     def set_active_row(self, row_index: int) -> None:

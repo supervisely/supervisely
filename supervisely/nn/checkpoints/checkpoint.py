@@ -11,6 +11,7 @@ class CheckpointInfo(NamedTuple):
     task_type: str
     training_project_name: str
     checkpoints: List[FileInfo]
+    config: str = None
 
 
 import supervisely.nn.checkpoints.detectron2 as detectron2
