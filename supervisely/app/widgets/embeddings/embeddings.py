@@ -58,6 +58,16 @@ class Embeddings(Widget):
         self.update_state()
         StateJson().send_changes()
 
+    def set_pointcloud_url(self, url: str) -> None:
+        self.pointcloud_url = url
+
+    def set_atlas_manifest(self, atlas_manifest: Dict) -> None:
+        self.atlas_manifest = atlas_manifest
+
+    def set_data(self, pointcloud_url: str, atlas_manifest: Dict) -> None:
+        self.set_pointcloud_url(pointcloud_url)
+        self.set_atlas_manifest(atlas_manifest)
+
     def get_json_state(self):
         return {
             "pointCloudUrl": self.pointcloud_url,
