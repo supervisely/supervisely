@@ -141,3 +141,4 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 )
 
 from supervisely.app.widgets.tags_table.tags_table import TagsTable
+from supervisely.app.widgets.embeddings.embeddings import Embeddings
