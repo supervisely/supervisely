@@ -1,3 +1,5 @@
+from typing import List, Tuple, Union
+
 from supervisely import AnyGeometry, GraphNodes, Polygon, Rectangle, logger
 from supervisely.geometry.graph import KeypointsTemplate, Node
 from supervisely.imaging.color import generate_rgb
@@ -90,7 +92,7 @@ coco_classes = [
 ]
 
 
-def generate_colors(count):
+def generate_colors(count: int) -> List[List[int]]:
     colors = []
     for _ in range(count):
         new_color = generate_rgb(colors)
@@ -98,7 +100,7 @@ def generate_colors(count):
     return colors
 
 
-def get_coordinates(line):
+def get_coordinates(line: str) -> Tuple[int, List[float]]:
     """
     Parse coordinates from a line in the YOLO format.
     """
@@ -107,7 +109,7 @@ def get_coordinates(line):
     return class_index, coords
 
 
-def convert_rectangle(img_height, img_width, coords):
+def convert_rectangle(img_height: int, img_width: int, coords: List[float]) -> Rectangle:
     """
     Convert rectangle coordinates from relative (0-1) to absolute (px) values.
     """
@@ -136,7 +138,7 @@ def convert_rectangle(img_height, img_width, coords):
     return Rectangle(top, left, bottom, right)
 
 
-def validate_polygon_coords(coords):
+def validate_polygon_coords(coords: List[float]) -> List[float]:
     """
     Check and correct polygon coordinates:
     - remove the last point if it is the same as the first one
@@ -146,7 +148,7 @@ def validate_polygon_coords(coords):
     return coords
 
 
-def convert_polygon(img_height, img_width, coords):
+def convert_polygon(img_height: int, img_width: int, coords: List[float]) -> Union[Polygon, None]:
     """
     Convert polygon coordinates from relative (0-1) to absolute (px) values.
     """
@@ -165,7 +167,13 @@ def convert_polygon(img_height, img_width, coords):
     return Polygon(exterior=exterior)
 
 
-def convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords):
+def convert_keypoints(
+    img_height: int,
+    img_width: int,
+    num_keypoints: int,
+    num_dims: int,
+    coords: List[float],
+) -> Union[GraphNodes, None]:
     """
     Convert keypoints coordinates from relative (0-1) to absolute (px) values.
     """
@@ -186,7 +194,7 @@ def convert_keypoints(img_height, img_width, num_keypoints, num_dims, coords):
         return GraphNodes(nodes)
 
 
-def create_geometry_config(num_keypoints=None):
+def create_geometry_config(num_keypoints: int = None) -> KeypointsTemplate:
     """
     Create a template for keypoints with the specified number of keypoints.
     """
@@ -200,7 +208,9 @@ def create_geometry_config(num_keypoints=None):
     return template
 
 
-def detect_geometry(coords, with_keypoint, num_kpts, num_dims):
+def detect_geometry(
+    coords: List[float], with_keypoint: bool, num_kpts: int, num_dims: int
+) -> Union[Rectangle, Polygon, GraphNodes, None]:
     if is_applicable_for_rectangles(coords):
         return Rectangle
     elif is_applicable_for_polygons(with_keypoint, coords):
@@ -211,8 +221,14 @@ def detect_geometry(coords, with_keypoint, num_kpts, num_dims):
 
 
 def get_geometry(
-    geometry_type, img_height, img_width, with_keypoint, num_keypoints, num_dims, coords
-):
+    geometry_type: Union[Rectangle, Polygon, GraphNodes, AnyGeometry],
+    img_height: int,
+    img_width: int,
+    with_keypoint: bool,
+    num_keypoints: int,
+    num_dims: int,
+    coords: List[float],
+) -> Union[Rectangle, Polygon, GraphNodes, None]:
     """
     Convert coordinates from relative (0-1) to absolute (px) values.
     """
@@ -233,14 +249,14 @@ def get_geometry(
     return geometry
 
 
-def is_applicable_for_rectangles(coords):
+def is_applicable_for_rectangles(coords: List[float]) -> bool:
     """
     Check if the coordinates are applicable for rectangles.
     """
     return len(coords) == YOLO_DETECTION_COORDS_NUM
 
 
-def is_applicable_for_polygons(with_keypoint, coords):
+def is_applicable_for_polygons(with_keypoint: bool, coords: List[float]) -> bool:
     """
     Check if the coordinates are applicable for polygons.
 
@@ -252,7 +268,12 @@ def is_applicable_for_polygons(with_keypoint, coords):
     return len(coords) >= YOLO_SEGM_MIN_COORDS_NUM and len(coords) % 2 == 0
 
 
-def is_applicable_for_keypoints(with_keypoint, num_keypoints, num_dims, coords):
+def is_applicable_for_keypoints(
+    with_keypoint: bool,
+    num_keypoints: int,
+    num_dims: int,
+    coords: List[float],
+) -> bool:
     """
     Check if the coordinates are applicable for keypoints.
     """
