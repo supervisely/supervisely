@@ -228,22 +228,19 @@ class BaseConverter:
         progress_cb(1)
 
         if len(found_formats) == 0:
-            logger.warn(
-                "Annotations not found. " # pylint: disable=no-member
-                f"Uploading data without annotations (only {self.modality}). "
-                "If you need assistance to upload data with annotations, please contact our support team."
-            )
+            only_modality_items = True
             unsupported_exts = set()
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
                     ext = get_file_ext(full_path)
-                    if file in JUNK_FILES:
-                        continue
                     if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
+                        continue
+                    only_modality_items = False
                     if ext.lower() in self.unsupported_exts:
                         unsupported_exts.add(ext)
+                    
             if self.items_count == 0:
                 if unsupported_exts:
                     raise RuntimeError(
@@ -254,6 +251,12 @@ class BaseConverter:
                 raise RuntimeError(
                     "Please refer to the app overview and documentation for annotation formats, "
                     "and ensure that your data contains valid information"
+                )
+            if not only_modality_items:
+                logger.info(
+                    "Annotations not found. " # pylint: disable=no-member
+                    f"Uploading data without annotations (only {self.modality}). "
+                    "If you need assistance to upload data with annotations, please contact our support team."
                 )
             return self
 
