@@ -200,6 +200,16 @@ def create_geometry_config(num_keypoints=None):
     return template
 
 
+def detect_geometry(coords, with_keypoint, num_kpts, num_dims):
+    if is_applicable_for_rectangles(coords):
+        return Rectangle
+    elif is_applicable_for_polygons(with_keypoint, coords):
+        return Polygon
+    elif is_applicable_for_keypoints(with_keypoint, num_kpts, num_dims, coords):
+        return GraphNodes
+    return None
+
+
 def get_geometry(
     geometry_type, img_height, img_width, with_keypoint, num_keypoints, num_dims, coords
 ):

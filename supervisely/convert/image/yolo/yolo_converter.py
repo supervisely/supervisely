@@ -77,16 +77,9 @@ class YOLOConverter(ImageConverter):
                             return False
 
                         # collect geometry types for each class
-                        geometry = None
-                        if yolo_helper.is_applicable_for_rectangles(coords):
-                            geometry = Rectangle
-                        elif yolo_helper.is_applicable_for_polygons(self._with_keypoint, coords):
-                            geometry = Polygon
-                        elif yolo_helper.is_applicable_for_keypoints(
-                            self._with_keypoint, self._num_kpts, self._num_dims, coords
-                        ):
-                            geometry = GraphNodes
-
+                        geometry = yolo_helper.detect_geometry(
+                            coords, self._with_keypoint, self._num_kpts, self._num_dims
+                        )
                         if class_index not in self._class_index_to_geometry:
                             self._class_index_to_geometry[class_index] = geometry
                             continue
