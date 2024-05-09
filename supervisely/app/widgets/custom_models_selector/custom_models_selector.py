@@ -65,23 +65,17 @@ class CustomModelsSelector(Widget):
                 else:
                     raise ValueError(f"Task id {task_id} is not a number")
 
-            task_path = checkpoint.session_path
-            training_project_name = checkpoint.training_project_name
-            checkpoints = checkpoint.checkpoints
-            session_link = checkpoint.session_link
-            config = checkpoint.config
-
             # col 1 task
             self._task_id = task_id
-            self._task_path = task_path
+            self._task_path = checkpoint.session_path
             task_info = self._api.task.get_info_by_id(task_id)
             self._task_date_iso = task_info["startedAt"]
             self._task_date = self._normalize_date()
             self._task_link = self._create_task_link()
-            self._config = config
+            self._config = checkpoint.config
 
             # col 2 project
-            self._training_project_name = training_project_name
+            self._training_project_name = checkpoint.training_project_name
 
             project_info = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
@@ -89,7 +83,7 @@ class CustomModelsSelector(Widget):
             self._training_project_info = project_info
 
             # col 3 checkpoints
-            self._checkpoints = checkpoints
+            self._checkpoints = checkpoint.checkpoints
             self._checkpoints_names = [
                 checkpoint_info["name"] for checkpoint_info in self._checkpoints
             ]
@@ -98,7 +92,7 @@ class CustomModelsSelector(Widget):
             ]
 
             # col 4 session
-            self._session_link = session_link
+            self._session_link = checkpoint.session_link
 
             # widgets
             self._task_widget = self._create_task_widget()
