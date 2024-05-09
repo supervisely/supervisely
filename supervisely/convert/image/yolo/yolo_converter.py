@@ -132,24 +132,6 @@ class YOLOConverter(ImageConverter):
                         result["colors"] = colors
                 else:
                     result["colors"] = yolo_helper.generate_colors(len(classes))
-
-                conf_dirname = os.path.dirname(key_path)
-                for t in ["train", "val"]:
-                    if t not in config_yaml:
-                        logger.warn(f"{t} path is not defined in {key_path}")
-                        continue
-                    if config_yaml[t].startswith(".."):
-                        cur_dataset_path = os.path.normpath(
-                            os.path.join(conf_dirname, "/".join(config_yaml[t].split("/")[2:]))
-                        )
-                    else:
-                        cur_dataset_path = os.path.normpath(
-                            os.path.join(conf_dirname, config_yaml[t])
-                        )
-
-                    if os.path.isdir(cur_dataset_path):
-                        result["datasets"].append((t, cur_dataset_path))
-
                 self._yaml_info = result
                 self._coco_classes_dict = {i: classes[i] for i in range(len(classes))}
             return True
