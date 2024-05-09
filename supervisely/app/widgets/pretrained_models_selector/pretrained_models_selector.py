@@ -216,16 +216,9 @@ class PretrainedModelsSelector(Widget):
         return sorted_filtered_models
 
     def _filter_task_types(self, task_types: List[str]):
-        sorted_tt = []
-        if "object detection" in task_types:
-            sorted_tt.append("object detection")
-        if "instance segmentation" in task_types:
-            sorted_tt.append("instance segmentation")
-        if "pose estimation" in task_types:
-            sorted_tt.append("pose estimation")
-        other_tasks = sorted(
-            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
-        )
+        order = ["object detection", "instance segmentation", "pose estimation"]
+        sorted_tt = [task for task in order if task in task_types]
+        other_tasks = sorted(set(task_types) - set(order))
         sorted_tt.extend(other_tasks)
         return sorted_tt
 
