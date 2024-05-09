@@ -255,7 +255,7 @@ class BaseConverter:
             if not only_modality_items:
                 logger.warn(
                     "Annotations not found. " # pylint: disable=no-member
-                    f"Uploading data without annotations (only {self.modality}). "
+                    f"Uploading {self.modality} without annotations. "
                     "If you need assistance to upload data with annotations, please contact our support team."
                 )
             return self
