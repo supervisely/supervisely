@@ -331,7 +331,7 @@ class CustomModelsSelector(Widget):
         return self._columns
 
     @property
-    def rows(self) -> List[ModelRow]:
+    def rows(self) -> Dict[str, List[ModelRow]]:
         return self._rows
 
     def get_json_data(self) -> Dict:
@@ -358,13 +358,15 @@ class CustomModelsSelector(Widget):
         return self._task_types
 
     def disable_table(self) -> None:
-        for row in self._rows:
-            row.checkpoints_selector.disable()
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
+                row.checkpoints_selector.disable()
         super().disable()
 
     def enable_table(self) -> None:
-        for row in self._rows:
-            row.checkpoints_selector.enable()
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
+                row.checkpoints_selector.enable()
         super().enable()
 
     def enable(self):
