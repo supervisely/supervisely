@@ -253,7 +253,7 @@ class BaseConverter:
                     "and ensure that your data contains valid information"
                 )
             if not only_modality_items:
-                logger.info(
+                logger.warn(
                     "Annotations not found. " # pylint: disable=no-member
                     f"Uploading data without annotations (only {self.modality}). "
                     "If you need assistance to upload data with annotations, please contact our support team."
