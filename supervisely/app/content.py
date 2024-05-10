@@ -1,23 +1,33 @@
 from __future__ import annotations
+
+import asyncio
 import copy
-import os
 import enum
 import json
-import threading
+import os
 import queue
+import threading
 import time
 import traceback
+
 import jsonpatch
-import asyncio
 from fastapi import Request
+
+from supervisely._utils import is_production
+from supervisely.api.api import Api
+from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.singleton import Singleton
+from supervisely.io import env as sly_env
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
-from supervisely.app.singleton import Singleton
-from supervisely.app.fastapi import run_sync
-from supervisely._utils import is_production
-from supervisely.io import env as sly_env
-from supervisely.api.api import Api
+
+
+async def init_lock():
+    return asyncio.run(asyncio.Lock())
+
+
+GLOBAL_LOCK = init_lock()
 
 
 class Field(str, enum.Enum):
@@ -75,7 +85,7 @@ class _PatchableJson(dict):
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()
         self._last = copy.deepcopy(dict(self))
-        self._lock = asyncio.Lock()
+        self._lock = GLOBAL_LOCK
         self._field = field.value
 
     def get_changes(self, patch=None):
@@ -109,7 +119,7 @@ class _PatchableJson(dict):
 
 
 class StateJson(_PatchableJson, metaclass=Singleton):
-    _global_lock: asyncio.Lock = None
+    _global_lock: asyncio.Lock = GLOBAL_LOCK
 
     def __init__(self, *args, **kwargs):
         if StateJson._global_lock is None:
