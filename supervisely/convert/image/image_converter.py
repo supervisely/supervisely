@@ -140,6 +140,8 @@ class ImageConverter(BaseConverter):
             anns = []
             for item in batch:
                 item.path = self.validate_image(item.path)
+                if item.path is None:
+                    continue
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
