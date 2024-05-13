@@ -1,0 +1,102 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/pretrained_models_selector/style.css"/>
+
+<div v-if="!state.{{{widget.widget_id}}}.selectedArchType || !state.{{{widget.widget_id}}}.selectedTaskType">
+    <sly-notification-2 class="mt10" options="'type': 'warning'">
+        <div slot="title">Couldn't create table</div>
+        <div>Check if the models_list is in correct format</div>
+    </sly-notification-2>
+</div>
+
+<div>
+    <div v-if="Object.keys(data.{{{widget.widget_id}}}.tableData).length > 1">
+        <sly-field
+        title="Task Type"
+        >
+            <el-radio-group
+                class="multi-line mt10"
+                :value="state.{{{widget.widget_id}}}.selectedTaskType"
+
+                {% if widget._task_changes_handled == true %}
+                    @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; state.{{{widget.widget_id}}}.selectedArchType = Object.keys(data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType])[0]; post('/{{{widget.widget_id}}}/task_type_changed')}"
+                {% else %}
+                    @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; state.{{{widget.widget_id}}}.selectedArchType = Object.keys(data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType])[0];}"
+                {% endif %}
+                >
+
+                <el-radio 
+                    v-for="(item, idx) in state.{{{widget.widget_id}}}.taskTypes"
+                    :key="item"
+                    :label="item"
+                    >
+                        {{ item }}
+                </el-radio>
+            </el-radio-group>
+        </sly-field>
+    </div>
+
+    <div v-if="state.{{{widget.widget_id}}}.selectedArchType && Object.keys(data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType]).length > 1">
+        <sly-field
+        title="Model Architecture"
+        >
+            <el-select 
+                class="mb10"
+                :value="state.{{{widget.widget_id}}}.selectedArchType"
+                {% if widget._arch_changes_handled == true %}
+                    @input="(evt) => {state.{{{widget.widget_id}}}.selectedArchType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/arch_type_changed')}"
+                {% else %}
+                    @input="(evt) => {state.{{{widget.widget_id}}}.selectedArchType = evt; state.{{{widget.widget_id}}}.selectedRow = 0;}"
+                {% endif %}
+                >
+                <el-option 
+                    v-for="(item, idx) in Object.keys(data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType])"
+                    :key="item"
+                    :label="item"
+                    :value="item">
+                        {{ item }}
+            </el-select>
+        </sly-field>
+    </div>
+
+    <table class="beautiful-table" v-if="data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType] && data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType][state.{{{widget.widget_id}}}.selectedArchType]">
+        <thead>
+        <tr>
+            <template v-for="(col, colKey) in data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType][state.{{{widget.widget_id}}}.selectedArchType][0]">
+            <th v-if="colKey != 'meta'" :key="colKey">
+                <div>{{ colKey }}</div>
+            </th>
+        </template>
+        </tr> 
+        </thead>
+        <tbody>
+        <tr v-for="(row, ridx) in data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType][state.{{{widget.widget_id}}}.selectedArchType]" :key="ridx">
+            <template v-for="(colKey, vidx) in Object.keys(row)">
+            <td v-if="colKey != 'meta'" :key="vidx">
+                <div v-if="vidx === 0" style="text-align: left">
+                    <el-radio
+                            style="display: flex;"
+                            :value="state.{{{widget.widget_id}}}.selectedRow"
+                            {% if widget._model_changes_handled == true %}
+                                @input="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/model_changed')"
+                            {% else %}
+                                @input="state.{{{widget.widget_id}}}.selectedRow = $event;"
+                            {% endif %}
+                            :label="ridx"
+                    >
+                        <sly-html-compiler style="color:#000000;" :params="{ridx: ridx, vidx: vidx}" :template="row[colKey]" :data="data" :state="state">
+                        </sly-html-compiler>
+
+                    </el-radio>
+                </div>
+                <div v-else>
+
+                    <sly-html-compiler :params="{ridx: ridx, vidx: vidx}" :template="row[colKey]" :data="data" :state="state">
+                    </sly-html-compiler>
+
+                </div>
+            </td>
+        </template>
+        </tr>
+        </tbody>
+    </table>
+
+</div>

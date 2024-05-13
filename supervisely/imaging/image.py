@@ -258,6 +258,8 @@ def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         if img is None:
             raise IOError("OpenCV can not open the file {!r}".format(path))
+        if len(img.shape) == 2:
+            return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         cnt_channels = img.shape[2]
         if cnt_channels == 4:
             return cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)

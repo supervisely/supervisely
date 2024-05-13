@@ -11,6 +11,7 @@ from distutils.dir_util import copy_tree
 from fastapi import FastAPI
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
+from starlette.templating import _TemplateResponse
 
 import supervisely as sly
 
@@ -140,6 +141,8 @@ def available_after_shutdown(app: FastAPI):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             template_response = f(*args, **kwargs)
+            if not isinstance(template_response, _TemplateResponse):
+                return template_response
             try:
                 if sly.utils.is_production():
                     sly.logger.info(f"Start dumping app UI for offline mode")

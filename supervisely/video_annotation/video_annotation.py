@@ -1,33 +1,31 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional, Iterator
-from copy import deepcopy
-import uuid
-import json
-from uuid import UUID
-from supervisely.project.project_meta import ProjectMeta
 
+import json
+import uuid
+from copy import deepcopy
+from typing import Dict, List, Optional, Tuple
+from uuid import UUID
 
 from supervisely._utils import take_with_default
-from supervisely.video_annotation.video_figure import VideoFigure
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.constants import (
+    DESCRIPTION,
     FRAMES,
+    FRAMES_COUNT,
     IMG_SIZE,
     IMG_SIZE_HEIGHT,
     IMG_SIZE_WIDTH,
-    DESCRIPTION,
-    FRAMES_COUNT,
-    TAGS,
-    OBJECTS,
-    VIDEO_ID,
     KEY,
-    VIDEOS_MAP,
-    VIDEO_NAME,
+    OBJECTS,
+    TAGS,
+    VIDEO_ID,
 )
+from supervisely.video_annotation.frame_collection import FrameCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotation:

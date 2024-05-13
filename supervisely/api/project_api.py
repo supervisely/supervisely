@@ -78,6 +78,7 @@ class ProjectInfo(NamedTuple):
     backup_archive: dict
     team_id: int
     settings: dict
+    import_settings: dict
 
     @property
     def image_preview_url(self):
@@ -147,10 +148,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         created_at='2020-11-17T17:44:28.158Z',
                         updated_at='2021-03-01T10:51:57.545Z',
                         type='images',
-                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
                         custom_data={},
                         backup_archive={},
-                        team_id=2
+                        team_id=2,
+                        import_settings={}
+                        )
         """
         return [
             ApiField.ID,
@@ -170,6 +173,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.BACKUP_ARCHIVE,
             ApiField.TEAM_ID,
             ApiField.SETTINGS,
+            ApiField.IMPORT_SETTINGS,
         ]
 
     @staticmethod
@@ -230,7 +234,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             type='images',
             #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #             custom_data={},
-            #             backup_archive={}),
+            #             backup_archive={},
+            #             import_settings={}
+            #           ),
             # ProjectInfo(id=999,
             #             name='Cat_breeds',
             #             description='',
@@ -243,9 +249,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             created_at='2020-11-17T17:44:28.158Z',
             #             updated_at='2021-03-01T10:51:57.545Z',
             #             type='images',
-            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #             reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #             custom_data={},
-            #             backup_archive={})
+            #             backup_archive={},
+            #             import_settings={}
+            #           )
             # ]
 
             # Filtered Project list
@@ -263,9 +271,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-17T17:44:28.158Z',
             #                     updated_at='2021-03-01T10:51:57.545Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
             # ]
 
         """
@@ -322,9 +332,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
 
 
         """
@@ -376,9 +388,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2020-11-09T18:21:32.356Z',
             #                     updated_at='2020-11-09T18:21:32.356Z',
             #                     type='images',
-            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg'),
+            #                     reference_image_url='http://78.46.75.100:38585/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
         """
 
         fields = [
@@ -577,9 +591,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     created_at='2021-03-11T09:28:42.585Z',
             #                     updated_at='2021-03-11T09:28:42.585Z',
             #                     type='images',
-            #                     reference_image_url=None),
+            #                     reference_image_url=None,
             #                     custom_data={},
-            #                     backup_archive={})
+            #                     backup_archive={},
+            #                     import_settings={}
+            #                   )
 
         """
         effective_name = self._get_effective_new_name(
@@ -1343,7 +1359,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #             workspace_id=58,
             #             created_at='2020-11-09T18:21:32.356Z',
             #             updated_at='2020-11-09T18:21:32.356Z',
-            #             type='images',),
+            #             type='images',
+            #             ...
+            #             ),
             # ProjectInfo(id=777,
             #             name='Trucks',
             #             size='76154769',
@@ -1362,7 +1380,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     workspace_id=58,
             #                     created_at='2021-07-077T17:44:28.158Z',
             #                     updated_at='2023-07-15T12:33:45.747Z',
-            #                     type='images',)
+            #                     type='images',
+            #                     ...
+            #                     )
             # ]
 
         """
@@ -1479,10 +1499,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param sync: if True images will have synchronized view and labeling
         :type sync: bool
         """
-        group_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
-        project_meta = ProjectMeta.from_json(self.get_meta(id))
-        project_meta = project_meta.add_tag_meta(group_tag_meta)
-        self.update_meta(id, project_meta)
+        meta = ProjectMeta.from_json(self.get_meta(id))
+        existing_tag_meta = meta.get_tag_meta(tag_name)
+        if existing_tag_meta is not None:
+            if existing_tag_meta.value_type != TagValueType.ANY_STRING:
+                raise ValueError(
+                    f"Tag '{tag_name}' should have value type 'any_string', "
+                    f"but got '{existing_tag_meta.value_type}' value type."
+                )
+        else:
+            new_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+            project_meta = meta.add_tag_meta(new_tag_meta)
+            self.update_meta(id, project_meta)
         self.images_grouping(id, enable=group_images, tag_name=tag_name, sync=sync)
 
     def set_multispectral_settings(self, project_id: int) -> None:
@@ -1633,7 +1661,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                      'None' will return the first page with projects, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
 
-        :param account_type: Type of user account
+        :param account_type: (Deprecated) Type of user account
         :type account_type: str, optional
 
         :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
@@ -1683,7 +1711,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None,
-            #                       teamd_id = 1),
+            #                       teamd_id = 1,
+            #                       import_settings = {},
+            #                   ),
             #                   ProjectInfo(id = 23,
             #                       name = 'lemons_test',
             #                       description = None,
@@ -1699,7 +1729,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None),
-            #                       teamd_id = 1)
+            #                       teamd_id = 1,
+            #                       import_settings = {},
+            #                   )
             #                 ]
             # }
 
@@ -1721,7 +1753,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if page is not None and page != "all":
             request_body[ApiField.PAGE] = page
         if account_type is not None:
-            request_body[ApiField.ACCOUNT_TYPE] = account_type
+            logger.warning(
+                "The 'account_type' parameter is deprecated. The result will not be filtered by account type. To filter received ProjectInfos, you could use the 'team_id' from the ProjectInfo object to get TeamInfo and check the account type."
+            )
 
         first_response = self._api.post(method, request_body).json()
 

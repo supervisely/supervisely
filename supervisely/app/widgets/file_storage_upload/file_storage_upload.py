@@ -28,7 +28,8 @@ class FileStorageUpload(Widget):
 
     def _get_path(self, path: str):
         if self._change_name_if_conflict is True:
-            path = f"/{path}" if not path.startswith("/") else path
+            if "://" not in path:
+                path = f"/{path}" if not path.startswith("/") else path
             return self._api.file.get_free_dir_name(self._team_id, path)
         return path
 

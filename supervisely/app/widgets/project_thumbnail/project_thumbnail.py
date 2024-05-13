@@ -2,20 +2,26 @@ from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 from supervisely.api.project_api import ProjectInfo
 from supervisely.project.project import Project
+from supervisely import is_development, is_debug_with_sly_net
+from supervisely._utils import abs_url
 
 
 class ProjectThumbnail(Widget):
     def __init__(
-        self, info: ProjectInfo = None, widget_id: str = None, remove_margins: bool = False
+        self,
+        info: ProjectInfo = None,
+        widget_id: str = None,
+        remove_margins: bool = False,
+        description: str = None,
     ):
         self._info: ProjectInfo = None
         self._id: int = None
         self._name: str = None
-        self._description: str = None
+        self._description: str = description
         self._url: str = None
         self._image_preview_url: str = None
         self._remove_margins: bool = remove_margins
-        self._set_info(info)
+        self._set_info(info, description=description)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -32,15 +38,20 @@ class ProjectThumbnail(Widget):
     def get_json_state(self):
         return None
 
-    def _set_info(self, info: ProjectInfo = None):
+    def _set_info(self, info: ProjectInfo = None, description: str = None):
         if info is None:
             return
         self._info = info
         self._id = info.id
         self._name = info.name
-        self._description = f"{info.items_count} {info.type} in project"
+        if description is not None:
+            self._description = description
+        else:
+            self._description = f"{info.items_count} {info.type} in project"
         self._url = Project.get_url(info.id)
         self._image_preview_url = info.image_preview_url
+        if is_development() or is_debug_with_sly_net():
+            self._image_preview_url = abs_url(self._image_preview_url)
 
     def set(self, info: ProjectInfo):
         self._set_info(info)

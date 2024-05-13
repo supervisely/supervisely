@@ -18,10 +18,10 @@ class AgentSelector(Widget):
         widget_id=None,
     ):
         self._team_id = team_id
-        self._show_any_status = True
-        self._show_public = False
+        self._show_any_status = not show_only_running
+        self._show_public = True
         self._show_only_gpu = show_only_gpu
-        self._show_only_running = show_only_running
+        self._check_network_status = True
         self._compact = compact
 
         self._is_community = is_community()
@@ -43,7 +43,7 @@ class AgentSelector(Widget):
                 "anyStatus": self._show_any_status,
                 "showPublic": self._show_public,
                 "needGpu": self._show_only_gpu,
-                "checkAgentNetwork": self._show_only_running,
+                "checkAgentNetwork": self._check_network_status,
             },
         }
 

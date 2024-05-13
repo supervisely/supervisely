@@ -7,7 +7,9 @@ from typing import Dict, List, NamedTuple, Optional
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from collections import defaultdict
 
 
 class FigureInfo(NamedTuple):
@@ -22,14 +24,35 @@ class FigureInfo(NamedTuple):
     frame_index: int
     geometry_type: str
     geometry: dict
+    geometry_meta: dict
     tags: list
     meta: dict
+    area: str
+
+    @property
+    def bbox(self) -> Optional[Rectangle]:
+        """
+        Get Figure's bounding box.
+
+        :return: Rectangle in supervisely format.
+        :rtype: :class: `sly.Rectangle`
+        """
+        if self.geometry_meta is not None:
+            return Rectangle(*self.geometry_meta["bbox"])
 
 
 class FigureApi(RemoveableBulkModuleApi):
     """
     Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
+
+    def _remove_batch_api_method_name(self):
+        """_remove_batch_api_method_name"""
+        return "figures.bulk.remove"
+
+    def _remove_batch_field_name(self):
+        """_remove_batch_field_name"""
+        return ApiField.FIGURE_IDS
 
     @staticmethod
     def info_sequence():
@@ -63,8 +86,10 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.FRAME_INDEX,
             ApiField.GEOMETRY_TYPE,
             ApiField.GEOMETRY,
+            ApiField.GEOMETRY_META,
             ApiField.TAGS,
             ApiField.META,
+            ApiField.AREA,
         ]
 
     @staticmethod
@@ -142,10 +167,12 @@ class FigureApi(RemoveableBulkModuleApi):
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
+            "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
+            "area",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -289,10 +316,12 @@ class FigureApi(RemoveableBulkModuleApi):
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
+            "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
+            "area",
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -339,16 +368,25 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
-    def download(self, dataset_id: int, image_ids: List[int] = None) -> Dict[int, List[FigureInfo]]:
+    def download(
+        self,
+        dataset_id: int,
+        image_ids: List[int] = None,
+        skip_geometry: bool = False,
+    ) -> Dict[int, List[FigureInfo]]:
         """
-        Method returns dictionary with image ids and list of FigureInfo for given dataset ID. Can be filtered by image IDs.
+        Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param image_ids: List of image IDs within given dataset ID.
+        :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
+
         :type image_ids: List[int], optional
-        :return: List of information about Figures. See :class:`FigureInfo<FigureInfo>`
-        :rtype: :class:`Dict[int, List[FigureInfo]]`
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
+        :type skip_geometry: bool
+
+        :return: A dictionary where keys are image IDs and values are lists of figures.
+        :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         fields = [
             "id",
@@ -359,11 +397,15 @@ class FigureApi(RemoveableBulkModuleApi):
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
+            "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
+            "area",
         ]
+        if skip_geometry is True:
+            fields = [x for x in fields if x != "geometry"]
 
         if image_ids is None:
             filters = []
@@ -376,14 +418,20 @@ class FigureApi(RemoveableBulkModuleApi):
         }
         resp = self._api.post("figures.list", data)
         infos = resp.json()
-        images_figures = {}
-        for info in infos["entities"]:
-            figure_info = self._convert_json_info(info, True)
-            if figure_info.entity_id in images_figures:
+        images_figures = defaultdict(list)
+
+        total_pages = infos["pagesCount"]
+        for page in range(1, total_pages + 1):
+            if page > 1:
+                data.update({ApiField.PAGE: page})
+                resp = self._api.post("figures.list", data)
+                infos = resp.json()
+            for info in infos["entities"]:
+                figure_info = self._convert_json_info(info, True)
                 images_figures[figure_info.entity_id].append(figure_info)
-            else:
-                images_figures[figure_info.entity_id] = [figure_info]
-        return images_figures
+
+        return dict(images_figures)
 
     def _convert_json_info(self, info: dict, skip_missing=False):
-        return super()._convert_json_info(info, True)
+        res = super()._convert_json_info(info, skip_missing=True)
+        return FigureInfo(**res._asdict())

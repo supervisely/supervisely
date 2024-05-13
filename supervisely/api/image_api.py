@@ -16,6 +16,7 @@ from typing import (
     Generator,
     Iterator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -27,12 +28,10 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
 from supervisely._utils import (
-    abs_url,
     batched,
-    compress_image_url,
     generate_free_name,
     get_bytes_hash,
-    is_development,
+    resize_image_url,
 )
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
@@ -155,11 +154,7 @@ class ImageInfo(NamedTuple):
         :return: Image preview URL.
         :rtype: :class:`str`
         """
-        res = self.full_storage_url
-        if is_development():
-            res = abs_url(res)
-        res = compress_image_url(url=res)
-        return res
+        return resize_image_url(self.full_storage_url)
 
 
 class ImageApi(RemoveableBulkModuleApi):
@@ -2364,9 +2359,12 @@ class ImageApi(RemoveableBulkModuleApi):
         width: Optional[int] = None,
         height: Optional[int] = None,
         quality: Optional[int] = 70,
+        ext: Literal["jpeg", "png"] = "jpeg",
+        method: Literal["fit", "fill", "fill-down", "force", "auto"] = "auto",
     ) -> str:
         """
         Previews Image with the given resolution parameters.
+        Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
         :param url: Full Image storage URL.
         :type url: str
@@ -2376,6 +2374,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type height: int
         :param quality: Preview Image quality.
         :type quality: int
+        :param ext: Preview Image extension, available values: "jpeg", "png".
+        :type ext: str, optional
+        :param method: Preview Image resize method, available values: "fit", "fill", "fill-down", "force", "auto".
+        :type method: str, optional
         :return: New URL with resized Image
         :rtype: :class:`str`
         :Usage example:
@@ -2392,16 +2394,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(image_id)
             img_preview_url = api.image.preview_url(img_info.full_storage_url, width=512, height=256)
         """
-        # @TODO: if both width and height are defined, and they are not proportioned to original image resolution,
-        # then images will be croped from center
-        if width is None:
-            width = ""
-        if height is None:
-            height = ""
-        return url.replace(
-            "/image-converter",
-            f"/previews/{width}x{height},jpeg,q{quality}/image-converter",
-        )
+        return resize_image_url(url, ext, method, width, height, quality)
 
     def update_meta(self, id: int, meta: Dict) -> Dict:
         """
@@ -2606,6 +2599,7 @@ class ImageApi(RemoveableBulkModuleApi):
         image_name: str,
         channels: Optional[List[np.ndarray]] = None,
         rgb_images: Optional[List[str]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
         """Uploads multispectral image to Supervisely, if channels are provided, they will
         be uploaded as separate images. If rgb_images are provided, they will be uploaded without
@@ -2619,6 +2613,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type channels: List[np.ndarray], optional
         :param rgb_images: list of paths to RGB images which will be uploaded as is
         :type rgb_images: List[str], optional
+        :param progress_cb: function for tracking upload progress
+        :type progress_cb: tqdm or callable, optional
         :return: list of uploaded images infos
         :rtype: List[ImageInfo]
         :Usage example:
@@ -2665,7 +2661,7 @@ class ImageApi(RemoveableBulkModuleApi):
             anns.append(Annotation(np_for_upload.shape).add_tag(group_tag))
             names.append(f"{image_basename}_{i}.png")
 
-        image_infos = self.upload_nps(dataset_id, names, nps_for_upload)
+        image_infos = self.upload_nps(dataset_id, names, nps_for_upload, progress_cb=progress_cb)
         image_ids = [image_info.id for image_info in image_infos]
 
         self._api.annotation.upload_anns(image_ids, anns)
@@ -2871,7 +2867,11 @@ class ImageApi(RemoveableBulkModuleApi):
         for dir_path in dir_paths:
             image_infos.extend(
                 self.upload_dir(
-                    dataset_id, dir_path, recursive, change_name_if_conflict, progress_cb
+                    dataset_id,
+                    dir_path,
+                    recursive,
+                    change_name_if_conflict,
+                    progress_cb,
                 )
             )
         return image_infos

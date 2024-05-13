@@ -4,18 +4,21 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional, Any
 
+import uuid
+from collections import defaultdict
+from typing import Any, Dict, Iterable, List, Optional
 
 from prettytable import PrettyTable
+
 from supervisely._utils import take_with_default
-from typing import List, Iterable
-from collections import defaultdict
 
 
 class DuplicateKeyError(KeyError):
     r"""Raised when trying to add already existing key to
-    :class:`KeyIndexedCollection <supervisely.collection.key_indexed_collection.KeyIndexedCollection>`"""
+    :class:`KeyIndexedCollection <supervisely.collection.key_indexed_collection.KeyIndexedCollection>`
+    """
+
     pass
 
 
@@ -23,6 +26,7 @@ class KeyObject:
     """
     Base class for objects that should implement the ``key`` method. The child classes can then be stored in the KeyIndexedCollection.
     """
+
     def key(self):
         raise NotImplementedError()
 
@@ -109,7 +113,8 @@ class KeyIndexedCollection:
     Field has to be overridden in child class. Before adding object to collection its type is compared with 
     ``item_type`` and ``TypeError`` exception is raised if it differs. Collection is immutable.
     """
-    def __init__(self, items: Optional[List[KeyObject]]=None):
+
+    def __init__(self, items: Optional[List[KeyObject]] = None):
         self._collection = {}
         self._add_items_impl(self._collection, take_with_default(items, []))
 
@@ -122,9 +127,12 @@ class KeyIndexedCollection:
         """
         if not isinstance(item, KeyIndexedCollection.item_type):
             raise TypeError(
-                'Item type ({!r}) != {!r}'.format(type(item).__name__, KeyIndexedCollection.item_type.__name__))
+                "Item type ({!r}) != {!r}".format(
+                    type(item).__name__, KeyIndexedCollection.item_type.__name__
+                )
+            )
         if item.key() in dst_collection:
-            raise DuplicateKeyError('Key {!r} already exists'.format(item.key()))
+            raise DuplicateKeyError("Key {!r} already exists".format(item.key()))
         dst_collection[item.key()] = item
 
     def _add_items_impl(self, dst_collection, items):
@@ -185,7 +193,19 @@ class KeyIndexedCollection:
         """
         return self.clone(items=[*self.items(), *items])
 
-    def get(self, key: str, default: Optional[Any]=None) -> KeyObject:
+    def remove_items(self, keys: List[uuid.UUID]) -> KeyIndexedCollection:
+        """
+        Remove items from collection by given list of keys.
+        Creates a new instance of KeyIndexedCollection.
+
+        :param keys: List of keys(item names) in collection.
+        :type keys:  List[str]
+        :return: New instance of KeyIndexedCollection
+        :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
+        """
+        return self.clone(items=[item for item in self.items() if item.key() not in keys])
+
+    def get(self, key: str, default: Optional[Any] = None) -> KeyObject:
         """
         Get item from collection with given key(name).
 
@@ -226,8 +246,9 @@ class KeyIndexedCollection:
         return next(self)
 
     def __contains__(self, item):
-        return (isinstance(item, KeyIndexedCollection.item_type)
-                and item == self._collection.get(item.key()))
+        return isinstance(item, KeyIndexedCollection.item_type) and item == self._collection.get(
+            item.key()
+        )
 
     def __len__(self):
         return len(self._collection)
@@ -256,7 +277,7 @@ class KeyIndexedCollection:
         """
         return list(self._collection.values())
 
-    def clone(self, items: Optional[List[KeyObject]]=None) -> KeyIndexedCollection:
+    def clone(self, items: Optional[List[KeyObject]] = None) -> KeyIndexedCollection:
         """
         Makes a copy of KeyIndexedCollection with new fields, if fields are given, otherwise it will use fields of the original KeyIndexedCollection.
 
@@ -365,7 +386,9 @@ class KeyIndexedCollection:
             our_item = self.get(other_item.key())
             if our_item is not None:
                 if our_item != other_item:
-                    raise ValueError("Different values for the same key {!r}".format(other_item.key()))
+                    raise ValueError(
+                        "Different values for the same key {!r}".format(other_item.key())
+                    )
                 else:
                     common_items.append(our_item)
         return self.clone(common_items)
@@ -468,7 +491,9 @@ class KeyIndexedCollection:
             if our_item is None:
                 new_items.append(other_item)
             elif our_item != other_item:
-                raise ValueError('Error during merge for key {!r}: values are different'.format(other_item.key()))
+                raise ValueError(
+                    "Error during merge for key {!r}: values are different".format(other_item.key())
+                )
         return self.clone(new_items + self.items())
 
     def __str__(self):
@@ -574,17 +599,21 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         #     }
         # ]
     """
-    def __init__(self, items: Optional[List]=None):
+
+    def __init__(self, items: Optional[List] = None):
         self._collection = defaultdict(list)
         self._add_items_impl(self._collection, take_with_default(items, []))
 
     def _add_impl(self, dst_collection, item):
         if not isinstance(item, MultiKeyIndexedCollection.item_type):
             raise TypeError(
-                'Item type ({!r}) != {!r}'.format(type(item).__name__, MultiKeyIndexedCollection.item_type.__name__))
+                "Item type ({!r}) != {!r}".format(
+                    type(item).__name__, MultiKeyIndexedCollection.item_type.__name__
+                )
+            )
         dst_collection[item.key()].append(item)
 
-    def get(self, key: str, default: Optional[Any]=None) -> KeyObject:
+    def get(self, key: str, default: Optional[Any] = None) -> KeyObject:
         """
         Get item from collection with given key(name). If there are many values for the same key, the first value will be returned.
 
@@ -615,7 +644,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
             return None
         return result[0]
 
-    def get_all(self, key: str, default: Optional[List[Any]]=[]) -> List[KeyObject]:
+    def get_all(self, key: str, default: Optional[List[Any]] = []) -> List[KeyObject]:
         """
         Get item from collection with given key(name). If there are many values for the same key,all values will be returned by list.
 
@@ -649,8 +678,9 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
                 yield tag
 
     def __contains__(self, item):
-        return (isinstance(item, MultiKeyIndexedCollection.item_type)
-                and item in self.get_all(item.key()))
+        return isinstance(item, MultiKeyIndexedCollection.item_type) and item in self.get_all(
+            item.key()
+        )
 
     def __len__(self):
         return sum([len(tag_list) for tag_list in self._collection.values()])
@@ -801,7 +831,9 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         new_items = [*self.items(), *other.items()]
         return self.clone(items=new_items)
 
-    def merge_without_duplicates(self, other: MultiKeyIndexedCollection) -> MultiKeyIndexedCollection:
+    def merge_without_duplicates(
+        self, other: MultiKeyIndexedCollection
+    ) -> MultiKeyIndexedCollection:
         """
         Merge collection with other MultiKeyIndexedCollection object. Duplicates will be ignored.
 

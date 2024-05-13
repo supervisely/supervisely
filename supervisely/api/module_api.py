@@ -212,6 +212,8 @@ class ApiField:
     """"""
     GEOMETRY = "geometry"
     """"""
+    GEOMETRY_META = "geometryMeta"
+    """"""
     OBJECT_ID = "objectId"
     """"""
     FRAME = "frame"
@@ -500,7 +502,34 @@ class ApiField:
     """"""
     PRESERVE_PROJECT_CARD = "preserveProjectCard"
     """"""
+    GPU_INFO = "gpuInfo"
+    """"""
+    IS_PUBLIC = "isPublic"
+    """"""
     USAGE = "usage"
+    """"""
+    PARENT_ID = "parentId"
+    """"""
+    SRC_ID = "srcId"
+    """"""
+    DEST_ID = "destId"
+    """"""
+    COMPLETE_EXISTING = "completeExisting"
+    """"""
+    MODE = "mode"
+    """"""
+    FOLDERS = "folders"
+    """"""
+    WITH_METADATA = "withMetadata"
+    """"""
+    LIMIT = "limit"
+    """"""
+    IMPORT_SETTINGS = "importSettings"
+    """"""
+    ADVANCED_SETTINGS = "advancedSettings"
+    """"""
+    LIMIT_BY_WORKSPACE = "limitByWorkspace"
+    """"""
 
 
 def _get_single_item(items):
@@ -668,7 +697,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             data = self._add_sort_param(data)
         first_response = self._api.post(method, data).json()
         total = first_response["total"]
-        per_page = first_response["perPage"]
+        # per_page = first_response["perPage"]
         after = first_response["after"]
         # pages_count = first_response["pagesCount"]
 

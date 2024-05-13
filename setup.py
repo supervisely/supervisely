@@ -125,7 +125,7 @@ setup(
         include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
     ),
     package_data={
-        "": ["*.html", "*.css", "*.js"],
+        "": ["*.html", "*.css", "*.js", "*.md"],
         "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
     },
     entry_points={

@@ -480,7 +480,7 @@ def autostart() -> bool:
     """
     return _parse_from_env(
         name="autostart",
-        keys=["modal.state.autostart"],
+        keys=["modal.state.autostart", "AUTOSTART"],
         default=False,
         raise_not_found=False,
         postprocess_fn=flag_from_env,
@@ -520,5 +520,20 @@ def apps_cache_dir():
         keys=["APPS_CACHE_DIR"],
         postprocess_fn=lambda x: x,
         default="/apps_cache",
+        raise_not_found=False,
+    )
+
+
+def mininum_instance_version_for_sdk() -> str:
+    """Returns minimum instance version required by the SDK from environment variable using following
+        - MINIMUM_INSTANCE_VERSION_FOR_SDK
+
+    :return: minimum instance version required by the SDK
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="sdk_minimum_instance_version",
+        keys=["MINIMUM_INSTANCE_VERSION_FOR_SDK"],
+        postprocess_fn=lambda x: x,
         raise_not_found=False,
     )

@@ -1,7 +1,8 @@
 import os
-import numpy as np
 from copy import deepcopy
 from typing import Callable
+
+import numpy as np
 
 import supervisely as sly
 from supervisely.io.fs import silent_remove
@@ -122,9 +123,7 @@ def download_init_mask(api: sly.Api, figure_id, image_id) -> sly.Bitmap:
     return bitmap
 
 
-def bitmap_to_mask(api: sly.Api, bitmap: sly.Bitmap, image_id):
-    img_info = api.image.get_info_by_id(image_id)
-    h, w = img_info.height, img_info.width
+def bitmap_to_mask(bitmap: sly.Bitmap, h, w):
     mask = np.zeros((h, w), bool)
     bitmap.to_bbox().get_cropped_numpy_slice(mask)[:] = bitmap.data
     mask = (mask * 255).astype(np.uint8)

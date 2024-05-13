@@ -74,6 +74,8 @@ class Bitmap(BitmapBase):
     :type updated_at: str, optional
     :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not one of [0, 1], [0, 255], [True, False]. This option affects performance. If False, the mask is converted to dtype np.bool.
+    :type extra_validation: bool, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
     :Usage example:
 
@@ -132,23 +134,26 @@ class Bitmap(BitmapBase):
         labeler_login: Optional[int] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        extra_validation: Optional[bool] = True,
     ):
         if data.dtype != np.bool:
-            unique, counts = np.unique(data, return_counts=True)
-            if len(unique) != 2:
-                raise ValueError(
-                    f"Bitmap mask data must have only 2 unique values. Instead got {len(np.unique(data, return_counts=True)[0])}."
-                )
+            if extra_validation:
+                if not (
+                    np.all(np.isin(data, [0, 1]))
+                    or np.all(np.isin(data, [0, 255]))
+                    or np.all(np.isin(data, [False, True]))
+                ):
+                    unique = np.unique(data)
+                    if len(unique) != 2:
+                        raise ValueError(
+                            f"Bitmap mask data must have only 2 unique values. Instead got {len(unique)}."
+                        )
 
-            if list(unique) not in [[0, 1], [0, 255]]:
-                raise ValueError(
-                    f"Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}."
-                )
-
-            if list(unique) == [0, 1]:
-                data = np.array(data, dtype=bool)
-            elif list(unique) == [0, 255]:
-                data = np.array(data / 255, dtype=bool)
+                    if list(unique) not in [[0, 1], [0, 255]]:
+                        raise ValueError(
+                            f"Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}."
+                        )
+            data = np.array(data, dtype=np.bool)
 
         # Call base constructor first to do the basic dimensionality checks.
         super().__init__(
