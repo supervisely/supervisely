@@ -85,6 +85,7 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
+        self._tracker = None
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -661,6 +662,12 @@ class Inference:
             fill_rectangles=False,
         )
 
+    def _create_tracker(self):
+        from supervisely.nn.tracker.bot_sort import BoTTracker
+
+        self._tracker = BoTTracker()
+        return self._tracker
+
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
         settings = self._get_inference_settings(state)
@@ -880,6 +887,108 @@ class Inference:
                 settings=settings,
                 # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
             )
+            batch_results = []
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                batch_results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
+            results.extend(batch_results)
+            if async_inference_request_uuid is not None:
+                sly_progress.iters_done(len(batch))
+                inference_request["pending_results"].extend(batch_results)
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+        fs.remove_dir(video_images_path)
+        if async_inference_request_uuid is not None and len(results) > 0:
+            inference_request["result"] = {"ann": results}
+        return results
+
+    def _track_by_detection(self, api: Api, state: dict, async_inference_request_uuid: str = None):
+        from supervisely.nn.inference.video_inference import InferenceVideoInterface
+
+        logger.debug("Track by detection...", extra={"state": state})
+        video_info = api.video.get_info_by_id(state["videoId"])
+        logger.debug(
+            f"Video info:",
+            extra=dict(
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                n_frames=state["framesCount"],
+            ),
+        )
+
+        if self.tracker is None:
+            self.tracker = self._create_tracker()
+
+        video_images_path = os.path.join(get_data_dir(), rand_str(15))
+
+        preparing_progress = {"current": 0, "total": 1}
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+            sly_progress: Progress = inference_request["progress"]
+
+            sly_progress.total = state["framesCount"]
+            inference_request["preparing_progress"]["total"] = state["framesCount"]
+            preparing_progress = inference_request["preparing_progress"]
+
+        # progress
+        preparing_progress["status"] = "download_video"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = int(video_info.file_meta["size"])
+
+        def _progress_cb(chunk_size):
+            preparing_progress["current"] += chunk_size
+
+        self.cache.download_video(api, video_info.id, return_images=False, progress_cb=_progress_cb)
+        preparing_progress["status"] = "inference"
+
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+
+        n_frames = video_info.frames_count
+        logger.debug(f"Total frames to infer: {n_frames}")
+
+        results = []
+        batch_size = 16
+        for batch in batched(range(video_info.frames_count), batch_size):
+            if (
+                async_inference_request_uuid is not None
+                and inference_request["cancel_inference"] is True
+            ):
+                logger.debug(
+                    f"Cancelling inference video...",
+                    extra={"inference_request_uuid": async_inference_request_uuid},
+                )
+                results = []
+                break
+            logger.debug(
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
+            )
+            frames = self.cache.download_frames(api, video_info.id, batch)
+            data_to_return = {}
+            anns = self._inference_images_batch(
+                source=frames,
+                settings=settings,
+                # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
+            )
+
+            for ann in anns:
+                self.tracker.update(geometries=[label.geometry for label in ann.labels])
+
             batch_results = []
             for i, ann in enumerate(anns):
                 data = {}
@@ -1128,6 +1237,34 @@ class Inference:
             future.add_done_callback(end_callback)
             logger.debug(
                 "Inference has scheduled from 'inference_video_id_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
+
+        @server.post("/track_by_detection_async")
+        def track_by_detection(request: Request):
+            logger.debug(f"'track_by_detection_async' request in json format:{request.state.state}")
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                self._track_by_detection,
+                request.state.api,
+                request.state.state,
+                inference_request_uuid,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+            logger.debug(
+                "Inference has scheduled from 'track_by_detection_async' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
             )
             return {
