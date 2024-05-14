@@ -445,18 +445,20 @@ class Bitmap(BitmapBase):
             figure_contours = figure.to_contours()
         """
         origin, mask = self.origin, self.data
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
-            contours, hier = cv2.findContours(  # pylint: disable=no-member
+        # pylint: disable=(no-member, unpacking-non-sequence)
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
+            contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
-                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes # pylint: disable=no-member
-                method=cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with hole
+                method=cv2.CHAIN_APPROX_SIMPLE,
             )
         else:
-            _, contours, hier = cv2.findContours(  # pylint: disable=no-member
+            _, contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
-                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes # pylint: disable=no-member
-                method=cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with hole
+                method=cv2.CHAIN_APPROX_SIMPLE,
             )
+        # pylint: enable=(no-member, unpacking-non-sequence)
         if (hier is None) or (contours is None):
             return []
 

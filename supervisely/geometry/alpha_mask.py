@@ -329,17 +329,18 @@ class AlphaMask(Bitmap):
 
     def _draw_contour_impl(self, alpha_mask, color, thickness=1, config=None):
         """_draw_contour_impl"""
+        # pylint: disable=(no-member, unpacking-non-sequence)
         if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
-            contours, _ = cv2.findContours(  # pylint: disable=no-member
+            contours, _ = cv2.findContours(
                 self.data.astype(np.uint8),
-                cv2.RETR_LIST,  # pylint: disable=no-member
-                cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                cv2.RETR_LIST,
+                cv2.CHAIN_APPROX_SIMPLE,
             )
         else:
-            _, contours, _ = cv2.findContours(  # pylint: disable=no-member
+            _, contours, _ = cv2.findContours(
                 self.data.astype(np.uint8),
-                cv2.RETR_LIST,  # pylint: disable=no-member
-                cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                cv2.RETR_LIST,
+                cv2.CHAIN_APPROX_SIMPLE,
             )
         if contours is not None:
             for cont in contours:
@@ -347,9 +348,10 @@ class AlphaMask(Bitmap):
                     self.origin.col,
                     self.origin.row,
                 )  # cont with shape (rows, ?, 2)
-            cv2.drawContours(  # pylint: disable=no-member
+            cv2.drawContours(
                 alpha_mask, contours, -1, color, thickness=thickness
             )
+        # pylint: enable=(no-member, unpacking-non-sequence)
 
     @property
     def area(self) -> float:

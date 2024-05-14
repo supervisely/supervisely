@@ -58,6 +58,7 @@ def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectM
 def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMeta:
     class_name = object["classTitle"]
     geometry_type = object["geometryType"]
+    obj_class = None
     # @TODO: add better check for geometry type, add
     if geometry_type == Bitmap.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
@@ -81,6 +82,10 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
             template.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
         obj_class = ObjClass(name=class_name, geometry_type=GraphNodes, geometry_config=template)
     existing_class = meta.get_obj_class(class_name)
+    if obj_class is None:
+        logger.warn(f"Unknown geometry type {geometry_type} for class {class_name}")
+        return meta
+
     if existing_class is None:
         meta = meta.add_obj_class(obj_class)
     else:
