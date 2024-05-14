@@ -354,7 +354,7 @@ class Bitmap(BitmapBase):
 
         imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=(no-member, unpacking-non-sequenc)
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] >= 4):
-            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs
+            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded.astype(bool)  # flat 2d mask
         else:
