@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 import numpy as np
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict, Optional, Union
 
 from supervisely.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE, \
                                                LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
@@ -74,9 +74,17 @@ class BitmapBase(Geometry):
 
     :Usage example: Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
     """
-    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None, expected_data_dims: Optional[int] = None,
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        data: np.ndarray,
+        origin: Optional[PointLocation] = None,
+        expected_data_dims: Optional[Union[int, list]] = None,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         if origin is None:
             origin = PointLocation(row=0, col=0)
@@ -88,9 +96,15 @@ class BitmapBase(Geometry):
             raise TypeError('BitmapBase "data" argument must be numpy array object!')
 
         data_dims = len(data.shape)
-        if expected_data_dims is not None and data_dims != expected_data_dims:
-            raise ValueError(f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions')
-
+        if expected_data_dims is not None:
+            if isinstance(expected_data_dims, int):
+                if data_dims != expected_data_dims:
+                    raise ValueError(f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions')
+            elif isinstance(expected_data_dims, list):
+                if data_dims not in expected_data_dims:
+                    raise ValueError(f'BitmapBase "data" argument dimensions must be in {expected_data_dims}. Instead got {data_dims} dimensions')
+            else:
+                raise ValueError(f'BitmapBase "expected_data_dims" argument must be int or list of ints. Instead got {type(expected_data_dims)}')
 
         self._origin = origin.clone()
         self._data = data.copy()

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import io
+import re
 import zlib
 from distutils.version import StrictVersion
 from enum import Enum
@@ -12,92 +13,69 @@ from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
+import requests
 from PIL import Image
+from requests.structures import CaseInsensitiveDict
+from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
+from supervisely import logger
+from supervisely._utils import batched
+from supervisely.api.module_api import ApiField
+from supervisely.geometry.bitmap import (
+    Bitmap,
+    SkeletonizeMethod,
+    _find_mask_tight_bbox,
+    resize_origin_and_bitmap,
+)
 from supervisely.geometry.bitmap_base import BitmapBase, resize_origin_and_bitmap
-from supervisely.geometry.constants import BITMAP
+from supervisely.geometry.constants import ALPHA_MASK
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point_location import PointLocation, row_col_list_to_points
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import image as sly_image
 from supervisely.imaging.image import read
+from supervisely.io.network_exceptions import (
+    process_requests_exception,
+    process_unhandled_request,
+)
 
-if not hasattr(np, "bool"):
-    np.bool = np.bool_
 
-
-class SkeletonizeMethod(Enum):
+class AlphaMask(Bitmap):
     """
-    Specifies possible skeletonization methods of :class:`Bitmap<Bitmap>`.
-    """
+    AlphaMask geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`AlphaMask<AlphaMask>` object is immutable.
 
-    SKELETONIZE = 0
-    """"""
-    MEDIAL_AXIS = 1
-    """"""
-    THINNING = 2
-    """"""
-
-
-def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
-    rows = list(
-        np.any(raw_mask, axis=1).tolist()
-    )  # Redundant conversion to list to help PyCharm static analysis.
-    cols = list(np.any(raw_mask, axis=0).tolist())
-    top_margin = rows.index(True)
-    bottom_margin = rows[::-1].index(True)
-    left_margin = cols.index(True)
-    right_margin = cols[::-1].index(True)
-    return Rectangle(
-        top=top_margin,
-        left=left_margin,
-        bottom=len(rows) - 1 - bottom_margin,
-        right=len(cols) - 1 - right_margin,
-    )
-
-
-class Bitmap(BitmapBase):
-    """
-    Bitmap geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
-
-    :param data: Bitmap mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
+    :param data: AlphaMask mask data. Must be a numpy array with values in range [0, 255].
     :type data: np.ndarray
-    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
+    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of AlphaMask. Position of the AlphaMask within image.
     :type origin: PointLocation, optional
-    :param sly_id: Bitmap ID in Supervisely server.
+    :param sly_id: AlphaMask ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
+    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which AlphaMask belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Bitmap.
+    :param labeler_login: Login of the user who created AlphaMask.
     :type labeler_login: str, optional
-    :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+    :param updated_at: Date and Time when AlphaMask was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
-    :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
+    :param created_at: Date and Time when AlphaMask was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not one of [0, 1], [0, 255], [True, False]. This option affects performance. If False, the mask is converted to dtype np.bool.
+    :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not in the range [0, 255]. If True it will affect performance.
     :type extra_validation: bool, optional
-    :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
+    :raises: :class:`ValueError`, if data values are not in the range [0, 255].
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
 
-        # Create simple bitmap
+        # Create simple alpha mask:
         mask = np.array([[0, 0, 0, 0, 0],
-                         [0, 1, 1, 1, 0],
-                         [0, 1, 0, 1, 0],
-                         [0, 1, 1, 1, 0],
-                         [0, 0, 0, 0, 0]], dtype=np.bool_)
+                         [0, 50, 50, 50, 0],
+                         [0, 50, 0, 50, 0],
+                         [0, 50, 50, 50, 0],
+                         [0, 0, 0, 0, 0]], dtype=np.uint8)
 
-        figure = sly.Bitmap(mask)
-
-        # Note, when creating a bitmap, the specified mask is cut off by positive values, based on this, a origin is formed:
-        print(figure.data)
-        # Output:
-        #    [[ True  True  True]
-        #     [ True False  True]
-        #     [ True  True  True]]
+        figure = sly.AlphaMask(mask)
 
         origin = figure.origin.to_json()
         print(json.dumps(origin, indent=4))
@@ -112,10 +90,10 @@ class Bitmap(BitmapBase):
         #         "interior": []
         #     }
 
-        # Create bitmap from black and white image:
-        img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.jpeg'))
-        mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
-        figure = sly.Bitmap(mask)
+        # Create alpha mask from PNG image:
+        img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.png'))
+        mask = img[:, :, 3]
+        figure = sly.AlphaMask(mask)
 
      .. image:: https://i.imgur.com/2L3HRPs.jpg
     """
@@ -123,7 +101,7 @@ class Bitmap(BitmapBase):
     @staticmethod
     def geometry_name():
         """geometry_name"""
-        return "bitmap"
+        return "alpha_mask"
 
     def __init__(
         self,
@@ -136,30 +114,26 @@ class Bitmap(BitmapBase):
         created_at: Optional[str] = None,
         extra_validation: Optional[bool] = True,
     ):
-        if data.dtype != np.bool:
+        if data.dtype != np.uint8:
+            if data.dtype == np.bool:
+                data = data.astype(np.uint8) * 225
+            else:
+                data = np.array(data, dtype=np.uint8)
             if extra_validation:
-                if not (
-                    np.all(np.isin(data, [0, 1]))
-                    or np.all(np.isin(data, [0, 255]))
-                    or np.all(np.isin(data, [False, True]))
-                ):
-                    unique = np.unique(data)
-                    if len(unique) != 2:
+                if not np.all(np.isin(data, range(256))):
+                    max_val = np.max(data)
+                    min_val = np.min(data)
+                    if max_val > 255 or min_val < 0:
                         raise ValueError(
-                            f"Bitmap mask data must have only 2 unique values. Instead got {len(unique)}."
+                            f"Alpha mask data values must be in range [0, 255]. Instead got min: {min_val}, max: {max_val}."
                         )
-
-                    if list(unique) not in [[0, 1], [0, 255]]:
-                        raise ValueError(
-                            f"Bitmap mask data values must be one of: [  0 1], [  0 255], [  False True]. Instead got {unique}."
-                        )
-            data = np.array(data, dtype=np.bool)
 
         # Call base constructor first to do the basic dimensionality checks.
-        super().__init__(
+        BitmapBase.__init__(
+            self,
             data=data,
             origin=origin,
-            expected_data_dims=2,
+            expected_data_dims=[2, 3],
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
@@ -167,28 +141,22 @@ class Bitmap(BitmapBase):
             created_at=created_at,
         )
 
-        # Crop the empty margins of the boolean mask right away.
         if not np.any(data):
             raise ValueError(
-                "Creating a bitmap with an empty mask (no pixels set to True) is not supported."
+                "Creating a alpha mask with an empty mask (no pixels set to True) is not supported."
             )
         data_tight_bbox = _find_mask_tight_bbox(self._data)
         self._origin = self._origin.translate(drow=data_tight_bbox.top, dcol=data_tight_bbox.left)
         self._data = data_tight_bbox.get_cropped_numpy_slice(self._data)
 
-    @classmethod
-    def _impl_json_class_name(cls):
-        """_impl_json_class_name"""
-        return BITMAP
-
-    def rotate(self, rotator: ImageRotator) -> Bitmap:
+    def rotate(self, rotator: ImageRotator) -> AlphaMask:
         """
-        Rotates current Bitmap.
+        Rotates current AlphaMask.
 
         :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
         :type rotator: ImageRotator
-        :return: Bitmap object
-        :rtype: :class:`Bitmap<Bitmap>`
+        :return: AlphaMask object
+        :rtype: :class:`AlphaMask<AlphaMask>`
 
         :Usage Example:
 
@@ -199,24 +167,24 @@ class Bitmap(BitmapBase):
 
             height, width = ann.img_size
             rotator = ImageRotator((height, width), 25)
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+            # Remember that AlphaMask class object is immutable, and we need to assign new instance of AlphaMask to a new variable
             rotate_figure = figure.rotate(rotator)
         """
         full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
-        self.draw(full_img_mask, 1)
+        self.draw(full_img_mask, 255)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
-        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
-        return Bitmap(data=new_mask)
+        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True)
+        return AlphaMask(data=new_mask[:, :, :3])
 
-    def crop(self, rect: Rectangle) -> List[Bitmap]:
+    def crop(self, rect: Rectangle) -> List[AlphaMask]:
         """
-        Crops current Bitmap.
+        Crops current AlphaMask.
 
         :param rect: Rectangle object for cropping.
         :type rect: Rectangle
-        :return: List of Bitmaps
-        :rtype: :class:`List[Bitmap]<supervisely.geometry.bitmap.Bitmap>`
+        :return: List of AlphaMasks
+        :rtype: :class:`List[AlphaMask]<supervisely.geometry.alpha_mask.AlphaMask>`
 
         :Usage Example:
 
@@ -236,22 +204,22 @@ class Bitmap(BitmapBase):
             if not np.any(cropped_mask):
                 return []
             return [
-                Bitmap(
+                AlphaMask(
                     data=cropped_mask,
                     origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left),
                 )
             ]
 
-    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Bitmap:
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> AlphaMask:
         """
-        Resizes current Bitmap.
+        Resizes current AlphaMask.
 
-        :param in_size: Input image size (height, width) to which Bitmap belongs.
+        :param in_size: Input image size (height, width) to which AlphaMask belongs.
         :type in_size: Tuple[int, int]
-        :param out_size: Output image size (height, width) to which Bitmap belongs.
+        :param out_size: Output image size (height, width) to which AlphaMask belongs.
         :type out_size: Tuple[int, int]
-        :return: Bitmap object
-        :rtype: :class:`Bitmap<Bitmap>`
+        :return: AlphaMask object
+        :rtype: :class:`AlphaMask<AlphaMask>`
 
         :Usage Example:
 
@@ -259,7 +227,7 @@ class Bitmap(BitmapBase):
 
             in_height, in_width = 800, 1067
             out_height, out_width = 600, 800
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+            # Remember that AlphaMask class object is immutable, and we need to assign new instance of AlphaMask to a new variable
             resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         scaled_origin, scaled_data = resize_origin_and_bitmap(
@@ -267,13 +235,99 @@ class Bitmap(BitmapBase):
         )
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
         #  it in the resulting bitmap.
-        return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
+        return AlphaMask(data=scaled_data.astype(np.uint8), origin=scaled_origin)
+
+    # def set_data(self, data: np.ndarray) -> None:  # TODO: remove this method after tests
+    #     self._data = data
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_impl"""
-        self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
+        channels = bitmap.shape[2] if len(bitmap.shape) == 3 else 1
+        non_zero_values = self.data > 0
+        if channels >= 3:
+            if isinstance(color, int):
+                color = [color] * 3
+            temp_mask = np.zeros(self.data.shape + (3,), dtype=np.uint8)
+            temp_mask[non_zero_values] = color
+            alpha = self.data / 255.0
+            for i in range(3):
+                canvas = self.to_bbox().get_cropped_numpy_slice(bitmap)[:, :, i]
+                canvas[non_zero_values] = (canvas * (1 - alpha) + alpha * temp_mask[:, :, i])[
+                    non_zero_values
+                ]
+        elif channels == 1:
+            if isinstance(color, list):
+                raise ValueError("Requires 'int' color for 1-channel image.")
+            temp_mask = np.zeros(self.data.shape, dtype=np.uint8)
+            temp_mask[non_zero_values] = color
+            alpha_channel = np.zeros(self.data.shape, dtype=np.uint8)
+            alpha_channel[non_zero_values] = self.data[non_zero_values]
+            alpha = alpha_channel / 255.0
+            self.to_bbox().get_cropped_numpy_slice(bitmap)[non_zero_values] = (
+                1 - alpha[non_zero_values]
+            ) * self.to_bbox().get_cropped_numpy_slice(bitmap)[non_zero_values] + alpha[
+                non_zero_values
+            ] * temp_mask[
+                non_zero_values
+            ]
+        ###
+        # temp_mask = np.zeros(self.data.shape + (3,), dtype=np.uint8)
+        # alpha_channel = np.zeros(self.data.shape + (3,), dtype=np.uint8)
 
-    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        # temp_mask[non_zero_values] = color
+        # alpha_channel[..., -1][non_zero_values] = self.data[non_zero_values]
+        # alpha = alpha_channel / 255.0
+
+        # for i in range(dims):
+        #     self.to_bbox().get_cropped_numpy_slice(bitmap)[..., i][non_zero_values] = (
+        #         1 - alpha
+        #     ) * self.to_bbox().get_cropped_numpy_slice(bitmap)[..., i][non_zero_values] + alpha * temp_mask[..., i][non_zero_values]
+        ###
+
+        # temp_mask = np.zeros(bitmap.shape, dtype=np.uint8)
+        # alpha_channel = np.zeros(bitmap.shape, dtype=np.uint8)
+
+        #######
+
+        # # if len(self.data.shape) != 2 or bitmap.shape[2] < 4:
+        # #     raise ValueError("Requires 4-channel image as input for drawing.")
+        # # h, w = [:2]
+
+        # # try100500
+        # self.to_bbox().get_cropped_numpy_slice(temp_mask)[:, :, dims][self.data] = color
+        # self.to_bbox().get_cropped_numpy_slice(alpha_channel)[:, :, -1][self.data] = self.data
+        # alpha = self.to_bbox().get_cropped_numpy_slice(alpha_channel)[:, :, -1][self.data] / 255.0
+
+        # self.to_bbox().get_cropped_numpy_slice(bitmap)[:, :, dims][
+        #     self.data
+        # ] = self.to_bbox().get_cropped_numpy_slice(bitmap)[:, :, dims][self.data] * (1 - alpha) + color * alpha
+        #######
+
+        # self.to_bbox().get_cropped_numpy_slice(temp_mask)[:, :, 3][non_zero_values] = color
+        # self.to_bbox().get_cropped_numpy_slice(alpha_channel)[non_zero_values] = self.data[
+        #     non_zero_values
+        # ]
+        # # alpha_channel = np.zeros((self.data.shape), dtype=np.uint8)
+        # # alpha_channel = self.data[non_zero_values]
+        # alpha = alpha_channel / 255.0
+
+        # if dims == 1:
+        #     bitmap[:, :, 0] = (1 - alpha) * bitmap[:, :, 0] + alpha * temp_mask[:, :, 0]
+        #     # bitmap[:, :] = (1 - alpha[:, :, 0]) * bitmap[:, :] + alpha[:, :, 0] * temp_mask[
+        #     #     :, :, 0
+        #     # ]  # IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed
+        #     # bitmap[:, :] = (1 - alpha[:, :]) * bitmap[:, :] + alpha[:, :] * temp_mask[
+        #     #     :, :
+        #     # ] # IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed
+        #     bitmap[:, :] = (1 - alpha) * bitmap[:, :] + alpha * temp_mask[:, :]
+
+        # elif dims >= 3:
+        #     for i in range(dims):
+        #         bitmap[:, :, i] = (1 - alpha[:, :, 0]) * bitmap[:, :, i] + alpha[:, :, 0] * temp_mask[
+        #             :, :, i
+        #         ]
+
+    def _draw_contour_impl(self, alpha_mask, color, thickness=1, config=None):
         """_draw_contour_impl"""
         if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
             contours, _ = cv2.findContours(  # pylint: disable=no-member
@@ -294,15 +348,15 @@ class Bitmap(BitmapBase):
                     self.origin.row,
                 )  # cont with shape (rows, ?, 2)
             cv2.drawContours(  # pylint: disable=no-member
-                bitmap, contours, -1, color, thickness=thickness
+                alpha_mask, contours, -1, color, thickness=thickness
             )
 
     @property
     def area(self) -> float:
         """
-        Bitmap area.
+        AlphaMask area.
 
-        :return: Area of current Bitmap
+        :return: Area of current AlphaMask
         :rtype: :class:`float`
         :Usage example:
 
@@ -311,7 +365,7 @@ class Bitmap(BitmapBase):
             print(figure.area)
             # Output: 88101.0
         """
-        return float(self._data.sum())
+        return float(np.count_nonzero(self._data))
 
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
@@ -320,7 +374,7 @@ class Bitmap(BitmapBase):
 
         :param s: Input base64 encoded string.
         :type s: str
-        :return: Bool numpy array
+        :return: numpy array
         :rtype: :class:`np.ndarray`
         :Usage example:
 
@@ -329,32 +383,26 @@ class Bitmap(BitmapBase):
               import supervisely as sly
 
               encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
-              figure_data = sly.Bitmap.base64_2_data(encoded_string)
+              figure_data = sly.AlphaMask.base64_2_data(encoded_string)
               print(figure_data)
-              #  [[ True  True  True]
-              #   [ True False  True]
-              #   [ True  True  True]]
 
               uncompressed_string = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA'
-              boolean_mask = sly.Bitmap.base64_2_data(uncompressed_string)
-              print(boolean_mask)
-              #  [[ True  True  True]
-              #   [ True False  True]
-              #   [ True  True  True]]
+              mask = sly.AlphaMask.base64_2_data(uncompressed_string)
+              print(mask)
         """
         try:
             z = zlib.decompress(base64.b64decode(s))
         except zlib.error:
             # If the string is not compressed, we'll not use zlib.
             img = Image.open(io.BytesIO(base64.b64decode(s)))
-            return np.any(np.array(img), axis=-1)
+            return np.array(img)
         n = np.frombuffer(z, np.uint8)
 
         imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
-        if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] >= 4):
-            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs
+        if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] == 4):
+            mask = imdecoded[:, :, 3]
         elif len(imdecoded.shape) == 2:
-            mask = imdecoded.astype(bool)  # flat 2d mask
+            mask = imdecoded
         else:
             raise RuntimeError("Wrong internal mask format.")
         return mask
@@ -384,35 +432,36 @@ class Bitmap(BitmapBase):
             ann_info = api.annotation.download(IMAGE_ID)
             ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Get Bitmap from annotation
+            # Get AlphaMask from annotation
             for label in ann.labels:
-                if type(label.geometry) == sly.Bitmap:
+                if type(label.geometry) == sly.AlphaMask:
                     figure = label.geometry
 
-            encoded_string = sly.Bitmap.data_2_base64(figure.data)
-            print(encoded_string)
+                    encoded_string = sly.AlphaMask.data_2_base64(figure.data)
+                    print(encoded_string)
             # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
         """
         img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
-        img_pil.putpalette([0, 0, 0, 255, 255, 255])
+        # img_pil.putpalette([0, 0, 0, 255, 255, 255])
         bytes_io = io.BytesIO()
-        img_pil.save(bytes_io, format="PNG", transparency=0, optimize=0)
+        img_pil.save(bytes_io, format="PNG", optimize=0)  # ?, transparency=0)
         bytes_enc = bytes_io.getvalue()
-        return base64.b64encode(zlib.compress(bytes_enc)).decode("utf-8")
+        return base64.b64encode(bytes_enc).decode("utf-8")
+        # return base64.b64encode(zlib.compress(bytes_enc)).decode("utf-8")
 
-    def skeletonize(self, method_id: SkeletonizeMethod) -> Bitmap:
+    def skeletonize(self, method_id: SkeletonizeMethod) -> AlphaMask:
         """
-        Compute the skeleton, medial axis transform or morphological thinning of Bitmap.
+        Compute the skeleton, medial axis transform or morphological thinning of AlphaMask.
 
         :param method_id: Method to convert bool numpy array.
         :type method_id: SkeletonizeMethod
-        :return: Bitmap object
-        :rtype: :class:`Bitmap<Bitmap>`
+        :return: AlphaMask object
+        :rtype: :class:`AlphaMask<AlphaMask>`
         :Usage example:
 
          .. code-block:: python
 
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+            # Remember that AlphaMask class object is immutable, and we need to assign new instance of AlphaMask to a new variable
             skeleton_figure = figure.skeletonize(SkeletonizeMethod.SKELETONIZE)
             med_ax_figure = figure.skeletonize(SkeletonizeMethod.MEDIAL_AXIS)
             thin_figure = figure.skeletonize(SkeletonizeMethod.THINNING)
@@ -429,12 +478,12 @@ class Bitmap(BitmapBase):
             raise NotImplementedError("Method {!r} does't exist.".format(method_id))
 
         mask_u8 = self.data.astype(np.uint8)
-        res_mask = method(mask_u8).astype(bool)
-        return Bitmap(data=res_mask, origin=self.origin)
+        res_mask = method(mask_u8)
+        return AlphaMask(data=res_mask, origin=self.origin)
 
     def to_contours(self) -> List[Polygon]:
         """
-        Get list of contours in Bitmap.
+        Get list of contours in AlphaMask.
 
         :return: List of Polygon objects
         :rtype: :class:`List[Polygon]<supervisely.geometry.polygon.Polygon>`
@@ -482,16 +531,16 @@ class Bitmap(BitmapBase):
         res = [x.translate(offset_row, offset_col) for x in res]
         return res
 
-    def bitwise_mask(self, full_target_mask: np.ndarray, bit_op) -> Bitmap:
+    def bitwise_mask(self, full_target_mask: np.ndarray, bit_op) -> AlphaMask:
         """
-        Make bitwise operations between a given numpy array and Bitmap.
+        Make bitwise operations between a given numpy array and AlphaMask.
 
         :param full_target_mask: Input numpy array.
         :type full_target_mask: np.ndarray
         :param bit_op: Type of bitwise operation(and, or, not, xor), uses `numpy logic <https://numpy.org/doc/stable/reference/routines.logic.html>`_ functions.
         :type bit_op: `Numpy logical operation <https://numpy.org/doc/stable/reference/routines.logic.html#logical-operations>`_
-        :return: Bitmap object or empty list
-        :rtype: :class:`Bitmap<Bitmap>` or :class:`list`
+        :return: AlphaMask object or empty list
+        :rtype: :class:`AlphaMask<AlphaMask>` or :class:`list`
         :Usage example:
 
          .. code-block:: python
@@ -499,62 +548,57 @@ class Bitmap(BitmapBase):
             import supervisely as sly
 
             mask = np.array([[0, 0, 0, 0, 0],
-                            [0, 1, 1, 1, 0],
-                            [0, 1, 0, 1, 0],
-                            [0, 1, 1, 1, 0],
-                            [0, 0, 0, 0, 0]], dtype=np.bool_)
+                            [0, 50, 50, 50, 0],
+                            [0, 50, 0, 50, 0],
+                            [0, 50, 50, 50, 0],
+                            [0, 0, 0, 0, 0]], dtype=np.uint8)
 
-            figure = sly.Bitmap(mask)
+            figure = sly.AlphaMask(mask)
 
             array = np.array([[0, 0, 0, 0, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 0, 1, 0, 0],
-                             [0, 0, 1, 0, 0],
-                             [0, 0, 0, 0, 0]], dtype=np.bool_)
+                             [0, 50, 50, 50, 0],
+                             [0, 0, 50, 0, 0],
+                             [0, 0, 50, 0, 0],
+                             [0, 0, 0, 0, 0]], dtype=np.uint8)
 
             bitwise_figure = figure.bitwise_mask(array, np.logical_and)
             print(bitwise_figure.data)
-            # Output:
-            # [[ True  True  True]
-            #  [False False False]
-            #  [False  True False]]
         """
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data
-        full_size_mask = np.full(full_size, False, bool)
+        full_size_mask = np.full(full_size, 0, np.uint8)
         full_size_mask[
             origin.row : origin.row + mask.shape[0],
-            origin.col : origin.col + mask.shape[1],
+            origin.col : origin.col + mask.shape[50],
         ] = mask
 
-        new_mask = bit_op(full_target_mask, full_size_mask).astype(bool)
+        new_mask = bit_op(full_target_mask, full_size_mask).astype(np.uint8)
         if new_mask.sum() == 0:
             return []
         new_mask = new_mask[
             origin.row : origin.row + mask.shape[0],
             origin.col : origin.col + mask.shape[1],
         ]
-        return Bitmap(data=new_mask, origin=origin.clone())
+        return AlphaMask(data=new_mask, origin=origin.clone())
 
     @classmethod
     def allowed_transforms(cls):
         """allowed_transforms"""
-        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
 
-        return [AlphaMask, AnyGeometry, Polygon, Rectangle]
+        return [AnyGeometry, Polygon, Rectangle]
 
     @classmethod
-    def from_path(cls, path: str) -> Bitmap:
+    def from_path(cls, path: str) -> AlphaMask:
         """
-        Read bitmap from image by path.
+        Read alpha_channel from image by path.
 
         :param path: Path to image
         :type path: str
-        :return: Bitmap
-        :rtype: Bitmap
+        :return: AlphaMask
+        :rtype: AlphaMask
         """
         img = read(path)
-        return Bitmap(img[:, :, 0])
+        return AlphaMask(img[:, :, 0])

@@ -1,27 +1,25 @@
 # coding: utf-8
 
 # docs
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Union
 from supervisely.geometry.geometry import Geometry
 import numpy as np
 
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.polygon import Polygon
 
 
-def geometry_to_bitmap(geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None) -> List[Bitmap]:
-    """
-    Args:
-        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
-        radius: half of thickness of drawed vector elements
-        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
-    Returns:
-        Bitmap (geometry) object
-    """
+def _geometry_to_mask_base(
+        geomtery_type:Union[AlphaMask, Bitmap],
+        geometry: Geometry,
+        radius: Optional[int] = 0,
+        crop_image_shape: Optional[Tuple] = None,
+) -> List[Union[AlphaMask, Bitmap]]:
 
     thickness = radius + 1
 
@@ -35,11 +33,37 @@ def geometry_to_bitmap(geometry: Geometry, radius: Optional[int] = 0, crop_image
     geometry.draw(bitmap_data, color=True, thickness=thickness)
 
     origin = PointLocation(extended_bbox.top, extended_bbox.left)
-    bitmap_geometry = Bitmap(data=bitmap_data, origin=origin)
+    bitmap_geometry = geomtery_type(data=bitmap_data, origin=origin)
     if crop_image_shape is not None:
         crop_rect = Rectangle.from_size(*crop_image_shape)
         return bitmap_geometry.crop(crop_rect)
     return [bitmap_geometry]
+
+
+def geometry_to_bitmap(geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None) -> List[Bitmap]:
+    """
+    Args:
+        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
+        radius: half of thickness of drawed vector elements
+        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
+    Returns:
+        Bitmap (geometry) object
+    """
+
+    return _geometry_to_mask_base(Bitmap, geometry, radius, crop_image_shape)
+
+
+def geometry_to_alpha_mask(geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None) -> List[AlphaMask]:
+    """
+    Args:
+        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
+        radius: half of thickness of drawed vector elements
+        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
+    Returns:
+        AlphaMask (geometry) object
+    """
+
+    return _geometry_to_mask_base(AlphaMask, geometry, radius, crop_image_shape)
 
 
 def get_effective_nonoverlapping_masks(geometries: List[Geometry], img_size: Optional[Tuple[int, int]]=None) -> Tuple[List[Bitmap], np.ndarray]:
@@ -94,7 +118,7 @@ def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int]=None) 
     if type(geometry) == Polygon:
         return [geometry]
 
-    if type(geometry) == Bitmap:
+    if type(geometry) in [AlphaMask, Bitmap]:
         new_geometries = geometry.to_contours()
         if approx_epsilon is None:
             approx_epsilon = 1

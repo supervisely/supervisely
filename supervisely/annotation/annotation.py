@@ -67,6 +67,8 @@ class AnnotationJsonFields:
     """"""
     IMAGE_ID = "imageId"
     """"""
+    ROOT_FIELD = "annotation"
+    """"""
 
 
 class Annotation:

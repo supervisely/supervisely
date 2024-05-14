@@ -87,6 +87,7 @@ from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 
 from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.geometry.helpers import deserialize_geometry

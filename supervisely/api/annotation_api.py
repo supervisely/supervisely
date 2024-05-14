@@ -5,14 +5,16 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
 from supervisely._utils import batched
-from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
+from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.api.module_api import ApiField, ModuleApi
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -297,7 +299,29 @@ class AnnotationApi(ModuleApi):
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             },
         )
-        return self._convert_json_info(response.json())
+        result = response.json()
+        ann_info = self._convert_json_info(result)
+
+        # check if there are any AlphaMask geometries in the batch
+        additonal_geometries = defaultdict(tuple)
+        ann_dict = ann_info.annotation
+        for idx, label in enumerate(ann_dict[AnnotationJsonFields.LABELS]):
+            if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                figure_id = label[LabelJsonFields.ID]
+                additonal_geometries[figure_id] = idx
+
+        # if so, download them separately and update the annotation
+        if len(additonal_geometries) > 0:
+            figure_ids = list(additonal_geometries.keys())
+            figures = self._api.image.figure.donwload_geometries_batch(figure_ids)
+            for figure_id, geometry in zip(figure_ids, figures):
+                label_idx = additonal_geometries[figure_id]
+                result[AnnotationJsonFields.ROOT_FIELD][AnnotationJsonFields.LABELS][
+                    label_idx
+                ].update(geometry)
+            ann_info = self._convert_json_info(result)
+
+        return ann_info
 
     def download_json(
         self,
@@ -391,9 +415,34 @@ class AnnotationApi(ModuleApi):
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
-            for ann_dict in results:
+
+            additonal_geometries = defaultdict(tuple)
+            for ann_idx, ann_dict in enumerate(results):
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
+
+                # check if there are any AlphaMask geometries in the batch
+                for label_idx, label in enumerate(ann_info.annotation[AnnotationJsonFields.LABELS]):
+                    if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                        figure_id = label[LabelJsonFields.ID]
+                        additonal_geometries[figure_id] = (ann_idx, label_idx)
+
+            # if there are any AlphaMask geometries, download them separately and update the annotation
+            if len(additonal_geometries) > 0:
+                figure_ids = list(additonal_geometries.keys())
+                figures = self._api.image.figure.donwload_geometries_batch(figure_ids)
+                anns_to_update = set()
+                for figure_id, geometry in zip(figure_ids, figures):
+                    anns_to_update.add(ann_idx)
+                    ann_idx, label_idx = additonal_geometries[figure_id]
+                    results[ann_idx]["annotation"][AnnotationJsonFields.LABELS][label_idx].update(
+                        geometry
+                    )
+
+                for ann_idx in anns_to_update:
+                    ann_info = self._convert_json_info(results[ann_idx])
+                    id_to_ann[ann_info.image_id] = ann_info
+
             if progress_cb is not None:
                 progress_cb(len(batch))
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
@@ -689,6 +738,20 @@ class AnnotationApi(ModuleApi):
             img_ids[0], force_metadata_for_links=False
         ).dataset_id
         for batch in batched(list(zip(img_ids, anns))):
+
+            # check if there are any AlphaMask geometries in the batch
+            special_geometries = defaultdict(list)
+            for idx, (img_id, ann) in enumerate(batch):
+                filtered_labels = []
+                for label in ann.labels:
+                    if label.obj_class.geometry_type == AlphaMask:
+                        special_geometries[img_id].append(label)
+                    else:
+                        filtered_labels.append(label)
+                if len(filtered_labels) != len(ann.labels):
+                    ann = ann.clone(labels=filtered_labels)
+                    batch[idx] = (img_id, ann)
+
             data = [
                 {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
                 for img_id, ann in batch
@@ -701,6 +764,35 @@ class AnnotationApi(ModuleApi):
                     ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
                 },
             )
+
+            if len(special_geometries) > 0:
+                alpha_mask_geometry = AlphaMask._impl_json_class_name()
+                # 1. create figures
+
+                json_body = {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.FIGURES: [],
+                    ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
+                }
+                added_fig_ids = []
+                geometries = []
+                for img_id, labels in special_geometries.items():
+                    for label in labels:
+                        label_json = label.to_json()
+                        label_json.update({ApiField.ENTITY_ID: img_id})
+                        label_json.pop(alpha_mask_geometry)
+                        json_body[ApiField.FIGURES].append(label_json)
+                        geometries.append(label.geometry.to_json())
+
+                resp = self._api.post("figures.bulk.add", json_body)
+                for resp_obj in resp.json():
+                    figure_id = resp_obj[ApiField.ID]
+                    added_fig_ids.append(figure_id)
+
+                # 2. upload geometries
+                for figure_id, geometry in zip(added_fig_ids, geometries):
+                    self._api.image.figure.upload_geometry(figure_id, geometry)
+
             if progress_cb is not None:
                 progress_cb(len(batch))
 
@@ -912,10 +1004,16 @@ class AnnotationApi(ModuleApi):
         if len(labels) == 0:
             return
 
+        alpha_mask_geometry_filed = AlphaMask._impl_json_class_name()
         payload = []
-        for label in labels:
+        special_geometries = {}
+        for idx, label in enumerate(labels):
             _label_json = label.to_json()
-            _label_json["geometry"] = label.geometry.to_json()
+            if label.obj_class.geometry_type == AlphaMask:
+                _label_json.pop(alpha_mask_geometry_filed)
+                special_geometries[idx] = label.geometry.to_json()
+            else:
+                _label_json["geometry"] = label.geometry.to_json()
             if "classId" not in _label_json:
                 raise KeyError("Update project meta from server to get class id")
             payload.append(_label_json)
@@ -933,6 +1031,11 @@ class AnnotationApi(ModuleApi):
             for resp_obj in resp.json():
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
+
+        if len(special_geometries) > 0:
+            for idx, geometry in special_geometries.items():
+                figure_id = added_ids[idx]
+                self._api.image.figure.upload_geometry(figure_id, geometry)
 
     def get_label_by_id(
         self, label_id: int, project_meta: ProjectMeta, with_tags: Optional[bool] = True

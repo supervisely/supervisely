@@ -1,6 +1,7 @@
 from typing import List
 
 from supervisely import (
+    AlphaMask,
     AnyGeometry,
     Bitmap,
     GraphNodes,
@@ -60,6 +61,8 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
     # @TODO: add better check for geometry type, add
     if geometry_type == Bitmap.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
+    elif geometry_type == AlphaMask.geometry_name():
+        obj_class = ObjClass(name=class_name, geometry_type=AlphaMask)
     elif geometry_type == Rectangle.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Rectangle)
     elif geometry_type == Point.geometry_name():
