@@ -790,8 +790,7 @@ class AnnotationApi(ModuleApi):
                     added_fig_ids.append(figure_id)
 
                 # 2. upload geometries
-                for figure_id, geometry in zip(added_fig_ids, geometries):
-                    self._api.image.figure.upload_geometry(figure_id, geometry)
+                self._api.image.figure.upload_geometries_batch(added_fig_ids, geometries)
 
             if progress_cb is not None:
                 progress_cb(len(batch))
@@ -1033,9 +1032,8 @@ class AnnotationApi(ModuleApi):
                 added_ids.append(figure_id)
 
         if len(special_geometries) > 0:
-            for idx, geometry in special_geometries.items():
-                figure_id = added_ids[idx]
-                self._api.image.figure.upload_geometry(figure_id, geometry)
+            fidure_ids = [added_ids[idx] for idx in special_geometries.keys()]
+            self._api.image.figure.upload_geometries_batch(fidure_ids, special_geometries.values())
 
     def get_label_by_id(
         self, label_id: int, project_meta: ProjectMeta, with_tags: Optional[bool] = True

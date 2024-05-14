@@ -499,11 +499,23 @@ class FigureApi(RemoveableBulkModuleApi):
         :param geometry: Figure geometry in Supervisely JSON format.
         :type geometry: dict
         """
-        geometry = json.dumps(geometry).encode("utf-8")
-    
-        json_dict = {
-            ApiField.FIGURE_ID: str(figure_id),
-            ApiField.GEOMETRY: (str(figure_id), geometry, "application/octet-stream"),
-        }
-        encoder = MultipartEncoder(fields=json_dict)
+        self.upload_geometries_batch([figure_id], [geometry])
+
+
+    def upload_geometries_batch(self, figure_ids: List[int], geometries: List[dict]):
+        """
+        Upload figure geometries with given figure IDs to storage.
+
+        :param figure_ids: List of figure IDs in Supervisely.
+        :type figure_ids: List[int]
+        :param geometries: List of figure geometries in Supervisely JSON format.
+        :type geometries: List[dict]
+        """
+        geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
+
+        fields = []
+        for figure_id, geometry in zip(figure_ids, geometries):
+            fields.append((ApiField.FIGURE_ID, str(figure_id)))
+            fields.append((ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream")))
+        encoder = MultipartEncoder(fields=fields)
         self._api.post("figures.bulk.upload.geometry", encoder)
