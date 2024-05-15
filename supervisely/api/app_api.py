@@ -508,6 +508,18 @@ class AppApi(TaskApi):
         response = self._api.post("ecosystem.info", data)
         return response.json()
 
+    def get_info_by_slug(self, slug: str, version=None):
+        """get_info_by_slug"""
+        if slug.startswith("supervisely-ecosystem/") is False:
+            slug = f"supervisely-ecosystem/{slug.lstrip('/')}"
+        else:
+            slug = slug
+        data = {ApiField.SLUG: slug}
+        if version is not None:
+            data[ApiField.VERSION] = version
+        response = self._api.post("ecosystem.info", data)
+        return response.json()
+
     def get_ecosystem_module_info(
         self, module_id: int, version: Optional[str] = None
     ) -> ModuleInfo:
