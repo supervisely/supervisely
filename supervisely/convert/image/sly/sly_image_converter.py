@@ -146,19 +146,18 @@ class SLYImageConverter(ImageConverter):
             meta = ProjectMeta()
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
-                if len(project_fs.datasets) > 1:
-                    meta = meta.merge(project_fs.meta)
-                    for dataset in project_fs.datasets:
-                        for name in dataset.get_items_names():
-                            img_path, ann_path = dataset.get_item_paths(name)
-                            meta_path = dataset.get_item_meta_path(name)
-                            item = self.Item(img_path)
-                            if file_exists(ann_path):
-                                if self.validate_ann_file(ann_path, meta):
-                                    item.ann_data = ann_path
-                            if file_exists(meta_path):
-                                item.set_meta_data(meta_path)
-                            self._items.append(item)
+                meta = meta.merge(project_fs.meta)
+                for dataset in project_fs.datasets:
+                    for name in dataset.get_items_names():
+                        img_path, ann_path = dataset.get_item_paths(name)
+                        meta_path = dataset.get_item_meta_path(name)
+                        item = self.Item(img_path)
+                        if file_exists(ann_path):
+                            if self.validate_ann_file(ann_path, meta):
+                                item.ann_data = ann_path
+                        if file_exists(meta_path):
+                            item.set_meta_data(meta_path)
+                        self._items.append(item)
             if self.items_count > 0:
                 self._meta = meta
                 return True
