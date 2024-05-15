@@ -206,7 +206,7 @@ class Bitmap(BitmapBase):
         self.draw(full_img_mask, 1)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
-        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(bool)
+        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
         return Bitmap(data=new_mask)
 
     def crop(self, rect: Rectangle) -> List[Bitmap]:
