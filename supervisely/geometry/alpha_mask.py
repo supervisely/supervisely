@@ -129,7 +129,7 @@ class AlphaMask(Bitmap):
         """
         Rotates current AlphaMask.
 
-        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
+        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for AlphaMask rotation.
         :type rotator: ImageRotator
         :return: AlphaMask object
         :rtype: :class:`AlphaMask<AlphaMask>`
