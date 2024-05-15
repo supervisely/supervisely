@@ -189,9 +189,9 @@ class SLYImageConverter(ImageConverter):
                     meta_path = dataset_ds.get_item_meta_path(name)
                     item = self.Item(img_path)
                     if file_exists(ann_path):
+                        meta = self.generate_meta_from_annotation(ann_path, meta)
                         if self.validate_ann_file(ann_path, meta):
                             item.ann_data = ann_path
-                        meta = self.generate_meta_from_annotation(ann_path, meta)
                     if file_exists(meta_path):
                         item.set_meta_data(meta_path)
                     self._items.append(item)
