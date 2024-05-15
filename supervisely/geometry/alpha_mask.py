@@ -18,7 +18,6 @@ from supervisely.geometry.point_location import PointLocation
 from supervisely.imaging.image import read
 
 
-
 class AlphaMask(Bitmap):
     """
     AlphaMask geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`AlphaMask<AlphaMask>` object is immutable.
@@ -146,7 +145,6 @@ class AlphaMask(Bitmap):
             canvas = self.to_bbox().get_cropped_numpy_slice(bitmap)
             canvas[non_zero_values] = (canvas * (1 - alpha) + alpha * temp_mask)[non_zero_values]
 
-
     @property
     def area(self) -> float:
         """
@@ -162,6 +160,47 @@ class AlphaMask(Bitmap):
             # Output: 88101.0
         """
         return float(np.count_nonzero(self._data))
+
+    @staticmethod
+    def data_2_base64(mask: np.ndarray) -> str:
+        """
+        Convert numpy array to base64 encoded string.
+
+        :param mask: Bool numpy array.
+        :type mask: np.ndarray
+        :return: Base64 encoded string
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            address = 'https://app.supervise.ly/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
+
+            # Get annotation from API
+            meta_json = api.project.get_meta(PROJECT_ID)
+            meta = sly.ProjectMeta.from_json(meta_json)
+            ann_info = api.annotation.download(IMAGE_ID)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Get AlphaMask from annotation
+            for label in ann.labels:
+                if type(label.geometry) == sly.AlphaMask:
+                    figure = label.geometry
+
+            encoded_string = sly.AlphaMask.data_2_base64(figure.data)
+            print(encoded_string)
+            # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+        """
+        # img_pil = Image.fromarray(mask)
+        img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
+        bytes_io = io.BytesIO()
+        img_pil.save(bytes_io, format="PNG", transparency=0, optimize=0)
+        bytes_enc = bytes_io.getvalue()
+        return base64.b64encode(zlib.compress(bytes_enc)).decode("utf-8")
 
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
@@ -196,7 +235,7 @@ class AlphaMask(Bitmap):
 
         imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] == 4):
-            mask = imdecoded[:, :, 3] # pylint: disable=unsubscriptable-object
+            mask = imdecoded[:, :, 3]  # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded
         else:
@@ -207,9 +246,9 @@ class AlphaMask(Bitmap):
     def allowed_transforms(cls):
         """allowed_transforms"""
         from supervisely.geometry.any_geometry import AnyGeometry
+        from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
-        from supervisely.geometry.bitmap import Bitmap
 
         return [AnyGeometry, Bitmap, Polygon, Rectangle]
 
