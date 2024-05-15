@@ -207,6 +207,8 @@ class Bitmap(BitmapBase):
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
         new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True)
+        if self.__class__ == Bitmap:
+            new_mask = new_mask.astype(bool)
         return self.__class__(data=new_mask)
 
     def crop(self, rect: Rectangle) -> List[Bitmap]:
@@ -431,7 +433,10 @@ class Bitmap(BitmapBase):
             raise NotImplementedError("Method {!r} does't exist.".format(method_id))
 
         mask_u8 = self.data.astype(np.uint8)
-        res_mask = method(mask_u8)
+        if self.__class__ == Bitmap:
+            res_mask = method(mask_u8).astype(bool)
+        else:
+            res_mask = method(mask_u8)
         return self.__class__(data=res_mask, origin=self.origin)
 
     def to_contours(self) -> List[Polygon]:
