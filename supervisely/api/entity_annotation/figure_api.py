@@ -458,6 +458,17 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
                 yield figure_id, part
 
+    def download_geometry(self, figure_id: int) -> dict:
+        """
+        Download figure geometry with given ID from storage.
+
+        :param figure_id: Figure ID in Supervisely.
+        :type figure_id: int
+        :return: Figure geometry in Supervisely JSON format.
+        :rtype: dict
+        """
+        return self.donwload_geometries_batch([figure_id])
+
     def donwload_geometries_batch(self, ids: List[int]) -> List[dict]:
         """
         Download figure geometries with given IDs from storage.
@@ -478,17 +489,6 @@ class FigureApi(RemoveableBulkModuleApi):
         if len(geometries) != len(ids):
             raise RuntimeError("Not all geometries were downloaded")
         return geometries
-
-    def download_geometry(self, figure_id: int) -> dict:
-        """
-        Download figure geometry with given ID from storage.
-
-        :param figure_id: Figure ID in Supervisely.
-        :type figure_id: int
-        :return: Figure geometry in Supervisely JSON format.
-        :rtype: dict
-        """
-        return self.donwload_geometries_batch([figure_id])
 
     def upload_geometry(self, figure_id: int, geometry: dict):
         """
