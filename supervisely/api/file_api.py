@@ -1353,7 +1353,9 @@ class FileApi(ModuleApiBase):
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
 
-    def load_dotenv_from_teamfiles(self, remote_path: str = None, team_id: int = None) -> None:
+    def load_dotenv_from_teamfiles(
+        self, remote_path: str = None, team_id: int = None, override: int = False
+    ) -> None:
         """Loads .env file from Team Files into environment variables.
         If remote_path or team_id is not specified, it will be taken from environment variables.
 
@@ -1361,6 +1363,8 @@ class FileApi(ModuleApiBase):
         :type remote_path: str, optional
         :param team_id: Team ID in Supervisely.
         :type team_id: int, optional
+        :param override: If True, existing environment variables will be overridden.
+        :type override: bool, optional
 
         :Usage example:
 
@@ -1391,7 +1395,7 @@ class FileApi(ModuleApiBase):
             self.download(team_id=team_id, remote_path=remote_path, local_save_path=local_save_path)
 
             # Load .env file into environment variables and then remove it.
-            load_dotenv(local_save_path)
+            load_dotenv(local_save_path, override=override)
             sly_fs.silent_remove(local_save_path)
 
             logger.debug(f"Loaded .env file from team files: {remote_path}")
