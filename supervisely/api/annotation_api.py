@@ -780,7 +780,7 @@ class AnnotationApi(ModuleApi):
                     for label in labels:
                         label_json = label.to_json()
                         label_json.update({ApiField.ENTITY_ID: img_id})
-                        label_json.pop(alpha_mask_geometry)
+                        label_json.pop(alpha_mask_geometry) # remove alpha mask geometry from label json
                         json_body[ApiField.FIGURES].append(label_json)
                         geometries.append(label.geometry.to_json())
 
@@ -789,7 +789,7 @@ class AnnotationApi(ModuleApi):
                     figure_id = resp_obj[ApiField.ID]
                     added_fig_ids.append(figure_id)
 
-                # 2. upload geometries
+                # 2. upload alpha mask geometries
                 self._api.image.figure.upload_geometries_batch(added_fig_ids, geometries)
 
             if progress_cb is not None:
@@ -1003,13 +1003,13 @@ class AnnotationApi(ModuleApi):
         if len(labels) == 0:
             return
 
-        alpha_mask_geometry_filed = AlphaMask._impl_json_class_name()
+        alpha_mask_geometry = AlphaMask._impl_json_class_name()
         payload = []
         special_geometries = {}
         for idx, label in enumerate(labels):
             _label_json = label.to_json()
             if isinstance(label.geometry, AlphaMask):
-                _label_json.pop(alpha_mask_geometry_filed)
+                _label_json.pop(alpha_mask_geometry) # remove alpha mask geometry from label json
                 special_geometries[idx] = label.geometry.to_json()
             else:
                 _label_json["geometry"] = label.geometry.to_json()
@@ -1031,6 +1031,7 @@ class AnnotationApi(ModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
 
+        # upload alpha mask geometries
         if len(special_geometries) > 0:
             fidure_ids = [added_ids[idx] for idx in special_geometries.keys()]
             self._api.image.figure.upload_geometries_batch(fidure_ids, special_geometries.values())

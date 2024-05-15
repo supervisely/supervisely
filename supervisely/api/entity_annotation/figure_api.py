@@ -458,14 +458,14 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
                 yield figure_id, part
 
-    def donwload_geometries_batch(self, ids: List[int]) -> List[np.ndarray]:
+    def donwload_geometries_batch(self, ids: List[int]) -> List[dict]:
         """
         Download figure geometries with given IDs from storage.
 
         :param ids: List of figure IDs in Supervisely.
         :type ids: List[int]
-        :return: List of figure geometries as numpy arrays.
-        :rtype: :class: `List[np.ndarray]`
+        :return: List of figure geometries in Supervisely JSON format.
+        :rtype: List[dict]
         """
         geometries = []
         for _, part in self._download_geometries_generator(ids):
@@ -479,14 +479,14 @@ class FigureApi(RemoveableBulkModuleApi):
             raise RuntimeError("Not all geometries were downloaded")
         return geometries
 
-    def download_geometry(self, figure_id: int) -> np.ndarray:
+    def download_geometry(self, figure_id: int) -> dict:
         """
         Download figure geometry with given ID from storage.
 
         :param figure_id: Figure ID in Supervisely.
         :type figure_id: int
-        :return: Figure geometry as numpy array.
-        :rtype: :class: `np.ndarray`
+        :return: Figure geometry in Supervisely JSON format.
+        :rtype: dict
         """
         return self.donwload_geometries_batch([figure_id])
 
@@ -498,6 +498,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type figure_id: int
         :param geometry: Figure geometry in Supervisely JSON format.
         :type geometry: dict
+        :return: None
+        :rtype: None
         """
         self.upload_geometries_batch([figure_id], [geometry])
 
@@ -510,6 +512,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type figure_ids: List[int]
         :param geometries: List of figure geometries in Supervisely JSON format.
         :type geometries: List[dict]
+        :return: None
+        :rtype: None
         """
         geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
 

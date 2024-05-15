@@ -72,8 +72,6 @@ class AlphaMask(Bitmap):
         img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.png'))
         mask = img[:, :, 3]
         figure = sly.AlphaMask(mask)
-
-     .. image:: https://i.imgur.com/2L3HRPs.jpg
     """
 
     @staticmethod
