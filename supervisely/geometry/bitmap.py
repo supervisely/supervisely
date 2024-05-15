@@ -203,11 +203,11 @@ class Bitmap(BitmapBase):
             rotate_figure = figure.rotate(rotator)
         """
         full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
-        self.draw(full_img_mask, 1)
+        self.draw(full_img_mask, 255)
         # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
         #  individually and set it in the resulting bitmap.
-        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True).astype(np.bool)
-        return Bitmap(data=new_mask)
+        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True)
+        return self.__class__(data=new_mask)
 
     def crop(self, rect: Rectangle) -> List[Bitmap]:
         """
@@ -236,7 +236,7 @@ class Bitmap(BitmapBase):
             if not np.any(cropped_mask):
                 return []
             return [
-                Bitmap(
+                self.__class__(
                     data=cropped_mask,
                     origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left),
                 )
@@ -267,7 +267,7 @@ class Bitmap(BitmapBase):
         )
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
         #  it in the resulting bitmap.
-        return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
+        return self.__class__(data=scaled_data, origin=scaled_origin)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_impl"""
@@ -431,8 +431,8 @@ class Bitmap(BitmapBase):
             raise NotImplementedError("Method {!r} does't exist.".format(method_id))
 
         mask_u8 = self.data.astype(np.uint8)
-        res_mask = method(mask_u8).astype(bool)
-        return Bitmap(data=res_mask, origin=self.origin)
+        res_mask = method(mask_u8)
+        return self.__class__(data=res_mask, origin=self.origin)
 
     def to_contours(self) -> List[Polygon]:
         """
@@ -525,20 +525,26 @@ class Bitmap(BitmapBase):
         """
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data
-        full_size_mask = np.full(full_size, False, bool)
+        if self.__class__ == Bitmap:
+            full_size_mask = np.full(full_size, False, bool)
+        else:
+            full_size_mask = np.full(full_size, 0, np.uint8)
         full_size_mask[
             origin.row : origin.row + mask.shape[0],
             origin.col : origin.col + mask.shape[1],
         ] = mask
 
-        new_mask = bit_op(full_target_mask, full_size_mask).astype(bool)
+        if self.__class__ == Bitmap:
+            new_mask = bit_op(full_target_mask, full_size_mask).astype(bool)
+        else:
+            new_mask = bit_op(full_target_mask, full_size_mask).astype(np.uint8)
         if new_mask.sum() == 0:
             return []
         new_mask = new_mask[
             origin.row : origin.row + mask.shape[0],
             origin.col : origin.col + mask.shape[1],
         ]
-        return Bitmap(data=new_mask, origin=origin.clone())
+        return self.__class__(data=new_mask, origin=origin.clone())
 
     @classmethod
     def allowed_transforms(cls):

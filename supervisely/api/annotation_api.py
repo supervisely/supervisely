@@ -744,7 +744,7 @@ class AnnotationApi(ModuleApi):
             for idx, (img_id, ann) in enumerate(batch):
                 filtered_labels = []
                 for label in ann.labels:
-                    if label.obj_class.geometry_type == AlphaMask:
+                    if isinstance(label.geometry, AlphaMask):
                         special_geometries[img_id].append(label)
                     else:
                         filtered_labels.append(label)
@@ -1008,7 +1008,7 @@ class AnnotationApi(ModuleApi):
         special_geometries = {}
         for idx, label in enumerate(labels):
             _label_json = label.to_json()
-            if label.obj_class.geometry_type == AlphaMask:
+            if isinstance(label.geometry, AlphaMask):
                 _label_json.pop(alpha_mask_geometry_filed)
                 special_geometries[idx] = label.geometry.to_json()
             else:

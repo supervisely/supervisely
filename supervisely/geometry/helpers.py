@@ -106,7 +106,7 @@ def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometr
 
 
 def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int]=None) -> List[Geometry]:
-    if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap):
+    if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap, AlphaMask):
         raise KeyError('Can not convert {} to {}'.format(geometry.geometry_name(), Polygon.__name__))
 
     if type(geometry) == Rectangle:
