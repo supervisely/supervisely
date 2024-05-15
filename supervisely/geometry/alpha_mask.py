@@ -14,6 +14,7 @@ from PIL import Image
 
 from supervisely.geometry.bitmap import Bitmap, _find_mask_tight_bbox
 from supervisely.geometry.bitmap_base import BitmapBase
+from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point_location import PointLocation
 from supervisely.imaging.image import read
 
@@ -123,6 +124,34 @@ class AlphaMask(Bitmap):
         data_tight_bbox = _find_mask_tight_bbox(self._data)
         self._origin = self._origin.translate(drow=data_tight_bbox.top, dcol=data_tight_bbox.left)
         self._data = data_tight_bbox.get_cropped_numpy_slice(self._data)
+
+    def rotate(self, rotator: ImageRotator) -> AlphaMask:
+        """
+        Rotates current AlphaMask.
+
+        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
+        :type rotator: ImageRotator
+        :return: AlphaMask object
+        :rtype: :class:`AlphaMask<AlphaMask>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.geometry.image_rotator import ImageRotator
+
+            height, width = ann.img_size
+            rotator = ImageRotator((height, width), 25)
+            # Remember that AlphaMask class object is immutable, and we need to assign new instance of AlphaMask to a new variable
+            rotate_figure = figure.rotate(rotator)
+        """
+        full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
+        self.draw(full_img_mask, 255)
+        # TODO this may break for one-pixel masks (it can disappear during rotation). Instead, rotate every pixel
+        #  individually and set it in the resulting alpha mask.
+        new_mask = rotator.rotate_img(full_img_mask, use_inter_nearest=True)
+        return AlphaMask(data=new_mask)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_impl"""
