@@ -26,7 +26,7 @@ class SLYImageConverter(ImageConverter):
         return AvailableImageConverters.SLY
 
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface == ["default", "image_matting"]
+        return self._labeling_interface in ["default", "image_matting"]
 
     @property
     def ann_ext(self) -> str:
