@@ -316,7 +316,7 @@ class AnnotationApi(ModuleApi):
             figures = self._api.image.figure.donwload_geometries_batch(figure_ids)
             for figure_id, geometry in zip(figure_ids, figures):
                 label_idx = additonal_geometries[figure_id]
-                result[AnnotationJsonFields.ROOT_FIELD][AnnotationJsonFields.LABELS][
+                result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS][
                     label_idx
                 ].update(geometry)
             ann_info = self._convert_json_info(result)
