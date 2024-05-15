@@ -467,9 +467,9 @@ class FigureApi(RemoveableBulkModuleApi):
         :return: Figure geometry in Supervisely JSON format.
         :rtype: dict
         """
-        return self.donwload_geometries_batch([figure_id])
+        return self.download_geometries_batch([figure_id])
 
-    def donwload_geometries_batch(self, ids: List[int]) -> List[dict]:
+    def download_geometries_batch(self, ids: List[int]) -> List[dict]:
         """
         Download figure geometries with given IDs from storage.
 

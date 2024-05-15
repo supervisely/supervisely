@@ -313,7 +313,7 @@ class AnnotationApi(ModuleApi):
         # if so, download them separately and update the annotation
         if len(additonal_geometries) > 0:
             figure_ids = list(additonal_geometries.keys())
-            figures = self._api.image.figure.donwload_geometries_batch(figure_ids)
+            figures = self._api.image.figure.download_geometries_batch(figure_ids)
             for figure_id, geometry in zip(figure_ids, figures):
                 label_idx = additonal_geometries[figure_id]
                 result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS][
@@ -430,7 +430,7 @@ class AnnotationApi(ModuleApi):
             # if there are any AlphaMask geometries, download them separately and update the annotation
             if len(additonal_geometries) > 0:
                 figure_ids = list(additonal_geometries.keys())
-                figures = self._api.image.figure.donwload_geometries_batch(figure_ids)
+                figures = self._api.image.figure.download_geometries_batch(figure_ids)
                 anns_to_update = set()
                 for figure_id, geometry in zip(figure_ids, figures):
                     anns_to_update.add(ann_idx)
