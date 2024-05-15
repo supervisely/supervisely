@@ -91,7 +91,7 @@ class AlphaMask(Bitmap):
     ):
         if data.dtype != np.uint8:
             if data.dtype == np.bool:
-                data = data.astype(np.uint8) * 225
+                data = data.astype(np.uint8) * 255
             else:
                 data = np.array(data, dtype=np.uint8)
             if extra_validation:
