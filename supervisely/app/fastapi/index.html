@@ -10,6 +10,11 @@
 		<link
 			type="text/css"
 			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/jsoneditor@5.11.0/dist/jsoneditor.min.css"
+		/>
+		<link
+			type="text/css"
+			rel="stylesheet"
 			href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
 		/>
 		<style>
@@ -73,11 +78,14 @@
 				<img src="https://app.supervise.ly/loading.gif" />
 			</div>
 		</center>
-		<script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.7.0/dist/jsoneditor.min.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.7.0/dist/jsoneditor.min.css"></script>
+		<script src="https://cdn.jsdelivr.net/npm/jsoneditor@5.11.0/dist/jsoneditor.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.0.4/dist/socket.io.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/axios@0.17.1/dist/axios.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
+
+		<script>
+			console.log("view", window.Vue);
+		</script>
 		<script type="module" src="./sly/css/app/SlyApp.js"></script>
 		<script>
 			window.parent.postMessage('{ "showHeader": false }', "*");
