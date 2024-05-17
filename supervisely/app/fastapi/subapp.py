@@ -705,6 +705,7 @@ class Application(metaclass=Singleton):
 
     def event(self, event: Event, use_state: bool = False) -> Callable:
         """Decorator to register posts to specific endpoints.
+        Supports both async and sync functions.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
         :type event: Event
