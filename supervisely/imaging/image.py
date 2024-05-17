@@ -36,6 +36,8 @@ SUPPORTED_IMG_EXTS = [
     ".tif",
     ".nrrd",
     ".jfif",
+    ".dcm",
+    ".nii",
 ]
 DEFAULT_IMG_EXT = ".png"
 

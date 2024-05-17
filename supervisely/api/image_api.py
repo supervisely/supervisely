@@ -2726,7 +2726,7 @@ class ImageApi(RemoveableBulkModuleApi):
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
         for path in paths:
-            if get_file_ext(path) not in sly_image.SUPPORTED_IMG_EXTS:
+            if get_file_ext(path).lower() not in sly_image.SUPPORTED_IMG_EXTS:
                 raise RuntimeError(
                     f"Image {path} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
                 )
