@@ -702,11 +702,14 @@ class Application(metaclass=Singleton):
             self._graceful_stop_event.set()
         return suppress(self.StopException)
 
-    def event(self, event: Event) -> Callable:
+    def event(self, event: Event, use_state: bool = False) -> Callable:
         """Decorator to register posts to specific endpoints.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
         :type event: Event
+        :param use_state: if set to True, data will be extracted from request.state.state,
+            otherwise from request.state.context, defaults to False
+        :type use_state: bool, optional
         :return: decorator
         :rtype: Callable
 
@@ -729,7 +732,8 @@ class Application(metaclass=Singleton):
 
             @server.post(event.endpoint)
             def wrapper(request: Request):
-                return func(request.state.api, event.from_json(request.state.context))
+                data = request.state.state if use_state else request.state.context
+                return func(request.state.api, event.from_json(data))
 
             return wrapper
 
