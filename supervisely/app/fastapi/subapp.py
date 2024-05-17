@@ -25,7 +25,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
@@ -500,6 +500,11 @@ def _init(
 
     if headless is False:
         app.cached_template = None
+        cached_template_path = Path("cached_template.html")
+        if cached_template_path.exists():
+            with open(cached_template_path, "rb") as f:
+                body = f.read()
+                app.cached_template = HTMLResponse(body, status_code=200, media_type="text/html")
         app.is_caching_template = False
 
         @app.get("/")
