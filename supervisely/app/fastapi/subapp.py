@@ -1,3 +1,4 @@
+import asyncio
 import os
 import signal
 import sys
@@ -730,10 +731,19 @@ class Application(metaclass=Singleton):
         def inner(func: Callable) -> Callable:
             server = self.get_server()
 
-            @server.post(event.endpoint)
-            def wrapper(request: Request):
-                data = request.state.state if use_state else request.state.context
-                return func(request.state.api, event.from_json(data))
+            if asyncio.iscoroutinefunction(func):
+
+                @server.post(event.endpoint)
+                async def wrapper(request: Request):
+                    data = request.state.state if use_state else request.state.context
+                    return await func(request.state.api, event.from_json(data))
+
+            else:
+
+                @server.post(event.endpoint)
+                def wrapper(request: Request):
+                    data = request.state.state if use_state else request.state.context
+                    return func(request.state.api, event.from_json(data))
 
             return wrapper
 
