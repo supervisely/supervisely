@@ -738,25 +738,34 @@ class AnnotationApi(ModuleApi):
         dataset_id = self._api.image.get_info_by_id(
             img_ids[0], force_metadata_for_links=False
         ).dataset_id
+        project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+        project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+
         for batch in batched(list(zip(img_ids, anns))):
+            
 
+            data = []
             # check if there are any AlphaMask geometries in the batch
-            special_geometries = defaultdict(list)
+            special_figures = []
+            special_geometries = []
             for idx, (img_id, ann) in enumerate(batch):
+                ann_json = func_ann_to_json(ann)
                 filtered_labels = []
-                for label in ann.labels:
-                    if isinstance(label.geometry, AlphaMask):
-                        special_geometries[img_id].append(label)
+                for label_json in ann_json[AnnotationJsonFields.LABELS]:
+                    if label_json[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                        label_json.update({ApiField.ENTITY_ID: img_id})
+                        obj_cls_name = label_json.get(LabelJsonFields.OBJ_CLASS_NAME)
+                        label_json[LabelJsonFields.OBJ_CLASS_ID] = project_meta.get_obj_class(obj_cls_name).sly_id
+                        geometry = label_json.pop(BITMAP) # remove alpha mask geometry from label json
+                        special_geometries.append(geometry)
+                        special_figures.append(label_json)
                     else:
-                        filtered_labels.append(label)
-                if len(filtered_labels) != len(ann.labels):
-                    ann = ann.clone(labels=filtered_labels)
+                        filtered_labels.append(label_json)
+                if len(filtered_labels) != len(ann_json[AnnotationJsonFields.LABELS]):
+                    ann_json[AnnotationJsonFields.LABELS] = filtered_labels
                     batch[idx] = (img_id, ann)
+                data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
 
-            data = [
-                {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
-                for img_id, ann in batch
-            ]
             self._api.post(
                 "annotations.bulk.add",
                 data={
@@ -766,32 +775,18 @@ class AnnotationApi(ModuleApi):
                 },
             )
 
-            if len(special_geometries) > 0:
-                alpha_mask_geometry = AlphaMask._impl_json_class_name()
+            if len(special_figures) > 0:
                 # 1. create figures
-
                 json_body = {
                     ApiField.DATASET_ID: dataset_id,
-                    ApiField.FIGURES: [],
+                    ApiField.FIGURES: special_figures,
                     ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
                 }
-                added_fig_ids = []
-                geometries = []
-                for img_id, labels in special_geometries.items():
-                    for label in labels:
-                        label_json = label.to_json()
-                        label_json.update({ApiField.ENTITY_ID: img_id})
-                        label_json.pop(alpha_mask_geometry) # remove alpha mask geometry from label json
-                        json_body[ApiField.FIGURES].append(label_json)
-                        geometries.append(label.geometry.to_json()[BITMAP])
-
                 resp = self._api.post("figures.bulk.add", json_body)
-                for resp_obj in resp.json():
-                    figure_id = resp_obj[ApiField.ID]
-                    added_fig_ids.append(figure_id)
+                added_fig_ids = [resp_obj[ApiField.ID] for resp_obj in resp.json()]
 
                 # 2. upload alpha mask geometries
-                self._api.image.figure.upload_geometries_batch(added_fig_ids, geometries)
+                self._api.image.figure.upload_geometries_batch(added_fig_ids, special_geometries)
 
             if progress_cb is not None:
                 progress_cb(len(batch))
