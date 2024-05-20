@@ -10,7 +10,7 @@
     %}
     ></el-checkbox>
     <sly-field class="mt20"
-                title="{{{widget._title}}}"
-                description="{{{widget._description}}}">
+                :title="data.{{{widget.widget_id}}}.title"
+                :description="data.{{{widget.widget_id}}}.description">
     </sly-field>
 </div>

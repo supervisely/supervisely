@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional, Union
 
-from supervisely.app import StateJson
+from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Text, Widget
 
 
 class CheckboxField(Widget):
     """This widget is a simple and intuitive interface element that allows users to select given option.
 
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/controls/checkbox>`_
-        (including screenshots and examples).
-
-    :param content: Content of the checkbox.
-    :type content: Union[Widget, str]
+    :param title: Title of the checkbox.
+    :type title: str
+    :param description: Description of the checkbox.
+    :type description: str
     :param checked: Initial state of the checkbox.
     :type checked: Optional[bool]
     :param widget_id: Unique widget identifier.
@@ -42,7 +41,7 @@ class CheckboxField(Widget):
         :return: Empty dictionary.
         :rtype: Dict
         """
-        return {}
+        return {"title": self._title, "description": self._description}
 
     def get_json_state(self) -> Dict[str, bool]:
         """Returns the state of the checkbox.
@@ -52,7 +51,7 @@ class CheckboxField(Widget):
         :return: Dictionary with the state of the checkbox.
         :rtype: Dict[str, bool]
         """
-        return {"checked": self._checked, "title": self._title, "description": self._description}
+        return {"checked": self._checked}
 
     def is_checked(self) -> bool:
         """Returns the state of the checkbox. True if checked, False otherwise.
@@ -62,27 +61,30 @@ class CheckboxField(Widget):
         """
         return StateJson()[self.widget_id]["checked"]
 
-    def set(self, checked: bool = None, title: str = None, description: str = None) -> None:
-        """Sets the state of the checkbox.
-        This is a private method, so it is not intended to be called directly.
-        Use :meth:`check` or :meth:`uncheck` instead.
+    def set(self, title: str = None, description: str = None, checked: bool = None) -> None:
+        """Set title, description and checkbox state to widget
 
+        :param title: Title of the checkbox.
+        :type title: Optional[str]
+        :param description: Description of the checkbox.
+        :type description: Optional[str]
+        :param checked: Initial state of the checkbox.
+        :type checked: Optional[bool]
         :param checked: New state of the checkbox.
         :type checked: bool
         """
         if checked is not None:
             self._checked = checked
             StateJson()[self.widget_id]["checked"] = self._checked
-
+            StateJson().send_changes()
         if title is not None:
             self._title = title
-            StateJson()[self.widget_id]["title"] = self._title
-
+            DataJson()[self.widget_id]["title"] = self._title
         if description is not None:
             self._description = description
-            StateJson()[self.widget_id]["description"] = self._description
-        self.update_state()
-        StateJson().send_changes()
+            DataJson()[self.widget_id]["description"] = self._description
+        if title is not None or description is not None:
+            DataJson().send_changes()
 
     def check(self) -> None:
         """Sets the state of the checkbox to True."""
