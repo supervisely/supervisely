@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 import numpy as np
-from typing import Tuple, Dict, Optional, Union
+from typing import Tuple, Dict, Optional
 
 from supervisely.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE, \
                                                LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
