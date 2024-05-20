@@ -15,6 +15,7 @@ from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
 from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.constants import BITMAP
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -318,7 +319,7 @@ class AnnotationApi(ModuleApi):
                 label_idx = additonal_geometries[figure_id]
                 result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS][
                     label_idx
-                ].update(geometry)
+                ].update({BITMAP: geometry})
             ann_info = self._convert_json_info(result)
 
         return ann_info
@@ -435,8 +436,8 @@ class AnnotationApi(ModuleApi):
                 for figure_id, geometry in zip(figure_ids, figures):
                     anns_to_update.add(ann_idx)
                     ann_idx, label_idx = additonal_geometries[figure_id]
-                    results[ann_idx]["annotation"][AnnotationJsonFields.LABELS][label_idx].update(
-                        geometry
+                    results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][label_idx].update(
+                        {BITMAP: geometry}
                     )
 
                 for ann_idx in anns_to_update:
@@ -782,7 +783,7 @@ class AnnotationApi(ModuleApi):
                         label_json.update({ApiField.ENTITY_ID: img_id})
                         label_json.pop(alpha_mask_geometry) # remove alpha mask geometry from label json
                         json_body[ApiField.FIGURES].append(label_json)
-                        geometries.append(label.geometry.to_json())
+                        geometries.append(label.geometry.to_json()[BITMAP])
 
                 resp = self._api.post("figures.bulk.add", json_body)
                 for resp_obj in resp.json():
@@ -1010,7 +1011,7 @@ class AnnotationApi(ModuleApi):
             _label_json = label.to_json()
             if isinstance(label.geometry, AlphaMask):
                 _label_json.pop(alpha_mask_geometry) # remove alpha mask geometry from label json
-                special_geometries[idx] = label.geometry.to_json()
+                special_geometries[idx] = label.geometry.to_json()[BITMAP]
             else:
                 _label_json["geometry"] = label.geometry.to_json()
             if "classId" not in _label_json:

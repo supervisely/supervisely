@@ -225,7 +225,7 @@ class AlphaMask(Bitmap):
             # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
         """
         # img_pil = Image.fromarray(mask)
-        img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
+        img_pil = Image.fromarray(np.array(mask, dtype=np.uint8), mode="L")
         bytes_io = io.BytesIO()
         img_pil.save(bytes_io, format="PNG", transparency=0, optimize=0)
         bytes_enc = bytes_io.getvalue()
@@ -262,9 +262,11 @@ class AlphaMask(Bitmap):
             return np.array(img)
         n = np.frombuffer(z, np.uint8)
 
-        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
+        imdecoded = cv2.imdecode(n, cv2.IMREAD_GRAYSCALE)  # pylint: disable=no-member
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] == 4):
             mask = imdecoded[:, :, 3]  # pylint: disable=unsubscriptable-object
+        if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] == 1):
+            mask = imdecoded[:, :, 0] # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded
         else:
@@ -291,5 +293,14 @@ class AlphaMask(Bitmap):
         :return: AlphaMask
         :rtype: AlphaMask
         """
-        img = read(path)
-        return AlphaMask(img[:, :, 0])
+        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
+        if len(img.shape) == 2:
+            return AlphaMask(img)
+        elif img.shape[2] == 1:
+            return AlphaMask(img[:, :, 0])
+        elif img.shape[2] == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)  # pylint: disable=no-member
+            return AlphaMask(img[:, :, 3])
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # pylint: disable=no-member
+            return AlphaMask(img)

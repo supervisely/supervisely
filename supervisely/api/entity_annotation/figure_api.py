@@ -503,7 +503,6 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         self.upload_geometries_batch([figure_id], [geometry])
 
-
     def upload_geometries_batch(self, figure_ids: List[int], geometries: List[dict]):
         """
         Upload figure geometries with given figure IDs to storage.
