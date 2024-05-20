@@ -78,7 +78,7 @@ class BitmapBase(Geometry):
         self,
         data: np.ndarray,
         origin: Optional[PointLocation] = None,
-        expected_data_dims: Optional[Union[int, list]] = None,
+        expected_data_dims: Optional[int] = None,
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[int] = None,
@@ -96,15 +96,10 @@ class BitmapBase(Geometry):
             raise TypeError('BitmapBase "data" argument must be numpy array object!')
 
         data_dims = len(data.shape)
-        if expected_data_dims is not None:
-            if isinstance(expected_data_dims, int):
-                if data_dims != expected_data_dims:
-                    raise ValueError(f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions')
-            elif isinstance(expected_data_dims, list):
-                if data_dims not in expected_data_dims:
-                    raise ValueError(f'BitmapBase "data" argument dimensions must be in {expected_data_dims}. Instead got {data_dims} dimensions')
-            else:
-                raise ValueError(f'BitmapBase "expected_data_dims" argument must be int or list of ints. Instead got {type(expected_data_dims)}')
+        if expected_data_dims is not None and data_dims != expected_data_dims:
+            raise ValueError(
+                f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions'
+            )
 
         self._origin = origin.clone()
         self._data = data.copy()

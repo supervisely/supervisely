@@ -109,7 +109,7 @@ class AlphaMask(Bitmap):
             self,
             data=data,
             origin=origin,
-            expected_data_dims=[2, 3],
+            expected_data_dims=2,
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
