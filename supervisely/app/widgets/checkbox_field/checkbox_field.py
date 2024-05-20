@@ -42,7 +42,7 @@ class CheckboxField(Widget):
             - description: Current description data of the checkbox
 
         :return: Dictionary with the data of the checkbox.
-        :rtype: Dict[str, bool]
+        :rtype: Dict[str, str]
         """
         return {"title": self._title, "description": self._description}
 
