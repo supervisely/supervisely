@@ -478,17 +478,15 @@ class FigureApi(RemoveableBulkModuleApi):
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
         """
-        geometries = []
-        for _, part in self._download_geometries_generator(ids):
+        geometries = {}
+        for idx, part in self._download_geometries_generator(ids):
             geometry_json = json.loads(part.content)
-            # data, origin = geometry_json[BITMAP][DATA], geometry_json[BITMAP][ORIGIN]
-            # geometry = GET_GEOMETRY_FROM_STR(geometry_json[])
-            # mask_np = np.frombuffer(part.content, dtype=np.uint8)
-            geometries.append(geometry_json)
+            geometries[idx] = geometry_json
 
         if len(geometries) != len(ids):
             raise RuntimeError("Not all geometries were downloaded")
-        return geometries
+        ordered_results = [geometries[i] for i in ids]
+        return ordered_results
 
     def upload_geometry(self, figure_id: int, geometry: dict):
         """
@@ -519,6 +517,8 @@ class FigureApi(RemoveableBulkModuleApi):
         fields = []
         for figure_id, geometry in zip(figure_ids, geometries):
             fields.append((ApiField.FIGURE_ID, str(figure_id)))
-            fields.append((ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream")))
+            fields.append(
+                (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
+            )
         encoder = MultipartEncoder(fields=fields)
         self._api.post("figures.bulk.upload.geometry", encoder)
