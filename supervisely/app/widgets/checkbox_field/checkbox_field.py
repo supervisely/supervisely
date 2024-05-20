@@ -7,7 +7,7 @@ from supervisely.app.widgets import Text, Widget
 
 
 class CheckboxField(Widget):
-    """This widget is a simple and intuitive interface element that allows users to select given option.
+    """This widget is a checkbox with a description.
 
     :param title: Title of the checkbox.
     :type title: str
@@ -36,10 +36,13 @@ class CheckboxField(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        """Checkbox widget does not have any additional data, so it returns an empty dictionary.
+        """Returns the data of the checkbox.
+        Dictionary contains the following keys:
+            - title: Current title data of the checkbox.
+            - description: Current description data of the checkbox
 
-        :return: Empty dictionary.
-        :rtype: Dict
+        :return: Dictionary with the data of the checkbox.
+        :rtype: Dict[str, bool]
         """
         return {"title": self._title, "description": self._description}
 
