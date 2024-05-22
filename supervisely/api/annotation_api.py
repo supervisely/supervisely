@@ -434,8 +434,8 @@ class AnnotationApi(ModuleApi):
                 figures = self._api.image.figure.download_geometries_batch(figure_ids)
                 anns_to_update = set()
                 for figure_id, geometry in zip(figure_ids, figures):
-                    anns_to_update.add(ann_idx)
                     ann_idx, label_idx = additonal_geometries[figure_id]
+                    anns_to_update.add(ann_idx)
                     results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][label_idx].update(
                         {BITMAP: geometry}
                     )
