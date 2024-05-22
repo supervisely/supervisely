@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import copy
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
@@ -301,12 +302,11 @@ class AnnotationApi(ModuleApi):
             },
         )
         result = response.json()
-        ann_info = self._convert_json_info(result)
 
         # check if there are any AlphaMask geometries in the batch
-        additonal_geometries = defaultdict(tuple)
-        ann_dict = ann_info.annotation
-        for idx, label in enumerate(ann_dict[AnnotationJsonFields.LABELS]):
+        additonal_geometries = defaultdict(int)
+        labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+        for idx, label in enumerate(labels):
             if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
                 figure_id = label[LabelJsonFields.ID]
                 additonal_geometries[figure_id] = idx
@@ -317,10 +317,8 @@ class AnnotationApi(ModuleApi):
             figures = self._api.image.figure.download_geometries_batch(figure_ids)
             for figure_id, geometry in zip(figure_ids, figures):
                 label_idx = additonal_geometries[figure_id]
-                result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS][
-                    label_idx
-                ].update({BITMAP: geometry})
-            ann_info = self._convert_json_info(result)
+                labels[label_idx].update({BITMAP: geometry})
+        ann_info = self._convert_json_info(result)
 
         return ann_info
 
@@ -419,11 +417,8 @@ class AnnotationApi(ModuleApi):
 
             additonal_geometries = defaultdict(tuple)
             for ann_idx, ann_dict in enumerate(results):
-                ann_info = self._convert_json_info(ann_dict)
-                id_to_ann[ann_info.image_id] = ann_info
-
                 # check if there are any AlphaMask geometries in the batch
-                for label_idx, label in enumerate(ann_info.annotation[AnnotationJsonFields.LABELS]):
+                for label_idx, label in enumerate(ann_dict[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]):
                     if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
                         figure_id = label[LabelJsonFields.ID]
                         additonal_geometries[figure_id] = (ann_idx, label_idx)
@@ -432,17 +427,15 @@ class AnnotationApi(ModuleApi):
             if len(additonal_geometries) > 0:
                 figure_ids = list(additonal_geometries.keys())
                 figures = self._api.image.figure.download_geometries_batch(figure_ids)
-                anns_to_update = set()
                 for figure_id, geometry in zip(figure_ids, figures):
                     ann_idx, label_idx = additonal_geometries[figure_id]
-                    anns_to_update.add(ann_idx)
                     results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][label_idx].update(
                         {BITMAP: geometry}
                     )
 
-                for ann_idx in anns_to_update:
-                    ann_info = self._convert_json_info(results[ann_idx])
-                    id_to_ann[ann_info.image_id] = ann_info
+            for ann_dict in results:
+                ann_info = self._convert_json_info(ann_dict)
+                id_to_ann[ann_info.image_id] = ann_info
 
             if progress_cb is not None:
                 progress_cb(len(batch))
@@ -748,14 +741,18 @@ class AnnotationApi(ModuleApi):
             # check if there are any AlphaMask geometries in the batch
             special_figures = []
             special_geometries = []
-            for idx, (img_id, ann) in enumerate(batch):
+            for img_id, ann in batch:
                 ann_json = func_ann_to_json(ann)
+                ann_json = copy.deepcopy(ann_json)
                 filtered_labels = []
                 for label_json in ann_json[AnnotationJsonFields.LABELS]:
                     if label_json[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
                         label_json.update({ApiField.ENTITY_ID: img_id})
+
+                        # update obj class id in label json (is it necessary?)
                         obj_cls_name = label_json.get(LabelJsonFields.OBJ_CLASS_NAME)
                         label_json[LabelJsonFields.OBJ_CLASS_ID] = project_meta.get_obj_class(obj_cls_name).sly_id
+
                         geometry = label_json.pop(BITMAP) # remove alpha mask geometry from label json
                         special_geometries.append(geometry)
                         special_figures.append(label_json)
@@ -763,7 +760,6 @@ class AnnotationApi(ModuleApi):
                         filtered_labels.append(label_json)
                 if len(filtered_labels) != len(ann_json[AnnotationJsonFields.LABELS]):
                     ann_json[AnnotationJsonFields.LABELS] = filtered_labels
-                    batch[idx] = (img_id, ann)
                 data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
 
             self._api.post(
