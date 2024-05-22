@@ -3,6 +3,7 @@ from typing import List
 from supervisely import (
     AnyGeometry,
     Bitmap,
+    GraphNodes,
     ObjClass,
     Point,
     Polygon,
@@ -13,9 +14,17 @@ from supervisely import (
     TagValueType,
     logger,
 )
+from supervisely.geometry.graph import KeypointsTemplate
 from supervisely.io.json import load_json_file
+from supervisely.annotation.label import LabelJsonFields
+from supervisely.annotation.tag import TagJsonFields
+from supervisely.video_annotation.constants import FIGURES, INDEX, KEY, IMG_SIZE, OBJECT_KEY, OBJECTS, FRAMES_COUNT, TAGS, FRAMES
 
-SLY_ANN_KEYS = ["size", "framesCount", "frames", "objects", "tags"]
+SLY_ANN_KEYS = [IMG_SIZE, FRAMES_COUNT, FRAMES, OBJECTS, TAGS]
+SLY_VIDEO_OBJECT_KEYS = [LabelJsonFields.OBJ_CLASS_NAME, LabelJsonFields.TAGS, KEY]
+SLY_TAG_KEYS = [TagJsonFields.TAG_NAME, TagJsonFields.VALUE]
+SLY_FRAME_KEYS = [FIGURES, INDEX]
+SLY_FIGURE_KEYS = [KEY, OBJECT_KEY, "geometryType"]  #, LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
 
 
 def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
@@ -23,23 +32,41 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     if "annotation" in ann_json:
         ann_json = ann_json["annotation"]
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(f"VideoAnnotation file {ann_path} is not in Supervisely format")
+        logger.warn(
+            f"VideoAnnotation file {ann_path} is not in Supervisely format. "
+            "Check the annotation format documentation at: "
+            "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
+        )
         return meta
 
     object_key_to_name = {}
-    for object in ann_json["objects"]:
-        meta = create_tags_from_annotation(meta, object["tags"])
-        object_key_to_name[object["key"]] = object["classTitle"]
-    for frame in ann_json["frames"]:
+    for object in ann_json[OBJECTS]:
+        if not all(key in object for key in SLY_VIDEO_OBJECT_KEYS):
+            logger.warn(
+                f"Object in annotation file is not in Supervisely format: {object}. "
+                "Read more about the Supervisely JSON format of objects in the documentation at: "
+                "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
+            )
+            continue
+        meta = create_tags_from_annotation(meta, object[TAGS])
+        object_key_to_name[object[KEY]] = object[LabelJsonFields.OBJ_CLASS_NAME]
+    for frame in ann_json[FRAMES]:
+        if not all(key in frame for key in SLY_FRAME_KEYS):
+            logger.warn(
+                f"Frame in annotation file is not in Supervisely format: {frame}."
+                "Read more about the Supervisely JSON format of frames in the documentation at: "
+                "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
+            )
+            continue
         meta = create_classes_from_annotation(frame, meta, object_key_to_name)
-    meta = create_tags_from_annotation(meta, ann_json["tags"])
+    meta = create_tags_from_annotation(meta, ann_json[TAGS])
     return meta
 
 
 def create_tags_from_annotation(meta: ProjectMeta, tags: List[dict]) -> ProjectMeta:
     for tag in tags:
-        tag_name = tag["name"]
-        tag_value = tag.get("value")
+        tag_name = tag[TagJsonFields.TAG_NAME]
+        tag_value = tag.get(TagJsonFields.VALUE)
         if tag_value is None:
             tag_meta = TagMeta(tag_name, TagValueType.NONE)
         elif isinstance(tag_value, int) or isinstance(tag_value, float):
@@ -57,8 +84,15 @@ def create_tags_from_annotation(meta: ProjectMeta, tags: List[dict]) -> ProjectM
 def create_classes_from_annotation(
     frame: dict, meta: ProjectMeta, object_key_to_name: dict
 ) -> ProjectMeta:
-    for fig in frame["figures"]:
-        obj_key = fig.get("objectKey")
+    for fig in frame[FIGURES]:
+        if not all(key in fig for key in SLY_FIGURE_KEYS):
+            logger.warn(
+                f"Figure in annotation file is not in Supervisely format: {fig}. "
+                "Read more about the Supervisely JSON format of figures in the documentation at: "
+                "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
+            )
+            continue
+        obj_key = fig.get(OBJECT_KEY)
         if obj_key is None:
             continue
         class_name = object_key_to_name[obj_key]
@@ -73,12 +107,23 @@ def create_classes_from_annotation(
             obj_class = ObjClass(name=class_name, geometry_type=Polygon)
         elif geometry_type == Polyline.geometry_name():
             obj_class = ObjClass(name=class_name, geometry_type=Polyline)
+        elif geometry_type == GraphNodes.geometry_name():
+            if not all(key in fig for key in ["geometry", "geometryType"]):
+                continue
+            geometry = fig["geometry"]
+            if "nodes" not in geometry:
+                continue
+            template = KeypointsTemplate()
+            for uuid, node in geometry["nodes"].items():
+                if "loc" not in node or len(node["loc"]) != 2:
+                    continue
+                template.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
+            obj_class = ObjClass(name=class_name, geometry_type=GraphNodes, geometry_config=template)
 
-        # @TODO: add better check for geometry type, add
-        # elif geometry_type == GraphNodes.geometry_name():
-        #     geometry_config = None
-        #     obj_class = ObjClass(name=class_name, geometry_type=GraphNodes)
         existing_class = meta.get_obj_class(class_name)
+        if obj_class is None:
+            logger.warn(f"Object class {class_name} is not in Supervisely format.")
+            continue
         if existing_class is None:
             meta = meta.add_obj_class(obj_class)
         else:
@@ -90,11 +135,14 @@ def create_classes_from_annotation(
 
 def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
     if renamed_classes:
-        for obj in ann_json["objects"]:
-            obj["classTitle"] = renamed_classes.get(obj["classTitle"], obj["classTitle"])
-            for tag in obj["tags"]:
-                tag["name"] = renamed_tags.get(tag["name"], tag["name"])
+        for obj in ann_json[OBJECTS]:
+            obj_cls_name = obj[LabelJsonFields.OBJ_CLASS_NAME]
+            obj[LabelJsonFields.OBJ_CLASS_NAME] = renamed_classes.get(obj_cls_name, obj_cls_name)
+            for tag in obj[TAGS]:
+                tag_name = tag[TagJsonFields.TAG_NAME]
+                tag[TagJsonFields.TAG_NAME] = renamed_tags.get(tag_name, tag_name)
     if renamed_tags:
-        for tag in ann_json["tags"]:
-            tag["name"] = renamed_tags.get(tag["name"], tag["name"])
+        for tag in ann_json[TAGS]:
+            tag_name = tag[TagJsonFields.TAG_NAME]
+            tag[TagJsonFields.TAG_NAME] = renamed_tags.get(tag_name, tag_name)
     return ann_json
