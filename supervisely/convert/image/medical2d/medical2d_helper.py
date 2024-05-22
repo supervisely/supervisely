@@ -142,7 +142,7 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
         header = create_nrrd_header_from_dcm(image_path)
     else:
         raise NotImplementedError(
-            f"this type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
+            f"This type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
         )
 
     save_paths = []

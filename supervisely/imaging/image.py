@@ -36,10 +36,13 @@ SUPPORTED_IMG_EXTS = [
     ".tif",
     ".nrrd",
     ".jfif",
+]
+DEFAULT_IMG_EXT = ".png"
+
+MEDICAL_IMAGES_EXT = [
     ".dcm",
     ".nii",
 ]
-DEFAULT_IMG_EXT = ".png"
 
 
 class CornerAnchorMode:
