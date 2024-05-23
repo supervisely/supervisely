@@ -4,9 +4,13 @@
 # docs
 from __future__ import annotations
 
+import base64
 import json
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
+import zlib
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
+import cv2
+import numpy as np
 from tqdm import tqdm
 
 from supervisely._utils import batched
@@ -1041,3 +1045,70 @@ class AnnotationApi(ModuleApi):
                 ApiField.GEOMETRY: label.geometry.to_json(),
             },
         )
+
+    def _render(
+        self,
+        image_ids: List[int],
+        show_disabled: bool = False,
+        resize_wh: Tuple[Optional[int], Optional[int]] = (None, None),
+        thickness: int = 1,
+    ) -> List[bytes]:
+        """
+        Render annotations of selected images to bytes.
+
+        :param image_ids: The list of image ids to render annotations.
+        :type image_ids: int
+        :param show_disabled: Add to render disabled figures.
+        :type show_disabled: bool
+        :param resize_wh: Resize the rendered images to the exact pixels dimensions: (width, height). Use (width, None) or (None, height) for aspect ratio. E.g. (100, None) for width 100 to all images.
+        :type resize_wh: Tuple[Optional[int], Optional[int]]
+        :param thickness: Border line thickness. By default, 1
+        :type thickness: int
+
+        :return: List of bytes to draw.
+        :rtype: List[bytes]
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            import io
+            from dotenv import load_dotenv
+            from PIL import Image
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            image_ids = [28437311, 28437307]
+            images_bytes = api.annotation.render_anns(image_ids)
+
+            for idx, bytes_seq in enumerate(images_bytes):
+                img = Image.open(io.BytesIO(bytes_seq))
+                img.save(f"image_{idx}.png")
+        """
+
+        imgs = []
+        for id in image_ids:
+            tmp = {
+                ApiField.ID: id,
+                ApiField.THICKNESS: thickness,
+            }
+            if resize_wh[0] is not None:
+                tmp[ApiField.WIDTH] = resize_wh[0]
+            if resize_wh[1] is not None:
+                tmp[ApiField.HEIGHT] = resize_wh[1]
+            imgs.append(tmp)
+
+        res = self._api.post(
+            "annotations.bulk.render",
+            {
+                ApiField.SHOW_DISABLED: show_disabled,
+                ApiField.IMAGES: imgs,
+            },
+        )
+
+        return [base64.b64decode(x.split(",")[-1]) for x in res.json()]
