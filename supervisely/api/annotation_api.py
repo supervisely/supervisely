@@ -453,9 +453,9 @@ class AnnotationApi(ModuleApi):
                             label_idx
                         ].update({BITMAP: geometry})
 
-                for ann_dict in results:
-                    ann_info = self._convert_json_info(ann_dict)
-                    id_to_ann[ann_info.image_id] = ann_info
+            for ann_dict in results:
+                ann_info = self._convert_json_info(ann_dict)
+                id_to_ann[ann_info.image_id] = ann_info
 
             if progress_cb is not None:
                 progress_cb(len(batch))
