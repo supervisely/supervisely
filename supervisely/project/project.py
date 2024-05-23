@@ -2960,6 +2960,7 @@ def download_project(
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
     save_image_meta: bool = False,
+    with_alpha_masks: Optional[bool] = False,
 ) -> None:
     """
     Download image project to the local directory.
@@ -3038,6 +3039,7 @@ def download_project(
             save_images=save_images,
             progress_cb=progress_cb,
             save_image_meta=save_image_meta,
+            with_alpha_masks=with_alpha_masks
         )
     else:
         _download_project_optimized(
@@ -3050,6 +3052,7 @@ def download_project(
             only_image_tags=only_image_tags,
             save_image_info=save_image_info,
             save_images=save_images,
+            with_alpha_masks=with_alpha_masks
         )
 
 
@@ -3063,6 +3066,7 @@ def _download_project_optimized(
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
+    with_alpha_mask: Optional[bool] = False,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -3089,6 +3093,7 @@ def _download_project_optimized(
                 only_image_tags=only_image_tags,
                 save_image_info=save_image_info,
                 save_images=save_images,
+                with_alpha_masks=with_alpha_mask,
             )
 
     try:
