@@ -1,30 +1,29 @@
 import os
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Union, Callable
+from typing import Callable, Dict, List, Union
 
+from supervisely import env
+from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
-from supervisely.api.project_api import ProjectInfo
 from supervisely.api.file_api import FileApi, FileInfo
+from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import (
+    Button,
+    Checkbox,
     Container,
     Field,
-    Checkbox,
+    FileThumbnail,
     Flexbox,
+    Input,
     ProjectThumbnail,
     Select,
     Text,
-    Input,
-    Button,
-    FileThumbnail,
     Widget,
 )
-from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
-from supervisely import env
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely._utils import abs_url, is_development
-
+from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 WEIGHTS_DIR = "weights"
 
@@ -84,12 +83,16 @@ class CustomModelsSelector(Widget):
 
             # col 3 checkpoints
             self._checkpoints = checkpoint.checkpoints
-            self._checkpoints_names = [
-                checkpoint_info["name"] for checkpoint_info in self._checkpoints
-            ]
-            self._checkpoints_paths = [
-                checkpoint_info["path"] for checkpoint_info in self._checkpoints
-            ]
+
+            self._checkpoints_names = []
+            self._checkpoints_paths = []
+            for checkpoint_info in self._checkpoints:
+                if isinstance(checkpoint_info, dict):
+                    self._checkpoints_names.append(checkpoint_info["name"])
+                    self._checkpoints_paths.append(checkpoint_info["path"])
+                elif isinstance(checkpoint_info, FileInfo):
+                    self._checkpoints_names.append(checkpoint_info.name)
+                    self._checkpoints_paths.append(checkpoint_info.path)
 
             # col 4 session
             self._session_link = checkpoint.session_link
@@ -201,12 +204,18 @@ class CustomModelsSelector(Widget):
             return training_project_widget
 
         def _create_checkpoints_widget(self) -> Select:
-            checkpoint_selector = Select(
-                [
-                    Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
-                    for checkpoint_info in self._checkpoints
-                ]
-            )
+            checkpoint_selector_items = []
+            for checkpoint_info in self._checkpoints:
+                if isinstance(checkpoint_info, dict):
+                    checkpoint_selector_items.append(
+                        Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
+                    )
+                elif isinstance(checkpoint_info, FileInfo):
+                    checkpoint_selector_items.append(
+                        Select.Item(value=checkpoint_info.path, label=checkpoint_info.name)
+                    )
+
+            checkpoint_selector = Select(items=checkpoint_selector_items)
             return checkpoint_selector
 
         def _create_session_widget(self) -> Text:
@@ -287,14 +296,14 @@ class CustomModelsSelector(Widget):
                 self.custom_checkpoint_task_type_selector = Select(
                     self.custom_checkpoint_task_type_selector_items
                 )
-                custom_checkpoint_task_type_selector_field = Field(
+                self.custom_checkpoint_task_type_selector_field = Field(
                     title="Task Type", content=self.custom_checkpoint_task_type_selector
                 )
 
             self.custom_tab_widgets = Container(
                 [
                     team_files_link_btn,
-                    custom_checkpoint_task_type_selector_field,
+                    self.custom_checkpoint_task_type_selector_field,
                     model_path_field,
                     self.file_thumbnail,
                 ]
