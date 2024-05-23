@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from typing import List, Union
 
 import magic
@@ -22,7 +23,7 @@ class Medical2DImageConverter(ImageConverter):
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface
         self._filtered = None
-        self._group_tag_names = []
+        self._group_tag_names = defaultdict(int)
 
     def __str__(self):
         return AvailableImageConverters.MEDICAL2D
@@ -51,8 +52,7 @@ class Medical2DImageConverter(ImageConverter):
                     if helper.is_dicom_file(path):  # is dicom
                         paths, names, group_tag = helper.convert_dcm_to_nrrd(path, converted_dir)
                         if group_tag is not None:
-                            tag_name = group_tag["name"]
-                            tag_value = group_tag["value"]
+                            tag_name, tag_value = group_tag["name"], group_tag["value"]
                             tag_meta = meta.get_tag_meta(tag_name)
                             if tag_meta is None:
                                 tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
@@ -74,10 +74,10 @@ class Medical2DImageConverter(ImageConverter):
         self._items = []
         for name, (path, group_tag) in nrrd.items():
             item = self.Item(item_path=path)
+            img_size = nrrd.read_header(path)["sizes"].tolist()[::-1]
+            item.set_shape(img_size)
             if group_tag is not None:
-                self._group_tag_names.append(group_tag.name)
-                img_size = nrrd.read_header(path)["sizes"].tolist()[::-1]
-                item.set_shape(img_size)
+                self._group_tag_names[group_tag.name] += 1
                 item.ann_data = [group_tag]
             self._items.append(item)
 
@@ -114,48 +114,45 @@ class Medical2DImageConverter(ImageConverter):
         """Upload converted data to Supervisely"""
 
         if len(self._group_tag_names) > 0:
+            group_tag_name = next(iter(self._group_tag_names))
+            logger.debug("Group tags detected")
             if len(self._group_tag_names) > 1:
+                import heapq
                 # get the most common group tag name
-                sorted_group_names = sorted(self._group_tag_names, key=lambda x: self._group_tag_names.count(x), reverse=True)
+                group_tag_name = max(self._group_tag_names, key=self._group_tag_names.get)
                 logger.warn(
-                    f"Multiple group tags found: {self._group_tag_names}. \n"
-                    f"Will use: {sorted_group_names[0]}. \n"
+                    f"Multiple group tags found: {', '.join(self._group_tag_names.keys())}."
+                    f"Will use: {group_tag_name}."
                     "Some images will be hidden in the grouped view if they don't have the corresponding group tag."
                 )
             meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
-            group_tag_name = renamed_tags.get(self._group_tag_names, self._group_tag_names)
+            group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+
             dataset = api.dataset.get_info_by_id(dataset_id)
+            existing_names = set([img.name for img in api.image.get_list(dataset_id)])
 
-            # ! FIXME: uncomment this line after adding set_medical_settings method to api.project
+            # ! FIXME: change to set_medical_settings when it will be implemented
             # api.project.set_medical_settings(id=dataset.project_id, tag_name=group_tag_name)
+            api.project.images_grouping(id=dataset.project_id, enable=True, tag_name=group_tag_name)
 
-            # backup:
-            # api.project.images_grouping(id=dataset.project_id, enable=True, tag_name=group_tag_name)
 
             if log_progress:
                 progress, progress_cb = self.get_progress(self.items_count, "Uploading images...")
 
-            # existing_names = set([img.name for img in api.image.get_list(dataset_id)])
-
             for batch in batched(self._items, batch_size):
                 paths = [item.path for item in batch]
-                # ! FIXME: uncomment this line after adding upload_medical_images method to api.image
-                # api.image.upload_medical_images(dataset_id, group_tag_name, paths, progress_cb=progress_cb)
+                anns = [self.to_supervisely(item, meta, renamed_classes, renamed_tags) for item in batch]
+                names = []
+                for item in batch:
+                    item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
+                    name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
+                    )
+                    names.append(name)
 
-
-                # backup:
-                # anns = [self.to_supervisely(item, meta, renamed_classes, renamed_tags) for item in batch]
-                # names = []
-                # for item in batch:
-                #     item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                #     name = generate_free_name(
-                #         existing_names, item.name, with_ext=True, extend_used_names=True
-                #     )
-                #     names.append(name)
-
-                # img_infos = api.image.upload_paths(dataset_id, names, paths)
-                # img_ids = [img_info.id for img_info in img_infos]
-                # api.annotation.upload_anns(img_ids, anns)
+                img_infos = api.image.upload_paths(dataset_id, names, paths)
+                img_ids = [img_info.id for img_info in img_infos]
+                api.annotation.upload_anns(img_ids, anns)
 
                 if log_progress:
                     progress_cb(len(batch))
