@@ -1,4 +1,5 @@
 import os
+from os.path import basename, dirname, exists, join, normpath, pardir
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -9,7 +10,23 @@ from pydicom import FileDataset
 from tqdm import tqdm
 
 from supervisely import image, logger, volume
+from supervisely.annotation.annotation import Annotation, TagCollection
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.imaging import image as sly_image
 from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext, mkdir
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.volume import read_dicom_serie_volume
+
+_MEDICAL_DEFAULT_GROUP_TAG_NAMES = [
+    "StudyInstanceUID",
+    "StudyID",
+    "SeriesInstanceUID",
+    "TreatmentSessionUID",
+    "Manufacturer",
+    "ManufacturerModelName",
+    "Modality",
+]
 
 
 def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
@@ -58,7 +75,7 @@ def is_dicom_file(path: str) -> bool:
         pydicom.read_file(str(Path(path).resolve()), stop_before_pixels=True)
         result = True
     except Exception as ex:
-        logger.warn("'{}' appears not to be a DICOM file\n({})".format(path, ex))
+        logger.warning("'{}' appears not to be a DICOM file\n({})".format(path, ex))
         result = False
     return result
 
@@ -229,3 +246,197 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
         output_paths.append(nrrd_file_path)
         output_names.append(get_file_name_with_ext(nrrd_file_path))
     return output_paths, output_names
+
+
+def dcm2nrrd(
+    image_path: str,
+    group_tag_names: List[str],
+    project_meta,
+) -> Tuple[str, str, Annotation]:
+    """Converts DICOM data to nrrd format and returns image paths, image names, and image annotations."""
+    dcm = pydicom.read_file(image_path)
+    group_tag_name = None
+    for name in group_tag_names:
+        try:
+            dcm[name]
+            group_tag_name = name
+            break
+        except KeyError:
+            pass
+    if group_tag_name is None:
+        raise ValueError(
+            f"None of tag values were found in the DICOM file. Tag values: {group_tag_names}"
+        )
+    dcm_tags, project_meta = create_dcm_tags(dcm, project_meta)
+    pixel_data_list = [dcm.pixel_array]
+
+    if len(dcm.pixel_array.shape) == 3:
+        if dcm.pixel_array.shape[0] == 1 and not hasattr(dcm, "NumberOfFrames"):
+            frames = 1
+            pixel_data_list = [
+                dcm.pixel_array.reshape((dcm.pixel_array.shape[1], dcm.pixel_array.shape[2]))
+            ]
+            header = get_nrrd_header(image_path)
+        else:
+            try:
+                frames = int(dcm.NumberOfFrames)
+            except AttributeError as e:
+                if str(e) == "'FileDataset' object has no attribute 'NumberOfFrames'":
+                    e.args = ("can't get 'NumberOfFrames' from dcm meta.",)
+                    raise e
+            frame_axis = find_frame_axis(dcm.pixel_array, frames)
+            pixel_data_list, frame_axis = create_pixel_data_set(dcm, frame_axis)
+            header = get_nrrd_header(image_path, frame_axis)
+    elif len(dcm.pixel_array.shape) == 2:
+        frames = 1
+        header = get_nrrd_header(image_path)
+    else:
+        raise NotImplementedError(
+            f"This type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
+        )
+
+    save_paths = []
+    image_names = []
+    anns = []
+    frames_list = [f"{i:0{len(str(frames))}d}" for i in range(1, frames + 1)]
+
+    for pixel_data, frame_number in zip(pixel_data_list, frames_list):
+        original_name = get_file_name_with_ext(image_path)
+
+        if frames == 1:
+            pixel_data = sly_image.rotate(img=pixel_data, degrees_angle=270)
+            pixel_data = sly_image.fliplr(pixel_data)
+            image_name = f"{original_name}.nrrd"
+        else:
+            pixel_data = np.squeeze(pixel_data, frame_axis)
+            image_name = f"{frame_number}_{original_name}.nrrd"
+
+        save_path = join(dirname(image_path), image_name)
+        nrrd.write(save_path, pixel_data, header)
+        save_paths.append(save_path)
+        image_names.append(image_name)
+        try:
+            group_tag_value = str(dcm[group_tag_name].value)
+            group_tag = {"name": group_tag_name, "value": group_tag_value}
+            ann, project_meta = create_ann_with_tags(
+                save_path,
+                group_tag,
+                project_meta,
+                dcm_tags,
+            )
+        except KeyError:
+            logger.warn(
+                f"Couldn't find key: '{group_tag_name}' in file's metadata: '{original_name}'"
+            )
+            img_size = nrrd.read_header(save_path)["sizes"].tolist()[::-1]
+            ann = Annotation(img_size=img_size)
+            if dcm_tags is not None:
+                ann = ann.add_tags(TagCollection(dcm_tags))
+        anns.append(ann)
+    return save_paths, image_names, anns, project_meta, group_tag_name
+
+
+def create_dcm_tags(dcm: FileDataset, project_meta: ProjectMeta) -> List[Tag]:
+    """Create tags from DICOM metadata."""
+
+    tags_from_dcm = []
+    # if g.ADD_DCM_TAGS == g.ADD_ALL:
+    # g.DCM_TAGS = list(dcm.keys())
+
+    DCM_TAGS = list(dcm.keys())
+    for dcm_tag in DCM_TAGS:
+        try:
+            curr_tag = dcm[dcm_tag]
+            dcm_tag_name = str(curr_tag.name)
+            dcm_tag_value = str(curr_tag.value)
+            if dcm_tag_value in ["", None]:
+                logger.warn(f"Tag [{dcm_tag_name}] has empty value. Skipping tag.")
+                continue
+            if len(dcm_tag_value) > 255:
+                logger.warn(f"Tag [{dcm_tag_name}] has too long value. Skipping tag.")
+                continue
+            tags_from_dcm.append((dcm_tag_name, dcm_tag_value))
+        except:
+            dcm_filename = get_file_name_with_ext(dcm.filename)
+            logger.warn(f"Couldn't find key: '{dcm_tag}' in file's metadata: '{dcm_filename}'")
+            continue
+
+    dcm_sly_tags = []
+    for dcm_tag_name, dcm_tag_value in tags_from_dcm:
+        dcm_tag_meta = project_meta.get_tag_meta(dcm_tag_name)
+        if dcm_tag_meta is None:
+            dcm_tag_meta = TagMeta(dcm_tag_name, TagValueType.ANY_STRING)
+            project_meta = project_meta.add_tag_meta(dcm_tag_meta)
+
+        dcm_tag = Tag(dcm_tag_meta, dcm_tag_value)
+        dcm_sly_tags.append(dcm_tag)
+    return dcm_sly_tags, project_meta
+
+
+def create_ann_with_tags(
+    path_to_img: str,
+    group_tag_info: dict,
+    project_meta: ProjectMeta,
+    dcm_tags: List[Tag] = None,
+) -> Annotation:
+    """Creates annotation with tags."""
+    img_size = nrrd.read_header(path_to_img)["sizes"].tolist()[::-1]
+    group_tag, project_meta = create_group_tag(group_tag_info, project_meta)
+    tags_to_add = [tag for tag in [group_tag] + (dcm_tags or []) if tag.value is not None]
+    return Annotation(img_size=img_size).add_tags(TagCollection(tags_to_add)), project_meta
+
+
+def create_group_tag(group_tag_info: Dict[str, str], project_meta: ProjectMeta) -> Tag:
+    """Creates grouping tag."""
+    group_tag_name, group_tag_value = group_tag_info["name"], group_tag_info["value"]
+    group_tag_meta = project_meta.get_tag_meta(group_tag_name)
+    if group_tag_meta is None:
+        group_tag_meta = TagMeta(group_tag_name, TagValueType.ANY_STRING)
+        project_meta = project_meta.add_tag_meta(group_tag_meta)
+    group_tag = Tag(group_tag_meta, group_tag_value)
+    return group_tag, project_meta
+
+
+def get_nrrd_header(image_path: str, frame_axis: int = 2):
+    _, meta = read_dicom_serie_volume([image_path], False)
+    dimensions: Dict = meta.get("dimensionsIJK")
+    header = {
+        "type": "float",
+        "sizes": [dimensions.get("x"), dimensions.get("y")],
+        "dimension": 2,
+        "space": "right-anterior-superior",
+    }
+
+    if frame_axis == 0:
+        spacing = meta["spacing"][1:]
+        header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
+    if frame_axis == 1:
+        spacing = meta["spacing"][0::2]
+        header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
+    if frame_axis == 2:
+        spacing = meta["spacing"][0:2]
+        header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
+    return header
+
+
+# def remove_sly_tag_name_if_not_unique(sly_meta, new_meta):
+#     for s_tag in sly_meta["tags"]:
+#         for n_tag in new_meta["tags"]:
+#             if s_tag["name"] == n_tag["name"]:
+#                 sly_meta["tags"].remove(s_tag)
+#                 logger.warning(
+#                     f"There was tag [{s_tag['name']}] in Supervisely meta with the same name as the grouping tag on the import! Supervisely tag was replaced with import tag. If you want to separate them, you need to manually correct the annotation and meta .json files, or select a different grouping tag on import."
+#                 )
+
+
+# def check_unique_name(lst: List[Dict[str, str]]) -> None:
+#     """
+#     Checks if the 'name' key in a list of dictionaries has only unique values.
+#     Raises a ValueError exception with a descriptive message if the values are not unique.
+#     """
+#     values = [d["name"] for d in lst]
+#     if len(values) != len(set(values)):
+#         non_unique_values = [v for v in set(values) if values.count(v) > 1]
+#         raise ValueError(
+#             f"The 'name' key in Project Meta has non-unique values: {non_unique_values}"
+#         )
