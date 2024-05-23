@@ -745,13 +745,25 @@ class AnnotationApi(ModuleApi):
                 ann_json = func_ann_to_json(ann)
                 ann_json = copy.deepcopy(ann_json)
                 filtered_labels = []
+                if AnnotationJsonFields.LABELS not in ann_json:
+                    raise RuntimeError(
+                        f"Annotation JSON does not contain '{AnnotationJsonFields.LABELS}' field"
+                    )
                 for label_json in ann_json[AnnotationJsonFields.LABELS]:
+                    for key in [LabelJsonFields.GEOMETRY_TYPE, LabelJsonFields.OBJ_CLASS_NAME]:
+                        if key not in label_json:
+                            raise RuntimeError(f"Label JSON does not contain '{key}' field")
                     if label_json[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
                         label_json.update({ApiField.ENTITY_ID: img_id})
 
-                        # update obj class id in label json (is it necessary?)
                         obj_cls_name = label_json.get(LabelJsonFields.OBJ_CLASS_NAME)
-                        label_json[LabelJsonFields.OBJ_CLASS_ID] = project_meta.get_obj_class(obj_cls_name).sly_id
+                        obj_cls = project_meta.get_obj_class(obj_cls_name)
+                        if obj_cls is None:
+                            raise RuntimeError(
+                                f"Object class '{obj_cls_name}' not found in project meta"
+                            )
+                        # update obj class id in label json
+                        label_json[LabelJsonFields.OBJ_CLASS_ID] = obj_cls.sly_id
 
                         geometry = label_json.pop(BITMAP) # remove alpha mask geometry from label json
                         special_geometries.append(geometry)
