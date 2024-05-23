@@ -2766,7 +2766,7 @@ def _download_project(
                 ann_jsons = []
                 for image_info in batch:
                     tags = TagCollection.from_api_response(
-                        image_info.tags, meta.tag_metas, id_to_tagmeta
+                        image_info.tags, meta.tag_metas, id_to_tagmeta # pylint: disable=possibly-used-before-assignment
                     )
                     tmp_ann = Annotation(
                         img_size=(image_info.height, image_info.width), img_tags=tags
@@ -3066,7 +3066,7 @@ def _download_project_optimized(
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
-    with_alpha_mask: Optional[bool] = False,
+    with_alpha_mask=False,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
