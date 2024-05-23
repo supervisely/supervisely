@@ -24,6 +24,8 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
     :return: List of CheckpointInfo objects
     :rtype: List[CheckpointInfo]
     """
+    if sort not in ["desc", "asc"]:
+        raise ValueError(f"Invalid sort value: {sort}")
 
     checkpoints = []
     weights_dir_name = "checkpoints"
@@ -32,15 +34,17 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
     training_app_directory = "/mmdetection/"
     if not api.file.dir_exists(team_id, training_app_directory):
         return []
-    task_files_infos = api.file.list(team_id, training_app_directory, recursive=False)
+    task_files_infos = api.file.list(
+        team_id, training_app_directory, recursive=False, return_type="fileinfo"
+    )
     for task_file_info in task_files_infos:
-        task_id = task_file_info["name"].split("_")[0]
-        project_name = task_file_info["name"].split("_")[1]
+        task_id = task_file_info.name.split("_")[0]
+        project_name = task_file_info.name.split("_")[1]
         if is_development():
             session_link = abs_url(f"/apps/sessions/{task_id}")
         else:
             session_link = f"/apps/sessions/{task_id}"
-        path_to_info = join(task_file_info["path"], info_dir_name, "ui_state.json")
+        path_to_info = join(task_file_info.path, info_dir_name, "ui_state.json")
         if api.file.exists(team_id, path_to_info):
             api.file.download(team_id, path_to_info, "model_config.json")
             model_config = load_json_file("model_config.json")
@@ -48,11 +52,13 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
             silent_remove("model_config.json")
         else:
             continue
-        path_to_checkpoints = join(task_file_info["path"], weights_dir_name, weights_subdir_name)
+        path_to_checkpoints = join(task_file_info.path, weights_dir_name, weights_subdir_name)
         checkpoints_infos = [
             file
-            for file in api.file.list(team_id, path_to_checkpoints, recursive=False)
-            if file["name"].endswith(".pth")
+            for file in api.file.list(
+                team_id, path_to_checkpoints, recursive=False, return_type="fileinfo"
+            )
+            if file.name.endswith(".pth")
         ]
         config_url = join(path_to_checkpoints, "config.py")
         if not api.file.exists(team_id, config_url):
@@ -62,7 +68,7 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
         checkpoint_info = CheckpointInfo(
             app_name="Train MMDetection",
             session_id=task_id,
-            session_path=task_file_info["path"],
+            session_path=task_file_info.path,
             session_link=session_link,
             task_type=task_type,
             training_project_name=project_name,
@@ -75,6 +81,4 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
         checkpoints = sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
     elif sort == "asc":
         checkpoints = sorted(checkpoints, key=lambda x: x.session_id)
-    else:
-        raise ValueError(f"Invalid sort value: {sort}")
     return checkpoints

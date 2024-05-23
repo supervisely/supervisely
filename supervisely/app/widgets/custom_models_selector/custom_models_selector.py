@@ -84,12 +84,16 @@ class CustomModelsSelector(Widget):
 
             # col 3 checkpoints
             self._checkpoints = checkpoint.checkpoints
-            self._checkpoints_names = [
-                checkpoint_info["name"] for checkpoint_info in self._checkpoints
-            ]
-            self._checkpoints_paths = [
-                checkpoint_info["path"] for checkpoint_info in self._checkpoints
-            ]
+
+            self._checkpoints_names = []
+            self._checkpoints_paths = []
+            for checkpoint_info in self._checkpoints:
+                if isinstance(checkpoint_info, dict):
+                    self._checkpoints_names.append(checkpoint_info["name"])
+                    self._checkpoints_paths.append(checkpoint_info["path"])
+                elif isinstance(checkpoint_info, FileInfo):
+                    self._checkpoints_names.append(checkpoint_info.name)
+                    self._checkpoints_paths.append(checkpoint_info.path)
 
             # col 4 session
             self._session_link = checkpoint.session_link
@@ -201,12 +205,18 @@ class CustomModelsSelector(Widget):
             return training_project_widget
 
         def _create_checkpoints_widget(self) -> Select:
-            checkpoint_selector = Select(
-                [
-                    Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
-                    for checkpoint_info in self._checkpoints
-                ]
-            )
+            checkpoint_selector_items = []
+            for checkpoint_info in self._checkpoints:
+                if isinstance(checkpoint_info, dict):
+                    checkpoint_selector_items.append(
+                        Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
+                    )
+                elif isinstance(checkpoint_info, FileInfo):
+                    checkpoint_selector_items.append(
+                        Select.Item(value=checkpoint_info.path, label=checkpoint_info.name)
+                    )
+
+            checkpoint_selector = Select(items=checkpoint_selector_items)
             return checkpoint_selector
 
         def _create_session_widget(self) -> Text:

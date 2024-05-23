@@ -22,6 +22,8 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
     :return: List of CheckpointInfo objects
     :rtype: List[CheckpointInfo]
     """
+    if sort not in ["desc", "asc"]:
+        raise ValueError(f"Invalid sort value: {sort}")
 
     checkpoints = []
     weights_dir_name = "weights"
@@ -29,26 +31,30 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
     task_type = "object detection"
     if not api.file.dir_exists(team_id, training_app_directory):
         return []
-    project_files_infos = api.file.list(team_id, training_app_directory, recursive=False)
+    project_files_infos = api.file.list(
+        team_id, training_app_directory, recursive=False, return_type="fileinfo"
+    )
     for project_file_info in project_files_infos:
-        project_name = project_file_info["name"]
-        task_files_infos = api.file.list(team_id, project_file_info["path"], recursive=False)
+        project_name = project_file_info.name
+        task_files_infos = api.file.list(
+            team_id, project_file_info.path, recursive=False, return_type="fileinfo"
+        )
         for task_file_info in task_files_infos:
-            if task_file_info["name"] == "images":
+            if task_file_info.name == "images":
                 continue
-            task_id = task_file_info["name"]
+            task_id = task_file_info.name
             if is_development():
                 session_link = abs_url(f"/apps/sessions/{task_id}")
             else:
                 session_link = f"/apps/sessions/{task_id}"
-            path_to_checkpoints = join(task_file_info["path"], weights_dir_name)
+            path_to_checkpoints = join(task_file_info.path, weights_dir_name)
             checkpoints_infos = api.file.list(team_id, path_to_checkpoints, recursive=False)
             if len(checkpoints_infos) == 0:
                 continue
             checkpoint_info = CheckpointInfo(
                 app_name="Train YOLOv5",
                 session_id=task_id,
-                session_path=task_file_info["path"],
+                session_path=task_file_info.path,
                 session_link=session_link,
                 task_type=task_type,
                 training_project_name=project_name,
@@ -60,6 +66,4 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
         checkpoints = sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
     elif sort == "asc":
         checkpoints = sorted(checkpoints, key=lambda x: x.session_id)
-    else:
-        raise ValueError(f"Invalid sort value: {sort}")
     return checkpoints

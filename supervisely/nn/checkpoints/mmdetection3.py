@@ -23,23 +23,30 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
     :return: List of CheckpointInfo objects
     :rtype: List[CheckpointInfo]
     """
+    if sort not in ["desc", "asc"]:
+        raise ValueError(f"Invalid sort value: {sort}")
+
     checkpoints = []
     training_app_directory = "/mmdetection-3/"
     if not api.file.dir_exists(team_id, training_app_directory):
         return []
-    task_files_infos = api.file.list(team_id, training_app_directory, recursive=False)
+    task_files_infos = api.file.list(
+        team_id, training_app_directory, recursive=False, return_type="fileinfo"
+    )
     for task_file_info in task_files_infos:
-        task_id = task_file_info["name"].split("_")[0]
-        session_dir_files = api.file.list(team_id, task_file_info["path"], recursive=False)
+        task_id = task_file_info.name.split("_")[0]
+        session_dir_files = api.file.list(
+            team_id, task_file_info.path, recursive=False, return_type="fileinfo"
+        )
         if is_development():
             session_link = abs_url(f"/apps/sessions/{task_id}")
         else:
             session_link = f"/apps/sessions/{task_id}"
-        checkpoints_infos = [file for file in session_dir_files if file["name"].endswith(".pth")]
-        if not api.file.exists(team_id, join(task_file_info["path"], "config.py")):
+        checkpoints_infos = [file for file in session_dir_files if file.name.endswith(".pth")]
+        if not api.file.exists(team_id, join(task_file_info.path, "config.py")):
             continue
-        config_url = join(task_file_info["path"], "config.py")
-        api.file.download(team_id, join(task_file_info["path"], "config.py"), "model_config.txt")
+        config_url = join(task_file_info.path, "config.py")
+        api.file.download(team_id, join(task_file_info.path, "config.py"), "model_config.txt")
         with open("model_config.txt", "r") as f:
             lines = f.readlines()
             project_line = lines[-1] if lines else None
@@ -57,7 +64,7 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
         checkpoint_info = CheckpointInfo(
             app_name="Train MMDetection 3.0",
             session_id=task_id,
-            session_path=task_file_info["path"],
+            session_path=task_file_info.path,
             session_link=session_link,
             task_type=task_type,
             training_project_name=project_name,
@@ -70,6 +77,4 @@ def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> L
         checkpoints = sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
     elif sort == "asc":
         checkpoints = sorted(checkpoints, key=lambda x: x.session_id)
-    else:
-        raise ValueError(f"Invalid sort value: {sort}")
     return checkpoints
