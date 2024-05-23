@@ -1,11 +1,28 @@
 from os.path import join
-from typing import List
-from supervisely.api.api import Api
+from typing import List, Literal
+
 from supervisely._utils import abs_url, is_development
+from supervisely.api.api import Api
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 
-def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
+def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
+    """
+    Parse the TeamFiles directory with the checkpoints trained
+    in Supervisely of the YOLOv5 model
+    and return the list of CheckpointInfo objects.
+
+    :param api: Supervisely API object
+    :type api: Api
+    :param team_id: Team ID
+    :type team_id: int
+    :param sort: Sorting order, defaults to "desc", which means new models first
+    :type sort: Literal["desc", "asc"], optional
+
+    :return: List of CheckpointInfo objects
+    :rtype: List[CheckpointInfo]
+    """
+
     checkpoints = []
     weights_dir_name = "weights"
     training_app_directory = "/yolov5_train/"
@@ -24,8 +41,8 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
                 session_link = abs_url(f"/apps/sessions/{task_id}")
             else:
                 session_link = f"/apps/sessions/{task_id}"
-            paths_to_checkpoints = join(task_file_info["path"], weights_dir_name)
-            checkpoints_infos = api.file.list(team_id, paths_to_checkpoints, recursive=False)
+            path_to_checkpoints = join(task_file_info["path"], weights_dir_name)
+            checkpoints_infos = api.file.list(team_id, path_to_checkpoints, recursive=False)
             if len(checkpoints_infos) == 0:
                 continue
             checkpoint_info = CheckpointInfo(
@@ -38,4 +55,11 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
                 checkpoints=checkpoints_infos,
             )
             checkpoints.append(checkpoint_info)
+
+    if sort == "desc":
+        checkpoints = sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
+    elif sort == "asc":
+        checkpoints = sorted(checkpoints, key=lambda x: x.session_id)
+    else:
+        raise ValueError(f"Invalid sort value: {sort}")
     return checkpoints

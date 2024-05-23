@@ -1,5 +1,5 @@
 from os.path import join
-from typing import List
+from typing import List, Literal
 
 from supervisely.api.api import Api
 from supervisely.io.fs import silent_remove
@@ -7,7 +7,22 @@ from supervisely._utils import abs_url, is_development
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 
-def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
+def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
+    """
+    Parse the TeamFiles directory with the checkpoints trained
+    in Supervisely of the MMDetection 3.0 model
+    and return the list of CheckpointInfo objects.
+
+    :param api: Supervisely API object
+    :type api: Api
+    :param team_id: Team ID
+    :type team_id: int
+    :param sort: Sorting order, defaults to "desc", which means new models first
+    :type sort: Literal["desc", "asc"], optional
+
+    :return: List of CheckpointInfo objects
+    :rtype: List[CheckpointInfo]
+    """
     checkpoints = []
     training_app_directory = "/mmdetection-3/"
     if not api.file.dir_exists(team_id, training_app_directory):
@@ -50,4 +65,11 @@ def get_list(api: Api, team_id: int) -> List[CheckpointInfo]:
             config=config_url,
         )
         checkpoints.append(checkpoint_info)
+
+    if sort == "desc":
+        checkpoints = sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
+    elif sort == "asc":
+        checkpoints = sorted(checkpoints, key=lambda x: x.session_id)
+    else:
+        raise ValueError(f"Invalid sort value: {sort}")
     return checkpoints
