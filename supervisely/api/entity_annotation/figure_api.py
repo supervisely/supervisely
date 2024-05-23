@@ -514,11 +514,14 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
 
-        fields = []
-        for figure_id, geometry in zip(figure_ids, geometries):
-            fields.append((ApiField.FIGURE_ID, str(figure_id)))
-            fields.append(
-                (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
-            )
-        encoder = MultipartEncoder(fields=fields)
-        self._api.post("figures.bulk.upload.geometry", encoder)
+        for batch_ids, batch_geometries in zip(
+            batched(figure_ids, batch_size=100), batched(geometries, batch_size=100)
+        ):
+            fields = []
+            for figure_id, geometry in zip(batch_ids, batch_geometries):
+                fields.append((ApiField.FIGURE_ID, str(figure_id)))
+                fields.append(
+                    (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
+                )
+            encoder = MultipartEncoder(fields=fields)
+            self._api.post("figures.bulk.upload.geometry", encoder)
