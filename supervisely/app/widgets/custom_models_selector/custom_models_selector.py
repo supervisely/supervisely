@@ -1,30 +1,29 @@
 import os
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Union, Callable
+from typing import Callable, Dict, List, Union
 
+from supervisely import env
+from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
-from supervisely.api.project_api import ProjectInfo
 from supervisely.api.file_api import FileApi, FileInfo
+from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import (
+    Button,
+    Checkbox,
     Container,
     Field,
-    Checkbox,
+    FileThumbnail,
     Flexbox,
+    Input,
     ProjectThumbnail,
     Select,
     Text,
-    Input,
-    Button,
-    FileThumbnail,
     Widget,
 )
-from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
-from supervisely import env
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely._utils import abs_url, is_development
-
+from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
 
 WEIGHTS_DIR = "weights"
 
@@ -297,14 +296,14 @@ class CustomModelsSelector(Widget):
                 self.custom_checkpoint_task_type_selector = Select(
                     self.custom_checkpoint_task_type_selector_items
                 )
-                custom_checkpoint_task_type_selector_field = Field(
+                self.custom_checkpoint_task_type_selector_field = Field(
                     title="Task Type", content=self.custom_checkpoint_task_type_selector
                 )
 
             self.custom_tab_widgets = Container(
                 [
                     team_files_link_btn,
-                    custom_checkpoint_task_type_selector_field,
+                    self.custom_checkpoint_task_type_selector_field,
                     model_path_field,
                     self.file_thumbnail,
                 ]
