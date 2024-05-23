@@ -52,12 +52,9 @@ class Medical2DImageConverter(ImageConverter):
                     if helper.is_dicom_file(path):  # is dicom
                         paths, names, group_tag = helper.convert_dcm_to_nrrd(path, converted_dir)
                         if group_tag is not None:
-                            tag_name, tag_value = group_tag["name"], group_tag["value"]
-                            tag_meta = meta.get_tag_meta(tag_name)
-                            if tag_meta is None:
-                                tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+                            if meta.get_tag_meta(group_tag["name"]) is None:
+                                tag_meta = TagMeta(group_tag["name"], TagValueType.ANY_STRING)
                                 meta = meta.add_tag_meta(tag_meta)
-                            group_tag = Tag(tag_meta, tag_value)
                         for path, name in zip(paths, names):
                             nrrds_dict[name] = (path, group_tag)
                 elif ext == ".nrrd":
@@ -77,7 +74,7 @@ class Medical2DImageConverter(ImageConverter):
             img_size = nrrd.read_header(path)["sizes"].tolist()[::-1] # pylint: disable=no-member
             item.set_shape(img_size)
             if group_tag is not None:
-                self._group_tag_names[group_tag.name] += 1
+                self._group_tag_names[group_tag["name"]] += 1
                 item.ann_data = [group_tag]
             self._items.append(item)
 
@@ -98,10 +95,21 @@ class Medical2DImageConverter(ImageConverter):
             pass
         return [image[:, :, i] for i in range(image.shape[2])]
 
-    def to_supervisely(self, item, meta, *args) -> Union[Annotation, None]:
+    def to_supervisely(
+        self,
+        item,
+        meta: ProjectMeta,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
+    ) -> Annotation:
         ann = Annotation(item.shape)
         if item.ann_data is not None:
-            ann = ann.add_tags(item.ann_data)
+            for tag in item.ann_data:
+                tag_name = renamed_tags.get(tag["name"], tag["name"])
+                tag_meta = meta.get_tag_meta(tag_name)
+                if tag_meta is not None:
+                    group_tag = Tag(tag_meta, tag["value"])
+                    ann = ann.add_tags(group_tag)
         return ann
 
     def upload_dataset(
@@ -117,8 +125,6 @@ class Medical2DImageConverter(ImageConverter):
             group_tag_name = next(iter(self._group_tag_names))
             logger.debug("Group tags detected")
             if len(self._group_tag_names) > 1:
-                import heapq
-                # get the most common group tag name
                 group_tag_name = max(self._group_tag_names, key=self._group_tag_names.get)
                 logger.warn(
                     f"Multiple group tags found: {', '.join(self._group_tag_names.keys())}."
@@ -127,6 +133,7 @@ class Medical2DImageConverter(ImageConverter):
                 )
             meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
             group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+            logger.info(f"Will use [{group_tag_name}] as group tag.")
 
             dataset = api.dataset.get_info_by_id(dataset_id)
             existing_names = set([img.name for img in api.image.get_list(dataset_id)])

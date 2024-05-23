@@ -123,7 +123,7 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     return list_of_images, frame_axis
 
 
-def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
+def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str], List[str], Dict[str, str]]:
     """Converts DICOM data to nrrd format and returns image paths and image names"""
     original_name = get_file_name_with_ext(image_path)
     curr_convert_dir = os.path.join(converted_dir, original_name)
@@ -142,7 +142,6 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
                 logger.warn(f"Tag [{tag_name}] has too long value. Skipping tag.")
                 continue
             group_tag = {"name": tag_name, "value": group_tag_value}
-            logger.info(f"Will use [{group_tag}] as group tag.")
             break
 
     pixel_data_list = [dcm.pixel_array]
