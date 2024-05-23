@@ -97,6 +97,7 @@ def create_classes_from_annotation(
             continue
         class_name = object_key_to_name[obj_key]
         geometry_type = fig["geometryType"]
+        obj_class = None
         if geometry_type == Bitmap.geometry_name():
             obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
         elif geometry_type == Rectangle.geometry_name():

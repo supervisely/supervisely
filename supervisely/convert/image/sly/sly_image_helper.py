@@ -80,6 +80,7 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
     class_name = object["classTitle"]
     geometry_type = object["geometryType"]
     # @TODO: add better check for geometry type, add
+    obj_class = None
     if geometry_type == Bitmap.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
     elif geometry_type == Rectangle.geometry_name():

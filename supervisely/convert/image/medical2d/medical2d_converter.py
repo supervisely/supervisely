@@ -40,7 +40,7 @@ class Medical2DImageConverter(ImageConverter):
         mkdir(converted_dir, remove_content_if_exists=True)
         meta = ProjectMeta()
 
-        nrrd = {}
+        nrrds_dict = {}
         for root, _, files in os.walk(self._input_data):
             if converted_dir_name in root:
                 continue
@@ -59,22 +59,22 @@ class Medical2DImageConverter(ImageConverter):
                                 meta = meta.add_tag_meta(tag_meta)
                             group_tag = Tag(tag_meta, tag_value)
                         for path, name in zip(paths, names):
-                            nrrd[name] = (path, group_tag)
+                            nrrds_dict[name] = (path, group_tag)
                 elif ext == ".nrrd":
                     if helper.check_nrrd(path):  # is nrrd
                         paths, names = helper.slice_nrrd_file(path, converted_dir)
                         for path, name in zip(paths, names):
-                            nrrd[name] = (path, None)
+                            nrrds_dict[name] = (path, None)
                 elif mime == "application/gzip" or mime == "application/octet-stream":
                     if is_nifti_file(path):  # is nifti
                         paths, names = helper.slice_nifti_file(path, converted_dir)
                         for path, name in zip(paths, names):
-                            nrrd[name] = (path, None)
+                            nrrds_dict[name] = (path, None)
 
         self._items = []
-        for name, (path, group_tag) in nrrd.items():
+        for name, (path, group_tag) in nrrds_dict.items():
             item = self.Item(item_path=path)
-            img_size = nrrd.read_header(path)["sizes"].tolist()[::-1]
+            img_size = nrrd.read_header(path)["sizes"].tolist()[::-1] # pylint: disable=no-member
             item.set_shape(img_size)
             if group_tag is not None:
                 self._group_tag_names[group_tag.name] += 1
