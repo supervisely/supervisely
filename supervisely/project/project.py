@@ -3066,7 +3066,7 @@ def _download_project_optimized(
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
-    with_alpha_mask=False,
+    with_alpha_masks=False,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -3093,7 +3093,7 @@ def _download_project_optimized(
                 only_image_tags=only_image_tags,
                 save_image_info=save_image_info,
                 save_images=save_images,
-                with_alpha_masks=with_alpha_mask,
+                with_alpha_masks=with_alpha_masks,
             )
 
     try:
