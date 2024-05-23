@@ -56,6 +56,7 @@ from supervisely.io.network_exceptions import (
     process_unhandled_request,
 )
 from supervisely.sly_logger import logger
+from supervisely.project.project_meta import ProjectMeta
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
@@ -65,6 +66,49 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
+
+class ApiContext:
+    """
+    Context manager for the API object.
+
+    :param api: API object.
+    :type api: :class:`Api`
+    :param context: Dictionary to store context.
+    :type context: dict
+    :raises: :class:`RuntimeError`, if api is None.
+    """
+
+    def __init__(
+        self,
+        api: Api,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        with_alpha_masks: Optional[bool] = False,
+    ):
+        if api is None:
+            raise RuntimeError("Api object is None")
+        self.api = api
+        self._original_context = api.context.copy()
+        self.project_id = project_id
+        self.dataset_id = dataset_id
+        self.project_meta = project_meta
+        self.with_alpha_masks = with_alpha_masks
+
+    def __enter__(self):
+        self.api.context.update(
+            {
+                "project_id": self.project_id,
+                "dataset_id": self.dataset_id,
+                "project_meta": self.project_meta,
+                "with_alpha_masks": self.with_alpha_masks,
+            }
+        )
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.api.context = self._original_context
 
 
 class UserSession:

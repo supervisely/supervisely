@@ -17,7 +17,7 @@ from supervisely._utils import abs_url, batched, is_development, snake_to_human
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiContext
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
@@ -2715,6 +2715,7 @@ def _download_project(
     save_images: Optional[bool] = True,
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
+    with_alpha_masks: Optional[bool] = False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
@@ -2752,8 +2753,15 @@ def _download_project(
 
             # download annotations in json format
             if only_image_tags is False:
-                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
-                ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+                with ApiContext(
+                    api,
+                    project_id=project_id,
+                    dataset_id=dataset_id,
+                    project_meta=meta,
+                    with_alpha_masks=with_alpha_masks,
+                ):
+                    ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+                    ann_jsons = [ann_info.annotation for ann_info in ann_infos]
             else:
                 ann_jsons = []
                 for image_info in batch:
@@ -2801,6 +2809,7 @@ def upload_project(
     project_name: Optional[str] = None,
     log_progress: Optional[bool] = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    with_alpha_masks: Optional[bool] = False,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
     if project_name is None:
@@ -2926,7 +2935,14 @@ def upload_project(
                 total=len(image_ids),
                 leave=False,
             )
-        api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+        with ApiContext(
+            api,
+            project_id=project.id,
+            dataset_id=dataset.id,
+            project_meta=project_fs.meta,
+            with_alpha_masks=with_alpha_masks,
+        ):
+            api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
 
     return project.id, project.name
 
