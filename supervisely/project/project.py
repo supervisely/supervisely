@@ -3141,13 +3141,14 @@ def _download_dataset(
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
+    with_alpha_masks: Optional[bool] = False,
 ):
     images = api.image.get_list(dataset_id)
     images_to_download = images
     if only_image_tags is True:
         if project_meta is None:
             raise ValueError("Project Meta is not defined")
-        id_to_tagmeta = project_meta.tag_metas.get_id_mapping()
+        id_to_tagmeta = project_meta.tag_metas.get_id_mapping() # pylint: disable=possibly-used-before-assignment
 
     # copy images from cache to task folder and download corresponding annotations
     if cache:
@@ -3170,15 +3171,21 @@ def _download_dataset(
             img_cache_ids = [img_info.id for img_info in images_in_cache]
 
             if only_image_tags is False:
-                ann_info_list = api.annotation.download_batch(
-                    dataset_id, img_cache_ids, progress_cb
-                )
-                img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+                with ApiContext(
+                    api,
+                    dataset_id=dataset_id,
+                    project_meta=project_meta,
+                    with_alpha_masks=with_alpha_masks,
+                ):
+                    ann_info_list = api.annotation.download_batch(
+                        dataset_id, img_cache_ids, progress_cb
+                    )
+                    img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
             else:
                 img_name_to_ann = {}
                 for image_info in images_in_cache:
                     tags = TagCollection.from_api_response(
-                        image_info.tags, project_meta.tag_metas, id_to_tagmeta
+                        image_info.tags, project_meta.tag_metas, id_to_tagmeta  # pylint: disable=possibly-used-before-assignment
                     )
                     tmp_ann = Annotation(
                         img_size=(image_info.height, image_info.width), img_tags=tags
