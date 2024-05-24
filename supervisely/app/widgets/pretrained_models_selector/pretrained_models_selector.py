@@ -195,7 +195,7 @@ class PretrainedModelsSelector(Widget):
 
         for model in models:
             for key in model:
-                if isinstance(model[key], int) or isinstance(model[key], float):
+                if isinstance(model[key], (int, float)):
                     model[key] = str(model[key])
 
             arch_type = model.get("meta", {}).get("arch_type", "other")
