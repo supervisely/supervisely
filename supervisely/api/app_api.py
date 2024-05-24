@@ -487,20 +487,18 @@ class AppApi(TaskApi):
             total_length = response.headers.get("Content-Length")
             if total_length is not None:
                 total_length = int(total_length)
-            else:
-                total_length = 0
 
-            progress_bar = tqdm(desc="Downloading", total=total_length, unit="iB", unit_scale=True)
-
-        mb1 = 1024 * 1024
-        ensure_base_path(save_path)
-        with open(save_path, "wb") as fd:
-            for chunk in response.iter_content(chunk_size=mb1):
-                fd.write(chunk)
-                if log_progress:
+        with tqdm(
+            desc="Downloading", total=total_length, unit="B", unit_scale=True
+        ) as progress_bar:
+            mb1 = 1024 * 1024
+            ensure_base_path(save_path)
+            with open(save_path, "wb") as fd:
+                for chunk in response.iter_content(chunk_size=mb1):
+                    fd.write(chunk)
                     progress_bar.update(len(chunk))
+                    ext_logger.info(f"Downloaded {progress_bar.n} of {progress_bar.total} bytes")
 
-        if log_progress:
             progress_bar.close()
 
     def get_info(self, module_id, version=None):
