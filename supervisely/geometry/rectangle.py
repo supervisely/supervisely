@@ -664,6 +664,7 @@ class Rectangle(Geometry):
         """
         """
         from supervisely.geometry.any_geometry import AnyGeometry
+        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
-        return [AnyGeometry, Bitmap, Polygon]
+        return [AlphaMask, AnyGeometry, Bitmap, Polygon]
