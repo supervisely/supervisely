@@ -469,6 +469,7 @@ class AppApi(TaskApi):
         log_progress=True,
         ext_logger=None,
     ):
+        # pylint: disable=possibly-used-before-assignment
         """download_git_archive"""
         payload = {
             ApiField.ECOSYSTEM_ITEM_ID: ecosystem_item_id,
@@ -497,9 +498,7 @@ class AppApi(TaskApi):
                 fd.write(chunk)
                 log_size += len(chunk)
                 if log_progress and log_size > mb1:
-                    progress.iters_done_report(
-                        log_size  # pylint: disable=possibly-used-before-assignment
-                    )
+                    progress.iters_done_report(log_size)
                     log_size = 0
 
     def get_info(self, module_id, version=None):
