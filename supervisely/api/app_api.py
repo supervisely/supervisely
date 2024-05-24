@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import json
-import os
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional
+
+from tqdm import tqdm
 
 from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
@@ -16,7 +17,6 @@ DATA = "data"
 TEMPLATE = "template"
 
 from supervisely import logger
-from supervisely._utils import sizeof_fmt
 from supervisely.io.fs import ensure_base_path
 from supervisely.task.progress import Progress
 
@@ -479,26 +479,29 @@ class AppApi(TaskApi):
             payload[ApiField.APP_ID] = app_id
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
+
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
 
-            length = -1
-            # Content-Length
-            if "Content-Length" in response.headers:
-                length = int(response.headers["Content-Length"])
-            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+            total_length = response.headers.get("Content-Length")
+            if total_length is not None:
+                total_length = int(total_length)
+            else:
+                total_length = 0
+
+            progress_bar = tqdm(desc="Downloading", total=total_length, unit="iB", unit_scale=True)
 
         mb1 = 1024 * 1024
         ensure_base_path(save_path)
         with open(save_path, "wb") as fd:
-            log_size = 0
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
-                log_size += len(chunk)
-                if log_progress and log_size > mb1:
-                    progress.iters_done_report(log_size)
-                    log_size = 0
+                if log_progress:
+                    progress_bar.update(len(chunk))
+
+        if log_progress:
+            progress_bar.close()
 
     def get_info(self, module_id, version=None):
         """get_info"""
