@@ -246,14 +246,17 @@ class Geometry(JsonSerializable):
                 "from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name())
             )
 
+        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
         from supervisely.geometry.polygon import Polygon
-        from supervisely.geometry.helpers import geometry_to_bitmap, geometry_to_polygon
+        from supervisely.geometry.helpers import geometry_to_bitmap, geometry_to_polygon, geometry_to_alpha_mask
 
         res = []
         if new_geometry == Bitmap:
             res = geometry_to_bitmap(self, radius=contour_radius)
+        elif new_geometry == AlphaMask:
+            res = geometry_to_alpha_mask(self, radius=contour_radius)
         elif new_geometry == Rectangle:
             res = [self.to_bbox()]
         elif new_geometry == Polygon:

@@ -35,6 +35,7 @@ from supervisely.api.module_api import (
     WaitingTimeExceeded,
 )
 from supervisely.collection.str_enum import StrEnum
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.point import Point
@@ -1207,6 +1208,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 geometry = Polyline.from_json(data)
             elif type == "graph":
                 geometry = GraphNodes.from_json(data)
+            elif type == "alpha_mask":
+                geometry = AlphaMask.from_json(data)
             else:
                 geometry = None
             return geometry
