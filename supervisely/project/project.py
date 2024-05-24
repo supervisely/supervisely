@@ -2816,7 +2816,7 @@ def upload_project(
         project_name = api.project.get_free_name(workspace_id, project_name)
 
     project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+    updated_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
         log_progress = False
@@ -2840,7 +2840,7 @@ def upload_project(
             api,
             project_id=project.id,
             dataset_id=dataset.id,
-            project_meta=project_fs.meta,
+            project_meta=updated_meta,
         ):
             names, img_paths, img_infos, ann_paths = [], [], [], []
             for item_name in ds_fs:
