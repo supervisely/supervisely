@@ -2692,7 +2692,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type group_name: str
         :param paths: List of paths to images.
         :type paths: List[str]
-        :param metas: List of image metas (optional)
+        :param metas: List of dictionaries which adds a customizable meta for every image provided in `paths` parameter.
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
@@ -2757,30 +2757,29 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         paths: List[str],
-        group_tag_name: str = None,
+        group_tag_name: Optional[str] = None,
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
         """
-        Uploads images to Supervisely and adds a tag to them.
+        Upload medical 2D images (DICOM & NiFTi) to Supervisely and group them by specified or default tag.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param tag_name: Tag name in Supervisely.
-                         If tag does not exist in project, create it first.
-                         Tag must be of type ANY_STRING.
-        :type tag_name: str
-        :param group_name: Group name. All images will be assigned by tag with this group name.
-        :type group_name: str
         :param paths: List of paths to images.
         :type paths: List[str]
-        :param metas: List of image metas (optional)
-        :type metas: Optional[List[Dict]]
+        :param group_tag_name: Group name. All images will be assigned by tag with this group name. If `group_tag_name` is None, the images will be grouped by one of the default tags.
+        :type group_tag_name: str, optional
+        :param metas: List of dictionaries which adds a customizable meta for every image provided in `paths` parameter.
+        :type metas: List[Dict], optional
         :param progress_cb: Function for tracking upload progress.
-        :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded images infos
+        :type progress_cb: tqdm or callable, optional
+
+        :return: List of uploaded images infos.
         :rtype: List[ImageInfo]
-        :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
+
+        :raises Exception: If tag does not exist in project or tag is not of type ANY_STRING
+        :raises Exception: If length of `metas` is not equal to the length of `paths`.
 
         :Usage example:
 
@@ -2788,23 +2787,24 @@ class ImageApi(RemoveableBulkModuleApi):
 
             import os
             from dotenv import load_dotenv
+            from tqdm import tqdm
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
 
             api = sly.Api.from_env()
 
             dataset_id = 123456
-            paths = ['path/to/audi_01.png', 'path/to/audi_02.png']
-            group_name = 'audi'
+            paths = ['path/to/medical_01.dcm', 'path/to/medical_02.dcm']
+            metas = [{'meta':'01'}, {'meta':'02'}]
+            group_tag_name = 'StudyInstanceUID'
 
-            image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
+            pbar = tqdm(desc="Uploading images", total=len(paths))
+            image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
 
         """
 
