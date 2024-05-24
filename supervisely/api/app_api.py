@@ -497,7 +497,9 @@ class AppApi(TaskApi):
                 fd.write(chunk)
                 log_size += len(chunk)
                 if log_progress and log_size > mb1:
-                    progress.iters_done_report(log_size)
+                    progress.iters_done_report(
+                        log_size  # pylint: disable=possibly-used-before-assignment
+                    )
                     log_size = 0
 
     def get_info(self, module_id, version=None):
