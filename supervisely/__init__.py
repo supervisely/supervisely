@@ -87,6 +87,7 @@ from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 
 from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.geometry.helpers import deserialize_geometry
@@ -111,7 +112,7 @@ from supervisely.worker_api.chunking import (
 )
 import supervisely.worker_proto.worker_api_pb2 as api_proto
 
-from supervisely.api.api import Api, UserSession
+from supervisely.api.api import Api, UserSession, ApiContext
 from supervisely.api import api
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
@@ -306,4 +307,4 @@ except Exception as e:
 # If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
 # set a new value for the environment variable MINIMUM_INSTANCE_VERSION_FOR_SDK, otherwise
 # users can face compatibility issues, if the instance version is lower than the SDK version.
-os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.9.18"
+os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.9.22"
