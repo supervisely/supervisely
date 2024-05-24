@@ -194,6 +194,10 @@ class PretrainedModelsSelector(Widget):
         filtered_models = {}
 
         for model in models:
+            for key in model:
+                if isinstance(model[key], int) or isinstance(model[key], float):
+                    model[key] = str(model[key])
+
             arch_type = model.get("meta", {}).get("arch_type", "other")
             task_type = model.get("meta", {}).get("task_type", model.get("task_type", "other"))
 
