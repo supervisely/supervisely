@@ -404,23 +404,39 @@ class AnnotationApi(ModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
+
+            Optimizing the download process by using the context to avoid redundant API calls.:
+            # 1. Download the project meta
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
         """
         # use context to avoid redundant API calls
-        need_download_alpha_masks = self._api.context.get("with_alpha_masks", False)
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_meta = context.get("project_meta")
+        project_id = context.get("project_id")
+        if dataset_id != context_dataset_id:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
 
-        if need_download_alpha_masks is True:
-            need_download_alpha_masks = False # reset and check if we need to upload alpha masks
-            project_meta = self._api.context.get("project_meta")
-            if not isinstance(project_meta, ProjectMeta):
-                project_id = self._api.context.get("project_id")
-                if project_id is None:
-                    project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
-                project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
 
-            for obj_cls in project_meta.obj_classes:
-                if obj_cls.geometry_type == AlphaMask:
-                    need_download_alpha_masks = True
-                    break
+        need_download_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_download_alpha_masks = True
+                break
 
         id_to_ann = {}
         for batch in batched(image_ids):
@@ -572,6 +588,17 @@ class AnnotationApi(ModuleApi):
             img_ids = [121236918, 121236919]
             ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
             upl_paths = api.annotation.upload_paths(img_ids, ann_pathes)
+
+            # Optimizing the upload process by using the context to avoid redundant API calls.
+            # Usefull when uploading a large number of annotations in one dataset.
+            # 1. Download the project meta
+            dataset_id = 254737
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                api.annotation.upload_paths(img_ids, ann_pathes)
         """
 
         def read_json(ann_path):
@@ -647,7 +674,18 @@ class AnnotationApi(ModuleApi):
             api = sly.Api.from_env()
 
             img_ids = [121236918, 121236919]
-            upl_jsons = api.annotation.upload_jsons(img_ids, ann_jsons)
+            api.annotation.upload_jsons(img_ids, ann_jsons)
+
+            # Optimizing the upload process by using the context to avoid redundant API calls.
+            # Usefull when uploading a large number of annotations in one dataset.
+            # 1. Download the project meta
+            dataset_id = 254737
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                api.annotation.upload_jsons(img_ids, ann_jsons)
         """
         self._upload_batch(
             lambda x: x,
@@ -719,6 +757,17 @@ class AnnotationApi(ModuleApi):
 
             img_ids = [121236918, 121236919]
             upl_anns = api.annotation.upload_anns(img_ids, [ann1, ann2])
+
+            # Optimizing the upload process by using the context to avoid redundant API calls.
+            # Usefull when uploading a large number of annotations in one dataset.
+            # 1. Download the project meta
+            dataset_id = 254737
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                api.annotation.upload_anns(img_ids, [ann1, ann2])
         """
         # img_ids from the same dataset
         self._upload_batch(
@@ -749,28 +798,29 @@ class AnnotationApi(ModuleApi):
             )
 
         # use context to avoid redundant API calls
-        dataset_id = self._api.context.get("dataset_id")
+        dataset_id = self._api.image.get_info_by_id(
+            img_ids[0], force_metadata_for_links=False
+        ).dataset_id
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_id = context.get("project_id")
+        project_meta = context.get("project_meta")
+        if dataset_id != context_dataset_id:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
 
-        if dataset_id is None:
-            dataset_id = self._api.image.get_info_by_id(
-                img_ids[0], force_metadata_for_links=False
-            ).dataset_id
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id                    
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
 
-        need_upload_alpha_masks = self._api.context.get("with_alpha_masks", False)
-
-        if need_upload_alpha_masks is True:
-            need_upload_alpha_masks = False # reset and check if we need to upload alpha masks
-            project_id = self._api.context.get("project_id")
-            project_meta = self._api.context.get("project_meta")
-            if not isinstance(project_meta, ProjectMeta):
-                if project_id is None:
-                    project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
-                project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
-
-            for obj_cls in project_meta.obj_classes:
-                if obj_cls.geometry_type == AlphaMask:
-                    need_upload_alpha_masks = True
-                    break
+        need_upload_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_upload_alpha_masks = True
+                break
 
 
         for batch in batched(list(zip(img_ids, anns))):

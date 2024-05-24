@@ -70,13 +70,44 @@ SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 class ApiContext:
     """
-    Context manager for the API object.
+    Context manager for the API object for optimization purposes.
+    Use this context manager when you need to perform a series of operations on the same project or dataset.
+    It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
 
     :param api: API object.
     :type api: :class:`Api`
-    :param context: Dictionary to store context.
-    :type context: dict
+    :param project_id: Project ID.
+    :type project_id: int, optional
+    :param dataset_id: Dataset ID.
+    :type dataset_id: int, optional
+    :param project_meta: ProjectMeta object.
+    :type project_meta: :class:`ProjectMeta`, optional
     :raises: :class:`RuntimeError`, if api is None.
+
+    :Usage example:
+    
+         .. code-block:: python
+    
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            with ApiContext(
+                api,
+                project_id=33333,
+                dataset_id=99999,
+                project_meta=project_meta,
+                with_alpha_masks=True,
+            ):
+                api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                # another code here
     """
 
     def __init__(
@@ -85,30 +116,27 @@ class ApiContext:
         project_id: Optional[int] = None,
         dataset_id: Optional[int] = None,
         project_meta: Optional[ProjectMeta] = None,
-        with_alpha_masks: Optional[bool] = False,
+        with_alpha_masks: Optional[bool] = True,
     ):
         if api is None:
             raise RuntimeError("Api object is None")
         self.api = api
-        self._original_context = api.context.copy()
         self.project_id = project_id
         self.dataset_id = dataset_id
         self.project_meta = project_meta
         self.with_alpha_masks = with_alpha_masks
 
     def __enter__(self):
-        self.api.context.update(
-            {
-                "project_id": self.project_id,
-                "dataset_id": self.dataset_id,
-                "project_meta": self.project_meta,
-                "with_alpha_masks": self.with_alpha_masks,
-            }
-        )
+        self.api.optimization_context = {
+            "project_id": self.project_id,
+            "dataset_id": self.dataset_id,
+            "project_meta": self.project_meta,
+            "with_alpha_masks": self.with_alpha_masks,
+        }
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.api.context = self._original_context
+        self.api.optimization_context = {}
 
 
 class UserSession:
@@ -294,6 +322,7 @@ class Api:
             self.headers["x-task-id"] = self.task_id
         self.context = {}
         self.additional_fields = {}
+        self.optimization_context = {}
 
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
