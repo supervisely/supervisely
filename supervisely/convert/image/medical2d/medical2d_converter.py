@@ -122,13 +122,12 @@ class Medical2DImageConverter(ImageConverter):
         """Upload converted data to Supervisely"""
 
         if len(self._group_tag_names) > 0:
-            group_tag_name = next(iter(self._group_tag_names))
             logger.debug("Group tags detected")
+            group_tag_name = next(iter(self._group_tag_names))
             if len(self._group_tag_names) > 1:
                 group_tag_name = max(self._group_tag_names, key=self._group_tag_names.get)
                 logger.warn(
                     f"Multiple group tags found: {', '.join(self._group_tag_names.keys())}."
-                    f"Will use: {group_tag_name}."
                     "Some images will be hidden in the grouped view if they don't have the corresponding group tag."
                 )
             meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
