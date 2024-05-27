@@ -91,6 +91,11 @@ def check_nrrd(path):
 
 
 def create_nrrd_header_from_dcm(dcm_path: str, frame_axis: int = 2) -> dict:
+    """
+    Create nrrd header from DICOM file.
+
+    Assume that axes will be in the RAS order (right-anterior-superior).
+    """
     _, meta = volume.read_dicom_serie_volume([dcm_path], False)
     dimensions: Dict = meta.get("dimensionsIJK")
     header = {
@@ -253,17 +258,19 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
 
 def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
     """Create tags from DICOM metadata."""
+    from supervisely.volume.volume import _anonymize_tags
 
     filtered_tags = []
 
-    DCM_TAGS = list(dcm.keys())
     filename = get_file_name_with_ext(dcm.filename)
     empty_tags, too_long_tags = [], []
-    for dcm_tag in DCM_TAGS:
+    for dcm_tag in dcm.keys():
         try:
             curr_tag = dcm[dcm_tag]
             dcm_tag_name = str(curr_tag.name)
             dcm_tag_value = str(curr_tag.value)
+            if dcm_tag_name in _anonymize_tags:
+                dcm_tag_value = "anonymized"
             if dcm_tag_value in ["", None]:
                 empty_tags.append(dcm_tag_name)
                 continue
