@@ -252,17 +252,18 @@ def dcm2nrrd(
     image_path: str,
     image_meta: dict,
     group_tag_names: List[str],
-    project_meta,
-) -> Tuple[str, str, Annotation]:
-    """Converts DICOM data to nrrd format and returns image paths, image names, and image annotations."""
+    project_meta: ProjectMeta,
+) -> Tuple[List[str], List[str], List[Annotation], ProjectMeta]:
+    logger.info(f"Preparing {get_file_name_with_ext(image_path)!r}...")
     dcm = pydicom.read_file(image_path)
-    group_tag_name = next((name for name in group_tag_names if name in dcm), None)
-    if group_tag_name is None:
-        raise ValueError(
-            f"None of the tag values were found in the DICOM file. Tag values: {group_tag_names}"
+    dcm_meta = get_dcm_meta(dcm)
+    image_meta.update(dcm_meta)
+
+    is_group_tag_exists = next((name for name in group_tag_names if name in dcm), None) is not None
+    if not is_group_tag_exists:
+        logger.warning(
+            f"None of the specified group tag values were found in the DICOM file. Searched tag values: {group_tag_names}"
         )
-    dcm_tags = create_dcm_tags(dcm)
-    image_meta.update(dcm_tags)
 
     header, frames, frame_axis, pixel_data_list = get_nrrd_data(image_path, dcm)
 
@@ -287,27 +288,20 @@ def dcm2nrrd(
         nrrd.write(save_path, pixel_data, header)
         save_paths.append(save_path)
         image_names.append(image_name)
-        try:
-            group_tag_value = str(dcm[group_tag_name].value)
-            group_tag = {"name": group_tag_name, "value": group_tag_value}
-            ann, project_meta = create_ann_with_tags(
-                save_path,
-                group_tag,
-                project_meta,
-            )
-        except KeyError:
-            logger.warning(
-                f"Couldn't find key: '{group_tag_name}' in file's metadata: '{original_name}'"
-            )
-            img_size = nrrd.read_header(save_path)["sizes"].tolist()[::-1]
-            ann = Annotation(img_size=img_size)
-            # if dcm_tags is not None:
-            #     ann = ann.add_tags(TagCollection(dcm_tags))
+        ann, project_meta = create_ann_with_tags(
+            save_path,
+            project_meta,
+            dcm,
+            group_tag_names,
+            is_group_tag_exists,
+        )
         anns.append(ann)
-    return save_paths, image_names, anns, project_meta, group_tag_name
+
+    logger.info("Done.")
+    return save_paths, image_names, anns, project_meta
 
 
-def create_dcm_tags(dcm: FileDataset) -> List[Tag]:
+def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
     """Create tags from DICOM metadata."""
 
     tags_from_dcm = []
@@ -347,27 +341,35 @@ def create_dcm_tags(dcm: FileDataset) -> List[Tag]:
 
 def create_ann_with_tags(
     path_to_img: str,
-    group_tag_info: dict,
     project_meta: ProjectMeta,
-    # dcm_tags: List[Tag] = None,
-) -> Annotation:
-    """Creates annotation with tags."""
+    dcm: FileDataset,
+    group_tag_names: List[str],
+    is_group_tag_exists: bool,
+) -> Tuple[Annotation, ProjectMeta]:
     img_size = nrrd.read_header(path_to_img)["sizes"].tolist()[::-1]
-    group_tag, project_meta = create_group_tag(group_tag_info, project_meta)
-    # tags_to_add = [tag for tag in [group_tag] + (dcm_tags or []) if tag.value is not None]
-    return Annotation(img_size=img_size).add_tags(TagCollection([group_tag])), project_meta
-    # return Annotation(img_size=img_size), project_meta
+    ann = Annotation(img_size=img_size)
+    if is_group_tag_exists:
+        group_tags, project_meta = create_group_tag(dcm, group_tag_names, project_meta)
+        if len(group_tags) > 0:
+            return ann.add_tags(TagCollection(group_tags)), project_meta
+    return ann, project_meta
 
 
-def create_group_tag(group_tag_info: Dict[str, str], project_meta: ProjectMeta) -> Tag:
-    """Creates grouping tag."""
-    group_tag_name, group_tag_value = group_tag_info["name"], group_tag_info["value"]
-    group_tag_meta = project_meta.get_tag_meta(group_tag_name)
-    if group_tag_meta is None:
-        group_tag_meta = TagMeta(group_tag_name, TagValueType.ANY_STRING)
-        project_meta = project_meta.add_tag_meta(group_tag_meta)
-    group_tag = Tag(group_tag_meta, group_tag_value)
-    return group_tag, project_meta
+def create_group_tag(
+    dcm: FileDataset, group_tag_names: List[str], project_meta: ProjectMeta
+) -> Tuple[List[Tag], ProjectMeta]:
+    group_tags = []
+    for group_tag_name in group_tag_names:
+        if dcm.get(group_tag_name) is not None:
+            group_tag_value = dcm[group_tag_name].value
+            group_tag_meta = project_meta.get_tag_meta(group_tag_name)
+            if group_tag_meta is None:
+                group_tag_meta = TagMeta(group_tag_name, TagValueType.ANY_STRING)
+                project_meta = project_meta.add_tag_meta(group_tag_meta)
+            group_tags.append(Tag(group_tag_meta, group_tag_value))
+        else:
+            logger.warning(f"Couldn't find key: {group_tag_name!r} in file's metadata.")
+    return group_tags, project_meta
 
 
 def get_nrrd_data(image_path: str, dcm: FileDataset):

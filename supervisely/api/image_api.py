@@ -2813,7 +2813,9 @@ class ImageApi(RemoveableBulkModuleApi):
         anns = []
 
         if metas is None:
-            metas = [dict() for _ in paths]
+            _metas = [dict() for _ in paths]
+        else:
+            _metas = metas.copy()
 
         dataset = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
         meta_json = self._api.project.get_meta(dataset.project_id)
@@ -2824,10 +2826,9 @@ class ImageApi(RemoveableBulkModuleApi):
             dcm2nrrd,
         )
 
-        if group_tag_name is None:
-            group_tag_names = _MEDICAL_DEFAULT_GROUP_TAG_NAMES
-        else:
-            group_tag_names = [group_tag_name]  # TODO write exception
+        group_tag_names = _MEDICAL_DEFAULT_GROUP_TAG_NAMES.copy()
+        if group_tag_name is not None:
+            group_tag_names = [group_tag_name] + group_tag_names
 
         # ds_dir = "/".join(paths[0].split("/")[:-2])
         # project_meta_from_sly_format = ProjectMeta()
@@ -2836,7 +2837,7 @@ class ImageApi(RemoveableBulkModuleApi):
         #         tmp = json.load(file)
         #     project_meta_from_sly_format = ProjectMeta.from_json(tmp)
 
-        for path, meta in zip(paths, metas):
+        for path, meta in zip(paths, _metas):
 
             # jsons = list_files_recursively(ds_dir, [".json"])
             # matching_files = glob.glob(f"{ds_dir}/*/{get_file_name(path)}.json")
@@ -2853,7 +2854,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 )
 
             try:
-                image_paths, image_names, anns_from_dcm, project_meta, group_tag_name = dcm2nrrd(
+                image_paths, image_names, anns_from_dcm, project_meta = dcm2nrrd(
                     image_path=path,
                     image_meta=meta,
                     group_tag_names=group_tag_names,
@@ -2875,14 +2876,12 @@ class ImageApi(RemoveableBulkModuleApi):
             except TypeError:
                 anns.extend(anns_from_dcm)
 
-        # metas = [{"meta": "val"} for _ in img_paths]
-
         image_infos = self.upload_paths(
             dataset_id=dataset_id,
             names=img_names,
             paths=img_paths,
             progress_cb=progress_cb,
-            metas=metas,
+            metas=_metas,
         )
         image_ids = [image_info.id for image_info in image_infos]
 
@@ -2894,6 +2893,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
         # Update the project metadata and enable image grouping
         self._api.project.update_meta(id=dataset.project_id, meta=project_meta.to_json())
+        if group_tag_name is None:
+            group_tag_name = project_meta.tag_metas.items()[0].name
         self._api.project.images_grouping(
             id=dataset.project_id, enable=True, tag_name=group_tag_name
         )
