@@ -269,7 +269,7 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
             curr_tag = dcm[dcm_tag]
             dcm_tag_name = str(curr_tag.name)
             dcm_tag_value = str(curr_tag.value)
-            if dcm_tag_name in _anonymize_tags:
+            if dcm_tag_name in _anonymize_tags + ["Patient's Name"]:
                 dcm_tag_value = "anonymized"
             if dcm_tag_value in ["", None]:
                 empty_tags.append(dcm_tag_name)
