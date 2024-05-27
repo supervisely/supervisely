@@ -6,7 +6,8 @@ import magic
 import nrrd
 import numpy as np
 
-from supervisely import Annotation, Api, batched, generate_free_name, is_development, ProjectMeta, logger, TagMeta, Tag, TagValueType
+from supervisely import Annotation, batched, generate_free_name, is_development, ProjectMeta, logger, TagMeta, Tag, TagValueType
+from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.medical2d import medical2d_helper as helper
@@ -137,8 +138,6 @@ class Medical2DImageConverter(ImageConverter):
             dataset = api.dataset.get_info_by_id(dataset_id)
             existing_names = set([img.name for img in api.image.get_list(dataset_id)])
 
-            # ! FIXME: change to set_medical_settings when it will be implemented
-            # api.project.set_medical_settings(id=dataset.project_id, tag_name=group_tag_name)
             api.project.images_grouping(id=dataset.project_id, enable=True, tag_name=group_tag_name)
 
 
@@ -156,9 +155,12 @@ class Medical2DImageConverter(ImageConverter):
                     )
                     names.append(name)
 
-                img_infos = api.image.upload_paths(dataset_id, names, paths)
-                img_ids = [img_info.id for img_info in img_infos]
-                api.annotation.upload_anns(img_ids, anns)
+                with ApiContext(
+                    api=api, project_id=dataset.project_id, dataset_id=dataset_id, project_meta=meta
+                ):
+                    img_infos = api.image.upload_paths(dataset_id, names, paths)
+                    img_ids = [img_info.id for img_info in img_infos]
+                    api.annotation.upload_anns(img_ids, anns)
 
                 if log_progress:
                     progress_cb(len(batch))
