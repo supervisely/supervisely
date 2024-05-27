@@ -11,10 +11,7 @@ from pydicom import FileDataset
 from tqdm import tqdm
 
 from supervisely import image, logger, volume
-from supervisely.annotation.annotation import Annotation, TagCollection
 from supervisely.annotation.tag import Tag
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     dir_exists,
     get_file_ext,
@@ -22,8 +19,6 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     mkdir,
 )
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.volume import read_dicom_serie_volume
 
 _MEDICAL_DEFAULT_GROUP_TAG_NAMES = [
     "StudyInstanceUID",

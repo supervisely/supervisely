@@ -4,13 +4,11 @@
 # docs
 from __future__ import annotations
 
-import glob
 import io
 import json
 import re
 import urllib.parse
 from collections import defaultdict
-from os.path import basename, dirname, exists, join, normpath, pardir
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -38,7 +36,7 @@ from supervisely._utils import (
     get_bytes_hash,
     resize_image_url,
 )
-from supervisely.annotation.annotation import Annotation, TagCollection
+from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.entity_annotation.figure_api import FigureApi
