@@ -25,6 +25,9 @@ class SLYImageConverter(ImageConverter):
     def __str__(self):
         return AvailableImageConverters.SLY
 
+    def validate_labeling_interface(self) -> bool:
+        return self._labeling_interface in ["default", "image_matting"]
+
     @property
     def ann_ext(self) -> str:
         return ".json"
@@ -143,19 +146,18 @@ class SLYImageConverter(ImageConverter):
             meta = ProjectMeta()
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
-                if len(project_fs.datasets) > 1:
-                    meta = meta.merge(project_fs.meta)
-                    for dataset in project_fs.datasets:
-                        for name in dataset.get_items_names():
-                            img_path, ann_path = dataset.get_item_paths(name)
-                            meta_path = dataset.get_item_meta_path(name)
-                            item = self.Item(img_path)
-                            if file_exists(ann_path):
-                                if self.validate_ann_file(ann_path, meta):
-                                    item.ann_data = ann_path
-                            if file_exists(meta_path):
-                                item.set_meta_data(meta_path)
-                            self._items.append(item)
+                meta = meta.merge(project_fs.meta)
+                for dataset in project_fs.datasets:
+                    for name in dataset.get_items_names():
+                        img_path, ann_path = dataset.get_item_paths(name)
+                        meta_path = dataset.get_item_meta_path(name)
+                        item = self.Item(img_path)
+                        if file_exists(ann_path):
+                            if self.validate_ann_file(ann_path, meta):
+                                item.ann_data = ann_path
+                        if file_exists(meta_path):
+                            item.set_meta_data(meta_path)
+                        self._items.append(item)
             if self.items_count > 0:
                 self._meta = meta
                 return True
@@ -180,20 +182,20 @@ class SLYImageConverter(ImageConverter):
 
             meta = ProjectMeta()
             dataset_dirs = [d for d in dirs_filter(input_data, _check_function)]
-            if len(dataset_dirs) > 1:
-                for dataset_dir in dataset_dirs:
-                    dataset_ds = Dataset(dataset_dir, OpenMode.READ)
-                    for name in dataset_ds.get_items_names():
-                        img_path, ann_path = dataset_ds.get_item_paths(name)
-                        meta_path = dataset_ds.get_item_meta_path(name)
-                        item = self.Item(img_path)
-                        if file_exists(ann_path):
-                            if self.validate_ann_file(ann_path, meta):
-                                item.ann_data = ann_path
-                            meta = self.generate_meta_from_annotation(ann_path, meta)
-                        if file_exists(meta_path):
-                            item.set_meta_data(meta_path)
-                        self._items.append(item)
+            for dataset_dir in dataset_dirs:
+                dataset_ds = Dataset(dataset_dir, OpenMode.READ)
+                for name in dataset_ds.get_items_names():
+                    img_path, ann_path = dataset_ds.get_item_paths(name)
+                    meta_path = dataset_ds.get_item_meta_path(name)
+                    item = self.Item(img_path)
+                    if file_exists(ann_path):
+                        meta = self.generate_meta_from_annotation(ann_path, meta)
+                        if self.validate_ann_file(ann_path, meta):
+                            item.ann_data = ann_path
+                    if file_exists(meta_path):
+                        item.set_meta_data(meta_path)
+                    self._items.append(item)
+
             if self.items_count > 0:
                 self._meta = meta
                 return True

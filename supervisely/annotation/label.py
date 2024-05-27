@@ -38,6 +38,10 @@ class LabelJsonFields:
     """"""
     INSTANCE_KEY = "instance"
     """"""
+    ID = "id"
+    """"""
+    GEOMETRY_TYPE = "geometryType"
+    """"""
 
 
 class LabelBase:

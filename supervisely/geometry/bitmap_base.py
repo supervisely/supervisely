@@ -74,9 +74,17 @@ class BitmapBase(Geometry):
 
     :Usage example: Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
     """
-    def __init__(self, data: np.ndarray, origin: Optional[PointLocation] = None, expected_data_dims: Optional[int] = None,
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        data: np.ndarray,
+        origin: Optional[PointLocation] = None,
+        expected_data_dims: Optional[int] = None,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         if origin is None:
             origin = PointLocation(row=0, col=0)
@@ -89,8 +97,9 @@ class BitmapBase(Geometry):
 
         data_dims = len(data.shape)
         if expected_data_dims is not None and data_dims != expected_data_dims:
-            raise ValueError(f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions')
-
+            raise ValueError(
+                f'BitmapBase "data" argument must be a {expected_data_dims}-dimensional numpy array. Instead got {data_dims} dimensions'
+            )
 
         self._origin = origin.clone()
         self._data = data.copy()
