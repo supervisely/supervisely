@@ -112,7 +112,7 @@ class Medical2DImageConverter(ImageConverter):
                 tag_name = renamed_tags.get(tag["name"], tag["name"])
                 tag_meta = meta.get_tag_meta(tag_name)
                 if tag_meta is not None:
-                    group_tag = Tag(tag_meta, tag["value"])
+                    group_tag = Tag(tag_meta, str(tag["value"]))
                     tags.append(group_tag)
             ann = ann.add_tags(tags)
         return ann
