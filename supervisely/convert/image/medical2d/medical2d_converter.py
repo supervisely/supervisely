@@ -132,7 +132,7 @@ class Medical2DImageConverter(ImageConverter):
             if len(self._group_tag_names) > 1:
                 group_tag_name = max(self._group_tag_names, key=self._group_tag_names.get)
                 logger.warn(
-                    f"Multiple group tags found: {', '.join(self._group_tag_names.keys())}."
+                    f"Multiple metadata fields found: {', '.join(self._group_tag_names.keys())}..."
                     "Some images will be hidden in the grouped view if they don't have the corresponding group tag."
                 )
             meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)

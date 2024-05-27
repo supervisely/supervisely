@@ -177,7 +177,8 @@ def convert_dcm_to_nrrd(
     for tag_name in group_tag_names:
         if dcm.get(tag_name) is not None:
             group_tag_value = dcm[tag_name].value
-            group_tags.append({"name": tag_name, "value": group_tag_value})
+            if group_tag_value is not None and group_tag_value != "":
+                group_tags.append({"name": tag_name, "value": group_tag_value})
         elif group_tag_name is not None and tag_name == group_tag_name:
             logger.warning(f"Couldn't find key {group_tag_name!r} in file's metadata.")
 
