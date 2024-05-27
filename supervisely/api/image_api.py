@@ -2842,7 +2842,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     converted_dir=converted_dir.as_posix(),
                     group_tag_name=group_tag_name,
                 )
-                image_meta.update(dcm_meta)
+                image_meta.update(dcm_meta) # TODO: check update order
                 image_paths.extend(nrrd_paths)
                 image_names.extend(nrrd_names)
 
@@ -2853,6 +2853,8 @@ class ImageApi(RemoveableBulkModuleApi):
                         if tag_meta is None:
                             tag_meta = TagMeta(tag["name"], TagValueType.ANY_STRING)
                             project_meta = project_meta.add_tag_meta(tag_meta)
+                        elif tag_meta.value_type != TagValueType.ANY_STRING:
+                            raise ValueError(f"Tag '{tag['name']}' is not of type ANY_STRING.")
                         tag = Tag(meta=tag_meta, value=tag["value"])
                         tags.append(tag)
                     img_size = nrrd.read_header(nrrd_path)["sizes"].tolist()[::-1]
