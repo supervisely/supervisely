@@ -12,17 +12,6 @@ from supervisely import image, logger, volume
 from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext, mkdir
 
 
-DICOM_GROUP_TAGS = [
-    "StudyInstanceUID",
-    "StudyID",
-    "SeriesInstanceUID",
-    "TreatmentSessionUID",
-    "Manufacturer",
-    "ManufacturerModelName",
-    "Modality",
-]
-
-
 def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
     """Slices file into 2D slices if it is 3D.
     Returns image paths and image names.
@@ -130,20 +119,6 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
     mkdir(curr_convert_dir)
 
     dcm = pydicom.read_file(image_path)
-
-    group_tag = None
-    for tag_name in DICOM_GROUP_TAGS:
-        if hasattr(dcm, tag_name):
-            group_tag_value = str(dcm[tag_name].value)
-            if group_tag_value in ["", None]:
-                logger.warn(f"Tag [{tag_name}] has empty value. Skipping tag.")
-                continue
-            if len(group_tag_value) > 255:
-                logger.warn(f"Tag [{tag_name}] has too long value. Skipping tag.")
-                continue
-            group_tag = {"name": tag_name, "value": group_tag_value}
-            break
-
     pixel_data_list = [dcm.pixel_array]
     if len(dcm.pixel_array.shape) == 3:
         if dcm.pixel_array.shape[0] == 1 and not hasattr(dcm, "NumberOfFrames"):
@@ -187,7 +162,7 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
         nrrd.write(save_path, pixel_data, header)
         save_paths.append(save_path)
         image_names.append(image_name)
-    return save_paths, image_names, group_tag
+    return save_paths, image_names
 
 
 def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], List[str]]:
