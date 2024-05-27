@@ -9,6 +9,9 @@ import io
 import json
 import re
 import urllib.parse
+from collections import defaultdict
+from uuid import uuid4
+from pathlib import Path
 from os.path import basename, dirname, exists, join, normpath, pardir
 from time import sleep
 from typing import (
@@ -54,6 +57,7 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     list_files,
     list_files_recursively,
+    clean_dir,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
@@ -2808,95 +2812,82 @@ class ImageApi(RemoveableBulkModuleApi):
 
         """
 
-        img_paths = []
-        img_names = []
-        anns = []
-
         if metas is None:
             _metas = [dict() for _ in paths]
         else:
+            if len(metas) != len(paths):
+                raise ValueError("Length of 'metas' is not equal to the length of 'paths'.")
             _metas = metas.copy()
 
         dataset = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
         meta_json = self._api.project.get_meta(dataset.project_id)
         project_meta = ProjectMeta.from_json(meta_json)
 
-        from supervisely.convert.image.medical2d.medical2d_helper import (
-            _MEDICAL_DEFAULT_GROUP_TAG_NAMES,
-            dcm2nrrd,
-        )
+        import nrrd
+        from supervisely.convert.image.medical2d.medical2d_helper import convert_dcm_to_nrrd
 
-        group_tag_names = _MEDICAL_DEFAULT_GROUP_TAG_NAMES.copy()
-        if group_tag_name is not None:
-            group_tag_names = [group_tag_name] + group_tag_names
+    
+        image_paths = []
+        image_names = []
+        image_metas = []
+        anns = []
 
-        # ds_dir = "/".join(paths[0].split("/")[:-2])
-        # project_meta_from_sly_format = ProjectMeta()
-        # if exists(dirname(ds_dir) + "/meta.json"):
-        #     with open(dirname(ds_dir) + "/meta.json", "r") as file:
-        #         tmp = json.load(file)
-        #     project_meta_from_sly_format = ProjectMeta.from_json(tmp)
+        converted_dir_name = uuid4().hex
+        converted_dir = Path(path).parent / converted_dir_name
 
-        for path, meta in zip(paths, _metas):
-
-            # jsons = list_files_recursively(ds_dir, [".json"])
-            # matching_files = glob.glob(f"{ds_dir}/*/{get_file_name(path)}.json")
-            # annotation_path = None
-            # if len(matching_files) > 0:
-            #     if len(matching_files) == 1:
-            #         annotation_path = matching_files[0]
-            #     else:
-            #         raise Exception("Ambiguity Error")
-
-            # if get_file_ext(path).lower() not in sly_image.MEDICAL_IMAGES_EXT:
-            #     raise RuntimeError(
-            #         f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.MEDICAL_IMAGES_EXT}"
-            #     )
-
+        group_tag_counter = defaultdict(int)
+        for path, image_meta in zip(paths, _metas):
             try:
-                image_paths, image_names, anns_from_dcm, project_meta = dcm2nrrd(
+                nrrd_paths, nrrd_names, group_tags, dcm_meta = convert_dcm_to_nrrd(
                     image_path=path,
-                    image_meta=meta,
-                    group_tag_names=group_tag_names,
-                    project_meta=project_meta,
+                    converted_dir=converted_dir.as_posix(),
+                    group_tag_name=group_tag_name,
                 )
+                image_meta.update(dcm_meta)
+
+                image_paths.extend(nrrd_paths)
+                image_names.extend(nrrd_names)
+
+                for img_path, img_name in zip(image_paths, image_names):
+                    tags = []
+                    for tag in group_tags:
+                        tag_meta = project_meta.get_tag_meta(tag["name"])
+                        if tag_meta is None:
+                            tag_meta = TagMeta(tag, TagValueType.ANY_STRING)
+                            project_meta = project_meta.add_tag_meta(tag_meta)
+                        tag = Tag(meta=tag_meta, value=tag["value"])
+                        tags.append(tag)
+                    img_size = nrrd.read_header(img_path)["sizes"].tolist()[::-1]
+                    ann = Annotation(img_size=img_size, tags=tags)
+                    anns.append(ann)
+                    image_metas.append(image_meta)
+
+                for tag in group_tags:
+                    group_tag_counter[tag["name"]] += 1
             except Exception as e:
                 logger.warning(f"File '{path}' will be skipped due to: {str(e)}")
                 continue
 
-            img_paths.extend(image_paths)
-            img_names.extend(image_names)
-
-            # ! ann = Annotation.load_json_file(annotation_path, project_meta_from_sly_format)
-            ann = anns_from_dcm[0]
-            if len(anns_from_dcm) > 1:
-                for ann_dcm in anns_from_dcm[1:]:
-                    ann = ann.merge(ann_dcm)
-            anns.append(ann)
-
         image_infos = self.upload_paths(
             dataset_id=dataset_id,
-            names=img_names,
-            paths=img_paths,
+            names=image_names,
+            paths=image_paths,
             progress_cb=progress_cb,
-            metas=_metas,
+            metas=image_metas,
         )
         image_ids = [image_info.id for image_info in image_infos]
 
-        # _meta_dct = project_meta_from_sly_format.to_json()
-        # _new_meta_cct = project_meta.to_json()
-        # remove_sly_tag_name_if_not_unique(_meta_dct, _new_meta_cct)
-        # _meta_dct["tags"] += _new_meta_cct["tags"]
-        # check_unique_name(_meta_dct["tags"])  # left for emergency cases
-
         # Update the project metadata and enable image grouping
         self._api.project.update_meta(id=dataset.project_id, meta=project_meta.to_json())
-        if group_tag_name is None:
-            group_tag_name = project_meta.tag_metas.items()[0].name
+        max_used_tag_name = max(group_tag_counter, key=group_tag_counter.get)
+        if group_tag_name not in group_tag_counter:
+            group_tag_name = max_used_tag_name
         self._api.project.images_grouping(
             id=dataset.project_id, enable=True, tag_name=group_tag_name
         )
         self._api.annotation.upload_anns(image_ids, anns)
+        clean_dir(converted_dir.as_posix())
+
         return image_infos
 
     def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:

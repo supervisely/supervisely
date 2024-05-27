@@ -1,7 +1,7 @@
 import os
 from os.path import basename, dirname, exists, join, normpath, pardir
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import nrrd
 import numpy as np
@@ -14,7 +14,7 @@ from supervisely.annotation.annotation import Annotation, TagCollection
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.imaging import image as sly_image
-from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext, mkdir
+from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext, mkdir, dir_exists
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.volume import read_dicom_serie_volume
 
@@ -129,39 +129,29 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     return list_of_images, frame_axis
 
 
-def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
+def convert_dcm_to_nrrd(image_path: str, converted_dir: str, group_tag_name: Optional[list] = None) -> Tuple[List[str], List[str], List[dict], dict]:
     """Converts DICOM data to nrrd format and returns image paths and image names"""
     original_name = get_file_name_with_ext(image_path)
+    if not dir_exists(converted_dir):
+        mkdir(converted_dir)
     curr_convert_dir = os.path.join(converted_dir, original_name)
     mkdir(curr_convert_dir)
 
     dcm = pydicom.read_file(image_path)
-    pixel_data_list = [dcm.pixel_array]
-    if len(dcm.pixel_array.shape) == 3:
-        if dcm.pixel_array.shape[0] == 1 and not hasattr(dcm, "NumberOfFrames"):
-            frames = 1
-            pixel_data_list = [
-                dcm.pixel_array.reshape((dcm.pixel_array.shape[1], dcm.pixel_array.shape[2]))
-            ]
-            header = create_nrrd_header_from_dcm(image_path)
-        else:
-            try:
-                frames = int(dcm.NumberOfFrames)
-            except AttributeError as e:
-                if str(e) == "'FileDataset' object has no attribute 'NumberOfFrames'":
-                    e.args = ("can't get 'NumberOfFrames' from dcm meta.",)
-                    raise e
-            frame_axis = find_frame_axis(dcm.pixel_array, frames)
-            pixel_data_list, frame_axis = create_pixel_data_set(dcm, frame_axis)
-            header = create_nrrd_header_from_dcm(image_path, frame_axis)
-    elif len(dcm.pixel_array.shape) == 2:
-        frames = 1
-        header = create_nrrd_header_from_dcm(image_path)
-    else:
-        raise NotImplementedError(
-            f"This type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
-        )
+    dcm_meta = get_dcm_meta(dcm)
 
+    if group_tag_name is None:
+        group_tag_names = _MEDICAL_DEFAULT_GROUP_TAG_NAMES
+    else:
+        group_tag_names = [group_tag_name] + _MEDICAL_DEFAULT_GROUP_TAG_NAMES
+
+    is_group_tag_exists = next((name for name in group_tag_names if name in dcm), None) is not None
+    if not is_group_tag_exists:
+        logger.warning(f"Not found group tags in DICOM file.")
+
+    header, frames, frame_axis, pixel_data_list = get_nrrd_data(image_path, dcm)
+
+    group_tags = []
     save_paths = []
     image_names = []
     frames_list = [f"{i:0{len(str(frames))}d}" for i in range(1, frames + 1)]
@@ -179,7 +169,15 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str],
         nrrd.write(save_path, pixel_data, header)
         save_paths.append(save_path)
         image_names.append(image_name)
-    return save_paths, image_names
+
+    for tag_name in group_tag_names:
+        if dcm.get(tag_name) is not None:
+            group_tag_value = dcm[tag_name].value
+            group_tags.append({"name": tag_name, "value": group_tag_value})
+        elif group_tag_name is not None and tag_name == group_tag_name:
+            logger.warning(f"Couldn't find key: {group_tag_name!r} in file's metadata.")
+
+    return save_paths, image_names, group_tags, dcm_meta
 
 
 def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], List[str]]:
@@ -248,57 +246,57 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
     return output_paths, output_names
 
 
-def dcm2nrrd(
-    image_path: str,
-    image_meta: dict,
-    group_tag_names: List[str],
-    project_meta: ProjectMeta,
-) -> Tuple[List[str], List[str], List[Annotation], ProjectMeta]:
-    logger.info(f"Preparing {get_file_name_with_ext(image_path)!r}...")
-    dcm = pydicom.read_file(image_path)
-    dcm_meta = get_dcm_meta(dcm)
-    image_meta.update(dcm_meta)
+# def dcm2nrrd(
+#     image_path: str,
+#     # image_meta: dict,
+#     group_tag_names: List[str],
+#     project_meta: ProjectMeta,
+# ) -> Tuple[List[str], List[str], List[Annotation], ProjectMeta]:
+#     # logger.info(f"Preparing {get_file_name_with_ext(image_path)!r}...")
+#     dcm = pydicom.read_file(image_path)
+#     # dcm_meta = get_dcm_meta(dcm)
+#     # image_meta.update(dcm_meta)
 
-    is_group_tag_exists = next((name for name in group_tag_names if name in dcm), None) is not None
-    if not is_group_tag_exists:
-        logger.warning(
-            f"None of the specified group tag values were found in the DICOM file. Searched tag values: {group_tag_names}"
-        )
+#     is_group_tag_exists = next((name for name in group_tag_names if name in dcm), None) is not None
+#     # if not is_group_tag_exists:
+#     #     logger.warning(
+#     #         f"None of the specified group tag values were found in the DICOM file. Searched tag values: {group_tag_names}"
+#     #     )
 
-    header, frames, frame_axis, pixel_data_list = get_nrrd_data(image_path, dcm)
+#     header, frames, frame_axis, pixel_data_list = get_nrrd_data(image_path, dcm)
 
-    save_paths = []
-    image_names = []
-    anns = []
+#     save_paths = []
+#     image_names = []
+#     anns = []
 
-    frames_list = [f"{i:0{len(str(frames))}d}" for i in range(1, frames + 1)]
+#     frames_list = [f"{i:0{len(str(frames))}d}" for i in range(1, frames + 1)]
 
-    for pixel_data, frame_number in zip(pixel_data_list, frames_list):
-        original_name = get_file_name_with_ext(image_path)
+#     for pixel_data, frame_number in zip(pixel_data_list, frames_list):
+#         original_name = get_file_name_with_ext(image_path)
 
-        if frames == 1:
-            pixel_data = sly_image.rotate(img=pixel_data, degrees_angle=270)
-            pixel_data = sly_image.fliplr(pixel_data)
-            image_name = f"{original_name}.nrrd"
-        else:
-            pixel_data = np.squeeze(pixel_data, frame_axis)
-            image_name = f"{original_name}_frame{frame_number}.nrrd"
+#         if frames == 1:
+#             pixel_data = sly_image.rotate(img=pixel_data, degrees_angle=270)
+#             pixel_data = sly_image.fliplr(pixel_data)
+#             image_name = f"{original_name}.nrrd"
+#         else:
+#             pixel_data = np.squeeze(pixel_data, frame_axis)
+#             image_name = f"{original_name}_frame{frame_number}.nrrd"
 
-        save_path = join(dirname(image_path), image_name)
-        nrrd.write(save_path, pixel_data, header)
-        save_paths.append(save_path)
-        image_names.append(image_name)
-        ann, project_meta = create_ann_with_tags(
-            save_path,
-            project_meta,
-            dcm,
-            group_tag_names,
-            is_group_tag_exists,
-        )
-        anns.append(ann)
+#         save_path = join(dirname(image_path), image_name)
+#         nrrd.write(save_path, pixel_data, header)
+#         save_paths.append(save_path)
+#         image_names.append(image_name)
+#         ann, project_meta = create_ann_with_tags(
+#             save_path,
+#             project_meta,
+#             dcm,
+#             group_tag_names,
+#             is_group_tag_exists,
+#         )
+#         anns.append(ann)
 
-    logger.info(f"{get_file_name_with_ext(image_path)!r} is done.")
-    return save_paths, image_names, anns, project_meta
+#     logger.info(f"{get_file_name_with_ext(image_path)!r} is done.")
+#     return save_paths, image_names, anns, project_meta
 
 
 def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
@@ -339,37 +337,37 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
     return dcm_tags_dict
 
 
-def create_ann_with_tags(
-    path_to_img: str,
-    project_meta: ProjectMeta,
-    dcm: FileDataset,
-    group_tag_names: List[str],
-    is_group_tag_exists: bool,
-) -> Tuple[Annotation, ProjectMeta]:
-    img_size = nrrd.read_header(path_to_img)["sizes"].tolist()[::-1]
-    ann = Annotation(img_size=img_size)
-    if is_group_tag_exists:
-        group_tags, project_meta = create_group_tag(dcm, group_tag_names, project_meta)
-        if len(group_tags) > 0:
-            return ann.add_tags(TagCollection(group_tags)), project_meta
-    return ann, project_meta
+# def create_ann_with_tags(
+#     path_to_img: str,
+#     project_meta: ProjectMeta,
+#     dcm: FileDataset,
+#     group_tag_names: List[str],
+#     is_group_tag_exists: bool,
+# ) -> Tuple[Annotation, ProjectMeta]:
+#     img_size = nrrd.read_header(path_to_img)["sizes"].tolist()[::-1]
+#     ann = Annotation(img_size=img_size)
+#     if is_group_tag_exists:
+#         group_tags, project_meta = create_group_tag(dcm, group_tag_names, project_meta)
+#         if len(group_tags) > 0:
+#             return ann.add_tags(TagCollection(group_tags)), project_meta
+#     return ann, project_meta
 
 
-def create_group_tag(
-    dcm: FileDataset, group_tag_names: List[str], project_meta: ProjectMeta
-) -> Tuple[List[Tag], ProjectMeta]:
-    group_tags = []
-    for group_tag_name in group_tag_names:
-        if dcm.get(group_tag_name) is not None:
-            group_tag_value = dcm[group_tag_name].value
-            group_tag_meta = project_meta.get_tag_meta(group_tag_name)
-            if group_tag_meta is None:
-                group_tag_meta = TagMeta(group_tag_name, TagValueType.ANY_STRING)
-                project_meta = project_meta.add_tag_meta(group_tag_meta)
-            group_tags.append(Tag(group_tag_meta, group_tag_value))
-        else:
-            logger.warning(f"Couldn't find key: {group_tag_name!r} in file's metadata.")
-    return group_tags, project_meta
+# def create_group_tag(
+#     dcm: FileDataset, group_tag_names: List[str], project_meta: ProjectMeta
+# ) -> Tuple[List[Tag], ProjectMeta]:
+#     group_tags = []
+#     for group_tag_name in group_tag_names:
+#         if dcm.get(group_tag_name) is not None:
+#             group_tag_value = dcm[group_tag_name].value
+#             group_tag_meta = project_meta.get_tag_meta(group_tag_name)
+#             if group_tag_meta is None:
+#                 group_tag_meta = TagMeta(group_tag_name, TagValueType.ANY_STRING)
+#                 project_meta = project_meta.add_tag_meta(group_tag_meta)
+#             group_tags.append(Tag(group_tag_meta, group_tag_value))
+#         else:
+#             logger.warning(f"Couldn't find key: {group_tag_name!r} in file's metadata.")
+#     return group_tags, project_meta
 
 
 def get_nrrd_data(image_path: str, dcm: FileDataset):
@@ -383,7 +381,7 @@ def get_nrrd_data(image_path: str, dcm: FileDataset):
             pixel_data_list = [
                 dcm.pixel_array.reshape((dcm.pixel_array.shape[1], dcm.pixel_array.shape[2]))
             ]
-            header = get_nrrd_header(image_path, frame_axis)
+            header = create_nrrd_header_from_dcm(image_path, frame_axis)
         else:
             try:
                 frames = int(dcm.NumberOfFrames)
@@ -393,10 +391,10 @@ def get_nrrd_data(image_path: str, dcm: FileDataset):
                     raise e
             frame_axis = find_frame_axis(dcm.pixel_array, frames)
             pixel_data_list, frame_axis = create_pixel_data_set(dcm, frame_axis)
-            header = get_nrrd_header(image_path, frame_axis)
+            header = create_nrrd_header_from_dcm(image_path, frame_axis)
     elif len(dcm.pixel_array.shape) == 2:
         frames = 1
-        header = get_nrrd_header(image_path, frame_axis)
+        header = create_nrrd_header_from_dcm(image_path, frame_axis)
     else:
         raise RuntimeError(
             f"This type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
@@ -405,28 +403,28 @@ def get_nrrd_data(image_path: str, dcm: FileDataset):
     return header, frames, frame_axis, pixel_data_list
 
 
-def get_nrrd_header(image_path: str, frame_axis: int = 2):
+# def get_nrrd_header(image_path: str, frame_axis: int = 2):
 
-    _, meta = read_dicom_serie_volume([image_path], False)
-    dimensions: Dict = meta.get("dimensionsIJK")
-    header = {
-        "type": "float",
-        "sizes": [dimensions.get("x"), dimensions.get("y")],
-        "dimension": 2,
-        "space": "right-anterior-superior",
-    }
+#     _, meta = read_dicom_serie_volume([image_path], False)
+#     dimensions: Dict = meta.get("dimensionsIJK")
+#     header = {
+#         "type": "float",
+#         "sizes": [dimensions.get("x"), dimensions.get("y")],
+#         "dimension": 2,
+#         "space": "right-anterior-superior",
+#     }
 
-    if frame_axis == 0:
-        spacing = meta["spacing"][1:]
-        header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
-    if frame_axis == 1:
-        spacing = meta["spacing"][0::2]
-        header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
-    if frame_axis == 2:
-        spacing = meta["spacing"][0:2]
-        header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
+#     if frame_axis == 0:
+#         spacing = meta["spacing"][1:]
+#         header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
+#     if frame_axis == 1:
+#         spacing = meta["spacing"][0::2]
+#         header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
+#     if frame_axis == 2:
+#         spacing = meta["spacing"][0:2]
+#         header["space directions"] = [[spacing[0], 0], [0, spacing[1]]]
 
-    return header
+#     return header
 
 
 # def remove_sly_tag_name_if_not_unique(sly_meta, new_meta):
