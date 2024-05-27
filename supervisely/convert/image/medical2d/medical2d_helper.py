@@ -1,6 +1,8 @@
 import os
+import re
+from os.path import basename, dirname, exists, join, normpath, pardir
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 import nrrd
 import numpy as np
@@ -9,7 +11,24 @@ from pydicom import FileDataset
 from tqdm import tqdm
 
 from supervisely import image, logger, volume
-from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext, mkdir
+from supervisely.annotation.tag import Tag
+from supervisely.io.fs import (
+    dir_exists,
+    get_file_ext,
+    get_file_name,
+    get_file_name_with_ext,
+    mkdir,
+)
+
+_MEDICAL_DEFAULT_GROUP_TAG_NAMES = [
+    "StudyInstanceUID",
+    "StudyID",
+    "SeriesInstanceUID",
+    "TreatmentSessionUID",
+    "Manufacturer",
+    "ManufacturerModelName",
+    "Modality",
+]
 
 
 def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str], List[str]]:
@@ -58,7 +77,7 @@ def is_dicom_file(path: str) -> bool:
         pydicom.read_file(str(Path(path).resolve()), stop_before_pixels=True)
         result = True
     except Exception as ex:
-        logger.warn("'{}' appears not to be a DICOM file\n({})".format(path, ex))
+        logger.warning("'{}' appears not to be a DICOM file\n({})".format(path, ex))
         result = False
     return result
 
@@ -112,39 +131,33 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     return list_of_images, frame_axis
 
 
-def convert_dcm_to_nrrd(image_path: str, converted_dir: str, group_tag_name: Optional[list] = None) -> Tuple[List[str], List[str], List[dict], dict]:
+def convert_dcm_to_nrrd(
+    image_path: str, converted_dir: str, group_tag_name: Optional[list] = None
+) -> Tuple[List[str], List[str], List[dict], dict]:
     """Converts DICOM data to nrrd format and returns image paths and image names"""
+    logger.info(f"Starting {get_file_name_with_ext(image_path)!r}...")
+
     original_name = get_file_name_with_ext(image_path)
+    if not dir_exists(converted_dir):
+        mkdir(converted_dir)
     curr_convert_dir = os.path.join(converted_dir, original_name)
     mkdir(curr_convert_dir)
 
     dcm = pydicom.read_file(image_path)
-    pixel_data_list = [dcm.pixel_array]
-    if len(dcm.pixel_array.shape) == 3:
-        if dcm.pixel_array.shape[0] == 1 and not hasattr(dcm, "NumberOfFrames"):
-            frames = 1
-            pixel_data_list = [
-                dcm.pixel_array.reshape((dcm.pixel_array.shape[1], dcm.pixel_array.shape[2]))
-            ]
-            header = create_nrrd_header_from_dcm(image_path)
-        else:
-            try:
-                frames = int(dcm.NumberOfFrames)
-            except AttributeError as e:
-                if str(e) == "'FileDataset' object has no attribute 'NumberOfFrames'":
-                    e.args = ("can't get 'NumberOfFrames' from dcm meta.",)
-                    raise e
-            frame_axis = find_frame_axis(dcm.pixel_array, frames)
-            pixel_data_list, frame_axis = create_pixel_data_set(dcm, frame_axis)
-            header = create_nrrd_header_from_dcm(image_path, frame_axis)
-    elif len(dcm.pixel_array.shape) == 2:
-        frames = 1
-        header = create_nrrd_header_from_dcm(image_path)
-    else:
-        raise NotImplementedError(
-            f"this type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
-        )
+    dcm_meta = get_dcm_meta(dcm)
 
+    if group_tag_name is None:
+        group_tag_names = _MEDICAL_DEFAULT_GROUP_TAG_NAMES
+    else:
+        group_tag_names = [group_tag_name] + _MEDICAL_DEFAULT_GROUP_TAG_NAMES
+
+    is_group_tag_exists = next((name for name in group_tag_names if name in dcm), None) is not None
+    if not is_group_tag_exists:
+        logger.warning(f"Not found group tags in DICOM file.")
+
+    header, frames, frame_axis, pixel_data_list = get_nrrd_data(image_path, dcm)
+
+    group_tags = []
     save_paths = []
     image_names = []
     frames_list = [f"{i:0{len(str(frames))}d}" for i in range(1, frames + 1)]
@@ -162,7 +175,15 @@ def convert_dcm_to_nrrd(image_path: str, converted_dir: str, group_tag_name: Opt
         nrrd.write(save_path, pixel_data, header)
         save_paths.append(save_path)
         image_names.append(image_name)
-    return save_paths, image_names
+
+    for tag_name in group_tag_names:
+        if dcm.get(tag_name) is not None:
+            group_tag_value = dcm[tag_name].value
+            group_tags.append({"name": tag_name, "value": group_tag_value})
+        elif group_tag_name is not None and tag_name == group_tag_name:
+            logger.warning(f"Couldn't find key {group_tag_name!r} in file's metadata.")
+
+    return save_paths, image_names, group_tags, dcm_meta
 
 
 def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], List[str]]:
@@ -229,3 +250,73 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
         output_paths.append(nrrd_file_path)
         output_names.append(get_file_name_with_ext(nrrd_file_path))
     return output_paths, output_names
+
+
+def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
+    """Create tags from DICOM metadata."""
+
+    filtered_tags = []
+
+    DCM_TAGS = list(dcm.keys())
+    empty_tags, too_long_tags = [], []
+    for dcm_tag in DCM_TAGS:
+        try:
+            curr_tag = dcm[dcm_tag]
+            dcm_tag_name = str(curr_tag.name)
+            dcm_tag_value = str(curr_tag.value)
+            if dcm_tag_value in ["", None]:
+                empty_tags.append(dcm_tag_name)
+                continue
+            if len(dcm_tag_value) > 255:
+                too_long_tags.append(dcm_tag_name)
+                continue
+            filtered_tags.append((dcm_tag_name, dcm_tag_value))
+        except KeyError:
+            dcm_filename = get_file_name_with_ext(dcm.filename)
+            logger.warning(f"Couldn't find key '{dcm_tag}' in file's metadata: '{dcm_filename}'")
+            continue
+
+    if len(empty_tags) > 0:
+        logger.warning(f"{len(dcm_tag_name)} tags have empty value. Skipped tags: {empty_tags}.")
+    if len(too_long_tags) > 0:
+        logger.warning(
+            f"{len(too_long_tags)} tags have too long value (> 255 symbols). Skipped tags: {too_long_tags}."
+        )
+
+    dcm_tags_dict = {}
+    for dcm_tag_name, dcm_tag_value in filtered_tags:
+        dcm_tags_dict[dcm_tag_name] = dcm_tag_value
+    return dcm_tags_dict
+
+
+def get_nrrd_data(image_path: str, dcm: FileDataset):
+
+    frame_axis = 2
+    pixel_data_list = [dcm.pixel_array]
+
+    if len(dcm.pixel_array.shape) == 3:
+        if dcm.pixel_array.shape[0] == 1 and not hasattr(dcm, "NumberOfFrames"):
+            frames = 1
+            pixel_data_list = [
+                dcm.pixel_array.reshape((dcm.pixel_array.shape[1], dcm.pixel_array.shape[2]))
+            ]
+            header = create_nrrd_header_from_dcm(image_path, frame_axis)
+        else:
+            try:
+                frames = int(dcm.NumberOfFrames)
+            except AttributeError as e:
+                if str(e) == "'FileDataset' object has no attribute 'NumberOfFrames'":
+                    e.args = ("can't get 'NumberOfFrames' from dcm meta.",)
+                    raise e
+            frame_axis = find_frame_axis(dcm.pixel_array, frames)
+            pixel_data_list, frame_axis = create_pixel_data_set(dcm, frame_axis)
+            header = create_nrrd_header_from_dcm(image_path, frame_axis)
+    elif len(dcm.pixel_array.shape) == 2:
+        frames = 1
+        header = create_nrrd_header_from_dcm(image_path, frame_axis)
+    else:
+        raise RuntimeError(
+            f"This type of dcm data is not supported, pixel_array.shape = {len(dcm.pixel_array.shape)}"
+        )
+
+    return header, frames, frame_axis, pixel_data_list
