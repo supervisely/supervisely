@@ -39,11 +39,6 @@ SUPPORTED_IMG_EXTS = [
 ]
 DEFAULT_IMG_EXT = ".png"
 
-MEDICAL_IMAGES_EXT = [
-    ".dcm",
-    # ".nii",
-]
-
 
 class CornerAnchorMode:
     """ """

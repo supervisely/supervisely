@@ -9,8 +9,6 @@ except ImportError:
 
 from supervisely._utils import is_production
 from supervisely.api.api import Api
-
-# from supervisely import Api, is_production, logger, Progress, ProjectType
 from supervisely.app import get_data_dir
 from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.image_converter import ImageConverter

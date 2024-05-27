@@ -14,16 +14,6 @@ from supervisely._utils import is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
-
-# from supervisely import (
-#     Annotation,
-#     Api,
-#     Progress,
-#     ProjectMeta,
-#     TagValueType,
-#     is_production,
-#     logger,
-# )
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
