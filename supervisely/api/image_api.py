@@ -10,9 +10,8 @@ import json
 import re
 import urllib.parse
 from collections import defaultdict
-from uuid import uuid4
-from pathlib import Path
 from os.path import basename, dirname, exists, join, normpath, pardir
+from pathlib import Path
 from time import sleep
 from typing import (
     Any,
@@ -27,6 +26,7 @@ from typing import (
     Tuple,
     Union,
 )
+from uuid import uuid4
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
@@ -50,6 +50,7 @@ from supervisely.api.module_api import (
 )
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
+    clean_dir,
     ensure_base_path,
     get_file_ext,
     get_file_hash,
@@ -57,7 +58,6 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     list_files,
     list_files_recursively,
-    clean_dir,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
@@ -2824,16 +2824,17 @@ class ImageApi(RemoveableBulkModuleApi):
         project_meta = ProjectMeta.from_json(meta_json)
 
         import nrrd
-        from supervisely.convert.image.medical2d.medical2d_helper import convert_dcm_to_nrrd
 
-    
+        from supervisely.convert.image.medical2d.medical2d_helper import (
+            convert_dcm_to_nrrd,
+        )
+
         image_paths = []
         image_names = []
-        image_metas = []
         anns = []
 
         converted_dir_name = uuid4().hex
-        converted_dir = Path(path).parent / converted_dir_name
+        converted_dir = Path("/tmp/") / converted_dir_name
 
         group_tag_counter = defaultdict(int)
         for path, image_meta in zip(paths, _metas):
@@ -2844,11 +2845,10 @@ class ImageApi(RemoveableBulkModuleApi):
                     group_tag_name=group_tag_name,
                 )
                 image_meta.update(dcm_meta)
-
                 image_paths.extend(nrrd_paths)
                 image_names.extend(nrrd_names)
 
-                for img_path, img_name in zip(image_paths, image_names):
+                for nrrd_path in nrrd_paths:
                     tags = []
                     for tag in group_tags:
                         tag_meta = project_meta.get_tag_meta(tag["name"])
@@ -2857,10 +2857,9 @@ class ImageApi(RemoveableBulkModuleApi):
                             project_meta = project_meta.add_tag_meta(tag_meta)
                         tag = Tag(meta=tag_meta, value=tag["value"])
                         tags.append(tag)
-                    img_size = nrrd.read_header(img_path)["sizes"].tolist()[::-1]
-                    ann = Annotation(img_size=img_size, tags=tags)
+                    img_size = nrrd.read_header(nrrd_path)["sizes"].tolist()[::-1]
+                    ann = Annotation(img_size=img_size, img_tags=tags)
                     anns.append(ann)
-                    image_metas.append(image_meta)
 
                 for tag in group_tags:
                     group_tag_counter[tag["name"]] += 1
@@ -2873,18 +2872,19 @@ class ImageApi(RemoveableBulkModuleApi):
             names=image_names,
             paths=image_paths,
             progress_cb=progress_cb,
-            metas=image_metas,
+            metas=_metas,
         )
         image_ids = [image_info.id for image_info in image_infos]
 
         # Update the project metadata and enable image grouping
         self._api.project.update_meta(id=dataset.project_id, meta=project_meta.to_json())
-        max_used_tag_name = max(group_tag_counter, key=group_tag_counter.get)
-        if group_tag_name not in group_tag_counter:
-            group_tag_name = max_used_tag_name
-        self._api.project.images_grouping(
-            id=dataset.project_id, enable=True, tag_name=group_tag_name
-        )
+        if len(group_tag_counter) > 0:
+            max_used_tag_name = max(group_tag_counter, key=group_tag_counter.get)
+            if group_tag_name not in group_tag_counter:
+                group_tag_name = max_used_tag_name
+            self._api.project.images_grouping(
+                id=dataset.project_id, enable=True, tag_name=group_tag_name
+            )
         self._api.annotation.upload_anns(image_ids, anns)
         clean_dir(converted_dir.as_posix())
 
