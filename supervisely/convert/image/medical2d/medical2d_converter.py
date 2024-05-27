@@ -105,12 +105,14 @@ class Medical2DImageConverter(ImageConverter):
     ) -> Annotation:
         ann = Annotation(item.shape)
         if item.ann_data is not None:
+            tags = []
             for tag in item.ann_data:
                 tag_name = renamed_tags.get(tag["name"], tag["name"])
                 tag_meta = meta.get_tag_meta(tag_name)
                 if tag_meta is not None:
                     group_tag = Tag(tag_meta, tag["value"])
-                    ann = ann.add_tags(group_tag)
+                    tags.append(group_tag)
+            ann = ann.add_tags(tags)
         return ann
 
     def upload_dataset(
