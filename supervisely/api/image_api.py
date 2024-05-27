@@ -2812,6 +2812,9 @@ class ImageApi(RemoveableBulkModuleApi):
         img_names = []
         anns = []
 
+        if metas is None:
+            metas = [dict() for _ in paths]
+
         dataset = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
         meta_json = self._api.project.get_meta(dataset.project_id)
         project_meta = ProjectMeta.from_json(meta_json)
@@ -2833,7 +2836,7 @@ class ImageApi(RemoveableBulkModuleApi):
         #         tmp = json.load(file)
         #     project_meta_from_sly_format = ProjectMeta.from_json(tmp)
 
-        for path in paths:
+        for path, meta in zip(paths, metas):
 
             # jsons = list_files_recursively(ds_dir, [".json"])
             # matching_files = glob.glob(f"{ds_dir}/*/{get_file_name(path)}.json")
@@ -2852,6 +2855,7 @@ class ImageApi(RemoveableBulkModuleApi):
             try:
                 image_paths, image_names, anns_from_dcm, project_meta, group_tag_name = dcm2nrrd(
                     image_path=path,
+                    image_meta=meta,
                     group_tag_names=group_tag_names,
                     project_meta=project_meta,
                 )
@@ -2870,6 +2874,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 anns.append(ann)
             except TypeError:
                 anns.extend(anns_from_dcm)
+
+        # metas = [{"meta": "val"} for _ in img_paths]
 
         image_infos = self.upload_paths(
             dataset_id=dataset_id,
