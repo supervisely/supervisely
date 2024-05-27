@@ -333,7 +333,7 @@ class BaseConverter:
                 meta1 = meta1.add_tag_meta(new_tag)
 
         # update project meta
-        api.project.update_meta(dataset.project_id, meta1)
+        meta1 = api.project.update_meta(dataset.project_id, meta1)
 
         return meta1, renamed_classes, renamed_tags
 
