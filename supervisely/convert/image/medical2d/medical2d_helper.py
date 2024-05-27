@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import nrrd
 import numpy as np
@@ -112,7 +112,7 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     return list_of_images, frame_axis
 
 
-def convert_dcm_to_nrrd(image_path: str, converted_dir: str) -> Tuple[List[str], List[str], Dict[str, str]]:
+def convert_dcm_to_nrrd(image_path: str, converted_dir: str, group_tag_name: Optional[list] = None) -> Tuple[List[str], List[str], List[dict], dict]:
     """Converts DICOM data to nrrd format and returns image paths and image names"""
     original_name = get_file_name_with_ext(image_path)
     curr_convert_dir = os.path.join(converted_dir, original_name)
