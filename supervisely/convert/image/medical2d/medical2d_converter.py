@@ -51,32 +51,35 @@ class Medical2DImageConverter(ImageConverter):
                 mime = magic.from_file(path, mime=True)
                 if mime == "application/dicom":
                     if helper.is_dicom_file(path):  # is dicom
-                        paths, names, group_tag = helper.convert_dcm_to_nrrd(path, converted_dir)
-                        if group_tag is not None:
+                        paths, names, group_tags, dcm_metas = helper.convert_dcm_to_nrrd(path, converted_dir)
+                        for group_tag in group_tags:
                             if meta.get_tag_meta(group_tag["name"]) is None:
                                 tag_meta = TagMeta(group_tag["name"], TagValueType.ANY_STRING)
                                 meta = meta.add_tag_meta(tag_meta)
                         for path, name in zip(paths, names):
-                            nrrds_dict[name] = (path, group_tag)
+                            nrrds_dict[name] = (path, group_tags, dcm_metas)
                 elif ext == ".nrrd":
                     if helper.check_nrrd(path):  # is nrrd
                         paths, names = helper.slice_nrrd_file(path, converted_dir)
                         for path, name in zip(paths, names):
-                            nrrds_dict[name] = (path, None)
+                            nrrds_dict[name] = (path, None, None)
                 elif mime == "application/gzip" or mime == "application/octet-stream":
                     if is_nifti_file(path):  # is nifti
                         paths, names = helper.slice_nifti_file(path, converted_dir)
                         for path, name in zip(paths, names):
-                            nrrds_dict[name] = (path, None)
+                            nrrds_dict[name] = (path, None, None)
 
         self._items = []
-        for name, (path, group_tag) in nrrds_dict.items():
+        for name, (path, group_tags, dcm_metas) in nrrds_dict.items():
             item = self.Item(item_path=path)
             img_size = nrrd.read_header(path)["sizes"].tolist()[::-1] # pylint: disable=no-member
             item.set_shape(img_size)
-            if group_tag is not None:
+            if group_tag in group_tags:
                 self._group_tag_names[group_tag["name"]] += 1
-                item.ann_data = [group_tag]
+            if len(group_tags) > 0:
+                item.ann_data = group_tags
+            if len(dcm_metas) > 0:
+                item.dcm_mets = dcm_metas
             self._items.append(item)
 
         self._meta = meta
@@ -149,6 +152,7 @@ class Medical2DImageConverter(ImageConverter):
             for batch in batched(self._items, batch_size):
                 paths = [item.path for item in batch]
                 anns = [self.to_supervisely(item, meta, renamed_classes, renamed_tags) for item in batch]
+                img_metas = [item.meta for item in batch]
                 names = []
                 for item in batch:
                     item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
@@ -160,7 +164,7 @@ class Medical2DImageConverter(ImageConverter):
                 with ApiContext(
                     api=api, project_id=dataset.project_id, dataset_id=dataset_id, project_meta=meta
                 ):
-                    img_infos = api.image.upload_paths(dataset_id, names, paths)
+                    img_infos = api.image.upload_paths(dataset_id, names, paths, metas=img_metas)
                     img_ids = [img_info.id for img_info in img_infos]
                     api.annotation.upload_anns(img_ids, anns)
 
