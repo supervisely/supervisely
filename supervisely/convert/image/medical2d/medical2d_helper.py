@@ -135,8 +135,6 @@ def convert_dcm_to_nrrd(
     image_path: str, converted_dir: str, group_tag_name: Optional[list] = None
 ) -> Tuple[List[str], List[str], List[dict], dict]:
     """Converts DICOM data to nrrd format and returns image paths and image names"""
-    logger.info(f"Starting {get_file_name_with_ext(image_path)!r}...")
-
     original_name = get_file_name_with_ext(image_path)
     if not dir_exists(converted_dir):
         mkdir(converted_dir)
@@ -258,6 +256,7 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
     filtered_tags = []
 
     DCM_TAGS = list(dcm.keys())
+    filename = get_file_name_with_ext(dcm.filename)
     empty_tags, too_long_tags = [], []
     for dcm_tag in DCM_TAGS:
         try:
@@ -277,10 +276,10 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
             continue
 
     if len(empty_tags) > 0:
-        logger.warning(f"{len(dcm_tag_name)} tags have empty value. Skipped tags: {empty_tags}.")
+        logger.warning(f"{filename}: {len(dcm_tag_name)} tags have empty value. Skipped tags: {empty_tags}.")
     if len(too_long_tags) > 0:
         logger.warning(
-            f"{len(too_long_tags)} tags have too long value (> 255 symbols). Skipped tags: {too_long_tags}."
+            f"{filename}: {len(too_long_tags)} tags have too long value (> 255 symbols). Skipped tags: {too_long_tags}."
         )
 
     dcm_tags_dict = {}

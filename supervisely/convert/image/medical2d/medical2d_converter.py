@@ -74,12 +74,11 @@ class Medical2DImageConverter(ImageConverter):
             item = self.Item(item_path=path)
             img_size = nrrd.read_header(path)["sizes"].tolist()[::-1] # pylint: disable=no-member
             item.set_shape(img_size)
-            if group_tag in group_tags:
-                self._group_tag_names[group_tag["name"]] += 1
-            if len(group_tags) > 0:
+            if group_tags is not None:
+                for group_tag in group_tags:
+                    self._group_tag_names[group_tag["name"]] += 1
                 item.ann_data = group_tags
-            if len(dcm_metas) > 0:
-                item.dcm_mets = dcm_metas
+            item.set_meta_data(dcm_metas if dcm_metas is not None else {})
             self._items.append(item)
 
         self._meta = meta
@@ -152,7 +151,7 @@ class Medical2DImageConverter(ImageConverter):
             for batch in batched(self._items, batch_size):
                 paths = [item.path for item in batch]
                 anns = [self.to_supervisely(item, meta, renamed_classes, renamed_tags) for item in batch]
-                img_metas = [item.meta for item in batch]
+                img_metas = [item.meta or {} for item in batch]
                 names = []
                 for item in batch:
                     item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
