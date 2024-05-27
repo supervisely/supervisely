@@ -297,7 +297,7 @@ def dcm2nrrd(
         )
         anns.append(ann)
 
-    logger.info("Done.")
+    logger.info(f"{get_file_name_with_ext(image_path)!r} is done.")
     return save_paths, image_names, anns, project_meta
 
 

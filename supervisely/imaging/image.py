@@ -41,7 +41,7 @@ DEFAULT_IMG_EXT = ".png"
 
 MEDICAL_IMAGES_EXT = [
     ".dcm",
-    ".nii",
+    # ".nii",
 ]
 
 

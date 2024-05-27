@@ -2848,10 +2848,10 @@ class ImageApi(RemoveableBulkModuleApi):
             #     else:
             #         raise Exception("Ambiguity Error")
 
-            if get_file_ext(path).lower() not in sly_image.MEDICAL_IMAGES_EXT:
-                raise RuntimeError(
-                    f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.MEDICAL_IMAGES_EXT}"
-                )
+            # if get_file_ext(path).lower() not in sly_image.MEDICAL_IMAGES_EXT:
+            #     raise RuntimeError(
+            #         f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.MEDICAL_IMAGES_EXT}"
+            #     )
 
             try:
                 image_paths, image_names, anns_from_dcm, project_meta = dcm2nrrd(
@@ -2867,14 +2867,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_paths.extend(image_paths)
             img_names.extend(image_names)
 
-            try:
-                # ann = Annotation.load_json_file(annotation_path, project_meta_from_sly_format)
-                ann = anns_from_dcm[0]
+            # ! ann = Annotation.load_json_file(annotation_path, project_meta_from_sly_format)
+            ann = anns_from_dcm[0]
+            if len(anns_from_dcm) > 1:
                 for ann_dcm in anns_from_dcm[1:]:
                     ann = ann.merge(ann_dcm)
-                anns.append(ann)
-            except TypeError:
-                anns.extend(anns_from_dcm)
+            anns.append(ann)
 
         image_infos = self.upload_paths(
             dataset_id=dataset_id,
