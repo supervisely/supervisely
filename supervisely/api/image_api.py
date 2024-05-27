@@ -2764,7 +2764,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[ImageInfo]:
         """
-        Upload medical 2D images (DICOM & NiFTi) to Supervisely and group them by specified or default tag.
+        Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
