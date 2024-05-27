@@ -17,17 +17,25 @@ from supervisely import (
 )
 from supervisely.io.json import load_json_file
 from supervisely.geometry.graph import KeypointsTemplate
+from supervisely.annotation.label import LabelJsonFields
+from supervisely.annotation.tag import TagJsonFields
 
 SLY_IMAGE_ANN_KEYS = ["objects", "tags", "size"]
+SLY_OBJECT_KEYS = [LabelJsonFields.OBJ_CLASS_NAME, LabelJsonFields.TAGS, "geometryType"]  #, LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
+SLY_TAG_KEYS = [TagJsonFields.TAG_NAME, TagJsonFields.VALUE]
 
-
+# Check the annotation format documentation at
 def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     ann_json = load_json_file(ann_path)
     if "annotation" in ann_json:
         ann_json = ann_json["annotation"]
 
     if not all(key in ann_json for key in SLY_IMAGE_ANN_KEYS):
-        logger.warn(f"Annotation file {ann_path} is not in Supervisely format")
+        logger.warn(
+            f"Annotation file {ann_path} is not in Supervisely format. Skipping. "
+            "Check the annotation format documentation at: "
+            "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/05_supervisely_format_images"
+        )
         return meta
 
     for object in ann_json["objects"]:
@@ -39,8 +47,15 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
 
 def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectMeta:
     for tag in tags:
-        tag_name = tag["name"]
-        tag_value = tag["value"]
+        if not all(key in tag for key in SLY_TAG_KEYS):
+            logger.warn(
+                f"Tag in annotation file is not in Supervisely format. "
+                "Read more about the Supervisely JSON format of tags in the documentation at: "
+                "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/03_supervisely_format_tags"
+            )
+            continue
+        tag_name = tag[TagJsonFields.TAG_NAME]
+        tag_value = tag[TagJsonFields.VALUE]
         if tag_value is None:
             tag_meta = TagMeta(tag_name, TagValueType.NONE)
         elif isinstance(tag_value, int) or isinstance(tag_value, float):
@@ -56,10 +71,18 @@ def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectM
 
 
 def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMeta:
+    if not all(key in object for key in SLY_OBJECT_KEYS):
+        logger.warn(
+            f"Object in annotation file is not in Supervisely format: {object}. "
+            "Read more about the Supervisely JSON format of objects in the documentation at: "
+            "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/04_supervisely_format_objects"
+        )
+        return meta
     class_name = object["classTitle"]
     geometry_type = object["geometryType"]
     obj_class = None
     # @TODO: add better check for geometry type, add
+    obj_class = None
     if geometry_type == Bitmap.geometry_name():
         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
     elif geometry_type == AlphaMask.geometry_name():
