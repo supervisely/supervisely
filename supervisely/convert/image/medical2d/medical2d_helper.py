@@ -181,7 +181,7 @@ def convert_dcm_to_nrrd(
             group_tag_value = dcm[tag_name].value
             group_tags.append({"name": tag_name, "value": group_tag_value})
         elif group_tag_name is not None and tag_name == group_tag_name:
-            logger.warning(f"Couldn't find key: {group_tag_name!r} in file's metadata.")
+            logger.warning(f"Couldn't find key {group_tag_name!r} in file's metadata.")
 
     return save_paths, image_names, group_tags, dcm_meta
 
@@ -273,7 +273,7 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
             filtered_tags.append((dcm_tag_name, dcm_tag_value))
         except KeyError:
             dcm_filename = get_file_name_with_ext(dcm.filename)
-            logger.warning(f"Couldn't find key: '{dcm_tag}' in file's metadata: '{dcm_filename}'")
+            logger.warning(f"Couldn't find key '{dcm_tag}' in file's metadata: '{dcm_filename}'")
             continue
 
     if len(empty_tags) > 0:

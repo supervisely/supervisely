@@ -2851,7 +2851,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     for tag in group_tags:
                         tag_meta = project_meta.get_tag_meta(tag["name"])
                         if tag_meta is None:
-                            tag_meta = TagMeta(tag, TagValueType.ANY_STRING)
+                            tag_meta = TagMeta(tag["name"], TagValueType.ANY_STRING)
                             project_meta = project_meta.add_tag_meta(tag_meta)
                         tag = Tag(meta=tag_meta, value=tag["value"])
                         tags.append(tag)
