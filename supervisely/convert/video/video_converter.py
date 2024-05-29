@@ -31,7 +31,7 @@ from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
 class VideoConverter(BaseConverter):
-    allowed_exts = ALLOWED_VIDEO_EXTENSIONS
+    allowed_exts = ALLOWED_VIDEO_EXTENSIONS + [".mpg"]
     base_video_extension = ".mp4"
     modality = "videos"
 
