@@ -20,6 +20,10 @@ def get_static_paths_by_mounted_object(mount) -> list:
     StaticPath = namedtuple("StaticPath", ["local_path", "url_path"])
     static_paths = []
 
+    sly.logger.warn(f"Static exists: {os.path.exists("static")}")
+    if os.path.exists("static"):
+        static_paths.append(StaticPath(local_path=pathlib.Path("static"), url_path="./static"))
+
     if hasattr(mount, "routes"):
         for current_route in mount.routes:
             if type(current_route) == Mount and type(current_route.app) == FastAPI:
