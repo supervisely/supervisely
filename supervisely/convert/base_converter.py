@@ -274,7 +274,7 @@ class BaseConverter:
                 f"Dataset ID:{dataset_id} not found. "
                 "Please check if the dataset exists and try again."
             )
-        meta1_json = api.project.get_meta(dataset.project_id)
+        meta1_json = api.project.get_meta(dataset.project_id, with_settings=True)
         meta1 = ProjectMeta.from_json(meta1_json)
         meta2 = self._meta
 

@@ -82,7 +82,7 @@ class MultiSpectralImageConverter(ImageConverter):
         project_id = dataset.project_id
         api.project.set_multispectral_settings(project_id)
 
-        meta_json = api.project.get_meta(project_id)
+        meta_json = api.project.get_meta(project_id, with_settings=True)
         meta = ProjectMeta.from_json(meta_json)
 
         items_count = sum(len(group.split) + len(group.upload) for group in self._group_map.values())

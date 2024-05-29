@@ -1499,7 +1499,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param sync: if True images will have synchronized view and labeling
         :type sync: bool
         """
-        meta = ProjectMeta.from_json(self.get_meta(id))
+        meta = ProjectMeta.from_json(self.get_meta(id, with_settings=True))
         existing_tag_meta = meta.get_tag_meta(tag_name)
         if existing_tag_meta is not None:
             if existing_tag_meta.value_type != TagValueType.ANY_STRING:
