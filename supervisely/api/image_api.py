@@ -64,6 +64,8 @@ from supervisely.project.project_type import (
 )
 from supervisely.sly_logger import logger
 
+SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
+
 
 class ImageInfo(NamedTuple):
     """
@@ -1469,43 +1471,49 @@ class ImageApi(RemoveableBulkModuleApi):
         )[0]
 
     def _resolve_upload_conflicts(
-        self, dataset_id, ids, conflict_resolution: Literal["replace", "skip", "rename"], names=None
-    ):
-        if names is None:
-            names = [img.name for img in self._api.image.get_info_by_id_batch(ids)]
-        else:
-            if len(ids) != len(names):
-                raise ValueError("Number of ids does not match number of names")
+        self,
+        dataset_id: int,
+        names: List[str],
+        img_datas: List[Any],  # norm imya
+        conflict_resolution: Literal["replace", "skip", "rename"],
+    ) -> Tuple[List[Any], List[str], Dict[int, ImageInfo]]:
+        """ """
+        if len(img_datas) != len(names):
+            raise ValueError("Number of img_datas does not match number of names")
         ds_info = self._api.dataset.get_info_by_id(dataset_id)
+        skipped_img_infos = {}
         if ds_info is None:
-            raise ValueError(f"Dataset with id: '{dataset_id}' not found")
-        ds_images = self._api.image.get_list(dataset_id)  # @TODO: add filters
-        existing_img_names = [img.name for img in ds_images]
+            return img_datas, names, skipped_img_infos
+        img_infos = self._api.image.get_list(dataset_id)
+        existing_img_names = [img.name for img in img_infos]
 
-        new_ids = []
-        new_names = []
+        resolved_data = []
+        resolved_names = []
         ids_to_remove = []
-        for id, name in zip(ids, names):
+        for id, name in zip(img_datas, names):
             if name in existing_img_names:
+                idx = existing_img_names.index(name)
                 if conflict_resolution == "skip":
-                    continue
+                    skipped_img_infos[idx] = img_infos[idx]
                 elif conflict_resolution == "rename":
-                    new_names.append(generate_free_name(existing_img_names, name, True))
-                    new_ids.append(id)
+                    resolved_names.append(
+                        generate_free_name(existing_img_names, name, with_ext=True)
+                    )
+                    resolved_data.append(id)
                 elif conflict_resolution == "replace":
-                    for idx, existing_name in enumerate(existing_img_names):
-                        if name == existing_name:
-                            img_info = ds_images[idx]
-                            ids_to_remove.append(img_info.id)
-                            new_ids.append(id)
-                            new_names.append(name)
-                            break
+                    ids_to_remove.append(img_infos[idx].id)
+                    resolved_data.append(id)
+                    resolved_names.append(name)
 
-        if len(ids_to_remove) > 0:
+        if ids_to_remove:
             self._api.image.remove_batch(ids_to_remove)
             logger.info(f"Removed ids after conflict resolution: {ids_to_remove}")
+        if skipped_img_infos:
+            logger.info(
+                f"Elements with following indices: {list(skipped_img_infos.keys())} were skipped, Image names: {list(skipped_img_infos.values())}"
+            )
 
-        return new_ids, new_names
+        return resolved_data, resolved_names, skipped_img_infos
 
     def upload_ids(
         self,
@@ -1584,8 +1592,13 @@ class ImageApi(RemoveableBulkModuleApi):
             )
 
         if conflict_resolution is not None:
-            ids, names = self._resolve_upload_conflicts(
-                dataset_id=dataset_id, ids=ids, names=names, conflict_resolution=conflict_resolution
+            conflict_resolution = conflict_resolution.lower()
+            if conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS:
+                raise ValueError(
+                    f"Unknown value: {conflict_resolution}, expected one of: {SUPPORTED_CONFLICT_RESOLUTIONS}"
+                )
+            ids, names, skipped_img_infos = self._resolve_upload_conflicts(
+                dataset_id, names, ids, conflict_resolution=conflict_resolution
             )
 
         # prev implementation
@@ -1633,7 +1646,9 @@ class ImageApi(RemoveableBulkModuleApi):
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
-
+        if conflict_resolution:
+            for idx, image_info in skipped_img_infos.items():
+                result.insert(idx, image_info)
         return result
 
     def _upload_bulk_add(

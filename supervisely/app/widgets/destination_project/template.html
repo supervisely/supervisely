@@ -82,11 +82,25 @@
   <sly-field 
     title="Conflict resolution"
     v-if="state.{{{widget.widget_id}}}.dataset_id"
+    description="123123"
   >
     <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
       <el-option label="Rename" value="rename"></el-option>
       <el-option label="Skip" value="skip"></el-option>
       <el-option label="Replace" value="replace"></el-option>
     </el-select>
+    <!-- <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'rename'"> -->
+    <i
+      :class="zmdi zmdi-info"
+      style="margin-right: 5px"
+      :style="{color: #3B96FF}"
+    ></i>
+    <span>Thetherherhehreh</span>
+    <!-- <span :style="{color: data.{{{widget.widget_id}}}.text_color}">
+      <span v-html="data.{{{widget.widget_id}}}.text" v-bind:style="{ fontSize: data.{{{widget.widget_id}}}.font_size }"></span>
+    </span> -->
+    </div>
   </sly-field>
-</div>
+</div> 
+
+todo info, comments, auto rename

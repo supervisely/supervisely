@@ -99,7 +99,7 @@ class DestinationProject(Widget):
             "dataset_id": self._dataset_id,
             "dataset_name": self._dataset_name,
             "use_project_datasets_structure": self._use_project_datasets_structure,
-            "conflict_resolution": self.conflict_resolution
+            "conflict_resolution": self.conflict_resolution,
         }
 
     def get_selected_project_id(self) -> int:
@@ -147,11 +147,11 @@ class DestinationProject(Widget):
         :rtype: bool
         """
         return StateJson()[self.widget_id]["use_project_datasets_structure"]
-    
-    # def get_conflict_resolution(self):
-    #     """Returns selected conflict resolution method.
 
-    #     :return: selected conflict resolution method.
-    #     :rtype: str
-    #     """
-    #     return StateJson()[self.widget_id]['conflict_resolution']
+    def get_conflict_resolution(self):
+        """Returns selected conflict resolution method.
+
+        :return: selected conflict resolution method.
+        :rtype: str
+        """
+        return StateJson()[self.widget_id]["conflict_resolution"]
