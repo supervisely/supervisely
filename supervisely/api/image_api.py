@@ -1533,7 +1533,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 ids, force_metadata_for_links=force_metadata_for_links
             )
 
-        def _resolve_upload_conflicts(ds_id, ids, names, infos, conflict_resolution: Literal['replace', 'skip', 'rename']):
+        def _resolve_upload_conflicts(ds_id, ids, names, conflict_resolution: Literal['replace', 'skip', 'rename']):
             ds_info = self._api.dataset.get_info_by_id(ds_id)
             if ds_info is None:
                 raise ValueError(f"Dataset with id: '{ds_id}' not found")
@@ -1559,13 +1559,13 @@ class ImageApi(RemoveableBulkModuleApi):
                                 new_ids.append(id)
                                 new_names.append(name)
                                 break
-            if len(ids_to_remove) > 0:
-                self._api.image.remove_batch(ids_to_remove)
+
                         
-            return new_ids, new_names
+            return new_ids, new_names, ids_to_remove
         
         if conflict_resolution is not None:
-            ids, names, links, hashes = _resolve_upload_conflicts(dataset_id, ids, names, conflict_resolution)
+            ids, names, ids_to_remove = _resolve_upload_conflicts(dataset_id, ids, names, conflict_resolution)
+
 
         # prev implementation
         # hashes = [info.hash for info in infos]
@@ -1612,6 +1612,10 @@ class ImageApi(RemoveableBulkModuleApi):
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
+        if conflict_resolution is not None:
+            if len(ids_to_remove) > 0:
+                self._api.image.remove_batch(ids_to_remove)
+                logger.info(f"Removed ids after conflict resolution: {ids_to_remove}")
 
         return result
 
