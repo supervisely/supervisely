@@ -1533,12 +1533,39 @@ class ImageApi(RemoveableBulkModuleApi):
                 ids, force_metadata_for_links=force_metadata_for_links
             )
 
-        def _resolve_upload_conflicts(, conflict_resolution: Literal['replace', 'skip', 'rename']):
-            
-            return 
+        def _resolve_upload_conflicts(ds_id, ids, names, infos, conflict_resolution: Literal['replace', 'skip', 'rename']):
+            ds_info = self._api.dataset.get_info_by_id(ds_id)
+            if ds_info is None:
+                raise ValueError(f"Dataset with id: '{ds_id}' not found")
+            ds_images = self._api.image.get_list(ds_id) # @TODO: add filters
+            existing_img_names =  [img.name for img in ds_images]
+            if len(ids) != len(names):
+                raise ValueError('Number of ids does not match number of names')
+            new_ids = []
+            new_names = []
+            ids_to_remove = []
+            for id, name  in zip(ids, names):
+                if name in existing_img_names:
+                    if conflict_resolution == 'skip':
+                        continue
+                    elif conflict_resolution == 'rename':
+                        new_names.append(generate_free_name(existing_img_names, name, True))
+                        new_ids.append(id)
+                    elif conflict_resolution == 'replace':
+                        for idx, existing_name in enumerate(existing_img_names):
+                            if name == existing_name:
+                                img_info = ds_images[idx]
+                                ids_to_remove.append(img_info.id)
+                                new_ids.append(id)
+                                new_names.append(name)
+                                break
+            if len(ids_to_remove) > 0:
+                self._api.image.remove_batch(ids_to_remove)
+                        
+            return new_ids, new_names
         
         if conflict_resolution is not None:
-            _resolve_upload_conflicts(, conflict_resolution)
+            ids, names, links, hashes = _resolve_upload_conflicts(dataset_id, ids, names, conflict_resolution)
 
         # prev implementation
         # hashes = [info.hash for info in infos]
