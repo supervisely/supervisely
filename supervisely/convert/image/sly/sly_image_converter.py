@@ -195,6 +195,7 @@ class SLYImageConverter(ImageConverter):
                     if file_exists(meta_path):
                         item.set_meta_data(meta_path)
                     self._items.append(item)
+
             if self.items_count > 0:
                 self._meta = meta
                 return True
