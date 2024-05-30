@@ -1,12 +1,11 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 # pylint: disable=import-error
 import clip
 import cv2
 import numpy as np
 
-from supervisely import Annotation, Label
-from supervisely.nn.tracker.ann_keeper import AnnotationKeeper
+from supervisely import Annotation, Label, VideoAnnotation
 from supervisely.nn.tracker.tracker import BaseDetection, BaseTrack, BaseTracker
 from supervisely.sly_logger import logger
 
@@ -107,25 +106,74 @@ class DeepSortTracker(BaseTracker):
 
     def track(
         self,
-        images: Union[List[np.ndarray], List[str]],
+        source: Union[List[np.ndarray], List[str], str],
         frame_to_annotation: Dict[int, Annotation],
-        annotation_keeper: AnnotationKeeper = None,
+        frame_shape: Tuple[int, int],
         pbar_cb=None,
-    ) -> Dict[int, Dict]:
-        if len(images) != len(frame_to_annotation):
-            raise ValueError("Number of images and annotations should be the same")
+    ) -> VideoAnnotation:
+        """
+        Track objects in the video using DeepSort algorithm.
+
+        :param source: List of images, paths to images or path to the video file.
+        :type source: List[np.ndarray] | List[str] | str
+        :param frame_to_annotation: Dictionary with frame index as key and Annotation as value.
+        :type frame_to_annotation: Dict[int, Annotation]
+        :param frame_shape: Size of the frame (height, width).
+        :type frame_shape: Tuple[int, int]
+        :param pbar_cb: Callback to update progress bar.
+        :type pbar_cb: Callable, optional
+
+        :return: Video annotation with tracked objects.
+        :rtype: VideoAnnotation
+
+        :raises ValueError: If number of images and annotations are not the same.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.nn.tracker import DeepSortTracker
+
+            api = sly.Api()
+
+            project_id = 12345
+            video_id = 12345678
+            video_path = "video.mp4"
+
+            # Download video and get video info
+            video_info = api.video.get_info_by_id(video_id)
+            frame_shape = (video_info.frame_height, video_info.frame_width)
+            api.video.download_path(id=video_id, path=video_path)
+
+            # Run inference app to get detections
+            task_id = 12345 # detection app task id
+            session = sly.nn.inference.Session(api, task_id)
+            annotations = session.inference_video_id(video_id, 0, video_info.frames_count)
+            frame_to_annotation = {i: ann for i, ann in enumerate(annotations)}
+
+            # Run tracker
+            tracker = DeepSortTracker()
+            video_ann = tracker.track(video_path, frame_to_annotation, frame_shape)
+
+            # Upload result
+            model_meta = session.get_model_meta()
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            project_meta = project_meta.merge(model_meta)
+            api.project.update_meta(project_id, project_meta)
+            api.video.annotation.append(video_id, video_ann)
+        """
+        if not isinstance(source, str):
+            if len(source) != len(frame_to_annotation):
+                raise ValueError("Number of images and annotations should be the same")
 
         import torch
 
         tracks_data = {}
         logger.info("Starting deep_sort tracking with CLIP...")
-        # frame_index = 0
-        for image_index, frame_index in enumerate(frame_to_annotation.keys()):
-            detections = []
-            img = images[image_index]
-            if isinstance(img, str):
-                img = cv2.imread(img)
 
+        for frame_index, img in enumerate(self.frames_generator(source)):
+            detections = []
             try:
                 pred, sly_labels = self.convert_annotation(frame_to_annotation[frame_index])
                 det = torch.tensor(pred)
@@ -167,7 +215,6 @@ class DeepSortTracker(BaseTracker):
                     if track.is_confirmed() or track.time_since_update <= 1
                 ],
                 frame_index=frame_index,
-                img_size=img.shape[:2],
             )
 
             if pbar_cb is not None:
@@ -175,6 +222,8 @@ class DeepSortTracker(BaseTracker):
 
         tracks_data = self.clear_empty_ids(tracker_annotations=tracks_data)
 
-        if annotation_keeper is not None:
-            annotation_keeper.add_figures_by_frames(tracks_data)
-        return tracks_data
+        return self.get_annotation(
+            tracks_data=tracks_data,
+            frame_shape=frame_shape,
+            frames_count=len(frame_to_annotation),
+        )

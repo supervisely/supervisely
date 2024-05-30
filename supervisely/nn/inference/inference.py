@@ -662,10 +662,15 @@ class Inference:
             fill_rectangles=False,
         )
 
-    def _create_tracker(self):
-        from supervisely.nn.tracker.bot_sort import BoTTracker
+    def _create_tracker(self, tracker_name=None):
+        if tracker_name == "deep_sort":
+            from supervisely.nn.tracker.deep_sort.sly_tracker import DeepSortTracker
 
-        self._tracker = BoTTracker()
+            self._tracker = DeepSortTracker()
+        elif tracker_name == "bot" or tracker_name is None:
+            from supervisely.nn.tracker.bot_sort import BoTTracker
+
+            self._tracker = BoTTracker()
         return self._tracker
 
     def _inference_image(self, state: dict, file: UploadFile):
@@ -910,6 +915,7 @@ class Inference:
 
     def _track_by_detection(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
+        from supervisely.nn.tracker.ann_keeper import get_annotation_keeper
 
         logger.debug("Track by detection...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
@@ -922,8 +928,8 @@ class Inference:
             ),
         )
 
-        if self.tracker is None:
-            self.tracker = self._create_tracker()
+        if self._tracker is None:
+            self._tracker = self._create_tracker()
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
@@ -964,6 +970,7 @@ class Inference:
 
         results = []
         batch_size = 16
+        annotation_keeper = None
         for batch in batched(range(video_info.frames_count), batch_size):
             if (
                 async_inference_request_uuid is not None
@@ -986,8 +993,18 @@ class Inference:
                 # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
             )
 
-            for ann in anns:
-                self.tracker.update(geometries=[label.geometry for label in ann.labels])
+            frame_to_annotaion = {frame_index: ann for frame_index, ann in zip(batch, anns)}
+            tracks_data = self._tracker.track(
+                frames,
+                frame_to_annotation=frame_to_annotaion,
+            )
+            if annotation_keeper is None:
+                annotation_keeper = get_annotation_keeper(
+                    tracks_data,
+                    (video_info.frame_width, video_info.frame_height),
+                    video_info.frames_count,
+                )
+            annotation_keeper.add_figures_by_frames(tracks_data)
 
             batch_results = []
             for i, ann in enumerate(anns):

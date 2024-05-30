@@ -1,17 +1,18 @@
-from pathlib import Path
-from typing import Dict, List, Union
+from __future__ import annotations
 
-import cv2
+from pathlib import Path
+from typing import Dict, List, Tuple, Union
+
 import numpy as np
 import requests
 
 from supervisely import Annotation, Label
-from supervisely.nn.tracker.ann_keeper import AnnotationKeeper
-from supervisely.nn.tracker.tracker import BaseDetection, BaseTrack, BaseTracker
+from supervisely.nn.tracker.tracker import BaseDetection as Detection
+from supervisely.nn.tracker.tracker import BaseTrack, BaseTracker
 from supervisely.sly_logger import logger
 
-from .tracker import matching
-from .tracker.mc_bot_sort import (
+from . import matching
+from .bot_sort import (
     BoTSORT,
     STrack,
     TrackState,
@@ -21,58 +22,94 @@ from .tracker.mc_bot_sort import (
 )
 
 
-class Detection(BaseDetection):
-    def __init__(self, sly_label: Label, tlwh, confidence, feature=None):
-        self.tlwh = tlwh
-        self.tlbr = tlwh[0], tlwh[1], tlwh[0] + tlwh[2], tlwh[1] + tlwh[3]
-        self.confidence = confidence
-        self.feature = feature
-        self.sly_label = sly_label
-
-    def get_sly_label(self):
-        return self.sly_label
-
-
 class Track(BaseTrack, STrack):
-    def __init__(self, sly_label: Label, tlwh, confidence, feature=None):
+    def __init__(self, tlwh, confidence: float, feature=None, sly_label: Label = None):
+        self.track_id = None
         STrack.__init__(self, tlwh, confidence, sly_label.obj_class.name, feature)
         self.sly_label = sly_label
 
     def get_sly_label(self):
         return self.sly_label
 
-    def clean_sly_label(self):
-        self.sly_label = None
+    def update(self, new: Track, frame_id):
+        STrack.update(self, new, frame_id)
+        self.sly_label = new.get_sly_label()
 
-    def update(self, detection, frame_id):
-        super().update(detection, frame_id)
-        self.sly_label = detection.get_sly_label()
+    def re_activate(self, new: Track, frame_id, new_id=False):
+        STrack.re_activate(self, new, frame_id, new_id)
+        self.sly_label = new.get_sly_label()
 
 
 class _BoTSORT(BoTSORT):
     def __init__(self, args):
         super().__init__(args)
+
+        # for type hinting
         self.tracked_stracks = []  # type: list[Track]
         self.lost_stracks = []  # type: list[Track]
         self.removed_stracks = []  # type: list[Track]
 
-    def update(self, detections_: List[Detection], img) -> List[Track]:
-        output_results = np.array(
-            [
-                [det.tlbr[0], det.tlbr[1], det.tlbr[2], det.tlbr[3], det.confidence]
-                for det in detections_
-            ]
-        )
+        # for pylint
+        self.frame_id = 0
 
+    def _init_track(
+        self, dets: np.ndarray, scores: np.ndarray, labels: List[Label], features: np.ndarray
+    ):
+        if len(dets) == 0:
+            return []
+        if self.args.with_reid:
+            return [
+                Track(Track.tlbr_to_tlwh(tlbr), s, f, l)
+                for (tlbr, s, l, f) in zip(dets, scores, labels, features)
+            ]
+        return [
+            Track(Track.tlbr_to_tlwh(tlbr), s, None, l)
+            for (tlbr, s, l) in zip(dets, scores, labels)
+        ]
+
+    def get_dists(self, tracks: List[Track], detections: List[Track]):
+        # Associate with high score detection boxes
+        ious_dists = matching.iou_distance(tracks, detections)
+
+        # if not self.args.mot20:
+        ious_dists = matching.fuse_score(ious_dists, detections)
+
+        # Remove detections with different shapes
+        for track_i, track in enumerate(tracks):
+            for det_i, det in enumerate(detections):
+                if track.get_sly_label().geometry.name() != det.get_sly_label().geometry.name():
+                    ious_dists[track_i, det_i] = 1.0
+
+        if not self.args.with_reid:
+            return ious_dists
+
+        ious_dists_mask = ious_dists > self.args.proximity_thresh
+        emb_dists = matching.embedding_distance(tracks, detections) / 2.0
+        # raw_emb_dists = emb_dists.copy()
+        emb_dists[emb_dists > self.args.appearance_thresh] = 1.0
+        emb_dists[ious_dists_mask] = 1.0
+        dists = np.minimum(ious_dists, emb_dists)
+
+        # Popular ReID method (JDE / FairMOT)
+        # raw_emb_dists = matching.embedding_distance(strack_pool, detections)
+        # dists = matching.fuse_motion(self.kalman_filter, raw_emb_dists, strack_pool, detections)
+        # emb_dists = dists
+
+        # IoU making ReID
+        # dists = matching.embedding_distance(strack_pool, detections)
+        # dists[ious_dists_mask] = 1.0
+        return dists
+
+    def update(self, detections_: List[Detection], img) -> List[Track]:
         self.frame_id += 1
         activated_starcks = []
         refind_stracks = []
         lost_stracks = []
         removed_stracks = []
 
-        if len(output_results):
-            bboxes = output_results[:, :4]
-            scores = output_results[:, 4]
+        if len(detections_):
+            scores = np.array([det.confidence for det in detections_])
+            bboxes = np.array([det.tlbr()[:4] for det in detections_])
             labels = np.array([det.sly_label for det in detections_])
             features = np.array([det.feature for det in detections_])
 
@@ -96,25 +133,14 @@ class _BoTSORT(BoTSORT):
             dets = []
             scores_keep = []
             labels_keep = []
+            features_keep = []
 
         """Extract embeddings """
         if self.args.with_reid:
             features_keep = self.encoder.inference(img, dets)
 
-        if len(dets) > 0:
-            """Detections"""
-            if self.args.with_reid:
-                detections = [
-                    Track(l, STrack.tlbr_to_tlwh(tlbr), s, f)
-                    for (tlbr, s, l, f) in zip(dets, scores_keep, labels_keep, features_keep)
-                ]
-            else:
-                detections = [
-                    Track(l, STrack.tlbr_to_tlwh(tlbr), s)
-                    for (tlbr, s, l) in zip(dets, scores_keep, labels_keep)
-                ]
-        else:
-            detections = []
+        """Detections"""
+        detections = self._init_track(dets, scores_keep, labels_keep, features_keep)
 
         """ Add newly detected tracklets to tracked_stracks"""
         unconfirmed = []
@@ -126,7 +152,7 @@ class _BoTSORT(BoTSORT):
                 tracked_stracks.append(track)
 
         """ Step 2: First association, with high score detection boxes"""
-        strack_pool = joint_stracks(tracked_stracks, self.lost_stracks)
+        strack_pool: List[Track] = joint_stracks(tracked_stracks, self.lost_stracks)
 
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
@@ -136,38 +162,15 @@ class _BoTSORT(BoTSORT):
         STrack.multi_gmc(strack_pool, warp)
         STrack.multi_gmc(unconfirmed, warp)
 
-        # Associate with high score detection boxes
-        ious_dists = matching.iou_distance(strack_pool, detections)
-        ious_dists_mask = ious_dists > self.proximity_thresh
-
-        # if not self.args.mot20:
-        ious_dists = matching.fuse_score(ious_dists, detections)
-
-        if self.args.with_reid:
-            emb_dists = matching.embedding_distance(strack_pool, detections) / 2.0
-            raw_emb_dists = emb_dists.copy()
-            emb_dists[emb_dists > self.appearance_thresh] = 1.0
-            emb_dists[ious_dists_mask] = 1.0
-            dists = np.minimum(ious_dists, emb_dists)
-
-            # Popular ReID method (JDE / FairMOT)
-            # raw_emb_dists = matching.embedding_distance(strack_pool, detections)
-            # dists = matching.fuse_motion(self.kalman_filter, raw_emb_dists, strack_pool, detections)
-            # emb_dists = dists
-
-            # IoU making ReID
-            # dists = matching.embedding_distance(strack_pool, detections)
-            # dists[ious_dists_mask] = 1.0
-        else:
-            dists = ious_dists
+        dists = self.get_dists(strack_pool, detections)
 
         matches, u_track, u_detection = matching.linear_assignment(
             dists, thresh=self.args.match_thresh
         )
 
         for itracked, idet in matches:
-            track = strack_pool[itracked]
-            det = detections[idet]
+            track: Track = strack_pool[itracked]
+            det: Track = detections[idet]
             if track.state == TrackState.Tracked:
                 track.update(detections[idet], self.frame_id)
                 activated_starcks.append(track)
@@ -177,26 +180,21 @@ class _BoTSORT(BoTSORT):
 
         """ Step 3: Second association, with low score detection boxes"""
         if len(scores):
-            inds_high = scores < self.args.track_high_thresh
-            inds_low = scores > self.args.track_low_thresh
-            inds_second = np.logical_and(inds_low, inds_high)
+            inds_second = scores < self.args.track_high_thresh
             dets_second = bboxes[inds_second]
             scores_second = scores[inds_second]
             labels_second = labels[inds_second]
+            features_second = features[inds_second]
         else:
             dets_second = []
             scores_second = []
             labels_second = []
+            features_second = []
 
         # association the untrack to the low score detections
-        if len(dets_second) > 0:
-            """Detections"""
-            detections_second = [
-                Track(l, STrack.tlbr_to_tlwh(tlbr), s)
-                for (tlbr, s, l) in zip(dets_second, scores_second, labels_second)
-            ]
-        else:
-            detections_second = []
+        detections_second = self._init_track(
+            dets_second, scores_second, labels_second, features_second
+        )
 
         r_tracked_stracks = [
             strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked
@@ -221,9 +219,7 @@ class _BoTSORT(BoTSORT):
 
         """Deal with unconfirmed tracks, usually tracks with only one beginning frame"""
         detections = [detections[i] for i in u_detection]
-        dists = matching.iou_distance(unconfirmed, detections)
-        # if not self.args.mot20:
-        dists = matching.fuse_score(dists, detections)
+        dists = self.get_dists(unconfirmed, detections)
         matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.7)
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame_id)
@@ -297,6 +293,7 @@ class BoTTracker(BaseTracker):
             "fuse_score": False,
             # CMC
             "cmc_method": "sparseOptFlow",
+            "gmc_config": None,
             # ReID
             "with_reid": False,
             "fast_reid_config": r"supervisely/nn/tracker/bot_sort/fast_reid/configs/MOT17/sbs_S50.yml",
@@ -308,25 +305,76 @@ class BoTTracker(BaseTracker):
 
     def track(
         self,
-        images: Union[List[np.ndarray], List[str]],
+        source: Union[List[np.ndarray], List[str], str],
         frame_to_annotation: Dict[int, Annotation],
-        annotation_keeper: AnnotationKeeper = None,
+        frame_shape: Tuple[int, int],
         pbar_cb=None,
-    ) -> Dict[int, Dict]:
-        if len(images) != len(frame_to_annotation):
-            raise ValueError("Number of images and annotations should be the same")
+    ) -> Annotation:
+        """
+        Track objects in the video using BoTSort algorithm.
+
+        :param source: List of images, paths to images or path to the video file.
+        :type source: List[np.ndarray] | List[str] | str
+        :param frame_to_annotation: Dictionary with frame index as key and Annotation as value.
+        :type frame_to_annotation: Dict[int, Annotation]
+        :param frame_shape: Size of the frame (height, width).
+        :type frame_shape: Tuple[int, int]
+        :param pbar_cb: Callback to update progress bar.
+        :type pbar_cb: Callable, optional
+
+        :return: Video annotation with tracked objects.
+        :rtype: VideoAnnotation
+
+        :raises ValueError: If number of images and annotations are not the same.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.nn.tracker import BoTTracker
+
+            api = sly.Api()
+
+            project_id = 12345
+            video_id = 12345678
+            video_path = "video.mp4"
+
+            # Download video and get video info
+            video_info = api.video.get_info_by_id(video_id)
+            frame_shape = (video_info.frame_height, video_info.frame_width)
+            api.video.download_path(id=video_id, path=video_path)
+
+            # Run inference app to get detections
+            task_id = 12345 # detection app task id
+            session = sly.nn.inference.Session(api, task_id)
+            annotations = session.inference_video_id(video_id, 0, video_info.frames_count)
+            frame_to_annotation = {i: ann for i, ann in enumerate(annotations)}
+
+            # Run tracker
+            tracker = BoTTracker()
+            video_ann = tracker.track(video_path, frame_to_annotation, frame_shape)
+
+            # Upload result
+            model_meta = session.get_model_meta()
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            project_meta = project_meta.merge(model_meta)
+            api.project.update_meta(project_id, project_meta)
+            api.video.annotation.append(video_id, video_ann)
+
+        """
+        if not isinstance(source, str):
+            if len(source) != len(frame_to_annotation):
+                raise ValueError("Number of images and annotations should be the same")
 
         tracks_data = {}
         logger.info("Starting BoTSort tracking...")
-        for image_index, frame_index in enumerate(frame_to_annotation.keys()):
+        for frame_index, img in enumerate(self.frames_generator(source)):
             detections = []
-            img = images[image_index]
-            if isinstance(img, str):
-                img = cv2.imread(img)
 
             pred, sly_labels = self.convert_annotation(frame_to_annotation[frame_index])
 
-            detections = [Detection(label, p[:4], p[4]) for p, label in zip(pred, sly_labels)]
+            detections = [Detection(p[:4], p[4], None, label) for p, label in zip(pred, sly_labels)]
 
             self.tracker.update(detections, img)
 
@@ -334,24 +382,13 @@ class BoTTracker(BaseTracker):
                 tracks_data=tracks_data,
                 tracks=self.tracker.tracked_stracks,
                 frame_index=frame_index,
-                img_size=img.shape[:2],
             )
 
             if pbar_cb is not None:
                 pbar_cb()
 
-        logger.debug(
-            "Tracks",
-            extra={
-                "tracks": [
-                    {"track_id": track.track_id, "cls_hist": track.cls_hist}
-                    for track in self.tracker.tracked_stracks
-                ]
-            },
+        return self.get_annotation(
+            tracks_data=tracks_data,
+            frame_shape=frame_shape,
+            frames_count=len(frame_to_annotation),
         )
-
-        tracks_data = self.clear_empty_ids(tracker_annotations=tracks_data)
-
-        if annotation_keeper is not None:
-            annotation_keeper.add_figures_by_frames(tracks_data)
-        return tracks_data

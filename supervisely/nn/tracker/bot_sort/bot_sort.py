@@ -1,26 +1,29 @@
 from collections import deque
 
-import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from fast_reid.fast_reid_interfece import FastReIDInterface
 
+from supervisely.nn.tracker.utils.gmc import GMC
+from supervisely.nn.tracker.utils.kalman_filter import KalmanFilterXYWH as KalmanFilter
+
 from . import matching
 from .basetrack import BaseTrack, TrackState
-from .gmc import GMC
-from .kalman_filter import KalmanFilter
 
 
 class STrack(BaseTrack):
     shared_kalman = KalmanFilter()
 
-    def __init__(self, tlwh, score, feat=None, feat_history=50):
+    def __init__(self, tlwh, score, cls, feat=None, feat_history=50):
 
         # wait activate
         self._tlwh = np.asarray(tlwh, dtype=float)
         self.kalman_filter = None
         self.mean, self.covariance = None, None
         self.is_activated = False
+
+        self.cls = -1
+        self.cls_hist = []  # (cls id, freq)
+        self.update_cls(cls, score)
 
         self.score = score
         self.tracklet_len = 0
@@ -41,6 +44,25 @@ class STrack(BaseTrack):
             self.smooth_feat = self.alpha * self.smooth_feat + (1 - self.alpha) * feat
         self.features.append(feat)
         self.smooth_feat /= np.linalg.norm(self.smooth_feat)
+
+    def update_cls(self, cls, score):
+        if len(self.cls_hist) > 0:
+            max_freq = 0
+            found = False
+            for c in self.cls_hist:
+                if cls == c[0]:
+                    c[1] += score
+                    found = True
+
+                if c[1] > max_freq:
+                    max_freq = c[1]
+                    self.cls = c[0]
+            if not found:
+                self.cls_hist.append([cls, score])
+                self.cls = cls
+        else:
+            self.cls_hist.append([cls, score])
+            self.cls = cls
 
     def predict(self):
         mean_state = self.mean.copy()
@@ -113,6 +135,8 @@ class STrack(BaseTrack):
             self.track_id = self.next_id()
         self.score = new_track.score
 
+        self.update_cls(new_track.cls, new_track.score)
+
     def update(self, new_track, frame_id):
         """
         Update a matched track
@@ -137,6 +161,7 @@ class STrack(BaseTrack):
         self.is_activated = True
 
         self.score = new_track.score
+        self.update_cls(new_track.cls, new_track.score)
 
     @property
     def tlwh(self):
@@ -233,7 +258,7 @@ class BoTSORT(object):
                 args.fast_reid_config, args.fast_reid_weights, args.device
             )
 
-        self.gmc = GMC(method=args.cmc_method, verbose=[args.name, args.ablation])
+        self.gmc = GMC(method=args.cmc_method, gmc_file=args.gmc_config)
 
     def update(self, output_results, img):
         self.frame_id += 1
@@ -243,27 +268,24 @@ class BoTSORT(object):
         removed_stracks = []
 
         if len(output_results):
-            if output_results.shape[1] == 5:
-                scores = output_results[:, 4]
-                bboxes = output_results[:, :4]
-                classes = output_results[:, -1]
-            else:
-                scores = output_results[:, 4] * output_results[:, 5]
-                bboxes = output_results[:, :4]  # x1y1x2y2
-                classes = output_results[:, -1]
+            bboxes = output_results[:, :4]
+            scores = output_results[:, 4]
+            classes = output_results[:, 5]
+            features = output_results[:, 6:]
 
             # Remove bad detections
             lowest_inds = scores > self.track_low_thresh
             bboxes = bboxes[lowest_inds]
             scores = scores[lowest_inds]
             classes = classes[lowest_inds]
+            features = output_results[lowest_inds]
 
             # Find high threshold detections
             remain_inds = scores > self.args.track_high_thresh
             dets = bboxes[remain_inds]
             scores_keep = scores[remain_inds]
             classes_keep = classes[remain_inds]
-
+            features_keep = features[remain_inds]
         else:
             bboxes = []
             scores = []
@@ -280,12 +302,13 @@ class BoTSORT(object):
             """Detections"""
             if self.args.with_reid:
                 detections = [
-                    STrack(STrack.tlbr_to_tlwh(tlbr), s, f)
-                    for (tlbr, s, f) in zip(dets, scores_keep, features_keep)
+                    STrack(STrack.tlbr_to_tlwh(tlbr), s, c, f)
+                    for (tlbr, s, c, f) in zip(dets, scores_keep, classes_keep, features_keep)
                 ]
             else:
                 detections = [
-                    STrack(STrack.tlbr_to_tlwh(tlbr), s) for (tlbr, s) in zip(dets, scores_keep)
+                    STrack(STrack.tlbr_to_tlwh(tlbr), s, c)
+                    for (tlbr, s, c) in zip(dets, scores_keep, classes_keep)
                 ]
         else:
             detections = []
@@ -366,8 +389,8 @@ class BoTSORT(object):
         if len(dets_second) > 0:
             """Detections"""
             detections_second = [
-                STrack(STrack.tlbr_to_tlwh(tlbr), s)
-                for (tlbr, s) in zip(dets_second, scores_second)
+                STrack(STrack.tlbr_to_tlwh(tlbr), s, c)
+                for (tlbr, s, c) in zip(dets_second, scores_second, classes_second)
             ]
         else:
             detections_second = []
@@ -395,20 +418,9 @@ class BoTSORT(object):
 
         """Deal with unconfirmed tracks, usually tracks with only one beginning frame"""
         detections = [detections[i] for i in u_detection]
-        ious_dists = matching.iou_distance(unconfirmed, detections)
-        ious_dists_mask = ious_dists > self.proximity_thresh
+        dists = matching.iou_distance(unconfirmed, detections)
         if not self.args.mot20:
-            ious_dists = matching.fuse_score(ious_dists, detections)
-
-        if self.args.with_reid:
-            emb_dists = matching.embedding_distance(unconfirmed, detections) / 2.0
-            raw_emb_dists = emb_dists.copy()
-            emb_dists[emb_dists > self.appearance_thresh] = 1.0
-            emb_dists[ious_dists_mask] = 1.0
-            dists = np.minimum(ious_dists, emb_dists)
-        else:
-            dists = ious_dists
-
+            dists = matching.fuse_score(dists, detections)
         matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.7)
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame_id)
