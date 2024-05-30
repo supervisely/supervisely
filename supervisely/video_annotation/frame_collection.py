@@ -2,14 +2,15 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional, Any
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely.video_annotation.video_figure import VideoFigure
 
+from typing import Any, Dict, List, Optional, Tuple
+
+from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.video_annotation.frame import Frame
-from supervisely.api.module_api import ApiField
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 
 class FrameCollection(KeyIndexedCollection):
@@ -150,9 +151,10 @@ class FrameCollection(KeyIndexedCollection):
         #     }
         # ]
     """
+
     item_type = Frame
 
-    def get(self, key: str, default: Optional[Any]=None) -> Frame:
+    def get(self, key: str, default: Optional[Any] = None) -> Frame:
         """
         Get item from collection with given key(name) and set a default if item does not exist.
 
@@ -202,7 +204,7 @@ class FrameCollection(KeyIndexedCollection):
         """
         return super().get(key, default)
 
-    def to_json(self, key_id_map: KeyIdMap=None) -> List[Dict]:
+    def to_json(self, key_id_map: KeyIdMap = None) -> List[Dict]:
         """
         Convert the FrameCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -236,8 +238,13 @@ class FrameCollection(KeyIndexedCollection):
         return [frame.to_json(key_id_map) for frame in self]
 
     @classmethod
-    def from_json(cls, data: List[Dict], objects: VideoObjectCollection, frames_count: Optional[int] = None,
-                  key_id_map: Optional[KeyIdMap] = None) -> FrameCollection:
+    def from_json(
+        cls,
+        data: List[Dict],
+        objects: VideoObjectCollection,
+        frames_count: Optional[int] = None,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> FrameCollection:
         """
         Convert a list of json dicts to FrameCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
@@ -272,7 +279,10 @@ class FrameCollection(KeyIndexedCollection):
             objects = []
             fr_collection = sly.FrameCollection.from_json(fr_collection_json, objects)
         """
-        frames = [cls.item_type.from_json(frame_json, objects, frames_count, key_id_map) for frame_json in data]
+        frames = [
+            cls.item_type.from_json(frame_json, objects, frames_count, key_id_map)
+            for frame_json in data
+        ]
         return cls(frames)
 
     def __str__(self):

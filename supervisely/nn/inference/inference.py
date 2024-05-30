@@ -1,53 +1,59 @@
+import inspect
 import json
 import os
-import sys
-from fastapi.responses import JSONResponse
-import requests
-from requests.structures import CaseInsensitiveDict
-import uuid
-import time
 import re
 import subprocess
-from functools import partial, wraps
+import sys
+import time
+import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Optional, Any, Union
-from fastapi import Form, HTTPException, Response, UploadFile, status
-from supervisely._utils import (
-    is_debug_with_sly_net,
-    rand_str,
-    is_production,
-    add_callback,
-)
-from supervisely.app.exceptions import DialogWindowError
-from supervisely.app.fastapi.subapp import get_name_from_env
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from functools import partial, wraps
+from typing import Any, Callable, Dict, List, Optional, Union
 
+import numpy as np
+import requests
+import yaml
+from fastapi import Form, HTTPException, Request, Response, UploadFile, status
+from fastapi.responses import JSONResponse
+from requests.structures import CaseInsensitiveDict
+
+import supervisely.app.development as sly_app_development
+import supervisely.imaging.image as sly_image
+import supervisely.io.env as env
+import supervisely.io.fs as fs
+import supervisely.nn.inference.gui as GUI
+from supervisely import batched
+from supervisely._utils import (
+    add_callback,
+    is_debug_with_sly_net,
+    is_production,
+    rand_str,
+)
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
-import supervisely.imaging.image as sly_image
-import supervisely.io.fs as fs
-from supervisely.sly_logger import logger
-import supervisely.io.env as env
-import yaml
-
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.fastapi.subapp import Application, call_on_autostart
-from supervisely.app.content import get_data_dir, StateJson
-from fastapi import Request
-
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
-from supervisely.app.widgets import Widget
-from supervisely.nn.prediction_dto import Prediction
-import supervisely.app.development as sly_app_development
-from supervisely.imaging.color import get_predefined_colors
-from supervisely.task.progress import Progress
+from supervisely.app.content import StateJson, get_data_dir
+from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.fastapi.subapp import (
+    Application,
+    call_on_autostart,
+    get_name_from_env,
+)
+from supervisely.app.widgets import Card, Container, Widget
+from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
 )
-import supervisely.nn.inference.gui as GUI
+from supervisely.imaging.color import get_predefined_colors
+from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.prediction_dto import Prediction
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 try:
     from typing import Literal
@@ -65,6 +71,7 @@ class Inference:
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
+        multithread_inference: Optional[bool] = True,
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
@@ -77,7 +84,7 @@ class Inference:
         self._api: Api = None
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
-        self._autostart_delay_time = 5*60  # 5 min
+        self._autostart_delay_time = 5 * 60  # 5 min
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -94,32 +101,61 @@ class Inference:
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
-        if use_gui:
-            self.initialize_gui()
+        self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
+        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
-            def on_serve_callback(gui: GUI.InferenceGUI):
+        if use_gui:
+            initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+            original_initialize_custom_gui_method = getattr(
+                Inference, "initialize_custom_gui", None
+            )
+            if initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
+                self._gui = GUI.ServingGUI()
+                self._user_layout = self.initialize_custom_gui()
+            else:
+                self.initialize_gui()
+
+            def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
-                device = gui.get_device()
-                self.load_on_device(self._model_dir, device)
+
+                if isinstance(self.gui, GUI.ServingGUI):
+                    deploy_params = self.get_params_from_gui()
+                    self.load_model(**deploy_params)
+                    self.update_gui(self._model_served)
+                else:  # GUI.InferenceGUI
+                    device = gui.get_device()
+                    self.load_on_device(self._model_dir, device)
                 gui.show_deployed_model_info(self)
 
-            def on_change_model_callback(gui: GUI.InferenceGUI):
-                self._model_served = False
-                clean_up_cuda()
+            def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+                self.shutdown_model()
+                if isinstance(self.gui, GUI.ServingGUI):
+                    self._api_request_model_layout.unlock()
+                    self._api_request_model_layout.hide()
+                    self.update_gui(self._model_served)
+                    self._user_layout_card.show()
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
 
         self._inference_requests = {}
-        self._executor = ThreadPoolExecutor()
+        max_workers = 1 if not multithread_inference else None
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
         self.get_info = self._check_serve_before_call(self.get_info)
 
+        self.cache = InferenceImageCache(
+            maxsize=env.smart_cache_size(),
+            ttl=env.smart_cache_ttl(),
+            is_persistent=True,
+            base_folder=env.smart_cache_container_dir(),
+        )
+
     def _prepare_device(self, device):
         if device is None:
             try:
-                import torch # pylint: disable=import-error
+                import torch  # pylint: disable=import-error
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
@@ -132,6 +168,25 @@ class Inference:
         if not self._use_gui:
             return None
         return self.gui.get_ui()
+
+    def initialize_custom_gui(self) -> Widget:
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def update_gui(self, is_model_deployed: bool = True) -> None:
+        if isinstance(self.gui, GUI.ServingGUI):
+            if is_model_deployed:
+                self._user_layout_card.lock()
+            else:
+                self._user_layout_card.unlock()
+
+    def set_params_to_gui(self, deploy_params: dict) -> None:
+        if isinstance(self.gui, GUI.ServingGUI):
+            self._user_layout_card.hide()
+            self._api_request_model_info.set_text(json.dumps(deploy_params), "json")
+            self._api_request_model_layout.show()
+
+    def get_params_from_gui(self) -> dict:
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
         models = self.get_models()
@@ -168,7 +223,9 @@ class Inference:
     def get_custom_model_link_type(self) -> Literal["file", "folder"]:
         return "file"
 
-    def get_models(self) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
+    def get_models(
+        self,
+    ) -> Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
         return []
 
     def download(self, src_path: str, dst_path: str = None):
@@ -308,6 +365,17 @@ class Inference:
     ):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def load_model(self, **kwargs):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def load_model_meta(self, model_tab: str, local_weights_path: str):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def shutdown_model(self):
+        self._model_served = False
+        clean_up_cuda()
+        logger.info("Model has been stopped")
+
     def _on_model_deployed(self):
         pass
 
@@ -421,7 +489,10 @@ class Inference:
             labels.append(label)
 
         # create annotation with correct image resolution
-        ann = Annotation.from_img_path(image_path)
+        if isinstance(image_path, str):
+            ann = Annotation.from_img_path(image_path)
+        elif isinstance(image_path, np.ndarray):
+            ann = Annotation(image_path.shape[:2])
         ann = ann.add_labels(labels)
         return ann
 
@@ -440,6 +511,16 @@ class Inference:
         else:
             return yaml.safe_load(self._custom_inference_settings)
 
+    def _handle_error_in_async(self, uuid, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            inf_request = self._inference_requests.get(uuid, None)
+            if inf_request is not None:
+                inf_request["exception"] = str(e)
+            logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+            raise e
+
     @process_image_sliding_window
     @process_image_roi
     def _inference_image_path(
@@ -450,7 +531,8 @@ class Inference:
     ):
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
-            "Inferring image_path:", extra={"inference_mode": inference_mode, "path": image_path}
+            "Inferring image_path:",
+            extra={"inference_mode": inference_mode, "path": image_path},
         )
 
         if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
@@ -465,11 +547,79 @@ class Inference:
         )
         return ann
 
+    def _inference_images_batch(
+        self,
+        source: List,
+        settings: Dict,
+    ) -> List[Annotation]:
+        inference_mode = settings.get("inference_mode", "full_image")
+        logger.debug(
+            "Inferring images batch:",
+            extra={"inference_mode": inference_mode, "items": len(source)},
+        )
+        if len(source) == 0:
+            return []
+
+        def _predict(source: List, predict_func: Callable):
+            temp_dir = None
+            if isinstance(source[0], np.ndarray):
+                temp_dir = os.path.join(get_data_dir(), rand_str(10))
+                fs.mkdir(temp_dir)
+                images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
+                for img_path, img in zip(images_paths, source):
+                    sly_image.write(img_path, img)
+            else:
+                images_paths = source
+            predictions = [
+                predict_func(image_path=img_path, settings=settings) for img_path in images_paths
+            ]
+            if temp_dir is not None:
+                fs.remove_dir(temp_dir)
+            return predictions
+
+        if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
+            if type(self).predict_batch_raw == Inference.predict_batch_raw:
+                predictions = _predict(source, self.predict_raw)
+            else:
+                predictions = self.predict_batch_raw(source=source, settings=settings)
+        else:
+            if type(self).predict_batch == Inference.predict_batch:
+                predictions = _predict(source, self.predict)
+            else:
+                predictions = self.predict_batch(source=source, settings=settings)
+        anns = [
+            self._predictions_to_annotation(image_path, prediction)
+            for image_path, prediction in zip(source, predictions)
+        ]
+
+        logger.debug(
+            f"Inferring image_path done. pred_annotations:",
+            extra={
+                "annotations": [
+                    dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels))
+                    for ann in anns
+                ]
+            },
+        )
+        return anns
+
     # pylint: disable=method-hidden
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
         raise NotImplementedError("Have to be implemented in child class")
 
     def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+        raise NotImplementedError(
+            "Have to be implemented in child class If sliding_window_mode is 'advanced'."
+        )
+
+    def predict_batch(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
+        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
+        If source is a list of numpy arrays, it should be in BGR format"""
+        raise NotImplementedError("Have to be implemented in child class")
+
+    def predict_batch_raw(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
+        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
+        If source is a list of numpy arrays, it should be in BGR format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
@@ -505,7 +655,10 @@ class Inference:
         image = sly_image.read(image_path)
         ann = self._predictions_to_annotation(image_path, predictions)
         ann.draw_pretty(
-            bitmap=image, thickness=thickness, output_path=vis_path, fill_rectangles=False
+            bitmap=image,
+            thickness=thickness,
+            output_path=vis_path,
+            fill_rectangles=False,
         )
 
     def _inference_image(self, state: dict, file: UploadFile):
@@ -527,17 +680,21 @@ class Inference:
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
-        paths = []
-        temp_dir = os.path.join(get_data_dir(), rand_str(10))
-        fs.mkdir(temp_dir)
-        for file in files:
-            image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-            image_np = sly_image.read_bytes(file.file.read())
-            sly_image.write(image_path, image_np)
-            paths.append(image_path)
-        results = self._inference_images_dir(paths, state)
-        fs.remove_dir(temp_dir)
-        return results
+        if type(self).predict_batch == Inference.predict_batch:
+            paths = []
+            temp_dir = os.path.join(get_data_dir(), rand_str(10))
+            fs.mkdir(temp_dir)
+            for file in files:
+                image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
+                image_np = sly_image.read_bytes(file.file.read())
+                sly_image.write(image_path, image_np)
+                paths.append(image_path)
+            results = self._inference_images_dir(paths, state)
+            fs.remove_dir(temp_dir)
+            return results
+        else:
+            images = [sly_image.read_bytes(file.file.read()) for file in files]
+            return self._inference_images_dir(images, state)
 
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
@@ -559,17 +716,35 @@ class Inference:
         logger.debug("Inferring images_dir (or batch)...")
         settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra=settings)
-        n_imgs = len(img_paths)
         results = []
-        for i, image_path in enumerate(img_paths):
-            data_to_return = {}
-            logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
-            ann = self._inference_image_path(
-                image_path=image_path,
+        data_to_return = {}
+        if type(self).predict_batch == Inference.predict_batch:
+            n_imgs = len(img_paths)
+            for i, image_path in enumerate(img_paths):
+                data_to_return = {}
+                logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
+                ann = self._inference_image_path(
+                    image_path=image_path,
+                    settings=settings,
+                    data_to_return=data_to_return,
+                )
+                results.append({"annotation": ann.to_json(), "data": data_to_return})
+        else:
+            anns = self._inference_images_batch(
+                source=img_paths,
                 settings=settings,
-                data_to_return=data_to_return,
+                # data_to_return=data_to_return # removed because sliding window decorator is not implemented
             )
-            results.append({"annotation": ann.to_json(), "data": data_to_return})
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
         return results
 
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
@@ -581,7 +756,8 @@ class Inference:
         api.image.download_path(image_id, image_path)
         logger.debug("Inference settings:", extra=settings)
         logger.debug(
-            "Image info:", extra={"id": image_id, "w": image_info.width, "h": image_info.height}
+            "Image info:",
+            extra={"id": image_id, "w": image_info.width, "h": image_info.height},
         )
         logger.debug(f"Downloaded path: {image_path}")
 
@@ -646,7 +822,7 @@ class Inference:
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
-        preparing_progress={"current": 0, "total": 1}
+        preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -665,25 +841,25 @@ class Inference:
             preparing_progress = inference_request["preparing_progress"]
 
         # progress
-        inf_video_interface = InferenceVideoInterface(
-            api=api,
-            start_frame_index=state.get("startFrameIndex", 0),
-            frames_count=state.get("framesCount", video_info.frames_count - 1),
-            frames_direction=state.get("framesDirection", "forward"),
-            video_info=video_info,
-            imgs_dir=video_images_path,
-            preparing_progress=preparing_progress,
-        )
-        inf_video_interface.download_frames()
+        preparing_progress["status"] = "download_video"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = int(video_info.file_meta["size"])
+
+        def _progress_cb(chunk_size):
+            preparing_progress["current"] += chunk_size
+
+        self.cache.download_video(api, video_info.id, return_images=False, progress_cb=_progress_cb)
+        preparing_progress["status"] = "inference"
 
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
 
-        n_frames = len(inf_video_interface.images_paths)
+        n_frames = video_info.frames_count
         logger.debug(f"Total frames to infer: {n_frames}")
 
         results = []
-        for i, image_path in enumerate(inf_video_interface.images_paths):
+        batch_size = 16
+        for batch in batched(range(video_info.frames_count), batch_size):
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
@@ -694,20 +870,32 @@ class Inference:
                 )
                 results = []
                 break
-            logger.debug(f"Inferring frame {i+1}/{n_frames}:", extra={"image_path": image_path})
-            data_to_return = {}
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
+            logger.debug(
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
-            result = {"annotation": ann.to_json(), "data": data_to_return}
+            frames = self.cache.download_frames(api, video_info.id, batch)
+            data_to_return = {}
+            anns = self._inference_images_batch(
+                source=frames,
+                settings=settings,
+                # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
+            )
+            batch_results = []
+            for i, ann in enumerate(anns):
+                data = {}
+                if "slides" in data_to_return:
+                    data = data_to_return["slides"][i]
+                batch_results.append(
+                    {
+                        "annotation": ann.to_json(),
+                        "data": data,
+                    }
+                )
+            results.extend(batch_results)
             if async_inference_request_uuid is not None:
-                sly_progress.iter_done()
-                inference_request["pending_results"].append(result)
-            results.append(result)
-            logger.debug(f"Frame {i+1} done.")
-
+                sly_progress.iters_done(len(batch))
+                inference_request["pending_results"].extend(batch_results)
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         fs.remove_dir(video_images_path)
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
@@ -721,6 +909,7 @@ class Inference:
             "result": None,
             "pending_results": [],
             "preparing_progress": {"current": 0, "total": 1},
+            "exception": None,
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
@@ -766,7 +955,36 @@ class Inference:
         else:
             self._task_id = env.task_id() if is_production() else None
 
-        self._app = Application(layout=self.get_ui())
+        if isinstance(self.gui, GUI.InferenceGUI):
+            self._app = Application(layout=self.get_ui())
+        elif isinstance(self.gui, GUI.ServingGUI):
+            serving_layout = self.get_ui()
+
+            self._user_layout_card = Card(
+                title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
+                content=self._user_layout,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
+            self._api_request_model_info = Editor(
+                height_lines=12,
+                language_mode="json",
+                readonly=True,
+                restore_default_button=False,
+                auto_format=True,
+            )
+            self._api_request_model_layout = Card(
+                title="Model was deployed from API request with the following settings",
+                content=self._api_request_model_info,
+            )
+            self._api_request_model_layout.hide()
+            layout = Container(
+                [self._user_layout_card, self._api_request_model_layout, serving_layout]
+            )
+            self._app = Application(layout=layout)
+        else:
+            self._app = Application(layout=self.get_ui())
+
         server = self._app.get_server()
 
         @call_on_autostart()
@@ -780,6 +998,7 @@ class Inference:
                     if not self._model_served:
                         logger.debug("Deploying the model via autostart...")
                         self.gui.deploy_with_current_params()
+
                 self._executor.submit(delayed_autostart)
             else:
                 # run autostart immediately
@@ -793,7 +1012,7 @@ class Inference:
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
         def get_session_info(response: Response):
-                return self.get_info()
+            return self.get_info()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
@@ -868,6 +1087,8 @@ class Inference:
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 self._inference_image_id,
                 request.state.api,
                 request.state.state,
@@ -894,6 +1115,8 @@ class Inference:
             ).hex
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 self._inference_video_id,
                 request.state.api,
                 request.state.state,
@@ -967,7 +1190,10 @@ class Inference:
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
             inference_request = self._inference_requests[inference_request_uuid]
             inference_request["cancel_inference"] = True
             return {"message": "Inference will be stopped.", "success": True}
@@ -977,7 +1203,10 @@ class Inference:
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required.", "success": False}
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
             del self._inference_requests[inference_request_uuid]
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
@@ -991,6 +1220,72 @@ class Inference:
 
             inference_request = self._inference_requests[inference_request_uuid].copy()
             return inference_request["preparing_progress"]
+
+        @server.post("/get_deploy_settings")
+        def _get_deploy_settings(response: Response, request: Request):
+            """
+            Get deploy settings for the model. Works only for the Sphinx docstring format.
+            """
+            load_model_method = getattr(self, "load_model")
+            method_signature = inspect.signature(load_model_method)
+            docstring = inspect.getdoc(load_model_method) or ""
+            doc_lines = docstring.split("\n")
+
+            param_docs = {}
+            param_type = {}
+            for line in doc_lines:
+                if line.startswith(":param"):
+                    name = line.split(":")[1].strip().split()[1]
+                    doc = line.replace(f":param {name}:", "").strip()
+                    param_docs[name] = doc
+                if line.startswith(":type"):
+                    name = line.split(":")[1].strip().split()[1]
+                    type = line.replace(f":type {name}:", "").strip()
+                    param_type[name] = type
+
+            args_details = []
+            for name, parameter in method_signature.parameters.items():
+                if name == "self":
+                    continue
+                arg_type = param_type.get(name, None)
+                default = (
+                    parameter.default if parameter.default != inspect.Parameter.empty else None
+                )
+                doc = param_docs.get(name, None)
+                args_details.append(
+                    {"name": name, "type": arg_type, "default": default, "doc": doc}
+                )
+
+            return args_details
+
+        @server.post("/deploy_from_api")
+        def _deploy_from_api(response: Response, request: Request):
+            try:
+                if self._model_served:
+                    self.shutdown_model()
+                state = request.state.state
+                deploy_params = state["deploy_params"]
+                self.load_model(**deploy_params)
+                self.update_gui(self._model_served)
+                self.set_params_to_gui(deploy_params)
+
+                # update to set correct device
+                device = deploy_params.get("device", "cpu")
+                self.gui.set_deployed(device)
+
+                self.gui.show_deployed_model_info(self)
+                self._model_served = True
+                return {"result": "model was successfully deployed"}
+            except Exception as e:
+                self.gui._success_label.hide()
+                raise e
+
+        @server.post("/is_deployed")
+        def _is_deployed(response: Response, request: Request):
+            return {
+                "deployed": self._model_served,
+                "description:": "Model is ready to receive requests",
+            }
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
@@ -1067,22 +1362,32 @@ LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
     arg_key="device",
 )
 
+LOAD_MODEL_DECORATOR = _create_notify_after_complete_decorator(
+    "✅ Model has been successfully deployed on %s device",
+    arg_pos=1,
+    arg_key="device",
+)
+
 
 def get_gpu_count():
     try:
-        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode('utf-8')
-        gpu_count = len(re.findall(r'GPU \d+:', nvidia_smi_output))
+        nvidia_smi_output = subprocess.check_output(["nvidia-smi", "-L"]).decode("utf-8")
+        gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
-    
+
 
 def clean_up_cuda():
     try:
         # torch may not be installed
-        import torch # pylint: disable=import-error
         import gc
+
+        # pylint: disable=import-error
+        # pylint: disable=method-hidden
+        import torch
+
         gc.collect()
         torch.cuda.empty_cache()
     except Exception as exc:

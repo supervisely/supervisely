@@ -13,11 +13,11 @@ import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
-from supervisely._utils import abs_url, batched, is_development
+from supervisely._utils import abs_url, batched, is_development, snake_to_human
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiContext
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
@@ -167,9 +167,18 @@ class Dataset(KeyObject):
         self._item_to_ann = {}  # item file name -> annotation file name
 
         parts = directory.split(os.path.sep)
-        project_dir = parts[0]
-        full_ds_name = os.path.join(*[p for p in parts[1:] if p != self.datasets_dir_name])
-        short_ds_name = os.path.basename(directory)
+        if self.datasets_dir_name not in parts:
+            project_dir, ds_name = os.path.split(directory.rstrip("/"))
+            full_ds_name = short_ds_name = ds_name
+        else:
+            nested_ds_dir_index = parts.index(self.datasets_dir_name)
+            ds_dir_index = nested_ds_dir_index - 1
+
+            project_dir = os.path.join(*parts[:ds_dir_index])
+            full_ds_name = os.path.join(
+                *[p for p in parts[ds_dir_index:] if p != self.datasets_dir_name]
+            )
+            short_ds_name = os.path.basename(directory)
 
         self._project_dir = project_dir
         self._name = full_ds_name
@@ -184,7 +193,8 @@ class Dataset(KeyObject):
 
     @classmethod
     def ignorable_dirs(cls) -> List[str]:
-        return [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+        ignorable_dirs = [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
+        return [p for p in ignorable_dirs if isinstance(p, str)]
 
     @classmethod
     def datasets_dir(cls) -> List[str]:
@@ -1463,6 +1473,13 @@ class Project:
 
         item_type = Dataset
 
+        def __next__(self):
+            for dataset in self.items():
+                yield dataset
+
+        def items(self) -> List[KeyObject]:
+            return sorted(self._collection.values(), key=lambda x: x.parents)
+
     def __init__(
         self,
         directory: str,
@@ -1605,10 +1622,7 @@ class Project:
                 #         ds2
         """
 
-        def parent_length(dataset):
-            return len(dataset.parents)
-
-        return sorted(self._datasets, key=parent_length)
+        return self._datasets
 
     @property
     def meta(self) -> ProjectMeta:
@@ -1712,11 +1726,16 @@ class Project:
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
 
-        possible_datasets = subdirs_tree(self.directory, Dataset.ignorable_dirs())
+        ignore_dirs = self.dataset_class.ignorable_dirs()  # dir names that can not be datasets
+
+        ignore_content_dirs = ignore_dirs.copy()  # dir names which can not contain datasets
+        ignore_content_dirs.pop(ignore_content_dirs.index(self.dataset_class.datasets_dir()))
+
+        possible_datasets = subdirs_tree(self.directory, ignore_dirs, ignore_content_dirs)
 
         for ds_name in possible_datasets:
             parents = ds_name.split(os.path.sep)
-            parents = [p for p in parents if p != Dataset.datasets_dir()]
+            parents = [p for p in parents if p != self.dataset_class.datasets_dir()]
             if len(parents) > 1:
                 parents.pop(-1)
             else:
@@ -1729,7 +1748,7 @@ class Project:
                 )
                 self._datasets = self._datasets.add(current_dataset)
             except Exception as ex:
-                logger.warning(ex, exc_info=True)
+                logger.warning(ex)
 
         if self.total_items == 0:
             raise RuntimeError("Project is empty")
@@ -1737,7 +1756,7 @@ class Project:
     def _read_api(self):
         self._meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
         for parents, dataset_info in self._api.dataset.tree(self.project_id):
-            relative_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            relative_path = self.dataset_class._get_dataset_path(dataset_info.name, parents)
             dataset_path = os.path.join(self.directory, relative_path)
             current_dataset = self.dataset_class(
                 dataset_path, parents=parents, dataset_id=dataset_info.id, api=self._api
@@ -2726,15 +2745,21 @@ def _download_project(
                 total=dataset.images_count,
             )
 
-        for batch in batched(images, batch_size):
-            image_ids = [image_info.id for image_info in batch]
-            image_names = [image_info.name for image_info in batch]
+        with ApiContext(
+            api,
+            project_id=project_id,
+            dataset_id=dataset_id,
+            project_meta=meta,
+        ):
+            for batch in batched(images, batch_size):
+                image_ids = [image_info.id for image_info in batch]
+                image_names = [image_info.name for image_info in batch]
 
-            # download images in numpy format
-            if save_images:
-                batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
-            else:
-                batch_imgs_bytes = [None] * len(image_ids)
+                # download images in numpy format
+                if save_images:
+                    batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
+                else:
+                    batch_imgs_bytes = [None] * len(image_ids)
 
             # download annotations in json format
             if only_image_tags is False:
@@ -2760,15 +2785,15 @@ def _download_project(
                     )
                     ann_jsons.append(tmp_ann.to_json())
 
-            for img_info, name, img_bytes, ann in zip(
-                batch, image_names, batch_imgs_bytes, ann_jsons
-            ):
-                dataset_fs.add_item_raw_bytes(
-                    item_name=name,
-                    item_raw_bytes=img_bytes if save_images is True else None,
-                    ann=ann,
-                    img_info=img_info if save_image_info is True else None,
-                )
+                for img_info, name, img_bytes, ann in zip(
+                    batch, image_names, batch_imgs_bytes, ann_jsons
+                ):
+                    dataset_fs.add_item_raw_bytes(
+                        item_name=name,
+                        item_raw_bytes=img_bytes if save_images is True else None,
+                        ann=ann,
+                        img_info=img_info if save_image_info is True else None,
+                    )
 
             if log_progress or progress_cb is not None:
                 ds_progress(len(batch))
@@ -2781,6 +2806,10 @@ def _download_project(
                     sly.json.dump_json_file(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
+    try:
+        create_readme(dest_dir, project_id, api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
 
 
 def upload_project(
@@ -2799,7 +2828,7 @@ def upload_project(
         project_name = api.project.get_free_name(workspace_id, project_name)
 
     project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+    updated_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
         log_progress = False
@@ -2813,108 +2842,113 @@ def upload_project(
             parent_id = dataset_map.get(parent)
 
         else:
+            parent = ""
             parent_id = None
-
         dataset = api.dataset.create(project.id, ds_fs.short_name, parent_id=parent_id)
-        dataset_map[ds_fs.name] = dataset.id
-
+        dataset_map[os.path.join(parent, dataset.name)] = dataset.id
         ds_fs: Dataset
 
-        names, img_paths, img_infos, ann_paths = [], [], [], []
-        for item_name in ds_fs:
-            img_path, ann_path = ds_fs.get_item_paths(item_name)
-            img_info_path = ds_fs.get_img_info_path(item_name)
+        with ApiContext(
+            api,
+            project_id=project.id,
+            dataset_id=dataset.id,
+            project_meta=updated_meta,
+        ):
+            names, img_paths, img_infos, ann_paths = [], [], [], []
+            for item_name in ds_fs:
+                img_path, ann_path = ds_fs.get_item_paths(item_name)
+                img_info_path = ds_fs.get_img_info_path(item_name)
 
-            names.append(item_name)
-            img_paths.append(img_path)
-            ann_paths.append(ann_path)
+                names.append(item_name)
+                img_paths.append(img_path)
+                ann_paths.append(ann_path)
 
-            if os.path.isfile(img_info_path):
-                img_infos.append(ds_fs.get_image_info(item_name=item_name))
+                if os.path.isfile(img_info_path):
+                    img_infos.append(ds_fs.get_image_info(item_name=item_name))
 
-        img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
-        ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
-        metas = [{} for _ in names]
+            img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
+            ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
+            metas = [{} for _ in names]
 
-        meta_dir = os.path.join(dir, ds_fs.name, "meta")
-        if os.path.isdir(meta_dir):
-            metas = []
-            for name in names:
-                meta_path = os.path.join(meta_dir, name + ".json")
-                if os.path.isfile(meta_path):
-                    metas.append(sly.json.load_json_file(meta_path))
-                else:
-                    metas.append({})
+            meta_dir = os.path.join(dir, ds_fs.name, "meta")
+            if os.path.isdir(meta_dir):
+                metas = []
+                for name in names:
+                    meta_path = os.path.join(meta_dir, name + ".json")
+                    if os.path.isfile(meta_path):
+                        metas.append(sly.json.load_json_file(meta_path))
+                    else:
+                        metas.append({})
 
-        ds_progress = progress_cb
-        if log_progress:
-            ds_progress = tqdm_sly(
-                desc="Uploading images to {!r}".format(dataset.name),
-                total=len(names),
-            )
-
-        if len(img_paths) != 0:
-            uploaded_img_infos = api.image.upload_paths(
-                dataset.id, names, img_paths, ds_progress, metas=metas
-            )
-        elif len(img_paths) == 0 and len(img_infos) != 0:
-            # uploading links and hashes (the code from api.image.upload_ids)
-            img_metas = [{}] * len(names)
-            links, links_names, links_order, links_metas = [], [], [], []
-            hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
-            dataset_id = dataset.id
-            for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
-                if info.link is not None:
-                    links.append(info.link)
-                    links_names.append(name)
-                    links_order.append(idx)
-                    links_metas.append(meta)
-                else:
-                    hashes.append(info.hash)
-                    hashes_names.append(name)
-                    hashes_order.append(idx)
-                    hashes_metas.append(meta)
-
-            result = [None] * len(names)
-            if len(links) > 0:
-                res_infos_links = api.image.upload_links(
-                    dataset_id,
-                    links_names,
-                    links,
-                    ds_progress,
-                    metas=links_metas,
+            ds_progress = progress_cb
+            if log_progress:
+                ds_progress = tqdm_sly(
+                    desc="Uploading images to {!r}".format(dataset.name),
+                    total=len(names),
                 )
-                for info, pos in zip(res_infos_links, links_order):
-                    result[pos] = info
 
-            if len(hashes) > 0:
-                res_infos_hashes = api.image.upload_hashes(
-                    dataset_id,
-                    hashes_names,
-                    hashes,
-                    ds_progress,
-                    metas=hashes_metas,
+            if len(img_paths) != 0:
+                uploaded_img_infos = api.image.upload_paths(
+                    dataset.id, names, img_paths, ds_progress, metas=metas
                 )
-                for info, pos in zip(res_infos_hashes, hashes_order):
-                    result[pos] = info
+            elif len(img_paths) == 0 and len(img_infos) != 0:
+                # uploading links and hashes (the code from api.image.upload_ids)
+                img_metas = [{}] * len(names)
+                links, links_names, links_order, links_metas = [], [], [], []
+                hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+                dataset_id = dataset.id
+                for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
+                    if info.link is not None:
+                        links.append(info.link)
+                        links_names.append(name)
+                        links_order.append(idx)
+                        links_metas.append(meta)
+                    else:
+                        hashes.append(info.hash)
+                        hashes_names.append(name)
+                        hashes_order.append(idx)
+                        hashes_metas.append(meta)
 
-            uploaded_img_infos = result
-        else:
-            raise ValueError(
-                "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
-            )
-        # image_id_dct[ds_fs.name] =
-        image_ids = [img_info.id for img_info in uploaded_img_infos]
-        # anns_paths_dct[ds_fs.name] = ann_paths
+                result = [None] * len(names)
+                if len(links) > 0:
+                    res_infos_links = api.image.upload_links(
+                        dataset_id,
+                        links_names,
+                        links,
+                        ds_progress,
+                        metas=links_metas,
+                    )
+                    for info, pos in zip(res_infos_links, links_order):
+                        result[pos] = info
 
-        anns_progress = None
-        if log_progress or progress_cb is not None:
-            anns_progress = tqdm_sly(
-                desc="Uploading annotations to {!r}".format(dataset.name),
-                total=len(image_ids),
-                leave=False,
-            )
-        api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                if len(hashes) > 0:
+                    res_infos_hashes = api.image.upload_hashes(
+                        dataset_id,
+                        hashes_names,
+                        hashes,
+                        ds_progress,
+                        metas=hashes_metas,
+                    )
+                    for info, pos in zip(res_infos_hashes, hashes_order):
+                        result[pos] = info
+
+                uploaded_img_infos = result
+            else:
+                raise ValueError(
+                    "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
+                )
+            # image_id_dct[ds_fs.name] =
+            image_ids = [img_info.id for img_info in uploaded_img_infos]
+            # anns_paths_dct[ds_fs.name] = ann_paths
+
+            anns_progress = None
+            if log_progress or progress_cb is not None:
+                anns_progress = tqdm_sly(
+                    desc="Uploading annotations to {!r}".format(dataset.name),
+                    total=len(image_ids),
+                    leave=False,
+                )
+            api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
 
     return project.id, project.name
 
@@ -3075,6 +3109,11 @@ def _download_project_optimized(
                 save_images=save_images,
             )
 
+    try:
+        create_readme(project_dir, project_id, api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
+
 
 def _split_images_by_cache(images, cache):
     images_to_download = []
@@ -3121,7 +3160,9 @@ def _download_dataset(
     if only_image_tags is True:
         if project_meta is None:
             raise ValueError("Project Meta is not defined")
-        id_to_tagmeta = project_meta.tag_metas.get_id_mapping()
+        id_to_tagmeta = (
+            project_meta.tag_metas.get_id_mapping()
+        )  # pylint: disable=possibly-used-before-assignment
 
     anns_progress = None
     if progress_cb is not None:
@@ -3151,15 +3192,22 @@ def _download_dataset(
             img_cache_ids = [img_info.id for img_info in images_in_cache]
 
             if only_image_tags is False:
-                ann_info_list = api.annotation.download_batch(
-                    dataset_id, img_cache_ids, anns_progress
-                )
-                img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+                with ApiContext(
+                    api,
+                    dataset_id=dataset_id,
+                    project_meta=project_meta,
+                ):
+                    ann_info_list = api.annotation.download_batch(
+                        dataset_id, img_cache_ids, anns_progress
+                    )
+                    img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
             else:
                 img_name_to_ann = {}
                 for image_info in images_in_cache:
                     tags = TagCollection.from_api_response(
-                        image_info.tags, project_meta.tag_metas, id_to_tagmeta
+                        image_info.tags,
+                        project_meta.tag_metas,
+                        id_to_tagmeta,  # pylint: disable=possibly-used-before-assignment
                     )
                     tmp_ann = Annotation(
                         img_size=(image_info.height, image_info.width), img_tags=tags
@@ -3236,6 +3284,136 @@ def _download_dataset(
         if cache is not None and save_images is True:
             img_hashes = [img_info.hash for img_info in images_to_download]
             cache.write_objects(img_paths, img_hashes)
+
+
+def create_readme(
+    project_dir: str,
+    project_id: int,
+    api: sly.Api,
+) -> str:
+    """Creates a README.md file using the template, adds general information
+    about the project and creates a dataset structure section.
+
+    :param project_dir: Path to the project directory.
+    :type project_dir: str
+    :param project_id: Project ID.
+    :type project_id: int
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :return: Path to the created README.md file.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+
+        project_id = 123
+        project_dir = "/path/to/project"
+
+        readme_path = sly.create_readme(project_dir, project_id, api)
+
+        print(f"README.md file was created at {readme_path}")
+    """
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(current_path, "readme_template.md")
+    with open(template_path, "r") as file:
+        template = file.read()
+
+    project_info = api.project.get_info_by_id(project_id)
+
+    sly.fs.mkdir(project_dir)
+    readme_path = os.path.join(project_dir, "README.md")
+
+    template = template.replace("{{general_info}}", _project_info_md(project_info))
+
+    template = template.replace(
+        "{{dataset_structure_info}}", _dataset_structure_md(project_info, api)
+    )
+
+    with open(readme_path, "w") as f:
+        f.write(template)
+    return readme_path
+
+
+def _project_info_md(project_info: sly.ProjectInfo) -> str:
+    """Creates a markdown string with general information about the project
+    using the fields of the ProjectInfo NamedTuple.
+
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :return: Markdown string with general information about the project.
+    :rtype: str
+    """
+    result_md = ""
+    # Iterating over fields of a NamedTuple.
+    for field in project_info._fields:
+        value = getattr(project_info, field)
+        if not value or not isinstance(value, (str, int)):
+            # To avoid useless information in the README.
+            continue
+        result_md += f"\n**{snake_to_human(field)}:** {value}<br>"
+
+    return result_md
+
+
+def _dataset_structure_md(
+    project_info: sly.ProjectInfo, api: sly.Api, entity_limit: Optional[int] = 10
+) -> str:
+    """Creates a markdown string with the dataset structure of the project.
+    Supports only images and videos projects.
+
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :param entity_limit: The maximum number of entities to display in the README.
+    :type entity_limit: int, optional
+    :return: Markdown string with the dataset structure of the project.
+    :rtype: str
+    """
+    # TODO: Add support for other project types.
+    supported_project_types = [sly.ProjectType.IMAGES.value, sly.ProjectType.VIDEOS.value]
+    if project_info.type not in supported_project_types:
+        return ""
+
+    list_functions = {
+        "images": api.image.get_list,
+        "videos": api.video.get_list,
+    }
+    entity_icons = {
+        "images": " 🏞️ ",
+        "videos": " 🎥 ",
+    }
+    dataset_icon = " 📂 "
+    list_function = list_functions[project_info.type]
+    entity_icon = entity_icons[project_info.type]
+
+    result_md = f"🗂️ {project_info.name}<br>"
+
+    for parents, dataset_info in api.dataset.tree(project_info.id):
+        # The dataset path is needed to create a clickable link in the README.
+        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+        basic_indent = "┃ " * len(parents)
+        result_md += (
+            basic_indent + "┣ " + dataset_icon + f"[{dataset_info.name}]({dataset_path})" + "<br>"
+        )
+        entity_infos = list_function(dataset_info.id)
+        for idx, entity_info in enumerate(entity_infos):
+            if idx == entity_limit:
+                result_md += (
+                    basic_indent + "┃ ┗ ... " + str(len(entity_infos) - entity_limit) + " more<br>"
+                )
+                break
+            symbol = "┗" if idx == len(entity_infos) - 1 else "┣"
+            result_md += (
+                "┃ " * (len(parents) + 1) + symbol + entity_icon + entity_info.name + "<br>"
+            )
+
+    return result_md
 
 
 DatasetDict = Project.DatasetDict

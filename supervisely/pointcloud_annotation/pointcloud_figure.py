@@ -81,6 +81,7 @@ class PointcloudFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        **kwargs,
     ):
         super().__init__(
             parent_object,

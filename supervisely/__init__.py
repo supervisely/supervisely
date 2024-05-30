@@ -1,6 +1,7 @@
 # coding: utf-8
 # isort: skip_file
 import pkg_resources  # isort: skip
+import os
 
 try:
     __version__ = pkg_resources.require("supervisely")[0].version
@@ -86,6 +87,7 @@ from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 
 from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.geometry.helpers import deserialize_geometry
@@ -110,7 +112,7 @@ from supervisely.worker_api.chunking import (
 )
 import supervisely.worker_proto.worker_api_pb2 as api_proto
 
-from supervisely.api.api import Api, UserSession
+from supervisely.api.api import Api, UserSession, ApiContext
 from supervisely.api import api
 from supervisely.api.task_api import WaitingTimeExceeded, TaskFinishedWithError
 from supervisely.project.project_type import ProjectType
@@ -121,6 +123,7 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.workspace_api import WorkspaceInfo
 from supervisely.api.team_api import TeamInfo
+from supervisely.api.entity_annotation.figure_api import FigureInfo
 
 from supervisely.cli import _handle_creds_error_to_console
 
@@ -175,22 +178,30 @@ from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAn
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_frame import PointcloudEpisodeFrame
+from supervisely.pointcloud_annotation.pointcloud_episode_frame import (
+    PointcloudEpisodeFrame,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
     PointcloudEpisodeFrameCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_object import PointcloudEpisodeObject
+from supervisely.pointcloud_annotation.pointcloud_episode_object import (
+    PointcloudEpisodeObject,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
     PointcloudEpisodeObjectCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_tag import PointcloudEpisodeTag
+from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
+    PointcloudEpisodeTag,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
     PointcloudEpisodeTagCollection,
 )
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
-from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
+    PointcloudTagCollection,
+)
 from supervisely.project.pointcloud_project import (
     PointcloudDataset,
     PointcloudProject,
@@ -228,9 +239,9 @@ from supervisely.aug import imgaug_utils
 import supervisely.volume as volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.volume_annotation.volume_object_collection import (
-    VolumeObjectCollection,
-)
+from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
+from supervisely.volume_annotation.volume_tag import VolumeTag
+from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.plane import Plane
@@ -240,6 +251,9 @@ from supervisely.project.volume_project import (
     download_volume_project,
     upload_volume_project,
 )
+
+from supervisely.convert.converter import ImportManager
+from supervisely.convert.base_converter import AvailableImageConverters, BaseConverter
 
 from supervisely.geometry.bitmap import SkeletonizeMethod
 
@@ -289,3 +303,8 @@ try:
     setup_certificates()
 except Exception as e:
     logger.warn(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)
+
+# If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
+# set a new value for the environment variable MINIMUM_INSTANCE_VERSION_FOR_SDK, otherwise
+# users can face compatibility issues, if the instance version is lower than the SDK version.
+os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.9.22"

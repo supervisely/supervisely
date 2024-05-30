@@ -1,22 +1,24 @@
-import os
-import numpy
 import functools
-from typing import Tuple, List, Optional
-from supervisely.sly_logger import logger
-from supervisely.io.fs import silent_remove
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.imaging import image as sly_image
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.graph import GraphNodes, Node
+import os
+from typing import List, Optional, Tuple
+
+import numpy
+
 from supervisely._utils import rand_str as sly_rand_str
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.point_location import PointLocation
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.sliding_windows_fuzzy import (
-    SlidingWindowsFuzzy,
     SlidingWindowBorderStrategy,
+    SlidingWindowsFuzzy,
 )
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import silent_remove
+from supervisely.sly_logger import logger
 
 
 def _process_image_path(image_path: str, rect: Rectangle) -> Tuple[str, Tuple[int, int]]:
@@ -75,7 +77,10 @@ def _scale_ann_to_original_size(
 
 
 def _apply_agnostic_nms(labels: List[Label], iou_thres: Optional[float] = 0.5) -> List[Label]:
+    # pylint: disable=import-error
     import torch
+
+    # pylint: disable=import-error
     import torchvision
 
     # TODO: where we can get iou_th and conf_th?

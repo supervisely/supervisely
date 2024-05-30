@@ -4,7 +4,7 @@
 # docs
 from __future__ import annotations
 
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
@@ -110,6 +110,9 @@ class ActivityAction:
     """"""
     IMAGE_REVIEW_STATUS_UPDATED = "image_review_status_updated"
     """"""
+    LABELER_ID = "labelerId"
+    """"""
+    REVIEW_STATUS = "reviewStatus"
 
     # case #1 - labeler pressed "finish image" button in labeling job
     # action: IMAGE_REVIEW_STATUS_UPDATED -> meta["reviewStatus"] == 'done'
@@ -373,6 +376,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        labeler_id: Optional[int] = None,
+        review_status: Optional[Literal["done", "accepted", "rejected"]] = None,
     ) -> List[Dict]:
         """
         Get Team activity by ID.
@@ -393,6 +398,10 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type start_date: str, optional
         :param end_date: End date to get Team activity.
         :type end_date: str, optional
+        :param labeler_id: Labeler ID by which the activity will be filtered.
+        :type labeler_id: int, optional
+        :param review_status: Review status by which the activity will be filtered.
+        :type review_status: str, optional, one of ['done', 'accepted', 'rejected']
         :return: Team activity
         :rtype: :class:`List[dict]`
         :Usage example:
@@ -460,6 +469,19 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         from datetime import datetime
 
         filters = []
+        if labeler_id is not None:
+            filters.append(
+                {"field": ActivityAction.LABELER_ID, "operator": "=", "value": labeler_id}
+            )
+        if review_status is not None:
+            filters.append(
+                {
+                    "field": ActivityAction.REVIEW_STATUS,
+                    "operator": "=",
+                    "value": review_status,
+                }
+            )
+
         if filter_user_id is not None:
             filters.append({"field": ApiField.USER_ID, "operator": "=", "value": filter_user_id})
         if filter_project_id is not None:

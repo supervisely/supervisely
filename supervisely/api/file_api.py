@@ -956,7 +956,7 @@ class FileApi(ModuleApiBase):
 
         self.remove(team_id, path)
 
-    def remove_dir(self, team_id: int, path: str) -> None:
+    def remove_dir(self, team_id: int, path: str, silent: bool = False) -> None:
         """
         Removes folder from Team Files.
 
@@ -964,6 +964,9 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to folder in Team Files.
         :type path: str
+        :param silent: Ignore if directory not exists.
+        :type silent: bool
+
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -982,8 +985,9 @@ class FileApi(ModuleApiBase):
         if not path.endswith("/"):
             raise ValueError("Please add a slash in the end to recognize path as a directory.")
 
-        if not self.dir_exists(team_id, path):
-            raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
+        if silent is False:
+            if not self.dir_exists(team_id, path):
+                raise ValueError(f"Folder not found in Team files. (Path: '{path}')")
 
         self.remove(team_id, path)
 
@@ -1337,10 +1341,15 @@ class FileApi(ModuleApiBase):
             res_remote_dir = remote_dir
 
         local_files = list_files_recursively(local_dir)
-        remote_files = [
-            Path(file.replace(local_dir.rstrip("/"), res_remote_dir.rstrip("/"))).as_posix()
-            for file in local_files
-        ]
+        remote_files = []
+        dir_parts = local_dir.strip("/").split("/")
+        for file in local_files:
+            path_parts = file.strip("/").split("/")
+            path_parts = path_parts[len(dir_parts) :]
+            remote_parts = [res_remote_dir.rstrip("/")] + path_parts
+            remote_file = "/".join(remote_parts)
+            remote_files.append(remote_file)
+            
 
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)

@@ -13,6 +13,7 @@ from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.alpha_mask import AlphaMask
 
 if not hasattr(np, "int"):
     np.int = np.int_
@@ -216,8 +217,8 @@ def find_contours(
         new_obj_cls = classes_mapping.get(label.obj_class.name)
         if new_obj_cls is None:
             return [label]
-        if not isinstance(label.geometry, Bitmap):
-            raise RuntimeError("Input class must be a Bitmap.")
+        if not isinstance(label.geometry, Bitmap) and not isinstance(label.geometry, AlphaMask):
+            raise RuntimeError("Input class must be a Bitmap or an AlphaMask.")
 
         return [
             Label(geometry=geom, obj_class=new_obj_cls) for geom in label.geometry.to_contours()

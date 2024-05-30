@@ -45,6 +45,7 @@ class Card(Widget):
         content_top_right: Optional[Widget] = None,
         lock_message: Optional[str] = "Card content is locked",
         widget_id: Optional[str] = None,
+        remove_padding: Optional[bool] = False,
     ):
         self._title = title
         self._description = description
@@ -53,6 +54,7 @@ class Card(Widget):
         self._content = content
         self._show_slot = False
         self._slot_content = content_top_right
+        self._remove_padding = remove_padding
         if self._slot_content is not None:
             self._show_slot = True
         self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}

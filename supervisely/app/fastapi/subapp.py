@@ -5,6 +5,7 @@ from contextlib import suppress
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
+from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
@@ -48,6 +49,7 @@ from supervisely.sly_logger import logger
 
 # from supervisely.app.fastapi.request import Request
 
+IS_RUNNING = False
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -187,7 +189,7 @@ class Event:
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
                 )
-        
+
         class FigureChanged:
             endpoint = "/manual_selected_figure_changed"
 
@@ -208,6 +210,7 @@ class Event:
                 tool: str,
                 user_id: int,
                 job_id: int,
+                previous_figure: dict = None,
             ):
                 self.dataset_id = dataset_id
                 self.team_id = team_id
@@ -224,6 +227,7 @@ class Event:
                 self.tool = tool
                 self.user_id = user_id
                 self.job_id = job_id
+                self.previous_figure = previous_figure
 
             @classmethod
             def from_json(cls, data: dict):
@@ -243,6 +247,9 @@ class Event:
                     tool=data.get(ApiField.LABELING_TOOL),
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
+                    previous_figure=data.get(
+                        "previousFigure", None
+                    ),  # there is no such field in ApiField
                 )
 
 
@@ -464,15 +471,17 @@ def _init(
             request.state.state = content.get("state")
             request.state.api_token = content.get(
                 "api_token",
-                request.state.context.get("apiToken")
-                if request.state.context is not None
-                else None,
+                (
+                    request.state.context.get("apiToken")
+                    if request.state.context is not None
+                    else None
+                ),
             )
             # logger.debug(f"middleware request api_token {request.state.api_token}")
-            # request.state.server_address = content.get(
-            #     "server_address", sly_env.server_address(raise_not_found=False)
-            # )
-            request.state.server_address = sly_env.server_address(raise_not_found=False)
+            request.state.server_address = content.get(
+                "server_address", sly_env.server_address(raise_not_found=False)
+            )
+            # request.state.server_address = sly_env.server_address(raise_not_found=False)
             # logger.debug(f"middleware request server_address {request.state.server_address}")
             # logger.debug(f"middleware request context {request.state.context}")
             # logger.debug(f"middleware request state {request.state.state}")
@@ -489,11 +498,18 @@ def _init(
         return response
 
     if headless is False:
+        app.cached_template = None
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+            if request.query_params.get("ping", False) in ("true", "True", True, 1, "1"):
+                return JSONResponse(content={"message": "App is running"}, status_code=200)
+            if app.cached_template is None:
+                app.cached_template = Jinja2Templates().TemplateResponse(
+                    "index.html", {"request": request}
+                )
+            return app.cached_template
 
         @app.on_event("shutdown")
         def shutdown():
@@ -532,6 +548,8 @@ class Application(metaclass=Singleton):
         session_info_extra_content: "Widget" = None,
         session_info_solid: bool = False,
     ):
+        global IS_RUNNING
+
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -592,6 +610,9 @@ class Application(metaclass=Singleton):
             logger.info("Application is running on Supervisely Platform in production mode")
         else:
             logger.info("Application is running on localhost in development mode")
+
+        IS_RUNNING = True
+
         self._process_id = os.getpid()
         logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
@@ -625,7 +646,17 @@ class Application(metaclass=Singleton):
                 from supervisely.app.content import ContentOrigin
 
                 ContentOrigin().start()
-                resp = run_sync(self.test_client.get("/"))
+                Thread(target=run_sync, args=(self.test_client.get("/"),)).start()
+
+        server = self.get_server()
+
+        @server.post("/is_running")
+        async def is_running(request: Request):
+            if is_production():
+                # @TODO: set task status to running
+                return {"running": IS_RUNNING, "mode": "production"}
+            else:
+                return {"running": IS_RUNNING, "mode": "development"}
 
     def get_server(self):
         return self._fastapi
