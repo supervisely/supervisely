@@ -1470,6 +1470,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: bool = True,
         infos: List[ImageInfo] = None,
         skip_validation: Optional[bool] = False,
+        conflict_resolution: Literal['rename', 'skip', 'replace'] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1531,6 +1532,13 @@ class ImageApi(RemoveableBulkModuleApi):
             infos = self.get_info_by_id_batch(
                 ids, force_metadata_for_links=force_metadata_for_links
             )
+
+        def _resolve_upload_conflicts(, conflict_resolution: Literal['replace', 'skip', 'rename']):
+            
+            return 
+        
+        if conflict_resolution is not None:
+            _resolve_upload_conflicts(, conflict_resolution)
 
         # prev implementation
         # hashes = [info.hash for info in infos]

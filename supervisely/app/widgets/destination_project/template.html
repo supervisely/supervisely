@@ -53,7 +53,7 @@
                             }
                           }">
         Create new dataset
-    </el-radio>
+      </el-radio>
       <el-radio class="radio" v-model="state.{{{widget.widget_id}}}.dataset_mode" label="existing_dataset"
         :disabled="state.{{{widget.widget_id}}}.project_mode === 'new_project'" @input="(val) => {
                             if (val === 'existing_dataset') {
@@ -77,5 +77,16 @@
         </sly-select-dataset>
       </div>
     </div>
+  </sly-field>
+  
+  <sly-field 
+    title="Conflict resolution"
+    v-if="state.{{{widget.widget_id}}}.dataset_id"
+  >
+    <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
+      <el-option label="Rename" value="rename"></el-option>
+      <el-option label="Skip" value="skip"></el-option>
+      <el-option label="Replace" value="replace"></el-option>
+    </el-select>
   </sly-field>
 </div>
