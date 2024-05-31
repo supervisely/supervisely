@@ -47,6 +47,7 @@ import supervisely.api.user_api as user_api
 import supervisely.api.video.video_api as video_api
 import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
+import supervisely.api.workflow_api as workflow_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
@@ -353,6 +354,7 @@ class Api:
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
+        self.workflow = workflow_api.WorkflowApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
