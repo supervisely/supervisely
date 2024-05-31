@@ -130,8 +130,6 @@ setup(
             "video/*.sh",
             "app/development/*.sh",
             "imaging/colors.json.gz",
-            "nn/tracker/bot_sort/fast_reid/*",
-            "nn/tracker/bot_sort/fast_reid/**/*",
         ],
     },
     entry_points={
