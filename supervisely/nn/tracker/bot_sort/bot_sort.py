@@ -1,13 +1,13 @@
 from collections import deque
 
 import numpy as np
-from fast_reid.fast_reid_interfece import FastReIDInterface
 
 from supervisely.nn.tracker.utils.gmc import GMC
 from supervisely.nn.tracker.utils.kalman_filter import KalmanFilterXYWH as KalmanFilter
 
 from . import matching
 from .basetrack import BaseTrack, TrackState
+from .fast_reid_interface import FastReIDInterface
 
 
 class STrack(BaseTrack):
