@@ -156,15 +156,52 @@ class AnnotationApi(ModuleApi):
             #     "2021-02-06T11:07:26.080Z"
             # ]
         """
-        return self.get_list_all_pages(
-            "annotations.list",
-            {
-                ApiField.DATASET_ID: dataset_id,
-                ApiField.FILTER: filters or [],
-                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-            },
-            progress_cb,
-        )
+        json_body = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+        }
+        dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+        if dataset_info is None:
+            raise RuntimeError(f"Dataset with id={dataset_id} not found")
+
+        project_id = dataset_info.project_id
+        project_meta_json = self._api.project.get_meta(project_id)
+        project_meta = ProjectMeta.from_json(project_meta_json)
+
+        need_download_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_download_alpha_masks = True
+                break
+
+        if need_download_alpha_masks is True:
+            results = self.get_list_all_pages("annotations.list", json_body, progress_cb, lambda x: x)
+
+            # check if there are any AlphaMask geometries in any of the annotations
+            additonal_geometries = defaultdict(tuple)
+            for ann_idx, ann_info_dict in enumerate(results):
+                ann_dict = ann_info_dict[ApiField.ANNOTATION]
+
+                for label_idx, label in enumerate(ann_dict[AnnotationJsonFields.LABELS]):
+                    if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                        figure_id = label[LabelJsonFields.ID]
+                        additonal_geometries[figure_id] = (ann_idx, label_idx)
+
+            # if there are any AlphaMask geometries, download them and update annotations
+            if len(additonal_geometries) > 0:
+                figure_ids = list(additonal_geometries.keys())
+                figures = self._api.image.figure.download_geometries_batch(figure_ids)
+                for figure_id, geometry in zip(figure_ids, figures):
+                    ann_idx, label_idx = additonal_geometries[figure_id]
+                    results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][label_idx].update(
+                        {BITMAP: geometry}
+                    )
+
+            return [self._convert_json_info(ann) for ann in results]
+
+        else:
+            return self.get_list_all_pages("annotations.list", json_body, progress_cb)
 
     def get_list_generator(
         self,
@@ -247,7 +284,43 @@ class AnnotationApi(ModuleApi):
             # 50 by default in SDK
             pass
 
-        return self.get_list_all_pages_generator("annotations.list", data, progress_cb)
+        dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+        if dataset_info is None:
+            raise RuntimeError(f"Dataset with id={dataset_id} not found")
+
+        project_id = dataset_info.project_id
+        project_meta_json = self._api.project.get_meta(project_id)
+        project_meta = ProjectMeta.from_json(project_meta_json)
+
+        need_download_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_download_alpha_masks = True
+                break
+
+        if need_download_alpha_masks is True:
+            for ann_dict in self.get_list_all_pages_generator("annotations.list", data, progress_cb, lambda x: x):
+                # check if there are any AlphaMask geometries in the batch
+                additonal_geometries = defaultdict(tuple)
+                for label_idx, label in enumerate(
+                    ann_dict[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+                ):
+                    if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                        figure_id = label[LabelJsonFields.ID]
+                        additonal_geometries[figure_id] = label_idx
+
+                # if there are any AlphaMask geometries, download them and update annotations
+                if len(additonal_geometries) > 0:
+                    figure_ids = list(additonal_geometries.keys())
+                    figures = self._api.image.figure.download_geometries_batch(figure_ids)
+                    for figure_id, geometry in zip(figure_ids, figures):
+                        label_idx = additonal_geometries[figure_id]
+                        ann_dict[ApiField.ANNOTATION][AnnotationJsonFields.LABELS][label_idx].update({BITMAP: geometry})
+
+                yield self._convert_json_info(ann_dict)
+
+        else:
+            return self.get_list_all_pages_generator("annotations.list", data, progress_cb)
 
     def download(
         self,
