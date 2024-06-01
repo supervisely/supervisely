@@ -469,6 +469,7 @@ class AppApi(TaskApi):
         log_progress=True,
         ext_logger=None,
     ):
+        # pylint: disable=possibly-used-before-assignment
         """download_git_archive"""
         payload = {
             ApiField.ECOSYSTEM_ITEM_ID: ecosystem_item_id,
@@ -483,7 +484,7 @@ class AppApi(TaskApi):
             if ext_logger is None:
                 ext_logger = logger
 
-            length = -1
+            length = None
             # Content-Length
             if "Content-Length" in response.headers:
                 length = int(response.headers["Content-Length"])
