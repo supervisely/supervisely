@@ -129,12 +129,12 @@ def upl_prj():
 
 
 def dwn_prj_img():
-    project = api.project.get_info_by_id(21394)
-    p = tqdm(
-        desc="download",
-        total=project.items_count,
-    )
-    sly.download_project(api, project.id, "/tmp/img/", progress_cb=p)
+    project = api.project.get_info_by_id(17732)
+    # p = tqdm(
+    #     desc="download",
+    #     total=project.items_count,
+    # )
+    sly.download_project(api, project.id, "/tmp/img/")  # , progress_cb=p)
     print("5")
 
 
@@ -144,7 +144,7 @@ def upl_prj_img():
         desc="upload",
         total=project_fs.total_items,
     )
-    sly.upload_project("/tmp/img/", api, 691, progress_cb=p)
+    sly.upload_project("/tmp/img/", api, 691)  # , progress_cb=p)
     print("6")
 
 
@@ -154,7 +154,7 @@ def dwnl_prj_vid():
         desc="download",
         total=project.items_count,
     )
-    sly.download_video_project(api, project.id, "/tmp/vid/", progress_cb=p)
+    sly.download_video_project(api, project.id)  # , "/tmp/vid/", progress_cb=p)
     print("7")
 
 

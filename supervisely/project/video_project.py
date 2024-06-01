@@ -1069,7 +1069,7 @@ class VideoProject(Project):
         :param save_video_info: Save video infos or not.
         :type save_video_info: :class:`bool`, optional
         :param log_progress: Log download progress or not.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
         :return: None
@@ -1113,7 +1113,7 @@ class VideoProject(Project):
         api: Api,
         workspace_id: int,
         project_name: Optional[str] = None,
-        log_progress: Optional[bool] = True,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
@@ -1129,7 +1129,7 @@ class VideoProject(Project):
 
         :type project_name: str
         :param log_progress: Logging progress of download video project or not.
-        :type log_progress: bool, optional
+        :type log_progress: bool
         :return: New video project ID in Supervisely and project name
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -1174,7 +1174,7 @@ def download_video_project(
     dataset_ids: Optional[List[int]] = None,
     download_videos: Optional[bool] = True,
     save_video_info: Optional[bool] = False,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
 ) -> None:
@@ -1194,7 +1194,7 @@ def download_video_project(
     :param save_video_info: Include video info in the download.
     :type save_video_info: bool, optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -1365,7 +1365,7 @@ def download_video_project(
                     progress_cb(1)
 
             if log_progress:
-                ds_progress.iters_done_report(len(batch))
+                ds_progress(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 
@@ -1375,7 +1375,7 @@ def upload_video_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     include_custom_data: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
@@ -1404,7 +1404,7 @@ def upload_video_project(
             ann_paths.append(ann_path)
 
         ds_progress = progress_cb
-        if log_progress:
+        if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Uploading videos to {!r}".format(dataset.name),
                 total=len(item_paths),

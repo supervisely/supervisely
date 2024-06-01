@@ -2489,7 +2489,7 @@ class Project:
         project_id: int,
         dest_dir: str,
         dataset_ids: Optional[List[int]] = None,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = True,
         batch_size: Optional[int] = 50,
         cache: Optional[FileCache] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -2510,7 +2510,7 @@ class Project:
         :param dataset_ids: Dataset IDs.
         :type dataset_ids: :class:`list` [ :class:`int` ], optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: :class:`bool`
         :param batch_size: The number of images in the batch when they are loaded to a host.
         :type batch_size: :class:`int`, optional
         :param cache: FileCache object.
@@ -2570,7 +2570,7 @@ class Project:
         api: Api,
         workspace_id: int,
         project_name: Optional[str] = None,
-        log_progress: Optional[bool] = True,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
@@ -2585,7 +2585,7 @@ class Project:
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
@@ -2710,7 +2710,7 @@ def _download_project(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     batch_size: Optional[int] = 50,
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
@@ -2739,10 +2739,18 @@ def _download_project(
         images = api.image.get_list(dataset_id)
 
         ds_progress = progress_cb
-        if log_progress:
+        if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Downloading images from {!r}".format(dataset.name),
                 total=dataset.images_count,
+            )
+
+        anns_progress = None
+        if log_progress or progress_cb is not None:
+            anns_progress = tqdm_sly(
+                desc="Downloading annotations from {!r}".format(dataset.name),
+                total=dataset.images_count,
+                leave=False,
             )
 
         with ApiContext(
@@ -2761,29 +2769,25 @@ def _download_project(
                 else:
                     batch_imgs_bytes = [None] * len(image_ids)
 
-            # download annotations in json format
-            if only_image_tags is False:
-                anns_progress = None
                 if log_progress or progress_cb is not None:
-                    anns_progress = tqdm_sly(
-                        desc="Downloading annotations from {!r}".format(dataset.name),
-                        total=len(image_ids),
-                        leave=False,
+                    ds_progress(len(batch))
+
+                # download annotations in json format
+                if only_image_tags is False:
+                    ann_infos = api.annotation.download_batch(
+                        dataset_id, image_ids, progress_cb=anns_progress
                     )
-                ann_infos = api.annotation.download_batch(
-                    dataset_id, image_ids, progress_cb=anns_progress
-                )
-                ann_jsons = [ann_info.annotation for ann_info in ann_infos]
-            else:
-                ann_jsons = []
-                for image_info in batch:
-                    tags = TagCollection.from_api_response(
-                        image_info.tags, meta.tag_metas, id_to_tagmeta
-                    )
-                    tmp_ann = Annotation(
-                        img_size=(image_info.height, image_info.width), img_tags=tags
-                    )
-                    ann_jsons.append(tmp_ann.to_json())
+                    ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+                else:
+                    ann_jsons = []
+                    for image_info in batch:
+                        tags = TagCollection.from_api_response(
+                            image_info.tags, meta.tag_metas, id_to_tagmeta
+                        )
+                        tmp_ann = Annotation(
+                            img_size=(image_info.height, image_info.width), img_tags=tags
+                        )
+                        ann_jsons.append(tmp_ann.to_json())
 
                 for img_info, name, img_bytes, ann in zip(
                     batch, image_names, batch_imgs_bytes, ann_jsons
@@ -2794,9 +2798,6 @@ def _download_project(
                         ann=ann,
                         img_info=img_info if save_image_info is True else None,
                     )
-
-            if log_progress or progress_cb is not None:
-                ds_progress(len(batch))
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
@@ -2817,7 +2818,7 @@ def upload_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
@@ -2881,7 +2882,7 @@ def upload_project(
                         metas.append({})
 
             ds_progress = progress_cb
-            if log_progress:
+            if log_progress is True:
                 ds_progress = tqdm_sly(
                     desc="Uploading images to {!r}".format(dataset.name),
                     total=len(names),
@@ -2958,7 +2959,7 @@ def download_project(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     batch_size: Optional[int] = 50,
     cache: Optional[FileCache] = None,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -2978,7 +2979,7 @@ def download_project(
     :type dest_dir: str
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
     :type dataset_ids: list(int), optional
-    :param log_progress: Show downloading logs in the output.
+    :param log_progress: Show downloading logs in the output. By default, it is True.
     :type log_progress: bool, optional
     :param batch_size: Size of a downloading batch.
     :type batch_size: int, optional

@@ -596,7 +596,7 @@ class FileApi(ModuleApiBase):
         unpack_if_archive: Optional[bool] = True,
         remove_archive: Optional[bool] = True,
         force: Optional[bool] = False,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = False,
     ) -> None:
         """Downloads data for application from input using environment variables.
         Automatically detects is data is a file or a directory and saves it to the specified directory.
@@ -611,7 +611,7 @@ class FileApi(ModuleApiBase):
         :param force: if True, data will be downloaded even if it already exists in the specified directory
         :type force: Optional[bool]
         :param log_progress: if True, progress bar will be displayed
-        :type log_progress: Optional[bool]
+        :type log_progress: bool
         :raises RuntimeError: if both file and folder paths not found in environment variables
         :raises RuntimeError: if both file and folder paths found in environment variables (debug)
         :raises RuntimeError: if team id not found in environment variables
@@ -1349,7 +1349,6 @@ class FileApi(ModuleApiBase):
             remote_parts = [res_remote_dir.rstrip("/")] + path_parts
             remote_file = "/".join(remote_parts)
             remote_files.append(remote_file)
-            
 
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)

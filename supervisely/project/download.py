@@ -30,7 +30,7 @@ def download(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
@@ -48,7 +48,7 @@ def download(
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -95,12 +95,19 @@ def download(
         project_info = api.project.get_info_by_id(project_id_video)
         num_videos = project_info.items_count
 
-        p = tqdm(desc="Downloading video project", total=num_videos)
+        # Download video project with automatic logging...
         sly.download(
             api,
             project_id_video,
             dest_dir,
-            progress_cb=p,
+            save_video_info=True,
+        )
+        # ...or disable logging at all
+        sly.download(
+            api,
+            project_id_video,
+            dest_dir,
+            log_progress=False,
             save_video_info=True,
         )
 
@@ -159,7 +166,6 @@ def download(
         log_progress = False
 
     project_class = get_project_class(project_info.type)
-
     project_class.download(
         api=api,
         project_id=project_id,
@@ -479,7 +485,7 @@ def download_using_cache(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
@@ -496,7 +502,7 @@ def download_using_cache(
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
 
