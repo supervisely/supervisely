@@ -2726,6 +2726,7 @@ def _download_project(
     if progress_cb is not None:
         log_progress = False
 
+    id_to_tagmeta = None
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 

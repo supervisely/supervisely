@@ -154,7 +154,7 @@ def dwnl_prj_vid():
         desc="download",
         total=project.items_count,
     )
-    sly.download_video_project(api, project.id)  # , "/tmp/vid/", progress_cb=p)
+    sly.download_video_project(api, project.id, "/tmp/vid/", progress_cb=p)
     print("7")
 
 

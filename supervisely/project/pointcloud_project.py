@@ -1127,8 +1127,7 @@ def upload_pointcloud_project(
             try:
                 _, meta = related_items[0]
                 timestamp = meta[ApiField.META]["timestamp"]
-                if timestamp:
-                    item_meta = {"timestamp": timestamp}
+                item_meta = {"timestamp": timestamp}
             except (KeyError, IndexError):
                 item_meta = {}
 
