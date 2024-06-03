@@ -530,6 +530,8 @@ class ApiField:
     """"""
     LIMIT_BY_WORKSPACE = "limitByWorkspace"
     """"""
+    NODE = "node"
+    """"""
 
 
 def _get_single_item(items):
