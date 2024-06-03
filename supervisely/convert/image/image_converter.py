@@ -126,6 +126,8 @@ class ImageConverter(BaseConverter):
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset_info = api.dataset.get_info_by_id(dataset_id)
+        if dataset_info is None:
+            raise RuntimeError(f"Dataset ID:'{dataset_id}' not found.")
         project_id = dataset_info.project_id
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
