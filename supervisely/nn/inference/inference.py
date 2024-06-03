@@ -759,6 +759,7 @@ class Inference:
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
+        upload = state.get("upload", False)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
@@ -789,6 +790,36 @@ class Inference:
             data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
+
+        if upload:
+            ds_info = api.dataset.get_info_by_id(image_info.dataset_id)
+            output_project_id = ds_info.project_id
+            output_project_meta = self.cache.get_project_meta(api, output_project_id)
+            logger.debug("Merging project meta...")
+            changed = False
+            for label in ann.labels:
+                if output_project_meta.get_obj_class(label.obj_class.name) is None:
+                    model_obj_class = self.model_meta.get_obj_class(label.obj_class.name)
+                    output_project_meta = output_project_meta.add_obj_class(model_obj_class)
+                    changed = True
+                for tag in label.tags:
+                    if output_project_meta.get_tag_meta(tag.meta.name) is None:
+                        model_tag_meta = self.model_meta.get_tag_meta(tag.meta.name)
+                        output_project_meta = output_project_meta.add_tag_meta(model_tag_meta)
+                        changed = True
+            for tag in ann.img_tags:
+                if output_project_meta.get_tag_meta(tag.meta.name) is None:
+                    model_tag_meta = self.model_meta.get_tag_meta(tag.meta.name)
+                    output_project_meta = output_project_meta.add_tag_meta(model_tag_meta)
+                    changed = True
+            if changed:
+                output_project_meta = api.project.update_meta(
+                    output_project_id, output_project_meta
+                )
+                self.cache.set_project_meta(output_project_id, output_project_meta)
+
+            logger.debug("Uploading annotation...", extra={"image_id": image_id, "dataset_id": ds_info.id, "project_id": output_project_id})
+            api.annotation.upload_ann(image_id, ann)
 
         result = {"annotation": ann.to_json(), "data": data_to_return}
         if async_inference_request_uuid is not None and ann is not None:
