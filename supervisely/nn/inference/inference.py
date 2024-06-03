@@ -818,7 +818,14 @@ class Inference:
                 )
                 self.cache.set_project_meta(output_project_id, output_project_meta)
 
-            logger.debug("Uploading annotation...", extra={"image_id": image_id, "dataset_id": ds_info.id, "project_id": output_project_id})
+            logger.debug(
+                "Uploading annotation...",
+                extra={
+                    "image_id": image_id,
+                    "dataset_id": ds_info.id,
+                    "project_id": output_project_id,
+                },
+            )
             api.annotation.upload_ann(image_id, ann)
 
         result = {"annotation": ann.to_json(), "data": data_to_return}
@@ -1046,10 +1053,23 @@ class Inference:
                 if async_inference_request_uuid is not None:
                     sly_progress.iters_done(1)
 
+        new_dataset_id = {}
+
+        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
+            if src_dataset_id in new_dataset_id:
+                return new_dataset_id[src_dataset_id]
+            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+            output_dataset_id = api.dataset.create(
+                output_project_id, dataset_info.name, change_name_if_conflict=True
+            ).id
+            new_dataset_id[src_dataset_id] = output_dataset_id
+            return output_dataset_id
+
         def _upload_results_to_other(results: List[Dict]):
             if len(results) == 0:
                 return
-            dataset_id = results[0]["dataset_id"]
+            src_dataset_id = results[0]["dataset_id"]
+            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
             image_ids = [result["image_id"] for result in results]
             image_names = [result["image_name"] for result in results]
             image_infos = api.image.upload_ids(dataset_id, names=image_names, ids=image_ids)
@@ -1061,7 +1081,7 @@ class Inference:
                 ],
             )
             if async_inference_request_uuid is not None:
-                sly_progress.iters_done(results)
+                sly_progress.iters_done(len(results))
 
         def _add_results_to_request(results: List[Dict]):
             inference_request["pending_results"].extend(results)
