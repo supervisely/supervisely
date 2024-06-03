@@ -492,15 +492,25 @@ class InferenceImageCache:
 
     def set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
-        self._cache.save_project_meta(pr_meta_name, project_meta)
+        if isinstance(self._cache, PersistentImageTTLCache):
+            self._cache.save_project_meta(pr_meta_name, project_meta)
+        else:
+            self._cache[pr_meta_name] = project_meta
 
     def get_project_meta(self, api: sly.Api, project_id: int):
         pr_meta_name = self._project_meta_name(project_id)
-        if pr_meta_name in self._cache:
-            return self._cache.get_project_meta(pr_meta_name)
-        project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-        self._cache.save_project_meta(pr_meta_name, project_meta)
-        return project_meta
+        if isinstance(self._cache, PersistentImageTTLCache):
+            if pr_meta_name in self._cache:
+                return self._cache.get_project_meta(pr_meta_name)
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            self._cache.save_project_meta(pr_meta_name, project_meta)
+            return project_meta
+        else:
+            if pr_meta_name in self._cache:
+                return self._cache[pr_meta_name]
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            self._cache[pr_meta_name] = project_meta
+            return project_meta
 
     @property
     def ttl(self):
