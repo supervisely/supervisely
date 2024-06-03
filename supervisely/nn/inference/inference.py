@@ -1032,7 +1032,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor() as executor:
+                with ThreadPoolExecutor(batch_size) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -1073,6 +1073,7 @@ class Inference:
             image_ids = [result["image_id"] for result in results]
             image_names = [result["image_name"] for result in results]
             image_infos = api.image.upload_ids(dataset_id, names=image_names, ids=image_ids)
+            # api.dataset.copy()  # TODO
             api.annotation.upload_anns(
                 img_ids=[info.id for info in image_infos],
                 anns=[
