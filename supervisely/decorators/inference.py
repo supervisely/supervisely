@@ -332,9 +332,9 @@ def process_images_batch_sliding_window(func):
         ]
         for i in range(len(images_slices_lengths)):
             i_from = sum(images_slices_lengths[:i])
-            i_to = sum(images_slices_lengths[: min(len(images_slices_lengths), i + 1)])
-            image_rects = rectangles[i_from * i_to]
-            image_slices = slices_anns[i_from * i_to]
+            i_to = sum(images_slices_lengths[: i + 1])
+            image_rects = rectangles[i_from:i_to]
+            image_slices = slices_anns[i_from:i_to]
             data_to_return["slides"].append(
                 [
                     {"rectangle": rect.to_json(), "labels": [l.to_json() for l in slice_ann.labels]}
@@ -342,19 +342,16 @@ def process_images_batch_sliding_window(func):
                 ]
             )
 
-        for i, img_shape, image_slides in zip(
-            range(len(images_shapes)), images_shapes, data_to_return["slides"]
-        ):
-            img_h, img_w = img_shape
-            all_json_labels = [slide["labels"] for slide in image_slides]
+        for i, image_shape in enumerate(images_shapes):
+            img_h, img_w = image_shape
+            all_json_labels = [slide["labels"] for slide in data_to_return["slides"][i]]
             full_rect = Rectangle(0, 0, img_h, img_w)
             all_labels_slide = {"rectangle": full_rect.to_json(), "labels": all_json_labels}
             data_to_return["slides"][i].append(all_labels_slide)  # for visualization
 
-        for i in range(len(images_slices_lengths)):
             i_from = sum(images_slices_lengths[:i])
-            i_to = sum(images_slices_lengths[: min(len(images_slices_lengths), i + 1)])
-            image_slices = slices_anns[i_from * i_to]
+            i_to = sum(images_slices_lengths[: i + 1])
+            image_slices = slices_anns[i_from:i_to]
 
             all_labels = []
             for slice_ann in image_slices:
@@ -368,10 +365,9 @@ def process_images_batch_sliding_window(func):
                 }
                 data_to_return["slides"][i].append(all_labels_after_nms_slide)
             else:
-                ann = ann.add_labels(all_labels)
+                anns[i] = anns[i].add_labels(all_labels)
                 data_to_return["slides"][i].append(all_labels_slide)
 
-        logger.debug()
         return anns
 
     return wrapper_inference
