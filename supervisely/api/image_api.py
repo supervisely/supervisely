@@ -1039,6 +1039,7 @@ class ImageApi(RemoveableBulkModuleApi):
         paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
+        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1053,6 +1054,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param conflict_resolution: method for resolving image uploading conflicts. If set to 'rename', conflicting images will be renamed. If set to 'replace', the original images will be removed, and new images will be uploaded instead. If set to 'skip', original image will remain.
+        :type conflict_resolution: Literal, optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1075,8 +1078,20 @@ class ImageApi(RemoveableBulkModuleApi):
 
         hashes = [get_file_hash(x) for x in paths]
 
+        if conflict_resolution:
+            hashes, names, skipped_img_infos = self.resolve_upload_conflicts(
+                dataset_id,
+                names,
+                hashes,
+                conflict_resolution=conflict_resolution,
+            )
+
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
-        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
+        result = self.upload_hashes(dataset_id, names, hashes, metas=metas)
+        if conflict_resolution:
+            for idx, image_info in skipped_img_infos.items():
+                result.insert(idx, image_info)
+        return result
 
     def upload_np(
         self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None
@@ -1117,6 +1132,7 @@ class ImageApi(RemoveableBulkModuleApi):
         imgs: List[np.ndarray],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
+        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1168,7 +1184,9 @@ class ImageApi(RemoveableBulkModuleApi):
         self._upload_data_bulk(
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
-        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
+        return self.upload_hashes(
+            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+        )
 
     def upload_link(
         self,
@@ -1227,6 +1245,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
         skip_validation: Optional[bool] = False,
+        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1245,6 +1264,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
+        :param conflict_resolution: method for resolving image uploading conflicts. If set to 'rename', conflicting images will be renamed. If set to 'replace', the original images will be removed, and new images will be uploaded instead. If set to 'skip', original image will remain.
+        :type conflict_resolution: Literal, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1264,7 +1285,15 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_infos = api.image.upload_links(dataset_id, img_names, img_links)
         """
-        return self._upload_bulk_add(
+        if conflict_resolution:
+            links, names, skipped_img_infos = self.resolve_upload_conflicts(
+                dataset_id,
+                names,
+                links,
+                conflict_resolution=conflict_resolution,
+            )
+
+        result = self._upload_bulk_add(
             lambda item: (ApiField.LINK, item),
             dataset_id,
             names,
@@ -1275,6 +1304,11 @@ class ImageApi(RemoveableBulkModuleApi):
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
         )
+
+        if conflict_resolution:
+            for idx, image_info in skipped_img_infos.items():
+                result.insert(idx, image_info)
+        return result
 
     def upload_hash(
         self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None
@@ -1343,6 +1377,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
+        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1361,6 +1396,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
+        :param conflict_resolution: method for resolving image uploading conflicts. If set to 'rename', conflicting images will be renamed. If set to 'replace', the original images will be removed, and new images will be uploaded instead. If set to 'skip', original image will remain.
+        :type conflict_resolution: Literal, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1392,7 +1429,15 @@ class ImageApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
         """
-        return self._upload_bulk_add(
+        if conflict_resolution:
+            hashes, names, skipped_img_infos = self.resolve_upload_conflicts(
+                dataset_id,
+                names,
+                hashes,
+                conflict_resolution=conflict_resolution,
+            )
+
+        result = self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
             dataset_id,
             names,
@@ -1403,13 +1448,17 @@ class ImageApi(RemoveableBulkModuleApi):
             skip_validation=skip_validation,
         )
 
+        if conflict_resolution:
+            for idx, image_info in skipped_img_infos.items():
+                result.insert(idx, image_info)
+        return result
+
     def upload_id(
         self,
         dataset_id: int,
         name: str,
         id: int,
         meta: Optional[Dict] = None,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -1466,11 +1515,9 @@ class ImageApi(RemoveableBulkModuleApi):
             # ]
         """
         metas = None if meta is None else [meta]
-        return self.upload_ids(
-            dataset_id, [name], [id], metas=metas, conflict_resolution=conflict_resolution
-        )[0]
+        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
 
-    def _resolve_upload_conflicts(
+    def resolve_upload_conflicts(
         self,
         dataset_id: int,
         names: List[str],
@@ -1478,15 +1525,16 @@ class ImageApi(RemoveableBulkModuleApi):
         conflict_resolution: Literal["replace", "skip", "rename"],
     ) -> Tuple[List[Any], List[str], Dict[int, ImageInfo]]:
         """
-        Resolve conflicts that occur during the upload of images to a dataset based on the specified conflict resolution strategy.
+        Resolves conflicts that occur during the upload of images to a dataset based on the specified conflict resolution strategy.
+        Returns A tuple containing resolved image data list, resolved image names list, and a dictionary, where key is the index of an element from 
+        the original list that was skipped during conflict resolution, and the value is the corresponding ImageInfo object of the existing image in the dataset. 
+        When "replace" resolution method is used, the images that are being deleted are logged.
 
-        Parameters
-        ----------
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Source images names with extension.
         :type names: List[str]
-        :param img_srcs: Any image data.
+        :param img_srcs: Any image data: ids, paths, numpy's, hashes, urls, etc. Should be included in the same order as the names.
         :type img_srcs: List[Any]
         :param conflict_resolution: The strategy to resolve upload conflicts:
             - "replace": Replace the existing images in the dataset with the new images.
@@ -1498,11 +1546,18 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: A tuple containing:
             - A list of the sources of images that were processed.
             - A list of the names of images after conflict resolution.
-            - A dictionary of skipped image infos, where the key is the indice that was skipped, and the value is ImageInfo.
+            - A dictionary of skipped image infos, where the key is the index of an element from the original list that was skipped,
+            and the value is ImageInfo of the existing image in the dataset.
         :rtype: Tuple[List[Any], List[str], Dict[int, ImageInfo]]
         """
         if len(img_srcs) != len(names):
             raise ValueError("Number of img_srcs does not match number of names")
+        conflict_resolution = conflict_resolution.lower()
+        if conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS:
+            raise ValueError(
+                f"Unknown value: {conflict_resolution}, expected one of: {SUPPORTED_CONFLICT_RESOLUTIONS}"
+            )
+
         ds_info = self._api.dataset.get_info_by_id(dataset_id)
         skipped_img_infos = {}
         if ds_info is None:
@@ -1614,14 +1669,12 @@ class ImageApi(RemoveableBulkModuleApi):
                 ids, force_metadata_for_links=force_metadata_for_links
             )
 
-        if conflict_resolution is not None:
-            conflict_resolution = conflict_resolution.lower()
-            if conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS:
-                raise ValueError(
-                    f"Unknown value: {conflict_resolution}, expected one of: {SUPPORTED_CONFLICT_RESOLUTIONS}"
-                )
-            ids, names, skipped_img_infos = self._resolve_upload_conflicts(
-                dataset_id, names, ids, conflict_resolution=conflict_resolution
+        if conflict_resolution:
+            infos, names, skipped_img_infos = self.resolve_upload_conflicts(
+                dataset_id,
+                names,
+                [info.id for info in infos],
+                conflict_resolution=conflict_resolution,
             )
 
         # prev implementation
