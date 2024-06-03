@@ -92,17 +92,17 @@
 
   <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'rename'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
     <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
-    Existing files will be renamed to avoid conflicts.
+    Existing images will be renamed to avoid conflicts.
   </div>
 
   <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'skip'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
     <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
-    Existing files will be kept, and new conflicting files will not be uploaded.
+    Existing images will be kept, and new conflicting images will not be uploaded.
   </div>
 
   <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'replace'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
     <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
-    Existing files will be replaced with the new ones.
+    Existing images will be replaced with the new ones. The existing images will be removed in the process, this action could not be reverted.
   </div>
 </sly-field>
 </div> 
