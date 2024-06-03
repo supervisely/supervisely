@@ -1474,23 +1474,46 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         names: List[str],
-        img_datas: List[Any],  # norm imya
+        img_srcs: List[Any],
         conflict_resolution: Literal["replace", "skip", "rename"],
     ) -> Tuple[List[Any], List[str], Dict[int, ImageInfo]]:
-        """ """
-        if len(img_datas) != len(names):
-            raise ValueError("Number of img_datas does not match number of names")
+        """
+        Resolve conflicts that occur during the upload of images to a dataset based on the specified conflict resolution strategy.
+
+        Parameters
+        ----------
+        :param dataset_id: Destination Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param names: Source images names with extension.
+        :type names: List[str]
+        :param img_srcs: Any image data.
+        :type img_srcs: List[Any]
+        :param conflict_resolution: The strategy to resolve upload conflicts:
+            - "replace": Replace the existing images in the dataset with the new images.
+            - "skip": Skip the upload of new images that would result in a conflict.
+            - "rename": Rename the new images to prevent any conflict.
+        :type conflict_resolution: Literal["replace", "skip", "rename"]
+
+
+        :return: A tuple containing:
+            - A list of the sources of images that were processed.
+            - A list of the names of images after conflict resolution.
+            - A dictionary of skipped image infos, where the key is the indice that was skipped, and the value is ImageInfo.
+        :rtype: Tuple[List[Any], List[str], Dict[int, ImageInfo]]
+        """
+        if len(img_srcs) != len(names):
+            raise ValueError("Number of img_srcs does not match number of names")
         ds_info = self._api.dataset.get_info_by_id(dataset_id)
         skipped_img_infos = {}
         if ds_info is None:
-            return img_datas, names, skipped_img_infos
+            return img_srcs, names, skipped_img_infos
         img_infos = self._api.image.get_list(dataset_id)
         existing_img_names = [img.name for img in img_infos]
 
-        resolved_data = []
+        resolved_srcs = []
         resolved_names = []
         ids_to_remove = []
-        for id, name in zip(img_datas, names):
+        for img_src, name in zip(img_srcs, names):
             if name in existing_img_names:
                 idx = existing_img_names.index(name)
                 if conflict_resolution == "skip":
@@ -1499,10 +1522,10 @@ class ImageApi(RemoveableBulkModuleApi):
                     resolved_names.append(
                         generate_free_name(existing_img_names, name, with_ext=True)
                     )
-                    resolved_data.append(id)
+                    resolved_srcs.append(img_src)
                 elif conflict_resolution == "replace":
                     ids_to_remove.append(img_infos[idx].id)
-                    resolved_data.append(id)
+                    resolved_srcs.append(img_src)
                     resolved_names.append(name)
 
         if ids_to_remove:
@@ -1513,7 +1536,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 f"Elements with following indices: {list(skipped_img_infos.keys())} were skipped, Image names: {list(skipped_img_infos.values())}"
             )
 
-        return resolved_data, resolved_names, skipped_img_infos
+        return resolved_srcs, resolved_names, skipped_img_infos
 
     def upload_ids(
         self,

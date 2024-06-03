@@ -79,28 +79,30 @@
     </div>
   </sly-field>
   
-  <sly-field 
-    title="Conflict resolution"
-    v-if="state.{{{widget.widget_id}}}.dataset_id"
-    description="123123"
-  >
-    <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
-      <el-option label="Rename" value="rename"></el-option>
-      <el-option label="Skip" value="skip"></el-option>
-      <el-option label="Replace" value="replace"></el-option>
-    </el-select>
-    <!-- <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'rename'"> -->
-    <i
-      :class="zmdi zmdi-info"
-      style="margin-right: 5px"
-      :style="{color: #3B96FF}"
-    ></i>
-    <span>Thetherherhehreh</span>
-    <!-- <span :style="{color: data.{{{widget.widget_id}}}.text_color}">
-      <span v-html="data.{{{widget.widget_id}}}.text" v-bind:style="{ fontSize: data.{{{widget.widget_id}}}.font_size }"></span>
-    </span> -->
-    </div>
-  </sly-field>
-</div> 
+<sly-field 
+  title="Conflict resolution"
+  v-if="state.{{{widget.widget_id}}}.dataset_id"
+  description="Select which conflict resolution method to use while uploading images"
+>
+  <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
+    <el-option label="Rename" value="rename">Rename</el-option>
+    <el-option label="Skip" value="skip">Skip</el-option>
+    <el-option label="Replace" value="replace">Replace</el-option>
+  </el-select>
 
-todo info, comments, auto rename
+  <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'rename'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
+    <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
+    Existing files will be renamed to avoid conflicts.
+  </div>
+
+  <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'skip'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
+    <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
+    Existing files will be kept, and new conflicting files will not be uploaded.
+  </div>
+
+  <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'replace'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
+    <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
+    Existing files will be replaced with the new ones.
+  </div>
+</sly-field>
+</div> 
