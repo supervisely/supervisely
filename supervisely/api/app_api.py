@@ -792,8 +792,11 @@ class AppApi(TaskApi):
             )
 
         node_type = "task"
-        if not self.team_id and node_id:
+        if not getattr(self, "team_id", None) and node_id:
             self.team_id = self._api.task.get_info_by_id(node_id).team_id
+
+        if not self.team_id:
+            raise ValueError("Failed to get Team ID")
 
         api_endpoint = f"workflow.add-{transaction_type}"
 
