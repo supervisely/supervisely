@@ -1,12 +1,11 @@
-import supervisely.nn.inference as inference
-from supervisely.nn.prediction_dto import PredictionMask, PredictionBBox, Prediction, PredictionSegmentation, PredictionKeypoints, PredictionCuboid3d
-from supervisely.nn.prediction_dto import (
-    PredictionMask,
-    PredictionBBox,
-    Prediction,
-    PredictionSegmentation,
-    PredictionKeypoints,
-)
-
 import supervisely.nn.checkpoints as checkpoints
-from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
+import supervisely.nn.inference as inference
+from supervisely.nn.checkpoints.checkpoint import Checkpoint, CheckpointInfo
+from supervisely.nn.prediction_dto import (
+    Prediction,
+    PredictionBBox,
+    PredictionCuboid3d,
+    PredictionKeypoints,
+    PredictionMask,
+    PredictionSegmentation,
+)

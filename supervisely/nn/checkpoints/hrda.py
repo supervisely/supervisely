@@ -1,24 +1,19 @@
 from typing import List, Literal
 from supervisely.api.api import Api
-from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
+from supervisely.nn.checkpoints.checkpoint import CheckpointInfo, Checkpoint
 
 
-# not enough info to implement
-def get_list(api: Api, team_id: int, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
-    """
-    Parse the TeamFiles directory with the checkpoints trained
-    in Supervisely of the HRDA model
-    and return the list of CheckpointInfo objects.
+class HRDACheckpoint:
+    def __init__(self, team_id: int):
+        super().__init__(team_id)
+        
+        self._training_app = "Train HRDA"
+        self._model_dir = "/HRDA"
+        self._weights_dir = None
+        self._task_type = "semantic segmentation"
+        self._weights_ext = ".pth"
+        self._config_file = "config.py"
 
-    :param api: Supervisely API object
-    :type api: Api
-    :param team_id: Team ID
-    :type team_id: int
-    :param sort: Sorting order, defaults to "desc", which means new models first
-    :type sort: Literal["desc", "asc"], optional
-
-    :return: List of CheckpointInfo objects
-    :rtype: List[CheckpointInfo]
-    """
-
-    raise NotImplementedError
+    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
+        # not enough info to implement
+        raise NotImplementedError
