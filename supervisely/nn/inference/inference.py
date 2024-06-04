@@ -1045,6 +1045,15 @@ class Inference:
                 api.annotation.append_labels(image_id, ann.labels)
                 if async_inference_request_uuid is not None:
                     sly_progress.iters_done(1)
+                    inference_request["pending_results"].append(
+                        {
+                            "annotation": None,  # to less response size
+                            "data": None,  # to less response size
+                            "image_id": image_id,
+                            "image_name": result["name"],
+                            "dataset_id": result["dataset_id"],
+                        }
+                    )
 
         new_dataset_id = {}
 
@@ -1065,7 +1074,9 @@ class Inference:
             src_dataset_id = results[0]["dataset_id"]
             dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
             image_names = [result["image_name"] for result in results]
-            image_infos = api.image.get_list(dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}])
+            image_infos = api.image.get_list(
+                dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
+            )
             meta_changed = False
             for ann in anns:
                 output_project_meta, ann, c = update_meta_and_ann(ann, output_project_meta)
@@ -1082,11 +1093,15 @@ class Inference:
             )
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(results))
+                inference_request["pending_results"].extend(
+                    [{**result, "annotation": None, "data": None} for result in results]
+                )
 
         def _add_results_to_request(results: List[Dict]):
+            if async_inference_request_uuid is None:
+                return
             inference_request["pending_results"].extend(results)
-            if async_inference_request_uuid is not None:
-                sly_progress.iters_done(len(results))
+            sly_progress.iters_done(len(results))
 
         def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
             try:
