@@ -162,11 +162,12 @@ class SessionJSON:
         else:
             self.inference_settings = {}
 
-    def inference_image_id(self, image_id: int) -> Dict[str, Any]:
+    def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         json_body["state"]["image_id"] = image_id
+        json_body["state"]["upload"] = upload
         resp = self._post(url, json=json_body)
         return resp.json()
 
@@ -275,7 +276,7 @@ class SessionJSON:
                     unit_scale=True,
                     unit_divisor=1024,
                 )
-            elif resp["status"] == "download_frames":
+            else:
                 progress_widget = preparing_cb(message="Downloading Frames", total=resp["total"])
 
             while resp["status"] in ["download_video", "download_frames"]:
@@ -299,6 +300,60 @@ class SessionJSON:
             resp["progress"]["total"], self, process_fn=process_fn
         )
         return frame_iterator
+
+    def inference_project_id_async(
+        self,
+        project_id: int,
+        dataset_ids: List[int],
+        output_project_id: int = None,
+        cache_project_on_model: bool = False,
+        process_fn=None,
+    ):
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "inference_project_id_async"
+        url = f"{self._base_url}/{endpoint}"
+        json_body = self._get_default_json_body()
+        state = json_body["state"]
+        state["projectId"] = project_id
+        state["output_project_id"] = output_project_id
+        state["cache_project_on_model"] = cache_project_on_model
+        state["dataset_ids"] = dataset_ids
+        resp = self._post(url, json=json_body).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=process_fn
+        )
+        return frame_iterator
+
+    def inference_project_id(
+        self,
+        project_id: int,
+        dataset_ids: List[int] = None,
+        output_project_id: int = None,
+        cache_project_on_model: bool = False,
+    ):
+        return [
+            pred
+            for pred in self.inference_project_id_async(
+                project_id,
+                dataset_ids,
+                output_project_id,
+                cache_project_on_model=cache_project_on_model,
+                process_fn=None,
+            )
+        ]
 
     def stop_async_inference(self) -> Dict[str, Any]:
         endpoint = "stop_inference"
@@ -324,7 +379,7 @@ class SessionJSON:
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
-        logger.info("The video is preparing on the server, this may take a while...")
+        logger.info("Preparing data on the model, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
@@ -528,8 +583,8 @@ class Session(SessionJSON):
             self._model_meta = model_meta
         return self._model_meta
 
-    def inference_image_id(self, image_id: int) -> sly.Annotation:
-        pred_json = super().inference_image_id(image_id)
+    def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
+        pred_json = super().inference_image_id(image_id, upload)
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
@@ -582,6 +637,48 @@ class Session(SessionJSON):
             process_fn=self._convert_to_sly_annotation,
         )
         return frame_iterator
+
+    def inference_project_id_async(
+        self,
+        project_id: int,
+        dataset_ids: List[int] = None,
+        output_project_id: int = None,
+        cache_project_on_model: bool = False,
+    ):
+        frame_iterator = super().inference_project_id_async(
+            project_id,
+            dataset_ids,
+            output_project_id,
+            cache_project_on_model=cache_project_on_model,
+            process_fn=self._convert_to_sly_ann_info,
+        )
+        return frame_iterator
+
+    def inference_project_id(
+        self,
+        project_id: int,
+        dataset_ids: List[int] = None,
+        output_project_id: int = None,
+        cache_project_on_model: bool = False,
+    ):
+        return [
+            pred
+            for pred in self.inference_project_id_async(
+                project_id, dataset_ids, output_project_id, cache_project_on_model
+            )
+        ]
+
+    def _convert_to_sly_ann_info(self, pred_json: dict):
+        image_id = pred_json["image_id"]
+        image_name = pred_json["image_name"]
+        annotation = pred_json["annotation"]
+        return sly.api.annotation_api.AnnotationInfo(
+            image_id=image_id,
+            image_name=image_name,
+            annotation=annotation,
+            created_at=None,
+            updated_at=None,
+        )
 
     def _convert_to_sly_annotation(self, pred_json: dict):
         model_meta = self.get_model_meta()

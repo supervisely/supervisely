@@ -131,6 +131,12 @@ class PersistentImageTTLCache(TTLCache):
     def get_video_path(self, video_id: int) -> Path:
         return super().__getitem__(video_id)
 
+    def save_project_meta(self, key, value):
+        super().__setitem__(key, value)
+
+    def get_project_meta(self, project_meta_name):
+        return super().__getitem__(project_meta_name)
+
 
 class InferenceImageCache:
     class _LoadType(Enum):
@@ -484,6 +490,28 @@ class InferenceImageCache:
         thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
         thread.start()
 
+    def set_project_meta(self, project_id, project_meta):
+        pr_meta_name = self._project_meta_name(project_id)
+        if isinstance(self._cache, PersistentImageTTLCache):
+            self._cache.save_project_meta(pr_meta_name, project_meta)
+        else:
+            self._cache[pr_meta_name] = project_meta
+
+    def get_project_meta(self, api: sly.Api, project_id: int):
+        pr_meta_name = self._project_meta_name(project_id)
+        if isinstance(self._cache, PersistentImageTTLCache):
+            if pr_meta_name in self._cache:
+                return self._cache.get_project_meta(pr_meta_name)
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            self._cache.save_project_meta(pr_meta_name, project_meta)
+            return project_meta
+        else:
+            if pr_meta_name in self._cache:
+                return self._cache[pr_meta_name]
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            self._cache[pr_meta_name] = project_meta
+            return project_meta
+
     @property
     def ttl(self):
         return self._ttl
@@ -547,6 +575,9 @@ class InferenceImageCache:
 
     def _video_name(self, video_id: int, video_name: str) -> str:
         return f"video_{video_id}.{video_name.split('.')[-1]}"
+
+    def _project_meta_name(self, project_id: int) -> str:
+        return f"project_meta_{project_id}"
 
     def _download_many(
         self,
