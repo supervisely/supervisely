@@ -162,11 +162,12 @@ class SessionJSON:
         else:
             self.inference_settings = {}
 
-    def inference_image_id(self, image_id: int) -> Dict[str, Any]:
+    def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         json_body["state"]["image_id"] = image_id
+        json_body["state"]["upload"] = upload
         resp = self._post(url, json=json_body)
         return resp.json()
 
@@ -582,8 +583,8 @@ class Session(SessionJSON):
             self._model_meta = model_meta
         return self._model_meta
 
-    def inference_image_id(self, image_id: int) -> sly.Annotation:
-        pred_json = super().inference_image_id(image_id)
+    def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
+        pred_json = super().inference_image_id(image_id, upload)
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
