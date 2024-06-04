@@ -512,3 +512,30 @@ def download_using_cache(
         **kwargs,
     )
     copy_from_cache(project_id, dest_dir, [*downloaded, *cached])
+
+
+def read_from_cached_project(
+    project_id: int, dataset_name: str, image_names: List[int]
+) -> List[Tuple[str, str]]:
+    """
+    Read images from cached project.
+
+    :param project_id: Project ID.
+    :type project_id: int
+    :param dataset_name: Name of the dataset.
+    :type dataset_name: str
+    :param image_ids: List of image IDs.
+    :type image_ids: list(int)
+
+    :return: List of tuples of image path and annotation path.
+    :rtype: list(str)
+    """
+    if not is_cached(project_id, dataset_name):
+        raise RuntimeError(f"Dataset {dataset_name} of project {project_id} is not cached")
+
+    dataset = Dataset(_get_cache_dir(project_id, dataset_name), OpenMode.READ)
+    paths = []
+    for image_name in image_names:
+        image_path, ann_path = dataset.get_item_paths(image_name)
+        paths.append((image_path, ann_path))
+    return paths
