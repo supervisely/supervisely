@@ -532,11 +532,8 @@ def read_from_cached_project(
     """
     if not is_cached(project_id, dataset_name):
         raise RuntimeError(f"Dataset {dataset_name} of project {project_id} is not cached")
-    project = Project(_get_cache_dir(project_id), OpenMode.READ)
-    for dataset in project.datasets:
-        dataset: Dataset
-        if dataset.name == dataset_name:
-            break
+
+    dataset = Dataset(_get_cache_dir(project_id, dataset_name), OpenMode.READ)
     paths = []
     for image_name in image_names:
         image_path, ann_path = dataset.get_item_paths(image_name)
