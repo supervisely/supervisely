@@ -35,6 +35,7 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
 from supervisely.app.content import StateJson, get_data_dir
@@ -792,27 +793,13 @@ class Inference:
         fs.silent_remove(image_path)
 
         if upload:
-            ds_info = api.dataset.get_info_by_id(image_info.dataset_id)
+            ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
             output_project_id = ds_info.project_id
             output_project_meta = self.cache.get_project_meta(api, output_project_id)
             logger.debug("Merging project meta...")
-            changed = False
-            for label in ann.labels:
-                if output_project_meta.get_obj_class(label.obj_class.name) is None:
-                    model_obj_class = self.model_meta.get_obj_class(label.obj_class.name)
-                    output_project_meta = output_project_meta.add_obj_class(model_obj_class)
-                    changed = True
-                for tag in label.tags:
-                    if output_project_meta.get_tag_meta(tag.meta.name) is None:
-                        model_tag_meta = self.model_meta.get_tag_meta(tag.meta.name)
-                        output_project_meta = output_project_meta.add_tag_meta(model_tag_meta)
-                        changed = True
-            for tag in ann.img_tags:
-                if output_project_meta.get_tag_meta(tag.meta.name) is None:
-                    model_tag_meta = self.model_meta.get_tag_meta(tag.meta.name)
-                    output_project_meta = output_project_meta.add_tag_meta(model_tag_meta)
-                    changed = True
-            if changed:
+
+            output_project_meta, ann, meta_changed = update_meta_and_ann(output_project_meta, ann)
+            if meta_changed:
                 output_project_meta = api.project.update_meta(
                     output_project_id, output_project_meta
                 )
@@ -976,6 +963,7 @@ class Inference:
         preparing_progress["status"] = "download_info"
         preparing_progress["current"] = 0
         preparing_progress["total"] = len(datasets_infos)
+        progress_cb = None
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -1049,6 +1037,11 @@ class Inference:
             for result in results:
                 image_id = result["image_id"]
                 ann = Annotation.from_json(result["annotation"], output_project_meta)
+                output_project_meta, ann, meta_changed = update_meta_and_ann(
+                    ann, output_project_meta
+                )
+                if meta_changed:
+                    api.project.update_meta(project_info.id, output_project_meta)
                 api.annotation.append_labels(image_id, ann.labels)
                 if async_inference_request_uuid is not None:
                     sly_progress.iters_done(1)
@@ -1056,11 +1049,12 @@ class Inference:
         new_dataset_id = {}
 
         def _get_or_create_new_dataset(output_project_id, src_dataset_id):
+            """Copy dataset in output project if not exists and return its id"""
             if src_dataset_id in new_dataset_id:
                 return new_dataset_id[src_dataset_id]
             dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            output_dataset_id = api.dataset.create(
-                output_project_id, dataset_info.name, change_name_if_conflict=True
+            output_dataset_id = api.dataset.copy(
+                output_project_id, src_dataset_id, dataset_info.name, change_name_if_conflict=True
             ).id
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
@@ -1070,10 +1064,15 @@ class Inference:
                 return
             src_dataset_id = results[0]["dataset_id"]
             dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
-            image_ids = [result["image_id"] for result in results]
             image_names = [result["image_name"] for result in results]
-            image_infos = api.image.upload_ids(dataset_id, names=image_names, ids=image_ids)
-            # api.dataset.copy()  # TODO
+            image_infos = api.image.get_list(dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}])
+            meta_changed = False
+            for ann in anns:
+                output_project_meta, ann, c = update_meta_and_ann(ann, output_project_meta)
+                meta_changed = meta_changed or c
+            if meta_changed:
+                api.project.update_meta(project_info.id, output_project_meta)
+
             api.annotation.upload_anns(
                 img_ids=[info.id for info in image_infos],
                 anns=[
@@ -1715,3 +1714,100 @@ def clean_up_cuda():
         torch.cuda.empty_cache()
     except Exception as exc:
         logger.debug("Error in clean_up_cuda.", exc_info=True)
+
+
+def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
+    """Update project meta and annotation to match each other
+    If obj class or tag meta from annotation conflicts with project meta
+    add suffix to obj class or tag meta.
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed."""
+    obj_classes_suffixes = {"_nn"}
+    tag_meta_suffixes = {"_nn"}
+    ann_obj_classes = set()
+    ann_tag_metas = set()
+    meta_changed = False
+
+    # get all obj classes and tag metas from annotation
+    for label in ann.labels:
+        ann_obj_classes.add(label.obj_class)
+        for tag in label.tags:
+            ann_tag_metas.add(tag.meta)
+    for tag in ann.img_tags:
+        ann_tag_metas.add(tag.meta)
+
+    # check if obj classes are in project meta
+    # if not, add them with suffix
+    changed_obj_classes = {}
+    for ann_obj_class in ann_obj_classes:
+        if meta.get_obj_class(ann_obj_class.name) is None:
+            meta = meta.add_obj_class(ann_obj_class)
+            meta_changed = True
+        elif meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type:
+            found = False
+            for suffix in obj_classes_suffixes:
+                new_obj_class_name = ann_obj_class.name + suffix
+                meta_obj_class = meta.get_obj_class(new_obj_class_name)
+                if meta_obj_class is None:
+                    new_obj_class = ann_obj_class.clone(name=new_obj_class_name)
+                    meta = meta.add_obj_class(new_obj_class)
+                    meta_changed = True
+                    changed_obj_classes[ann_obj_class.name] = new_obj_class
+                    found = True
+                    break
+                if meta_obj_class.geometry_type == ann_obj_class.geometry_type:
+                    changed_obj_classes[ann_obj_class.name] = meta_obj_class
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Can't add obj class {ann_obj_class.name} to project meta")
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    changed_tag_metas = {}
+    for tag_meta in ann_tag_metas:
+        if meta.get_tag_meta(tag_meta.name) is None:
+            meta = meta.add_tag_meta(tag_meta)
+            meta_changed = True
+        elif not meta.get_tag_meta(tag_meta.name).is_compatible(tag_meta):
+            found = False
+            for suffix in tag_meta_suffixes:
+                new_tag_meta_name = tag_meta.name + suffix
+                meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
+                if meta_tag_meta is None:
+                    new_tag_meta = tag_meta.clone(name=new_tag_meta_name)
+                    meta = meta.add_tag_meta(new_tag_meta)
+                    changed_tag_metas[tag_meta.name] = new_tag_meta
+                    meta_changed = True
+                    found = True
+                    break
+                if meta_tag_meta.is_compatible(tag_meta):
+                    changed_tag_metas[tag_meta.name] = meta_tag_meta
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Can't add tag meta {tag_meta.name} to project meta")
+
+    labels = []
+    for label in ann.labels:
+        if label.obj_class.name in changed_obj_classes:
+            labels.append(label.clone(obj_class=changed_obj_classes[ann_obj_class.name]))
+        else:
+            labels.append(label)
+
+        label_tags = []
+        for tag in label.tags:
+            if tag.meta.name in changed_tag_metas:
+                label_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+            else:
+                label_tags.append(tag)
+
+        labels[-1] = labels[-1].clone(tags=label_tags)
+    img_tags = []
+    for tag in ann.img_tags:
+        if tag.meta.name in changed_tag_metas:
+            img_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+        else:
+            img_tags.append(tag)
+
+    ann = ann.clone(labels=labels, img_tags=TagCollection(img_tags))
+    return meta, ann, meta_changed
