@@ -1,6 +1,9 @@
+import json
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
 from os.path import basename, dirname, join
 from typing import List, Literal, NamedTuple, Optional
-
+from time import time
 import requests
 
 from supervisely import logger
@@ -73,103 +76,132 @@ class Checkpoint:
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
         self._metadata_file_name = "sly_metadata.json"
+        self._http_session = requests.Session()
+        
 
     @property
     def models_dir(self) -> str:
         raise NotImplementedError
 
-    def _generate_sly_metadata(
+    def _sort_checkpoints(
+        self, checkpoints: List[FileInfo], sort: Literal["desc", "asc"] = "desc"
+    ) -> List[CheckpointInfo]:
+        start_sort_time = time()
+        checkpoints_with_ids = [(c.session_id, c) for c in checkpoints]
+        if sort == "desc":
+            checkpoints_with_ids.sort(reverse=True)
+        elif sort == "asc":
+            checkpoints_with_ids.sort()
+        checkpoints = [c for _, c in checkpoints_with_ids]
+        end_sort_time = time()
+        logger.info(f"Sort time: '{format(end_sort_time - start_sort_time, '.6f')}' sec")
+        return checkpoints
+
+    def _add_sly_metadata(
         self,
-        experiment_dir: str,
-        weights_dir: str,
+        app_name: str,
+        session_id: str,
+        session_path: str,
+        weights_path: str,
         weights_ext: str,
-        training_app: str,
+        training_project_name: str,
         task_type: str = None,
-        config_file: str = None,
-        project_name: str = None,
+        config_path: str = None,
     ):
-        logger.info(f"Generating '{self._metadata_file_name}' for {experiment_dir}")
+        def _get_checkpoints_infos(weights_path) -> List[FileInfo]:
+            return [
+                file
+                for file in self._api.file.list(
+                    self._team_id,
+                    weights_path,
+                    recursive=False,
+                    return_type="fileinfo",
+                )
+                if file.name.endswith(weights_ext)
+            ]
 
-        if training_app.startswith("Train YOLO"):
-            task_id = basename(dirname(experiment_dir))
-        else:
-            task_id = experiment_dir.split("_")[0]
-
-        if project_name is None:
-            project_name = experiment_dir.split("_")[1]
-
-        if is_development():
-            session_link = abs_url(f"/apps/sessions/{task_id}")
-        else:
-            session_link = f"/apps/sessions/{task_id}"
-        path_to_checkpoints = join(experiment_dir, weights_dir)
-        checkpoints_infos = [
-            file
-            for file in self._api.file.list(
+        def _upload_metadata(json_data: dict) -> None:
+            json_data_path = self._metadata_file_name
+            dump_json_file(json_data, json_data_path)
+            self._api.file.upload(
                 self._team_id,
-                path_to_checkpoints,
-                recursive=False,
-                return_type="fileinfo",
+                json_data_path,
+                f"{session_path}/{self._metadata_file_name}",
             )
-            if file.name.endswith(weights_ext)
-        ]
+            silent_remove(json_data_path)
 
-        config_url = None
-        if config_file is not None:
-            config_url = join(experiment_dir, config_file)
-            if not self._api.file.exists(self._team_id, config_url):
-                return None
-            if training_app == "Train MMDetection 3.0":
-                self._api.file.download(self._team_id, config_url, "model_config.txt")
-                with open("model_config.txt", "r") as f:
-                    lines = f.readlines()
-                    project_line = lines[-1] if lines else None
-                    start = project_line.find("'") + 1
-                    end = project_line.find("'", start)
-                    project_name = project_line[start:end]
-                    task_type_line = lines[-3] if lines else None
-                    start = task_type_line.find("'") + 1
-                    end = task_type_line.find("'", start)
-                    task_type = task_type_line[start:end].replace("_", " ")
-                    f.close()
-                silent_remove("model_config.txt")
-
+        checkpoints_infos = _get_checkpoints_infos(weights_path)
         if len(checkpoints_infos) == 0:
+            logger.info(f"No checkpoints found in '{session_path}'")
             return None
 
+        logger.info(f"Generating '{self._metadata_file_name}' for {session_path}")
+        if is_development():
+            session_link = abs_url(f"/apps/sessions/{session_id}")
+        else:
+            session_link = f"/apps/sessions/{session_id}"
+
         json_data = {
-            "app_name": training_app,
-            "session_id": task_id,
-            "session_path": experiment_dir,
+            "app_name": app_name,
+            "session_id": session_id,
+            "session_path": session_path,
             "session_link": session_link,
             "task_type": task_type,
-            "training_project_name": project_name,
+            "training_project_name": training_project_name,
             "checkpoints": checkpoints_infos,
         }
 
-        if config_url is not None:
-            json_data["config"] = config_url
+        if config_path is not None:
+            json_data["config"] = config_path
 
-        json_data_path = self._metadata_file_name
-        dump_json_file(json_data, json_data_path)
-        self._api.file.upload(
-            self._team_id,
-            json_data_path,
-            f"{experiment_dir}/{self._metadata_file_name}",
-        )
-        silent_remove(json_data_path)
+        _upload_metadata(json_data)
         return json_data
 
-    def _fetch_json_from_url(self, url: str):
-        metadata: FileInfo = self._api.file.get_info_by_path(self._team_id, url)
-        if metadata is not None:
-            try:
-                response = requests.get(metadata.full_storage_url)
-                response.raise_for_status()  # Check that the request was successful
-                respons_json = response.json()  # update checkpoints key to use FileInfo
-                return respons_json
-            except:
-                return None
+
+    # def _fetch_json_from_url(self, metadata_url: str):
+    #     with ThreadPoolExecutor(max_workers=10) as executor:
+    #         future_to_url = {executor.submit(self._fetch_single_json, url): url for url in metadata_url}
+    #         for future in concurrent.futures.as_completed(future_to_url):
+    #             url = future_to_url[future]
+    #             try:
+    #                 data = future.result()
+    #             except Exception as exc:
+    #                 logger.debug(f"Failed to fetch model metadata from '{url}'")
+    #             else:
+    #                 return data
+
+    # def _fetch_single_json(self, url):
+    #     try:
+    #         response = requests.get(url)
+    #         response.raise_for_status()
+    #         response_json = response.json()
+    #         checkpoints = response_json.get("checkpoints", [])
+    #         file_infos = [FileInfo(*checkpoint) for checkpoint in checkpoints]
+    #         response_json["checkpoints"] = file_infos
+    #         return response_json
+    #     except:
+    #         logger.debug(f"Failed to fetch model metadata from '{url}'")
+    #         return None
+
+    def _fetch_json_from_url(self, metadata_url: str):
+        try:
+            response = self._http_session.get(metadata_url)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"Failed to fetch model metadata from '{metadata_url}': {e}")
+            return None
+
+        try:
+            response_json = response.json()
+        except json.JSONDecodeError as e:
+            logger.debug(f"Failed to decode JSON from '{metadata_url}': {e}")
+            return None
+
+        checkpoints = response_json.get("checkpoints", [])
+        file_infos = [FileInfo(*checkpoint) for checkpoint in checkpoints]
+        response_json["checkpoints"] = file_infos
+
+        return response_json
 
     def get_list(
         self,

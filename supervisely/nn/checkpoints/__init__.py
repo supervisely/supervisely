@@ -7,6 +7,6 @@ from supervisely.nn.checkpoints.mmdetection import (
 )
 from supervisely.nn.checkpoints.mmsegmentation import MMSegmentationCheckpoint
 from supervisely.nn.checkpoints.ritm import RITMCheckpoint
-from supervisely.nn.checkpoints.unet import UNETCheckpoint
+from supervisely.nn.checkpoints.unet import UNetCheckpoint
 from supervisely.nn.checkpoints.yolov5 import YOLOv5Checkpoint, YOLOv5v2Checkpoint
 from supervisely.nn.checkpoints.yolov8 import YOLOv8Checkpoint

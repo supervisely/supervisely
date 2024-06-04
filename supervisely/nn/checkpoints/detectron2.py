@@ -1,4 +1,7 @@
-from os.path import join
+from re import compile as re_compile
+from time import time
+from collections import defaultdict
+from os.path import join, basename, dirname
 from typing import List, Literal
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
@@ -12,39 +15,68 @@ class Detectron2Checkpoint(Checkpoint):
 
         self._training_app = "Train Detectron2"
         self._model_dir = "/detectron2"
-        self._weights_dir = "checkpoints/data"
+        self._weights_dir = "detectron_data"
         self._task_type = "instance segmentation"
         self._weights_ext = ".pth"
+        self._config_file = "model_config.yaml"
+        self._pattern = re_compile(r"^/detectron2/\d+_[^/]+/?$")
+
+    def is_valid_session_path(self, path):
+        return self._pattern.match(path) is not None
 
     def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
+        def _extract_session_id_and_project_name(path):
+            parts = path.split("/")
+            if len(parts) < 3:
+                raise ValueError(f"Invalid path: {path}")
+            session_id, project_name = parts[2].split("_", 1)
+            return session_id, project_name
+
         if sort not in ["desc", "asc"]:
             raise ValueError(f"Invalid sort value: {sort}")
 
-        if not self._api.file.dir_exists(self._team_id, self._model_dir):
-            return []
+        start_val_time = time()
+        file_infos = self._api.file.list(
+            self._team_id, self._model_dir, return_type="fileinfo"
+        )
+
+        folders = defaultdict(set)
+        for file_info in file_infos:
+            session_path = dirname(file_info.path)
+            if self.is_valid_session_path(session_path):
+                folders[session_path].add(file_info)
 
         checkpoints = []
-        task_files_infos = self._api.file.list(
-            self._team_id, self._model_dir, recursive=False, return_type="fileinfo"
-        )
-        for task_file_info in task_files_infos:
-            json_data = self._fetch_json_from_url(
-                f"{task_file_info.path}/{self._metadata_file_name}"
-            )
-            if json_data is None:
-                json_data = self._generate_sly_metadata(
-                    task_file_info.path,
-                    self._weights_dir,
-                    self._training_app,
-                    self._task_type,
+        for session_path, file_infos in folders.items():
+            file_paths = [file_info.path for file_info in file_infos]
+            metadata_path = join(session_path, self._metadata_file_name)
+            if metadata_path not in file_paths:
+                weights_path = join(session_path, self._weights_dir)
+                task_type = self._task_type
+                session_id, training_project_name = _extract_session_id_and_project_name(session_path)                
+                config_path = join(weights_path, self._config_file)
+                json_data = self._add_sly_metadata(
+                    app_name=self._training_app,
+                    session_id=session_id,
+                    session_path=session_path,
+                    weights_path=weights_path,
+                    weights_ext=self._weights_ext,
+                    training_project_name=training_project_name,
+                    task_type=task_type,
+                    config_path=config_path,
                 )
-                if json_data is None:
-                    continue
+            else:
+                for file_info in file_infos:
+                    if file_info.path == metadata_path:
+                        json_data = self._fetch_json_from_url(
+                            file_info.full_storage_url
+                        )
+                        break
+            if json_data is None:
+                continue
             checkpoint_info = CheckpointInfo(**json_data)
             checkpoints.append(checkpoint_info)
 
-        if sort == "desc":
-            checkpoints = sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
-        elif sort == "asc":
-            checkpoints = sorted(checkpoints, key=lambda x: x.session_id)
+        end_val_time = time()
+        print(f"List time: '{end_val_time - start_val_time}' sec")
         return checkpoints
