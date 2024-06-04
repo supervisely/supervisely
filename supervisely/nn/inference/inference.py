@@ -1043,7 +1043,10 @@ class Inference:
                     output_project_meta, ann
                 )
                 if meta_changed:
-                    api.project.update_meta(project_info.id, output_project_meta)
+                    output_project_meta = api.project.update_meta(
+                        project_info.id, output_project_meta
+                    )
+                ann = update_classes(api, ann, output_project_meta, output_project_id)
                 api.annotation.append_labels(image_id, ann.labels)
                 if async_inference_request_uuid is not None:
                     sly_progress.iters_done(1)
@@ -1829,3 +1832,17 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
 
     ann = ann.clone(labels=labels, img_tags=TagCollection(img_tags))
     return meta, ann, meta_changed
+
+
+def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int):
+    labels = []
+    for label in ann.labels:
+        if label.obj_class.sly_id is None:
+            obj_class = meta.get_obj_class(label.obj_class.name)
+            if obj_class.sly_id is None:
+                meta = api.project.update_meta(project_id, meta)
+                obj_class = meta.get_obj_class(label.obj_class.name)
+            labels.append(label.clone(obj_class=obj_class))
+        else:
+            labels.append(label)
+    return ann.clone(labels=labels)
