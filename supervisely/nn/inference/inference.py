@@ -1034,11 +1034,12 @@ class Inference:
             threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
         def _upload_results_to_source(results: List[Dict]):
+            nonlocal output_project_meta
             for result in results:
                 image_id = result["image_id"]
-                ann = Annotation.from_json(result["annotation"], output_project_meta)
+                ann = Annotation.from_json(result["annotation"], self.model_meta)
                 output_project_meta, ann, meta_changed = update_meta_and_ann(
-                    ann, output_project_meta
+                    output_project_meta, ann
                 )
                 if meta_changed:
                     api.project.update_meta(project_info.id, output_project_meta)
@@ -1069,6 +1070,7 @@ class Inference:
             return output_dataset_id
 
         def _upload_results_to_other(results: List[Dict]):
+            nonlocal output_project_meta
             if len(results) == 0:
                 return
             src_dataset_id = results[0]["dataset_id"]
@@ -1078,18 +1080,18 @@ class Inference:
                 dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
             )
             meta_changed = False
-            for ann in anns:
-                output_project_meta, ann, c = update_meta_and_ann(ann, output_project_meta)
+            anns = []
+            for result in results:
+                ann = Annotation.from_json(result["annotation"], self.model_meta)
+                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
                 meta_changed = meta_changed or c
+                anns.append(ann)
             if meta_changed:
-                api.project.update_meta(project_info.id, output_project_meta)
+                api.project.update_meta(output_project_id, output_project_meta)
 
             api.annotation.upload_anns(
                 img_ids=[info.id for info in image_infos],
-                anns=[
-                    Annotation.from_json(result["annotation"], output_project_meta)
-                    for result in results
-                ],
+                anns=anns,
             )
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(results))
@@ -1738,22 +1740,22 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     Return tuple of updated project meta, annotation and boolean flag if meta was changed."""
     obj_classes_suffixes = {"_nn"}
     tag_meta_suffixes = {"_nn"}
-    ann_obj_classes = set()
-    ann_tag_metas = set()
+    ann_obj_classes = {}
+    ann_tag_metas = {}
     meta_changed = False
 
     # get all obj classes and tag metas from annotation
     for label in ann.labels:
-        ann_obj_classes.add(label.obj_class)
+        ann_obj_classes[label.obj_class.name] = label.obj_class
         for tag in label.tags:
-            ann_tag_metas.add(tag.meta)
+            ann_tag_metas[tag.meta.name] = tag.meta
     for tag in ann.img_tags:
-        ann_tag_metas.add(tag.meta)
+        ann_tag_metas[tag.meta.name] = tag.meta
 
     # check if obj classes are in project meta
     # if not, add them with suffix
     changed_obj_classes = {}
-    for ann_obj_class in ann_obj_classes:
+    for ann_obj_class in ann_obj_classes.values():
         if meta.get_obj_class(ann_obj_class.name) is None:
             meta = meta.add_obj_class(ann_obj_class)
             meta_changed = True
@@ -1779,7 +1781,7 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     # check if tag metas are in project meta
     # if not, add them with suffix
     changed_tag_metas = {}
-    for tag_meta in ann_tag_metas:
+    for tag_meta in ann_tag_metas.values():
         if meta.get_tag_meta(tag_meta.name) is None:
             meta = meta.add_tag_meta(tag_meta)
             meta_changed = True
@@ -1805,7 +1807,7 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     labels = []
     for label in ann.labels:
         if label.obj_class.name in changed_obj_classes:
-            labels.append(label.clone(obj_class=changed_obj_classes[ann_obj_class.name]))
+            labels.append(label.clone(obj_class=changed_obj_classes[label.obj_class.name]))
         else:
             labels.append(label)
 
