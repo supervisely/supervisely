@@ -276,7 +276,7 @@ class SessionJSON:
                     unit_scale=True,
                     unit_divisor=1024,
                 )
-            elif resp["status"] == "download_frames":
+            else:
                 progress_widget = preparing_cb(message="Downloading Frames", total=resp["total"])
 
             while resp["status"] in ["download_video", "download_frames"]:

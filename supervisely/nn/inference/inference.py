@@ -498,7 +498,7 @@ class Inference:
         # create annotation with correct image resolution
         if isinstance(image_path, str):
             ann = Annotation.from_img_path(image_path)
-        elif isinstance(image_path, np.ndarray):
+        else:
             ann = Annotation(image_path.shape[:2])
         ann = ann.add_labels(labels)
         return ann
@@ -772,6 +772,7 @@ class Inference:
         )
         logger.debug(f"Downloaded path: {image_path}")
 
+        inference_request = {}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]

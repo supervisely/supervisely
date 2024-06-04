@@ -40,6 +40,7 @@ def _scale_ann_to_original_size(
 ) -> Annotation:
     updated_labels = []
     for label in ann.labels:
+        updated_geometry = label.geometry
         if type(label.geometry) is Rectangle:
             updated_geometry = Rectangle(
                 top=label.geometry.top + rect.top,
