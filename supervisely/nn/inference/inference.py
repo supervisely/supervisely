@@ -1026,7 +1026,6 @@ class Inference:
                         executor.submit(
                             self.cache.download_image,
                             api,
-                            dataset_info.id,
                             image_id,
                         )
 
