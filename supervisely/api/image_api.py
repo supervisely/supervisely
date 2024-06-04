@@ -2177,7 +2177,6 @@ class ImageApi(RemoveableBulkModuleApi):
         id: int,
         change_name_if_conflict: Optional[bool] = False,
         with_annotations: Optional[bool] = False,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> ImageInfo:
         """
         Copies Image with given ID to destination Dataset.
@@ -2190,8 +2189,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
-        :param conflict_resolution: method for resolving image uploading conflicts. If set to 'rename', conflicting images will be renamed. If set to 'replace', the original images will be removed, and new images will be uploaded instead. If set to 'skip', original image will remain.
-        :type conflict_resolution: Literal, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -2214,7 +2211,6 @@ class ImageApi(RemoveableBulkModuleApi):
             [id],
             change_name_if_conflict,
             with_annotations,
-            conflict_resolution=conflict_resolution,
         )[0]
 
     def move(

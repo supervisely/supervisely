@@ -56,7 +56,7 @@ class DestinationProject(Widget):
 
         self._project_name = ""
         self._dataset_name = ""
-        self.conflict_resolution = None
+        self._conflict_resolution = None
 
         self._use_project_datasets_structure = False
 
@@ -99,7 +99,7 @@ class DestinationProject(Widget):
             "dataset_id": self._dataset_id,
             "dataset_name": self._dataset_name,
             "use_project_datasets_structure": self._use_project_datasets_structure,
-            "conflict_resolution": self.conflict_resolution,
+            "conflict_resolution": self._conflict_resolution,
         }
 
     def get_selected_project_id(self) -> int:
