@@ -164,7 +164,7 @@ class VideoConverter(BaseConverter):
                 item_names,
                 item_paths,
                 progress_cb=progress_cb if log_progress else None,
-                item_progress=size_progress_cb if log_progress and has_large_files else None,
+                item_progress=size_progress_cb if log_progress and has_large_files else None, # pylint: disable=used-before-assignment
             )
             vid_ids = [vid_info.id for vid_info in vid_infos]
 
@@ -182,7 +182,7 @@ class VideoConverter(BaseConverter):
                 progress_cb(len(batch))
 
         if log_progress and is_development():
-            if progress is not None:
+            if progress is not None: # pylint: disable=possibly-used-before-assignment
                 progress.close()
             if ann_progress is not None:
                 ann_progress.close()
