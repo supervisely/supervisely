@@ -3,6 +3,8 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+# pylint: disable=import-error
 import pytest
 from utils import compare, create_img
 
