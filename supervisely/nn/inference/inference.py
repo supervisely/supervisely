@@ -793,6 +793,7 @@ class Inference:
         )
         fs.silent_remove(image_path)
 
+        logger.debug("upload: %s", upload)
         if upload:
             ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
             output_project_id = ds_info.project_id
