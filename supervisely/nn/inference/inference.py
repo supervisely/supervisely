@@ -1052,7 +1052,7 @@ class Inference:
                             "annotation": None,  # to less response size
                             "data": None,  # to less response size
                             "image_id": image_id,
-                            "image_name": result["name"],
+                            "image_name": result["image_name"],
                             "dataset_id": result["dataset_id"],
                         }
                     )
