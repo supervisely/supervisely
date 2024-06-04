@@ -120,7 +120,7 @@ class DestinationProject(Widget):
         dataset_mode = StateJson()[self.widget_id]["dataset_mode"]
         ds_name = StateJson()[self.widget_id]["dataset_id"]
         if project_id is not None and dataset_mode == "existing_dataset" and ds_name is not None:
-            ds = self._api.dataset.get_info_by_name(parent_id=project_id, name=ds_name)
+            ds = self._api.dataset.get_info_by_name(project_id=project_id, name=ds_name)
             return ds.id
         return None
 
