@@ -79,6 +79,7 @@ class ProjectInfo(NamedTuple):
     team_id: int
     settings: dict
     import_settings: dict
+    version: int = 0
 
     @property
     def image_preview_url(self):
@@ -174,6 +175,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.TEAM_ID,
             ApiField.SETTINGS,
             ApiField.IMPORT_SETTINGS,
+            ApiField.PROJECT_VERSION,
         ]
 
     @staticmethod
