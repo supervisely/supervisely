@@ -22,7 +22,7 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 if ext == self.ann_ext:
                     ann_json = load_json_file(full_path)
                     if helper.annotation_high_level_validator(ann_json):
-                        meta = self.generate_meta_from_annotation(ann_json, meta)
+                        meta = helper.get_meta_from_annotation(ann_json, meta)
                         h, w = helper.get_image_size_from_annotation(ann_json)
                         image_name = os.path.splitext(os.path.basename(full_path))[0]
                         item = self.Item(image_name)
