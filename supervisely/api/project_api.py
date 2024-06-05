@@ -4,6 +4,8 @@
 # docs
 from __future__ import annotations
 
+import json
+import os
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
@@ -24,8 +26,8 @@ if TYPE_CHECKING:
 
 from datetime import datetime, timedelta
 
-from supervisely import logger
-from supervisely._utils import abs_url, compress_image_url, is_development
+from supervisely import Dataset, OpenMode, logger
+from supervisely._utils import abs_url, batched, compress_image_url, is_development
 from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -33,9 +35,11 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
+    ModuleApiBase,
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.project.project import Project, _maybe_append_image_extension
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import ProjectSettings
@@ -1796,3 +1800,227 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
         _convert_entities(first_response)
         return first_response
+
+
+class ProjectDataManager(ModuleApiBase):
+
+    STORAGE_DIR = "DVS"  # TODO change to appropriate value
+
+    def __init__(self, project_info: Union[ProjectInfo, int], storage_dir: str = STORAGE_DIR):
+        """
+        Class for managing project versions.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :param version_dir: Directory to store project versions
+        :type version_dir: str
+        """
+        if isinstance(project_info, int):
+            project_info = self._api.project.get_info_by_id(project_info)
+        self.project_info: ProjectInfo = project_info
+        self.storage_dir: str = storage_dir  # ? check if it is URL
+        self.project_dir: str = os.path.join(self.storage_dir, str(self.project_info.id))
+        self.versions: dict = self.load_versions()
+
+    def load_versions(self):
+        """
+        Load project versions from storage.
+
+        :return: Project versions
+        :rtype: dict
+        """
+        response = self._api.post("projects.versions.list", {ApiField.ID: self.project_info.id})
+        return response.json()
+
+    def save_versions(self):
+        """
+        Save project versions to storage.
+        """
+        self._api.post(
+            "projects.versions.save",
+            {ApiField.ID: self.project_info.id, ApiField.VERSIONS: self.versions},
+        )
+
+    def generate_version_id(self):
+        """
+        Generate a new version ID.
+
+        :return: Version ID
+        :rtype: int
+        """
+        response = self._api.post(
+            "projects.versions.generate-id", {ApiField.ID: self.project_info.id}
+        )
+        return response.json("versionId")
+
+    def save_files(self, changes: dict):
+        """
+        Save annotation files for items in project that were added or modified in the current version to the repository.
+        Structure of the repository follows Supervisely format.
+
+        :param changes: Changes between current and previous version
+        :type changes: dict
+        """
+
+        items_to_save = list({**changes["added"], **changes["modified"]}.keys())
+        filters = [{"field": "id", "operator": "in", "value": items_to_save}]
+
+        project_fs = Project(self.project_dir, OpenMode.CREATE)
+        meta = ProjectMeta.from_json(
+            self._api.project.get_meta(self.project_info.id, with_settings=True)
+        )
+        project_fs.set_meta(meta)
+
+        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
+            dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            dataset_name = dataset_info.name
+            dataset_id = dataset_info.id
+
+            dataset: Dataset = project_fs.create_dataset(dataset_name, dataset_path)
+
+            images_to_download = self._api.image.get_list(dataset_id, filters)
+            ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
+            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+            for img_info_batch in batched(images_to_download):
+                images_nps = [None] * len(img_info_batch)
+                for index, _ in enumerate(images_nps):
+                    img_info = img_info_batch[index]
+                    image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+
+                    dataset.add_item_np(
+                        item_name=image_name,
+                        img=None,
+                        ann=img_name_to_ann[img_info.id],
+                        img_info=None,
+                    )
+        # ? save version info as json file
+
+    def create_version(self):
+        """
+        Create a new project version.
+        """
+
+        current_state = self.get_current_state()
+        previous_state = (
+            self.versions[self.latest_version()]["state"]
+            if self.latest_version()
+            else {"datasets": {}, "items": {}}
+        )
+        changes = self.compute_version_changes(previous_state, current_state)
+        version_id = self.generate_version_id()
+        self.versions[version_id] = {
+            "previous": self.latest_version(),
+            "changes": changes,
+            "state": current_state,
+        }
+        self.save_versions()
+        self.save_files(changes)
+
+    def latest_version(self):
+        if not self.versions:
+            return None
+        return max(
+            self.versions.keys()
+        )  # TODO change according to what the logic for creating versions will be
+
+    def get_current_state(self):
+        """
+        Scan project items and datasets to create a map of project state.
+
+        :return: Project state map
+        :rtype: dict
+        """
+
+        current_state = {"datasets": {}, "items": {}}
+
+        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
+            parent_id = parents[-1] if parents else 0
+            current_state["datasets"][dataset_info.id] = {
+                "name": dataset_info.name,
+                "parent": parent_id,
+            }
+
+            for image_list in self._api.image.get_list_generator(dataset_info.id):
+                for image in image_list:
+                    current_state["items"][image.id] = {
+                        "name": image.name,
+                        "hash": image.hash,
+                        "parent": dataset_info.id,
+                        "updated_at": image.updated_at,
+                    }
+        return current_state
+
+    def compute_version_changes(self, old_state: dict, new_state: dict):
+        changes = {
+            "added": {"datasets": {}, "items": {}},
+            "deleted": {"datasets": {}, "items": {}},
+            "modified": {"datasets": {}, "items": {}},
+        }
+
+        for state_type in ["datasets", "items"]:
+            added = {
+                k: v for k, v in new_state[state_type].items() if k not in old_state[state_type]
+            }
+            deleted = {
+                k: v for k, v in old_state[state_type].items() if k not in new_state[state_type]
+            }
+
+            if state_type == "datasets":
+                modified = {
+                    k: v
+                    for k, v in new_state[state_type].items()
+                    if k in old_state[state_type] and old_state[state_type][k]["name"] != v["name"]
+                }
+            else:  # state_type == "items"
+                modified = {
+                    k: v
+                    for k, v in new_state[state_type].items()
+                    if k in old_state[state_type]
+                    and old_state[state_type][k]["updated_at"] != v["updated_at"]
+                }
+
+            changes["added"][state_type] = added
+            changes["deleted"][state_type] = deleted
+            changes["modified"][state_type] = modified
+
+        return changes
+
+    def restore_version(self, target_version):
+        if target_version not in self.versions:
+            raise ValueError(f"Version {target_version} does not exist")
+
+        # Start from the latest version and walk back to the target version
+        version_chain = []
+        current_version = self.latest_version()
+
+        while current_version != target_version:
+            version_chain.append(current_version)
+            current_version = self.versions[current_version]["previous"]
+
+        # Apply changes in reverse order
+        for version_id in reversed(version_chain):
+            self.apply_version_changes(self.versions[version_id]["changes"], reverse=True)
+
+    def apply_version_changes(self, changes, reverse=False):
+        for state_type in ["datasets", "items"]:
+            if reverse:
+                for id, info in changes["added"][state_type].items():
+                    # remove dataset/item
+                    pass
+                for id, info in changes["deleted"][state_type].items():
+                    self.restore_version(id, info)
+                for id, info in changes["modified"][state_type].items():
+                    self.restore_version(id, info)
+            else:
+                for id, info in changes["added"][state_type].items():
+                    self.restore_version(id, info)
+                for id in changes["deleted"][state_type].keys():
+                    # remove dataset/item
+                    pass
+                for id, info in changes["modified"][state_type].items():
+                    self.restore_version(id, info)
+
+    def restore_file_version(self, file_id, info):
+        # restore_file
+        # restore_annotations
+        pass
