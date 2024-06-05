@@ -1,17 +1,11 @@
 from typing import List
 
-from supervisely import AnyGeometry, GraphNodes, ObjClass, ProjectMeta, TagMeta, TagValueType, logger
-from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.helpers import GET_GEOMETRY_FROM_STR
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
-from supervisely.geometry.point import Point
-from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.polyline import Polyline
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.tag import TagJsonFields
-from supervisely.geometry.helpers import GET_GEOMETRY_FROM_STR
+from supervisely import ObjClass, ProjectMeta, TagMeta, TagValueType, logger
 
 SLY_IMAGE_ANN_KEYS = ["objects", "tags", "size"]
 SLY_OBJECT_KEYS = [LabelJsonFields.OBJ_CLASS_NAME, LabelJsonFields.TAGS, "geometryType"]  #, LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
