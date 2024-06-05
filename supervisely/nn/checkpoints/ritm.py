@@ -8,7 +8,7 @@ class RITMCheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train RITM"
+        self._app_name = "Train RITM"
         self._model_dir = "/RITM_training"
         self._weights_dir = "checkpoints"
         self._task_type = None

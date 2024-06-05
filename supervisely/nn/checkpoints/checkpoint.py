@@ -50,7 +50,7 @@ class BaseCheckpoint:
         self._metadata_file_name = "sly_metadata.json"
         self._http_session = requests.Session()
 
-        self._training_app = None
+        self._app_name = None
         self._model_dir = None
         self._weights_dir = None
         self._task_type = None
@@ -77,6 +77,34 @@ class BaseCheckpoint:
         :rtype: str
         """
         return self._metadata_file_name
+
+    @property
+    def app_name(self):
+        return self._app_name
+
+    @property
+    def model_dir(self):
+        return self._model_dir
+
+    @property
+    def weights_dir(self):
+        return self._weights_dir
+
+    @property
+    def task_type(self):
+        return self._task_type
+
+    @property
+    def weights_ext(self):
+        return self._weights_ext
+
+    @property
+    def config_file(self):
+        return self._config_file
+
+    @property
+    def pattern(self):
+        return self._pattern
 
     def get_model_dir(self):
         """
@@ -322,7 +350,7 @@ class BaseCheckpoint:
             training_project_name = self.get_training_project_name(session_path)
             config_path = self.get_config_path(session_path)
             json_data = self.generate_sly_metadata(
-                app_name=self._training_app,
+                app_name=self._app_name,
                 session_id=session_id,
                 session_path=session_path,
                 weights_path=weights_path,

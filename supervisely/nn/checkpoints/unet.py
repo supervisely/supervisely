@@ -8,7 +8,7 @@ class UNetCheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train UNet"
+        self._app_name = "Train UNet"
         self._model_dir = "/unet"
         self._weights_dir = "checkpoints"
         self._task_type = "semantic segmentation"

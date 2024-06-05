@@ -8,7 +8,7 @@ class YOLOv8Checkpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train YOLOv8"
+        self._app_name = "Train YOLOv8"
         self._model_dir = "/yolov8_train"
         self._weights_dir = "weights"
         self._task_type = None

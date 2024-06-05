@@ -9,7 +9,7 @@ class HRDACheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         raise NotImplementedError
         # super().__init__(team_id)
-        # self._training_app = "Train HRDA"
+        # self._app_name = "Train HRDA"
         # self._model_dir = "/HRDA"
         # self._weights_dir = None
         # self._task_type = "semantic segmentation"

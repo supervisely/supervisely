@@ -9,7 +9,7 @@ class MMDetectionCheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train MMDetection"
+        self._app_name = "Train MMDetection"
         self._model_dir = "/mmdetection"
         self._weights_dir = "checkpoints/data"
         self._task_type = None
@@ -53,7 +53,7 @@ class MMDetection3Checkpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train MMDetection 3.0"
+        self._app_name = "Train MMDetection 3.0"
         self._model_dir = "/mmdetection-3"
         self._weights_dir = None
         self._task_type = None

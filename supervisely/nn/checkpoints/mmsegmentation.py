@@ -8,7 +8,7 @@ class MMSegmentationCheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train MMSegmentation"
+        self._app_name = "Train MMSegmentation"
         self._model_dir = "/mmsegmentation"
         self._weights_dir = "checkpoints/data"
         self._task_type = "instance segmentation"

@@ -8,7 +8,7 @@ class MMCClassificationCheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._training_app = "Train MMClassification"
+        self._app_name = "Train MMClassification"
         self._model_dir = "/mmclassification"
         self._weights_dir = "checkpoints"
         self._task_type = "classification"
