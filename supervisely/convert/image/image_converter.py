@@ -66,7 +66,7 @@ class ImageConverter(BaseConverter):
                         image = tifffile.imread(self.path)
                     elif is_valid_ext(file_ext):
                         logger.debug(f"Found image file: {self.path}.")
-                        image = cv2.imread(self.path)
+                        image = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
 
                     if image is not None:
                         self._shape = image.shape[:2]

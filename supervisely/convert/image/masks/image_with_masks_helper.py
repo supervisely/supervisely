@@ -35,7 +35,9 @@ def read_semantic_labels(
     obj_classes: ObjClassCollection,
     renamed_classes: Optional[dict] = None,
 ) -> list:
-    mask = cv2.imread(mask_path)[:, :, 0]
+    mask = cv2.imread(mask_path, cv2.IMREAD_UNCHANGED)
+    if mask.ndim == 3:
+        mask = mask[:, :, 0]
     labels_list = []
     for cls_name, color in classes_mapping.items():
         if color == MATCH_ALL:
