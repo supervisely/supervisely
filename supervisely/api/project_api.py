@@ -1802,7 +1802,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return first_response
 
 
-class ProjectDataManager(ModuleApiBase):
+class DataVersionManager(ModuleApiBase):
 
     STORAGE_DIR = "DVS"  # TODO change to appropriate value
 
