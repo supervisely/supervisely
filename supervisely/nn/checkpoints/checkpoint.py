@@ -187,7 +187,7 @@ class BaseCheckpoint:
         pass
 
     def sort_checkpoints(
-        self, checkpoints: List[CheckpointInfo], sort: Literal["desc", "asc"] = "asc"
+        self, checkpoints: List[CheckpointInfo], sort: Literal["desc", "asc"] = "desc"
     ) -> List[CheckpointInfo]:
         """
         Sort the checkpoints.
@@ -413,6 +413,6 @@ class BaseCheckpoint:
         folders = self._group_files_by_folder(parsed_infos)
         checkpoints = self._create_checkpoints(folders)
         end_time = time()
-        self.sort_checkpoints(checkpoints, sort)
+        checkpoints = self.sort_checkpoints(checkpoints, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return checkpoints
