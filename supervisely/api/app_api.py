@@ -798,11 +798,12 @@ class AppApi(TaskApi):
         if not self.team_id:
             raise ValueError("Failed to get Team ID")
 
-        api_endpoint = f"workflow.add-{transaction_type}"
+        api_endpoint = f"workflow.node.add-{transaction_type}"
 
         data_type = data.get("data_type")
         data_id = data.get("data_id")
         data_meta = data.get("meta")
+        project_version = data.get("project_version")
 
         payload = {
             ApiField.TEAM_ID: self.team_id,
@@ -813,6 +814,9 @@ class AppApi(TaskApi):
         if data_id:
             payload[ApiField.ID] = data_id
 
+        if project_version:
+            payload[ApiField.PROJECT_VERSION] = project_version
+
         if data_meta:
             payload[ApiField.META] = data_meta
 
@@ -821,7 +825,7 @@ class AppApi(TaskApi):
 
     def add_input_project(
         self,
-        project: Union[int, ProjectInfo],
+        project: Union[int, ProjectInfo] = None,
         version: Optional[int] = None,
         task_id: Optional[int] = None,
     ) -> dict:
@@ -835,17 +839,28 @@ class AppApi(TaskApi):
         :return: dict - response from the API.
         """
 
+        if project is None and version is None:
+            raise ValueError("Project or version must be specified")
+
         data_type = "project"
+        project_version = None
 
         if isinstance(project, ProjectInfo):
-            project = project.id
+            project_id = project.id
+            project_version = project.version
+        elif isinstance(project, int):
+            project_id = project
+            project_version = self._api.project.get_info_by_id(project_id).version
+
         if version:
-            project = version
+            project_id = version
             data_type = "project-version"
 
-        # ? add version check if ProjectInfo object is passed, when ProjectInfo will have version field
-
-        data = {"data_type": data_type, "data_id": project}
+        data = {
+            "data_type": data_type,
+            "data_id": project_id,
+            "project_version": project_version,
+        }
 
         return self._add_edge(data, "input", task_id)
 
@@ -875,27 +890,31 @@ class AppApi(TaskApi):
         """
         Add input type "file" to the workflow node.
 
-        :param file: Union[int, FileInfo, str] - file ID, FileInfo object or file path.
+        :param file: Union[int, FileInfo, str] - file ID, FileInfo object or file path int Team Files.
         :param model_weight: bool - flag to indicate if the file is a model weight.
         :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
         :return: dict - response from the API.
         """
+        import re
+
         data = {}
         data_type = "file"
 
         if isinstance(file, FileInfo):
-            file = file.id
-        elif isinstance(file, str):  # TODO: adjust meta for url and bucket
+            file_id = file.id
+        elif isinstance(file, int):
+            file_id = file
+        elif isinstance(file, str):
             if str_is_url(file):
-                data = {"data_meta": {"url": True}}
-            if RemoteStorageApi.is_bucket_url(file):
-                data = {"data_meta": {"bucket": True}}
+                raise NotImplementedError("URLs are not supported yet")
+            if bool(re.match(r"^(/[^/ ]*)+$", file)):  # is file path
+                file_id = self._api.file.get_info_by_path(self.team_id, file).id
 
         if model_weight:
             data_type = "model-weight"
 
         data["data_type"] = data_type
-        data["data_id"] = file
+        data["data_id"] = file_id
 
         return self._add_edge(data, "input", task_id)
 
@@ -940,15 +959,28 @@ class AppApi(TaskApi):
         :return: dict - response from the API.
         """
 
+        if project is None and version is None:
+            raise ValueError("Project or version must be specified")
+
         data_type = "project"
+        project_version = None
 
         if isinstance(project, ProjectInfo):
-            project = project.id
+            project_id = project.id
+            project_version = project.version
+        elif isinstance(project, int):
+            project_id = project
+            project_version = self._api.project.get_info_by_id(project_id).version
+
         if version:
-            project = version
+            project_id = version
             data_type = "project-version"
 
-        data = {"data_type": data_type, "data_id": project}
+        data = {
+            "data_type": data_type,
+            "data_id": project_id,
+            "project_version": project_version,
+        }
 
         return self._add_edge(data, "output", task_id)
 

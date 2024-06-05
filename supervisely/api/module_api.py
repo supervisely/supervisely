@@ -532,6 +532,8 @@ class ApiField:
     """"""
     NODE = "node"
     """"""
+    PROJECT_VERSION = "projectVersionId"
+    """"""
 
 
 def _get_single_item(items):
