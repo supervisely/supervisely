@@ -681,6 +681,7 @@ def archive_directory(
     Create tar archive from directory and optionally split it into parts of specified size.
     You can adjust the size of the chunk to read from the file, while archiving the file into parts.
     Be careful with this parameter, it can affect the performance of the function.
+    When spliting, if the size of split is less than the chunk size, the chunk size will be adjusted to fit the split size.
 
     :param dir_: Target directory path.
     :type dir_: str
@@ -722,6 +723,11 @@ def archive_directory(
     parts_paths = []
     part_number = 1
 
+    original_chunk = chunk
+    chunk = min(chunk, split)  # chunk size should be less than split size
+    if chunk != original_chunk:
+        logger.info(f"Chunk size adjusted to {chunk} bytes to fit split size.")
+
     with open(tar_path, "rb") as input_file:
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
@@ -732,6 +738,9 @@ def archive_directory(
                     if not data:
                         break
                     output_file.write(data)
+                if not data and output_file.tell() == 0:
+                    os.remove(output_path)
+                    break
                 parts_paths.append(output_path)
                 part_number += 1
             if not data:
@@ -1316,30 +1325,3 @@ def is_archive(file_path: str) -> bool:
     ]
 
     return mimetypes.guess_type(file_path)[0] in archive_mimetypes
-
-
-def str_is_url(string: str) -> bool:
-    """
-    Check if string is a valid URL.
-
-    :param string: string to check
-    :type string: str
-    :return: True if string is a valid URL, False otherwise
-    :rtype: bool
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        url = 'https://example.com/image.jpg'
-        is_url = sly.fs.str_is_url(url)
-        print(is_url)  # True
-    """
-    from urllib.parse import urlparse
-
-    try:
-        result = urlparse(string)
-        return all([result.scheme, result.netloc])
-    except ValueError:
-        return False
