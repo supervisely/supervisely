@@ -313,6 +313,7 @@ class BaseCheckpoint:
         if config_path is not None:
             checkpoint_json["config"] = config_path
         _upload_metadata(checkpoint_json)
+        logger.info(f"Metadata for '{session_path}' was generated")
         return checkpoint_json
 
     def _fetch_json_from_url(self, metadata_url: str):
