@@ -914,7 +914,7 @@ class AppApi(TaskApi):
             data_type = "model-weight"
 
         data["data_type"] = data_type
-        data["data_id"] = file_id
+        data["data_id"] = file_id  # pylint: disable=possibly-used-before-assignment
 
         return self._add_edge(data, "input", task_id)
 
