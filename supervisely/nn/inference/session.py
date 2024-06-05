@@ -686,8 +686,16 @@ class Session(SessionJSON):
         return pred_ann
 
     def _convert_to_sly_annotation_batch(self, pred_list_raw: List[dict]):
+        from supervisely.convert.image.sly.sly_image_helper import (
+            get_meta_from_annotation,
+        )
+
         model_meta = self.get_model_meta()
+        updated_metas = [
+            get_meta_from_annotation(pred["annotation"], model_meta) for pred in pred_list_raw
+        ]
         predictions = [
-            sly.Annotation.from_json(pred["annotation"], model_meta) for pred in pred_list_raw
+            sly.Annotation.from_json(pred["annotation"], meta)
+            for pred, meta in zip(pred_list_raw, updated_metas)
         ]
         return predictions
