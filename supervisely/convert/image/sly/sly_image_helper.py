@@ -78,7 +78,7 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
 
     obj_class = None
     geometry_config = None
-    if geometry_type == GraphNodes and "nodes" in object:
+    if issubclass(geometry_type, GraphNodes) and "nodes" in object:
         geometry_config = KeypointsTemplate()
         for uuid, node in object["nodes"].items():
             if "loc" in node and len(node["loc"]) == 2:
