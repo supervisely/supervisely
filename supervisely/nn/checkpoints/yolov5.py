@@ -9,7 +9,7 @@ class YOLOv5Checkpoint(BaseCheckpoint):
         super().__init__(team_id)
 
         self._training_app = "Train YOLOv5"
-        self._model_dir = "/yolov5_train/"
+        self._model_dir = "/yolov5_train"
         self._weights_dir = "weights"
         self._task_type = "object detection"
         self._weights_ext = ".pt"
@@ -37,7 +37,7 @@ class YOLOv5v2Checkpoint(YOLOv5Checkpoint):
         super().__init__(team_id)
 
         self._training_app = "Train YOLOv5 2.0"
-        self._model_dir = "/yolov5_2.0_train/"
+        self._model_dir = "/yolov5_2.0_train"
         self._weights_dir = "weights"
         self._task_type = "object detection"
         self._weights_ext = ".pt"

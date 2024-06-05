@@ -171,6 +171,33 @@ class BaseCheckpoint:
         checkpoints = [c for _, c in checkpoints_with_ids]
         return checkpoints
 
+    def remove_sly_metadata(self, session_path: str) -> None:
+        """
+        Remove the metadata file from the session folder.
+
+        :param session_path: The session path.
+        :type session_path: str
+        """
+        metadata_path = join(session_path, self._metadata_file_name)
+        self._api.file.remove(self._team_id, metadata_path)
+        logger.info(f"File '{metadata_path}' was removed")
+
+    def remove_sly_metadatas(self) -> None:
+        """
+        Remove the metadata files from the session folders.
+
+        :param session_paths: The session paths.
+        :type session_paths: List[str]
+        """
+        count = 0
+        file_paths = [file_info.path for file_info in self._get_file_infos()]
+        for file_path in file_paths:
+            if file_path.endswith("sly_metadata.json"):
+                self._api.file.remove(self._team_id, file_path)
+                logger.info(f"File '{file_path}' was removed")
+                count += 1
+        logger.info(f"Total files removed: '{count}'")
+
     def generate_sly_metadata(
         self,
         app_name: str,
