@@ -1842,6 +1842,8 @@ class DataVersion(ModuleApiBase):
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
+        :param initialize: Initialize project versions. Set to False for internal use.
+        :type initialize: bool
         :return: Project versions
         :rtype: dict
         """
@@ -1857,15 +1859,19 @@ class DataVersion(ModuleApiBase):
         remove_dir(temp_dir)
         return versions
 
-    def set_list(self, project_info: Union[ProjectInfo, int]):
+    def set_list(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
         Save project versions to storage.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
+        :param initialize: Initialize project versions. Set to False for internal use.
+        :type initialize: bool
         :return: None
         """
 
+        if initialize:
+            self.initialize(project_info)
         self.initialize(project_info)
         temp_dir = tempfile.mkdtemp()
         local_versions = os.path.join(temp_dir, "versions.json")
@@ -1903,7 +1909,7 @@ class DataVersion(ModuleApiBase):
             "state": current_state,
         }
         self.versions["latest"] = version_id
-        self.set_list()
+        self.set_list(project_info, initialize=False)
         return version_id
 
     def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
