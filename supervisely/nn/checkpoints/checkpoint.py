@@ -151,7 +151,7 @@ class BaseCheckpoint:
         pass
 
     def sort_checkpoints(
-        self, checkpoints: List[FileInfo], sort: Literal["desc", "asc"] = "desc"
+        self, checkpoints: List[CheckpointInfo], sort: Literal["desc", "asc"] = "desc"
     ) -> List[CheckpointInfo]:
         """
         Sort the checkpoints.
