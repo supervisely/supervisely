@@ -1,11 +1,7 @@
-from collections import defaultdict
-from os.path import dirname, join
+from os.path import join
 from re import compile as re_compile
-from time import time
-from typing import List, Literal
 
-from supervisely import logger
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint, CheckpointInfo
+from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
 
 
 class Detectron2Checkpoint(BaseCheckpoint):

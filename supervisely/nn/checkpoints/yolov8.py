@@ -1,7 +1,7 @@
 from os.path import join
 from re import compile as re_compile
 
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint, CheckpointInfo
+from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
 
 
 class YOLOv8Checkpoint(BaseCheckpoint):
