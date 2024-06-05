@@ -7,7 +7,17 @@ from __future__ import annotations
 import os
 import tempfile
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 import zstd
 from tqdm import tqdm
@@ -19,7 +29,7 @@ if TYPE_CHECKING:
 
 from datetime import datetime, timedelta
 
-from supervisely import Dataset, OpenMode, logger
+from supervisely import logger
 from supervisely._utils import abs_url, batched, compress_image_url, is_development
 from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
@@ -33,7 +43,6 @@ from supervisely.api.module_api import (
     UpdateableModule,
 )
 from supervisely.io.fs import archive_directory, remove_dir, silent_remove
-from supervisely.project.project import Project, _maybe_append_image_extension
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import ProjectSettings
@@ -184,6 +193,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def __init__(self, api):
         CloneableModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
+        self.version = DataVersion(api)
 
     def get_list(
         self,
@@ -1798,14 +1808,23 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 class DataVersion(ModuleApiBase):
 
-    def __init__(self, project_info: Union[ProjectInfo, int]):
+    def __init__(self, api):
         """
         Class for managing project versions.
+        """
+        self._api = api
+        self.project_info = None
+        self.storage_dir = None
+        self.project_dir = None
+        self.versions_path = None
+        self.versions = None
+
+    def initialize(self, project_info: Union[ProjectInfo, int]):
+        """
+        Initialize project versions.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
-        :param version_dir: Directory to store project versions
-        :type version_dir: str
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -1815,28 +1834,39 @@ class DataVersion(ModuleApiBase):
             self.storage_dir, str(self.project_info.id)
         )  # directory in Team Files
         self.versions_path: str = os.path.join(self.project_dir, "versions.json")
-        self.versions: dict = self.get_list()
+        self.versions: dict = self.get_list(self.project_info, initialize=False)
 
-    def get_list(self):
+    def get_list(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
         Get project versions from storage.
 
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
         :return: Project versions
         :rtype: dict
         """
-
+        if initialize:
+            self.initialize(project_info)
         temp_dir = tempfile.mkdtemp()
         local_versions = os.path.join(temp_dir, "versions.json")
-        self._api.file.download(self.project_info.team_id, self.versions_path, local_versions)
-        versions = json.load_json_file(local_versions)
+        if self._api.file.exists(self.project_info.team_id, self.versions_path):
+            self._api.file.download(self.project_info.team_id, self.versions_path, local_versions)
+            versions = json.load_json_file(local_versions)
+        else:
+            versions = {}
         remove_dir(temp_dir)
         return versions
 
-    def set_list(self):
+    def set_list(self, project_info: Union[ProjectInfo, int]):
         """
         Save project versions to storage.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :return: None
         """
 
+        self.initialize(project_info)
         temp_dir = tempfile.mkdtemp()
         local_versions = os.path.join(temp_dir, "versions.json")
         json.dump_json_file(self.versions, local_versions)
@@ -1848,10 +1878,17 @@ class DataVersion(ModuleApiBase):
         else:
             remove_dir(temp_dir)
 
-    def create(self):
+    def create(self, project_info: Union[ProjectInfo, int]):
         """
         Create a new project version.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :return: Version ID
+        :rtype: int
         """
+
+        self.initialize(project_info)
         path = self._generate_save_path()
         latest = self._get_latest_id()
         current_state = self._get_current_state()
@@ -1867,8 +1904,21 @@ class DataVersion(ModuleApiBase):
         }
         self.versions["latest"] = version_id
         self.set_list()
+        return version_id
 
-    def restore(self, target_version):
+    def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
+        """
+        Restore project to a specific version.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :param target_version: Version ID to restore to
+        :type target_version: int
+        :return: None
+        """
+
+        self.initialize(project_info)
+
         if target_version not in self.versions:
             raise ValueError(f"Version {target_version} does not exist")
 
@@ -2008,10 +2058,16 @@ class DataVersion(ModuleApiBase):
         :param changes: Changes between current and previous version
         :type changes: dict
         """
+        from supervisely.project.project import (
+            Dataset,
+            OpenMode,
+            Project,
+            _maybe_append_image_extension,
+        )
 
         temp_dir = tempfile.mkdtemp()
 
-        items_to_save = list({**changes["added"], **changes["modified"]}.keys())
+        items_to_save = list({**changes["added"]["items"], **changes["modified"]["items"]}.keys())
         filters = [{"field": "id", "operator": "in", "value": items_to_save}]
 
         project_fs = Project(temp_dir, OpenMode.CREATE)
@@ -2025,7 +2081,7 @@ class DataVersion(ModuleApiBase):
             dataset_name = dataset_info.name
             dataset_id = dataset_info.id
 
-            dataset: Dataset = project_fs.create_dataset(dataset_name, dataset_path)
+            dataset = project_fs.create_dataset(dataset_name, dataset_path)
 
             images_to_download = self._api.image.get_list(dataset_id, filters)
             ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
@@ -2049,15 +2105,7 @@ class DataVersion(ModuleApiBase):
         with open(archive_path, "rb") as tar:
             with open(zst_archive_path, "wb") as zst:
                 zst.write(zstd.ZSTD_compress(tar.read()))
-
-        progress_cb = tqdm(
-            desc=f"Creating version backup",
-            total=os.path.getsize(zst_archive_path),
-            unit="B",
-            unit_scale=True,
-        )
-        self._api.file.upload(self.project_info.team_id, zst_archive_path, path, progress_cb)
-        progress_cb.close()
+        self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
         silent_remove(archive_path)
         silent_remove(zst_archive_path)
         remove_dir(temp_dir)
