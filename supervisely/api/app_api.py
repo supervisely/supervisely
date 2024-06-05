@@ -861,7 +861,7 @@ class AppApi(TaskApi):
 
         data = {
             "data_type": data_type,
-            "data_id": project_id,
+            "data_id": project_id,  # pylint: disable=possibly-used-before-assignment
             "project_version": project_version,
         }
 
