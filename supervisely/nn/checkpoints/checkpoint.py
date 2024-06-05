@@ -50,6 +50,14 @@ class BaseCheckpoint:
         self._metadata_file_name = "sly_metadata.json"
         self._http_session = requests.Session()
 
+        self._training_app = None
+        self._model_dir = None
+        self._weights_dir = None
+        self._task_type = None
+        self._weights_ext = None
+        self._config_file = None
+        self._pattern = None
+
     @property
     def team_id(self) -> int:
         """
