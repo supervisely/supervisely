@@ -199,13 +199,10 @@ class BaseCheckpoint:
         :return: The sorted list of checkpoints.
         :rtype: List[CheckpointInfo]
         """
-        checkpoints_with_ids = [(c.session_id, c) for c in checkpoints]
         if sort == "desc":
-            checkpoints_with_ids.sort(reverse=True)
+            return sorted(checkpoints, key=lambda x: x.session_id, reverse=True)
         elif sort == "asc":
-            checkpoints_with_ids.sort()
-        checkpoints = [c for _, c in checkpoints_with_ids]
-        return checkpoints
+            return sorted(checkpoints, key=lambda x: x.session_id)
 
     def remove_sly_metadata(self, session_path: str) -> None:
         """
