@@ -125,7 +125,7 @@ class ImageConverter(BaseConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         if dataset_info is None:
             raise RuntimeError(f"Dataset ID:'{dataset_id}' not found.")
         project_id = dataset_info.project_id
