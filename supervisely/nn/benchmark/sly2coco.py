@@ -45,9 +45,10 @@ def sly2coco(sly_project_path: str, dataset_name: str, is_dt_dataset: bool, acce
                 ((left, top), (right, bottom)) = label['points']['exterior']
                 width = right - left + 1
                 height = bottom - top + 1
+                sly_id = label['id']
                 
                 annotation = {
-                    "id": annotation_id,
+                    "id": sly_id,
                     "image_id": img_id,
                     "category_id": category_id,
                     "bbox": [left, top, width, height],
