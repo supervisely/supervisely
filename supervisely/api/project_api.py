@@ -4,22 +4,15 @@
 # docs
 from __future__ import annotations
 
-import json
 import os
+import tempfile
 from collections import defaultdict
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
+import zstd
 from tqdm import tqdm
+
+from supervisely import json
 
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
@@ -39,6 +32,7 @@ from supervisely.api.module_api import (
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.io.fs import archive_directory, remove_dir, silent_remove
 from supervisely.project.project import Project, _maybe_append_image_extension
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
@@ -1802,11 +1796,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return first_response
 
 
-class DataVersionManager(ModuleApiBase):
+class DataVersion(ModuleApiBase):
 
-    STORAGE_DIR = "DVS"  # TODO change to appropriate value
-
-    def __init__(self, project_info: Union[ProjectInfo, int], storage_dir: str = STORAGE_DIR):
+    def __init__(self, project_info: Union[ProjectInfo, int]):
         """
         Class for managing project versions.
 
@@ -1818,139 +1810,100 @@ class DataVersionManager(ModuleApiBase):
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
         self.project_info: ProjectInfo = project_info
-        self.storage_dir: str = storage_dir  # ? check if it is URL
-        self.project_dir: str = os.path.join(self.storage_dir, str(self.project_info.id))
-        self.versions: dict = self.load_versions()
+        self.storage_dir: str = "/system/versions/"  # directory in Team Files
+        self.project_dir: str = os.path.join(
+            self.storage_dir, str(self.project_info.id)
+        )  # directory in Team Files
+        self.versions_path: str = os.path.join(self.project_dir, "versions.json")
+        self.versions: dict = self.get_list()
 
-    def load_versions(self):
+    def get_list(self):
         """
-        Load project versions from storage.
+        Get project versions from storage.
 
         :return: Project versions
         :rtype: dict
         """
-        response = self._api.post("projects.versions.list", {ApiField.ID: self.project_info.id})
-        return response.json()
 
-    def save_versions(self):
+        temp_dir = tempfile.mkdtemp()
+        local_versions = os.path.join(temp_dir, "versions.json")
+        self._api.file.download(self.project_info.team_id, self.versions_path, local_versions)
+        versions = json.load_json_file(local_versions)
+        remove_dir(temp_dir)
+        return versions
+
+    def set_list(self):
         """
         Save project versions to storage.
         """
-        self._api.post(
-            "projects.versions.save",
-            {ApiField.ID: self.project_info.id, ApiField.VERSIONS: self.versions},
+
+        temp_dir = tempfile.mkdtemp()
+        local_versions = os.path.join(temp_dir, "versions.json")
+        json.dump_json_file(self.versions, local_versions)
+        file_info = self._api.file.upload(
+            self.project_info.team_id, local_versions, self.versions_path
         )
+        if file_info is None:
+            raise RuntimeError("Failed to save versions")
+        else:
+            remove_dir(temp_dir)
 
-    def generate_version_id(self):
-        """
-        Generate a new version ID.
-
-        :return: Version ID
-        :rtype: int
-        """
-        response = self._api.post(
-            "projects.versions.generate-id", {ApiField.ID: self.project_info.id}
-        )
-        return response.json("versionId")
-
-    def save_files(self, changes: dict):
-        """
-        Save annotation files for items in project that were added or modified in the current version to the repository.
-        Structure of the repository follows Supervisely format.
-
-        :param changes: Changes between current and previous version
-        :type changes: dict
-        """
-
-        items_to_save = list({**changes["added"], **changes["modified"]}.keys())
-        filters = [{"field": "id", "operator": "in", "value": items_to_save}]
-
-        project_fs = Project(self.project_dir, OpenMode.CREATE)
-        meta = ProjectMeta.from_json(
-            self._api.project.get_meta(self.project_info.id, with_settings=True)
-        )
-        project_fs.set_meta(meta)
-
-        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
-            dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
-            dataset_name = dataset_info.name
-            dataset_id = dataset_info.id
-
-            dataset: Dataset = project_fs.create_dataset(dataset_name, dataset_path)
-
-            images_to_download = self._api.image.get_list(dataset_id, filters)
-            ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
-            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
-            for img_info_batch in batched(images_to_download):
-                images_nps = [None] * len(img_info_batch)
-                for index, _ in enumerate(images_nps):
-                    img_info = img_info_batch[index]
-                    image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
-
-                    dataset.add_item_np(
-                        item_name=image_name,
-                        img=None,
-                        ann=img_name_to_ann[img_info.id],
-                        img_info=None,
-                    )
-        # ? save version info as json file
-
-    def create_version(self):
+    def create(self):
         """
         Create a new project version.
         """
-
-        current_state = self.get_current_state()
-        previous_state = (
-            self.versions[self.latest_version()]["state"]
-            if self.latest_version()
-            else {"datasets": {}, "items": {}}
-        )
-        changes = self.compute_version_changes(previous_state, current_state)
-        version_id = self.generate_version_id()
+        path = self._generate_save_path()
+        latest = self._get_latest_id()
+        current_state = self._get_current_state()
+        previous_state = self.versions[latest]["state"] if latest else {"datasets": {}, "items": {}}
+        changes = self._compute_changes(previous_state, current_state)
+        self._upload_files(path, changes)
+        version_id = self._generate_id(path)
         self.versions[version_id] = {
-            "previous": self.latest_version(),
+            "path": path,
+            "previous": latest,
             "changes": changes,
             "state": current_state,
         }
-        self.save_versions()
-        self.save_files(changes)
+        self.versions["latest"] = version_id
+        self.set_list()
 
-    def latest_version(self):
-        if not self.versions:
-            return None
-        return max(
-            self.versions.keys()
-        )  # TODO change according to what the logic for creating versions will be
+    def restore(self, target_version):
+        if target_version not in self.versions:
+            raise ValueError(f"Version {target_version} does not exist")
 
-    def get_current_state(self):
-        """
-        Scan project items and datasets to create a map of project state.
+        # Start from the latest version and walk back to the target version
+        version_chain = []
+        current_version = self._get_latest_id()
 
-        :return: Project state map
-        :rtype: dict
-        """
+        while current_version != target_version:
+            version_chain.append(current_version)
+            current_version = self.versions[current_version]["previous"]
 
-        current_state = {"datasets": {}, "items": {}}
+        # Apply changes in reverse order
+        for version_id in reversed(version_chain):
+            self._apply_changes(self.versions[version_id]["changes"], reverse=True)
 
-        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
-            parent_id = parents[-1] if parents else 0
-            current_state["datasets"][dataset_info.id] = {
-                "name": dataset_info.name,
-                "parent": parent_id,
-            }
+    def _apply_changes(self, changes, reverse=False):
+        for state_type in ["datasets", "items"]:
+            if reverse:
+                for id, info in changes["added"][state_type].items():
+                    # TODO remove dataset/item
+                    pass
+                for id, info in changes["deleted"][state_type].items():
+                    self._restore_file(id, info)
+                for id, info in changes["modified"][state_type].items():
+                    self._restore_file(id, info)
+            else:
+                for id, info in changes["added"][state_type].items():
+                    self._restore_file(id, info)
+                for id in changes["deleted"][state_type].keys():
+                    # TODO remove dataset/item
+                    pass
+                for id, info in changes["modified"][state_type].items():
+                    self._restore_file(id, info)
 
-            for image_list in self._api.image.get_list_generator(dataset_info.id):
-                for image in image_list:
-                    current_state["items"][image.id] = {
-                        "name": image.name,
-                        "hash": image.hash,
-                        "parent": dataset_info.id,
-                        "updated_at": image.updated_at,
-                    }
-        return current_state
-
-    def compute_version_changes(self, old_state: dict, new_state: dict):
+    def _compute_changes(self, old_state: dict, new_state: dict):
         changes = {
             "added": {"datasets": {}, "items": {}},
             "deleted": {"datasets": {}, "items": {}},
@@ -1985,42 +1938,127 @@ class DataVersionManager(ModuleApiBase):
 
         return changes
 
-    def restore_version(self, target_version):
-        if target_version not in self.versions:
-            raise ValueError(f"Version {target_version} does not exist")
+    def _generate_id(self, path: str):
+        """
+        Generate a new version ID.
 
-        # Start from the latest version and walk back to the target version
-        version_chain = []
-        current_version = self.latest_version()
+        :return: Version ID
+        :rtype: int
+        """
+        response = self._api.post(
+            "projects.versions.generate-id",
+            {ApiField.ID: self.project_info.id, ApiField.PATH: path},
+        )
+        return response.json("versionId")
 
-        while current_version != target_version:
-            version_chain.append(current_version)
-            current_version = self.versions[current_version]["previous"]
+    def _generate_save_path(self):
+        """
+        Create a path for the new version.
 
-        # Apply changes in reverse order
-        for version_id in reversed(version_chain):
-            self.apply_version_changes(self.versions[version_id]["changes"], reverse=True)
+        :return: Path for the new version
+        :rtype: str
+        """
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        path = os.path.join(self.project_dir, timestamp + ".tar.zst")
+        return path
 
-    def apply_version_changes(self, changes, reverse=False):
-        for state_type in ["datasets", "items"]:
-            if reverse:
-                for id, info in changes["added"][state_type].items():
-                    # remove dataset/item
-                    pass
-                for id, info in changes["deleted"][state_type].items():
-                    self.restore_version(id, info)
-                for id, info in changes["modified"][state_type].items():
-                    self.restore_version(id, info)
-            else:
-                for id, info in changes["added"][state_type].items():
-                    self.restore_version(id, info)
-                for id in changes["deleted"][state_type].keys():
-                    # remove dataset/item
-                    pass
-                for id, info in changes["modified"][state_type].items():
-                    self.restore_version(id, info)
+    def _get_latest_id(self):
+        latest = self.versions.get("latest", None)
+        if not latest:
+            return None
+        return latest
 
-    def restore_file_version(self, file_id, info):
-        # restore_file
-        # restore_annotations
-        pass
+    def _get_current_state(self):
+        """
+        Scan project items and datasets to create a map of project state.
+
+        :return: Project state map
+        :rtype: dict
+        """
+
+        current_state = {"datasets": {}, "items": {}}
+
+        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
+            parent_id = parents[-1] if parents else 0
+            current_state["datasets"][dataset_info.id] = {
+                "name": dataset_info.name,
+                "parent": parent_id,
+            }
+
+            for image_list in self._api.image.get_list_generator(dataset_info.id):
+                for image in image_list:
+                    current_state["items"][image.id] = {
+                        "name": image.name,
+                        "hash": image.hash,
+                        "parent": dataset_info.id,
+                        "updated_at": image.updated_at,
+                    }
+        return current_state
+
+    def _restore_file(self, file_id, info):
+        # TODO restore_file
+        # TODO restore_annotations
+        return
+
+    def _upload_files(self, path: str, changes: dict):
+        """
+        Save annotation files for items in project that were added or modified in the current version to the repository.
+        Structure of the repository follows Supervisely format.
+
+        :param changes: Changes between current and previous version
+        :type changes: dict
+        """
+
+        temp_dir = tempfile.mkdtemp()
+
+        items_to_save = list({**changes["added"], **changes["modified"]}.keys())
+        filters = [{"field": "id", "operator": "in", "value": items_to_save}]
+
+        project_fs = Project(temp_dir, OpenMode.CREATE)
+        meta = ProjectMeta.from_json(
+            self._api.project.get_meta(self.project_info.id, with_settings=True)
+        )
+        project_fs.set_meta(meta)
+
+        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
+            dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+            dataset_name = dataset_info.name
+            dataset_id = dataset_info.id
+
+            dataset: Dataset = project_fs.create_dataset(dataset_name, dataset_path)
+
+            images_to_download = self._api.image.get_list(dataset_id, filters)
+            ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
+            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+            for img_info_batch in batched(images_to_download):
+                images_nps = [None] * len(img_info_batch)
+                for index, _ in enumerate(images_nps):
+                    img_info = img_info_batch[index]
+                    image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+
+                    dataset.add_item_np(
+                        item_name=image_name,
+                        img=None,
+                        ann=img_name_to_ann[img_info.id],
+                        img_info=None,
+                    )
+
+        archive_path = os.path.join(os.path.dirname(temp_dir), "download.tar")
+        archive_directory(temp_dir, archive_path)
+        zst_archive_path = archive_path + ".zst"
+        with open(archive_path, "rb") as tar:
+            with open(zst_archive_path, "wb") as zst:
+                zst.write(zstd.ZSTD_compress(tar.read()))
+
+        progress_cb = tqdm(
+            desc=f"Creating version backup",
+            total=os.path.getsize(zst_archive_path),
+            unit="B",
+            unit_scale=True,
+        )
+        self._api.file.upload(self.project_info.team_id, zst_archive_path, path, progress_cb)
+        progress_cb.close()
+        silent_remove(archive_path)
+        silent_remove(zst_archive_path)
+        remove_dir(temp_dir)
+        return
