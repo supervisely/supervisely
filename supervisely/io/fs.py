@@ -499,9 +499,9 @@ def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
 
 
 def subdirs_tree(
-    dir_path: str,
-    ignore: Optional[List[str]] = None,
-    ignore_content: Optional[List[str]] = None,
+        dir_path: str,
+        ignore: Optional[List[str]] = None,
+        ignore_content: Optional[List[str]] = None,
 ) -> Generator[str, None, None]:
     """Generator that yields directories in the directory tree,
     starting from the level below the root directory and then going down the tree.
@@ -681,7 +681,6 @@ def archive_directory(
     Create tar archive from directory and optionally split it into parts of specified size.
     You can adjust the size of the chunk to read from the file, while archiving the file into parts.
     Be careful with this parameter, it can affect the performance of the function.
-    When spliting, if the size of split is less than the chunk size, the chunk size will be adjusted to fit the split size.
 
     :param dir_: Target directory path.
     :type dir_: str
@@ -723,11 +722,6 @@ def archive_directory(
     parts_paths = []
     part_number = 1
 
-    original_chunk = chunk
-    chunk = min(chunk, split)  # chunk size should be less than split size
-    if chunk != original_chunk:
-        logger.info(f"Chunk size adjusted to {chunk} bytes to fit split size.")
-
     with open(tar_path, "rb") as input_file:
         while True:
             part_name = f"{tar_name}.{str(part_number).zfill(3)}"
@@ -738,9 +732,6 @@ def archive_directory(
                     if not data:
                         break
                     output_file.write(data)
-                if not data and output_file.tell() == 0:
-                    os.remove(output_path)
-                    break
                 parts_paths.append(output_path)
                 part_number += 1
             if not data:
