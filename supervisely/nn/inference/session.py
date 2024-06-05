@@ -14,6 +14,7 @@ import yaml
 from requests import HTTPError, Timeout
 
 import supervisely as sly
+from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.sly_logger import logger
 
@@ -682,20 +683,16 @@ class Session(SessionJSON):
 
     def _convert_to_sly_annotation(self, pred_json: dict):
         model_meta = self.get_model_meta()
-        pred_ann = sly.Annotation.from_json(pred_json["annotation"], model_meta)
+        meta = get_meta_from_annotation(pred_json["annotation"], model_meta)
+        pred_ann = sly.Annotation.from_json(pred_json["annotation"], meta)
         return pred_ann
 
     def _convert_to_sly_annotation_batch(self, pred_list_raw: List[dict]):
-        from supervisely.convert.image.sly.sly_image_helper import (
-            get_meta_from_annotation,
-        )
-
-        model_meta = self.get_model_meta()
-        updated_metas = [
-            get_meta_from_annotation(pred["annotation"], model_meta) for pred in pred_list_raw
-        ]
+        meta = self.get_model_meta()
+        for pred in pred_list_raw:
+            meta = get_meta_from_annotation(pred["annotation"], meta)
         predictions = [
             sly.Annotation.from_json(pred["annotation"], meta)
-            for pred, meta in zip(pred_list_raw, updated_metas)
+            for pred in pred_list_raw
         ]
         return predictions
