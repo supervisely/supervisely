@@ -15,9 +15,10 @@ STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
 
-from supervisely import DatasetInfo, ProjectInfo, logger
+from supervisely import logger
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.file_api import FileInfo
-from supervisely.api.remote_storage_api import RemoteStorageApi
+from supervisely.api.project_api import ProjectInfo
 from supervisely.io.fs import ensure_base_path, str_is_url
 from supervisely.task.progress import Progress
 
@@ -783,8 +784,10 @@ class AppApi(TaskApi):
         :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
         :return: dict - response from the API.
         """
-
-        node_id = self._api.task_id
+        if task_id is None:
+            node_id = self._api.task_id
+        else:
+            node_id = task_id
 
         if node_id is None:
             raise ValueError(
@@ -793,7 +796,7 @@ class AppApi(TaskApi):
 
         node_type = "task"
         if not getattr(self, "team_id", None) and node_id:
-            self.team_id = self._api.task.get_info_by_id(node_id).team_id
+            self.team_id = self._api.task.get_info_by_id(node_id).get("teamId")
 
         if not self.team_id:
             raise ValueError("Failed to get Team ID")
@@ -847,10 +850,10 @@ class AppApi(TaskApi):
 
         if isinstance(project, ProjectInfo):
             project_id = project.id
-            project_version = project.version
+            # project_version = project.version
         elif isinstance(project, int):
             project_id = project
-            project_version = self._api.project.get_info_by_id(project_id).version
+            # project_version = self._api.project.get_info_by_id(project_id).version
 
         if version:
             project_id = version
