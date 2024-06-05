@@ -1810,9 +1810,7 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     labels = []
     for label in ann.labels:
         if label.obj_class.name in changed_obj_classes:
-            labels.append(label.clone(obj_class=changed_obj_classes[label.obj_class.name]))
-        else:
-            labels.append(label)
+            label = label.clone(obj_class=changed_obj_classes[label.obj_class.name])
 
         label_tags = []
         for tag in label.tags:
@@ -1821,7 +1819,7 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
             else:
                 label_tags.append(tag)
 
-        labels[-1] = labels[-1].clone(tags=label_tags)
+        labels.append(label.clone(tags=TagCollection(label_tags)))
     img_tags = []
     for tag in ann.img_tags:
         if tag.meta.name in changed_tag_metas:

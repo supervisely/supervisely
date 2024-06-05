@@ -37,7 +37,8 @@ class SLYImageConverter(ImageConverter):
         return ".json"
 
     def generate_meta_from_annotation(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
-        meta = sly_image_helper.get_meta_from_annotation(ann_path, meta)
+        ann_json = load_json_file(ann_path)
+        meta = sly_image_helper.get_meta_from_annotation(ann_json, meta)
         return meta
 
     def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:

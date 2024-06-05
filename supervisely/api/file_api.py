@@ -406,7 +406,8 @@ class FileApi(ModuleApiBase):
         dir_size = 0
         file_infos = self.list(team_id=team_id, path=path, recursive=True, return_type="fileinfo")
         for file_info in file_infos:
-            dir_size += file_info.sizeb
+            if file_info.sizeb is not None:
+                dir_size += file_info.sizeb
         return dir_size
 
     def _download(
