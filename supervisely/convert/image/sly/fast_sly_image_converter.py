@@ -78,9 +78,9 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         existing_images = {img_info.name: img_info for img_info in api.image.get_list(dataset_id)}
         if len(existing_images) == 0:
             raise RuntimeError(
-                "Failed to upload only Supervisely JSON annotations, you have no images in the dataset. "
-                "To add annotations to your dataset, please start import process from dataset with images. "
-                "Or you can upload images and annotations together. "
+                "Not found images in the dataset. "
+                "Please start the import process from a dataset that contains images, "
+                "or upload both images and annotations at once."
             )
         if log_progress:
             progress, progress_cb = self.get_progress(
