@@ -1603,8 +1603,9 @@ class ImageApi(RemoveableBulkModuleApi):
             self._api.image.remove_batch(ids_to_remove)
             logger.info(f"Removed ids after conflict resolution: {ids_to_remove}")
         if skipped_img_infos:
+            skipped_names = [skipped_imginfo.name for skipped_imginfo in skipped_img_infos]
             logger.info(
-                f"Elements with following indices: {list(skipped_img_infos.keys())} were skipped, Image names: {list(skipped_img_infos.values())}"
+                f"Elements with following indices: {list(skipped_img_infos.keys())} were skipped, Image names: {skipped_names}"
             )
 
         return resolved_srcs, resolved_names, skipped_img_infos
@@ -1692,7 +1693,7 @@ class ImageApi(RemoveableBulkModuleApi):
             infos, names, skipped_img_infos = self.resolve_upload_conflicts(
                 dataset_id,
                 names,
-                [info.id for info in infos],
+                infos,
                 conflict_resolution=conflict_resolution,
             )
 
