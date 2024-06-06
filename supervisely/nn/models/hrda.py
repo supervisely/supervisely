@@ -1,9 +1,9 @@
 from typing import List, Literal
 
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint, CheckpointInfo
+from supervisely.nn.models.base_model import BaseModel
 
 
-class HRDACheckpoint(BaseCheckpoint):
+class HRDA(BaseModel):
     # not enough info to implement
 
     def __init__(self, team_id: int):

@@ -1,20 +1,23 @@
 from os.path import join
 from re import compile as re_compile
 
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
+from supervisely.nn.models.base_model import BaseModel
 
 
-class Detectron2Checkpoint(BaseCheckpoint):
+class UNet(BaseModel):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
-        self._app_name = "Train Detectron2"
-        self._model_dir = "/detectron2"
-        self._weights_dir = "detectron_data"
-        self._task_type = "instance segmentation"
+        self._app_name = "Train UNet"
+        self._model_dir = "/unet"
+        self._weights_dir = "checkpoints"
+        self._task_type = "semantic segmentation"
         self._weights_ext = ".pth"
-        self._config_file = "model_config.yaml"
-        self._pattern = re_compile(r"^/detectron2/\d+_[^/]+/?$")
+        self._config_file = "train_args.json"
+        self._pattern = re_compile(r"^/unet/\d+_[^/]+/?$")
+
+    def get_model_dir(self):
+        return self._model_dir
 
     def get_session_id(self, session_path: str) -> str:
         parts = session_path.split("/")

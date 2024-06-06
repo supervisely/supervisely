@@ -15,9 +15,9 @@ from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
 
 
-class CheckpointInfo(NamedTuple):
+class ModelInfo(NamedTuple):
     """
-    CheckpointInfo
+    ModelInfo
     """
 
     app_name: str
@@ -27,10 +27,10 @@ class CheckpointInfo(NamedTuple):
     task_type: str
     training_project_name: str
     checkpoints: List[FileInfo]
-    config: str = None
+    config_path: str = None
 
 
-class BaseCheckpoint:
+class BaseModel:
     def __init__(self, team_id: int):
         """
         This is a base class and is not intended to be instantiated directly.
@@ -40,10 +40,8 @@ class BaseCheckpoint:
         :type team_id: int
         :raises Exception: If the class is instantiated directly.
         """
-        if type(self) is BaseCheckpoint:
-            raise Exception(
-                "BaseCheckpoint is a base class and should not be instantiated directly"
-            )
+        if type(self) is BaseModel:
+            raise Exception("BaseModel is a base class and should not be instantiated directly")
 
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
@@ -105,15 +103,6 @@ class BaseCheckpoint:
     @property
     def pattern(self):
         return self._pattern
-
-    def get_model_dir(self):
-        """
-        Get the model directory.
-
-        :return: The model directory.
-        :rtype: str
-        """
-        return self._model_dir
 
     def is_valid_session_path(self, path):
         """
@@ -186,23 +175,23 @@ class BaseCheckpoint:
         """
         pass
 
-    def sort_checkpoints(
-        self, checkpoints: List[CheckpointInfo], sort: Literal["desc", "asc"] = "desc"
-    ) -> List[CheckpointInfo]:
+    def sort_models(
+        self, models: List[ModelInfo], sort: Literal["desc", "asc"] = "desc"
+    ) -> List[ModelInfo]:
         """
-        Sort the checkpoints.
+        Sort models .
 
-        :param checkpoints: The list of checkpoints.
-        :type checkpoints: List[FileInfo]
-        :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer checkpoints will be first.
+        :param models: The list of models.
+        :type models: List[ModelInfo]
+        :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer models will be first.
         :type sort: Literal["desc", "asc"]
-        :return: The sorted list of checkpoints.
-        :rtype: List[CheckpointInfo]
+        :return: The sorted list of models.
+        :rtype: List[ModelInfo]
         """
         if sort == "desc":
-            return sorted(checkpoints, key=lambda x: int(x.session_id), reverse=True)
+            return sorted(models, key=lambda x: int(x.session_id), reverse=True)
         elif sort == "asc":
-            return sorted(checkpoints, key=lambda x: int(x.session_id))
+            return sorted(models, key=lambda x: int(x.session_id))
 
     def remove_sly_metadata(self, session_path: str) -> None:
         """
@@ -298,7 +287,7 @@ class BaseCheckpoint:
         else:
             session_link = f"/apps/sessions/{session_id}"
 
-        checkpoint_json = {
+        model_json = {
             "app_name": app_name,
             "session_id": session_id,
             "session_path": session_path,
@@ -308,10 +297,10 @@ class BaseCheckpoint:
             "checkpoints": checkpoint_file_infos,
         }
         if config_path is not None:
-            checkpoint_json["config"] = config_path
-        _upload_metadata(checkpoint_json)
+            model_json["config"] = config_path
+        _upload_metadata(model_json)
         logger.info(f"Metadata for '{session_path}' was generated")
-        return checkpoint_json
+        return model_json
 
     def _fetch_json_from_url(self, metadata_url: str):
         try:
@@ -333,7 +322,7 @@ class BaseCheckpoint:
 
         return response_json
 
-    def _get_checkpoint_json(
+    def _get_model_json(
         self,
         session_path: str,
         metadata_path: str,
@@ -384,35 +373,35 @@ class BaseCheckpoint:
                 folders[session_path].append(file_info)
         return folders
 
-    def _create_checkpoints(self, folders):
-        checkpoints = []
+    def _create_model_infos(self, folders):
+        models = []
         for session_path, file_infos in folders.items():
             metadata_path = join(session_path, self._metadata_file_name)
             file_paths = [file_info.path for file_info in file_infos]
-            checkpoint_json = self._get_checkpoint_json(
+            checkpoint_json = self._get_model_json(
                 session_path, metadata_path, file_infos, file_paths
             )
             if checkpoint_json is None:
                 continue
-            checkpoint_info = CheckpointInfo(**checkpoint_json)
-            checkpoints.append(checkpoint_info)
-        return checkpoints
+            model_info = ModelInfo(**checkpoint_json)
+            models.append(model_info)
+        return models
 
-    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
+    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[ModelInfo]:
         """
-        Get the list of checkpoints.
+        Get the list of custom models.
 
         :param sort: The sort order, either "desc" or "asc". Default is "desc".
         :type sort: Literal["desc", "asc"]
-        :return: The list of checkpoints.
-        :rtype: List[CheckpointInfo]
+        :return: The list of custom models.
+        :rtype: List[ModelInfo]
         """
         self._validate_sort(sort)
         start_time = time()
         parsed_infos = self._get_file_infos()
         folders = self._group_files_by_folder(parsed_infos)
-        checkpoints = self._create_checkpoints(folders)
+        models = self._create_model_infos(folders)
         end_time = time()
-        checkpoints = self.sort_checkpoints(checkpoints, sort)
+        models = self.sort_models(models, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
-        return checkpoints
+        return models

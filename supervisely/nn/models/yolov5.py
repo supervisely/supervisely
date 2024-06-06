@@ -1,10 +1,10 @@
 from os.path import join
 from re import compile as re_compile
 
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
+from supervisely.nn.models.base_model import BaseModel
 
 
-class YOLOv5Checkpoint(BaseCheckpoint):
+class YOLOv5(BaseModel):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
@@ -32,7 +32,7 @@ class YOLOv5Checkpoint(BaseCheckpoint):
         return None
 
 
-class YOLOv5v2Checkpoint(YOLOv5Checkpoint):
+class YOLOv5v2(YOLOv5):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 

@@ -23,7 +23,7 @@ from supervisely.app.widgets import (
     Widget,
 )
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely.nn.checkpoints.checkpoint import CheckpointInfo
+from supervisely.nn.models.base_model import ModelInfo
 
 WEIGHTS_DIR = "weights"
 
@@ -50,14 +50,14 @@ class CustomModelsSelector(Widget):
             self,
             api: Api,
             team_id: int,
-            checkpoint: CheckpointInfo,
+            model: ModelInfo,
             task_type: str,
         ):
             self._api = api
             self._team_id = team_id
             self._task_type = task_type
 
-            task_id = checkpoint.session_id
+            task_id = model.session_id
             if type(task_id) is str:
                 if task_id.isdigit():
                     task_id = int(task_id)
@@ -66,15 +66,15 @@ class CustomModelsSelector(Widget):
 
             # col 1 task
             self._task_id = task_id
-            self._task_path = checkpoint.session_path
+            self._task_path = model.session_path
             task_info = self._api.task.get_info_by_id(task_id)
             self._task_date_iso = task_info["startedAt"]
             self._task_date = self._normalize_date()
             self._task_link = self._create_task_link()
-            self._config = checkpoint.config
+            self._config = model.config
 
             # col 2 project
-            self._training_project_name = checkpoint.training_project_name
+            self._training_project_name = model.training_project_name
 
             project_info = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
@@ -82,7 +82,7 @@ class CustomModelsSelector(Widget):
             self._training_project_info = project_info
 
             # col 3 checkpoints
-            self._checkpoints = checkpoint.checkpoints
+            self._checkpoints = model.checkpoints
 
             self._checkpoints_names = []
             self._checkpoints_paths = []
@@ -95,7 +95,7 @@ class CustomModelsSelector(Widget):
                     self._checkpoints_paths.append(checkpoint_info.path)
 
             # col 4 session
-            self._session_link = checkpoint.session_link
+            self._session_link = model.session_link
 
             # widgets
             self._task_widget = self._create_task_widget()
@@ -228,7 +228,7 @@ class CustomModelsSelector(Widget):
     def __init__(
         self,
         team_id: int,
-        checkpoints: List[CheckpointInfo],
+        models: List[ModelInfo],
         show_custom_checkpoint_path: bool = False,
         custom_checkpoint_task_types: List[str] = [],
         widget_id: str = None,
@@ -236,7 +236,7 @@ class CustomModelsSelector(Widget):
         self._api = Api.from_env()
 
         self._team_id = team_id
-        table_rows = self._generate_table_rows(checkpoints)
+        table_rows = self._generate_table_rows(models)
         self._show_custom_checkpoint_path = show_custom_checkpoint_path
         self._custom_checkpoint_task_types = custom_checkpoint_task_types
 
@@ -311,9 +311,7 @@ class CustomModelsSelector(Widget):
 
             self.custom_tab_widgets.hide()
 
-            self.show_custom_checkpoint_path_checkbox = Checkbox(
-                "Use custom path to checkpoint", False
-            )
+            self.show_custom_checkpoint_path_checkbox = Checkbox("Use custom checkpoint", False)
 
             @self.show_custom_checkpoint_path_checkbox.value_changed
             def show_custom_checkpoint_path_checkbox_changed(is_checked):
@@ -388,18 +386,18 @@ class CustomModelsSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(self, checkpoint_infos: List[CheckpointInfo]) -> List[Dict]:
+    def _generate_table_rows(self, model_infos: List[ModelInfo]) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
         table_rows = defaultdict(list)
-        for checkpoint_info in checkpoint_infos:
+        for model_info in model_infos:
             try:
                 model_row = CustomModelsSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
-                    checkpoint=checkpoint_info,
-                    task_type=checkpoint_info.task_type,
+                    model=model_info,
+                    task_type=model_info.task_type,
                 )
-                table_rows[checkpoint_info.task_type].append(model_row)
+                table_rows[model_info.task_type].append(model_row)
             except:
                 continue
         table_rows = dict(table_rows)
@@ -446,8 +444,8 @@ class CustomModelsSelector(Widget):
             task_type = selected_model.task_type
             checkpoint_filename = selected_model.get_selected_checkpoint_name()
             checkpoint_url = selected_model.get_selected_checkpoint_path()
-            if selected_model.config is not None:
-                config_url = selected_model.config
+            if selected_model.config_path is not None:
+                config_url = selected_model.config_path
         else:
             task_type = self.get_custom_checkpoint_task_type()
             checkpoint_filename = self.get_custom_checkpoint_name()

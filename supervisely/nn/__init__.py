@@ -1,6 +1,6 @@
-import supervisely.nn.checkpoints as checkpoints
 import supervisely.nn.inference as inference
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint, CheckpointInfo
+import supervisely.nn.models as models
+from supervisely.nn.models.base_model import BaseModel, ModelInfo
 from supervisely.nn.prediction_dto import (
     Prediction,
     PredictionBBox,

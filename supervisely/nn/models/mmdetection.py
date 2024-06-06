@@ -2,10 +2,10 @@ from os.path import join
 from re import compile as re_compile
 
 from supervisely.io.fs import silent_remove
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
+from supervisely.nn.models.base_model import BaseModel
 
 
-class MMDetectionCheckpoint(BaseCheckpoint):
+class MMDetection(BaseModel):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
@@ -49,7 +49,7 @@ class MMDetectionCheckpoint(BaseCheckpoint):
         return join(session_path, self._weights_dir, self._config_file)
 
 
-class MMDetection3Checkpoint(BaseCheckpoint):
+class MMDetection3(BaseModel):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 

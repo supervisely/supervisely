@@ -1,10 +1,10 @@
 from os.path import join
 from re import compile as re_compile
 
-from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
+from supervisely.nn.models.base_model import BaseModel
 
 
-class MMSegmentationCheckpoint(BaseCheckpoint):
+class MMSegmentation(BaseModel):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
