@@ -846,16 +846,17 @@ class Inference:
 
         logger.debug("Inferring video_id...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
+        n_frames = state.get("framesCount", video_info.frames_count)
+        start_frame_index = state.get("startFrameIndex", 0)
         logger.debug(
             f"Video info:",
             extra=dict(
                 w=video_info.frame_width,
                 h=video_info.frame_height,
-                n_frames=state["framesCount"],
+                start_frame_index=start_frame_index,
+                n_frames=n_frames,
             ),
         )
-
-        video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
         preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
@@ -871,8 +872,8 @@ class Inference:
                 )
             sly_progress: Progress = inference_request["progress"]
 
-            sly_progress.total = state["framesCount"]
-            inference_request["preparing_progress"]["total"] = state["framesCount"]
+            sly_progress.total = n_frames
+            inference_request["preparing_progress"]["total"] = n_frames
             preparing_progress = inference_request["preparing_progress"]
 
         # progress
@@ -889,12 +890,11 @@ class Inference:
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
 
-        n_frames = video_info.frames_count
         logger.debug(f"Total frames to infer: {n_frames}")
 
         results = []
         batch_size = 16
-        for batch in batched(range(video_info.frames_count), batch_size):
+        for batch in batched(range(start_frame_index, start_frame_index + n_frames), batch_size):
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
@@ -931,7 +931,6 @@ class Inference:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
-        fs.remove_dir(video_images_path)
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         return results
