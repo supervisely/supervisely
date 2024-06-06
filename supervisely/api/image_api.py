@@ -1081,19 +1081,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
         hashes = [get_file_hash(x) for x in paths]
 
-        if conflict_resolution:
-            hashes, names, skipped_img_infos = self.resolve_upload_conflicts(
-                dataset_id,
-                names,
-                hashes,
-                conflict_resolution=conflict_resolution,
-            )
-
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
-        result = self.upload_hashes(dataset_id, names, hashes, metas=metas)
-        if conflict_resolution:
-            for idx, image_info in skipped_img_infos.items():
-                result.insert(idx, image_info)
+        result = self.upload_hashes(
+            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+        )
+
         return result
 
     def upload_np(
@@ -1189,18 +1181,12 @@ class ImageApi(RemoveableBulkModuleApi):
         img_name_list = list(zip(imgs, names))
         hashes = [img_to_hash(x) for x in img_name_list]
 
-        if conflict_resolution:
-            hashes, names, skipped_img_infos = self.resolve_upload_conflicts(dataset_id, names, hashes, conflict_resolution)
-
         self._upload_data_bulk(
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
         result = self.upload_hashes(
-            dataset_id, names, hashes, metas=metas
+            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
         )
-        if conflict_resolution:
-            for idx, image_info in skipped_img_infos.items():
-                result.insert(idx, image_info)
         return result
 
     def upload_link(
@@ -1598,12 +1584,15 @@ class ImageApi(RemoveableBulkModuleApi):
                     ids_to_remove.append(img_infos[idx].id)
                     resolved_srcs.append(img_src)
                     resolved_names.append(name)
+            else:
+                resolved_srcs.append(img_src)
+                resolved_names.append(name)
 
         if ids_to_remove:
             self._api.image.remove_batch(ids_to_remove)
             logger.info(f"Removed ids after conflict resolution: {ids_to_remove}")
         if skipped_img_infos:
-            skipped_names = [skipped_imginfo.name for skipped_imginfo in skipped_img_infos]
+            skipped_names = [skipped_imginfo.name for skipped_imginfo in skipped_img_infos.values()]
             logger.info(
                 f"Elements with following indices: {list(skipped_img_infos.keys())} were skipped, Image names: {skipped_names}"
             )
@@ -1689,14 +1678,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 ids, force_metadata_for_links=force_metadata_for_links
             )
 
-        if conflict_resolution:
-            infos, names, skipped_img_infos = self.resolve_upload_conflicts(
-                dataset_id,
-                names,
-                infos,
-                conflict_resolution=conflict_resolution,
-            )
-
         # prev implementation
         # hashes = [info.hash for info in infos]
         # return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
@@ -1726,6 +1707,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 batch_size=batch_size,
                 force_metadata_for_links=force_metadata_for_links,
                 skip_validation=skip_validation,
+                conflict_resolution=conflict_resolution
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1739,12 +1721,10 @@ class ImageApi(RemoveableBulkModuleApi):
                 metas=hashes_metas,
                 batch_size=batch_size,
                 skip_validation=skip_validation,
+                conflict_resolution=conflict_resolution
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
-        if conflict_resolution:
-            for idx, image_info in skipped_img_infos.items():
-                result.insert(idx, image_info)
         return result
 
     def _upload_bulk_add(
@@ -1933,9 +1913,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     "names intersection"
                 )
 
-        new_images = self.upload_ids(
-            dst_dataset_id, new_names, ids, progress_cb
-        )
+        new_images = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb)
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
@@ -1957,7 +1935,6 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 500,
         skip_validation: Optional[bool] = False,
         save_source_date: Optional[bool] = True,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
     ) -> List[ImageInfo]:
         """
         Copies Images with given IDs to Dataset.
@@ -1980,8 +1957,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param save_source_date: Save source annotation dates (creation and modification) or create a new date.
         :type save_source_date: bool, optional
-        :param conflict_resolution: method for resolving image uploading conflicts. If set to 'rename', conflicting images will be renamed. If set to 'replace', the original images will be removed, and new images will be uploaded instead. If set to 'skip', original image will remain.
-        :type conflict_resolution: Literal, optional
         :raises: :class:`TypeError` if type of src_image_infos is not list
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -2033,7 +2008,6 @@ class ImageApi(RemoveableBulkModuleApi):
             force_metadata_for_links=False,
             infos=src_image_infos,
             skip_validation=skip_validation,
-            conflict_resolution=conflict_resolution,
         )
         new_ids = [new_image.id for new_image in new_images]
 
