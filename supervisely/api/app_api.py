@@ -970,10 +970,10 @@ class AppApi(TaskApi):
 
         if isinstance(project, ProjectInfo):
             project_id = project.id
-            project_version = project.version
+            # project_version = project.version
         elif isinstance(project, int):
             project_id = project
-            project_version = self._api.project.get_info_by_id(project_id).version
+            # project_version = self._api.project.get_info_by_id(project_id).version
 
         if version:
             project_id = version
