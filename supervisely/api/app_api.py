@@ -951,6 +951,7 @@ class AppApi(TaskApi):
         project: Union[int, ProjectInfo],
         version: Optional[int] = None,
         task_id: Optional[int] = None,
+        init_version=False,
     ) -> dict:
         """
         Add output type "project" to the workflow node.
@@ -959,6 +960,7 @@ class AppApi(TaskApi):
         :param project: Union[int, ProjectInfo] - project ID or ProjectInfo object.
         :param version: Optional[int] - version of the project.
         :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
+        :param init_version: bool - flag to indicate if the first project version should be created.
         :return: dict - response from the API.
         """
 
@@ -978,6 +980,9 @@ class AppApi(TaskApi):
         if version:
             project_id = version
             data_type = "project-version"
+
+        if init_version:
+            project_version = self._api.project.version.create(project_id)
 
         data = {
             "data_type": data_type,
