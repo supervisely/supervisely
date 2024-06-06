@@ -942,7 +942,7 @@ class AppApi(TaskApi):
 
         data_type = "folder"
 
-        data = {"data_type": data_type, "data_meta": {"slyFolder": path}}
+        data = {"data_type": data_type, "data_id": path}
 
         return self._add_edge(data, "input", task_id)
 
