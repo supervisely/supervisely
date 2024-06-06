@@ -822,7 +822,13 @@ class AppApi(TaskApi):
 
         if data_meta:
             payload[ApiField.META] = data_meta
-
+        # TODO remove later start
+        logger.info(
+            f"""
+        🟥 Payload: {payload}
+                    """
+        )
+        # TODO remove later end
         response = self._api.post(api_endpoint, payload)
         return response.json()
 
