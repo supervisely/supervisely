@@ -914,7 +914,7 @@ class AppApi(TaskApi):
                 file_id = self._api.file.get_info_by_path(self.team_id, file).id
 
         if model_weight:
-            data_type = "model-weight"
+            data_type = "model_weight"
 
         data["data_type"] = data_type
         data["data_id"] = file_id  # pylint: disable=possibly-used-before-assignment
