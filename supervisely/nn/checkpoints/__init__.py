@@ -1,6 +1,6 @@
 from supervisely.nn.checkpoints.detectron2 import Detectron2Checkpoint
 from supervisely.nn.checkpoints.hrda import HRDACheckpoint
-from supervisely.nn.checkpoints.mmclassification import MMCClassificationCheckpoint
+from supervisely.nn.checkpoints.mmclassification import MMClassificationCheckpoint
 from supervisely.nn.checkpoints.mmdetection import (
     MMDetection3Checkpoint,
     MMDetectionCheckpoint,

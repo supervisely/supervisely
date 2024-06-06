@@ -4,7 +4,7 @@ from re import compile as re_compile
 from supervisely.nn.checkpoints.checkpoint import BaseCheckpoint
 
 
-class MMCClassificationCheckpoint(BaseCheckpoint):
+class MMClassificationCheckpoint(BaseCheckpoint):
     def __init__(self, team_id: int):
         super().__init__(team_id)
 
