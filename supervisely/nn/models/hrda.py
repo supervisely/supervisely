@@ -1,5 +1,3 @@
-from typing import List, Literal
-
 from supervisely.nn.models.base_model import BaseModel
 
 
@@ -29,7 +27,4 @@ class HRDA(BaseModel):
         raise NotImplementedError
 
     def get_config_path(self, session_path: str) -> str:
-        raise NotImplementedError
-
-    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
         raise NotImplementedError
