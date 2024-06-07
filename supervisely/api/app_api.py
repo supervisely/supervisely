@@ -804,7 +804,7 @@ class AppApi(TaskApi):
         api_endpoint = f"workflow.node.add-{transaction_type}"
 
         data_type = data.get("data_type")
-        data_id = data.get("data_id")
+        data_id = data.get("data_id") if data_type != "app_session" else node_id
         data_meta = data.get("meta")
         project_version = data.get("project_version")
 
@@ -1067,18 +1067,17 @@ class AppApi(TaskApi):
 
         return self._add_edge(data, "output", task_id)
 
-    def add_output_app(self, id: int, task_id: Optional[int] = None) -> dict:
+    def add_output_app(self, task_id: Optional[int] = None) -> dict:
         """
         Add output type "app_session" to the workflow node.
 
-        :param id: int - app ID.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
+        :param task_id: Optional[int] - App Task ID. If not specified, the task ID will be determined automatically.
         :return: dict - response from the API.
         """
 
         data_type = "app_session"
 
-        data = {"data_type": data_type, "data_id": id}
+        data = {"data_type": data_type}
 
         return self._add_edge(data, "output", task_id)
 
