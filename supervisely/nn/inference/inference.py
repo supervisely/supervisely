@@ -608,7 +608,9 @@ class Inference:
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
         anns = [
-            self._predictions_to_annotation(image_path, prediction, classes_whitelist=settings.get("classes", None))
+            self._predictions_to_annotation(
+                image_path, prediction, classes_whitelist=settings.get("classes", None)
+            )
             for image_path, prediction in zip(source, predictions)
         ]
 
@@ -1143,11 +1145,12 @@ class Inference:
 
         upload_queue = Queue()
         stop_upload_event = threading.Event()
-        threading.Thread(
+        upload_thread = threading.Thread(
             target=_upload_loop,
             args=[upload_queue, stop_upload_event, api, upload_f],
             daemon=True,
-        ).start()
+        )
+        upload_thread.start()
 
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
@@ -1214,6 +1217,7 @@ class Inference:
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         stop_upload_event.set()
+        upload_thread.join()
         return results
 
     def _on_inference_start(self, inference_request_uuid):
