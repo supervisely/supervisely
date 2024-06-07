@@ -1093,6 +1093,7 @@ class Inference:
             image_infos = api.image.get_list(
                 dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
             )
+            tm = time.time()
             meta_changed = False
             anns = []
             for result in results:
@@ -1102,11 +1103,13 @@ class Inference:
                 anns.append(ann)
             if meta_changed:
                 api.project.update_meta(output_project_id, output_project_meta)
-
+            logger.debug(f"Update meta and annotation time: {(tm - time.time()):.3f} sec")
+            tm = time.time()
             api.annotation.upload_anns(
                 img_ids=[info.id for info in image_infos],
                 anns=anns,
             )
+            logger.debug(f"Upload annotations time: {(tm - time.time()):.3f} sec")
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(results))
                 inference_request["pending_results"].extend(
