@@ -15,22 +15,22 @@ from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
 
 
-class CheckpointInfo(NamedTuple):
+class TrainInfo(NamedTuple):
     """
-    CheckpointInfo
+    TrainInfo
     """
 
     app_name: str
-    session_id: int
-    session_path: str
+    task_id: int
+    artifacts_folder: str
     session_link: str
-    task_type: str
-    training_project_name: str
+    cv_task: str
+    project_name: str
     checkpoints: List[FileInfo]
     config_path: str = None
 
 
-class BaseModel:
+class BaseTrainArtifacts:
     def __init__(self, team_id: int):
         """
         This is a base class and is not intended to be instantiated directly.
@@ -40,21 +40,23 @@ class BaseModel:
         :type team_id: int
         :raises Exception: If the class is instantiated directly.
         """
-        if type(self) is BaseModel:
-            raise Exception("BaseModel is a base class and should not be instantiated directly")
+        if type(self) is BaseTrainArtifacts:
+            raise Exception(
+                "BaseTrainArtifacts is a base class and should not be instantiated directly"
+            )
 
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
-        self._metadata_file_name = "sly_metadata.json"
+        self._metadata_file_name: str = "train_info.json"
         self._http_session = requests.Session()
 
-        self._app_name = None
-        self._framework_dir = None
-        self._weights_dir = None
-        self._task_type = None
-        self._weights_ext = None
-        self._config_file = None
-        self._pattern = None
+        self._app_name: str = None
+        self._artifacts_folder: str = None
+        self._weights_folder: str = None
+        self._cv_task: str = None
+        self._weights_ext: str = None
+        self._config_file: str = None
+        self._pattern: str = None
 
     @property
     def team_id(self) -> int:
@@ -87,34 +89,34 @@ class BaseModel:
         return self._app_name
 
     @property
-    def framework_dir(self):
+    def artifacts_folder(self):
         """
-        Path to framework directory in Supervisely Team Files.
+        Path to artifacts folder in Supervisely Team Files.
 
-        :return: The framework directory path.
+        :return: The artifacts folder path.
         :rtype: str
         """
-        return self._framework_dir
+        return self._artifacts_folder
 
     @property
-    def weights_dir(self):
+    def weights_folder(self):
         """
-        Weights directory path relative to session path.
+        Weights folder path relative to artifacts folder.
 
-        :return: The weights directory path.
+        :return: The weights folder path.
         :rtype: str
         """
-        return self._weights_dir
+        return self._weights_folder
 
     @property
-    def task_type(self):
+    def cv_task(self):
         """
-        Framework task type. None if can be multiple types.
+        Framework computer vision task. None if can be multiple tasks.
 
-        :return: The task type.
+        :return: The cv task.
         :rtype: Union[str, None]
         """
-        return self._task_type
+        return self._cv_task
 
     @property
     def weights_ext(self):
@@ -139,119 +141,119 @@ class BaseModel:
     @property
     def pattern(self):
         """
-        Framework session path pattern.
+        Framework artifacts folder path pattern.
 
-        :return: The session path pattern.
+        :return: The artifacts folder path pattern.
         :rtype: re.Pattern
         """
         return self._pattern
 
-    def is_valid_session_path(self, path):
+    def is_valid_artifacts_folder(self, path):
         """
         Check if the provided path is valid and follows specified session path pattern.
 
-        :param path: The session path.
+        :param path: Path to artifacts folder.
         :type path: str
-        :return: True if the session path is valid, False otherwise.
+        :return: True if the path to artifacts folder is valid, False otherwise.
         :rtype: bool
         """
         return self._pattern.match(path) is not None
 
     @abstractmethod
-    def get_session_id(self, session_path: str) -> str:
+    def get_task_id(self, artifacts_folder: str) -> str:
         """
-        Get the session ID.
+        Get the task ID of training session.
 
-        :param session_path: The session path.
-        :type session_path: str
-        :return: The session ID.
+        :param artifacts_folder: Path to artifacts folder.
+        :type artifacts_folder: str
+        :return: The task ID.
         :rtype: str
         """
         pass
 
     @abstractmethod
-    def get_training_project_name(self, session_path: str) -> str:
+    def get_project_name(self, artifacts_folder: str) -> str:
         """
         Get the training project name.
 
-        :param session_path: The session path.
-        :type session_path: str
+        :param artifacts_folder: Path to artifacts folder.
+        :type artifacts_folder: str
         :return: The training project name.
         :rtype: str
         """
         pass
 
     @abstractmethod
-    def get_task_type(self, session_path: str) -> str:
+    def get_cv_task(self, artifacts_folder: str) -> str:
         """
-        Get the task type.
+        Get the cv task.
 
-        :param session_path: The session path.
-        :type session_path: str
-        :return: The task type.
+        :param artifacts_folder: Path to artifacts folder.
+        :type artifacts_folder: str
+        :return: The cv task.
         :rtype: str
         """
         pass
 
     @abstractmethod
-    def get_weights_path(self, session_path: str) -> str:
+    def get_weights_folder(self, artifacts_folder: str) -> str:
         """
-        Get path to weights directory.
+        Get path to weights folder.
 
-        :param session_path: The session path.
-        :type session_path: str
-        :return: The weights directory path.
+        :param artifacts_folder: Path to artifacts folder.
+        :type artifacts_folder: str
+        :return: The weights folder path.
         :rtype: str
         """
         pass
 
     @abstractmethod
-    def get_config_path(self, session_path: str) -> str:
+    def get_config_path(self, artifacts_folder: str) -> str:
         """
         Get path to config file.
 
-        :param session_path: The session path.
-        :type session_path: str
+        :param artifacts_folder: Path to artifacts folder.
+        :type artifacts_folder: str
         :return: The config file path.
         :rtype: str
         """
         pass
 
-    def sort_checkpoints(
-        self, checkpoints: List[CheckpointInfo], sort: Literal["desc", "asc"] = "desc"
-    ) -> List[CheckpointInfo]:
+    def sort_train_infos(
+        self, train_infos: List[TrainInfo], sort: Literal["desc", "asc"] = "desc"
+    ) -> List[TrainInfo]:
         """
-        Sort checkpoints .
+        Sort artifacts folder by task id.
 
-        :param checkpoints: The list of checkpoints.
-        :type checkpoints: List[CheckpointInfo]
+        :param train_infos: The list of training infos.
+        :type train_infos: List[TrainInfo]
         :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer checkpoints will be first.
         :type sort: Literal["desc", "asc"]
         :return: The sorted list of checkpoints.
-        :rtype: List[CheckpointInfo]
+        :rtype: List[TrainInfo]
         """
         if sort == "desc":
-            return sorted(checkpoints, key=lambda x: int(x.session_id), reverse=True)
+            return sorted(train_infos, key=lambda x: int(x.task_id), reverse=True)
         elif sort == "asc":
-            return sorted(checkpoints, key=lambda x: int(x.session_id))
+            return sorted(train_infos, key=lambda x: int(x.task_id))
 
-    def remove_sly_metadata(self, session_path: str) -> None:
+    def remove_metadata(self, artifacts_folder: str) -> None:
         """
         Remove the metadata file from the session folder.
 
-        :param session_path: The session path.
-        :type session_path: str
+        :param artifacts_folder: Path to artifacts folder.
+        :type artifacts_folder: str
         """
-        metadata_path = join(session_path, self._metadata_file_name)
+        metadata_path = join(artifacts_folder, self._metadata_file_name)
         self._api.file.remove(self._team_id, metadata_path)
         logger.info(f"File '{metadata_path}' was removed")
 
-    def remove_sly_metadatas(self) -> None:
+    def remove_all_metadatas(self) -> None:
         """
         Remove the metadata files from the session folders.
 
-        :param session_paths: The session paths.
-        :type session_paths: List[str]
+        :param artifacts_folders: Path to artifacts folders.
+        :type artifacts_folders: List[str]
         """
         count = 0
         file_paths = [file_info.path for file_info in self._get_file_infos()]
@@ -262,14 +264,14 @@ class BaseModel:
                 count += 1
         logger.info(f"Total files removed: '{count}'")
 
-    def generate_sly_metadata(
+    def generate_metadata(
         self,
         app_name: str,
-        session_id: str,
-        session_path: str,
-        weights_path: str,
+        task_id: str,
+        artifacts_folder: str,
+        weights_folder: str,
         weights_ext: str,
-        training_project_name: str,
+        project_name: str,
         task_type: str = None,
         config_path: str = None,
     ):
@@ -278,16 +280,16 @@ class BaseModel:
 
         :param app_name: Name of the training application.
         :type app_name: str
-        :param session_id: The session ID.
-        :type session_id: str
-        :param session_path: Path to session folder.
-        :type session_path: str
-        :param weights_path: Path to weights location.
-        :type weights_path: str
+        :param task_id: The session ID.
+        :type task_id: str
+        :param artifacts_folder: Path to session folder.
+        :type artifacts_folder: str
+        :param weights_folder: Path to weights location.
+        :type weights_folder: str
         :param weights_ext: The weights extension.
         :type weights_ext: str
-        :param training_project_name: Name of project used for training.
-        :type training_project_name: str
+        :param project_name: Name of project used for training.
+        :type project_name: str
         :param task_type: The task type. Default is None.
         :type task_type: str, optional
         :param config_path: Path to config file. Default is None.
@@ -296,12 +298,12 @@ class BaseModel:
         :rtype: dict
         """
 
-        def _get_checkpoint_file_infos(weights_path) -> List[FileInfo]:
+        def _get_checkpoint_file_infos(weights_folder) -> List[FileInfo]:
             return [
                 file
                 for file in self._api.file.list(
                     self._team_id,
-                    weights_path,
+                    weights_folder,
                     recursive=False,
                     return_type="fileinfo",
                 )
@@ -314,34 +316,34 @@ class BaseModel:
             self._api.file.upload(
                 self._team_id,
                 json_data_path,
-                f"{session_path}/{self._metadata_file_name}",
+                f"{artifacts_folder}/{self._metadata_file_name}",
             )
             silent_remove(json_data_path)
 
-        checkpoint_file_infos = _get_checkpoint_file_infos(weights_path)
+        checkpoint_file_infos = _get_checkpoint_file_infos(weights_folder)
         if len(checkpoint_file_infos) == 0:
-            logger.info(f"No checkpoints found in '{session_path}'")
+            logger.info(f"No checkpoints found in '{artifacts_folder}'")
             return None
 
-        logger.info(f"Generating '{self._metadata_file_name}' for '{session_path}'")
+        logger.info(f"Generating '{self._metadata_file_name}' for '{artifacts_folder}'")
         if is_development():
-            session_link = abs_url(f"/apps/sessions/{session_id}")
+            session_link = abs_url(f"/apps/sessions/{task_id}")
         else:
-            session_link = f"/apps/sessions/{session_id}"
+            session_link = f"/apps/sessions/{task_id}"
 
         checkpoint_json = {
             "app_name": app_name,
-            "session_id": session_id,
-            "session_path": session_path,
+            "task_id": task_id,
+            "artifacts_folder": artifacts_folder,
             "session_link": session_link,
-            "task_type": task_type,
-            "training_project_name": training_project_name,
+            "cv_task": task_type,
+            "project_name": project_name,
             "checkpoints": checkpoint_file_infos,
         }
         if config_path is not None:
             checkpoint_json["config"] = config_path
         _upload_metadata(checkpoint_json)
-        logger.info(f"Metadata for '{session_path}' was generated")
+        logger.info(f"Metadata for '{artifacts_folder}' was generated")
         return checkpoint_json
 
     def _fetch_json_from_url(self, metadata_url: str):
@@ -364,27 +366,27 @@ class BaseModel:
 
         return response_json
 
-    def _get_checkpoint_json(
+    def _get_train_json(
         self,
-        session_path: str,
+        artifacts_folder: str,
         metadata_path: str,
         file_infos: List[FileInfo],
         file_paths: List[str],
     ) -> Dict[str, Any]:
         json_data = None
         if metadata_path not in file_paths:
-            weights_path = self.get_weights_path(session_path)
-            task_type = self.get_task_type(session_path)
-            session_id = self.get_session_id(session_path)
-            training_project_name = self.get_training_project_name(session_path)
-            config_path = self.get_config_path(session_path)
-            json_data = self.generate_sly_metadata(
+            weights_folder = self.get_weights_folder(artifacts_folder)
+            task_type = self.get_cv_task(artifacts_folder)
+            task_id = self.get_task_id(artifacts_folder)
+            project_name = self.get_project_name(artifacts_folder)
+            config_path = self.get_config_path(artifacts_folder)
+            json_data = self.generate_metadata(
                 app_name=self._app_name,
-                session_id=session_id,
-                session_path=session_path,
-                weights_path=weights_path,
+                task_id=task_id,
+                artifacts_folder=artifacts_folder,
+                weights_folder=weights_folder,
                 weights_ext=self._weights_ext,
-                training_project_name=training_project_name,
+                project_name=project_name,
                 task_type=task_type,
                 config_path=config_path,
             )
@@ -405,45 +407,45 @@ class BaseModel:
             raise ValueError(f"Invalid sort value: {sort}")
 
     def _get_file_infos(self):
-        return self._api.file.list(self._team_id, self._framework_dir, return_type="fileinfo")
+        return self._api.file.list(self._team_id, self._artifacts_folder, return_type="fileinfo")
 
     def _group_files_by_folder(self, file_infos: List[FileInfo]) -> Dict[str, List[FileInfo]]:
         folders = defaultdict(list)
         for file_info in file_infos:
-            session_path = dirname(file_info.path)
-            if self.is_valid_session_path(session_path):
-                folders[session_path].append(file_info)
+            artifacts_folder = dirname(file_info.path)
+            if self.is_valid_artifacts_folder(artifacts_folder):
+                folders[artifacts_folder].append(file_info)
         return folders
 
-    def _create_checkpoint_infos(self, folders):
-        checkpoints = []
-        for session_path, file_infos in folders.items():
-            metadata_path = join(session_path, self._metadata_file_name)
+    def _create_train_infos(self, folders):
+        train_infos = []
+        for artifacts_folder, file_infos in folders.items():
+            metadata_path = join(artifacts_folder, self._metadata_file_name)
             file_paths = [file_info.path for file_info in file_infos]
-            checkpoint_json = self._get_checkpoint_json(
-                session_path, metadata_path, file_infos, file_paths
+            train_json = self._get_train_json(
+                artifacts_folder, metadata_path, file_infos, file_paths
             )
-            if checkpoint_json is None:
+            if train_json is None:
                 continue
-            checkpoint_info = CheckpointInfo(**checkpoint_json)
-            checkpoints.append(checkpoint_info)
-        return checkpoints
+            train_info = TrainInfo(**train_json)
+            train_infos.append(train_info)
+        return train_infos
 
-    def get_checkpoints(self, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
+    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
         """
-        Get the list of custom checkpoints.
+        Return list of custom training infos
 
         :param sort: The sort order, either "desc" or "asc". Default is "desc".
         :type sort: Literal["desc", "asc"]
         :return: The list of custom checkpoints.
-        :rtype: List[CheckpointInfo]
+        :rtype: List[TrainInfo]
         """
         self._validate_sort(sort)
         start_time = time()
         parsed_infos = self._get_file_infos()
         folders = self._group_files_by_folder(parsed_infos)
-        checkpoints = self._create_checkpoint_infos(folders)
+        train_infos = self._create_train_infos(folders)
         end_time = time()
-        checkpoints = self.sort_checkpoints(checkpoints, sort)
+        train_infos = self.sort_train_infos(train_infos, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
-        return checkpoints
+        return train_infos

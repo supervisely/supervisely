@@ -9,18 +9,18 @@
     <div v-if="data.{{{widget.widget_id}}}.rowsHtml.length === 0"> You don't have any custom models</div>
     <div v-else>
 
-        <div v-if="data.{{{widget.widget_id}}}.taskTypes.length > 1">
+        <div v-if="data.{{{widget.widget_id}}}.cvTasks.length > 1">
             <sly-field
-            title="Task Type"
+            title="CV Task"
             >
                 <el-radio-group
                     class="multi-line mt10"
-                    :value="state.{{{widget.widget_id}}}.selectedTaskType"
+                    :value="state.{{{widget.widget_id}}}.selectedCvTask"
     
-                    {% if widget._task_changes_handled == true %}
-                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/task_type_changed')}"
+                    {% if widget._cv_task_changes_handled == true %}
+                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedCvTask = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/cv_task_changed')}"
                     {% else %}
-                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0;}"
+                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedCvTask = evt; state.{{{widget.widget_id}}}.selectedRow = 0;}"
                     {% endif %}
                     >
     
@@ -46,7 +46,7 @@
         </tr> 
         </thead>
         <tbody>
-        <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rowsHtml[state.{{{widget.widget_id}}}.selectedTaskType]">
+        <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rowsHtml[state.{{{widget.widget_id}}}.selectedCvTask]">
             <td v-for="col, vidx in row">
                 <div v-if="vidx === 0" style="display: flex;">
                     <el-radio
