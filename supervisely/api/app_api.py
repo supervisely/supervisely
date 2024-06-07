@@ -916,14 +916,15 @@ class AppApi(TaskApi):
         elif isinstance(file, str):
             if str_is_url(file):
                 raise NotImplementedError("URLs are not supported yet")
-            if bool(re.match(r"^(/[^/ ]*)+$", file)):  # is file path
-                file_id = self._api.file.get_info_by_path(self.team_id, file).id
+            file_id = self._api.file.get_info_by_path(self.team_id, file).id
+        else:
+            raise ValueError(f"Invalid file type: {type(file)}")
 
         if model_weight:
             data_type = "model_weight"
 
         data["data_type"] = data_type
-        data["data_id"] = file_id  # pylint: disable=possibly-used-before-assignment
+        data["data_id"] = file_id
 
         return self._add_edge(data, "input", task_id)
 
