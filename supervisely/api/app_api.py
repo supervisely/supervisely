@@ -863,7 +863,7 @@ class AppApi(TaskApi):
 
         if version:
             project_id = version
-            data_type = "project-version"
+            data_type = "project_version"
 
         data = {
             "data_type": data_type,
@@ -985,7 +985,7 @@ class AppApi(TaskApi):
 
         if version:
             project_id = version
-            data_type = "project-version"
+            data_type = "project_version"
 
         if init_version:
             project_version = self._api.project.version.create(project_id)
@@ -1069,14 +1069,14 @@ class AppApi(TaskApi):
 
     def add_output_app(self, id: int, task_id: Optional[int] = None) -> dict:
         """
-        Add output type "app-ui" to the workflow node.
+        Add output type "app_session" to the workflow node.
 
         :param id: int - app ID.
         :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
         :return: dict - response from the API.
         """
 
-        data_type = "app-ui"
+        data_type = "app_session"
 
         data = {"data_type": data_type, "data_id": id}
 
