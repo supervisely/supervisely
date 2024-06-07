@@ -258,7 +258,7 @@ class BaseTrainArtifacts:
         count = 0
         file_paths = [file_info.path for file_info in self._get_file_infos()]
         for file_path in file_paths:
-            if file_path.endswith("sly_metadata.json"):
+            if file_path.endswith(self._metadata_file_name):
                 self._api.file.remove(self._team_id, file_path)
                 logger.info(f"File '{file_path}' was removed")
                 count += 1
@@ -341,7 +341,7 @@ class BaseTrainArtifacts:
             "checkpoints": checkpoint_file_infos,
         }
         if config_path is not None:
-            train_json["config"] = config_path
+            train_json["config_path"] = config_path
         _upload_metadata(train_json)
         logger.info(f"Metadata for '{artifacts_folder}' was generated")
         return train_json
