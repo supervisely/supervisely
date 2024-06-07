@@ -27,7 +27,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
         return info
 
     def _create_label(self, dto: PredictionMask):
-        geometry = Bitmap(dto.mask)
+        geometry = Bitmap(dto.mask, extra_validation=False)
         obj_class = self.model_meta.get_obj_class(dto.class_name)
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask is empty and will be slipped")

@@ -44,7 +44,7 @@ class PromptableSegmentation(Inference):
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
             return None
-        geometry = Bitmap(dto.mask)
+        geometry = Bitmap(dto.mask, extra_validation=False)
         label = Label(geometry, obj_class)
         return label
 
