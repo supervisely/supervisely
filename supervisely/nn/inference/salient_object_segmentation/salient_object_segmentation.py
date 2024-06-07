@@ -86,6 +86,8 @@ class SalientObjectSegmentation(SemanticSegmentation):
                 pad_right = right + width_padding
                 pad_top = top - height_padding
                 pad_bottom = bottom + height_padding
+            else:
+                raise ValueError("Unsupported padding format")
             return Rectangle(pad_top, pad_left, pad_bottom, pad_right)
 
         # function for padded bounding boxes processing
@@ -120,6 +122,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
 
             rectangle = Rectangle.from_json(rectangle_json)
             padding = settings.get("bbox_padding")
+            original_rectangle = None
             if padding is not None:
                 original_rectangle = rectangle
                 rectangle = bbox_padding(rectangle, padding)
