@@ -320,7 +320,7 @@ class BBoxTracking(Inference):
             return {"message": "Track task started."}
 
         @server.post("/track-api")
-        async def track_api(request: Request):
+        def track_api(request: Request):
             sly.logger.info("Start tracking.")
             return self._track_api(request.state.api, request.state.context)
 

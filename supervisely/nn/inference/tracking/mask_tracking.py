@@ -253,11 +253,11 @@ class MaskTracking(Inference):
             return {"message": "Track task started."}
 
         @server.post("/track-api")
-        async def track_api(request: Request):
+        def track_api(request: Request):
             return self._track_api(request.state.api, request.state.context)
 
         @server.post("/track-api-files")
-        async def track_api_files(
+        def track_api_files(
             request: Request,
             files: List[UploadFile],
             settings: str = Form("{}"),

@@ -192,7 +192,7 @@ class PointTracking(Inference):
         frames = self.cache.get_frames_from_cache(video_id, frame_indexes)
         return self._inference(frames, geometries, context)
 
-    def track_api_files(
+    def _track_api_files(
         self, request: Request, files: List[UploadFile], settings: str = Form("{}")
     ):
         state = json.loads(settings)
@@ -222,16 +222,16 @@ class PointTracking(Inference):
             return {"message": "Track task started."}
 
         @server.post("/track-api")
-        async def track_api(request: Request):
+        def track_api(request: Request):
             return self.track_api(request.state.api, request.state.context)
 
         @server.post("/track-api-files")
-        async def track_api_frames_files(
+        def track_api_frames_files(
             request: Request,
             files: List[UploadFile],
             settings: str = Form("{}"),
         ):
-            return self.track_api_files(request, files, settings)
+            return self._track_api_files(request, files, settings)
 
         def send_error_data(func):
             @functools.wraps(func)
