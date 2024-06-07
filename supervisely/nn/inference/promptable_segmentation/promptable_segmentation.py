@@ -1,17 +1,17 @@
-from typing import Dict, List, Any, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from typing_extensions import Literal
 
 from supervisely import env as sly_env
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
-from supervisely.sly_logger import logger
-from supervisely.nn.inference.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.decorators.inference import process_image_sliding_window
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.nn.inference.inference import Inference
+from supervisely.nn.prediction_dto import PredictionMask
+from supervisely.sly_logger import logger
 
 
-class PromptableSegmentation(Inference, InferenceImageCache):
+class PromptableSegmentation(Inference):
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -22,13 +22,6 @@ class PromptableSegmentation(Inference, InferenceImageCache):
         use_gui: Optional[bool] = False,
     ):
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        InferenceImageCache.__init__(
-            self,
-            maxsize=sly_env.smart_cache_size(),
-            ttl=sly_env.smart_cache_ttl(),
-            is_persistent=True,
-            base_folder=sly_env.smart_cache_container_dir(),
-        )
         logger.debug(
             "Smart cache params",
             extra={"ttl": sly_env.smart_cache_ttl(), "maxsize": sly_env.smart_cache_size()},
@@ -85,4 +78,5 @@ class PromptableSegmentation(Inference, InferenceImageCache):
             f"Inferring image_path done. pred_annotation:",
             extra=dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels)),
         )
+        return ann
         return ann

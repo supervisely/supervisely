@@ -157,7 +157,7 @@ class InferenceImageCache:
         is_persistent: bool = True,
         base_folder: str = sly.env.smart_cache_container_dir(),
     ) -> None:
-        self._is_persistent = is_persistent
+        self.is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
         self._lock = Lock()
@@ -524,7 +524,7 @@ class InferenceImageCache:
 
     @property
     def tmp_path(self):
-        if self._is_persistent:
+        if self.is_persistent:
             return str(self._data_dir)
         return None
 

@@ -13,12 +13,11 @@ import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache, PersistentImageTTLCache
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionBBox
 
 
-class BBoxTracking(Inference, InferenceImageCache):
+class BBoxTracking(Inference):
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -30,13 +29,6 @@ class BBoxTracking(Inference, InferenceImageCache):
             custom_inference_settings,
             sliding_window_mode=None,
             use_gui=False,
-        )
-        InferenceImageCache.__init__(
-            self,
-            maxsize=sly.env.smart_cache_size(),
-            ttl=sly.env.smart_cache_ttl(),
-            is_persistent=True,
-            base_folder=sly.env.smart_cache_container_dir(),
         )
 
         try:
@@ -65,8 +57,8 @@ class BBoxTracking(Inference, InferenceImageCache):
             context=context,
             api=api,
             load_all_frames=False,
-            frame_loader=self.download_frame,
-            frames_loader=self.download_frames,
+            frame_loader=self.cache.download_frame,
+            frames_loader=self.cache.download_frames,
             should_notify=notify_annotation_tool,
         )
 
@@ -75,15 +67,15 @@ class BBoxTracking(Inference, InferenceImageCache):
             video_interface.frames_indexes[-1],
         ]
 
-        if isinstance(self._cache, PersistentImageTTLCache):
-            self.run_cache_task_manually(
+        if self.cache.is_persistent:
+            self.cache.run_cache_task_manually(
                 api,
                 None,
                 video_id=video_interface.video_id,
             )
         else:
             # if cache is not persistent, run cache task for range of frames
-            self.run_cache_task_manually(
+            self.cache.run_cache_task_manually(
                 api,
                 [range_of_frames],
                 video_id=video_interface.video_id,
@@ -175,8 +167,8 @@ class BBoxTracking(Inference, InferenceImageCache):
             context=context,
             api=api,
             load_all_frames=False,
-            frame_loader=self.download_frame,
-            frames_loader=self.download_frames,
+            frame_loader=self.cache.download_frame,
+            frames_loader=self.cache.download_frames,
             should_notify=False,
         )
 
@@ -185,16 +177,16 @@ class BBoxTracking(Inference, InferenceImageCache):
             video_interface.frames_indexes[-1],
         ]
 
-        if isinstance(self._cache, PersistentImageTTLCache):
+        if self.cache.is_persistent:
             # if cache is persistent, run cache task for whole video
-            self.run_cache_task_manually(
+            self.cache.run_cache_task_manually(
                 api,
                 None,
                 video_id=video_interface.video_id,
             )
         else:
             # if cache is not persistent, run cache task for range of frames
-            self.run_cache_task_manually(
+            self.cache.run_cache_task_manually(
                 api,
                 [range_of_frames],
                 video_id=video_interface.video_id,
@@ -279,7 +271,7 @@ class BBoxTracking(Inference, InferenceImageCache):
         for file, frame_idx in zip(files, frame_indexes):
             img_bytes = file.file.read()
             frame = sly.image.read_bytes(img_bytes)
-            self.add_frame_to_cache(frame, video_id, frame_idx)
+            self.cache.add_frame_to_cache(frame, video_id, frame_idx)
             frames.append(frame)
         sly.logger.info("Start tracking.")
         return self._inference(frames, geometries, state)
@@ -287,8 +279,8 @@ class BBoxTracking(Inference, InferenceImageCache):
     def serve(self):
         super().serve()
         server = self._app.get_server()
-        self.add_cache_endpoint(server)
-        self.add_cache_files_endpoint(server)
+        self.cache.add_cache_endpoint(server)
+        self.cache.add_cache_files_endpoint(server)
 
         def send_error_data(func):
             @functools.wraps(func)
