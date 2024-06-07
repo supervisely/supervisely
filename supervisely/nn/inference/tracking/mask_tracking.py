@@ -237,7 +237,6 @@ class MaskTracking(Inference):
         for file, frame_idx in zip(files, frame_indexes):
             img_bytes = file.file.read()
             frame = sly.image.read_bytes(img_bytes)
-            self.cache.add_frame_to_cache(frame, video_id, frame_idx)
             frames.append(frame)
         sly.logger.info("Start tracking.")
         return self._inference(frames, geometries)
