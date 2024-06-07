@@ -9,7 +9,7 @@ class MMClassification(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMClassification"
-        self._artifacts_folder = "/mmclassification"
+        self._framework_folder = "/mmclassification"
         self._weights_folder = "checkpoints"
         self._cv_task = "classification"
         self._weights_ext = ".pth"

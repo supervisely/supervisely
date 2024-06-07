@@ -9,7 +9,7 @@ class YOLOv5(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5"
-        self._artifacts_folder = "/yolov5_train"
+        self._framework_folder = "/yolov5_train"
         self._weights_folder = "weights"
         self._cv_task = "object detection"
         self._weights_ext = ".pt"

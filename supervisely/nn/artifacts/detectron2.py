@@ -9,7 +9,7 @@ class Detectron2(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train Detectron2"
-        self._artifacts_folder = "/detectron2"
+        self._framework_folder = "/detectron2"
         self._weights_folder = "detectron_data"
         self._cv_task = "instance segmentation"
         self._weights_ext = ".pth"

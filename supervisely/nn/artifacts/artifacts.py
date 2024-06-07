@@ -51,7 +51,7 @@ class BaseTrainArtifacts:
         self._http_session = requests.Session()
 
         self._app_name: str = None
-        self._artifacts_folder: str = None
+        self._framework_folder: str = None
         self._weights_folder: str = None
         self._cv_task: str = None
         self._weights_ext: str = None
@@ -89,14 +89,14 @@ class BaseTrainArtifacts:
         return self._app_name
 
     @property
-    def artifacts_folder(self):
+    def framework_folder(self):
         """
-        Path to artifacts folder in Supervisely Team Files.
+        Path to framework folder in Supervisely Team Files.
 
-        :return: The artifacts folder path.
+        :return: The framework folder path.
         :rtype: str
         """
-        return self._artifacts_folder
+        return self._framework_folder
 
     @property
     def weights_folder(self):
@@ -148,7 +148,7 @@ class BaseTrainArtifacts:
         """
         return self._pattern
 
-    def is_valid_artifacts_folder(self, path):
+    def is_valid_artifacts_path(self, path):
         """
         Check if the provided path is valid and follows specified session path pattern.
 
@@ -272,7 +272,7 @@ class BaseTrainArtifacts:
         weights_folder: str,
         weights_ext: str,
         project_name: str,
-        task_type: str = None,
+        cv_task: str = None,
         config_path: str = None,
     ):
         """
@@ -290,8 +290,8 @@ class BaseTrainArtifacts:
         :type weights_ext: str
         :param project_name: Name of project used for training.
         :type project_name: str
-        :param task_type: The task type. Default is None.
-        :type task_type: str, optional
+        :param cv_task: The task type. Default is None.
+        :type cv_task: str, optional
         :param config_path: Path to config file. Default is None.
         :type config_path: str, optional
         :return: The generated metadata.
@@ -331,27 +331,27 @@ class BaseTrainArtifacts:
         else:
             session_link = f"/apps/sessions/{task_id}"
 
-        checkpoint_json = {
+        train_json = {
             "app_name": app_name,
             "task_id": task_id,
             "artifacts_folder": artifacts_folder,
             "session_link": session_link,
-            "cv_task": task_type,
+            "cv_task": cv_task,
             "project_name": project_name,
             "checkpoints": checkpoint_file_infos,
         }
         if config_path is not None:
-            checkpoint_json["config"] = config_path
-        _upload_metadata(checkpoint_json)
+            train_json["config"] = config_path
+        _upload_metadata(train_json)
         logger.info(f"Metadata for '{artifacts_folder}' was generated")
-        return checkpoint_json
+        return train_json
 
     def _fetch_json_from_url(self, metadata_url: str):
         try:
             response = self._http_session.get(metadata_url)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Failed to fetch checkpoint metadata from '{metadata_url}': {e}")
+            logger.debug(f"Failed to fetch train metadata from '{metadata_url}': {e}")
             return None
 
         try:
@@ -376,7 +376,7 @@ class BaseTrainArtifacts:
         json_data = None
         if metadata_path not in file_paths:
             weights_folder = self.get_weights_folder(artifacts_folder)
-            task_type = self.get_cv_task(artifacts_folder)
+            cv_task = self.get_cv_task(artifacts_folder)
             task_id = self.get_task_id(artifacts_folder)
             project_name = self.get_project_name(artifacts_folder)
             config_path = self.get_config_path(artifacts_folder)
@@ -387,7 +387,7 @@ class BaseTrainArtifacts:
                 weights_folder=weights_folder,
                 weights_ext=self._weights_ext,
                 project_name=project_name,
-                task_type=task_type,
+                cv_task=cv_task,
                 config_path=config_path,
             )
         else:
@@ -407,13 +407,13 @@ class BaseTrainArtifacts:
             raise ValueError(f"Invalid sort value: {sort}")
 
     def _get_file_infos(self):
-        return self._api.file.list(self._team_id, self._artifacts_folder, return_type="fileinfo")
+        return self._api.file.list(self._team_id, self._framework_folder, return_type="fileinfo")
 
     def _group_files_by_folder(self, file_infos: List[FileInfo]) -> Dict[str, List[FileInfo]]:
         folders = defaultdict(list)
         for file_info in file_infos:
             artifacts_folder = dirname(file_info.path)
-            if self.is_valid_artifacts_folder(artifacts_folder):
+            if self.is_valid_artifacts_path(artifacts_folder):
                 folders[artifacts_folder].append(file_info)
         return folders
 
@@ -437,7 +437,7 @@ class BaseTrainArtifacts:
 
         :param sort: The sort order, either "desc" or "asc". Default is "desc".
         :type sort: Literal["desc", "asc"]
-        :return: The list of custom checkpoints.
+        :return: The list of custom training artifact infos.
         :rtype: List[TrainInfo]
         """
         self._validate_sort(sort)
