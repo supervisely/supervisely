@@ -1129,8 +1129,13 @@ class Inference:
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
+                        ds_batches = {}
                         for batch in items:
-                            upload_f(batch)
+                            if len(batch) == 0:
+                                continue
+                            ds_batches.setdefault(batch[0].get("dataset_id"), []).append(batch)
+                        for _, batches in ds_batches.items():
+                            upload_f(sum(batches, []))
                         continue
                     if stop_event.is_set():
                         return
