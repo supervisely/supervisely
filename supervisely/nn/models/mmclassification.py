@@ -9,7 +9,7 @@ class MMClassification(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train MMClassification"
-        self._model_dir = "/mmclassification"
+        self._framework_dir = "/mmclassification"
         self._weights_dir = "checkpoints"
         self._task_type = "classification"
         self._weights_ext = ".pth"

@@ -10,7 +10,7 @@ class HRDA(BaseModel):
         raise NotImplementedError
         # super().__init__(team_id)
         # self._app_name = "Train HRDA"
-        # self._model_dir = "/HRDA"
+        # self._framework_dir = "/HRDA"
         # self._weights_dir = None
         # self._task_type = "semantic segmentation"
         # self._weights_ext = ".pth"

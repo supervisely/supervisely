@@ -9,7 +9,7 @@ class Detectron2(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train Detectron2"
-        self._model_dir = "/detectron2"
+        self._framework_dir = "/detectron2"
         self._weights_dir = "detectron_data"
         self._task_type = "instance segmentation"
         self._weights_ext = ".pth"

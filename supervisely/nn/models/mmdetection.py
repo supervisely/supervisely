@@ -10,7 +10,7 @@ class MMDetection(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection"
-        self._model_dir = "/mmdetection"
+        self._framework_dir = "/mmdetection"
         self._weights_dir = "checkpoints/data"
         self._task_type = None
         self._weights_ext = ".pth"
@@ -54,7 +54,7 @@ class MMDetection3(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection 3.0"
-        self._model_dir = "/mmdetection-3"
+        self._framework_dir = "/mmdetection-3"
         self._weights_dir = None
         self._task_type = None
         self._weights_ext = ".pth"

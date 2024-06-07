@@ -9,15 +9,12 @@ class UNet(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train UNet"
-        self._model_dir = "/unet"
+        self._framework_dir = "/unet"
         self._weights_dir = "checkpoints"
         self._task_type = "semantic segmentation"
         self._weights_ext = ".pth"
         self._config_file = "train_args.json"
         self._pattern = re_compile(r"^/unet/\d+_[^/]+/?$")
-
-    def get_model_dir(self):
-        return self._model_dir
 
     def get_session_id(self, session_path: str) -> str:
         parts = session_path.split("/")

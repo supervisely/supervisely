@@ -9,7 +9,7 @@ class RITM(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train RITM"
-        self._model_dir = "/RITM_training"
+        self._framework_dir = "/RITM_training"
         self._weights_dir = "checkpoints"
         self._task_type = None
         self._info_file = "info/ui_state.json"

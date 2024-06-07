@@ -9,7 +9,7 @@ class YOLOv8(BaseModel):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv8"
-        self._model_dir = "/yolov8_train"
+        self._framework_dir = "/yolov8_train"
         self._weights_dir = "weights"
         self._task_type = None
         self._weights_ext = ".pt"

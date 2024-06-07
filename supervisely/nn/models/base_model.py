@@ -15,9 +15,9 @@ from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
 
 
-class ModelInfo(NamedTuple):
+class CheckpointInfo(NamedTuple):
     """
-    ModelInfo
+    CheckpointInfo
     """
 
     app_name: str
@@ -49,7 +49,7 @@ class BaseModel:
         self._http_session = requests.Session()
 
         self._app_name = None
-        self._model_dir = None
+        self._framework_dir = None
         self._weights_dir = None
         self._task_type = None
         self._weights_ext = None
@@ -78,30 +78,72 @@ class BaseModel:
 
     @property
     def app_name(self):
+        """
+        Train application name.
+
+        :return: The train application name.
+        :rtype: str
+        """
         return self._app_name
 
     @property
-    def model_dir(self):
-        return self._model_dir
+    def framework_dir(self):
+        """
+        Path to framework directory in Supervisely Team Files.
+
+        :return: The framework directory path.
+        :rtype: str
+        """
+        return self._framework_dir
 
     @property
     def weights_dir(self):
+        """
+        Weights directory path relative to session path.
+
+        :return: The weights directory path.
+        :rtype: str
+        """
         return self._weights_dir
 
     @property
     def task_type(self):
+        """
+        Framework task type. None if can be multiple types.
+
+        :return: The task type.
+        :rtype: Union[str, None]
+        """
         return self._task_type
 
     @property
     def weights_ext(self):
+        """
+        Checkpoint weights extension.
+
+        :return: The weights extension.
+        :rtype: str
+        """
         return self._weights_ext
 
     @property
     def config_file(self):
+        """
+        Name of the config file with extension.
+
+        :return: The config file name.
+        :rtype: str
+        """
         return self._config_file
 
     @property
     def pattern(self):
+        """
+        Framework session path pattern.
+
+        :return: The session path pattern.
+        :rtype: re.Pattern
+        """
         return self._pattern
 
     def is_valid_session_path(self, path):
@@ -175,23 +217,23 @@ class BaseModel:
         """
         pass
 
-    def sort_models(
-        self, models: List[ModelInfo], sort: Literal["desc", "asc"] = "desc"
-    ) -> List[ModelInfo]:
+    def sort_checkpoints(
+        self, checkpoints: List[CheckpointInfo], sort: Literal["desc", "asc"] = "desc"
+    ) -> List[CheckpointInfo]:
         """
-        Sort models .
+        Sort checkpoints .
 
-        :param models: The list of models.
-        :type models: List[ModelInfo]
-        :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer models will be first.
+        :param checkpoints: The list of checkpoints.
+        :type checkpoints: List[CheckpointInfo]
+        :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer checkpoints will be first.
         :type sort: Literal["desc", "asc"]
-        :return: The sorted list of models.
-        :rtype: List[ModelInfo]
+        :return: The sorted list of checkpoints.
+        :rtype: List[CheckpointInfo]
         """
         if sort == "desc":
-            return sorted(models, key=lambda x: int(x.session_id), reverse=True)
+            return sorted(checkpoints, key=lambda x: int(x.session_id), reverse=True)
         elif sort == "asc":
-            return sorted(models, key=lambda x: int(x.session_id))
+            return sorted(checkpoints, key=lambda x: int(x.session_id))
 
     def remove_sly_metadata(self, session_path: str) -> None:
         """
@@ -287,7 +329,7 @@ class BaseModel:
         else:
             session_link = f"/apps/sessions/{session_id}"
 
-        model_json = {
+        checkpoint_json = {
             "app_name": app_name,
             "session_id": session_id,
             "session_path": session_path,
@@ -297,17 +339,17 @@ class BaseModel:
             "checkpoints": checkpoint_file_infos,
         }
         if config_path is not None:
-            model_json["config"] = config_path
-        _upload_metadata(model_json)
+            checkpoint_json["config"] = config_path
+        _upload_metadata(checkpoint_json)
         logger.info(f"Metadata for '{session_path}' was generated")
-        return model_json
+        return checkpoint_json
 
     def _fetch_json_from_url(self, metadata_url: str):
         try:
             response = self._http_session.get(metadata_url)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Failed to fetch model metadata from '{metadata_url}': {e}")
+            logger.debug(f"Failed to fetch checkpoint metadata from '{metadata_url}': {e}")
             return None
 
         try:
@@ -322,7 +364,7 @@ class BaseModel:
 
         return response_json
 
-    def _get_model_json(
+    def _get_checkpoint_json(
         self,
         session_path: str,
         metadata_path: str,
@@ -363,7 +405,7 @@ class BaseModel:
             raise ValueError(f"Invalid sort value: {sort}")
 
     def _get_file_infos(self):
-        return self._api.file.list(self._team_id, self._model_dir, return_type="fileinfo")
+        return self._api.file.list(self._team_id, self._framework_dir, return_type="fileinfo")
 
     def _group_files_by_folder(self, file_infos: List[FileInfo]) -> Dict[str, List[FileInfo]]:
         folders = defaultdict(list)
@@ -373,35 +415,35 @@ class BaseModel:
                 folders[session_path].append(file_info)
         return folders
 
-    def _create_model_infos(self, folders):
-        models = []
+    def _create_checkpoint_infos(self, folders):
+        checkpoints = []
         for session_path, file_infos in folders.items():
             metadata_path = join(session_path, self._metadata_file_name)
             file_paths = [file_info.path for file_info in file_infos]
-            checkpoint_json = self._get_model_json(
+            checkpoint_json = self._get_checkpoint_json(
                 session_path, metadata_path, file_infos, file_paths
             )
             if checkpoint_json is None:
                 continue
-            model_info = ModelInfo(**checkpoint_json)
-            models.append(model_info)
-        return models
+            checkpoint_info = CheckpointInfo(**checkpoint_json)
+            checkpoints.append(checkpoint_info)
+        return checkpoints
 
-    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[ModelInfo]:
+    def get_checkpoints(self, sort: Literal["desc", "asc"] = "desc") -> List[CheckpointInfo]:
         """
-        Get the list of custom models.
+        Get the list of custom checkpoints.
 
         :param sort: The sort order, either "desc" or "asc". Default is "desc".
         :type sort: Literal["desc", "asc"]
-        :return: The list of custom models.
-        :rtype: List[ModelInfo]
+        :return: The list of custom checkpoints.
+        :rtype: List[CheckpointInfo]
         """
         self._validate_sort(sort)
         start_time = time()
         parsed_infos = self._get_file_infos()
         folders = self._group_files_by_folder(parsed_infos)
-        models = self._create_model_infos(folders)
+        checkpoints = self._create_checkpoint_infos(folders)
         end_time = time()
-        models = self.sort_models(models, sort)
+        checkpoints = self.sort_checkpoints(checkpoints, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
-        return models
+        return checkpoints
