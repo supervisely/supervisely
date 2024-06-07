@@ -340,20 +340,20 @@ class CustomModelsSelector(Widget):
         return {
             "columns": self._columns,
             "rowsHtml": self._rows_html,
-            "taskTypes": self._cv_tasks,
+            "cvTasks": self._cv_tasks,
         }
 
     def get_json_state(self) -> Dict:
         return {
             "selectedRow": 0,
-            "selectedTaskType": self.__default_selected_cv_task,
+            "selectedCvTask": self.__default_selected_cv_task,
             "useCustomPath": False,
         }
 
     def set_active_cv_task(self, cv_task: str):
         if cv_task not in self._cv_tasks:
             raise ValueError(f'CV Task "{cv_task}" does not exist')
-        StateJson()[self.widget_id]["selectedTaskType"] = cv_task
+        StateJson()[self.widget_id]["selectedCvTask"] = cv_task
         StateJson().send_changes()
 
     def get_available_cv_tasks(self) -> List[str]:
@@ -423,7 +423,7 @@ class CustomModelsSelector(Widget):
             return
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
-        cv_task = widget_actual_state["selectedTaskType"]
+        cv_task = widget_actual_state["selectedCvTask"]
         if widget_actual_state is not None and widget_actual_data is not None:
             selected_row_index = int(widget_actual_state["selectedRow"])
             return self._rows[cv_task][selected_row_index]
@@ -435,7 +435,7 @@ class CustomModelsSelector(Widget):
             return widget_actual_state["selectedRow"]
 
     def get_selected_cv_task(self) -> str:
-        return StateJson()[self.widget_id]["selectedTaskType"]
+        return StateJson()[self.widget_id]["selectedCvTask"]
 
     def get_selected_model_params(self) -> Union[Dict, None]:
         config_path = None
