@@ -311,9 +311,7 @@ class CustomModelsSelector(Widget):
 
             self.custom_tab_widgets.hide()
 
-            self.show_custom_checkpoint_path_checkbox = Checkbox(
-                "Use custom path to checkpoint", False
-            )
+            self.show_custom_checkpoint_path_checkbox = Checkbox("Use custom checkpoint", False)
 
             @self.show_custom_checkpoint_path_checkbox.value_changed
             def show_custom_checkpoint_path_checkbox_changed(is_checked):
