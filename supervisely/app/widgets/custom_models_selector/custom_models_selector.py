@@ -454,7 +454,7 @@ class CustomModelsSelector(Widget):
 
         model_params = {
             "model_source": "Custom models",
-            "cv_task": cv_task,
+            "task_type": cv_task,
             "checkpoint_name": checkpoint_filename,
             "checkpoint_url": checkpoint_url,
         }
