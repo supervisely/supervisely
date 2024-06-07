@@ -15,7 +15,7 @@ STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
 
-from supervisely import logger
+from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.api.project_api import ProjectInfo
@@ -904,7 +904,6 @@ class AppApi(TaskApi):
         :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
         :return: dict - response from the API.
         """
-        import re
 
         data = {}
         data_type = "file"
@@ -916,7 +915,8 @@ class AppApi(TaskApi):
         elif isinstance(file, str):
             if str_is_url(file):
                 raise NotImplementedError("URLs are not supported yet")
-            file_id = self._api.file.get_info_by_path(self.team_id, file).id
+            file_id = self._api.file.get_info_by_path(env.team_id(), file).id
+            logger.info(f"Team ID: {env.team_id()}, File ID: {file}")  # TODO remove later
         else:
             raise ValueError(f"Invalid file type: {type(file)}")
 
