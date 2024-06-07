@@ -1103,15 +1103,19 @@ class Inference:
             if meta_changed:
                 api.project.update_meta(output_project_id, output_project_meta)
 
-            api.annotation.upload_anns(
-                img_ids=[info.id for info in image_infos],
-                anns=anns,
-            )
-            if async_inference_request_uuid is not None:
-                sly_progress.iters_done(len(results))
-                inference_request["pending_results"].extend(
-                    [{**result, "annotation": None, "data": None} for result in results]
+            # upload in batches to update progress with each batch
+            # api.annotation.upload_anns() uploads in same batches anyways
+            for batch in batched(list(zip(anns, results, image_infos))):
+                batch_anns, batch_results, batch_image_infos = zip(*batch)
+                api.annotation.upload_anns(
+                    img_ids=[info.id for info in batch_image_infos],
+                    anns=batch_anns,
                 )
+                if async_inference_request_uuid is not None:
+                    sly_progress.iters_done(len(batch_results))
+                    inference_request["pending_results"].extend(
+                        [{**result, "annotation": None, "data": None} for result in batch_results]
+                    )
 
         def _add_results_to_request(results: List[Dict]):
             if async_inference_request_uuid is None:
@@ -1218,6 +1222,7 @@ class Inference:
                     upload_queue.put(batch_results)
         except Exception:
             stop_upload_event.set()
+            upload_thread.join()
             raise
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
