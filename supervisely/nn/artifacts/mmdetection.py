@@ -10,7 +10,7 @@ class MMDetection(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection"
-        self._framework_folder = "mmdetection"
+        self._framework_folder = "/mmdetection"
         self._weights_folder = "checkpoints/data"
         self._task_type = None
         self._weights_ext = ".pth"
@@ -54,7 +54,7 @@ class MMDetection3(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection 3.0"
-        self._framework_folder = "mmdetection-3"
+        self._framework_folder = "/mmdetection-3"
         self._weights_folder = None
         self._task_type = None
         self._weights_ext = ".pth"

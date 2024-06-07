@@ -8,7 +8,7 @@ class HRDA(BaseTrainArtifacts):
         raise NotImplementedError
         # super().__init__(team_id)
         # self._app_name = "Train HRDA"
-        # self._framework_folder = "HRDA"
+        # self._framework_folder = "/HRDA"
         # self._weights_folder = None
         # self._task_type = "semantic segmentation"
         # self._weights_ext = ".pth"
