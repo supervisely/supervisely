@@ -482,10 +482,18 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class")
 
     def _predictions_to_annotation(
-        self, image_path: str, predictions: List[Prediction]
+        self,
+        image_path: str,
+        predictions: List[Prediction],
+        classes_whitelist: Optional[List[str]] = None,
     ) -> Annotation:
         labels = []
         for prediction in predictions:
+            if (
+                not classes_whitelist in (None, "all")
+                and prediction.class_name not in classes_whitelist
+            ):
+                continue
             label = self._create_label(prediction)
             if label is None:
                 # for example empty mask
@@ -546,7 +554,9 @@ class Inference:
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, classes_whitelist=settings.get("classes", None)
+        )
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",
@@ -598,7 +608,7 @@ class Inference:
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
         anns = [
-            self._predictions_to_annotation(image_path, prediction)
+            self._predictions_to_annotation(image_path, prediction, classes_whitelist=settings.get("classes", None))
             for image_path, prediction in zip(source, predictions)
         ]
 
