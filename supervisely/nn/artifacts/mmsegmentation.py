@@ -11,7 +11,7 @@ class MMSegmentation(BaseTrainArtifacts):
         self._app_name = "Train MMSegmentation"
         self._framework_folder = "/mmsegmentation"
         self._weights_folder = "checkpoints/data"
-        self._cv_task = "instance segmentation"
+        self._task_type = "instance segmentation"
         self._weights_ext = ".pth"
         self._config_file = "config.py"
         self._pattern = re_compile(r"^/mmsegmentation/\d+_[^/]+/?$")
@@ -22,11 +22,11 @@ class MMSegmentation(BaseTrainArtifacts):
     def get_project_name(self, artifacts_folder: str) -> str:
         return artifacts_folder.split("/")[2].split("_")[1]
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
-        return self._cv_task
+    def get_task_type(self, artifacts_folder: str) -> str:
+        return self._task_type
 
     def get_config_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder, self._config_file)
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder)

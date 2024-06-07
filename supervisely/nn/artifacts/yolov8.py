@@ -11,7 +11,7 @@ class YOLOv8(BaseTrainArtifacts):
         self._app_name = "Train YOLOv8"
         self._framework_folder = "/yolov8_train"
         self._weights_folder = "weights"
-        self._cv_task = None
+        self._task_type = None
         self._weights_ext = ".pt"
         self._config_file = None
         self._pattern = re_compile(
@@ -26,11 +26,11 @@ class YOLOv8(BaseTrainArtifacts):
         parts = artifacts_folder.split("/")
         return parts[-2]
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
+    def get_task_type(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
         return parts[2]
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder)
 
     def get_config_path(self, artifacts_folder: str) -> str:

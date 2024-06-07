@@ -11,7 +11,7 @@ class YOLOv5(BaseTrainArtifacts):
         self._app_name = "Train YOLOv5"
         self._framework_folder = "/yolov5_train"
         self._weights_folder = "weights"
-        self._cv_task = "object detection"
+        self._task_type = "object detection"
         self._weights_ext = ".pt"
         self._config_file = None
         self._pattern = re_compile(r"^/yolov5_train/[^/]+/\d+/?$")
@@ -22,10 +22,10 @@ class YOLOv5(BaseTrainArtifacts):
     def get_project_name(self, artifacts_folder: str) -> str:
         return artifacts_folder.split("/")[-2]
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
-        return self._cv_task
+    def get_task_type(self, artifacts_folder: str) -> str:
+        return self._task_type
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder)
 
     def get_config_path(self, artifacts_folder: str) -> str:
@@ -39,7 +39,7 @@ class YOLOv5v2(YOLOv5):
         self._app_name = "Train YOLOv5 2.0"
         self._artifacts_folder = "/yolov5_2.0_train"
         self._weights_folder = "weights"
-        self._cv_task = "object detection"
+        self._task_type = "object detection"
         self._weights_ext = ".pt"
         self._config_file = None
         self._pattern = re_compile(r"^/yolov5_2.0_train/[^/]+/\d+/?$")

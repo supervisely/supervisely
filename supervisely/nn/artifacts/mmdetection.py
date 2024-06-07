@@ -12,7 +12,7 @@ class MMDetection(BaseTrainArtifacts):
         self._app_name = "Train MMDetection"
         self._framework_folder = "/mmdetection"
         self._weights_folder = "checkpoints/data"
-        self._cv_task = None
+        self._task_type = None
         self._weights_ext = ".pth"
         self._info_file = "info/ui_state.json"
         self._config_file = "config.py"
@@ -32,17 +32,17 @@ class MMDetection(BaseTrainArtifacts):
         _, project_name = parts[2].split("_", 1)
         return project_name
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
+    def get_task_type(self, artifacts_folder: str) -> str:
         info_path = join(artifacts_folder, self._info_file)
-        cv_task = "undefined"
+        task_type = "undefined"
         for file_info in self._get_file_infos():
             if file_info.path == info_path:
                 json_data = self._fetch_json_from_url(file_info.full_storage_url)
-                cv_task = json_data.get("task", "undefined")
+                task_type = json_data.get("task", "undefined")
                 break
-        return cv_task
+        return task_type
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder)
 
     def get_config_path(self, artifacts_folder: str) -> str:
@@ -56,7 +56,7 @@ class MMDetection3(BaseTrainArtifacts):
         self._app_name = "Train MMDetection 3.0"
         self._framework_folder = "/mmdetection-3"
         self._weights_folder = None
-        self._cv_task = None
+        self._task_type = None
         self._weights_ext = ".pth"
         self._config_file = "config.py"
         self._pattern = re_compile(r"^/mmdetection-3/\d+_[^/]+/?$")
@@ -82,21 +82,21 @@ class MMDetection3(BaseTrainArtifacts):
         silent_remove("model_config.txt")
         return project_name
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
+    def get_task_type(self, artifacts_folder: str) -> str:
         config_path = join(artifacts_folder, self._config_file)
         self._api.file.download(self._team_id, config_path, "model_config.txt")
-        cv_task = "undefined"
+        task_type = "undefined"
         with open("model_config.txt", "r") as f:
             lines = f.readlines()
-            cv_task_line = lines[-3] if lines else None
-            start = cv_task_line.find("'") + 1
-            end = cv_task_line.find("'", start)
-            cv_task = cv_task_line[start:end].replace("_", " ")
+            task_type_line = lines[-3] if lines else None
+            start = task_type_line.find("'") + 1
+            end = task_type_line.find("'", start)
+            task_type = task_type_line[start:end].replace("_", " ")
             f.close()
         silent_remove("model_config.txt")
-        return cv_task
+        return task_type
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return artifacts_folder
 
     def get_config_path(self, artifacts_folder: str) -> str:

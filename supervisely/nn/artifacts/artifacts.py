@@ -24,7 +24,7 @@ class TrainInfo(NamedTuple):
     task_id: int
     artifacts_folder: str
     session_link: str
-    cv_task: str
+    task_type: str
     project_name: str
     checkpoints: List[FileInfo]
     config_path: str = None
@@ -53,7 +53,7 @@ class BaseTrainArtifacts:
         self._app_name: str = None
         self._framework_folder: str = None
         self._weights_folder: str = None
-        self._cv_task: str = None
+        self._task_type: str = None
         self._weights_ext: str = None
         self._config_file: str = None
         self._pattern: str = None
@@ -109,14 +109,14 @@ class BaseTrainArtifacts:
         return self._weights_folder
 
     @property
-    def cv_task(self):
+    def task_type(self):
         """
         Framework computer vision task. None if can be multiple tasks.
 
         :return: The cv task.
         :rtype: Union[str, None]
         """
-        return self._cv_task
+        return self._task_type
 
     @property
     def weights_ext(self):
@@ -184,7 +184,7 @@ class BaseTrainArtifacts:
         pass
 
     @abstractmethod
-    def get_cv_task(self, artifacts_folder: str) -> str:
+    def get_task_type(self, artifacts_folder: str) -> str:
         """
         Get the cv task.
 
@@ -196,7 +196,7 @@ class BaseTrainArtifacts:
         pass
 
     @abstractmethod
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         """
         Get path to weights folder.
 
@@ -272,7 +272,7 @@ class BaseTrainArtifacts:
         weights_folder: str,
         weights_ext: str,
         project_name: str,
-        cv_task: str = None,
+        task_type: str = None,
         config_path: str = None,
     ):
         """
@@ -290,8 +290,8 @@ class BaseTrainArtifacts:
         :type weights_ext: str
         :param project_name: Name of project used for training.
         :type project_name: str
-        :param cv_task: The task type. Default is None.
-        :type cv_task: str, optional
+        :param task_type: CV Task. Default is None.
+        :type task_type: str, optional
         :param config_path: Path to config file. Default is None.
         :type config_path: str, optional
         :return: The generated metadata.
@@ -336,7 +336,7 @@ class BaseTrainArtifacts:
             "task_id": task_id,
             "artifacts_folder": artifacts_folder,
             "session_link": session_link,
-            "cv_task": cv_task,
+            "task_type": task_type,
             "project_name": project_name,
             "checkpoints": checkpoint_file_infos,
         }
@@ -375,8 +375,8 @@ class BaseTrainArtifacts:
     ) -> Dict[str, Any]:
         json_data = None
         if metadata_path not in file_paths:
-            weights_folder = self.get_weights_folder(artifacts_folder)
-            cv_task = self.get_cv_task(artifacts_folder)
+            weights_folder = self.get_weights_path(artifacts_folder)
+            task_type = self.get_task_type(artifacts_folder)
             task_id = self.get_task_id(artifacts_folder)
             project_name = self.get_project_name(artifacts_folder)
             config_path = self.get_config_path(artifacts_folder)
@@ -387,7 +387,7 @@ class BaseTrainArtifacts:
                 weights_folder=weights_folder,
                 weights_ext=self._weights_ext,
                 project_name=project_name,
-                cv_task=cv_task,
+                task_type=task_type,
                 config_path=config_path,
             )
         else:

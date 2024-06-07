@@ -42,7 +42,7 @@ columns = [
 
 class CustomModelsSelector(Widget):
     class Routes:
-        CV_TASK_CHANGED = "cv_task_changed"
+        TASK_TYPE_CHANGED = "task_type_changed"
         VALUE_CHANGED = "value_changed"
 
     class ModelRow:
@@ -52,11 +52,11 @@ class CustomModelsSelector(Widget):
             api: Api,
             team_id: int,
             train_info: TrainInfo,
-            cv_task: str,
+            task_type: str,
         ):
             self._api = api
             self._team_id = team_id
-            self._cv_task = cv_task
+            self._task_type = task_type
 
             task_id = train_info.task_id
             if type(task_id) is str:
@@ -117,8 +117,8 @@ class CustomModelsSelector(Widget):
             return self._task_link
 
         @property
-        def cv_task(self) -> str:
-            return self._cv_task
+        def task_type(self) -> str:
+            return self._task_type
 
         @property
         def training_project_info(self) -> ProjectInfo:
@@ -231,7 +231,7 @@ class CustomModelsSelector(Widget):
         team_id: int,
         train_infos: List[TrainInfo],
         show_custom_checkpoint_path: bool = False,
-        custom_checkpoint_cv_tasks: List[str] = [],
+        custom_checkpoint_task_types: List[str] = [],
         widget_id: str = None,
     ):
         self._api = Api.from_env()
@@ -239,27 +239,27 @@ class CustomModelsSelector(Widget):
         self._team_id = team_id
         table_rows = self._generate_table_rows(train_infos)
         self._show_custom_checkpoint_path = show_custom_checkpoint_path
-        self._custom_checkpoint_cv_tasks = custom_checkpoint_cv_tasks
+        self._custom_checkpoint_task_types = custom_checkpoint_task_types
 
         self._columns = columns
         self._rows = table_rows
         # self._rows_html = #[row.to_html() for row in self._rows]
 
-        cv_tasks = [cv_task for cv_task in table_rows]
+        task_types = [task_type for task_type in table_rows]
         self._rows_html = defaultdict(list)
-        for cv_task in table_rows:
-            self._rows_html[cv_task].extend(
-                [model_row.to_html() for model_row in table_rows[cv_task]]
+        for task_type in table_rows:
+            self._rows_html[task_type].extend(
+                [model_row.to_html() for model_row in table_rows[task_type]]
             )
 
-        self._cv_tasks = self._filter_cv_tasks(cv_tasks)
-        if len(self._cv_tasks) == 0:
-            self.__default_selected_cv_task = None
+        self._task_types = self._filter_task_types(task_types)
+        if len(self._task_types) == 0:
+            self.__default_selected_task_type = None
         else:
-            self.__default_selected_cv_task = self._cv_tasks[0]
+            self.__default_selected_task_type = self._task_types[0]
 
         self._changes_handled = False
-        self._cv_task_changes_handled = False
+        self._task_type_changes_handled = False
 
         if self._show_custom_checkpoint_path:
             self.file_thumbnail = FileThumbnail()
@@ -288,23 +288,23 @@ class CustomModelsSelector(Widget):
                 title=f"Copy path to model file from Team Files and paste to field below.",
                 description="Copy path in Team Files",
             )
-            self.custom_checkpoint_cv_task_selector_field = None
-            if len(self._custom_checkpoint_cv_tasks) > 0:
-                self.custom_checkpoint_cv_task_selector_items = [
-                    Select.Item(value=cv_task, label=cv_task)
-                    for cv_task in self._custom_checkpoint_cv_tasks
+            self.custom_checkpoint_task_type_selector_field = None
+            if len(self._custom_checkpoint_task_types) > 0:
+                self.custom_checkpoint_task_type_selector_items = [
+                    Select.Item(value=task_type, label=task_type)
+                    for task_type in self._custom_checkpoint_task_types
                 ]
-                self.custom_checkpoint_cv_task_selector = Select(
-                    self.custom_checkpoint_cv_task_selector_items
+                self.custom_checkpoint_task_type_selector = Select(
+                    self.custom_checkpoint_task_type_selector_items
                 )
-                self.custom_checkpoint_cv_task_selector_field = Field(
-                    title="CV Task", content=self.custom_checkpoint_cv_task_selector
+                self.custom_checkpoint_task_type_selector_field = Field(
+                    title="Task Type", content=self.custom_checkpoint_task_type_selector
                 )
 
             self.custom_tab_widgets = Container(
                 [
                     team_files_link_btn,
-                    self.custom_checkpoint_cv_task_selector_field,
+                    self.custom_checkpoint_task_type_selector_field,
                     model_path_field,
                     self.file_thumbnail,
                 ]
@@ -340,41 +340,41 @@ class CustomModelsSelector(Widget):
         return {
             "columns": self._columns,
             "rowsHtml": self._rows_html,
-            "cvTasks": self._cv_tasks,
+            "taskTypes": self._task_types,
         }
 
     def get_json_state(self) -> Dict:
         return {
             "selectedRow": 0,
-            "selectedCvTask": self.__default_selected_cv_task,
+            "selectedTaskType": self.__default_selected_task_type,
             "useCustomPath": False,
         }
 
-    def set_active_cv_task(self, cv_task: str):
-        if cv_task not in self._cv_tasks:
-            raise ValueError(f'CV Task "{cv_task}" does not exist')
-        StateJson()[self.widget_id]["selectedCvTask"] = cv_task
+    def set_active_task_type(self, task_type: str):
+        if task_type not in self._task_types:
+            raise ValueError(f'Task Type "{task_type}" does not exist')
+        StateJson()[self.widget_id]["selectedTaskType"] = task_type
         StateJson().send_changes()
 
-    def get_available_cv_tasks(self) -> List[str]:
-        return self._cv_tasks
+    def get_available_task_types(self) -> List[str]:
+        return self._task_types
 
     def disable_table(self) -> None:
-        for cv_task in self._rows:
-            for row in self._rows[cv_task]:
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
                 row.checkpoints_selector.disable()
         super().disable()
 
     def enable_table(self) -> None:
-        for cv_task in self._rows:
-            for row in self._rows[cv_task]:
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
                 row.checkpoints_selector.enable()
         super().enable()
 
     def enable(self):
         self.custom_tab_widgets.enable()
         self._model_path_input.enable()
-        self.custom_checkpoint_cv_task_selector.enable()
+        self.custom_checkpoint_task_type_selector.enable()
         self.show_custom_checkpoint_path_checkbox.enable()
         self.enable_table()
         super().enable()
@@ -382,7 +382,7 @@ class CustomModelsSelector(Widget):
     def disable(self) -> None:
         self.custom_tab_widgets.disable()
         self._model_path_input.disable()
-        self.custom_checkpoint_cv_task_selector.disable()
+        self.custom_checkpoint_task_type_selector.disable()
         self.show_custom_checkpoint_path_checkbox.disable()
         self.disable_table()
         super().disable()
@@ -396,24 +396,24 @@ class CustomModelsSelector(Widget):
                     api=self._api,
                     team_id=self._team_id,
                     train_info=train_info,
-                    cv_task=train_info.cv_task,
+                    task_type=train_info.task_type,
                 )
-                table_rows[train_info.cv_task].append(model_row)
+                table_rows[train_info.task_type].append(model_row)
             except:
                 continue
         table_rows = dict(table_rows)
         return table_rows
 
-    def _filter_cv_tasks(self, cv_tasks: List[str]):
+    def _filter_task_types(self, task_types: List[str]):
         sorted_tt = []
-        if "object detection" in cv_tasks:
+        if "object detection" in task_types:
             sorted_tt.append("object detection")
-        if "instance segmentation" in cv_tasks:
+        if "instance segmentation" in task_types:
             sorted_tt.append("instance segmentation")
-        if "pose estimation" in cv_tasks:
+        if "pose estimation" in task_types:
             sorted_tt.append("pose estimation")
         other_tasks = sorted(
-            set(cv_tasks) - set(["object detection", "instance segmentation", "pose estimation"])
+            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
         )
         sorted_tt.extend(other_tasks)
         return sorted_tt
@@ -423,10 +423,10 @@ class CustomModelsSelector(Widget):
             return
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
-        cv_task = widget_actual_state["selectedCvTask"]
+        task_type = widget_actual_state["selectedTaskType"]
         if widget_actual_state is not None and widget_actual_data is not None:
             selected_row_index = int(widget_actual_state["selectedRow"])
-            return self._rows[cv_task][selected_row_index]
+            return self._rows[task_type][selected_row_index]
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
         widget_actual_state = state[self.widget_id]
@@ -434,27 +434,27 @@ class CustomModelsSelector(Widget):
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
 
-    def get_selected_cv_task(self) -> str:
-        return StateJson()[self.widget_id]["selectedCvTask"]
+    def get_selected_task_type(self) -> str:
+        return StateJson()[self.widget_id]["selectedTaskType"]
 
     def get_selected_model_params(self) -> Union[Dict, None]:
         config_path = None
         is_custom_path = self.use_custom_checkpoint_path()
         if not is_custom_path:
             selected_model = self.get_selected_row()
-            cv_task = selected_model.cv_task
+            task_type = selected_model.task_type
             checkpoint_filename = selected_model.get_selected_checkpoint_name()
             checkpoint_url = selected_model.get_selected_checkpoint_path()
             if selected_model.config_path is not None:
                 config_path = selected_model.config_path
         else:
-            cv_task = self.get_custom_checkpoint_cv_task()
+            task_type = self.get_custom_checkpoint_task_type()
             checkpoint_filename = self.get_custom_checkpoint_name()
             checkpoint_url = self.get_custom_checkpoint_path()
 
         model_params = {
             "model_source": "Custom models",
-            "task_type": cv_task,
+            "task_type": task_type,
             "checkpoint_name": checkpoint_filename,
             "checkpoint_url": checkpoint_url,
         }
@@ -489,28 +489,28 @@ class CustomModelsSelector(Widget):
         if self.use_custom_checkpoint_path():
             self.file_thumbnail.set(file_info)
 
-    def get_custom_checkpoint_cv_task(self) -> str:
+    def get_custom_checkpoint_task_type(self) -> str:
         if self.use_custom_checkpoint_path():
-            return self.custom_checkpoint_cv_task_selector.get_value()
+            return self.custom_checkpoint_task_type_selector.get_value()
 
-    def set_custom_checkpoint_cv_task(self, cv_task: str) -> None:
+    def set_custom_checkpoint_task_type(self, task_type: str) -> None:
         if self.use_custom_checkpoint_path():
-            available_cv_tasks = self.custom_checkpoint_cv_task_selector.get_labels()
-            if cv_task not in available_cv_tasks:
-                raise ValueError(f'"{cv_task}" is not available CV task')
-            self.custom_checkpoint_cv_task_selector.set_value(cv_task)
+            available_task_types = self.custom_checkpoint_task_type_selector.get_labels()
+            if task_type not in available_task_types:
+                raise ValueError(f'"{task_type}" is not available CV task')
+            self.custom_checkpoint_task_type_selector.set_value(task_type)
 
-    def cv_task_changed(self, func: Callable):
-        route_path = self.get_route_path(CustomModelsSelector.Routes.CV_TASK_CHANGED)
+    def task_type_changed(self, func: Callable):
+        route_path = self.get_route_path(CustomModelsSelector.Routes.TASK_TYPE_CHANGED)
         server = self._sly_app.get_server()
-        self._cv_task_changes_handled = True
+        self._task_type_changes_handled = True
 
         @server.post(route_path)
-        def _cv_task_changed():
-            res = self.get_selected_cv_task()
+        def _task_type_changed():
+            res = self.get_selected_task_type()
             func(res)
 
-        return _cv_task_changed
+        return _task_type_changed
 
     def value_changed(self, func: Callable):
         route_path = self.get_route_path(CustomModelsSelector.Routes.VALUE_CHANGED)

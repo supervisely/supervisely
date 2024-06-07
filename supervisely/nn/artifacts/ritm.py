@@ -11,7 +11,7 @@ class RITM(BaseTrainArtifacts):
         self._app_name = "Train RITM"
         self._framework_folder = "/RITM_training"
         self._weights_folder = "checkpoints"
-        self._cv_task = None
+        self._task_type = None
         self._info_file = "info/ui_state.json"
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/RITM_training/\d+_[^/]+/?$")
@@ -30,19 +30,19 @@ class RITM(BaseTrainArtifacts):
         _, project_name = parts[2].split("_", 1)
         return project_name
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
+    def get_task_type(self, artifacts_folder: str) -> str:
         info_path = join(artifacts_folder, self._info_file)
-        cv_task = "undefined"
+        task_type = "undefined"
         for file_info in self._get_file_infos():
             if file_info.path == info_path:
                 json_data = self._fetch_json_from_url(file_info.full_storage_url)
-                cv_task = json_data.get("segmentationType", "undefined")
-                if cv_task is not None:
-                    cv_task = cv_task.lower()
+                task_type = json_data.get("segmentationType", "undefined")
+                if task_type is not None:
+                    task_type = task_type.lower()
                 break
-        return cv_task
+        return task_type
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder)
 
     def get_config_path(self, artifacts_folder: str) -> str:

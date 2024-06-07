@@ -11,7 +11,7 @@ class MMClassification(BaseTrainArtifacts):
         self._app_name = "Train MMClassification"
         self._framework_folder = "/mmclassification"
         self._weights_folder = "checkpoints"
-        self._cv_task = "classification"
+        self._task_type = "classification"
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/mmclassification/\d+_[^/]+/?$")
 
@@ -29,10 +29,10 @@ class MMClassification(BaseTrainArtifacts):
         _, project_name = parts[2].split("_", 1)
         return project_name
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
-        return self._cv_task
+    def get_task_type(self, artifacts_folder: str) -> str:
+        return self._task_type
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         return join(artifacts_folder, self._weights_folder)
 
     def get_config_path(self, artifacts_folder: str) -> str:

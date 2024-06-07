@@ -10,7 +10,7 @@ class HRDA(BaseTrainArtifacts):
         # self._app_name = "Train HRDA"
         # self._framework_folder = "/HRDA"
         # self._weights_folder = None
-        # self._cv_task = "semantic segmentation"
+        # self._task_type = "semantic segmentation"
         # self._weights_ext = ".pth"
         # self._config_file = "config.py"
 
@@ -20,10 +20,10 @@ class HRDA(BaseTrainArtifacts):
     def get_project_name(self, artifacts_folder: str) -> str:
         raise NotImplementedError
 
-    def get_cv_task(self, artifacts_folder: str) -> str:
+    def get_task_type(self, artifacts_folder: str) -> str:
         raise NotImplementedError
 
-    def get_weights_folder(self, artifacts_folder: str) -> str:
+    def get_weights_path(self, artifacts_folder: str) -> str:
         raise NotImplementedError
 
     def get_config_path(self, artifacts_folder: str) -> str:
