@@ -35,6 +35,8 @@ class InstanceSegmentation(Inference):
             geometry = Bitmap(dto.mask, extra_validation=False)
         elif isinstance(dto, PredictionBBox):
             geometry = Rectangle(*dto.bbox_tlbr)
+        else:
+            raise TypeError(f"Unknown prediction type {type(dto)}")
         tags = []
         if dto.score is not None:
             tags.append(Tag(self._get_confidence_tag_meta(), dto.score))
