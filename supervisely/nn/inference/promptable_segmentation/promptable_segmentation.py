@@ -72,11 +72,12 @@ class PromptableSegmentation(Inference):
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, settings.get("classes", None)
+        )
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",
             extra=dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels)),
         )
-        return ann
         return ann

@@ -413,12 +413,13 @@ class PointTracking(Inference):
         images: List[np.ndarray],
         vis_path: str,
         thickness: int = 2,
+        classes_whitelist: List[str] = None,
     ):
         vis_path = Path(vis_path)
 
         for i, (pred, image) in enumerate(zip(predictions, images)):
             out_path = vis_path / f"img_{i}.jpg"
-            ann = self._predictions_to_annotation(image, [pred])
+            ann = self._predictions_to_annotation(image, [pred], classes_whitelist)
             ann.draw_pretty(
                 bitmap=image,
                 color=(255, 0, 0),
@@ -546,10 +547,15 @@ class PointTracking(Inference):
         return F.exterior_to_sly_polyline(points_loc)
 
     def _predictions_to_annotation(
-        self, image: np.ndarray, predictions: List[Prediction]
+        self, image: np.ndarray, predictions: List[Prediction], classes_whitelist: List[str] = None
     ) -> sly.Annotation:
         labels = []
         for prediction in predictions:
+            if (
+                not classes_whitelist in (None, "all")
+                and prediction.class_name not in classes_whitelist
+            ):
+                continue
             label = self._create_label(prediction)
             if label is None:
                 # for example empty mask

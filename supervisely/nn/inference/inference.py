@@ -607,6 +607,7 @@ class Inference:
                 predictions = _predict(source, self.predict)
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
+
         anns = [
             self._predictions_to_annotation(
                 image_path, prediction, classes_whitelist=settings.get("classes", None)
@@ -673,9 +674,10 @@ class Inference:
         image_path: str,
         vis_path: str,
         thickness: Optional[int] = None,
+        classes_whitelist: Optional[List[str]] = None,
     ):
         image = sly_image.read(image_path)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(image_path, predictions, classes_whitelist)
         ann.draw_pretty(
             bitmap=image,
             thickness=thickness,
@@ -1134,9 +1136,9 @@ class Inference:
                         for batch in items:
                             if len(batch) == 0:
                                 continue
-                            ds_batches.setdefault(batch[0].get("dataset_id"), []).append(batch)
-                        for _, batches in ds_batches.items():
-                            upload_f(sum(batches, []))
+                            ds_batches.setdefault(batch[0].get("dataset_id"), []).extend(batch)
+                        for _, joined_batch in ds_batches.items():
+                            upload_f(joined_batch)
                         continue
                     if stop_event.is_set():
                         return
