@@ -1707,7 +1707,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 batch_size=batch_size,
                 force_metadata_for_links=force_metadata_for_links,
                 skip_validation=skip_validation,
-                conflict_resolution=conflict_resolution
+                conflict_resolution=conflict_resolution,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1721,7 +1721,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 metas=hashes_metas,
                 batch_size=batch_size,
                 skip_validation=skip_validation,
-                conflict_resolution=conflict_resolution
+                conflict_resolution=conflict_resolution,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1738,9 +1738,28 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size=50,
         force_metadata_for_links=True,
         skip_validation=False,
+        conflict_resolution=None,
     ):
         """ """
         results = []
+
+        def generate_name(name):
+            from datetime import datetime
+
+            now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+            return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
+
+        def get_images(names, items, metas):
+            images = []
+            for name, item, meta in zip(names, items, metas):
+                item_tuple = func_item_to_kv(item)
+                # @TODO: 'title' -> ApiField.NAME
+                image_data = {"title": name, item_tuple[0]: item_tuple[1]}
+                if len(meta) != 0 and type(meta) == dict:
+                    image_data[ApiField.META] = meta
+                images.append(image_data)
+            return images
 
         if len(names) == 0:
             return results
@@ -1753,25 +1772,70 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(names) != len(metas):
                 raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
-        for batch in batched(list(zip(names, items, metas)), batch_size=batch_size):
-            images = []
-            for name, item, meta in batch:
-                item_tuple = func_item_to_kv(item)
-                # @TODO: 'title' -> ApiField.NAME
-                image_data = {"title": name, item_tuple[0]: item_tuple[1]}
-                if len(meta) != 0 and type(meta) == dict:
-                    image_data[ApiField.META] = meta
-                images.append(image_data)
+        for batch_names, batch_items, batch_metas in zip(
+            batched(names, batch_size=batch_size),
+            batched(items, batch_size=batch_size),
+            batched(metas, batch_size=batch_size),
+        ):
+            for retry in range(self._api.retry_count):
+                images = get_images(
+                    batch_names, batch_items, batch_metas
+                )  # cycle only if conflict_resolution
+                conflict_resolution = "skip"  # for debug purposes, delete later
+                handle_errors = retry != self._api.retry_count - 1  # fix
+                logger.info(f"Handle errors: {handle_errors}")
+                logger.info(f"Sending api request...")
+                response = self._api.post(
+                    "images.bulk.add",
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.IMAGES: images,
+                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                        ApiField.SKIP_VALIDATION: skip_validation,
+                    },
+                    handle_errors=handle_errors,
+                )
+                logger.info(f"Conflict resolution method: {conflict_resolution}")
+                if conflict_resolution is not None:
+                    logger.info(f"Response status code: {response.status_code}")
+                    if response.status_code == 400:
+                        try:
+                            error_data = response.json()
+                            error_details = error_data["details"]
+                            error_type = error_details["type"]
+                            logger.info(f"Error type: {error_type}")
+                            logger.info(f"Error details: {error_details}")
+                            if error_type == "NONUNIQUE":
+                                error_names = [error["name"] for error in error_details["errors"]]
+                                ids = [error["id"] for error in error_details["errors"]]
 
-            response = self._api.post(
-                "images.bulk.add",
-                {
-                    ApiField.DATASET_ID: dataset_id,
-                    ApiField.IMAGES: images,
-                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    ApiField.SKIP_VALIDATION: skip_validation,
-                },
-            )
+                                id_to_idx = {}
+                                for error_name in error_names:
+                                    idx = batch_names.index(error_name)
+                                    if conflict_resolution == "rename":
+                                        logger.info(f"Images to be renamed: {error_names}")
+                                        batch_names[idx] = generate_name(error_name)
+                                    elif conflict_resolution == "replace":
+                                        logger.info(f"Image ids to be removed: {ids}")
+                                        self._api.image.remove_batch(ids)
+                                    elif conflict_resolution == "skip":
+                                        logger.info(f"Skipping images: {ids}")
+                                        id_to_idx[idx] = ids[idx]
+                                # 1. для replace удаляем картинки по id и итерируемся еще раз
+                                # 2а. для скип сохранить индексы где лежали айдишники, получить get list all pages json, и в распаковке response впихнуть инфосы по индексам
+                                # 2б. то же самое, но с get_info_by_id_batch
+
+                                # Добавляем перед циклом for словарь id_to_idx
+                                # Кладем в словарь key - index, value - id
+                                # В конце функции перед return идем на get_info_by_id_batch, получаем список imageinfos по их айдишникам из словаря
+                                # В results запихиваем на соответствующие индексы imageinfos которые мы получили
+                        except KeyError as e:
+                            print(e)
+                    else:
+                        break
+                else:
+                    break
+
             if progress_cb is not None:
                 progress_cb(len(images))
 
@@ -1784,6 +1848,12 @@ class ImageApi(RemoveableBulkModuleApi):
 
         # name_to_res = {img_info.name: img_info for img_info in results}
         # ordered_results = [name_to_res[name] for name in names]
+
+        if len(id_to_idx) > 0:
+            logger.info("Inserting skipped image infos")
+            image_infos = self._api.image.get_info_by_id_batch(list(id_to_idx.values()))
+            for idx, info in zip(list(id_to_idx.values()), image_infos):
+                results.insert(idx, info)
 
         return results  # ordered_results
 
