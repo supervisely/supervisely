@@ -18,7 +18,7 @@
                     :value="state.{{{widget.widget_id}}}.selectedTaskType"
     
                     {% if widget._task_type_changes_handled == true %}
-                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/cv_task_changed')}"
+                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/task_type_changed')}"
                     {% else %}
                         @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0;}"
                     {% endif %}

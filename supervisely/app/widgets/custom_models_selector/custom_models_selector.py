@@ -497,7 +497,7 @@ class CustomModelsSelector(Widget):
         if self.use_custom_checkpoint_path():
             available_task_types = self.custom_checkpoint_task_type_selector.get_labels()
             if task_type not in available_task_types:
-                raise ValueError(f'"{task_type}" is not available CV task')
+                raise ValueError(f'"{task_type}" is not available task type')
             self.custom_checkpoint_task_type_selector.set_value(task_type)
 
     def task_type_changed(self, func: Callable):
