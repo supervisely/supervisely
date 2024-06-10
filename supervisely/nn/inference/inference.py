@@ -11,7 +11,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from queue import Queue
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import requests
@@ -554,6 +554,23 @@ class Inference:
         )
         return ann
 
+    def _inference_image_benchmark(
+            self,
+            image_path: str,
+            settings: Dict,
+        ) -> Tuple[Annotation, dict]:
+        t0 = time.time()
+        predictions, benchmark = self.predict_benchmark(image_path, settings)
+        total_time = time.time() - t0
+        benchmark = {
+            "total": total_time,
+            "preprocess": benchmark.get("preprocess", 0),
+            "inference": benchmark.get("inference", 0),
+            "postprocess": benchmark.get("postprocess", 0),
+            }
+        ann = self._predictions_to_annotation(image_path, predictions)
+        return ann, benchmark
+
     @process_images_batch_sliding_window
     @process_images_batch_roi
     def _inference_images_batch(
@@ -634,6 +651,22 @@ class Inference:
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
+    def predict_benchmark(self, image_path: str, settings: dict) -> Tuple[List[Prediction], dict]:
+        '''
+        Inference on a single image with speedtest benchmarking.
+
+        :param image_path: path to the image
+        :param settings: inference settings
+
+        :return: tuple of annotation and benchmark dict with speedtest results in seconds.
+            The benchmark dict should contain the following keys (all values are in seconds):
+            - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
+            - inference: time of inference (model forward pass only)
+            - postprocess: time of postprocessing (e.g. formatting the output, resizing output masks, etc.)
+            If some of the keys are missing, they will be considered as 0.
+        '''
+        raise NotImplementedError("Have to be implemented in child class")
+
     # pylint: enable=method-hidden
     def _get_inference_settings(self, state: dict):
         settings = state.get("settings", {})
@@ -675,18 +708,25 @@ class Inference:
         logger.debug("Inferring image...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
+        is_benchmark = state.get("benchmark", False)
         image_np = sly_image.read_bytes(file.file.read())
         logger.debug("Inference settings:", extra=settings)
         logger.debug("Image info:", extra={"w": image_np.shape[1], "h": image_np.shape[0]})
         sly_image.write(image_path, image_np)
-        data_to_return = {}
-        ann = self._inference_image_path(
-            image_path=image_path,
-            settings=settings,
-            data_to_return=data_to_return,
-        )
+        if is_benchmark:
+            ann, benchmark = self._inference_image_benchmark(image_path, settings)
+            result_dict = {"annotation": ann.to_json(), "benchmark": benchmark}
+        else:
+            data_to_return = {}
+            ann = self._inference_image_path(
+                image_path=image_path,
+                settings=settings,
+                data_to_return=data_to_return,
+            )
+            result_dict = {"annotation": ann.to_json(), "data": data_to_return}
+
         fs.silent_remove(image_path)
-        return {"annotation": ann.to_json(), "data": data_to_return}
+        return result_dict
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
@@ -761,6 +801,7 @@ class Inference:
         logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
         upload = state.get("upload", False)
+        is_benchmark = state.get("benchmark", False)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
@@ -772,25 +813,30 @@ class Inference:
         )
         logger.debug(f"Downloaded path: {image_path}")
 
-        inference_request = {}
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
+        if is_benchmark:
+            ann, benchmark = self._inference_image_benchmark(image_path, settings)
+            result_dict = {"annotation": ann.to_json(), "benchmark": benchmark}
+        else:
+            inference_request = {}
+            if async_inference_request_uuid is not None:
+                try:
+                    inference_request = self._inference_requests[async_inference_request_uuid]
+                except Exception as ex:
+                    import traceback
 
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
+                    logger.error(traceback.format_exc())
+                    raise RuntimeError(
+                        f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                        f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                    )
 
-        data_to_return = {}
-        ann = self._inference_image_path(
-            image_path=image_path,
-            settings=settings,
-            data_to_return=data_to_return,
-        )
+            data_to_return = {}
+            ann = self._inference_image_path(
+                image_path=image_path,
+                settings=settings,
+                data_to_return=data_to_return,
+            )
+            result_dict = {"annotation": ann.to_json(), "data": data_to_return}
         fs.silent_remove(image_path)
 
         if upload:
@@ -816,10 +862,9 @@ class Inference:
             )
             api.annotation.upload_ann(image_id, ann)
 
-        result = {"annotation": ann.to_json(), "data": data_to_return}
         if async_inference_request_uuid is not None and ann is not None:
-            inference_request["result"] = result
-        return result
+            inference_request["result"] = result_dict
+        return result_dict
 
     def _inference_image_url(self, api: Api, state: dict):
         logger.debug("Inferring image_url...", extra={"state": state})
@@ -1843,3 +1888,16 @@ def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int
         else:
             labels.append(label)
     return ann.clone(labels=labels)
+
+
+class Timer:
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.time()
+        self.duration = self.end - self.start
+
+    def get_time(self):
+        return self.duration
