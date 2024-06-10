@@ -530,6 +530,14 @@ class ApiField:
     """"""
     LIMIT_BY_WORKSPACE = "limitByWorkspace"
     """"""
+    PROJECT_VERSION = "projectVersion"
+    """"""
+    COMMIT_TOKEN = "commitToken"
+    """"""
+    TEAM_FILE_ID = "teamFileId"
+    """"""
+    PROJECT_UPDATED_AT = "projectUpdatedAt"
+    """"""
 
 
 def _get_single_item(items):
