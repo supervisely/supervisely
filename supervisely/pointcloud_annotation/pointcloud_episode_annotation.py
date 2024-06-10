@@ -135,6 +135,12 @@ class PointcloudEpisodeAnnotation:
 
         frame = self._frames.get(frame_index, None)
         if frame is None:
+            # if frame_index < self.frames_count:
+            #     return PointcloudEpisodeTagCollection([])
+            # else:
+            #     raise ValueError(f"No frame with index {frame_index} in annotation.")
+            # NOTE: The above code is commented out because the value of `frame_index` can be greater
+            # than `frames_count` in the episode annotation if some frames are removed from the episode.
             return PointcloudEpisodeTagCollection([])
         tags = []
         for tag in self._tags:
@@ -195,6 +201,12 @@ class PointcloudEpisodeAnnotation:
 
         frame = self._frames.get(frame_index, None)
         if frame is None:
+            # if frame_index < self.frames_count:
+            #     return PointcloudEpisodeObjectCollection([])
+            # else:
+            #     raise ValueError(f"No frame with index {frame_index} in annotation.")
+            # NOTE: The above code is commented out because the value of `frame_index` can be greater
+            # than `frames_count` in the episode annotation if some frames are removed from the episode.
             return PointcloudEpisodeObjectCollection([])
         frame_objects = {}
         for fig in frame.figures:
@@ -238,6 +250,12 @@ class PointcloudEpisodeAnnotation:
 
         frame = self._frames.get(frame_index, None)
         if frame is None:
+            # if frame_index < self.frames_count:
+            #     return []
+            # else:
+            #     raise ValueError(f"No frame with index {frame_index} in annotation.")
+            # NOTE: The above code is commented out because the value of `frame_index` can be greater
+            # than `frames_count` in the episode annotation if some frames are removed from the episode.
             return []
         return frame.figures
 
