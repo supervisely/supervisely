@@ -145,7 +145,7 @@ class VolumeProject(VideoProject):
         dest_dir: str,
         dataset_ids: Optional[List[int]] = None,
         download_volumes: Optional[bool] = True,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
@@ -162,7 +162,7 @@ class VolumeProject(VideoProject):
         :param download_volumes: Download volume data files or not.
         :type download_volumes: :class:`bool`, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
 
@@ -205,7 +205,7 @@ class VolumeProject(VideoProject):
         api: Api,
         workspace_id: int,
         project_name: Optional[str] = None,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
@@ -220,7 +220,7 @@ class VolumeProject(VideoProject):
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
         :type project_name: :class:`str`, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
 
@@ -304,7 +304,7 @@ def download_volume_project(
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
     download_volumes: Optional[bool] = True,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     """
@@ -321,7 +321,7 @@ def download_volume_project(
     :param download_volumes: Include volumes in the download.
     :type download_volumes: bool, optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -371,6 +371,9 @@ def download_volume_project(
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
 
+    if progress_cb is not None:
+        log_progress = False
+
     datasets_infos = []
     if dataset_ids is not None:
         for ds_id in dataset_ids:
@@ -382,10 +385,11 @@ def download_volume_project(
         dataset_fs: VolumeDataset = project_fs.create_dataset(dataset.name)
         volumes = api.volume.get_list(dataset.id)
 
-        ds_progress = None
+        ds_progress = progress_cb
         if log_progress:
-            ds_progress = Progress(
-                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(volumes)
+            ds_progress = tqdm_sly(
+                desc="Downloading volumes from: {!r}".format(dataset.name),
+                total=len(volumes),
             )
         for batch in batched(volumes, batch_size=LOG_BATCH_SIZE):
             volume_ids = [volume_info.id for volume_info in batch]
@@ -419,15 +423,15 @@ def download_volume_project(
                 if download_volumes is True:
                     header = None
                     item_progress = None
-                    if log_progress:
-                        item_progress = Progress(
-                            f"Downloading {volume_name}",
-                            total_cnt=volume_info.sizeb,
-                            is_size=True,
+                    if ds_progress is not None:
+                        item_progress = tqdm_sly(
+                            desc=f"Downloading '{volume_name}'",
+                            total=volume_info.sizeb,
+                            unit="B",
+                            unit_scale=True,
+                            leave=False,
                         )
-                        api.volume.download_path(
-                            volume_id, volume_file_path, item_progress.iters_done_report
-                        )
+                        api.video.download_path(volume_id, volume_file_path, item_progress)
                     else:
                         api.volume.download_path(volume_id, volume_file_path)
                 else:
@@ -474,10 +478,12 @@ def download_volume_project(
                     _validate_item=False,
                 )
 
+                if progress_cb is not None:
+                    progress_cb(1)
+
             if log_progress:
-                ds_progress.iters_done_report(len(batch))
-            if progress_cb is not None:
-                progress_cb(len(batch))
+                ds_progress(len(batch))
+
     project_fs.set_key_id_map(key_id_map)
 
 
@@ -510,7 +516,7 @@ def upload_volume_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     project_fs = VolumeProject.read_single(dir)
@@ -542,7 +548,7 @@ def upload_volume_project(
             mask_dirs.append(dataset_fs.get_mask_dir(item_name))
 
         ds_progress = progress_cb
-        if log_progress:
+        if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Uploading volumes to {!r}".format(dataset.name),
                 total=len(item_paths),
@@ -555,7 +561,7 @@ def upload_volume_project(
         volume_ids = [item_info.id for item_info in item_infos]
 
         anns_progress = None
-        if log_progress or progress_cb is not None:
+        if log_progress is True or progress_cb is not None:
             anns_progress = tqdm_sly(
                 desc="Uploading annotations to {!r}".format(dataset.name),
                 total=len(volume_ids),

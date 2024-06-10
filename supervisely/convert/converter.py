@@ -1,6 +1,7 @@
 import os
 
 from tqdm import tqdm
+from pathlib import Path
 
 try:
     from typing import Literal
@@ -159,7 +160,7 @@ class ImportManager:
                     file_path = os.path.join(root, file)
                     if is_archive(file_path=file_path):
                         try:
-                            new_path = os.path.splitext(os.path.normpath(file_path))[0]
+                            new_path = file_path.replace("".join(Path(file_path).suffixes), "")
                             unpack_archive(file_path, new_path)
                             archives.append(file_path)
                             new_paths_to_scan.append(new_path)
