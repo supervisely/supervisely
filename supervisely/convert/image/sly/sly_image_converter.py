@@ -144,10 +144,13 @@ class SLYImageConverter(ImageConverter):
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
                 logger.info("Found multiple Supervisely projects")
-            meta = ProjectMeta()
+            meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
-                meta = meta.merge(project_fs.meta)
+                if meta is None:
+                    meta = project_fs.meta
+                else:
+                    meta = meta.merge(project_fs.meta)
                 for dataset in project_fs.datasets:
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)

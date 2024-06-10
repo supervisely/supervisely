@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -16,6 +16,7 @@ from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
@@ -141,18 +142,14 @@ class BaseConverter:
     def __init__(
         self,
         input_data: str,
-        labeling_interface: Literal[
-            "default",
-            "multi_view",
-            "multispectral",
-            "images_with_16_color",
-            "medical_imaging_single",
-        ] = "default",
+        labeling_interface: Optional[LabelingInterface] = LabelingInterface.DEFAULT,
     ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
+        if labeling_interface is None:
+            labeling_interface = LabelingInterface.DEFAULT
+        self._labeling_interface = str(labeling_interface)
 
     @property
     def format(self) -> str:
@@ -171,7 +168,7 @@ class BaseConverter:
         raise NotImplementedError()
 
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface == "default"
+        return self._labeling_interface == LabelingInterface.DEFAULT.value
 
     def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
@@ -281,6 +278,8 @@ class BaseConverter:
         if meta2 is None:
             return meta1, {}, {}
 
+        meta1 = self._update_labeling_interface(meta1, meta2)
+
         # merge classes and tags from meta1 (unchanged) and meta2 (renamed if conflict)
         renamed_classes = {}
         renamed_tags = {}
@@ -342,3 +341,17 @@ class BaseConverter:
             )
             progress_cb = progress.update
         return progress, progress_cb
+
+    def _update_labeling_interface(self, meta1: ProjectMeta, meta2: ProjectMeta) -> ProjectMeta:
+        existing = meta1.project_settings.labeling_interface
+        new = meta2.project_settings.labeling_interface
+        if existing == new:
+            return meta1
+
+        if new is None or new == str(LabelingInterface.DEFAULT):
+            return meta1
+
+        if existing == str(LabelingInterface.DEFAULT):
+            new_settings = meta1.project_settings.clone(labeling_interface=new)
+            return meta1.clone(project_settings=new_settings)
+        return meta1
