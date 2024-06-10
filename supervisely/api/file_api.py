@@ -1038,7 +1038,7 @@ class FileApi(ModuleApiBase):
             if progress_cb is not None:
                 progress_cb(len(paths_batch))
 
-    def exists(self, team_id: int, remote_path: str) -> bool:
+    def exists(self, team_id: int, remote_path: str, recursive: bool = True) -> bool:
         """
         Checks if file exists in Team Files.
 
@@ -1046,6 +1046,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to File in Team Files.
         :type remote_path: str
+        :param recursive: If True makes more checks and slower, if False makes less checks and faster.
+        :type recursive: bool
         :return: True if file exists, otherwise False
         :rtype: :class:`bool`
         :Usage example:
@@ -1061,7 +1063,7 @@ class FileApi(ModuleApiBase):
            file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
            file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
         """
-        path_infos = self.list(team_id, remote_path)
+        path_infos = self.list(team_id, remote_path, recursive)
         for info in path_infos:
             if info["path"] == remote_path:
                 return True
@@ -1349,7 +1351,6 @@ class FileApi(ModuleApiBase):
             remote_parts = [res_remote_dir.rstrip("/")] + path_parts
             remote_file = "/".join(remote_parts)
             remote_files.append(remote_file)
-            
 
         for local_paths_batch, remote_files_batch in zip(
             batched(local_files, batch_size=50), batched(remote_files, batch_size=50)
