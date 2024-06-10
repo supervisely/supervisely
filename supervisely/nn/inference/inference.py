@@ -661,8 +661,9 @@ class Inference:
         :return: tuple of annotation and benchmark dict with speedtest results in seconds.
             The benchmark dict should contain the following keys (all values are in seconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
-            - inference: time of inference (model forward pass only)
-            - postprocess: time of postprocessing (e.g. formatting the output, resizing output masks, etc.)
+            - inference: time of inference. Consider to include not only the time of the model forward pass, but also
+                steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to get a meaningful prediction.
+            - postprocess: time of postprocessing (e.g. resizing output masks, aligning predictions with the input image, formatting, etc.)
             If some of the keys are missing, they will be considered as 0.
         '''
         raise NotImplementedError("Have to be implemented in child class")
