@@ -812,7 +812,7 @@ class AnnotationApi(ModuleApi):
         if not isinstance(project_meta, ProjectMeta):
             if project_id is None:
                 project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
-                context["project_id"] = project_id                    
+                context["project_id"] = project_id
             project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
             context["project_meta"] = project_meta
 
