@@ -124,16 +124,16 @@ class ProjectSettings(JsonSerializable):
 
         if labeling_interface is not None:
             labeling_interface = str(labeling_interface)
+            if labeling_interface not in LabelingInterface.values():
+                raise ValueError(
+                    f"Invalid labeling interface value: {labeling_interface}. The available values: {LabelingInterface.values()}"
+                )
+
         self.labeling_interface = labeling_interface
 
         if multiview_enabled is False and multiview_is_synced is True:
             logger.warn(
                 "The 'Group Images sync mode' is enabled, but it won't effect while multi-view mode is disabled. Please enable the multi-view mode (a.k.a. 'Group Images mode')."
-            )
-
-        if labeling_interface is not None and labeling_interface not in LabelingInterface.values():
-            raise ValueError(
-                f"Invalid labeling interface value: {labeling_interface}. The available values: {LabelingInterface.values()}"
             )
 
     @classmethod
