@@ -38,7 +38,7 @@ from supervisely._utils import (
 )
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.module_api import (
@@ -2842,7 +2842,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     converted_dir=converted_dir.as_posix(),
                     group_tag_name=group_tag_name,
                 )
-                image_meta.update(dcm_meta) # TODO: check update order
+                image_meta.update(dcm_meta)  # TODO: check update order
                 image_paths.extend(nrrd_paths)
                 image_names.extend(nrrd_names)
 
@@ -2851,7 +2851,11 @@ class ImageApi(RemoveableBulkModuleApi):
                     for tag in group_tags:
                         tag_meta = project_meta.get_tag_meta(tag["name"])
                         if tag_meta is None:
-                            tag_meta = TagMeta(tag["name"], TagValueType.ANY_STRING)
+                            tag_meta = TagMeta(
+                                tag["name"],
+                                TagValueType.ANY_STRING,
+                                applicable_to=TagApplicableTo.IMAGES_ONLY,
+                            )
                             project_meta = project_meta.add_tag_meta(tag_meta)
                         elif tag_meta.value_type != TagValueType.ANY_STRING:
                             raise ValueError(f"Tag '{tag['name']}' is not of type ANY_STRING.")
