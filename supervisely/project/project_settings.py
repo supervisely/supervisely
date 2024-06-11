@@ -90,6 +90,8 @@ class ProjectSettings(JsonSerializable):
     :type multiview_tag_id: str, optional
     :param multiview_is_synced: Enable syncronization of views for the multi-view mode.
     :type multiview_is_synced: bool
+    :param labeling_interface: The interface for labeling images.
+    :type labeling_interface: str, optional
 
     :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
     :Usage example:

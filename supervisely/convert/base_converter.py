@@ -147,9 +147,15 @@ class BaseConverter:
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
-        if labeling_interface is None:
-            labeling_interface = LabelingInterface.DEFAULT
+
+        labeling_interface = labeling_interface or LabelingInterface.DEFAULT.value
         self._labeling_interface = str(labeling_interface)
+
+        if self._labeling_interface not in LabelingInterface.values():
+            raise ValueError(
+                f"Invalid labeling interface value: {labeling_interface}. "
+                f"The available values: {LabelingInterface.values()}"
+            )
 
     @property
     def format(self) -> str:
