@@ -10,6 +10,7 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.fs import get_file_ext, list_files
+from supervisely.project.project_settings import LabelingInterface
 
 
 class MultiViewImageConverter(ImageConverter):
@@ -24,7 +25,7 @@ class MultiViewImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multi_view labeling interface can be used to group images on single screen."""
-        return self._labeling_interface == "multi_view"
+        return str(self._labeling_interface) == LabelingInterface.MULTIVIEW.value
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
