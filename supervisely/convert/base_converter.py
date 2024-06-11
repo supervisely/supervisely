@@ -349,15 +349,20 @@ class BaseConverter:
         return progress, progress_cb
 
     def _update_labeling_interface(self, meta1: ProjectMeta, meta2: ProjectMeta) -> ProjectMeta:
+        """
+        Update project meta with labeling interface from the converter meta.
+        Only update if the existing labeling interface is the default value.
+        In other cases, the existing labeling interface is preserved.
+        """
         existing = meta1.project_settings.labeling_interface
         new = meta2.project_settings.labeling_interface
         if existing == new:
             return meta1
 
-        if new is None or new == str(LabelingInterface.DEFAULT):
+        if new is None or new == LabelingInterface.DEFAULT.value:
             return meta1
 
-        if existing == str(LabelingInterface.DEFAULT):
+        if existing == LabelingInterface.DEFAULT.value:
             new_settings = meta1.project_settings.clone(labeling_interface=new)
             return meta1.clone(project_settings=new_settings)
         return meta1
