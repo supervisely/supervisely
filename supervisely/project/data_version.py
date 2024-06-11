@@ -1,4 +1,6 @@
+import io
 import os
+import tarfile
 import tempfile
 from collections import defaultdict
 from datetime import datetime
@@ -45,18 +47,13 @@ class DataVersion(ModuleApiBase):
         self.project_dir = None
         self.versions_path = None
         self.versions = None
+        self.version_format = "v1.0.0"
 
     @staticmethod
     def info_sequence():
         """
         NamedTuple VersionInfo with API Fields containing information about Project Version.
 
-        :Example:
-
-         .. code-block:: python
-
-            VersionInfo(id=999
-                        )
         """
 
         return [
@@ -95,8 +92,9 @@ class DataVersion(ModuleApiBase):
             self.storage_dir, str(self.project_info.id)
         )  # directory in Team Files
         self.versions_path: str = os.path.join(self.project_dir, "versions.json")
-        self.versions: dict = self.load_json(self.project_info, initialize=False)
-        self._create_warning_system_file()
+        self.versions: dict = self.load_json(self.project_info, do_initialization=False)
+        if self.project_info.version is None:
+            self._create_warning_system_file()
 
     def get_list(self, project_id: int) -> List[VersionInfo]:
         """
@@ -112,18 +110,18 @@ class DataVersion(ModuleApiBase):
             {ApiField.PROJECT_ID: project_id},
         )
 
-    def load_json(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
+    def load_json(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
         """
-        Get project versions from storage.
+        Get project versions map from storage.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
-        :param initialize: Initialize project versions. Set to False for internal use.
-        :type initialize: bool
+        :param do_initialization: Initialize project versions. Set to False for internal use.
+        :type do_initialization: bool
         :return: Project versions
         :rtype: dict
         """
-        if initialize:
+        if do_initialization:
             self.initialize(project_info)
         file_info = self._api.file.get_info_by_path(self.project_info.team_id, self.versions_path)
         if file_info:
@@ -131,7 +129,7 @@ class DataVersion(ModuleApiBase):
             response.raise_for_status()
             versions = response.json()
         else:
-            versions = {}
+            versions = {"format": self.version_format}
         return versions
 
     def upload_json(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
@@ -177,7 +175,7 @@ class DataVersion(ModuleApiBase):
         try:
             current_state = self._get_current_state()
             previous_state = (
-                self.versions[latest]["state"] if latest else {"datasets": {}, "items": {}}
+                self.versions[str(latest)]["state"] if latest else {"datasets": {}, "items": {}}
             )
             changes = self._compute_changes(previous_state, current_state)
             file_info = self._upload_files(path, changes)
@@ -229,34 +227,6 @@ class DataVersion(ModuleApiBase):
         if not commit_info.get("success"):
             raise RuntimeError("Failed to commit version")
 
-    def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
-        """
-        Restore project to a specific version.
-
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
-        :param target_version: Version ID to restore to
-        :type target_version: int
-        :return: None
-        """
-
-        self.initialize(project_info)
-
-        if target_version not in self.versions:
-            raise ValueError(f"Version {target_version} does not exist")
-
-        # Start from the latest version and walk back to the target version
-        version_chain = []
-        current_version = self._get_latest_id()
-
-        while current_version != target_version:
-            version_chain.append(current_version)
-            current_version = self.versions[current_version]["previous"]
-
-        # Apply changes in reverse order
-        for version_id in reversed(version_chain):
-            self._apply_changes(self.versions[version_id]["changes"], reverse=True)
-
     def reserve(self, project_id: int) -> Tuple[int, str]:
         """
         Reserve a project for versioning.
@@ -272,7 +242,7 @@ class DataVersion(ModuleApiBase):
             )
             reserve_info = response.json()
         except requests.exceptions.HTTPError as e:
-            if e.response.json().get("details", {}).get("version").get("useExistingVersion"):
+            if e.response.json().get("details", {}).get("useExistingVersion"):
                 version_id = e.response.json().get("details", {}).get("version").get("id")
                 version = e.response.json().get("details", {}).get("version").get("version")
                 logger.info(
@@ -301,6 +271,37 @@ class DataVersion(ModuleApiBase):
         reserve_info = response.json()
         return True if reserve_info.get("success") else False
 
+    def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
+        """
+        Restore project to a specific version.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :param target_version: Version ID to restore to
+        :type target_version: int
+        :return: None
+        """
+
+        self.initialize(project_info)
+
+        if str(target_version) not in self.versions:
+            raise ValueError(f"Version {target_version} does not exist")
+
+        # Start from the latest version and walk back to the target version
+        version_chain = []
+        current_version = self._get_latest_id()
+
+        while current_version != target_version:
+            version_chain.append(current_version)
+            current_version = self.versions[str(current_version)]["previous"]
+
+        # Apply changes in reverse order
+        for version_id in version_chain:
+            extracted_path = self._download_and_extract_version(
+                self.versions[str(version_id)]["path"]
+            )
+            self._apply_changes(self.versions[str(version_id)], extracted_path, reverse=True)
+
     def _create_warning_system_file(self):
         """
         Create a file in the system directory to indicate that you cannot manually modify its contents.
@@ -312,54 +313,126 @@ class DataVersion(ModuleApiBase):
                 f.write("This directory is managed by Supervisely. Do not modify its contents.")
             self._api.file.upload(self.project_info.team_id, temp_file.name, warning_file)
 
-    def _apply_changes(self, changes, reverse=False):
+    def _download_and_extract_version(self, path: str) -> str:
+        """
+        Download and extract a version from the repository.
+
+        :param path: Path to the version file
+        :type path: str
+        :return: Local path to the version directory with extracted files
+        :rtype: str
+        """
+        temp_dir = tempfile.mkdtemp()
+        local_path = os.path.join(temp_dir, "download.tar.zst")
+        self._api.file.download(self.project_info.team_id, path, local_path)
+        extract_dir = os.path.join(temp_dir, "extracted")
+        with open(local_path, "rb") as zst:
+            decompressed_data = zstd.decompress(zst.read())
+            with tarfile.open(fileobj=io.BytesIO(decompressed_data)) as tar:
+                tar.extractall(extract_dir)
+        return extract_dir
+
+    def _apply_changes(self, version: dict, extracted_version_path: str, reverse: bool = False):
+        """
+        Apply changes between nearby versions to the project.
+
+        :param changes: Changes between nearby versions
+        :type changes: dict
+        :param extracted_version_path: Local path to the version directory with extracted files
+        :type extracted_version_path: str
+        :param reverse: Apply changes in reverse order. For example, to restore a version from 5 to 6, set reverse to True.
+        :type reverse: bool
+        :return: None
+        """
+
+        changes = version["changes"]
+        state = version["state"]
         for state_type in ["datasets", "items"]:
-            deleted_datasets = set()
+            datasets_to_delete = set()
             items_to_delete = set()
-            datasets_to_restore = set()
-            items_to_restore = set()
-            datasets_to_update = set()
-            items_to_update = set()
+            datasets_to_restore = dict()
+            items_to_restore = dict()
+            datasets_to_update = dict()
+            items_to_update = dict()
+
+            # collect changes
             if reverse:
+                for item in changes["added"][state_type].items():
+                    if state_type == "datasets":
+                        datasets_to_restore.update(item)
+                    else:
+                        items_to_restore.update(item)
+                for id in changes["deleted"][state_type].keys():
+                    if state_type == "datasets":
+                        datasets_to_delete.add(id)
+                    elif state_type == "items":
+                        if info["parent"] in datasets_to_delete:
+                            continue
+                        else:
+                            items_to_delete.add(id)
+            else:
                 for id, info in changes["added"][state_type].items():
                     if state_type == "datasets":
-                        self._api.dataset.remove(id)
-                        deleted_datasets.add(id)
+                        datasets_to_delete.add(id)
                     elif state_type == "items":
-                        if info["parent"] in deleted_datasets:
+                        if info["parent"] in datasets_to_delete:
                             continue
                         else:
                             items_to_delete.add(id)
                 for item in changes["deleted"][state_type].items():
                     if state_type == "datasets":
-                        datasets_to_restore.add(item)
+                        datasets_to_restore.update(item)
                     else:
-                        items_to_restore.add(item)
-            else:
-                for item in changes["added"][state_type].items():
-                    if state_type == "datasets":
-                        datasets_to_restore.add(item)
-                    else:
-                        items_to_restore.add(item)
-                for id in changes["deleted"][state_type].keys():
-                    if state_type == "datasets":
-                        self._api.dataset.remove(id)
-                        deleted_datasets.add(id)
-                    elif state_type == "items":
-                        if info["parent"] in deleted_datasets:
-                            continue
-                        else:
-                            items_to_delete.add(id)
-
+                        items_to_restore.update(item)
             for item in changes["modified"][state_type].items():
                 if state_type == "datasets":
-                    datasets_to_update.add(item)
+                    datasets_to_update.update(item)
                 else:
-                    items_to_update.add(item)
+                    items_to_update.update(item)
 
-            self._api.image.remove_batch(items_to_delete)
-            self._restore_datasets(datasets_to_restore)
-            self._restore_items(items_to_restore)
+            # apply changes
+            meta_json = json.load_json_file(os.path.join(extracted_version_path, "meta.json"))
+            self._api.project.update_meta(self.project_info.id, ProjectMeta.from_json(meta_json))
+            if len(datasets_to_delete) > 0:
+                for id in datasets_to_delete:
+                    self._api.dataset.remove(id)
+            if len(items_to_delete) > 0:
+                self._api.image.remove_batch(items_to_delete)  # TODO filter by dataset?
+            if len(datasets_to_restore) > 0:
+                dataset_mapping = self._restore_datasets(datasets_to_restore)
+            if len(items_to_restore) > 0:
+                self._restore_items(items_to_restore, dataset_mapping)
+            if len(datasets_to_update) > 0:
+                for id, info in datasets_to_update.items():
+                    self._api.dataset.update(id, info["name"])
+            if len(items_to_update) > 0:
+                img_ids = []
+                for id, info in items_to_update.items():
+                    img_ids.append(id)
+                ann_paths = self._compute_ann_paths(state, img_ids, extracted_version_path)
+                self._api.annotation.upload_paths(img_ids, ann_paths)  # TODO filter by dataset?
+
+    def _compute_ann_paths(self, state: dict, img_ids: List[int], version_path: str):
+        """
+        Compute paths to annotation files for items in the project.
+
+        :param state: Project state map
+        :type state: dict
+        :param img_ids: List of image IDs
+        :type img_ids: List[int]
+        :param version_path: Local path to the version directory with extracted files
+        :type version_path: str
+        :return: List of paths to annotation files
+        """
+        ann_paths = []
+        for img_id in img_ids:
+            dataset_name = state["datasets"][str(state["items"][str(img_id)]["parent"])]["name"]
+
+            path = os.path.join(
+                version_path, dataset_name, "ann", state["items"][str(img_id)]["name"] + ".json"
+            )
+            ann_paths.append(path)
+        return ann_paths
 
     def _compute_changes(self, old_state: dict, new_state: dict):
         changes = {
@@ -370,24 +443,29 @@ class DataVersion(ModuleApiBase):
 
         for state_type in ["datasets", "items"]:
             added = {
-                k: v for k, v in new_state[state_type].items() if k not in old_state[state_type]
+                k: v
+                for k, v in new_state[state_type].items()
+                if str(k) not in old_state[state_type]
             }
             deleted = {
-                k: v for k, v in old_state[state_type].items() if k not in new_state[state_type]
+                k: v
+                for k, v in old_state[state_type].items()
+                if int(k) not in new_state[state_type]
             }
 
             if state_type == "datasets":
                 modified = {
                     k: v
                     for k, v in new_state[state_type].items()
-                    if k in old_state[state_type] and old_state[state_type][k]["name"] != v["name"]
+                    if str(k) in old_state[state_type]
+                    and old_state[state_type][str(k)]["name"] != v["name"]
                 }
             else:  # state_type == "items"
                 modified = {
                     k: v
                     for k, v in new_state[state_type].items()
-                    if k in old_state[state_type]
-                    and old_state[state_type][k]["updated_at"] != v["updated_at"]
+                    if str(k) in old_state[state_type]
+                    and old_state[state_type][str(k)]["updated_at"] != v["updated_at"]
                 }
 
             changes["added"][state_type] = added
@@ -440,20 +518,27 @@ class DataVersion(ModuleApiBase):
                     }
         return current_state
 
-    def _restore_datasets(self, datasets) -> list:
-        created_datasets = []
-        for dataset in datasets:
-            _, info = dataset
+    def _restore_datasets(self, datasets: dict) -> dict:
+        """
+        Restore datasets from the project state.
+
+        :param datasets: Datasets to restore
+        :type datasets: dict
+        :return: Dataset mapping of old IDs to new IDs
+        :rtype: dict
+        """
+        dataset_mapping = {}
+        for dataset in datasets.items():
+            id, info = dataset
             dataset_info = self._api.dataset.create(
                 self.project_info.id, info["name"], parent_id=info["parent"]
             )
             if dataset_info is None:
                 raise RuntimeError(f"Failed to restore dataset {info['name']}")
-            created_datasets.append(dataset_info)
+            dataset_mapping[id] = dataset_info.id
+        return dataset_mapping
 
-        return created_datasets
-
-    def _restore_items(self, items):
+    def _restore_items(self, items: dict, dataset_mapping: dict):
         items_by_parent = defaultdict(lambda: {"names": [], "hashes": []})
 
         for item in items:
@@ -461,9 +546,10 @@ class DataVersion(ModuleApiBase):
             items_by_parent[info["parent"]]["names"].append(info["name"])
             items_by_parent[info["parent"]]["hashes"].append(info["hash"])
         for parent_id, items in items_by_parent.items():
-            self._api.image.upload_hashes(parent_id, items["names"], items["hashes"])
-
-        return
+            if parent_id in dataset_mapping:
+                parent_id = dataset_mapping[parent_id]
+            file_infos = self._api.image.upload_hashes(parent_id, items["names"], items["hashes"])
+            # TODO restore anns
 
     def _upload_files(self, path: str, changes: dict):
         """
@@ -521,7 +607,7 @@ class DataVersion(ModuleApiBase):
         zst_archive_path = archive_path + ".zst"
         with open(archive_path, "rb") as tar:
             with open(zst_archive_path, "wb") as zst:
-                zst.write(zstd.ZSTD_compress(tar.read()))
+                zst.write(zstd.compress(tar.read()))
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
         silent_remove(archive_path)
         silent_remove(zst_archive_path)
