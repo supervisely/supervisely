@@ -1,13 +1,13 @@
 import warnings
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
-from sklearn.calibration import calibration_curve
 from pycocotools.coco import COCO
+from sklearn.calibration import calibration_curve
 
 from supervisely.nn.benchmark import functional as metrics
-
 
 METRIC_NAMES = {
     "mAP": "mAP",
@@ -190,7 +190,7 @@ class MetricProvider:
             "Recall": recall_per_image,
             "F1": f1_per_image
             })
-        return prediction_table
+        return prediction_table.round(2)
     
     def confusion_matrix(self):
         K = len(self.cat_ids)
