@@ -147,7 +147,7 @@ class BaseConverter:
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
-        self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT.value
+        self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
 
         if self._labeling_interface not in LabelingInterface.values():
             raise ValueError(
@@ -172,7 +172,7 @@ class BaseConverter:
         raise NotImplementedError()
 
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface == LabelingInterface.DEFAULT.value
+        return self._labeling_interface == LabelingInterface.DEFAULT
 
     def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
@@ -357,10 +357,10 @@ class BaseConverter:
         if existing == new:
             return meta1
 
-        if new is None or new == LabelingInterface.DEFAULT.value:
+        if new is None or new == LabelingInterface.DEFAULT:
             return meta1
 
-        if existing == LabelingInterface.DEFAULT.value:
+        if existing == LabelingInterface.DEFAULT:
             new_settings = meta1.project_settings.clone(labeling_interface=new)
             return meta1.clone(project_settings=new_settings)
         return meta1
