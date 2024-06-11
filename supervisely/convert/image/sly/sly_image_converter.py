@@ -27,9 +27,9 @@ class SLYImageConverter(ImageConverter):
         return AvailableImageConverters.SLY
 
     def validate_labeling_interface(self) -> bool:
-        return str(self._labeling_interface) in [
-            LabelingInterface.DEFAULT.value,
-            LabelingInterface.IMAGE_MATTING.value,
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.IMAGE_MATTING,
         ]
 
     @property

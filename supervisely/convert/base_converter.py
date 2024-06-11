@@ -147,9 +147,7 @@ class BaseConverter:
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
-
-        labeling_interface = labeling_interface or LabelingInterface.DEFAULT.value
-        self._labeling_interface = str(labeling_interface)
+        self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT.value
 
         if self._labeling_interface not in LabelingInterface.values():
             raise ValueError(

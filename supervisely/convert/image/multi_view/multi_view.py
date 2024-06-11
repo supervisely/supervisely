@@ -25,7 +25,7 @@ class MultiViewImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multi_view labeling interface can be used to group images on single screen."""
-        return str(self._labeling_interface) == LabelingInterface.MULTIVIEW.value
+        return self._labeling_interface == LabelingInterface.MULTIVIEW
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")

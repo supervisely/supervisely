@@ -13,7 +13,7 @@ from supervisely.io.json import JsonSerializable
 from supervisely.sly_logger import logger
 
 
-class LabelingInterface(StrEnum):
+class LabelingInterface(str, StrEnum):
     DEFAULT = "default"
     MEDICAL_IMAGING_SINGLE = "medical_imaging_single"
     IMAGES_WITH_16_COLOR = "images_with_16_color"
@@ -123,7 +123,6 @@ class ProjectSettings(JsonSerializable):
         self.multiview_is_synced = multiview_is_synced
 
         if labeling_interface is not None:
-            labeling_interface = str(labeling_interface)
             if labeling_interface not in LabelingInterface.values():
                 raise ValueError(
                     f"Invalid labeling interface value: {labeling_interface}. The available values: {LabelingInterface.values()}"
