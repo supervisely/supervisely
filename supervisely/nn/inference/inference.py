@@ -23,7 +23,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import batched
+from supervisely import VideoAnnotation, batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -831,6 +831,7 @@ class Inference:
                 n_frames=state["framesCount"],
             ),
         )
+        tracking = state.get("tracking", None)
 
         video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
@@ -869,8 +870,22 @@ class Inference:
         n_frames = video_info.frames_count
         logger.debug(f"Total frames to infer: {n_frames}")
 
+        if tracking == "botsort":
+            from supervisely.nn.tracker import BoTTracker
+
+            tracker = BoTTracker(state)
+        elif tracking == "deepsort":
+            from supervisely.nn.tracker import DeepSortTracker
+
+            tracker = DeepSortTracker(state)
+        else:
+            if tracking is not None:
+                logger.warn(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+            tracker = None
+
         results = []
         batch_size = 16
+        frame_to_annotation = {}
         for batch in batched(range(video_info.frames_count), batch_size):
             if (
                 async_inference_request_uuid is not None
@@ -892,6 +907,10 @@ class Inference:
                 settings=settings,
                 # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
             )
+            if tracker is not None:
+                frame_to_annotation.update(
+                    {frame_index: ann for frame_index, ann in zip(batch, anns)}
+                )
             batch_results = []
             for i, ann in enumerate(anns):
                 data = {}
@@ -909,6 +928,14 @@ class Inference:
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         fs.remove_dir(video_images_path)
+        if tracker is not None:
+            frames = self.cache.download_frames(api, video_info.id, range(video_info.frames_count))
+            video_ann = tracker.track(
+                source=frames,
+                frame_to_annotation=frame_to_annotation,
+                frame_shape=(video_info.frame_height, video_info.frame_width),
+            )
+            results.append(video_ann.to_json())
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         return results
