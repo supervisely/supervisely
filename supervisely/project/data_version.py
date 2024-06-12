@@ -42,12 +42,12 @@ class DataVersion(ModuleApiBase):
         from supervisely import Api
 
         self._api: Api = api
+        self.__storage_dir: str = "/system/versions/"
+        self.__version_format: str = "v1.0.0"
         self.project_info = None
-        self.storage_dir = None
         self.project_dir = None
         self.versions_path = None
         self.versions = None
-        self.version_format = "v1.0.0"
 
     @staticmethod
     def info_sequence():
@@ -87,10 +87,7 @@ class DataVersion(ModuleApiBase):
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
         self.project_info: ProjectInfo = project_info
-        self.storage_dir: str = "/system/versions/"  # directory in Team Files
-        self.project_dir: str = os.path.join(
-            self.storage_dir, str(self.project_info.id)
-        )  # directory in Team Files
+        self.project_dir: str = os.path.join(self.__storage_dir, str(self.project_info.id))
         self.versions_path: str = os.path.join(self.project_dir, "versions.json")
         self.versions: dict = self.load_json(self.project_info, do_initialization=False)
         if self.project_info.version is None:
@@ -129,7 +126,7 @@ class DataVersion(ModuleApiBase):
             response.raise_for_status()
             versions = response.json()
         else:
-            versions = {"format": self.version_format}
+            versions = {"format": self.__version_format}
         return versions
 
     def upload_json(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
@@ -347,43 +344,30 @@ class DataVersion(ModuleApiBase):
 
         changes = version["changes"]
         state = version["state"]
-        for state_type in ["datasets", "items"]:
-            datasets_to_delete = set()
-            items_to_delete = set()
-            datasets_to_restore = dict()
-            items_to_restore = dict()
-            datasets_to_update = dict()
-            items_to_update = dict()
+        dataset_infos = state["datasets"]
+        datasets_to_delete = set()
+        items_to_delete = set()
+        datasets_to_restore = dict()
+        items_to_restore = dict()
+        datasets_to_update = dict()
+        items_to_update = dict()
 
+        for state_type in ["datasets", "items"]:
             # collect changes
-            if reverse:
-                for item in changes["added"][state_type].items():
-                    if state_type == "datasets":
-                        datasets_to_restore.update(item)
-                    else:
-                        items_to_restore.update(item)
-                for id in changes["deleted"][state_type].keys():
-                    if state_type == "datasets":
-                        datasets_to_delete.add(id)
-                    elif state_type == "items":
-                        if info["parent"] in datasets_to_delete:
-                            continue
-                        else:
-                            items_to_delete.add(id)
-            else:
-                for id, info in changes["added"][state_type].items():
-                    if state_type == "datasets":
-                        datasets_to_delete.add(id)
-                    elif state_type == "items":
-                        if info["parent"] in datasets_to_delete:
-                            continue
-                        else:
-                            items_to_delete.add(id)
-                for item in changes["deleted"][state_type].items():
-                    if state_type == "datasets":
-                        datasets_to_restore.update(item)
-                    else:
-                        items_to_restore.update(item)
+            added, deleted = ("added", "deleted") if reverse else ("deleted", "added")
+
+            for item in changes[added][state_type].items():
+                if state_type == "datasets":
+                    datasets_to_restore.update(item)
+                else:
+                    items_to_restore.update(item)
+
+            for id, info in changes[deleted][state_type].items():
+                if state_type == "datasets":
+                    datasets_to_delete.add(id)
+                elif state_type == "items" and info["parent"] not in datasets_to_delete:
+                    items_to_delete.add(id)
+
             for item in changes["modified"][state_type].items():
                 if state_type == "datasets":
                     datasets_to_update.update(item)
@@ -393,48 +377,66 @@ class DataVersion(ModuleApiBase):
             # apply changes
             meta_json = json.load_json_file(os.path.join(extracted_version_path, "meta.json"))
             self._api.project.update_meta(self.project_info.id, ProjectMeta.from_json(meta_json))
-            if len(datasets_to_delete) > 0:
-                for id in datasets_to_delete:
-                    self._api.dataset.remove(id)
-            if len(items_to_delete) > 0:
-                self._api.image.remove_batch(items_to_delete)  # TODO filter by dataset?
-            if len(datasets_to_restore) > 0:
-                dataset_mapping = self._restore_datasets(datasets_to_restore)
-            if len(items_to_restore) > 0:
-                self._restore_items(items_to_restore, dataset_mapping)
-            if len(datasets_to_update) > 0:
-                for id, info in datasets_to_update.items():
-                    self._api.dataset.update(id, info["name"])
-            if len(items_to_update) > 0:
-                img_ids = []
-                for id, info in items_to_update.items():
-                    img_ids.append(id)
-                ann_paths = self._compute_ann_paths(state, img_ids, extracted_version_path)
-                self._api.annotation.upload_paths(img_ids, ann_paths)  # TODO filter by dataset?
+            for id in datasets_to_delete:
+                self._api.dataset.remove(id)
+            self._api.image.remove_batch(items_to_delete)
+            dataset_mapping = self._restore_datasets(datasets_to_restore)
+            self._restore_items(
+                items_to_restore, dataset_mapping, dataset_infos, extracted_version_path
+            )
+            for id, info in datasets_to_update.items():
+                self._api.dataset.update(id, info["name"])
+            ann_data = self._compute_ann_data(state, items_to_update, extracted_version_path)
+            for dataset_id, data in ann_data.items():
+                self._api.annotation.upload_paths(data["img_ids"], data["ann_paths"])
 
-    def _compute_ann_paths(self, state: dict, img_ids: List[int], version_path: str):
+    def _compute_ann_data(self, state: dict, items_to_update: dict, version_path: str):
         """
-        Compute paths to annotation files for items in the project.
+        Compute lists of image IDs and annotation paths for items in the project that were added or modified in the current version.
+        Results are grouped by dataset ID.
 
         :param state: Project state map
         :type state: dict
-        :param img_ids: List of image IDs
-        :type img_ids: List[int]
+        :param items_to_update: Items to update
+        :type items_to_update: dict
         :param version_path: Local path to the version directory with extracted files
         :type version_path: str
-        :return: List of paths to annotation files
+        :return: Dictionary with dataset ids as keys and another dictionary as values.
+            The inner dictionary has keys 'img_ids' and 'ann_paths' with corresponding lists as values.
         """
-        ann_paths = []
-        for img_id in img_ids:
-            dataset_name = state["datasets"][str(state["items"][str(img_id)]["parent"])]["name"]
 
-            path = os.path.join(
-                version_path, dataset_name, "ann", state["items"][str(img_id)]["name"] + ".json"
-            )
-            ann_paths.append(path)
-        return ann_paths
+        # Group img_ids by dataset_id
+        img_ids_by_dataset = defaultdict(list)
+        for img_id in items_to_update:
+            dataset_id = state["items"][str(img_id)]["parent"]
+            img_ids_by_dataset[dataset_id].append(img_id)
+
+        # Compute annotation paths for each dataset
+        data_by_datasets = {}
+        for dataset_id, img_ids in img_ids_by_dataset.items():
+            dataset_name = state["datasets"][str(dataset_id)]["name"]
+            ann_paths = [
+                os.path.join(
+                    version_path, dataset_name, "ann", state["items"][str(img_id)]["name"] + ".json"
+                )
+                for img_id in img_ids
+            ]
+            data_by_datasets[dataset_id] = {"img_ids": img_ids, "ann_paths": ann_paths}
+
+        return data_by_datasets
 
     def _compute_changes(self, old_state: dict, new_state: dict):
+        """
+        Compute changes between two project version states.
+
+        :param old_state: Old project state map
+        :type old_state: dict
+        :param new_state: New project state map
+        :type new_state: dict
+        :return: Changes between old and new states
+        :rtype: dict
+        """
+
         changes = {
             "added": {"datasets": {}, "items": {}},
             "deleted": {"datasets": {}, "items": {}},
@@ -476,7 +478,7 @@ class DataVersion(ModuleApiBase):
 
     def _generate_save_path(self):
         """
-        Create a path for the new version.
+        Generate a path for the new version archive where it will be saved in the Team Files.
 
         :return: Path for the new version
         :rtype: str
@@ -486,6 +488,9 @@ class DataVersion(ModuleApiBase):
         return path
 
     def _get_latest_id(self):
+        """
+        Get the ID of the latest version from the versions map (versions.json).
+        """
         latest = self.versions.get("latest", None)
         if not latest:
             return None
@@ -538,18 +543,46 @@ class DataVersion(ModuleApiBase):
             dataset_mapping[id] = dataset_info.id
         return dataset_mapping
 
-    def _restore_items(self, items: dict, dataset_mapping: dict):
-        items_by_parent = defaultdict(lambda: {"names": [], "hashes": []})
+    def _restore_items(
+        self, items: dict, dataset_mapping: dict, dataset_infos: dict, version_path: str
+    ):
+        """
+        Restore items that were deleted since the previous version.
+
+        :param items: Items to restore
+        :type items: dict
+        :param dataset_mapping: Dataset mapping of old IDs to new IDs in case datasets were restored.
+        :type dataset_mapping: dict
+        :param dataset_infos: Dataset infos
+        :type dataset_infos: dict
+        :param version_path: Local path to the version directory with extracted files
+        :type version_path: str
+        :return: None
+        """
+
+        items_by_dataset = defaultdict(lambda: {"names": [], "hashes": []})
 
         for item in items:
             _, info = item
-            items_by_parent[info["parent"]]["names"].append(info["name"])
-            items_by_parent[info["parent"]]["hashes"].append(info["hash"])
-        for parent_id, items in items_by_parent.items():
-            if parent_id in dataset_mapping:
-                parent_id = dataset_mapping[parent_id]
-            file_infos = self._api.image.upload_hashes(parent_id, items["names"], items["hashes"])
-            # TODO restore anns
+            items_by_dataset[info["parent"]]["names"].append(info["name"])
+            items_by_dataset[info["parent"]]["hashes"].append(info["hash"])
+        for dataset_id, items in items_by_dataset.items():
+            if dataset_id in dataset_mapping:
+                dataset_name = dataset_infos[str(dataset_id)]["name"]
+                dataset_id = dataset_mapping[dataset_id]
+            file_infos = self._api.image.upload_hashes(dataset_id, items["names"], items["hashes"])
+            ids = []
+            paths = []
+            for file_info in file_infos:
+                ids.append(file_info.id)
+                ann_path = os.path.join(
+                    version_path,
+                    dataset_name,
+                    "ann",
+                    file_info.name + ".json",
+                )
+                paths.append(ann_path)
+            self._api.annotation.upload_paths(ids, paths)
 
     def _upload_files(self, path: str, changes: dict):
         """
