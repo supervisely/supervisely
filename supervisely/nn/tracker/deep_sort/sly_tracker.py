@@ -229,3 +229,20 @@ class DeepSortTracker(BaseTracker):
             frame_shape=frame_shape,
             frames_count=len(frame_to_annotation),
         )
+
+    def clear_empty_ids(self, tracker_annotations):
+        id_mappings = {}
+        last_ordinal_id = 0
+
+        for frame_index, data in tracker_annotations.items():
+            data_ids_temp = []
+            for current_id in data["ids"]:
+                new_id = id_mappings.get(current_id, -1)
+                if new_id == -1:
+                    id_mappings[current_id] = last_ordinal_id
+                    last_ordinal_id += 1
+                    new_id = id_mappings.get(current_id, -1)
+                data_ids_temp.append(new_id)
+            data["ids"] = data_ids_temp
+
+        return tracker_annotations
