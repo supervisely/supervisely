@@ -196,8 +196,8 @@ class BaseTracker:
 
             rectangle: Rectangle = label.geometry.to_bbox()
             formatted_pred = [
-                rectangle.left,
                 rectangle.top,
+                rectangle.left,
                 rectangle.right,
                 rectangle.bottom,
                 confidence,

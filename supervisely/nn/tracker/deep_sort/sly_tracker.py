@@ -180,6 +180,8 @@ class DeepSortTracker(BaseTracker):
 
                 # Process detections
                 bboxes = det[:, :4].clone().cpu()
+                # tlwh -> ltwh
+                bboxes = [bbox[[1, 0, 2, 3]] for bbox in bboxes]
                 confs = det[:, 4]
 
                 # encode yolo detections and feed to tracker
