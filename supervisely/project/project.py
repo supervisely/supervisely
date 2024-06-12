@@ -2674,7 +2674,7 @@ def read_single_project(
     return project_class(project_dirs[0], OpenMode.READ)
 
 
-def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> str:
+def find_project_dirs(dir: str, project_class: Optional[Project] = Project) -> Generator[str]:
     """Yields directories, that contain valid project folder in the given directory or in any of it's subdirectories.
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
     :type dir: str
