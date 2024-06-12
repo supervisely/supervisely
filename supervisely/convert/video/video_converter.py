@@ -178,9 +178,6 @@ class VideoConverter(BaseConverter):
                     ann = VideoAnnotation(item.shape, item.frame_count)
                 api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
 
-            if log_progress and not has_large_files:
-                progress_cb(len(batch))
-
         if log_progress and is_development():
             if progress is not None: # pylint: disable=possibly-used-before-assignment
                 progress.close()
