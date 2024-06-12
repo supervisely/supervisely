@@ -123,11 +123,19 @@ class MultiSpectralImageConverter(ImageConverter):
         if file_ext == ".nrrd":
             logger.debug(f"Found nrrd file: {file_path}.")
             image, _ = nrrd.read(file_path)
-        elif file_ext == ".tif":
+        elif file_ext in [".tif", ".tiff"]:
             import tifffile
 
             logger.debug(f"Found tiff file: {file_path}.")
             image = tifffile.imread(file_path)
+            if image is not None:
+                tiff_shape = image.shape
+                if image.ndim == 3:
+                    if tiff_shape[0] < tiff_shape[1] and tiff_shape[0] < tiff_shape[2]:
+                        image = image.transpose(1, 2, 0)
+                        logger.warning(
+                            f"{file_path}: transposed shape from {tiff_shape} to {image.shape}"
+                        )
         elif is_valid_ext(file_ext):
             logger.debug(f"Found image file: {file_path}.")
             image = cv2.imread(file_path)

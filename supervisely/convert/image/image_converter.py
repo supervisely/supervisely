@@ -59,11 +59,19 @@ class ImageConverter(BaseConverter):
                     if file_ext == ".nrrd":
                         logger.debug(f"Found nrrd file: {self.path}.")
                         image, _ = nrrd.read(self.path)
-                    elif file_ext == ".tif":
+                    elif file_ext in [".tif", ".tiff"]:
                         import tifffile
 
                         logger.debug(f"Found tiff file: {self.path}.")
                         image = tifffile.imread(self.path)
+                        if image is not None:
+                            tiff_shape = image.shape
+                            if image.ndim == 3:
+                                if tiff_shape[0] < tiff_shape[1] and tiff_shape[0] < tiff_shape[2]:
+                                    image = image.transpose(1, 2, 0)
+                                    logger.warning(
+                                        f"{self.name}: transposed shape from {tiff_shape} to {image.shape}"
+                                    )
                     elif is_valid_ext(file_ext):
                         logger.debug(f"Found image file: {self.path}.")
                         image = cv2.imread(self.path)
