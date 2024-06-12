@@ -686,17 +686,6 @@ class Inference:
             fill_rectangles=False,
         )
 
-    def _create_tracker(self, tracker_name=None):
-        if tracker_name == "deep_sort":
-            from supervisely.nn.tracker.deep_sort.sly_tracker import DeepSortTracker
-
-            self._tracker = DeepSortTracker()
-        elif tracker_name == "bot" or tracker_name is None:
-            from supervisely.nn.tracker.bot_sort import BoTTracker
-
-            self._tracker = BoTTracker()
-        return self._tracker
-
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
         settings = self._get_inference_settings(state)
