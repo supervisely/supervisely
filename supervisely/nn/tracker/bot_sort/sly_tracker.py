@@ -60,7 +60,7 @@ class _BoTSORT(BoTSORT):
         if self.args.with_reid:
             return [
                 Track(Track.tlbr_to_tlwh(tlbr), s, f, l)
-                for (tlbr, s, l, f) in zip(dets, scores, labels, features)
+                for (tlbr, s, f, l) in zip(dets, scores, features, labels)
             ]
         return [
             Track(Track.tlbr_to_tlwh(tlbr), s, None, l)
@@ -370,8 +370,6 @@ class BoTTracker(BaseTracker):
         tracks_data = {}
         logger.info("Starting BoTSort tracking...")
         for frame_index, img in enumerate(self.frames_generator(source)):
-            detections = []
-
             pred, sly_labels = self.convert_annotation(frame_to_annotation[frame_index])
 
             detections = [Detection(p[:4], p[4], None, label) for p, label in zip(pred, sly_labels)]
