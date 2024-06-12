@@ -217,7 +217,7 @@ class BaseTracker:
         canvas_rect = Rectangle.from_size(img_size)
         if canvas_rect.contains(figure.to_bbox()) is False:
             # crop figure
-            figures_after_crop = [cropped_figure for cropped_figure in figure.crop(canvas_rect)]
+            figures_after_crop = figure.crop(canvas_rect)
             if len(figures_after_crop) > 0:
                 return figures_after_crop[0]
             else:
