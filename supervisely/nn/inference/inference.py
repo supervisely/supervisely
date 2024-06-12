@@ -873,7 +873,7 @@ class Inference:
                 n_frames=n_frames,
             ),
         )
-        tracking = state.get("tracking", None)
+        tracking = state.get("tracker", None)
 
         preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
@@ -927,7 +927,8 @@ class Inference:
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
-            range(start_frame_index, start_frame_index + direction * n_frames, direction), batch_size
+            range(start_frame_index, start_frame_index + direction * n_frames, direction),
+            batch_size,
         ):
             if (
                 async_inference_request_uuid is not None
@@ -973,7 +974,9 @@ class Inference:
             frames = self.cache.download_frames(
                 api, video_info.id, range(start_frame_index, start_frame_index + n_frames)
             )
-            video_ann = tracker.get_annotation(tracks_data, (video_info.frame_height, video_info.frame_width), n_frames)
+            video_ann = tracker.get_annotation(
+                tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
+            )
         result = {"ann": results, "video_ann": video_ann}
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = result.copy()
@@ -1581,6 +1584,26 @@ class Inference:
             )
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return inference_request
+
+        @server.post(f"/get_inference_result")
+        def get_inference_result(response: Response, request: Request):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+
+            inference_request = self._inference_requests[inference_request_uuid].copy()
+
+            # Logging
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request_uuid, inference_request
+            )
+            logger.debug(
+                f"Sending inference result with uuid:",
+                extra=log_extra,
+            )
+
+            return inference_request["result"]
 
         @server.post(f"/stop_inference")
         def stop_inference(response: Response, request: Request):
