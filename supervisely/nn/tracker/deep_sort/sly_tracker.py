@@ -167,56 +167,12 @@ class DeepSortTracker(BaseTracker):
             if len(source) != len(frame_to_annotation):
                 raise ValueError("Number of images and annotations should be the same")
 
-        import torch
-
         tracks_data = {}
         logger.info("Starting deep_sort tracking with CLIP...")
 
         for frame_index, img in enumerate(self.frames_generator(source)):
-            detections = []
-            try:
-                pred, sly_labels = self.convert_annotation(frame_to_annotation[frame_index])
-                det = torch.tensor(pred)
-
-                # Process detections
-                bboxes = det[:, :4].clone().cpu()
-                # tlwh -> ltwh
-                bboxes = [bbox[[1, 0, 2, 3]] for bbox in bboxes]
-                confs = det[:, 4]
-
-                # encode yolo detections and feed to tracker
-                features = self.encoder(img, bboxes)
-                detections = [
-                    Detection(sly_label, bbox, conf, feature)
-                    for bbox, conf, feature, sly_label in zip(bboxes, confs, features, sly_labels)
-                ]
-
-                # run non-maxima supression
-                boxs = np.array([d.tlwh for d in detections])
-                scores = np.array([d.confidence for d in detections])
-                class_nums = np.array([d.sly_label.obj_class.name for d in detections])
-                indices_of_alive_labels = preprocessing.non_max_suppression(
-                    boxs, class_nums, self.args.nms_max_overlap, scores
-                )
-                detections = [detections[i] for i in indices_of_alive_labels]
-            except Exception as ex:
-                import traceback
-
-                logger.info(f"frame {frame_index} skipped on tracking")
-                logger.debug(traceback.format_exc())
-
-            # Call the tracker
-            self.tracker.predict()
-            self.tracker.update(detections)
-
-            self.update_track_data(
-                tracks_data=tracks_data,
-                tracks=[
-                    track
-                    for track in self.tracker.tracks
-                    if track.is_confirmed() or track.time_since_update <= 1
-                ],
-                frame_index=frame_index,
+            tracks_data = self.update(
+                img, frame_to_annotation[frame_index], frame_index, tracks_data
             )
 
             if pbar_cb is not None:
@@ -229,6 +185,60 @@ class DeepSortTracker(BaseTracker):
             frame_shape=frame_shape,
             frames_count=len(frame_to_annotation),
         )
+
+    def update(
+        self, img, annotation: Annotation, frame_index, tracks_data: Dict[int, List[Dict]] = None
+    ):
+        import torch
+
+        detections = []
+        try:
+            pred, sly_labels = self.convert_annotation(annotation)
+            det = torch.tensor(pred)
+
+            # Process detections
+            bboxes = det[:, :4].clone().cpu()
+            # tlwh -> ltwh
+            bboxes = [bbox[[1, 0, 2, 3]] for bbox in bboxes]
+            confs = det[:, 4]
+
+            # encode yolo detections and feed to tracker
+            features = self.encoder(img, bboxes)
+            detections = [
+                Detection(sly_label, bbox, conf, feature)
+                for bbox, conf, feature, sly_label in zip(bboxes, confs, features, sly_labels)
+            ]
+
+            # run non-maxima supression
+            boxs = np.array([d.tlwh for d in detections])
+            scores = np.array([d.confidence for d in detections])
+            class_nums = np.array([d.sly_label.obj_class.name for d in detections])
+            indices_of_alive_labels = preprocessing.non_max_suppression(
+                boxs, class_nums, self.args.nms_max_overlap, scores
+            )
+            detections = [detections[i] for i in indices_of_alive_labels]
+        except Exception as ex:
+            import traceback
+
+            logger.info(f"frame {frame_index} skipped on tracking")
+            logger.debug(traceback.format_exc())
+
+        # Call the tracker
+        self.tracker.predict()
+        self.tracker.update(detections)
+
+        if tracks_data is None:
+            tracks_data = {}
+        self.update_track_data(
+            tracks_data=tracks_data,
+            tracks=[
+                track
+                for track in self.tracker.tracks
+                if track.is_confirmed() or track.time_since_update <= 1
+            ],
+            frame_index=frame_index,
+        )
+        return tracks_data
 
     def update_track_data(self, tracks_data: dict, tracks: List[BaseTrack], frame_index: int):
         track_id_data = []

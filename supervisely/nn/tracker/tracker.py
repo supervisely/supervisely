@@ -212,6 +212,11 @@ class BaseTracker:
 
         return formatted_predictions, sly_labels
 
+    def update(
+        self, img, annotation: Annotation, frame_index, tracks_data: Dict[int, List[Dict]] = None
+    ):
+        raise NotImplementedError()
+
     def correct_figure(self, img_size, figure):  # img_size — height, width tuple
         # check figure is within image bounds
         canvas_rect = Rectangle.from_size(img_size)

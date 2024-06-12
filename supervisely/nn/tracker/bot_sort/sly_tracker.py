@@ -370,17 +370,7 @@ class BoTTracker(BaseTracker):
         tracks_data = {}
         logger.info("Starting BoTSort tracking...")
         for frame_index, img in enumerate(self.frames_generator(source)):
-            pred, sly_labels = self.convert_annotation(frame_to_annotation[frame_index])
-
-            detections = [Detection(p[:4], p[4], None, label) for p, label in zip(pred, sly_labels)]
-
-            self.tracker.update(detections, img)
-
-            self.update_track_data(
-                tracks_data=tracks_data,
-                tracks=self.tracker.tracked_stracks,
-                frame_index=frame_index,
-            )
+            self.update(img, frame_to_annotation[frame_index], frame_index, tracks_data=tracks_data)
 
             if pbar_cb is not None:
                 pbar_cb()
@@ -390,3 +380,22 @@ class BoTTracker(BaseTracker):
             frame_shape=frame_shape,
             frames_count=len(frame_to_annotation),
         )
+
+    def update(
+        self, img, annotation: Annotation, frame_index, tracks_data: Dict[int, List[Dict]] = None
+    ):
+        pred, sly_labels = self.convert_annotation(annotation)
+
+        detections = [Detection(p[:4], p[4], None, label) for p, label in zip(pred, sly_labels)]
+
+        self.tracker.update(detections, img)
+
+        if tracks_data is None:
+            tracks_data = {}
+        self.update_track_data(
+            tracks_data=tracks_data,
+            tracks=self.tracker.tracked_stracks,
+            frame_index=frame_index,
+        )
+
+        return tracks_data

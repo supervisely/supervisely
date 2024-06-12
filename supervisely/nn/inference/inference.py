@@ -923,7 +923,7 @@ class Inference:
 
         results = []
         batch_size = 16
-        frame_to_annotation = {}
+        tracks_data = {}
         for batch in batched(range(start_frame_index, start_frame_index + n_frames), batch_size):
             if (
                 async_inference_request_uuid is not None
@@ -946,9 +946,8 @@ class Inference:
                 data_to_return=data_to_return,
             )
             if tracker is not None:
-                frame_to_annotation.update(
-                    {frame_index: ann for frame_index, ann in zip(batch, anns)}
-                )
+                for frame_index, frame, ann in zip(batch, frames, anns):
+                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
             batch_results = []
             for i, ann in enumerate(anns):
                 data = {}
@@ -965,19 +964,16 @@ class Inference:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+        video_ann = None
         if tracker is not None:
             frames = self.cache.download_frames(
                 api, video_info.id, range(start_frame_index, start_frame_index + n_frames)
             )
-            video_ann = tracker.track(
-                source=frames,
-                frame_to_annotation=frame_to_annotation,
-                frame_shape=(video_info.frame_height, video_info.frame_width),
-            )
-            results.append(video_ann.to_json())
+            video_ann = tracker.get_annotation(tracks_data, (video_info.frame_height, video_info.frame_width), n_frames)
+        result = {"ann": results, "video_ann": video_ann}
         if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = {"ann": results}
-        return results
+            inference_request["result"] = result.copy()
+        return result
 
     def _inference_project_id(
         self,
@@ -1401,7 +1397,7 @@ class Inference:
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
             logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
-            return {"ann": self._inference_video_id(request.state.api, request.state.state)}
+            return self._inference_video_id(request.state.api, request.state.state)
 
         @server.post("/inference_image")
         def inference_image(
