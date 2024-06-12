@@ -162,7 +162,8 @@ class DataVersion(ModuleApiBase):
         :return: Version ID
         :rtype: int
         """
-
+        if isinstance(project_info, int):
+            project_info = self._api.project.get_info_by_id(project_info)
         self.initialize(project_info)
         path = self._generate_save_path()
         latest = self._get_latest_id()
@@ -175,7 +176,7 @@ class DataVersion(ModuleApiBase):
                 self.versions[str(latest)]["state"] if latest else {"datasets": {}, "items": {}}
             )
             changes = self._compute_changes(previous_state, current_state)
-            file_info = self._upload_files(path, changes)
+            file_info = self._upload_files(path, changes, all_files=True)
             self.versions[version_id] = {
                 "path": path,
                 "previous": latest,
@@ -288,16 +289,31 @@ class DataVersion(ModuleApiBase):
         version_chain = []
         current_version = self._get_latest_id()
 
-        while current_version != target_version:
-            version_chain.append(current_version)
-            current_version = self.versions[str(current_version)]["previous"]
+        compare_version = current_version
+        while compare_version != target_version:
+            version_chain.append(compare_version)
+            compare_version = self.versions[str(compare_version)]["previous"]
 
         # Apply changes in reverse order
         for version_id in version_chain:
+            files_version = self.versions[str(current_version)]["previous"]
+            if files_version is None:
+                logger.info(
+                    f"Project can't be restored to version {version_id} because it's already on the initial version"
+                )
+                return
+
             extracted_path = self._download_and_extract_version(
-                self.versions[str(version_id)]["path"]
+                self.versions[str(files_version)]["path"]
             )
             self._apply_changes(self.versions[str(version_id)], extracted_path, reverse=True)
+        # TODO Do we need to set previous version or create new one?
+        self.commit(
+            target_version,
+            None,  # ? how to get commit token
+            self.project_info.updated_at,
+            self.versions[str(target_version)]["path"],
+        )
 
     def _create_warning_system_file(self):
         """
@@ -333,8 +349,8 @@ class DataVersion(ModuleApiBase):
         """
         Apply changes between nearby versions to the project.
 
-        :param changes: Changes between nearby versions
-        :type changes: dict
+        :param version: Information about the version
+        :type version: dict
         :param extracted_version_path: Local path to the version directory with extracted files
         :type extracted_version_path: str
         :param reverse: Apply changes in reverse order. For example, to restore a version from 5 to 6, set reverse to True.
@@ -345,8 +361,8 @@ class DataVersion(ModuleApiBase):
         changes = version["changes"]
         state = version["state"]
         dataset_infos = state["datasets"]
-        datasets_to_delete = set()
-        items_to_delete = set()
+        datasets_to_delete = list()
+        items_to_delete = list()
         datasets_to_restore = dict()
         items_to_restore = dict()
         datasets_to_update = dict()
@@ -354,41 +370,41 @@ class DataVersion(ModuleApiBase):
 
         for state_type in ["datasets", "items"]:
             # collect changes
-            added, deleted = ("added", "deleted") if reverse else ("deleted", "added")
+            added, deleted = ("deleted", "added") if reverse else ("added", "deleted")
 
-            for item in changes[added][state_type].items():
+            for id, info in changes[added][state_type].items():
                 if state_type == "datasets":
-                    datasets_to_restore.update(item)
+                    datasets_to_restore[id] = info
                 else:
-                    items_to_restore.update(item)
+                    items_to_restore[id] = info
 
             for id, info in changes[deleted][state_type].items():
                 if state_type == "datasets":
-                    datasets_to_delete.add(id)
+                    datasets_to_delete.append(id)
                 elif state_type == "items" and info["parent"] not in datasets_to_delete:
-                    items_to_delete.add(id)
+                    items_to_delete.append(id)
 
-            for item in changes["modified"][state_type].items():
+            for id, info in changes["modified"][state_type].items():
                 if state_type == "datasets":
-                    datasets_to_update.update(item)
+                    datasets_to_update[id] = info
                 else:
-                    items_to_update.update(item)
+                    items_to_update[id] = info
 
-            # apply changes
-            meta_json = json.load_json_file(os.path.join(extracted_version_path, "meta.json"))
-            self._api.project.update_meta(self.project_info.id, ProjectMeta.from_json(meta_json))
-            for id in datasets_to_delete:
-                self._api.dataset.remove(id)
-            self._api.image.remove_batch(items_to_delete)
-            dataset_mapping = self._restore_datasets(datasets_to_restore)
-            self._restore_items(
-                items_to_restore, dataset_mapping, dataset_infos, extracted_version_path
-            )
-            for id, info in datasets_to_update.items():
-                self._api.dataset.update(id, info["name"])
-            ann_data = self._compute_ann_data(state, items_to_update, extracted_version_path)
-            for dataset_id, data in ann_data.items():
-                self._api.annotation.upload_paths(data["img_ids"], data["ann_paths"])
+        # apply changes
+        meta_json = json.load_json_file(os.path.join(extracted_version_path, "meta.json"))
+        self._api.project.update_meta(self.project_info.id, ProjectMeta.from_json(meta_json))
+        for id in datasets_to_delete:
+            self._api.dataset.remove(id)
+        self._api.image.remove_batch(items_to_delete)
+        dataset_mapping = self._restore_datasets(datasets_to_restore)
+        self._restore_items(
+            items_to_restore, dataset_mapping, dataset_infos, extracted_version_path
+        )
+        for id, info in datasets_to_update.items():
+            self._api.dataset.update(id, info["name"])
+        ann_data = self._compute_ann_data(state, items_to_update, extracted_version_path)
+        for dataset_id, data in ann_data.items():
+            self._api.annotation.upload_paths(data["img_ids"], data["ann_paths"])
 
     def _compute_ann_data(self, state: dict, items_to_update: dict, version_path: str):
         """
@@ -409,7 +425,7 @@ class DataVersion(ModuleApiBase):
         img_ids_by_dataset = defaultdict(list)
         for img_id in items_to_update:
             dataset_id = state["items"][str(img_id)]["parent"]
-            img_ids_by_dataset[dataset_id].append(img_id)
+            img_ids_by_dataset[dataset_id].append(int(img_id))
 
         # Compute annotation paths for each dataset
         data_by_datasets = {}
@@ -562,7 +578,7 @@ class DataVersion(ModuleApiBase):
 
         items_by_dataset = defaultdict(lambda: {"names": [], "hashes": []})
 
-        for item in items:
+        for item in items.items():
             _, info = item
             items_by_dataset[info["parent"]]["names"].append(info["name"])
             items_by_dataset[info["parent"]]["hashes"].append(info["hash"])
@@ -584,13 +600,15 @@ class DataVersion(ModuleApiBase):
                 paths.append(ann_path)
             self._api.annotation.upload_paths(ids, paths)
 
-    def _upload_files(self, path: str, changes: dict):
+    def _upload_files(self, path: str, changes: dict, all_files: bool = False):
         """
         Save annotation files for items in project that were added or modified in the current version to the repository.
         Structure of the repository follows Supervisely format.
 
         :param changes: Changes between current and previous version
         :type changes: dict
+        :param all_files: Upload all files. Set to True to get annotations for all files in project.
+        :type all_files: bool
         :return: File info
         :rtype: dict
         """
@@ -599,50 +617,70 @@ class DataVersion(ModuleApiBase):
             OpenMode,
             Project,
             _maybe_append_image_extension,
+            download_project,
         )
 
         temp_dir = tempfile.mkdtemp()
+        if all_files:
+            download_project(self._api, self.project_info.id, temp_dir, save_images=False)
+        else:
+            items_to_save = list(
+                {**changes["added"]["items"], **changes["modified"]["items"]}.keys()
+            )
+            filters = [{"field": "id", "operator": "in", "value": items_to_save}]
 
-        items_to_save = list({**changes["added"]["items"], **changes["modified"]["items"]}.keys())
-        filters = [{"field": "id", "operator": "in", "value": items_to_save}]
+            project_fs = Project(temp_dir, OpenMode.CREATE)
+            meta = ProjectMeta.from_json(
+                self._api.project.get_meta(self.project_info.id, with_settings=True)
+            )
+            project_fs.set_meta(meta)
 
-        project_fs = Project(temp_dir, OpenMode.CREATE)
-        meta = ProjectMeta.from_json(
-            self._api.project.get_meta(self.project_info.id, with_settings=True)
-        )
-        project_fs.set_meta(meta)
+            for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
+                dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
+                dataset_name = dataset_info.name
+                dataset_id = dataset_info.id
 
-        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
-            dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
-            dataset_name = dataset_info.name
-            dataset_id = dataset_info.id
+                dataset = project_fs.create_dataset(dataset_name, dataset_path)
 
-            dataset = project_fs.create_dataset(dataset_name, dataset_path)
+                images_to_download = self._api.image.get_list(dataset_id, filters)
+                ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
+                img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+                for img_info_batch in batched(images_to_download):
+                    images_nps = [None] * len(img_info_batch)
+                    for index, _ in enumerate(images_nps):
+                        img_info = img_info_batch[index]
+                        image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
 
-            images_to_download = self._api.image.get_list(dataset_id, filters)
-            ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
-            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
-            for img_info_batch in batched(images_to_download):
-                images_nps = [None] * len(img_info_batch)
-                for index, _ in enumerate(images_nps):
-                    img_info = img_info_batch[index]
-                    image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
+                        dataset.add_item_np(
+                            item_name=image_name,
+                            img=None,
+                            ann=img_name_to_ann[img_info.id],
+                            img_info=None,
+                        )
 
-                    dataset.add_item_np(
-                        item_name=image_name,
-                        img=None,
-                        ann=img_name_to_ann[img_info.id],
-                        img_info=None,
-                    )
+        chunk_size = 1024 * 1024 * 50  # 50 MiB
+        tar_data = io.BytesIO()
 
-        archive_path = os.path.join(os.path.dirname(temp_dir), "download.tar")
-        archive_directory(temp_dir, archive_path)
-        zst_archive_path = archive_path + ".zst"
-        with open(archive_path, "rb") as tar:
-            with open(zst_archive_path, "wb") as zst:
-                zst.write(zstd.compress(tar.read()))
+        # Create a tarfile object that writes into the BytesIO object
+        with tarfile.open(fileobj=tar_data, mode="w") as tar:
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(full_path, temp_dir)
+                    tar.add(full_path, arcname=relative_path)
+
+        # Reset the BytesIO object's cursor to the beginning
+        tar_data.seek(0)
+        zst_archive_path = os.path.join(os.path.dirname(temp_dir), "download.tar.zst")
+
+        with open(zst_archive_path, "wb") as zst:
+            while True:
+                chunk = tar_data.read(chunk_size)
+                if not chunk:
+                    break
+                zst.write(zstd.compress(chunk))
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
-        silent_remove(archive_path)
+        tar_data.close()
         silent_remove(zst_archive_path)
         remove_dir(temp_dir)
         return file_info
