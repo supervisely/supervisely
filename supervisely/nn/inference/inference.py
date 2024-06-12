@@ -863,6 +863,7 @@ class Inference:
         video_info = api.video.get_info_by_id(state["videoId"])
         n_frames = state.get("framesCount", video_info.frames_count)
         start_frame_index = state.get("startFrameIndex", 0)
+        direction = state.get("direction", "forward")
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -924,7 +925,10 @@ class Inference:
         results = []
         batch_size = 16
         tracks_data = {}
-        for batch in batched(range(start_frame_index, start_frame_index + n_frames), batch_size):
+        direction = 1 if direction == "forward" else -1
+        for batch in batched(
+            range(start_frame_index, start_frame_index + direction * n_frames, direction), batch_size
+        ):
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
