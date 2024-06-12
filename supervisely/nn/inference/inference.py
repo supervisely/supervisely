@@ -4,11 +4,13 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
+from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
@@ -23,7 +25,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import VideoAnnotation, batched
+from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -33,6 +35,7 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
 from supervisely.app.content import StateJson, get_data_dir
@@ -47,10 +50,14 @@ from supervisely.app.widgets.editor.editor import Editor
 from supervisely.decorators.inference import (
     process_image_roi,
     process_image_sliding_window,
+    process_images_batch_roi,
+    process_images_batch_sliding_window,
 )
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
+from supervisely.project import ProjectType
+from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -476,10 +483,18 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class")
 
     def _predictions_to_annotation(
-        self, image_path: str, predictions: List[Prediction]
+        self,
+        image_path: str,
+        predictions: List[Prediction],
+        classes_whitelist: Optional[List[str]] = None,
     ) -> Annotation:
         labels = []
         for prediction in predictions:
+            if (
+                not classes_whitelist in (None, "all")
+                and prediction.class_name not in classes_whitelist
+            ):
+                continue
             label = self._create_label(prediction)
             if label is None:
                 # for example empty mask
@@ -492,7 +507,7 @@ class Inference:
         # create annotation with correct image resolution
         if isinstance(image_path, str):
             ann = Annotation.from_img_path(image_path)
-        elif isinstance(image_path, np.ndarray):
+        else:
             ann = Annotation(image_path.shape[:2])
         ann = ann.add_labels(labels)
         return ann
@@ -540,7 +555,9 @@ class Inference:
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, classes_whitelist=settings.get("classes", None)
+        )
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",
@@ -548,10 +565,13 @@ class Inference:
         )
         return ann
 
+    @process_images_batch_sliding_window
+    @process_images_batch_roi
     def _inference_images_batch(
         self,
         source: List,
         settings: Dict,
+        data_to_return: Dict,  # for decorators
     ) -> List[Annotation]:
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
@@ -588,13 +608,16 @@ class Inference:
                 predictions = _predict(source, self.predict)
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
+
         anns = [
-            self._predictions_to_annotation(image_path, prediction)
+            self._predictions_to_annotation(
+                image_path, prediction, classes_whitelist=settings.get("classes", None)
+            )
             for image_path, prediction in zip(source, predictions)
         ]
 
         logger.debug(
-            f"Inferring image_path done. pred_annotations:",
+            f"Inferring images batch done. pred_annotations:",
             extra={
                 "annotations": [
                     dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels))
@@ -652,9 +675,10 @@ class Inference:
         image_path: str,
         vis_path: str,
         thickness: Optional[int] = None,
+        classes_whitelist: Optional[List[str]] = None,
     ):
         image = sly_image.read(image_path)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(image_path, predictions, classes_whitelist)
         ann.draw_pretty(
             bitmap=image,
             thickness=thickness,
@@ -745,7 +769,7 @@ class Inference:
             anns = self._inference_images_batch(
                 source=img_paths,
                 settings=settings,
-                # data_to_return=data_to_return # removed because sliding window decorator is not implemented
+                data_to_return=data_to_return,
             )
             for i, ann in enumerate(anns):
                 data = {}
@@ -762,6 +786,7 @@ class Inference:
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
+        upload = state.get("upload", False)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
@@ -773,6 +798,7 @@ class Inference:
         )
         logger.debug(f"Downloaded path: {image_path}")
 
+        inference_request = {}
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -792,6 +818,29 @@ class Inference:
             data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
+
+        if upload:
+            ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
+            output_project_id = ds_info.project_id
+            output_project_meta = self.cache.get_project_meta(api, output_project_id)
+            logger.debug("Merging project meta...")
+
+            output_project_meta, ann, meta_changed = update_meta_and_ann(output_project_meta, ann)
+            if meta_changed:
+                output_project_meta = api.project.update_meta(
+                    output_project_id, output_project_meta
+                )
+                self.cache.set_project_meta(output_project_id, output_project_meta)
+
+            logger.debug(
+                "Uploading annotation...",
+                extra={
+                    "image_id": image_id,
+                    "dataset_id": ds_info.id,
+                    "project_id": output_project_id,
+                },
+            )
+            api.annotation.upload_ann(image_id, ann)
 
         result = {"annotation": ann.to_json(), "data": data_to_return}
         if async_inference_request_uuid is not None and ann is not None:
@@ -823,17 +872,18 @@ class Inference:
 
         logger.debug("Inferring video_id...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
+        n_frames = state.get("framesCount", video_info.frames_count)
+        start_frame_index = state.get("startFrameIndex", 0)
         logger.debug(
             f"Video info:",
             extra=dict(
                 w=video_info.frame_width,
                 h=video_info.frame_height,
-                n_frames=state["framesCount"],
+                start_frame_index=start_frame_index,
+                n_frames=n_frames,
             ),
         )
         tracking = state.get("tracking", None)
-
-        video_images_path = os.path.join(get_data_dir(), rand_str(15))
 
         preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
@@ -849,8 +899,8 @@ class Inference:
                 )
             sly_progress: Progress = inference_request["progress"]
 
-            sly_progress.total = state["framesCount"]
-            inference_request["preparing_progress"]["total"] = state["framesCount"]
+            sly_progress.total = n_frames
+            inference_request["preparing_progress"]["total"] = n_frames
             preparing_progress = inference_request["preparing_progress"]
 
         # progress
@@ -867,7 +917,6 @@ class Inference:
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
 
-        n_frames = video_info.frames_count
         logger.debug(f"Total frames to infer: {n_frames}")
 
         if tracking == "botsort":
@@ -886,7 +935,7 @@ class Inference:
         results = []
         batch_size = 16
         frame_to_annotation = {}
-        for batch in batched(range(video_info.frames_count), batch_size):
+        for batch in batched(range(start_frame_index, start_frame_index + n_frames), batch_size):
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
@@ -905,7 +954,7 @@ class Inference:
             anns = self._inference_images_batch(
                 source=frames,
                 settings=settings,
-                # data_to_return=data_to_return, # removed because sliding window decorator is not implemented
+                data_to_return=data_to_return,
             )
             if tracker is not None:
                 frame_to_annotation.update(
@@ -927,9 +976,10 @@ class Inference:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
-        fs.remove_dir(video_images_path)
         if tracker is not None:
-            frames = self.cache.download_frames(api, video_info.id, range(video_info.frames_count))
+            frames = self.cache.download_frames(
+                api, video_info.id, range(start_frame_index, start_frame_index + n_frames)
+            )
             video_ann = tracker.track(
                 source=frames,
                 frame_to_annotation=frame_to_annotation,
@@ -938,6 +988,289 @@ class Inference:
             results.append(video_ann.to_json())
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
+        return results
+
+    def _inference_project_id(
+        self,
+        api: Api,
+        state: dict,
+        project_info: ProjectInfo = None,
+        async_inference_request_uuid: str = None,
+    ):
+        """Inference project images.
+        If "output_project_id" in state, upload images and annotations to the output project.
+        If "output_project_id" equal to source project id, upload annotations to the source project.
+        If "output_project_id" is None, write annotations to inference request object.
+        """
+        logger.debug("Inferring project...", extra={"state": state})
+        if project_info is None:
+            project_info = api.project.get_info_by_id(state["projectId"])
+        dataset_ids = state.get("dataset_ids", None)
+        cache_project_on_model = state.get("cache_project_on_model", False)
+        batch_size = state.get("batch_size", 16)
+
+        datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
+        if dataset_ids is not None:
+            datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
+
+        # progress
+        preparing_progress = {"current": 0, "total": 1}
+        preparing_progress["status"] = "download_info"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = len(datasets_infos)
+        progress_cb = None
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+            sly_progress: Progress = inference_request["progress"]
+            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
+
+            inference_request["preparing_progress"]["total"] = len(datasets_infos)
+            preparing_progress = inference_request["preparing_progress"]
+
+            if cache_project_on_model:
+                progress_cb = sly_progress.iters_done
+                preparing_progress["total"] = sly_progress.total
+                preparing_progress["status"] = "download_project"
+
+        output_project_id = state.get("output_project_id", None)
+        output_project_meta = None
+        if output_project_id is not None:
+            logger.debug("Merging project meta...")
+            output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
+            changed = False
+            for obj_class in self.model_meta.obj_classes:
+                if output_project_meta.obj_classes.get(obj_class.name, None) is None:
+                    output_project_meta = output_project_meta.add_obj_class(obj_class)
+                    changed = True
+            for tag_meta in self.model_meta.tag_metas:
+                if output_project_meta.tag_metas.get(tag_meta.name, None) is None:
+                    output_project_meta = output_project_meta.add_tag_meta(tag_meta)
+                    changed = True
+            if changed:
+                output_project_meta = api.project.update_meta(
+                    output_project_id, output_project_meta
+                )
+
+        if cache_project_on_model:
+            download_to_cache(api, project_info.id, datasets_infos, progress_cb=progress_cb)
+
+        images_infos_dict = {}
+        for dataset_info in datasets_infos:
+            images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
+            if not cache_project_on_model:
+                preparing_progress["current"] += 1
+
+        preparing_progress["status"] = "inference"
+        preparing_progress["current"] = 0
+
+        def _download_images(datasets_infos: List[DatasetInfo]):
+            for dataset_info in datasets_infos:
+                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
+                with ThreadPoolExecutor(batch_size) as executor:
+                    for image_id in image_ids:
+                        executor.submit(
+                            self.cache.download_image,
+                            api,
+                            image_id,
+                        )
+
+        if not cache_project_on_model:
+            # start downloading in parallel
+            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+
+        def _upload_results_to_source(results: List[Dict]):
+            nonlocal output_project_meta
+            for result in results:
+                image_id = result["image_id"]
+                ann = Annotation.from_json(result["annotation"], self.model_meta)
+                output_project_meta, ann, meta_changed = update_meta_and_ann(
+                    output_project_meta, ann
+                )
+                if meta_changed:
+                    output_project_meta = api.project.update_meta(
+                        project_info.id, output_project_meta
+                    )
+                ann = update_classes(api, ann, output_project_meta, output_project_id)
+                api.annotation.append_labels(image_id, ann.labels)
+                if async_inference_request_uuid is not None:
+                    sly_progress.iters_done(1)
+                    inference_request["pending_results"].append(
+                        {
+                            "annotation": None,  # to less response size
+                            "data": None,  # to less response size
+                            "image_id": image_id,
+                            "image_name": result["image_name"],
+                            "dataset_id": result["dataset_id"],
+                        }
+                    )
+
+        new_dataset_id = {}
+
+        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
+            """Copy dataset in output project if not exists and return its id"""
+            if src_dataset_id in new_dataset_id:
+                return new_dataset_id[src_dataset_id]
+            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+            output_dataset_id = api.dataset.copy(
+                output_project_id, src_dataset_id, dataset_info.name, change_name_if_conflict=True
+            ).id
+            new_dataset_id[src_dataset_id] = output_dataset_id
+            return output_dataset_id
+
+        def _upload_results_to_other(results: List[Dict]):
+            nonlocal output_project_meta
+            if len(results) == 0:
+                return
+            src_dataset_id = results[0]["dataset_id"]
+            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
+            image_names = [result["image_name"] for result in results]
+            image_infos = api.image.get_list(
+                dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
+            )
+            meta_changed = False
+            anns = []
+            for result in results:
+                ann = Annotation.from_json(result["annotation"], self.model_meta)
+                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
+                meta_changed = meta_changed or c
+                anns.append(ann)
+            if meta_changed:
+                api.project.update_meta(output_project_id, output_project_meta)
+
+            # upload in batches to update progress with each batch
+            # api.annotation.upload_anns() uploads in same batches anyways
+            for batch in batched(list(zip(anns, results, image_infos))):
+                batch_anns, batch_results, batch_image_infos = zip(*batch)
+                api.annotation.upload_anns(
+                    img_ids=[info.id for info in batch_image_infos],
+                    anns=batch_anns,
+                )
+                if async_inference_request_uuid is not None:
+                    sly_progress.iters_done(len(batch_results))
+                    inference_request["pending_results"].extend(
+                        [{**result, "annotation": None, "data": None} for result in batch_results]
+                    )
+
+        def _add_results_to_request(results: List[Dict]):
+            if async_inference_request_uuid is None:
+                return
+            inference_request["pending_results"].extend(results)
+            sly_progress.iters_done(len(results))
+
+        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
+            try:
+                while True:
+                    items = []
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        ds_batches = {}
+                        for batch in items:
+                            if len(batch) == 0:
+                                continue
+                            ds_batches.setdefault(batch[0].get("dataset_id"), []).extend(batch)
+                        for _, joined_batch in ds_batches.items():
+                            upload_f(joined_batch)
+                        continue
+                    if stop_event.is_set():
+                        return
+                    time.sleep(1)
+            except Exception as e:
+                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                raise
+
+        if output_project_id is None:
+            upload_f = _add_results_to_request
+        elif output_project_id != project_info.id:
+            upload_f = _upload_results_to_other
+        else:
+            upload_f = _upload_results_to_source
+
+        upload_queue = Queue()
+        stop_upload_event = threading.Event()
+        upload_thread = threading.Thread(
+            target=_upload_loop,
+            args=[upload_queue, stop_upload_event, api, upload_f],
+            daemon=True,
+        )
+        upload_thread.start()
+
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+        results = []
+        data_to_return = {}
+        stop = False
+        try:
+            for dataset_info in datasets_infos:
+                if stop:
+                    break
+                for images_infos_batch in batched(
+                    images_infos_dict[dataset_info.id], batch_size=batch_size
+                ):
+                    if (
+                        async_inference_request_uuid is not None
+                        and inference_request["cancel_inference"] is True
+                    ):
+                        logger.debug(
+                            f"Cancelling inference project...",
+                            extra={"inference_request_uuid": async_inference_request_uuid},
+                        )
+                        results = []
+                        stop = True
+                        break
+                    if cache_project_on_model:
+                        images_nps, _ = zip(
+                            *read_from_cached_project(
+                                project_info.id,
+                                dataset_info.name,
+                                [ii.name for ii in images_infos_batch],
+                            )
+                        )
+                    else:
+                        images_nps = self.cache.download_images(
+                            api,
+                            dataset_info.id,
+                            [info.id for info in images_infos_batch],
+                            return_images=True,
+                        )
+                    anns = self._inference_images_batch(
+                        source=images_nps,
+                        settings=settings,
+                        data_to_return=data_to_return,
+                    )
+                    batch_results = []
+                    for i, ann in enumerate(anns):
+                        data = {}
+                        if "slides" in data_to_return:
+                            data = data_to_return["slides"][i]
+                        batch_results.append(
+                            {
+                                "annotation": ann.to_json(),
+                                "data": data,
+                                "image_id": images_infos_batch[i].id,
+                                "image_name": images_infos_batch[i].name,
+                                "dataset_id": dataset_info.id,
+                            }
+                        )
+                    results.extend(batch_results)
+                    upload_queue.put(batch_results)
+        except Exception:
+            stop_upload_event.set()
+            upload_thread.join()
+            raise
+        if async_inference_request_uuid is not None and len(results) > 0:
+            inference_request["result"] = {"ann": results}
+        stop_upload_event.set()
+        upload_thread.join()
         return results
 
     def _on_inference_start(self, inference_request_uuid):
@@ -1167,6 +1500,42 @@ class Inference:
             future.add_done_callback(end_callback)
             logger.debug(
                 "Inference has scheduled from 'inference_video_id_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
+
+        @server.post("/inference_project_id_async")
+        def inference_project_id_async(request: Request):
+            logger.debug(
+                f"'inference_project_id_async' request in json format:{request.state.state}"
+            )
+            project_id = request.state.state["projectId"]
+            project_info = request.state.api.project.get_info_by_id(project_id)
+            if project_info.type != str(ProjectType.IMAGES):
+                raise ValueError("Only images projects are supported.")
+
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                self._inference_project_id,
+                request.state.api,
+                request.state.state,
+                project_info,
+                inference_request_uuid,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+            logger.debug(
+                "Inference has scheduled from 'inference_project_id_async' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
             )
             return {
@@ -1431,3 +1800,112 @@ def clean_up_cuda():
         torch.cuda.empty_cache()
     except Exception as exc:
         logger.debug("Error in clean_up_cuda.", exc_info=True)
+
+
+def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
+    """Update project meta and annotation to match each other
+    If obj class or tag meta from annotation conflicts with project meta
+    add suffix to obj class or tag meta.
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed."""
+    obj_classes_suffixes = {"_nn"}
+    tag_meta_suffixes = {"_nn"}
+    ann_obj_classes = {}
+    ann_tag_metas = {}
+    meta_changed = False
+
+    # get all obj classes and tag metas from annotation
+    for label in ann.labels:
+        ann_obj_classes[label.obj_class.name] = label.obj_class
+        for tag in label.tags:
+            ann_tag_metas[tag.meta.name] = tag.meta
+    for tag in ann.img_tags:
+        ann_tag_metas[tag.meta.name] = tag.meta
+
+    # check if obj classes are in project meta
+    # if not, add them with suffix
+    changed_obj_classes = {}
+    for ann_obj_class in ann_obj_classes.values():
+        if meta.get_obj_class(ann_obj_class.name) is None:
+            meta = meta.add_obj_class(ann_obj_class)
+            meta_changed = True
+        elif meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type:
+            found = False
+            for suffix in obj_classes_suffixes:
+                new_obj_class_name = ann_obj_class.name + suffix
+                meta_obj_class = meta.get_obj_class(new_obj_class_name)
+                if meta_obj_class is None:
+                    new_obj_class = ann_obj_class.clone(name=new_obj_class_name)
+                    meta = meta.add_obj_class(new_obj_class)
+                    meta_changed = True
+                    changed_obj_classes[ann_obj_class.name] = new_obj_class
+                    found = True
+                    break
+                if meta_obj_class.geometry_type == ann_obj_class.geometry_type:
+                    changed_obj_classes[ann_obj_class.name] = meta_obj_class
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Can't add obj class {ann_obj_class.name} to project meta")
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    changed_tag_metas = {}
+    for tag_meta in ann_tag_metas.values():
+        if meta.get_tag_meta(tag_meta.name) is None:
+            meta = meta.add_tag_meta(tag_meta)
+            meta_changed = True
+        elif not meta.get_tag_meta(tag_meta.name).is_compatible(tag_meta):
+            found = False
+            for suffix in tag_meta_suffixes:
+                new_tag_meta_name = tag_meta.name + suffix
+                meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
+                if meta_tag_meta is None:
+                    new_tag_meta = tag_meta.clone(name=new_tag_meta_name)
+                    meta = meta.add_tag_meta(new_tag_meta)
+                    changed_tag_metas[tag_meta.name] = new_tag_meta
+                    meta_changed = True
+                    found = True
+                    break
+                if meta_tag_meta.is_compatible(tag_meta):
+                    changed_tag_metas[tag_meta.name] = meta_tag_meta
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Can't add tag meta {tag_meta.name} to project meta")
+
+    labels = []
+    for label in ann.labels:
+        if label.obj_class.name in changed_obj_classes:
+            label = label.clone(obj_class=changed_obj_classes[label.obj_class.name])
+
+        label_tags = []
+        for tag in label.tags:
+            if tag.meta.name in changed_tag_metas:
+                label_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+            else:
+                label_tags.append(tag)
+
+        labels.append(label.clone(tags=TagCollection(label_tags)))
+    img_tags = []
+    for tag in ann.img_tags:
+        if tag.meta.name in changed_tag_metas:
+            img_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+        else:
+            img_tags.append(tag)
+
+    ann = ann.clone(labels=labels, img_tags=TagCollection(img_tags))
+    return meta, ann, meta_changed
+
+
+def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int):
+    labels = []
+    for label in ann.labels:
+        if label.obj_class.sly_id is None:
+            obj_class = meta.get_obj_class(label.obj_class.name)
+            if obj_class.sly_id is None:
+                meta = api.project.update_meta(project_id, meta)
+                obj_class = meta.get_obj_class(label.obj_class.name)
+            labels.append(label.clone(obj_class=obj_class))
+        else:
+            labels.append(label)
+    return ann.clone(labels=labels)

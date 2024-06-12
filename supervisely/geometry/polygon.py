@@ -298,7 +298,8 @@ class Polygon(VectorGeometry):
     def allowed_transforms(cls):
         """ """
         from supervisely.geometry.any_geometry import AnyGeometry
+        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
 
-        return [AnyGeometry, Rectangle, Bitmap]
+        return [AnyGeometry, Rectangle, Bitmap, AlphaMask]

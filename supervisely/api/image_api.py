@@ -8,6 +8,8 @@ import io
 import json
 import re
 import urllib.parse
+from collections import defaultdict
+from pathlib import Path
 from time import sleep
 from typing import (
     Any,
@@ -22,6 +24,7 @@ from typing import (
     Tuple,
     Union,
 )
+from uuid import uuid4
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
@@ -35,7 +38,7 @@ from supervisely._utils import (
 )
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
-from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.module_api import (
@@ -45,6 +48,7 @@ from supervisely.api.module_api import (
 )
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
+    clean_dir,
     ensure_base_path,
     get_file_ext,
     get_file_hash,
@@ -53,6 +57,7 @@ from supervisely.io.fs import (
     list_files,
     list_files_recursively,
 )
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -2689,7 +2694,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type group_name: str
         :param paths: List of paths to images.
         :type paths: List[str]
-        :param metas: List of image metas (optional)
+        :param metas: List of dictionaries which adds a customizable meta for every image provided in `paths` parameter.
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
@@ -2726,9 +2731,9 @@ class ImageApi(RemoveableBulkModuleApi):
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
         for path in paths:
-            if get_file_ext(path) not in sly_image.SUPPORTED_IMG_EXTS:
+            if get_file_ext(path).lower() not in sly_image.SUPPORTED_IMG_EXTS:
                 raise RuntimeError(
-                    f"Image {path} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
+                    f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
                 )
 
         names = [get_file_name(path) for path in paths]
@@ -2749,6 +2754,145 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
         )
         return uploaded_image_infos
+
+    def upload_medical_images(
+        self,
+        dataset_id: int,
+        paths: List[str],
+        group_tag_name: Optional[str] = None,
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[ImageInfo]:
+        """
+        Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param paths: List of paths to images.
+        :type paths: List[str]
+        :param group_tag_name: Group name. All images will be assigned by tag with this group name. If `group_tag_name` is None, the images will be grouped by one of the default tags.
+        :type group_tag_name: str, optional
+        :param metas: List of dictionaries which adds a customizable meta for every image provided in `paths` parameter.
+        :type metas: List[Dict], optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: tqdm or callable, optional
+
+        :return: List of uploaded images infos.
+        :rtype: List[ImageInfo]
+
+        :raises Exception: If tag does not exist in project or tag is not of type ANY_STRING
+        :raises Exception: If length of `metas` is not equal to the length of `paths`.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+            from tqdm import tqdm
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+               load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            dataset_id = 123456
+            paths = ['path/to/medical_01.dcm', 'path/to/medical_02.dcm']
+            metas = [{'meta':'01'}, {'meta':'02'}]
+            group_tag_name = 'StudyInstanceUID'
+
+            pbar = tqdm(desc="Uploading images", total=len(paths))
+            image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
+
+        """
+
+        if metas is None:
+            _metas = [dict() for _ in paths]
+        else:
+            if len(metas) != len(paths):
+                raise ValueError("Length of 'metas' is not equal to the length of 'paths'.")
+            _metas = metas.copy()
+
+        dataset = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        meta_json = self._api.project.get_meta(dataset.project_id)
+        project_meta = ProjectMeta.from_json(meta_json)
+
+        import nrrd
+
+        from supervisely.convert.image.medical2d.medical2d_helper import (
+            convert_dcm_to_nrrd,
+        )
+
+        image_paths = []
+        image_names = []
+        anns = []
+
+        converted_dir_name = uuid4().hex
+        converted_dir = Path("/tmp/") / converted_dir_name
+
+        group_tag_counter = defaultdict(int)
+        for path, image_meta in zip(paths, _metas):
+            try:
+                nrrd_paths, nrrd_names, group_tags, dcm_meta = convert_dcm_to_nrrd(
+                    image_path=path,
+                    converted_dir=converted_dir.as_posix(),
+                    group_tag_name=group_tag_name,
+                )
+                image_meta.update(dcm_meta)  # TODO: check update order
+                image_paths.extend(nrrd_paths)
+                image_names.extend(nrrd_names)
+
+                for nrrd_path in nrrd_paths:
+                    tags = []
+                    for tag in group_tags:
+                        tag_meta = project_meta.get_tag_meta(tag["name"])
+                        if tag_meta is None:
+                            tag_meta = TagMeta(
+                                tag["name"],
+                                TagValueType.ANY_STRING,
+                                applicable_to=TagApplicableTo.IMAGES_ONLY,
+                            )
+                            project_meta = project_meta.add_tag_meta(tag_meta)
+                        elif tag_meta.value_type != TagValueType.ANY_STRING:
+                            raise ValueError(f"Tag '{tag['name']}' is not of type ANY_STRING.")
+                        tag = Tag(meta=tag_meta, value=tag["value"])
+                        tags.append(tag)
+                    img_size = nrrd.read_header(nrrd_path)["sizes"].tolist()[::-1]
+                    ann = Annotation(img_size=img_size, img_tags=tags)
+                    anns.append(ann)
+
+                for tag in group_tags:
+                    group_tag_counter[tag["name"]] += 1
+            except Exception as e:
+                logger.warning(f"File '{path}' will be skipped due to: {str(e)}")
+                continue
+
+        image_infos = self.upload_paths(
+            dataset_id=dataset_id,
+            names=image_names,
+            paths=image_paths,
+            progress_cb=progress_cb,
+            metas=_metas,
+        )
+        image_ids = [image_info.id for image_info in image_infos]
+
+        # Update the project metadata and enable image grouping
+        self._api.project.update_meta(id=dataset.project_id, meta=project_meta.to_json())
+        if len(group_tag_counter) > 0:
+            max_used_tag_name = max(group_tag_counter, key=group_tag_counter.get)
+            if group_tag_name not in group_tag_counter:
+                group_tag_name = max_used_tag_name
+            self._api.project.images_grouping(
+                id=dataset.project_id, enable=True, tag_name=group_tag_name
+            )
+        self._api.annotation.upload_anns(image_ids, anns)
+        clean_dir(converted_dir.as_posix())
+
+        return image_infos
 
     def get_free_names(self, dataset_id: int, names: List[str]) -> List[str]:
         """
