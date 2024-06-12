@@ -908,7 +908,7 @@ class Inference:
 
         logger.debug(f"Total frames to infer: {n_frames}")
 
-        if tracking == "botsort":
+        if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
 
             tracker = BoTTracker(state)
