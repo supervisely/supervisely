@@ -1,5 +1,6 @@
 import argparse
 import os
+from contextlib import contextmanager
 from typing import Dict, List, Union
 
 import cv2
@@ -147,6 +148,7 @@ class BaseTracker:
         """To be overridden by subclasses."""
         return {}
 
+    @contextmanager
     def _video_frames_generator(self, video_path: str):
         cap = cv2.VideoCapture(video_path)
         try:
@@ -160,7 +162,13 @@ class BaseTracker:
 
     def frames_generator(self, source: str):
         if isinstance(source, str):
-            return self._video_frames_generator(source)
+
+            def _gen():
+                with self._video_frames_generator(source) as frames:
+                    for frame in frames:
+                        yield frame
+
+            return _gen()
         elif isinstance(source, list) and isinstance(source[0], str):
             return [cv2.imread(img) for img in source]
         else:
