@@ -230,7 +230,7 @@ class BaseTracker:
         labels_data = []
 
         for curr_track in tracks:
-            track_id = curr_track.track_id - 1
+            track_id = curr_track.track_id
 
             if curr_track.get_sly_label() is not None:
                 track_id_data.append(track_id)

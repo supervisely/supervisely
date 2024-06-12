@@ -230,6 +230,21 @@ class DeepSortTracker(BaseTracker):
             frames_count=len(frame_to_annotation),
         )
 
+    def update_track_data(self, tracks_data: dict, tracks: List[BaseTrack], frame_index: int):
+        track_id_data = []
+        labels_data = []
+
+        for curr_track in tracks:
+            track_id = curr_track.track_id - 1  # track_id starts from 1
+
+            if curr_track.get_sly_label() is not None:
+                track_id_data.append(track_id)
+                labels_data.append(curr_track.get_sly_label())
+
+        tracks_data[frame_index] = {"ids": track_id_data, "labels": labels_data}
+
+        return tracks_data
+
     def clear_empty_ids(self, tracker_annotations):
         id_mappings = {}
         last_ordinal_id = 0
