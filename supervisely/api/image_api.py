@@ -2539,7 +2539,8 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
     ):
         """
-        Remove images from supervisely by ids.
+        Remove images from supervisely by IDs.
+        IDs must belong to the same project.
 
         :param ids: List of Images IDs in Supervisely.
         :type ids: List[int]
@@ -2842,7 +2843,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     converted_dir=converted_dir.as_posix(),
                     group_tag_name=group_tag_name,
                 )
-                image_meta.update(dcm_meta) # TODO: check update order
+                image_meta.update(dcm_meta)  # TODO: check update order
                 image_paths.extend(nrrd_paths)
                 image_names.extend(nrrd_names)
 
