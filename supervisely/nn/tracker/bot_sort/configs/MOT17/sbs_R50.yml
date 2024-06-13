@@ -1,7 +1,0 @@
-_BASE_: ../../fast_reid/configs/Base-SBS.yml
-
-DATASETS:
-  NAMES: ("MOT17",)
-  TESTS: ("MOT17",)
-
-OUTPUT_DIR: logs/mot17/sbs_R50
