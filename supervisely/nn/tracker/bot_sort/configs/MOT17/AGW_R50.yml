@@ -1,4 +1,4 @@
-_BASE_: ../Base-AGW.yml
+_BASE_: ../../fast_reid/configs/Base-AGW.yml
 
 DATASETS:
   NAMES: ("MOT17",)

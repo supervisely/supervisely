@@ -1,4 +1,4 @@
-_BASE_: ../Base-MGN.yml
+_BASE_: ../../fast_reid/configs/Base-MGN.yml
 
 MODEL:
   BACKBONE:

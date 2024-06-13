@@ -1,4 +1,4 @@
-_BASE_: ../Base-SBS.yml
+_BASE_: ../../fast_reid/configs/Base-SBS.yml
 
 MODEL:
   BACKBONE:

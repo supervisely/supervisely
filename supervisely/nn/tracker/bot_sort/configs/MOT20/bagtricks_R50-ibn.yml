@@ -1,4 +1,4 @@
-_BASE_: ../Base-bagtricks.yml
+_BASE_: ../../fast_reid/configs/Base-bagtricks.yml
 
 MODEL:
   BACKBONE:
