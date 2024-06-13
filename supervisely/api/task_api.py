@@ -1043,8 +1043,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         description: Optional[str] = None,
         show_logs: Optional[bool] = False,
         zmdi_icon: Optional[str] = "zmdi-comment-alt-text",
-        text_color: Optional[str] = "#000000",
-        background_color: Optional[str] = "#33c94c",
+        icon_color: Optional[str] = "#33c94c",
+        background_color: Optional[str] = "#d9f7e4",
     ) -> Dict:
         """
         Set custom text message to the task output.
@@ -1059,10 +1059,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type show_logs: Optional[bool], default False
         :param zmdi_icon: Icon class name from Material Design Icons (ZMDI).
         :type zmdi_icon: Optional[str], default "zmdi-comment-alt-text"
-        :param text_color: Text color in HEX format.
-        :type text_color: Optional[str], default "#000000"
+        :param icon_color: Icon color in HEX format.
+        :type icon_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)
         :param background_color: Background color in HEX format.
-        :type background_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)
+        :type background_color: Optional[str], default "#d9f7e4" (Cosmic Latte)
         :return: Response JSON.
         :rtype: Dict
         :Usage example:
@@ -1089,7 +1089,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             ApiField.GENERAL: {
                 "icon": {
                     "className": f"zmdi {zmdi_icon}",
-                    "color": text_color,
+                    "color": icon_color,
                     "backgroundColor": background_color,
                 },
                 "title": title,
