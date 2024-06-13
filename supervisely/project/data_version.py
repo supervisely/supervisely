@@ -153,12 +153,21 @@ class DataVersion(ModuleApiBase):
         else:
             remove_dir(temp_dir)
 
-    def create(self, project_info: Union[ProjectInfo, int]):
+    def create(
+        self,
+        project_info: Union[ProjectInfo, int],
+        version_title: str = "",
+        version_description: str = "",
+    ):
         """
         Create a new project version.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
+        :param version_title: Version title
+        :type version_title: str
+        :param version_description: Version description
+        :type version_description: str
         :return: Version ID
         :rtype: int
         """
@@ -167,7 +176,7 @@ class DataVersion(ModuleApiBase):
         self.initialize(project_info)
         path = self._generate_save_path()
         latest = self._get_latest_id()
-        version_id, commit_token = self.reserve(project_info.id)
+        version_id, commit_token = self.reserve(project_info.id)  # TODO add title and description
         if version_id is None and commit_token is None:
             return latest
         try:
