@@ -666,7 +666,7 @@ class Inference:
             - postprocess: time of postprocessing (e.g. resizing output masks, aligning predictions with the input image, formatting, etc.)
             If some of the keys are missing, they will be considered as 0.
         '''
-        raise NotImplementedError("Have to be implemented in child class")
+        return self.predict(image_path, settings), {}
 
     # pylint: enable=method-hidden
     def _get_inference_settings(self, state: dict):
