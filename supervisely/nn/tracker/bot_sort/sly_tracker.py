@@ -296,7 +296,7 @@ class BoTTracker(BaseTracker):
             "gmc_config": None,
             # ReID
             "with_reid": False,
-            "fast_reid_config": f"{Path(__file__).parent}/fast_reid/configs/MOT17/sbs_S50.yml",
+            "fast_reid_config": f"{Path(__file__).parent}/configs/MOT17/sbs_S50.yml",
             "fast_reid_weights": f"{Path(__file__).parent}/pretrained/yolo7x.pt",
             "fast_reid_weights_url": r"https://github.com/WongKinYiu/yolov7/releases/download/v0.1/yolov7.pt",
             "proximity_thresh": 0.5,
