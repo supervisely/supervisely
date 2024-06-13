@@ -1,7 +1,7 @@
 import torch
 
 try:
-    import fast_reid
+    import fastreid
 except ImportError:
     import sys
     from pathlib import Path
@@ -14,9 +14,9 @@ except ImportError:
 
         subprocess.run(["git", "clone", fast_reid_repo_url, str(fast_reid_path.resolve())])
 
-    sys.path.insert(0, str(fast_reid_parent_path.resolve()))
-    sys.path.append(str(fast_reid_path.resolve()))
+    # sys.path.insert(0, str(fast_reid_parent_path.resolve()))
+    sys.path.insert(0, str(fast_reid_path.resolve()))
 
-    import fast_reid
+    import fastreid
 
-from .sly_tracker import BoTTracker
+from supervisely.nn.tracker.bot_sort.sly_tracker import BoTTracker
