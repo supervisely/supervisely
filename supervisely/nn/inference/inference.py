@@ -977,7 +977,7 @@ class Inference:
             video_ann = tracker.get_annotation(
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
             )
-        result = {"ann": results, "video_ann": video_ann}
+        result = {"ann": results, "video_ann": video_ann.to_json()}
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = result.copy()
         return result
