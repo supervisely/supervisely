@@ -292,6 +292,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param return_first_response: If True, returns first response without waiting for all pages.
         :type return_first_response: bool, optional
+        :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
+        :type project_id: :class:`int`
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -351,6 +353,11 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
 
+        if project_id is None and dataset_id is None:
+            raise ValueError(
+                "One of 'project_id' or 'dataset_id' should be specified"
+            )
+
         if project_id is not None and dataset_id is not None:
             raise ValueError(
                 "Only one of 'project_id' or 'dataset_id' should be specified"
@@ -378,7 +385,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         limit: Optional[int] = None,
         return_first_response: Optional[bool] = False,
-        project_id:int = None
+        project_id: int = None,
     ) -> List[ImageInfo]:
         """
         List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -392,6 +399,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
+        :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
+        :type project_id: :class:`int`
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
 
@@ -416,16 +425,20 @@ class ImageApi(RemoveableBulkModuleApi):
                 limit=limit,
                 force_metadata_for_links=force_metadata_for_links,
                 return_first_response=return_first_response,
-                project_id=project_id
+                project_id=project_id,
             )
-            
 
         data = {
-                ApiField.FILTERS: filters,
-                ApiField.SORT: sort,
-                ApiField.SORT_ORDER: sort_order,
-                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.FILTERS: filters,
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order,
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
+
+        if project_id is None and dataset_id is None:
+            raise ValueError(
+                "One of 'project_id' or 'dataset_id' should be specified"
+        )
 
         if project_id is not None and dataset_id is not None:
             raise ValueError(
@@ -437,7 +450,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if dataset_id is not None:
             data[ApiField.DATASET_ID] = dataset_id
-            
 
         if not all(["type" in filter.keys() for filter in filters]):
             raise ValueError("'type' field not found in filter")
