@@ -6,7 +6,7 @@ except ImportError:
     import sys
     from pathlib import Path
 
-    fast_reid_repo_url = "https://github.com/JDAI-CV/fast-reid.git"
+    fast_reid_repo_url = "https://github.com/supervisely-ecosystem/fast-reid.git"
     fast_reid_parent_path = Path(__file__).parent
     fast_reid_path = fast_reid_parent_path.joinpath("fast_reid")
     if not fast_reid_path.exists():

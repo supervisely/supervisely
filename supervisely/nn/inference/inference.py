@@ -1594,6 +1594,10 @@ class Inference:
 
             inference_request = self._inference_requests[inference_request_uuid].copy()
 
+            inference_request["progress"] = _convert_sly_progress_to_dict(
+                inference_request["progress"]
+            )
+
             # Logging
             log_extra = _get_log_extra_for_inference_request(
                 inference_request_uuid, inference_request
