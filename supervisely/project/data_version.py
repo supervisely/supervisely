@@ -724,6 +724,7 @@ class DataVersion(ModuleApiBase):
             download_project,
         )
 
+        timer = time.time()  # TODO remove after testing
         temp_dir = tempfile.mkdtemp()
         if all_files:
             download_project(self._api, self.project_info.id, temp_dir, save_images=False)
@@ -763,10 +764,13 @@ class DataVersion(ModuleApiBase):
                         )
         else:
             raise ValueError("No changes to save")
-
+        logger.info(
+            f"Time taken to save files in _upload_files: {time.time() - timer} seconds"
+        )  # TODO remove after testing
         chunk_size = 1024 * 1024 * 50  # 50 MiB
         tar_data = io.BytesIO()
 
+        timer = time.time()  # TODO remove after testing
         # Create a tarfile object that writes into the BytesIO object
         with tarfile.open(fileobj=tar_data, mode="w") as tar:
             for root, dirs, files in os.walk(temp_dir):
@@ -775,17 +779,29 @@ class DataVersion(ModuleApiBase):
                     relative_path = os.path.relpath(full_path, temp_dir)
                     tar.add(full_path, arcname=relative_path)
 
+        logger.info(
+            f"Time taken to create tarfile in _upload_files: {time.time() - timer} seconds"
+        )  # TODO remove after testing
         # Reset the BytesIO object's cursor to the beginning
         tar_data.seek(0)
         zst_archive_path = os.path.join(os.path.dirname(temp_dir), "download.tar.zst")
 
+        timer = time.time()  # TODO remove after testing
         with open(zst_archive_path, "wb") as zst:
             while True:
                 chunk = tar_data.read(chunk_size)
                 if not chunk:
                     break
                 zst.write(zstd.compress(chunk))
+        logger.info(
+            f"Time taken to create zstd in _upload_files: {time.time() - timer} seconds"
+        )  # TODO remove after testing
+
+        timer = time.time()  # TODO remove after testing
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
+        logger.info(
+            f"Time taken to upload zstd in _upload_files: {time.time() - timer} seconds"
+        )  # TODO remove after testing
         tar_data.close()
         silent_remove(zst_archive_path)
         remove_dir(temp_dir)
