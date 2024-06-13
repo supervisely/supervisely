@@ -200,6 +200,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
+        Version information is not available while getting list of projects.
+        If you need version information, use :func:`get_info_by_id`.
 
         :param workspace_id: Workspace ID in which the Projects are located.
         :type workspace_id: int
@@ -284,6 +286,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+        if ApiField.VERSION in fields:
+            fields.remove(ApiField.VERSION)
+            logger.debug(
+                "Project version information is not available while getting list of projects"
+            )
         return self.get_list_all_pages(
             "projects.list",
             {
@@ -358,6 +365,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     ) -> ProjectInfo:
         """
         Get Project information by name.
+
+        Version information is not available while getting project by name.
+        If you need version information, use :func:`get_info_by_id`.
 
         :param parent_id: Workspace ID.
         :type parent_id: int
