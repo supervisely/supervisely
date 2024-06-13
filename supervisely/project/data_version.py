@@ -2,6 +2,7 @@ import io
 import os
 import tarfile
 import tempfile
+import time
 from collections import defaultdict
 from datetime import datetime
 from typing import List, NamedTuple, Tuple, Union
@@ -15,6 +16,17 @@ from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import archive_directory, remove_dir, silent_remove
 from supervisely.project.project_meta import ProjectMeta
+
+
+def timing_decorator(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        logger.info(f"Time taken by {func.__name__}: {end_time - start_time} seconds")
+        return result
+
+    return wrapper
 
 
 class VersionInfo(NamedTuple):
@@ -93,6 +105,7 @@ class DataVersion(ModuleApiBase):
         if self.project_info.version is None:
             self._create_warning_system_file()
 
+    @timing_decorator  # TODO remove after testing
     def get_list(self, project_id: int) -> List[VersionInfo]:
         """
         Get list of project versions.
@@ -107,6 +120,7 @@ class DataVersion(ModuleApiBase):
             {ApiField.PROJECT_ID: project_id},
         )
 
+    @timing_decorator  # TODO remove after testing
     def load_json(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
         """
         Get project versions map from storage.
@@ -129,6 +143,7 @@ class DataVersion(ModuleApiBase):
             versions = {"format": self.__version_format}
         return versions
 
+    @timing_decorator  # TODO remove after testing
     def upload_json(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
         Save project versions to storage.
@@ -153,6 +168,7 @@ class DataVersion(ModuleApiBase):
         else:
             remove_dir(temp_dir)
 
+    @timing_decorator  # TODO remove after testing
     def create(
         self,
         project_info: Union[ProjectInfo, int],
@@ -213,6 +229,7 @@ class DataVersion(ModuleApiBase):
         )
         return version_id
 
+    @timing_decorator  # TODO remove after testing
     def commit(self, version_id: int, commit_token: str, updated_at: str, file_id: int):
         """
         Commit a project version.
@@ -240,6 +257,7 @@ class DataVersion(ModuleApiBase):
         if not commit_info.get("success"):
             raise RuntimeError("Failed to commit version")
 
+    @timing_decorator  # TODO remove after testing
     def reserve(self, project_id: int) -> Tuple[int, str]:
         """
         Reserve a project for versioning.
@@ -267,6 +285,7 @@ class DataVersion(ModuleApiBase):
 
         return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
 
+    @timing_decorator  # TODO remove after testing
     def cancel_reservation(self, version_id: int, commit_token: str):
         """
         Cancel version reservation for a project.
@@ -284,6 +303,7 @@ class DataVersion(ModuleApiBase):
         reserve_info = response.json()
         return True if reserve_info.get("success") else False
 
+    @timing_decorator  # TODO remove after testing
     def restore_via_diffs(self, project_info: Union[ProjectInfo, int], target_version: int):
         """
         Restore project to a specific version.
@@ -330,6 +350,7 @@ class DataVersion(ModuleApiBase):
             self.versions[str(target_version)]["path"],
         )
 
+    @timing_decorator  # TODO remove after testing
     def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
         """
         Restore project to a specific version.
@@ -381,6 +402,7 @@ class DataVersion(ModuleApiBase):
         self._api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
         return new_project_info
 
+    @timing_decorator  # TODO remove after testing
     def _create_warning_system_file(self):
         """
         Create a file in the system directory to indicate that you cannot manually modify its contents.
@@ -392,6 +414,7 @@ class DataVersion(ModuleApiBase):
                 f.write("This directory is managed by Supervisely. Do not modify its contents.")
             self._api.file.upload(self.project_info.team_id, temp_file.name, warning_file)
 
+    @timing_decorator  # TODO remove after testing
     def _download_and_extract_version(self, path: str) -> str:
         """
         Download and extract a version from the repository.
@@ -411,6 +434,7 @@ class DataVersion(ModuleApiBase):
                 tar.extractall(extract_dir)
         return extract_dir
 
+    @timing_decorator  # TODO remove after testing
     def _apply_changes(self, version: dict, extracted_version_path: str, reverse: bool = False):
         """
         Apply changes between nearby versions to the project.
@@ -472,6 +496,7 @@ class DataVersion(ModuleApiBase):
         for dataset_id, data in ann_data.items():
             self._api.annotation.upload_paths(data["img_ids"], data["ann_paths"])
 
+    @timing_decorator  # TODO remove after testing
     def _compute_ann_data(self, state: dict, items_to_update: dict, version_path: str):
         """
         Compute lists of image IDs and annotation paths for items in the project that were added or modified in the current version.
@@ -507,6 +532,7 @@ class DataVersion(ModuleApiBase):
 
         return data_by_datasets
 
+    @timing_decorator  # TODO remove after testing
     def _compute_changes(self, old_state: dict, new_state: dict):
         """
         Compute changes between two project version states.
@@ -558,6 +584,7 @@ class DataVersion(ModuleApiBase):
 
         return changes
 
+    @timing_decorator  # TODO remove after testing
     def _generate_save_path(self):
         """
         Generate a path for the new version archive where it will be saved in the Team Files.
@@ -569,6 +596,7 @@ class DataVersion(ModuleApiBase):
         path = os.path.join(self.project_dir, timestamp + ".tar.zst")
         return path
 
+    @timing_decorator  # TODO remove after testing
     def _get_latest_id(self):
         """
         Get the ID of the latest version from the versions map (versions.json).
@@ -578,6 +606,7 @@ class DataVersion(ModuleApiBase):
             return None
         return latest
 
+    @timing_decorator  # TODO remove after testing
     def _get_current_state(self):
         """
         Scan project items and datasets to create a map of project state.
@@ -605,6 +634,7 @@ class DataVersion(ModuleApiBase):
                     }
         return current_state
 
+    @timing_decorator  # TODO remove after testing
     def _restore_datasets(self, datasets: dict, project_id: int = None) -> dict:
         """
         Restore datasets from the project state.
@@ -631,6 +661,7 @@ class DataVersion(ModuleApiBase):
             dataset_mapping[id] = dataset_info.id
         return dataset_mapping
 
+    @timing_decorator  # TODO remove after testing
     def _restore_items(
         self, items: dict, dataset_mapping: dict, dataset_infos: dict, version_path: str
     ):
@@ -672,6 +703,7 @@ class DataVersion(ModuleApiBase):
                 paths.append(ann_path)
             self._api.annotation.upload_paths(ids, paths)
 
+    @timing_decorator  # TODO remove after testing
     def _upload_files(self, path: str, changes: dict, all_files: bool = False):
         """
         Save annotation files for items in project that were added or modified in the current version to the repository.
