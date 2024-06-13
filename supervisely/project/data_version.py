@@ -172,17 +172,23 @@ class DataVersion(ModuleApiBase):
             return latest
         try:
             current_state = self._get_current_state()
-            previous_state = (
-                self.versions[str(latest)]["state"] if latest else {"datasets": {}, "items": {}}
+            # previous_state = (
+            #     self.versions[str(latest)]["state"] if latest else {"datasets": {}, "items": {}}
+            # )
+            # changes = self._compute_changes(previous_state, current_state)
+            changes = {}
+            file_info = self._upload_files(
+                path, changes=changes, all_files=True  # fix changes if uncomment previous line
             )
-            changes = self._compute_changes(previous_state, current_state)
-            file_info = self._upload_files(path, changes, all_files=True)
             self.versions[version_id] = {
                 "path": path,
+                "updated_at": project_info.updated_at,
                 "previous": latest,
-                "changes": changes,
                 "state": current_state,
             }
+            if changes != {}:
+                self.versions[version_id]["changes"] = changes
+
             self.versions["latest"] = version_id
             self.upload_json(project_info, initialize=False)
         except Exception as e:
@@ -269,7 +275,7 @@ class DataVersion(ModuleApiBase):
         reserve_info = response.json()
         return True if reserve_info.get("success") else False
 
-    def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
+    def restore_via_diffs(self, project_info: Union[ProjectInfo, int], target_version: int):
         """
         Restore project to a specific version.
 
@@ -314,6 +320,57 @@ class DataVersion(ModuleApiBase):
             self.project_info.updated_at,
             self.versions[str(target_version)]["path"],
         )
+
+    def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
+        """
+        Restore project to a specific version.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :param target_version: Version ID to restore to
+        :type target_version: int
+        :return: ProjectInfo object of the restored project
+        :rtype: ProjectInfo or None
+        """
+
+        self.initialize(project_info)
+
+        if str(target_version) not in self.versions:
+            raise ValueError(f"Version {target_version} does not exist")
+
+        if self.versions[str(target_version)]["updated_at"] == self.project_info.updated_at:
+            logger.info(
+                f"Project is already on version {target_version} with the same updated_at timestamp"
+            )
+            return
+
+        backup_files = self.versions[str(target_version)]["path"]
+        if backup_files is None:
+            logger.info(
+                f"Project can't be restored to version {target_version} because it's already on the initial version"
+            )
+            return
+
+        extracted_path = self._download_and_extract_version(backup_files)
+        project_state = self.versions.pop(str(target_version)).get("state")
+        new_project_info = self._api.project.create(
+            self.project_info.workspace_id,
+            self.project_info.name + f"_v{target_version}",
+            change_name_if_conflict=True,
+        )
+        meta_json = json.load_json_file(os.path.join(extracted_path, "meta.json"))
+        self._api.project.update_meta(new_project_info.id, ProjectMeta.from_json(meta_json))
+        dataset_mapping = self._restore_datasets(project_state["datasets"], new_project_info.id)
+        self._restore_items(
+            project_state["items"], dataset_mapping, project_state["datasets"], extracted_path
+        )
+        custom_data = new_project_info.custom_data
+        custom_data["restored_from"] = {
+            "project_id": self.project_info.id,
+            "version": target_version,
+        }
+        self._api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
+        return new_project_info
 
     def _create_warning_system_file(self):
         """
@@ -539,21 +596,27 @@ class DataVersion(ModuleApiBase):
                     }
         return current_state
 
-    def _restore_datasets(self, datasets: dict) -> dict:
+    def _restore_datasets(self, datasets: dict, project_id: int = None) -> dict:
         """
         Restore datasets from the project state.
 
         :param datasets: Datasets to restore
         :type datasets: dict
+        :param project_id: Project ID. Use another project ID if you want to restore datasets to another project. Compatible with the restore_v2 method.
+        :type project_id: int
         :return: Dataset mapping of old IDs to new IDs
         :rtype: dict
         """
+        if project_id is None:
+            project_id = self.project_info.id
+
         dataset_mapping = {}
-        for dataset in datasets.items():
+        # Sort datasets by parent, so that datasets with parent = 0 are processed first
+        sorted_datasets = sorted(datasets.items(), key=lambda dataset: dataset[1]["parent"])
+        for dataset in sorted_datasets:
             id, info = dataset
-            dataset_info = self._api.dataset.create(
-                self.project_info.id, info["name"], parent_id=info["parent"]
-            )
+            parent_id = info["parent"] if info["parent"] != 0 else None
+            dataset_info = self._api.dataset.create(project_id, info["name"], parent_id=parent_id)
             if dataset_info is None:
                 raise RuntimeError(f"Failed to restore dataset {info['name']}")
             dataset_mapping[id] = dataset_info.id
@@ -583,9 +646,9 @@ class DataVersion(ModuleApiBase):
             items_by_dataset[info["parent"]]["names"].append(info["name"])
             items_by_dataset[info["parent"]]["hashes"].append(info["hash"])
         for dataset_id, items in items_by_dataset.items():
-            if dataset_id in dataset_mapping:
+            if str(dataset_id) in dataset_mapping:
                 dataset_name = dataset_infos[str(dataset_id)]["name"]
-                dataset_id = dataset_mapping[dataset_id]
+                dataset_id = dataset_mapping[str(dataset_id)]
             file_infos = self._api.image.upload_hashes(dataset_id, items["names"], items["hashes"])
             ids = []
             paths = []
@@ -623,7 +686,7 @@ class DataVersion(ModuleApiBase):
         temp_dir = tempfile.mkdtemp()
         if all_files:
             download_project(self._api, self.project_info.id, temp_dir, save_images=False)
-        else:
+        elif changes != {}:
             items_to_save = list(
                 {**changes["added"]["items"], **changes["modified"]["items"]}.keys()
             )
@@ -657,6 +720,8 @@ class DataVersion(ModuleApiBase):
                             ann=img_name_to_ann[img_info.id],
                             img_info=None,
                         )
+        else:
+            raise ValueError("No changes to save")
 
         chunk_size = 1024 * 1024 * 50  # 50 MiB
         tar_data = io.BytesIO()
