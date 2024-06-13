@@ -1,0 +1,15 @@
+<!-- <sly-grid-gallery-v2 :content="data.{{{widget.widget_id}}}.content" :options="state.{{{widget.widget_id}}}.options"; post('/{{{widget.widget_id}}}/image_clicked_cb')">
+</sly-grid-gallery-v2> -->
+
+<sly-grid-gallery-v2
+  :options="state.{{{widget.widget_id}}}.options"
+  :layout="data.{{{widget.widget_id}}}.content.layout"
+  :layout-data="data.{{{widget.widget_id}}}.content.annotations"
+  :project-meta="data.{{{widget.widget_id}}}.content.projectMeta"
+>
+</sly-grid-gallery-v2>
+<div v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length === 0">
+  {{{widget._empty_message}}}
+</div>
+
+<!-- :objects-bindings="data.objectsBindings" -->
