@@ -59,11 +59,8 @@ class ImageConverter(BaseConverter):
                     if file_ext == ".nrrd":
                         logger.debug(f"Found nrrd file: {self.path}.")
                         image, _ = nrrd.read(self.path)
-                    elif file_ext == ".tif":
-                        import tifffile
-
-                        logger.debug(f"Found tiff file: {self.path}.")
-                        image = tifffile.imread(self.path)
+                    elif file_ext in [".tif", ".tiff"]:
+                        image = image_helper.read_tiff_image(self.path)
                     elif is_valid_ext(file_ext):
                         logger.debug(f"Found image file: {self.path}.")
                         image = cv2.imread(self.path)

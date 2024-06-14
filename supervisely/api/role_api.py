@@ -93,7 +93,7 @@ class RoleApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

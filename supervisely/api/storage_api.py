@@ -10,6 +10,7 @@ from typing import Callable, Dict, List, Optional, Union
 import requests
 from tqdm import tqdm
 from typing_extensions import Literal
+
 from supervisely.api.file_api import FileApi, FileInfo
 from supervisely.api.module_api import ApiField
 from supervisely.sly_logger import logger
@@ -46,7 +47,7 @@ class StorageApi(FileApi):
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """
-        Method is not implemented. 
+        Method is not implemented.
         Use api.storage.list instead.
         Additionally, to get list of files in Team Files you can use api.file.list2.
         """
@@ -247,7 +248,7 @@ class StorageApi(FileApi):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -272,7 +273,7 @@ class StorageApi(FileApi):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -297,7 +298,7 @@ class StorageApi(FileApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

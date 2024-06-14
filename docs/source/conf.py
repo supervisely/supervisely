@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath("../../../"))
 
 # -- Project information -----------------------------------------------------
 project = "Supervisely"
-copyright = "2023, Supervisely Team"
+copyright = "2024, Supervisely Team"
 author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------

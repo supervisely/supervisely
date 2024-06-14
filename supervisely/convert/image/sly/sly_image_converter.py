@@ -13,6 +13,7 @@ from supervisely.io.fs import (
 )
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
+from supervisely.project.project_settings import LabelingInterface
 
 
 class SLYImageConverter(ImageConverter):
@@ -26,7 +27,10 @@ class SLYImageConverter(ImageConverter):
         return AvailableImageConverters.SLY
 
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface in ["default", "image_matting"]
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.IMAGE_MATTING,
+        ]
 
     @property
     def ann_ext(self) -> str:
@@ -144,10 +148,13 @@ class SLYImageConverter(ImageConverter):
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
                 logger.info("Found multiple Supervisely projects")
-            meta = ProjectMeta()
+            meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
-                meta = meta.merge(project_fs.meta)
+                if meta is None:
+                    meta = project_fs.meta
+                else:
+                    meta = meta.merge(project_fs.meta)
                 for dataset in project_fs.datasets:
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)

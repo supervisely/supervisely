@@ -482,10 +482,18 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class")
 
     def _predictions_to_annotation(
-        self, image_path: str, predictions: List[Prediction]
+        self,
+        image_path: str,
+        predictions: List[Prediction],
+        classes_whitelist: Optional[List[str]] = None,
     ) -> Annotation:
         labels = []
         for prediction in predictions:
+            if (
+                not classes_whitelist in (None, "all")
+                and prediction.class_name not in classes_whitelist
+            ):
+                continue
             label = self._create_label(prediction)
             if label is None:
                 # for example empty mask
@@ -546,7 +554,9 @@ class Inference:
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, classes_whitelist=settings.get("classes", None)
+        )
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",
@@ -597,8 +607,11 @@ class Inference:
                 predictions = _predict(source, self.predict)
             else:
                 predictions = self.predict_batch(source=source, settings=settings)
+
         anns = [
-            self._predictions_to_annotation(image_path, prediction)
+            self._predictions_to_annotation(
+                image_path, prediction, classes_whitelist=settings.get("classes", None)
+            )
             for image_path, prediction in zip(source, predictions)
         ]
 
@@ -661,9 +674,10 @@ class Inference:
         image_path: str,
         vis_path: str,
         thickness: Optional[int] = None,
+        classes_whitelist: Optional[List[str]] = None,
     ):
         image = sly_image.read(image_path)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(image_path, predictions, classes_whitelist)
         ann.draw_pretty(
             bitmap=image,
             thickness=thickness,
@@ -1091,15 +1105,19 @@ class Inference:
             if meta_changed:
                 api.project.update_meta(output_project_id, output_project_meta)
 
-            api.annotation.upload_anns(
-                img_ids=[info.id for info in image_infos],
-                anns=anns,
-            )
-            if async_inference_request_uuid is not None:
-                sly_progress.iters_done(len(results))
-                inference_request["pending_results"].extend(
-                    [{**result, "annotation": None, "data": None} for result in results]
+            # upload in batches to update progress with each batch
+            # api.annotation.upload_anns() uploads in same batches anyways
+            for batch in batched(list(zip(anns, results, image_infos))):
+                batch_anns, batch_results, batch_image_infos = zip(*batch)
+                api.annotation.upload_anns(
+                    img_ids=[info.id for info in batch_image_infos],
+                    anns=batch_anns,
                 )
+                if async_inference_request_uuid is not None:
+                    sly_progress.iters_done(len(batch_results))
+                    inference_request["pending_results"].extend(
+                        [{**result, "annotation": None, "data": None} for result in batch_results]
+                    )
 
         def _add_results_to_request(results: List[Dict]):
             if async_inference_request_uuid is None:
@@ -1114,8 +1132,13 @@ class Inference:
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
+                        ds_batches = {}
                         for batch in items:
-                            upload_f(batch)
+                            if len(batch) == 0:
+                                continue
+                            ds_batches.setdefault(batch[0].get("dataset_id"), []).extend(batch)
+                        for _, joined_batch in ds_batches.items():
+                            upload_f(joined_batch)
                         continue
                     if stop_event.is_set():
                         return
@@ -1133,11 +1156,12 @@ class Inference:
 
         upload_queue = Queue()
         stop_upload_event = threading.Event()
-        threading.Thread(
+        upload_thread = threading.Thread(
             target=_upload_loop,
             args=[upload_queue, stop_upload_event, api, upload_f],
             daemon=True,
-        ).start()
+        )
+        upload_thread.start()
 
         settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
@@ -1200,10 +1224,12 @@ class Inference:
                     upload_queue.put(batch_results)
         except Exception:
             stop_upload_event.set()
+            upload_thread.join()
             raise
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         stop_upload_event.set()
+        upload_thread.join()
         return results
 
     def _on_inference_start(self, inference_request_uuid):

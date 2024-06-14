@@ -178,9 +178,6 @@ class VideoConverter(BaseConverter):
                     ann = VideoAnnotation(item.shape, item.frame_count)
                 api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
 
-            if log_progress and not has_large_files:
-                progress_cb(len(batch))
-
         if log_progress and is_development():
             if progress is not None: # pylint: disable=possibly-used-before-assignment
                 progress.close()
@@ -201,22 +198,27 @@ class VideoConverter(BaseConverter):
         output_video_name = f"{get_file_name(video_name)}{self.base_video_extension}"
         output_video_path = os.path.splitext(video_path)[0] + "_h264" + self.base_video_extension
 
-        # check if video is already in mp4 format and mime type is `video/mp4`
-        if video_path.lower().endswith(".mp4"):
-            mime = magic.Magic(mime=True)
-            mime_type = mime.from_file(video_path)
-            if mime_type == "video/mp4":
-                logger.debug(
-                    f'Video "{video_name}" is already in mp4 format, conversion is not required.'
-                )
-                return output_video_name, video_path
-
         # read video meta_data
         try:
             vid_meta = get_info(video_path)
             need_video_transc, need_audio_transc = self._check_codecs(vid_meta)
         except:
             need_video_transc, need_audio_transc = True, True
+
+        if not need_video_transc:
+            # check if video is already in mp4 format and mime type is `video/mp4`
+            if video_path.lower().endswith(".mp4"):
+                mime = magic.Magic(mime=True)
+                mime_type = mime.from_file(video_path)
+                if mime_type == "video/mp4":
+                    logger.debug(
+                        f'Video "{video_name}" is already in mp4 format, conversion is not required.'
+                    )
+                    return output_video_name, video_path
+                else:
+                    need_video_transc = True
+            else:
+                need_video_transc = True
 
         # convert videos
         self._convert(
