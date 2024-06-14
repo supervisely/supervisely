@@ -205,7 +205,7 @@ class VideoConverter(BaseConverter):
         except:
             need_video_transc, need_audio_transc = True, True
 
-        if not need_video_transc and not need_audio_transc:
+        if not need_video_transc:
             # check if video is already in mp4 format and mime type is `video/mp4`
             if video_path.lower().endswith(".mp4"):
                 mime = magic.Magic(mime=True)
