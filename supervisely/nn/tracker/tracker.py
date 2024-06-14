@@ -195,19 +195,15 @@ class BaseTracker:
                 confidence = label.tags.get("conf").value
 
             rectangle: Rectangle = label.geometry.to_bbox()
-            formatted_pred = [
+            tlwh = [
                 rectangle.top,
                 rectangle.left,
-                rectangle.right,
-                rectangle.bottom,
+                rectangle.height,
+                rectangle.width,
                 confidence,
             ]
 
-            # convert to width / height
-            formatted_pred[2] -= formatted_pred[0]
-            formatted_pred[3] -= formatted_pred[1]
-
-            formatted_predictions.append(formatted_pred)
+            formatted_predictions.append(tlwh)
             sly_labels.append(label)
 
         return formatted_predictions, sly_labels
