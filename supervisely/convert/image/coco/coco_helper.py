@@ -74,10 +74,12 @@ def create_supervisely_annotation(
             obj_class_polygon = meta.get_obj_class(renamed_class_name)
             if obj_class_polygon.geometry_type != Polygon:
                 if obj_class_name not in conflict_classes:
+                    geometry_name = obj_class_polygon.geometry_type.geometry_name().capitalize()
                     conflict_classes.append(obj_class_name)
                     logger.warn(
-                        f"Object class '{obj_class_name}' has type '{obj_class_polygon.geometry_type.geometry_name().capitalize()}', "
-                        f"but expected type is 'Polygon'."
+                        "Conflict in class geometry type: "
+                        f"object class '{obj_class_name}' (category ID: {category_id}) "
+                        f"has type '{geometry_name}', but expected type is 'Polygon'."
                     )
                 continue
             if type(segm) is dict:
@@ -125,6 +127,16 @@ def create_supervisely_annotation(
                 obj_class_name = add_tail(obj_class_name, "bbox")
             renamed_class_name = renamed_classes.get(obj_class_name, obj_class_name)
             obj_class_rectangle = meta.get_obj_class(renamed_class_name)
+            if obj_class_rectangle.geometry_type != Rectangle:
+                if obj_class_name not in conflict_classes:
+                    geometry_name = obj_class_rectangle.geometry_type.geometry_name().capitalize()
+                    conflict_classes.append(obj_class_name)
+                    logger.warn(
+                        "Conflict in class geometry type: "
+                        f"object class '{obj_class_name}' (category ID: {category_id}) "
+                        f"has type '{geometry_name}', but expected type is 'Rectangle'."
+                    )
+                continue
             if len(curr_labels) > 1:
                 for label in curr_labels:
                     bbox = label.geometry.to_bbox()
