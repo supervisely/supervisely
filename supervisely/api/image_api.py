@@ -243,14 +243,16 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = None,
         project_id: int = None,
     ) -> Iterator[List[ImageInfo]]:
+
         data = {
-            ApiField.DATASET_ID: dataset_id,
             ApiField.FILTER: filters or [],
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             ApiField.PAGINATION_MODE: ApiField.TOKEN,
         }
+
+        data = self._assign_project_or_dataset_id(data, project_id, dataset_id)
         if batch_size is not None:
             data[ApiField.PER_PAGE] = batch_size
         else:
@@ -353,22 +355,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
 
-        if project_id is None and dataset_id is None:
-            raise ValueError(
-                "One of 'project_id' or 'dataset_id' should be specified"
-            )
-
-        if project_id is not None and dataset_id is not None:
-            raise ValueError(
-                "Only one of 'project_id' or 'dataset_id' should be specified"
-            )
-
-        if project_id is not None:
-            data[ApiField.PROJECT_ID] = project_id
-
-        if dataset_id is not None:
-            data[ApiField.DATASET_ID] = dataset_id
-
+        data = self._assign_project_or_dataset_id(data, project_id, dataset_id)
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -435,22 +422,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
 
-        if project_id is None and dataset_id is None:
-            raise ValueError(
-                "One of 'project_id' or 'dataset_id' should be specified"
-        )
-
-        if project_id is not None and dataset_id is not None:
-            raise ValueError(
-                "Only one of 'project_id' or 'dataset_id' should be specified"
-            )
-
-        if project_id is not None:
-            data[ApiField.PROJECT_ID] = project_id
-
-        if dataset_id is not None:
-            data[ApiField.DATASET_ID] = dataset_id
-
+        data = self._assign_project_or_dataset_id(data, project_id, dataset_id)
         if not all(["type" in filter.keys() for filter in filters]):
             raise ValueError("'type' field not found in filter")
         if not all(["data" in filter.keys() for filter in filters]):
@@ -3136,3 +3108,22 @@ class ImageApi(RemoveableBulkModuleApi):
                 )
             )
         return image_infos
+
+    def _assign_project_or_dataset_id(
+        self, data: dict, project_id: int, dataset_id: int
+    ) -> dict:
+        if project_id is None and dataset_id is None:
+            raise ValueError("One of 'project_id' or 'dataset_id' should be provided.")
+
+        if project_id is not None and dataset_id is not None:
+            raise ValueError(
+                "Only one of 'project_id' and 'dataset_id' should be provided."
+            )
+
+        if project_id is not None:
+            data[ApiField.PROJECT_ID] = project_id
+
+        if dataset_id is not None:
+            data[ApiField.DATASET_ID] = dataset_id
+
+        return data
