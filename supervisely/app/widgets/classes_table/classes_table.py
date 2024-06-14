@@ -47,6 +47,8 @@ class ClassesTable(Widget):
     :type disabled: bool
     :param widget_id: Unique widget identifier.
     :type widget_id: str
+    :param truncate_long_names: If True, long class names will be truncated.
+    :type truncate_long_names: bool
     :raises ValueError: If both project_id and project_fs parameters are provided.
 
     :Usage example:
@@ -66,9 +68,10 @@ class ClassesTable(Widget):
         project_id: Optional[int] = None,
         project_fs: Optional[sly.Project] = None,
         allowed_types: Optional[List[Geometry]] = None,
-        selectable: Optional[bool] = True,
-        disabled: Optional[bool] = False,
+        selectable: bool = True,
+        disabled: bool = False,
         widget_id: Optional[str] = None,
+        truncate_long_names: bool = False,
     ):
         if project_id is not None and project_fs is not None:
             raise ValueError(
@@ -105,6 +108,8 @@ class ClassesTable(Widget):
         self._project_meta = project_meta
         if project_meta is not None:
             self._update_meta(project_meta=project_meta)
+
+        self._truncate_long_names = truncate_long_names
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def value_changed(self, func: Callable[[List[str]], Any]) -> Callable[[], None]:
@@ -310,6 +315,7 @@ class ClassesTable(Widget):
             "loading": self._loading,
             "disabled": self._selection_disabled,
             "selectable": self._selectable,
+            "truncate_long_names": self._truncate_long_names,
         }
 
     @property

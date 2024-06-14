@@ -74,7 +74,16 @@
 							:class="col.icon"
 							style="margin-right: 5px"
 						></i>
-						<span>{{ col.data }}</span>
+						<span
+							v-if="data.{{{widget.widget_id}}}.truncate_long_names"
+							style="
+								overflow: hidden;
+								text-overflow: ellipsis;
+								max-width: 200px;
+							"
+							>{{ col.data }}</span
+						>
+						<span v-else>{{ col.data }}</span>
 					</div>
 				</td>
 			</tr>
