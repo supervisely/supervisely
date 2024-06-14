@@ -1,6 +1,7 @@
 import copy
 import time
 import uuid
+from collections import defaultdict
 from typing import List, Optional
 
 import supervisely
@@ -8,6 +9,7 @@ from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
+from supervisely.project.project_meta import ProjectMeta
 
 ann_info = AnnotationInfo(
     **{
@@ -154,6 +156,8 @@ class GridGalleryV2(Widget):
         self._project_meta: supervisely.ProjectMeta = None
         self._loading = False
 
+        self._bindings_dict = defaultdict(list)
+
         #############################
         # grid gallery settings
         self._show_preview: bool = True
@@ -259,7 +263,7 @@ class GridGalleryV2(Widget):
         self,
         image_url: str,
         annotation_info: AnnotationInfo,
-        project_meta,
+        project_meta: ProjectMeta,
         title: str = "",
         column_index: int = None,
         # zoom_to: int = None,
@@ -317,10 +321,7 @@ class GridGalleryV2(Widget):
         for cell_data in self._data:
             annotations[cell_data["cell_uuid"]] = {
                 "imageUrl": cell_data["image_url"],
-                "annotation": cell_data["annotation_info"],
-                # "annotation": [
-                #     label.to_json() for label in cell_data["annotation"].labels
-                # ],  # TODO положить объект аннотации Annotation.info
+                "annotation": cell_data["annotation_info"]._asdict(),
                 # "title": cell_data["title"],
                 # "title_url": cell_data["title_url"],
             }
@@ -334,12 +335,40 @@ class GridGalleryV2(Widget):
         self._annotations = copy.deepcopy(annotations)
         DataJson()[self.widget_id]["content"]["annotations"] = self._annotations
 
+    def _update_object_bindings(self):
+        object_bindings = []
+        for cell_data in self._data:
+            ann_json = cell_data["annotation_info"].annotation
+            for obj in ann_json["objects"]:
+                self._bindings_dict[obj["classTitle"]].append(
+                    {"id": obj["id"], "annotationKey": cell_data["cell_uuid"]}
+                )
+
+        def filter_unique_ids(dict_list):
+            seen_ids = set()
+            seen_anns = set()
+            unique_dicts = []
+
+            for item in dict_list:
+                if item["id"] not in seen_ids:
+                    seen_ids.add(item["id"])
+                    # if item["annotationKey"] not in seen_anns:
+                    #     seen_anns.add(item["annotationKey"])
+                    unique_dicts.append(item)
+
+            return unique_dicts
+
+        for class_name, bindings in self._bindings_dict.items():
+            object_bindings.append(filter_unique_ids(bindings))
+        DataJson()[self.widget_id]["content"]["objectsBindings"] = object_bindings
+
     def _update_project_meta(self):
         DataJson()[self.widget_id]["content"]["projectMeta"] = self._generate_project_meta()
 
     def _update(self):
         self._update_layout()
         self._update_annotations()
+        self._update_object_bindings()
         self._update_project_meta()
 
         DataJson().send_changes()
