@@ -305,7 +305,7 @@ class SessionJSON:
     def inference_project_id_async(
         self,
         project_id: int,
-        dataset_ids: List[int],
+        dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         process_fn=None,
@@ -338,6 +338,40 @@ class SessionJSON:
         )
         return frame_iterator
 
+    def run_benchmark(
+        self,
+        project_id: int,
+        dataset_ids: List[int] = None,
+        cache_project_on_model: bool = False,
+    ):
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "run_benchmark"
+        url = f"{self._base_url}/{endpoint}"
+        json_body = self._get_default_json_body()
+        state = json_body["state"]
+        state["projectId"] = project_id
+        state["cache_project_on_model"] = cache_project_on_model
+        state["dataset_ids"] = dataset_ids
+        state["batch_size"] = 1
+        state["num_iterations"] = 5
+        resp = self._post(url, json=json_body).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=None
+        )
+        return frame_iterator
+    
     def inference_project_id(
         self,
         project_id: int,
