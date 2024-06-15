@@ -416,6 +416,7 @@ class Inference:
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
+            "tracking_algorithms": ["bot", "deepsort"],
         }
 
     # pylint: enable=method-hidden
@@ -969,15 +970,15 @@ class Inference:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
-        video_ann = None
+        video_ann_json = None
         if tracker is not None:
             frames = self.cache.download_frames(
                 api, video_info.id, range(start_frame_index, start_frame_index + n_frames)
             )
-            video_ann = tracker.get_annotation(
+            video_ann_json = tracker.get_annotation(
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
-            )
-        result = {"ann": results, "video_ann": video_ann.to_json()}
+            ).to_json()
+        result = {"ann": results, "video_ann": video_ann_json}
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = result.copy()
         return result
