@@ -601,7 +601,6 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         raise_error: Optional[bool] = False,
-        handle_errors: Optional[bool] = False,
     ) -> requests.Response:
         """
         Performs POST request to server with given parameters.
@@ -648,7 +647,7 @@ class Api:
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     self._check_version()
-                    Api._raise_for_status(response, handle_errors)
+                    Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
                 if raise_error:
@@ -729,16 +728,11 @@ class Api:
                 process_unhandled_request(self.logger, exc)
 
     @staticmethod
-    def _raise_for_status(response, handle_errors=False):
+    def _raise_for_status(response):
         """
         Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
         """
-        ignores = [(400, "NONUNIQUE")]
-
-        def get_error_type(data_dict):  # to make safe
-            return data_dict["details"]["type"]
-
         http_error_msg = ""
         if isinstance(response.reason, bytes):
             try:
@@ -747,14 +741,6 @@ class Api:
                 reason = response.reason.decode("iso-8859-1")
         else:
             reason = response.reason
-        if handle_errors:
-            for status_code, error_type in ignores:  # govnocode + to make safe
-                if (
-                    response.status_code == status_code
-                    and get_error_type(response.json()) == error_type
-                ):
-                    logger.info(f"Ignoring error: {error_type}")
-                    return
 
         if 400 <= response.status_code < 500:
             http_error_msg = "%s Client Error: %s for url: %s (%s)" % (

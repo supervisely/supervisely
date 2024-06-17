@@ -1289,15 +1289,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_infos = api.image.upload_links(dataset_id, img_names, img_links)
         """
-        if conflict_resolution:
-            links, names, skipped_img_infos = self.resolve_upload_conflicts(
-                dataset_id,
-                names,
-                links,
-                conflict_resolution=conflict_resolution,
-            )
-
-        result = self._upload_bulk_add(
+        return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item),
             dataset_id,
             names,
@@ -1307,12 +1299,8 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
         )
-
-        if conflict_resolution:
-            for idx, image_info in skipped_img_infos.items():
-                result.insert(idx, image_info)
-        return result
 
     def upload_hash(
         self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None
@@ -1436,15 +1424,7 @@ class ImageApi(RemoveableBulkModuleApi):
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
         """
-        if conflict_resolution:
-            hashes, names, skipped_img_infos = self.resolve_upload_conflicts(
-                dataset_id,
-                names,
-                hashes,
-                conflict_resolution=conflict_resolution,
-            )
-
-        result = self._upload_bulk_add(
+        return self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
             dataset_id,
             names,
@@ -1453,12 +1433,8 @@ class ImageApi(RemoveableBulkModuleApi):
             metas=metas,
             batch_size=batch_size,
             skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
         )
-
-        if conflict_resolution:
-            for idx, image_info in skipped_img_infos.items():
-                result.insert(idx, image_info)
-        return result
 
     def upload_id(
         self,
@@ -1521,83 +1497,6 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
-
-    def resolve_upload_conflicts(
-        self,
-        dataset_id: int,
-        names: List[str],
-        img_srcs: List[Any],
-        conflict_resolution: Literal["replace", "skip", "rename"],
-    ) -> Tuple[List[Any], List[str], Dict[int, ImageInfo]]:
-        """
-        Resolves conflicts that occur during the upload of images to a dataset based on the specified conflict resolution strategy.
-        Returns A tuple containing resolved image data list, resolved image names list, and a dictionary, where key is the index of an element from
-        the original list that was skipped during conflict resolution, and the value is the corresponding ImageInfo object of the existing image in the dataset.
-
-        :param dataset_id: Destination Dataset ID in Supervisely.
-        :type dataset_id: int
-        :param names: Source images names with extension.
-        :type names: List[str]
-        :param img_srcs: Any image data: ids, paths, numpy's, hashes, urls, etc. Should be included in the same order as the names.
-        :type img_srcs: List[Any]
-        :param conflict_resolution: The strategy to resolve upload conflicts:
-            - "replace": Replace the existing images in the dataset with the new images, the images that are being deleted are logged.
-            - "skip": Skip the upload of new images that would result in a conflict. When an original image's ImageInfo list will be returned.
-            - "rename": Rename the new images to prevent any conflict.
-        :type conflict_resolution: Literal["replace", "skip", "rename"]
-        :return: A tuple containing:
-            - A list of the sources of images that were processed.
-            - A list of the names of images after conflict resolution.
-            - A dictionary of skipped image infos, where the key is the index of an element from the original list that was skipped,
-            and the value is ImageInfo of the existing image in the dataset.
-        :rtype: Tuple[List[Any], List[str], Dict[int, ImageInfo]]
-        """
-        if len(img_srcs) != len(names):
-            raise ValueError("Number of img_srcs does not match number of names")
-        conflict_resolution = conflict_resolution.lower()
-        if conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS:
-            raise ValueError(
-                f"Unknown value: {conflict_resolution}, expected one of: {SUPPORTED_CONFLICT_RESOLUTIONS}"
-            )
-
-        ds_info = self._api.dataset.get_info_by_id(dataset_id)
-        skipped_img_infos = {}
-        if ds_info is None:
-            return img_srcs, names, skipped_img_infos
-        img_infos = self._api.image.get_list(dataset_id)
-        existing_img_names = [img.name for img in img_infos]
-
-        resolved_srcs = []
-        resolved_names = []
-        ids_to_remove = []
-        for img_src, name in zip(img_srcs, names):
-            if name in existing_img_names:
-                idx = existing_img_names.index(name)
-                if conflict_resolution == "skip":
-                    skipped_img_infos[idx] = img_infos[idx]
-                elif conflict_resolution == "rename":
-                    resolved_names.append(
-                        generate_free_name(existing_img_names, name, with_ext=True)
-                    )
-                    resolved_srcs.append(img_src)
-                elif conflict_resolution == "replace":
-                    ids_to_remove.append(img_infos[idx].id)
-                    resolved_srcs.append(img_src)
-                    resolved_names.append(name)
-            else:
-                resolved_srcs.append(img_src)
-                resolved_names.append(name)
-
-        if ids_to_remove:
-            self._api.image.remove_batch(ids_to_remove)
-            logger.info(f"Removed ids after conflict resolution: {ids_to_remove}")
-        if skipped_img_infos:
-            skipped_names = [skipped_imginfo.name for skipped_imginfo in skipped_img_infos.values()]
-            logger.info(
-                f"Elements with following indices: {list(skipped_img_infos.keys())} were skipped, Image names: {skipped_names}"
-            )
-
-        return resolved_srcs, resolved_names, skipped_img_infos
 
     def upload_ids(
         self,
@@ -1742,9 +1641,10 @@ class ImageApi(RemoveableBulkModuleApi):
     ):
         """ """
         results = []
+        from requests.exceptions import HTTPError
+        from datetime import datetime
 
         def generate_name(name):
-            from datetime import datetime
 
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
@@ -1772,85 +1672,85 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(names) != len(metas):
                 raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
+        batch_size = 5  # for debug
+        retry_count = self._api.retry_count if conflict_resolution else 1
+
+        id_to_idx = {}
+        global_idx = -1
         for batch_names, batch_items, batch_metas in zip(
             batched(names, batch_size=batch_size),
             batched(items, batch_size=batch_size),
             batched(metas, batch_size=batch_size),
         ):
-            for retry in range(self._api.retry_count):
-                images = get_images(
-                    batch_names, batch_items, batch_metas
-                )  # cycle only if conflict_resolution
-                conflict_resolution = "skip"  # for debug purposes, delete later
-                handle_errors = retry != self._api.retry_count - 1  # fix
-                logger.info(f"Handle errors: {handle_errors}")
-                logger.info(f"Sending api request...")
-                response = self._api.post(
-                    "images.bulk.add",
-                    {
-                        ApiField.DATASET_ID: dataset_id,
-                        ApiField.IMAGES: images,
-                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                        ApiField.SKIP_VALIDATION: skip_validation,
-                    },
-                    handle_errors=handle_errors,
-                )
-                logger.info(f"Conflict resolution method: {conflict_resolution}")
-                if conflict_resolution is not None:
-                    logger.info(f"Response status code: {response.status_code}")
-                    if response.status_code == 400:
-                        try:
-                            error_data = response.json()
-                            error_details = error_data["details"]
-                            error_type = error_details["type"]
-                            logger.info(f"Error type: {error_type}")
-                            logger.info(f"Error details: {error_details}")
-                            if error_type == "NONUNIQUE":
-                                error_names = [error["name"] for error in error_details["errors"]]
-                                ids = [error["id"] for error in error_details["errors"]]
+            global_idx += 1
+            for retry in range(retry_count):
+                images = get_images(batch_names, batch_items, batch_metas)
+                logger.info(f"Sending api request...")  # to remove
+                try:
+                    response = self._api.post(
+                        "images.bulk.add",
+                        {
+                            ApiField.DATASET_ID: dataset_id,
+                            ApiField.IMAGES: images,
+                            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                            ApiField.SKIP_VALIDATION: skip_validation,
+                        },
+                    )
+                    if progress_cb is not None:
+                        progress_cb(len(images))
 
-                                id_to_idx = {}
-                                for error_name in error_names:
-                                    idx = batch_names.index(error_name)
-                                    if conflict_resolution == "rename":
-                                        logger.info(f"Images to be renamed: {error_names}")
-                                        batch_names[idx] = generate_name(error_name)
-                                    elif conflict_resolution == "replace":
-                                        logger.info(f"Image ids to be removed: {ids}")
-                                        self._api.image.remove_batch(ids)
-                                    elif conflict_resolution == "skip":
-                                        logger.info(f"Skipping images: {ids}")
-                                        id_to_idx[idx] = ids[idx]
-                                # 1. для replace удаляем картинки по id и итерируемся еще раз
-                                # 2а. для скип сохранить индексы где лежали айдишники, получить get list all pages json, и в распаковке response впихнуть инфосы по индексам
-                                # 2б. то же самое, но с get_info_by_id_batch
-
-                                # Добавляем перед циклом for словарь id_to_idx
-                                # Кладем в словарь key - index, value - id
-                                # В конце функции перед return идем на get_info_by_id_batch, получаем список imageinfos по их айдишникам из словаря
-                                # В results запихиваем на соответствующие индексы imageinfos которые мы получили
-                        except KeyError as e:
-                            print(e)
-                    else:
-                        break
-                else:
+                    for info_json in response.json():
+                        info_json_copy = info_json.copy()
+                        if info_json.get(ApiField.MIME, None) is not None:
+                            info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
+                        # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
+                        results.append(self._convert_json_info(info_json_copy))
                     break
+                except HTTPError as e:
+                    if (
+                        e.response.status_code == 400
+                        and conflict_resolution in SUPPORTED_CONFLICT_RESOLUTIONS
+                    ):
+                        error_details = e.response.json()["details"]
+                        if error_details["type"] != "NONUNIQUE":
+                            repr(e)
+                        logger.info(f"Resolving conflicts with {conflict_resolution} method")
 
-            if progress_cb is not None:
-                progress_cb(len(images))
+                        error_names = [error["name"] for error in error_details["errors"]]
+                        ids = [error["id"] for error in error_details["errors"]]
 
-            for info_json in response.json():
-                info_json_copy = info_json.copy()
-                if info_json.get(ApiField.MIME, None) is not None:
-                    info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
-                # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
-                results.append(self._convert_json_info(info_json_copy))
+                        if conflict_resolution == "replace":
+                            logger.info(f"Image ids to be removed: {ids}")  # to remove
+                            self._api.image.remove_batch(ids)
+                            continue
+
+                        batch_names_copy = batch_names.copy()
+                        for error_name in error_names:
+                            print(f"Error name: {error_name}")  # to remove
+                            original_idx = batch_names_copy.index(error_name)
+                            idx = batch_names.index(error_name)
+                            if conflict_resolution == "rename":
+                                logger.info(f"Images to be renamed: {error_names}")  # to remove
+                                batch_names[idx] = generate_name(error_name)
+                            elif conflict_resolution == "skip":
+                                logger.info(f"Skipping images: {ids}")  # to remove
+                                inserting_index = original_idx + global_idx * batch_size
+                                print(f"skipping image with index {inserting_index}")
+                                id_to_idx[inserting_index] = ids[idx - 1]
+                                for l in [batch_items, batch_metas, batch_names]:
+                                    l.pop(idx)
+
+                        if len(batch_names) == 0:
+                            print(f"Batch names is empty.")  # to remove
+                            break
+                    else:
+                        repr(e)
 
         # name_to_res = {img_info.name: img_info for img_info in results}
         # ordered_results = [name_to_res[name] for name in names]
-
+        print(f"Dict: {id_to_idx}")  # to remove
         if len(id_to_idx) > 0:
-            logger.info("Inserting skipped image infos")
+            logger.info("Inserting skipped image infos")  # to remove
             image_infos = self._api.image.get_info_by_id_batch(list(id_to_idx.values()))
             for idx, info in zip(list(id_to_idx.values()), image_infos):
                 results.insert(idx, info)
@@ -2251,12 +2151,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
-        return self.copy_batch(
-            dst_dataset_id,
-            [id],
-            change_name_if_conflict,
-            with_annotations,
-        )[0]
+        return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
     def move(
         self,
