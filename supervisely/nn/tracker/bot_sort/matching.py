@@ -1,6 +1,6 @@
-import lap
+import lap  # pylint: disable=import-error
 import numpy as np
-from cython_bbox import bbox_overlaps as bbox_ious
+from cython_bbox import bbox_overlaps as bbox_ious  # pylint: disable=import-error
 from scipy.spatial.distance import cdist
 
 from supervisely.nn.tracker.utils import kalman_filter

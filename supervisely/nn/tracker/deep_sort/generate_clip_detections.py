@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import torch  # pylint: disable=import-error
 from PIL import Image
 
 

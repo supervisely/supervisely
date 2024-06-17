@@ -1,4 +1,4 @@
-import torch
+import torch  # pylint: disable=import-error
 
 try:
     import fastreid

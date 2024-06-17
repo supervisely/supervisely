@@ -6,7 +6,7 @@ import numpy as np
 # pylint: disable=import-error
 from scipy.optimize import linear_sum_assignment
 
-from . import kalman_filter
+from supervisely.nn.tracker.deep_sort.deep_sort import kalman_filter
 
 INFTY_COST = 1e5
 

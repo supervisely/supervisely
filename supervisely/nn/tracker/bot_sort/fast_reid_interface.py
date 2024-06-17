@@ -1,12 +1,11 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
-import torch.nn.functional as F
-from fastreid.config import get_cfg
-
-from fastreid.modeling.meta_arch import build_model
-from fastreid.utils.checkpoint import Checkpointer
+import torch  # pylint: disable=import-error
+import torch.nn.functional as F  # pylint: disable=import-error
+from fastreid.config import get_cfg  # pylint: disable=import-error
+from fastreid.modeling.meta_arch import build_model  # pylint: disable=import-error
+from fastreid.utils.checkpoint import Checkpointer  # pylint: disable=import-error
 
 # from torch.backends import cudnn
 

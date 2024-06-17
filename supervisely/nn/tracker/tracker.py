@@ -107,7 +107,7 @@ class BaseTracker:
         self.device = self.select_device(device=self.args.device)
 
     def select_device(self, device="", batch_size=None):
-        import torch
+        import torch  # pylint: disable=import-error
 
         # device = 'cpu' or '0' or '0,1,2,3'
         cpu_request = device.lower() == "cpu"

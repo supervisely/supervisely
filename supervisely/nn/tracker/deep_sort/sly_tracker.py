@@ -2,20 +2,20 @@ from typing import Dict, List, Tuple, Union
 
 # pylint: disable=import-error
 import clip
-import cv2
 import numpy as np
 
 from supervisely import Annotation, Label, VideoAnnotation
+from supervisely.nn.tracker.deep_sort import generate_clip_detections as gdet
+from supervisely.nn.tracker.deep_sort import preprocessing
+from supervisely.nn.tracker.deep_sort.deep_sort import nn_matching
+from supervisely.nn.tracker.deep_sort.deep_sort.detection import (
+    Detection as dsDetection,
+)
+from supervisely.nn.tracker.deep_sort.deep_sort.track import Track as dsTrack
+from supervisely.nn.tracker.deep_sort.deep_sort.track import TrackState
+from supervisely.nn.tracker.deep_sort.deep_sort.tracker import Tracker as dsTracker
 from supervisely.nn.tracker.tracker import BaseDetection, BaseTrack, BaseTracker
 from supervisely.sly_logger import logger
-
-from . import generate_clip_detections as gdet
-from . import preprocessing
-from .deep_sort import nn_matching
-from .deep_sort.detection import Detection as dsDetection
-from .deep_sort.track import Track as dsTrack
-from .deep_sort.track import TrackState
-from .deep_sort.tracker import Tracker as dsTracker
 
 
 class Detection(BaseDetection, dsDetection):
