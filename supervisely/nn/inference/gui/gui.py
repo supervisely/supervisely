@@ -205,7 +205,7 @@ class InferenceGUI(BaseInferenceGUI):
             if is_development() or is_debug_with_sly_net():
                 team_files_url = abs_url("files/")
             else:
-                team_files_url = "files/"
+                team_files_url = "/files/"
 
             self._team_files_link = Widgets.Button(
                 text="Open Team Files",
