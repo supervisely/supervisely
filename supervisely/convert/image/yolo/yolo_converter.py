@@ -47,12 +47,13 @@ class YOLOConverter(ImageConverter):
 
     def validate_ann_file(self, ann_path: str, meta: ProjectMeta = None) -> bool:
         try:
+            ann_name = os.path.basename(ann_path)
             with open(ann_path, "r") as ann_file:
                 lines = ann_file.readlines()
                 if len(lines) == 0:
                     logger.warn(f"Empty annotation file: {ann_path}")
                     return False
-                for line in lines:
+                for idx, line in enumerate(lines, start=1):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
@@ -80,6 +81,12 @@ class YOLOConverter(ImageConverter):
                         geometry = yolo_helper.detect_geometry(
                             coords, self._with_keypoint, self._num_kpts, self._num_dims
                         )
+                        if geometry is None:
+                            logger.warn(
+                                f"Invalid coordinates for the class index: "
+                                f"FILE [{ann_name}], LINE [{idx}], CLASS [{class_index}]"
+                            )
+                            return False
                         if class_index not in self._class_index_to_geometry:
                             self._class_index_to_geometry[class_index] = geometry
                             continue
@@ -235,6 +242,8 @@ class YOLOConverter(ImageConverter):
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
                         geometry_type = self._class_index_to_geometry.get(class_index)
+                        if geometry_type is None:
+                            continue
                         geometry = yolo_helper.get_geometry(
                             geometry_type,
                             height,
