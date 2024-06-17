@@ -83,7 +83,7 @@ class YOLOConverter(ImageConverter):
                         )
                         if geometry is None:
                             logger.warn(
-                                f"Invalid coordinates for the class index: "
+                                "Invalid coordinates for the class index: "
                                 f"FILE [{ann_name}], LINE [{idx}], CLASS [{class_index}]"
                             )
                             return False
