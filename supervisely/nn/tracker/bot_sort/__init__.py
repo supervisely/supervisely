@@ -14,7 +14,6 @@ except ImportError:
 
         subprocess.run(["git", "clone", fast_reid_repo_url, str(fast_reid_path.resolve())])
 
-    # sys.path.insert(0, str(fast_reid_parent_path.resolve()))
     sys.path.insert(0, str(fast_reid_path.resolve()))
 
     import fastreid

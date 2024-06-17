@@ -205,7 +205,6 @@ setup(
             "imagecorruptions>=1.1.2, <2.0.0",
         ],
         "tracking": [
-            "clip @ git+https://github.com/supervisely-ecosystem/depends-CLIP.git",
             "yacs",
             "matplotlib>=3.3.2, <4.0.0",
             "scipy>=1.5.2, <2.0.0",
