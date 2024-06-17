@@ -199,7 +199,7 @@ def convert_keypoints(
             continue  # skip invisible keypoints
         px_x = min(img_width, max(0, int(x * img_width)))
         px_y = min(img_height, max(0, int(y * img_height)))
-        node = Node(col=px_x, row=px_y)  # , disabled=v)
+        node = Node(row=px_y, col=px_x)  # , disabled=v)
         nodes.append(node)
     if len(nodes) > 0:
         return GraphNodes(nodes)
