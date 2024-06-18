@@ -63,6 +63,8 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
 )
 from supervisely.sly_logger import logger
+from requests.exceptions import HTTPError
+from datetime import datetime
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 
@@ -1437,11 +1439,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_id(
-        self,
-        dataset_id: int,
-        name: str,
-        id: int,
-        meta: Optional[Dict] = None,
+        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -1637,20 +1635,25 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size=50,
         force_metadata_for_links=True,
         skip_validation=False,
-        conflict_resolution=None,
+        conflict_resolution: Literal["skip", "rename", "replace"] = None,
     ):
         """ """
+        if (
+            conflict_resolution is not None
+            and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
+        ):
+            raise ValueError(
+                f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
+            )
         results = []
-        from requests.exceptions import HTTPError
-        from datetime import datetime
 
-        def generate_name(name):
+        def generate_name(name: str) -> str:
 
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
-        def get_images(names, items, metas):
+        def get_images(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
             images = []
             for name, item, meta in zip(names, items, metas):
                 item_tuple = func_item_to_kv(item)
@@ -1672,20 +1675,16 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(names) != len(metas):
                 raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
-        batch_size = 5  # for debug
-        retry_count = self._api.retry_count if conflict_resolution else 1
-
-        id_to_idx = {}
-        global_idx = -1
-        for batch_names, batch_items, batch_metas in zip(
-            batched(names, batch_size=batch_size),
-            batched(items, batch_size=batch_size),
-            batched(metas, batch_size=batch_size),
+        idx_to_id = {}
+        for batch_count, (batch_names, batch_items, batch_metas) in enumerate(
+            zip(
+                batched(names, batch_size=batch_size),
+                batched(items, batch_size=batch_size),
+                batched(metas, batch_size=batch_size),
+            )
         ):
-            global_idx += 1
-            for retry in range(retry_count):
+            for retry in range(2):
                 images = get_images(batch_names, batch_items, batch_metas)
-                logger.info(f"Sending api request...")  # to remove
                 try:
                     response = self._api.post(
                         "images.bulk.add",
@@ -1707,52 +1706,48 @@ class ImageApi(RemoveableBulkModuleApi):
                         results.append(self._convert_json_info(info_json_copy))
                     break
                 except HTTPError as e:
+                    error_details = e.response.json().get("details")
                     if (
-                        e.response.status_code == 400
-                        and conflict_resolution in SUPPORTED_CONFLICT_RESOLUTIONS
+                        conflict_resolution is not None
+                        and e.response.status_code == 400
+                        and error_details.get("type") == "NONUNIQUE"
                     ):
-                        error_details = e.response.json()["details"]
-                        if error_details["type"] != "NONUNIQUE":
-                            repr(e)
-                        logger.info(f"Resolving conflicts with {conflict_resolution} method")
+                        logger.info(
+                            f"Handling the exception above with '{conflict_resolution}' conflict resolution method"
+                        )
 
                         error_names = [error["name"] for error in error_details["errors"]]
                         ids = [error["id"] for error in error_details["errors"]]
 
                         if conflict_resolution == "replace":
-                            logger.info(f"Image ids to be removed: {ids}")  # to remove
+                            logger.info(f"Image ids to be removed: {ids}")
                             self._api.image.remove_batch(ids)
                             continue
 
                         batch_names_copy = batch_names.copy()
                         for error_name in error_names:
-                            print(f"Error name: {error_name}")  # to remove
-                            original_idx = batch_names_copy.index(error_name)
+                            batch_index = batch_names_copy.index(error_name)
                             idx = batch_names.index(error_name)
                             if conflict_resolution == "rename":
-                                logger.info(f"Images to be renamed: {error_names}")  # to remove
                                 batch_names[idx] = generate_name(error_name)
                             elif conflict_resolution == "skip":
-                                logger.info(f"Skipping images: {ids}")  # to remove
-                                inserting_index = original_idx + global_idx * batch_size
-                                print(f"skipping image with index {inserting_index}")
-                                id_to_idx[inserting_index] = ids[idx - 1]
+                                inserting_index = batch_index + batch_count * batch_size
+                                idx_to_id[inserting_index] = ids[batch_index]
                                 for l in [batch_items, batch_metas, batch_names]:
                                     l.pop(idx)
 
                         if len(batch_names) == 0:
-                            print(f"Batch names is empty.")  # to remove
                             break
                     else:
-                        repr(e)
+                        raise
 
         # name_to_res = {img_info.name: img_info for img_info in results}
         # ordered_results = [name_to_res[name] for name in names]
-        print(f"Dict: {id_to_idx}")  # to remove
-        if len(id_to_idx) > 0:
-            logger.info("Inserting skipped image infos")  # to remove
-            image_infos = self._api.image.get_info_by_id_batch(list(id_to_idx.values()))
-            for idx, info in zip(list(id_to_idx.values()), image_infos):
+
+        if len(idx_to_id) > 0:
+            logger.info("Inserting skipped image infos")
+            image_infos = self._api.image.get_info_by_id_batch(list(idx_to_id.values()))
+            for idx, info in zip(list(idx_to_id.values()), image_infos):
                 results.insert(idx, info)
 
         return results  # ordered_results
