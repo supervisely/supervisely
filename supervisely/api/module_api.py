@@ -538,6 +538,8 @@ class ApiField:
     """"""
     PROJECT_UPDATED_AT = "projectUpdatedAt"
     """"""
+    PROJECT_VERSION = "projectVersionId"
+    """"""
 
 
 def _get_single_item(items):
