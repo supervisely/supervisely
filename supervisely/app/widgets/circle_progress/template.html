@@ -1,7 +1,8 @@
 <el-progress
-    style="align-self: center; margin-top: 10px;"
-    type="circle"
-    :width="32"
-    :percentage=data.{{{widget.progress.widget_id}}}.percent
-    :status="data.{{{widget.widget_id}}}.status"
+	id="{{widget.widget_id}}"
+	style="align-self: center; margin-top: 10px"
+	type="circle"
+	:width="32"
+	:percentage="data.{{{widget.progress.widget_id}}}.percent"
+	:status="data.{{{widget.widget_id}}}.status"
 ></el-progress>
