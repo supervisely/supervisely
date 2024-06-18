@@ -83,9 +83,7 @@ class ApiContext:
     :param project_meta: ProjectMeta object.
     :type project_meta: :class:`ProjectMeta`, optional
     :raises: :class:`RuntimeError`, if api is None.
-
     :Usage example:
-
          .. code-block:: python
 
             import os
