@@ -2603,7 +2603,8 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
     ):
         """
-        Remove images from supervisely by ids.
+        Remove images from supervisely by IDs.
+        IDs must belong to the same project.
 
         :param ids: List of Images IDs in Supervisely.
         :type ids: List[int]

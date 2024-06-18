@@ -1039,7 +1039,7 @@ class FileApi(ModuleApiBase):
             if progress_cb is not None:
                 progress_cb(len(paths_batch))
 
-    def exists(self, team_id: int, remote_path: str) -> bool:
+    def exists(self, team_id: int, remote_path: str, recursive: bool = True) -> bool:
         """
         Checks if file exists in Team Files.
 
@@ -1047,6 +1047,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to File in Team Files.
         :type remote_path: str
+        :param recursive: If True makes more checks and slower, if False makes less checks and faster.
+        :type recursive: bool
         :return: True if file exists, otherwise False
         :rtype: :class:`bool`
         :Usage example:
@@ -1062,13 +1064,13 @@ class FileApi(ModuleApiBase):
            file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
            file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
         """
-        path_infos = self.list(team_id, remote_path)
+        path_infos = self.list(team_id, remote_path, recursive)
         for info in path_infos:
             if info["path"] == remote_path:
                 return True
         return False
 
-    def dir_exists(self, team_id: int, remote_directory: str) -> bool:
+    def dir_exists(self, team_id: int, remote_directory: str, recursive: bool = True) -> bool:
         """
         Checks if directory exists in Team Files.
 
@@ -1076,6 +1078,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to directory in Team Files.
         :type remote_path: str
+        :param recursive: If True makes more checks and slower, if False makes less checks and faster.
+        :type recursive: bool
         :return: True if directory exists, otherwise False
         :rtype: :class:`bool`
         :Usage example:
@@ -1091,7 +1095,7 @@ class FileApi(ModuleApiBase):
            file = api.file.dir_exists(8, "/999_App_Test/")   # True
            file = api.file.dir_exists(8, "/10000_App_Test/") # False
         """
-        files_infos = self.list(team_id, remote_directory)
+        files_infos = self.list(team_id, remote_directory, recursive)
         if len(files_infos) > 0:
             return True
         return False
