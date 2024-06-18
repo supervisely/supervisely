@@ -1084,11 +1084,10 @@ class ImageApi(RemoveableBulkModuleApi):
         hashes = [get_file_hash(x) for x in paths]
 
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
-        result = self.upload_hashes(
+
+        return self.upload_hashes(
             dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
         )
-
-        return result
 
     def upload_np(
         self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None
@@ -1186,10 +1185,9 @@ class ImageApi(RemoveableBulkModuleApi):
         self._upload_data_bulk(
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
-        result = self.upload_hashes(
+        return self.upload_hashes(
             dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
         )
-        return result
 
     def upload_link(
         self,
