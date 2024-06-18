@@ -1,6 +1,9 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/classes_table/style.css" />
 
-<div v-loading="data.{{{widget.widget_id}}}.loading">
+<div
+	id="{{{widget.widget_id}}}"
+	v-loading="data.{{{widget.widget_id}}}.loading"
+>
 	<table
 		class="classes-table"
 		v-if="data.{{{widget.widget_id}}}.table_data.length > 0"

@@ -69,7 +69,6 @@ class Text(Widget):
             "icon": self._icon,
             "icon_color": self._icon_color,
             "font_size": self._font_size,
-            "scroll_to_widget": self._scroll_to_widget,
         }
 
     def get_json_state(self):
