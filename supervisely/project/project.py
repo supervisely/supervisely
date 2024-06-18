@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import os
 import pickle
 import random
@@ -2571,10 +2572,11 @@ class Project:
         project_id: int,
         dest_dir: str,
         dataset_ids: Optional[List[int]] = None,
-        log_progress: Optional[bool] = False,
+        log_progress: Optional[bool] = True,
         batch_size: Optional[int] = 100,
         progress_cb: Optional[Callable] = None,
-    ) -> str:
+        return_bytesio: Optional[bool] = False,
+    ) -> Union[str, io.BytesIO]:
         """
         Download project to the local directory in binary format. Faster than downloading project in the usual way.
         This type of project download is more suitable for creating local backups.
@@ -2602,8 +2604,10 @@ class Project:
         :type batch_size: :class:`int`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm` or :class:`callable`, optional
-        :return: Path to the binary file.
-        :rtype: :class:`str`
+        :param return_bytesio: If True, returns BytesIO object instead of saving it to the disk.
+        :type return_bytesio: :class:`bool`, optional
+        :return: Path to the binary file or BytesIO object.
+        :rtype: :class:`str` or :class:`BytesIO`
 
         :Usage example:
 
@@ -2669,17 +2673,24 @@ class Project:
                 if progress_cb is not None:
                     progress_cb(len(batch))
         dataset_infos = [ds for ds in dataset_infos if ds.id not in dataset_skip_list]
-        project_file_path = os.path.join(dest_dir, f"{project_info.id}_{project_info.name}")
-        with open(project_file_path, "wb") as f:
+        if return_bytesio:
+            data = io.BytesIO()
             pickle.dump(
-                (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries), f
+                (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries), data
             )
-        return project_file_path
+            return data
+        else:
+            project_file_path = os.path.join(dest_dir, f"{project_info.id}_{project_info.name}")
+            with open(project_file_path, "wb") as f:
+                pickle.dump(
+                    (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries), f
+                )
+            return project_file_path
 
     @staticmethod
     def upload_bin(
         api: Api,
-        path: str,
+        file: Union[str, io.BytesIO],
         workspace_id: int,
         project_name: Optional[str] = None,
         with_custom_data: Optional[bool] = True,
@@ -2690,8 +2701,8 @@ class Project:
         This method is a counterpart to :func:`download_bin`.
         Faster than uploading project in the usual way.
 
-        :param path: Path to binary file.
-        :type path: :class:`str`
+        :param file: Path to the binary file or BytesIO object.
+        :type file: :class:`str` or :class:`BytesIO`
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param workspace_id: Workspace ID, where project will be uploaded.
@@ -2737,10 +2748,16 @@ class Project:
         image_infos: List[ImageInfo]
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
-        with open(path, "rb") as f:
+        if isinstance(file, io.BytesIO):
             project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = pickle.load(
-                f
+                file
             )
+        else:
+            with open(file, "rb") as f:
+                project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
+                    pickle.load(f)
+                )
+
         if project_name is None:
             project_name = project_info.name
         new_project_info = api.project.create(
