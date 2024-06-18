@@ -17,7 +17,6 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import silent_remove
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.interactive_segmentation import functional
 from supervisely.nn.prediction_dto import PredictionSegmentation
 from supervisely.sly_logger import logger
@@ -29,7 +28,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class InteractiveSegmentation(Inference, InferenceImageCache):
+class InteractiveSegmentation(Inference):
     class Click:
         def __init__(self, x, y, is_positive):
             self.x = x
@@ -49,12 +48,6 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         _smart_cache_ttl = sly_env.smart_cache_ttl()
         _fast_cache_ttl = max(1, _smart_cache_ttl // 2)
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        InferenceImageCache.__init__(
-            self,
-            maxsize=sly_env.smart_cache_size(),
-            ttl=_smart_cache_ttl,
-            base_folder=sly_env.smart_cache_container_dir(),
-        )
         self._class_names = ["mask_prediction"]
         color = [255, 0, 0]
         self._model_meta = ProjectMeta([ObjClass(self._class_names[0], Bitmap, color)])
@@ -92,7 +85,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
             return None
-        geometry = Bitmap(dto.mask)
+        geometry = Bitmap(dto.mask, extra_validation=False)
         label = Label(geometry, obj_class)
         return label
 
@@ -110,7 +103,7 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
     def serve(self):
         super().serve()
         server = self._app.get_server()
-        self.add_cache_endpoint(server)
+        self.cache.add_cache_endpoint(server)
 
         @server.post("/smart_segmentation")
         def smart_segmentation(response: Response, request: Request):
@@ -167,9 +160,9 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                     smtool_state,
                     api,
                     app_dir,
-                    self.download_image,
-                    self.download_frame,
-                    self.download_image_by_hash,
+                    self.cache.download_image,
+                    self.cache.download_frame,
+                    self.cache.download_image_by_hash,
                 )
                 self._inference_image_cache.set(hash_str, image_np)
             else:
@@ -295,9 +288,9 @@ class InteractiveSegmentation(Inference, InferenceImageCache):
                         smtool_state,
                         api,
                         app_dir,
-                        self.download_image,
-                        self.download_frame,
-                        self.download_image_by_hash,
+                        self.cache.download_image,
+                        self.cache.download_frame,
+                        self.cache.download_image_by_hash,
                     )
                     self._inference_image_cache.set(hash_str, image_np)
                 else:

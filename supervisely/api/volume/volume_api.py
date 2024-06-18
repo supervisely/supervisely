@@ -272,7 +272,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -316,7 +316,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             import supervisely as sly
 
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -396,7 +396,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -493,7 +493,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             import supervisely as sly
             from tqdm import tqdm
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -605,7 +605,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -737,7 +737,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -819,7 +819,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -886,7 +886,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             import supervisely as sly
             from tqdm import tqdm
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -939,7 +939,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param paths: Local volumes paths.
         :type paths: List[str]
         :param log_progress: Determine if additional technical logs are displaying.
-        :type log_progress: bool, optional
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :return: Information about Volume. See :class:`info_sequence<info_sequence>`
@@ -950,7 +950,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1004,7 +1004,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1114,7 +1114,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param log_progress: Determine if additional technical logs are displaying.
-        :type log_progress: bool, optional
+        :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
         :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
@@ -1126,7 +1126,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 import supervisely as sly
                 from tqdm import tqdm
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
                 api = sly.Api.from_env()
@@ -1200,7 +1200,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param log_progress: Determine if additional technical logs are displaying.
-        :type log_progress: bool, optional
+        :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
         :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
@@ -1212,7 +1212,7 @@ class VolumeApi(RemoveableBulkModuleApi):
                 import supervisely as sly
                 from tqdm import tqdm
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
                 api = sly.Api.from_env()

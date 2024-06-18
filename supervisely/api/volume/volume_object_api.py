@@ -1,10 +1,10 @@
 # coding: utf-8
 
+from supervisely.api.entity_annotation.object_api import ObjectApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
-from supervisely.api.entity_annotation.object_api import ObjectApi
 
 
 class VolumeObjectApi(ObjectApi):
@@ -36,7 +36,7 @@ class VolumeObjectApi(ObjectApi):
             from supervisely.volume_annotation.volume_tag import VolumeTag
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

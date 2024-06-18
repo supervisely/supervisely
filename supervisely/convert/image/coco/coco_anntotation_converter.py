@@ -55,6 +55,8 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
             # create ann dict
             for image_id, image_info in coco_items:
                 image_name = image_info.get("file_name", image_info.get("name"))
+                if "/" in image_name:
+                    image_name = os.path.basename(image_name)
                 image_url = image_info.get(
                     "coco_url",
                     image_info.get(
@@ -114,9 +116,9 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         existing_images = {img_info.name: img_info for img_info in api.image.get_list(dataset_id)}
         if len(existing_images) == 0:
             raise RuntimeError(
-                "Failed to upload COCO annotations, you have no images in the dataset. "
-                "To add annotations to your dataset, please start import process from dataset with images. "
-                "Or you can upload images and annotations together. "
+                "Not found images in the dataset. "
+                "Please start the import process from a dataset that contains images, "
+                "or upload both images and COCO annotations at once."
             )
         if log_progress:
             progress, progress_cb = self.get_progress(
