@@ -31,6 +31,8 @@ class YOLOConverter(ImageConverter):
         self._class_index_to_geometry: dict = {}
         self._coco_classes_dict: dict = {}
         self._labeling_interface = labeling_interface
+        self._num_kpts = None
+        self._num_dims = None
 
     def __str__(self) -> str:
         return AvailableImageConverters.YOLO
@@ -43,14 +45,15 @@ class YOLOConverter(ImageConverter):
     def key_file_ext(self) -> str:
         return ".yaml"
 
-    def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
+    def validate_ann_file(self, ann_path: str, meta: ProjectMeta = None) -> bool:
         try:
+            ann_name = os.path.basename(ann_path)
             with open(ann_path, "r") as ann_file:
                 lines = ann_file.readlines()
                 if len(lines) == 0:
                     logger.warn(f"Empty annotation file: {ann_path}")
                     return False
-                for line in lines:
+                for idx, line in enumerate(lines, start=1):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
@@ -75,18 +78,15 @@ class YOLOConverter(ImageConverter):
                             return False
 
                         # collect geometry types for each class
-                        geometry = None
-                        if len(coords) == 4:
-                            geometry = Rectangle
-                        elif len(coords) >= 6:
-                            if len(coords) % 2 == 0 and not self._with_keypoint:
-                                geometry = Polygon
-                            elif (
-                                self._with_keypoint
-                                and len(coords) == self._num_dims * self._num_kpts + 4
-                            ):
-                                geometry = GraphNodes
-
+                        geometry = yolo_helper.detect_geometry(
+                            coords, self._with_keypoint, self._num_kpts, self._num_dims
+                        )
+                        if geometry is None:
+                            logger.warn(
+                                "Invalid coordinates for the class index: "
+                                f"FILE [{ann_name}], LINE [{idx}], CLASS [{class_index}]"
+                            )
+                            return False
                         if class_index not in self._class_index_to_geometry:
                             self._class_index_to_geometry[class_index] = geometry
                             continue
@@ -139,24 +139,6 @@ class YOLOConverter(ImageConverter):
                         result["colors"] = colors
                 else:
                     result["colors"] = yolo_helper.generate_colors(len(classes))
-
-                conf_dirname = os.path.dirname(key_path)
-                for t in ["train", "val"]:
-                    if t not in config_yaml:
-                        logger.warn(f"{t} path is not defined in {key_path}")
-                        continue
-                    if config_yaml[t].startswith(".."):
-                        cur_dataset_path = os.path.normpath(
-                            os.path.join(conf_dirname, "/".join(config_yaml[t].split("/")[2:]))
-                        )
-                    else:
-                        cur_dataset_path = os.path.normpath(
-                            os.path.join(conf_dirname, config_yaml[t])
-                        )
-
-                    if os.path.isdir(cur_dataset_path):
-                        result["datasets"].append((t, cur_dataset_path))
-
                 self._yaml_info = result
                 self._coco_classes_dict = {i: classes[i] for i in range(len(classes))}
             return True
@@ -184,7 +166,12 @@ class YOLOConverter(ImageConverter):
                 elif self.is_image(full_path):
                     images_list.append(full_path)
 
-        meta = ProjectMeta()
+        if config_path is None:
+            self._yaml_info = {
+                "names": yolo_helper.coco_classes,
+                "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
+            }
+            self._coco_classes_dict = {i: c for i, c in enumerate(yolo_helper.coco_classes)}
 
         # create Items
         self._items = []
@@ -197,18 +184,13 @@ class YOLOConverter(ImageConverter):
                 ann_name = f"{get_file_name(item.name)}.txt"
             if ann_name:
                 ann_path = ann_dict[ann_name]
-                is_valid = self.validate_ann_file(ann_path, meta)
+                is_valid = self.validate_ann_file(ann_path)
                 if is_valid:
                     item.ann_data = ann_path
                     detected_ann_cnt += 1
             self._items.append(item)
-        if detected_ann_cnt > 0:
-            if config_path is None:
-                self._yaml_info = {
-                    "names": yolo_helper.coco_classes,
-                    "colors": yolo_helper.generate_colors(len(yolo_helper.coco_classes)),
-                }
-            self._meta = self.generate_meta()
+
+        self._meta = self.generate_meta()
         return detected_ann_cnt > 0
 
     def generate_meta(self) -> ProjectMeta:
@@ -259,17 +241,19 @@ class YOLOConverter(ImageConverter):
                     line = line.strip().split()
                     if len(line) > 0:
                         class_index, coords = yolo_helper.get_coordinates(line)
-                        if len(coords) == 4:
-                            geometry = yolo_helper.convert_rectangle(height, width, *coords)
-                        elif len(coords) >= 6 and len(coords) % 2 == 0 and not self._with_keypoint:
-                            geometry = yolo_helper.convert_polygon(height, width, *coords)
-                        elif len(coords) == self._num_dims * self._num_kpts + 4:
-                            geometry = yolo_helper.convert_keypoints(
-                                height, width, self._num_kpts, self._num_dims, *coords
-                            )
-                            if geometry is None:
-                                continue
-                        else:
+                        geometry_type = self._class_index_to_geometry.get(class_index)
+                        if geometry_type is None:
+                            continue
+                        geometry = yolo_helper.get_geometry(
+                            geometry_type,
+                            height,
+                            width,
+                            self._with_keypoint,
+                            self._num_kpts,
+                            self._num_dims,
+                            coords,
+                        )
+                        if geometry is None:
                             continue
 
                         class_name = self._coco_classes_dict[class_index]

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import os
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -8,21 +10,21 @@ except ImportError:
 
 from tqdm import tqdm
 
-from supervisely import (
-    Annotation,
-    Api,
-    Progress,
-    ProjectMeta,
-    TagValueType,
-    is_production,
-    logger,
-)
+from supervisely._utils import is_production
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.tag_meta import TagValueType
+from supervisely.api.api import Api
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
 class AvailableImageConverters:
     SLY = "supervisely"
     COCO = "coco"
+    FAST_COCO = "coco (fast)"
     YOLO = "yolo"
     PASCAL_VOC = "pascal_voc"
     CSV = "csv"
@@ -44,10 +46,12 @@ class AvailablePointcloudConverters:
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
+    BAG = "rosbag"
 
 
 class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
+    BAG = "rosbag"
 
 
 class AvailableVolumeConverters:
@@ -56,6 +60,8 @@ class AvailableVolumeConverters:
 
 
 class BaseConverter:
+    unsupported_exts = [".gif", ".html", ".htm"]
+
     class BaseItem:
         def __init__(
             self,
@@ -66,12 +72,14 @@ class BaseConverter:
         ):
             self._path: str = item_path
             self._name: str = None
-            self._ann_data: Union[str, dict] = ann_data
+            self._ann_data: Union[str, dict, list] = ann_data
             self._shape: Union[Tuple, List] = shape
             self._custom_data: dict = custom_data
 
         @property
         def name(self) -> str:
+            if self._name is not None:
+                return self._name
             return get_file_name_with_ext(self._path)
 
         @name.setter
@@ -91,7 +99,7 @@ class BaseConverter:
             return self._ann_data
 
         @ann_data.setter
-        def ann_data(self, ann_data: Union[str, dict]) -> None:
+        def ann_data(self, ann_data: Union[str, dict, list]) -> None:
             self._ann_data = ann_data
 
         @property
@@ -134,18 +142,18 @@ class BaseConverter:
     def __init__(
         self,
         input_data: str,
-        labeling_interface: Literal[
-            "default",
-            "multi_view",
-            "multispectral",
-            "images_with_16_color",
-            "medical_imaging_single",
-        ] = "default",
+        labeling_interface: Optional[LabelingInterface] = LabelingInterface.DEFAULT,
     ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
+        self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+
+        if self._labeling_interface not in LabelingInterface.values():
+            raise ValueError(
+                f"Invalid labeling interface value: {labeling_interface}. "
+                f"The available values: {LabelingInterface.values()}"
+            )
 
     @property
     def format(self) -> str:
@@ -164,7 +172,7 @@ class BaseConverter:
         raise NotImplementedError()
 
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface == "default"
+        return self._labeling_interface == LabelingInterface.DEFAULT
 
     def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
@@ -221,17 +229,36 @@ class BaseConverter:
         progress_cb(1)
 
         if len(found_formats) == 0:
-            logger.info("Not found any valid annotation formats. Only items will be processed")
+            only_modality_items = True
+            unsupported_exts = set()
             for root, _, files in os.walk(self._input_data):
                 for file in files:
                     full_path = os.path.join(root, file)
                     ext = get_file_ext(full_path)
-                    if file in JUNK_FILES:
-                        continue
                     if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
                         self._items.append(self.Item(full_path))  # pylint: disable=no-member
+                        continue
+                    only_modality_items = False
+                    if ext.lower() in self.unsupported_exts:
+                        unsupported_exts.add(ext)
+
             if self.items_count == 0:
-                raise RuntimeError("No valid items found in the input data")
+                if unsupported_exts:
+                    raise RuntimeError(
+                        f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
+                        f"Unsupported file extensions detected: {unsupported_exts}. "
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
+                    )
+                raise RuntimeError(
+                    "Please refer to the app overview and documentation for annotation formats, "
+                    "and ensure that your data contains valid information"
+                )
+            if not only_modality_items:
+                logger.warn(
+                    "Annotations not found. "  # pylint: disable=no-member
+                    f"Uploading {self.modality} without annotations. "
+                    "If you need assistance to upload data with annotations, please contact our support team."
+                )
             return self
 
         if len(found_formats) == 1:
@@ -248,12 +275,14 @@ class BaseConverter:
                 f"Dataset ID:{dataset_id} not found. "
                 "Please check if the dataset exists and try again."
             )
-        meta1_json = api.project.get_meta(dataset.project_id)
+        meta1_json = api.project.get_meta(dataset.project_id, with_settings=True)
         meta1 = ProjectMeta.from_json(meta1_json)
         meta2 = self._meta
 
         if meta2 is None:
             return meta1, {}, {}
+
+        meta1 = self._update_labeling_interface(meta1, meta2)
 
         # merge classes and tags from meta1 (unchanged) and meta2 (renamed if conflict)
         renamed_classes = {}
@@ -297,7 +326,7 @@ class BaseConverter:
                 meta1 = meta1.add_tag_meta(new_tag)
 
         # update project meta
-        api.project.update_meta(dataset.project_id, meta1)
+        meta1 = api.project.update_meta(dataset.project_id, meta1)
 
         return meta1, renamed_classes, renamed_tags
 
@@ -316,3 +345,22 @@ class BaseConverter:
             )
             progress_cb = progress.update
         return progress, progress_cb
+
+    def _update_labeling_interface(self, meta1: ProjectMeta, meta2: ProjectMeta) -> ProjectMeta:
+        """
+        Update project meta with labeling interface from the converter meta.
+        Only update if the existing labeling interface is the default value.
+        In other cases, the existing labeling interface is preserved.
+        """
+        existing = meta1.project_settings.labeling_interface
+        new = meta2.project_settings.labeling_interface
+        if existing == new:
+            return meta1
+
+        if new is None or new == LabelingInterface.DEFAULT:
+            return meta1
+
+        if existing == LabelingInterface.DEFAULT:
+            new_settings = meta1.project_settings.clone(labeling_interface=new)
+            return meta1.clone(project_settings=new_settings)
+        return meta1

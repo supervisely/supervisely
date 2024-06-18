@@ -2,7 +2,8 @@ import os
 from typing import List
 
 import supervisely.convert.volume.sly.sly_volume_helper as sly_volume_helper
-from supervisely import KeyIdMap, ProjectMeta, VolumeAnnotation, logger
+from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely import ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name

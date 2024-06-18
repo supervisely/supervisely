@@ -3,11 +3,13 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Dict, Optional, Iterator, Any
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
-from supervisely.annotation.tag_meta import TagMeta
+
+from typing import Any, Dict, Iterator, List, Optional
+
 from supervisely.annotation.tag_collection import TagCollection
+from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag import VideoTag
 
 
@@ -277,7 +279,7 @@ class VideoTagCollection(TagCollection):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -309,7 +311,7 @@ class VideoTagCollection(TagCollection):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -347,7 +349,7 @@ class VideoTagCollection(TagCollection):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

@@ -78,11 +78,11 @@ class ImagesWithMasksConverter(ImageConverter):
             ann_dir = os.path.join(dataset_path, helper.ANNOTATION_DIR_NAME)
             if dir_exists(ann_dir):
                 remove_junk_from_dir(ann_dir)
-            if not machine_masks_dir_exists:
+            if not machine_masks_dir_exists and dir_exists(ann_dir):
                 if all([get_file_ext(d) == helper.MASK_EXT for d in os.listdir(ann_dir)]):
                     machine_masks_dir = ann_dir
                     machine_masks_dir_exists = True
-            if not instance_masks_dir_exists:
+            if not instance_masks_dir_exists and dir_exists(ann_dir):
                 if all([dir_exists(os.path.join(ann_dir, d)) for d in os.listdir(ann_dir)]):
                     instance_masks_dir = ann_dir
                     instance_masks_dir_exists = True

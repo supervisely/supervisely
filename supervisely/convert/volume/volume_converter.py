@@ -6,12 +6,12 @@ from typing import List, Optional, OrderedDict, Union
 from supervisely import (
     Api,
     ProjectMeta,
-    VolumeAnnotation,
     batched,
     generate_free_name,
     is_development,
     logger,
 )
+from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie_volume
@@ -19,6 +19,7 @@ from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie
 
 class VolumeConverter(BaseConverter):
     allowed_exts = ALLOWED_VOLUME_EXTENSIONS
+    modality = "volumes"
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -32,6 +33,7 @@ class VolumeConverter(BaseConverter):
             interpolation_dir: str = None,
         ):
             self._path: str = item_path
+            self._name: str = None
             self._ann_data: str = ann_data
             if volume_meta is None:
                 sitk_volume, meta = read_nrrd_serie_volume(item_path)

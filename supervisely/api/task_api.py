@@ -123,7 +123,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
             workspace_id = 23821
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -178,7 +178,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
             task_id = 121230
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -233,7 +233,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
             task_id = 121230
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -357,7 +357,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
             task_id = 121230
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -504,6 +504,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         proxy_keep_url: Optional[bool] = False,
         module_id: Optional[int] = None,
         redirect_requests: Optional[Dict[str, int]] = {},
+        limit_by_workspace: bool = False,
     ) -> Dict[str, Any]:
         """Starts the application task on the agent.
 
@@ -537,6 +538,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type module_id: int, optional
         :param redirect_requests: For internal usage only in Develop and Debug mode.
         :type redirect_requests: Dict[str, int], optional
+        :param limit_by_workspace: If set to True tasks will be only visible inside of the workspace
+            with specified workspace_id.
+        :type limit_by_workspace: bool, optional
         :return: Task information in JSON format.
         :rtype: Dict[str, Any]
 
@@ -571,6 +575,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if app_id is None and module_id is None:
             raise ValueError("One of the arguments (app_id or module_id) have to be defined")
 
+        advanced_settings = {
+            ApiField.LIMIT_BY_WORKSPACE: limit_by_workspace,
+        }
+
         data = {
             ApiField.AGENT_ID: agent_id,
             # "nodeId": agent_id,
@@ -584,6 +592,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             ApiField.TASK_NAME: task_name,
             ApiField.RESTART_POLICY: restart_policy,
             ApiField.PROXY_KEEP_URL: proxy_keep_url,
+            ApiField.ADVANCED_SETTINGS: advanced_settings,
         }
         if len(redirect_requests) > 0:
             data[ApiField.REDIRECT_REQUESTS] = redirect_requests

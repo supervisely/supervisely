@@ -1,9 +1,21 @@
+import os
+import sys
 import uuid
 from copy import deepcopy
 from typing import List
 
 import cv2
 import numpy as np
+
+
+class HiddenCocoPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 
 from supervisely import (
@@ -25,6 +37,8 @@ from supervisely import (
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.geometry.graph import KeypointsTemplate
 from supervisely.imaging.color import generate_rgb
+
+conflict_classes = []
 
 
 # COCO Convert funcs
@@ -58,7 +72,16 @@ def create_supervisely_annotation(
         curr_labels = []
         if segm is not None and len(segm) > 0:
             obj_class_polygon = meta.get_obj_class(renamed_class_name)
-
+            if obj_class_polygon.geometry_type != Polygon:
+                if obj_class_name not in conflict_classes:
+                    geometry_name = obj_class_polygon.geometry_type.geometry_name().capitalize()
+                    conflict_classes.append(obj_class_name)
+                    logger.warn(
+                        "Conflict in class geometry type: "
+                        f"object class '{obj_class_name}' (category ID: {category_id}) "
+                        f"has type '{geometry_name}', but expected type is 'Polygon'."
+                    )
+                continue
             if type(segm) is dict:
                 polygons = convert_rle_mask_to_polygon(object)
                 for polygon in polygons:
@@ -95,9 +118,7 @@ def create_supervisely_annotation(
                     nodes.append(node)
                 if len(nodes) != 0:
                     key = uuid.uuid4().hex
-                    label = Label(
-                        GraphNodes(nodes), obj_class_keypoints, binding_key=key
-                    )
+                    label = Label(GraphNodes(nodes), obj_class_keypoints, binding_key=key)
                     curr_labels.append(label)
         labels.extend(curr_labels)
         bbox = object.get("bbox")
@@ -106,12 +127,20 @@ def create_supervisely_annotation(
                 obj_class_name = add_tail(obj_class_name, "bbox")
             renamed_class_name = renamed_classes.get(obj_class_name, obj_class_name)
             obj_class_rectangle = meta.get_obj_class(renamed_class_name)
+            if obj_class_rectangle.geometry_type != Rectangle:
+                if obj_class_name not in conflict_classes:
+                    geometry_name = obj_class_rectangle.geometry_type.geometry_name().capitalize()
+                    conflict_classes.append(obj_class_name)
+                    logger.warn(
+                        "Conflict in class geometry type: "
+                        f"object class '{obj_class_name}' (category ID: {category_id}) "
+                        f"has type '{geometry_name}', but expected type is 'Rectangle'."
+                    )
+                continue
             if len(curr_labels) > 1:
                 for label in curr_labels:
                     bbox = label.geometry.to_bbox()
-                    labels.append(
-                        Label(bbox, obj_class_rectangle, binding_key=label.binding_key)
-                    )
+                    labels.append(Label(bbox, obj_class_rectangle, binding_key=label.binding_key))
             else:
                 if len(curr_labels) == 1:
                     key = curr_labels[0].binding_key
@@ -124,7 +153,7 @@ def create_supervisely_annotation(
 
 
 def convert_rle_mask_to_polygon(coco_ann):
-    import pycocotools.mask as mask_util # pylint: disable=import-error
+    import pycocotools.mask as mask_util  # pylint: disable=import-error
 
     if type(coco_ann["segmentation"]["counts"]) is str:
         coco_ann["segmentation"]["counts"] = bytes(
@@ -152,9 +181,7 @@ def convert_polygon_vertices(coco_ann, image_size):
         return []
     exteriors = []
     for polygon in polygons:
-        polygon = [
-            polygon[i * 2 : (i + 1) * 2] for i in range((len(polygon) + 2 - 1) // 2)
-        ]
+        polygon = [polygon[i * 2 : (i + 1) * 2] for i in range((len(polygon) + 2 - 1) // 2)]
         exterior_points = [(width, height) for width, height in polygon]
         if len(exterior_points) == 0:
             continue
@@ -173,8 +200,7 @@ def convert_polygon_vertices(coco_ann, image_size):
             if idx == idy or idy in id2del:
                 continue
             points_inside = [
-                cv2.pointPolygonTest(contours[0], (x, y), False) > 0
-                for x, y in exterior2
+                cv2.pointPolygonTest(contours[0], (x, y), False) > 0 for x, y in exterior2
             ]
             if all(points_inside):
                 interiors[idx].append(deepcopy(exteriors[idy]))
@@ -190,7 +216,7 @@ def convert_polygon_vertices(coco_ann, image_size):
 
 
 def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
-    from pycocotools.coco import COCO # pylint: disable=import-error
+    from pycocotools.coco import COCO  # pylint: disable=import-error
 
     coco: COCO
 
@@ -251,7 +277,7 @@ def generate_meta_from_annotation(coco, meta: ProjectMeta = None):
 
 
 def get_ann_types(coco) -> List[str]:
-    from pycocotools.coco import COCO # pylint: disable=import-error
+    from pycocotools.coco import COCO  # pylint: disable=import-error
 
     coco: COCO
 
@@ -301,7 +327,5 @@ def create_custom_geometry_config(num_keypoints=None, cat_labels=None, cat_edges
         for edge in cat_edges:
             template.add_edge(src=cat_labels[edge[0] - 1], dst=cat_labels[edge[1] - 1])
     else:
-        logger.warn(
-            "Edges can not be mapped without skeleton, please check your annotation"
-        )
+        logger.warn("Edges can not be mapped without skeleton, please check your annotation")
     return template

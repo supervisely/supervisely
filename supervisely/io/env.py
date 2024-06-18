@@ -413,7 +413,9 @@ def content_origin_update_interval() -> float:
     )
 
 
-def smart_cache_ttl(raise_not_found: Optional[bool] = False, default: Optional[int] = 120) -> int:
+def smart_cache_ttl(
+    raise_not_found: Optional[bool] = False, default: Optional[int] = 30 * 60
+) -> int:
     """Returns TTL of the smart cache from environment variable using following keys:
         - SMART_CACHE_TTL
 
@@ -553,4 +555,19 @@ def sly_cloud_server_address(raise_not_found: bool = True) -> str:
         postprocess_fn=lambda x: x,
         default=None,
         raise_not_found=raise_not_found,
+    )
+
+
+def mininum_instance_version_for_sdk() -> str:
+    """Returns minimum instance version required by the SDK from environment variable using following
+        - MINIMUM_INSTANCE_VERSION_FOR_SDK
+
+    :return: minimum instance version required by the SDK
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="sdk_minimum_instance_version",
+        keys=["MINIMUM_INSTANCE_VERSION_FOR_SDK"],
+        postprocess_fn=lambda x: x,
+        raise_not_found=False,
     )

@@ -2,14 +2,55 @@ from typing import Dict, List, Union
 
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
-from supervisely.app.widgets import (
-    Widget,
-)
-
-# arch_type_key = "archType"
+from supervisely.app.widgets import Widget
+from supervisely.io.fs import get_file_ext
 
 
 class PretrainedModelsSelector(Widget):
+    """Widget for selecting pretrained models from a list of models. Groups models by architecture and task type.
+
+    :param models_list: List of models to display in the widget. See usage example for the expected format.
+    :type models_list: List[Dict]
+    :param widget_id: Unique identifier for the widget. If not provided, a unique ID will be generated.
+    :type widget_id: str, optional
+    :param sort_models: Whether to sort the task types within each architecture by name. Default is False.
+    :type sort_models: bool, optional
+
+    Usage example:
+
+    .. code-block:: python
+
+        from supervisely.app.widgets import PretrainedModelsSelector
+
+        models_list = [
+            {
+                "Model": "YOLOv8n-det",
+                "Size (pixels)": "640",
+                "mAP": "37.3",
+                "params (M)": "3.2",
+                "FLOPs (B)": "8.7",
+                "meta": {
+                    "taskType": "object detection",
+                    "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n.pt",
+                },
+            },
+            {
+                "Model": "YOLOv8s-det",
+                "Size (pixels)": "640",
+                "mAP": "44.9",
+                "params (M)": "11.2",
+                "FLOPs (B)": "28.6",
+                "meta": {
+                    "taskType": "object detection",
+                    "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s.pt",
+                },
+            },
+        ]
+
+        pretrained_models_selector = PretrainedModelsSelector(models_list=models_list, sort_models=False)
+
+    """
+
     class Routes:
         ARCH_TYPE_CHANGED = "arch_type_changed"
         TASK_TYPE_CHANGED = "task_type_changed"
@@ -19,26 +60,31 @@ class PretrainedModelsSelector(Widget):
         self,
         models_list: List[Dict],
         widget_id: str = None,
+        sort_models: bool = False,
     ):
         self._api = Api.from_env()
 
         self._models = models_list
-        filtered_models = self._filter_and_sort_models(self._models)
+        filtered_models = self._filter_and_sort_models(self._models, sort_models)
 
         self._table_data = filtered_models
-        self._model_architectures = list(filtered_models.keys())
+        self._task_types = self._filter_task_types(list(filtered_models.keys()))
+        self._arch_types = []
+        # maintain correct order of arch types
+        for task_type in self._task_types:
+            for arch_type in filtered_models[task_type].keys():
+                if arch_type not in self._arch_types:
+                    self._arch_types.append(arch_type)
 
         self._arch_changes_handled = False
         self._task_changes_handled = False
         self._model_changes_handled = False
 
         self.__default_selected_arch_type = (
-            self._model_architectures[0] if len(self._model_architectures) > 0 else None
+            self._arch_types[0] if len(self._arch_types) > 0 else None
         )
         self.__default_selected_task_type = (
-            list(filtered_models[self.__default_selected_arch_type].keys())[0]
-            if self.__default_selected_arch_type is not None
-            else None
+            self._task_types[0] if len(self._task_types) > 0 else None
         )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -55,9 +101,17 @@ class PretrainedModelsSelector(Widget):
     def get_json_state(self) -> Dict:
         return {
             "selectedRow": 0,
+            "taskTypes": self._task_types,
+            "archTypes": self._arch_types,
             "selectedTaskType": self.__default_selected_task_type,
             "selectedArchType": self.__default_selected_arch_type,
         }
+
+    def get_available_task_types(self) -> List[str]:
+        return StateJson()[self.widget_id]["taskTypes"]
+
+    def get_available_arch_types(self) -> List[str]:
+        return StateJson()[self.widget_id]["archTypes"]
 
     def get_selected_task_type(self) -> str:
         return StateJson()[self.widget_id]["selectedTaskType"]
@@ -65,13 +119,13 @@ class PretrainedModelsSelector(Widget):
     def get_selected_arch_type(self) -> str:
         return StateJson()[self.widget_id]["selectedArchType"]
 
-    def get_selected_row(self, state=StateJson()) -> Union[List, None]:
-        arch_type = self.get_selected_arch_type()
+    def get_selected_row(self, state=StateJson()) -> Union[Dict, None]:
         task_type = self.get_selected_task_type()
-        if arch_type is None or task_type is None:
+        arch_type = self.get_selected_arch_type()
+        if task_type is None or arch_type is None:
             return
 
-        models = self._table_data[arch_type][task_type]
+        models = self._table_data[task_type][arch_type]
         if len(models) == 0:
             return
         widget_actual_state = state[self.widget_id]
@@ -87,22 +141,29 @@ class PretrainedModelsSelector(Widget):
             raise ValueError(
                 "Could not find model name. Make sure you have column 'Model' in your models list."
             )
-        checkpoint_filename = f"{model_name.lower()}.pt"
-        checkpoint_url = selected_model.get("meta", {}).get("weightsURL")
+        checkpoint_url = selected_model.get("meta", {}).get("weights_url")
         if checkpoint_url is None:
             pass
+
+        checkpoint_ext = get_file_ext(checkpoint_url)
+        checkpoint_name = f"{model_name.lower()}{checkpoint_ext}"
 
         task_type = self.get_selected_task_type()
         model_params = {
             "model_source": "Pretrained models",
             "task_type": task_type,
-            "checkpoint_name": checkpoint_filename,
+            "checkpoint_name": checkpoint_name,
             "checkpoint_url": checkpoint_url,
         }
 
-        if len(self._model_architectures) > 1:
+        if len(self._arch_types) > 1:
             arch_type = self.get_selected_arch_type()
             model_params["arch_type"] = arch_type
+
+        config_url = selected_model.get("meta", {}).get("config_url")
+        if config_url is not None:
+            model_params["config_url"] = config_url
+
         return model_params
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
@@ -112,13 +173,13 @@ class PretrainedModelsSelector(Widget):
             return widget_actual_state["selectedRow"]
 
     def set_active_arch_type(self, arch_type: str):
-        if arch_type not in self._model_architectures:
+        if arch_type not in self._arch_types:
             raise ValueError(f'Architecture type "{arch_type}" does not exist')
         StateJson()[self.widget_id]["selectedArchType"] = arch_type
         StateJson().send_changes()
 
     def set_active_task_type(self, task_type: str):
-        if task_type not in self._table_data[self.get_selected_arch_type()]:
+        if task_type not in self._task_types:
             raise ValueError(f'Task type "{task_type}" does not exist')
         StateJson()[self.widget_id]["selectedTaskType"] = task_type
         StateJson().send_changes()
@@ -129,38 +190,57 @@ class PretrainedModelsSelector(Widget):
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
-    def _filter_and_sort_models(self, models: List[Dict]) -> Dict:
+    def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
         filtered_models = {}
 
         for model in models:
-            # Extract architecture type and task type, defaulting to 'other' if not specified
-            arch_type = model.get("meta", {}).get("archType", "other")
-            task_type = model.get("meta", {}).get("taskType", model.get("taskType", "other"))
+            for key in model:
+                if isinstance(model[key], (int, float)):
+                    model[key] = str(model[key])
 
-            # Initialize nested dictionary structure if not already present
-            if arch_type not in filtered_models:
-                filtered_models[arch_type] = {}
-            if task_type not in filtered_models[arch_type]:
-                filtered_models[arch_type][task_type] = []
+            arch_type = model.get("meta", {}).get("arch_type", "other")
+            task_type = model.get("meta", {}).get("task_type", model.get("task_type", "other"))
 
-            # Add model to the appropriate category
-            filtered_models[arch_type][task_type].append(model)
+            if task_type not in filtered_models:
+                filtered_models[task_type] = {}
+            if arch_type not in filtered_models[task_type]:
+                filtered_models[task_type][arch_type] = []
+            filtered_models[task_type][arch_type].append(model)
 
-        # Sort the dictionary by architecture and then by task types
-        sorted_filtered_models = {
-            arch: {task: models for task, models in sorted(tasks.items())}
-            for arch, tasks in sorted(filtered_models.items())
-        }
-
+        if sort_models:
+            sorted_filtered_models = {
+                task: {arch: models for arch, models in sorted(archs.items())}
+                for task, archs in sorted(filtered_models.items())
+            }
+        else:
+            sorted_filtered_models = {
+                task: {arch: models for arch, models in archs.items()}
+                for task, archs in filtered_models.items()
+            }
         return sorted_filtered_models
 
-    def set_models(self, models_list: List[Dict]):
+    def _filter_task_types(self, task_types: List[str]):
+        order = ["object detection", "instance segmentation", "pose estimation"]
+        sorted_tt = [task for task in order if task in task_types]
+        other_tasks = sorted(set(task_types) - set(order))
+        sorted_tt.extend(other_tasks)
+        return sorted_tt
+
+    def set_models(self, models_list: List[Dict], sort_models: bool = False):
         self._models = models_list
-        filtered_models = self._filter_and_sort_models(self._models)
+        filtered_models = self._filter_and_sort_models(self._models, sort_models)
         self._table_data = filtered_models
-        self._model_architectures = list(filtered_models.keys())
+
+        self._task_types = self._filter_task_types(list(filtered_models.keys()))
+        self._arch_types = []
+        # maintain correct order of arch types
+        for task_type in self._task_types:
+            for arch_type in filtered_models[task_type].keys():
+                if arch_type not in self._arch_types:
+                    self._arch_types.append(arch_type)
+
         self.__default_selected_arch_type = (
-            self._model_architectures[0] if len(self._model_architectures) > 0 else None
+            self._arch_types[0] if len(self._arch_types) > 0 else None
         )
         self.__default_selected_task_type = (
             list(filtered_models[self.__default_selected_arch_type].keys())[0]
@@ -171,6 +251,8 @@ class PretrainedModelsSelector(Widget):
         DataJson().send_changes()
 
         StateJson()[self.widget_id]["selectedRow"] = 0
+        StateJson()[self.widget_id]["taskTypes"] = self._task_types
+        StateJson()[self.widget_id]["archTypes"] = self._arch_types
         StateJson()[self.widget_id]["selectedTaskType"] = self.__default_selected_task_type
         StateJson()[self.widget_id]["selectedArchType"] = self.__default_selected_arch_type
         StateJson().send_changes()

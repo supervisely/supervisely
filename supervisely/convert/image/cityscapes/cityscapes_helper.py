@@ -1,6 +1,4 @@
-from supervisely import Annotation, Label, PointLocation, Polygon, ProjectMeta, logger
-from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import get_file_name
+from supervisely import Annotation, Label, PointLocation, Polygon, ProjectMeta, logger, ObjClass
 from supervisely.io.json import load_json_file
 
 COLOR_MAP_FILE_NAME = "class_to_id.json"

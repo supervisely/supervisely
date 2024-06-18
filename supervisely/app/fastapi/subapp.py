@@ -5,6 +5,7 @@ from contextlib import suppress
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
+from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
@@ -497,11 +498,18 @@ def _init(
         return response
 
     if headless is False:
+        app.cached_template = None
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
-            return Jinja2Templates().TemplateResponse("index.html", {"request": request})
+            if request.query_params.get("ping", False) in ("true", "True", True, 1, "1"):
+                return JSONResponse(content={"message": "App is running"}, status_code=200)
+            if app.cached_template is None:
+                app.cached_template = Jinja2Templates().TemplateResponse(
+                    "index.html", {"request": request}
+                )
+            return app.cached_template
 
         @app.on_event("shutdown")
         def shutdown():
@@ -638,7 +646,7 @@ class Application(metaclass=Singleton):
                 from supervisely.app.content import ContentOrigin
 
                 ContentOrigin().start()
-                resp = run_sync(self.test_client.get("/"))
+                Thread(target=run_sync, args=(self.test_client.get("/"),)).start()
 
         server = self.get_server()
 

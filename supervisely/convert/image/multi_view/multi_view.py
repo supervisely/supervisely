@@ -4,11 +4,13 @@ from typing import Dict, List
 
 from tqdm import tqdm
 
-from supervisely import Api, ProjectMeta, generate_free_name, is_development, logger
+from supervisely import ProjectMeta, generate_free_name, is_development, logger
+from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.fs import get_file_ext, list_files
+from supervisely.project.project_settings import LabelingInterface
 
 
 class MultiViewImageConverter(ImageConverter):
@@ -23,7 +25,7 @@ class MultiViewImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multi_view labeling interface can be used to group images on single screen."""
-        return self._labeling_interface == "multi_view"
+        return self._labeling_interface == LabelingInterface.MULTIVIEW
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
@@ -52,7 +54,11 @@ class MultiViewImageConverter(ImageConverter):
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset = api.dataset.get_info_by_id(dataset_id)
-        api.project.set_multiview_settings(dataset.project_id)
+        project_id = dataset.project_id
+        api.project.set_multiview_settings(project_id)
+
+        meta_json = api.project.get_meta(project_id, with_settings=True)
+        meta = ProjectMeta.from_json(meta_json)
 
         existing_names = set([info.name for info in api.image.get_list(dataset.id)])
         items_count = sum(len(images) for images in self._group_map.values())
@@ -77,9 +83,12 @@ class MultiViewImageConverter(ImageConverter):
                     image = os.path.join(group_path, new_name)
                 images.append(image)
 
-            api.image.upload_multiview_images(
-                dataset.id, group_name, images, progress_cb=progress_cb
-            )
+            with ApiContext(
+                api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
+            ):
+                api.image.upload_multiview_images(
+                    dataset.id, group_name, images, progress_cb=progress_cb
+                )
 
         if log_progress:
             if is_development():

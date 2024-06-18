@@ -1,13 +1,15 @@
 import os
 
 from tqdm import tqdm
+from pathlib import Path
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely import Api, is_production, logger, Progress, ProjectType
+from supervisely._utils import is_production
+from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from supervisely.convert.image.csv.csv_converter import CSVConverter
 from supervisely.convert.image.image_converter import ImageConverter
@@ -27,6 +29,9 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
+from supervisely.project.project_type import ProjectType
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
 class ImportManager:
@@ -57,7 +62,7 @@ class ImportManager:
         self._input_data = self._prepare_input_data(input_data)
         self._unpack_archives(self._input_data)
         remove_junk_from_dir(self._input_data)
-    
+
         self._modality = project_type
         self._converter = self.get_converter()
         if isinstance(self._converter, CSVConverter):
@@ -155,7 +160,7 @@ class ImportManager:
                     file_path = os.path.join(root, file)
                     if is_archive(file_path=file_path):
                         try:
-                            new_path = os.path.splitext(os.path.normpath(file_path))[0]
+                            new_path = file_path.replace("".join(Path(file_path).suffixes), "")
                             unpack_archive(file_path, new_path)
                             archives.append(file_path)
                             new_paths_to_scan.append(new_path)
@@ -176,10 +181,7 @@ class ImportManager:
             progress_cb = progress.iters_done_report
         else:
             progress = tqdm(
-                total=total,
-                desc=message,
-                unit="B" if is_size else "it",
-                unit_scale=is_size
+                total=total, desc=message, unit="B" if is_size else "it", unit_scale=is_size
             )
             progress_cb = progress.update
         return progress, progress_cb

@@ -1,9 +1,19 @@
 import os
+from typing import List, Tuple
 
 import numpy as np
 
-from supervisely import logger, Annotation, Label, ObjClass, ObjClassCollection
+from supervisely import (
+    Annotation,
+    Label,
+    ObjClass,
+    ObjClassCollection,
+    ProjectMeta,
+    generate_free_name,
+    logger,
+)
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.image import read
 
 MASKS_EXTENSION = ".png"
@@ -34,7 +44,7 @@ default_classes_colors = {
 
 
 # returns mapping: (r, g, b) color -> some (row, col) for each unique color except black
-def get_col2coord(img):
+def get_col2coord(img: np.ndarray) -> dict:
     img = img.astype(np.int32)
     h, w = img.shape[:2]
     colhash = img[:, :, 0] * 256 * 256 + img[:, :, 1] * 256 + img[:, :, 2]
@@ -48,7 +58,7 @@ def get_col2coord(img):
     }
 
 
-def read_colors(colors_file):
+def read_colors(colors_file: str) -> Tuple[ObjClassCollection, dict]:
     if os.path.isfile(colors_file):
         logger.info("Will try to read segmentation colors from provided file.")
         in_lines = filter(None, map(str.strip, open(colors_file, "r").readlines()))
@@ -78,7 +88,13 @@ def read_colors(colors_file):
     return obj_classes, color2class_name
 
 
-def get_ann(item, color2class_name, renamed_classes=None):
+def get_ann(
+    item,
+    color2class_name: dict,
+    meta: ProjectMeta,
+    bbox_classes_map: dict,
+    renamed_classes=None,
+) -> Annotation:
     segm_path, inst_path = item.segm_path, item.inst_path
     height, width = item.shape
 
@@ -129,4 +145,81 @@ def get_ann(item, color2class_name, renamed_classes=None):
             f"Not all objects or classes are captured from source segmentation: {item.name}"
         )
 
+    if item.ann_data is not None:
+        bbox_labels = xml_to_sly_labels(item.ann_data, meta, bbox_classes_map, renamed_classes)
+        ann = ann.add_labels(bbox_labels)
+
     return ann
+
+
+def xml_to_sly_labels(
+    xml_path: str,
+    meta: ProjectMeta,
+    bbox_classes_map: dict,
+    renamed_classes=None,
+) -> List[Label]:
+    import xml.etree.ElementTree as ET
+
+    labels = []
+    with open(xml_path, "r") as in_file:
+        tree = ET.parse(in_file)
+        root = tree.getroot()
+
+        for obj in root.iter("object"):
+            cls_name = obj.find("name").text
+            cls_name = bbox_classes_map.get(cls_name, cls_name)
+            if renamed_classes and cls_name in renamed_classes:
+                cls_name = renamed_classes[cls_name]
+            obj_cls = meta.obj_classes.get(cls_name)
+            if obj_cls is None:
+                logger.warn(f"Class {cls_name} is not found in meta. Skipping.")
+                continue
+            xmlbox = obj.find("bndbox")
+            bbox_coords = [float(xmlbox.find(x).text) for x in ("ymin", "xmin", "ymax", "xmax")]
+            bbox = Rectangle(*bbox_coords)
+            label = Label(bbox, obj_cls)
+            labels.append(label)
+
+    return labels
+
+
+def update_meta_from_xml(
+    xml_path: str,
+    meta: ProjectMeta,
+    existing_cls_names: set,
+    bbox_classes_map: dict,
+) -> ProjectMeta:
+    import xml.etree.ElementTree as ET
+
+    with open(xml_path, "r") as in_file:
+        tree = ET.parse(in_file)
+        root = tree.getroot()
+
+        for obj in root.iter("object"):
+            class_name = obj.find("name").text
+            original_class_name = class_name
+            obj_cls = meta.obj_classes.get(class_name)
+            if obj_cls is None:
+                obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
+                meta = meta.add_obj_class(obj_cls)
+                existing_cls_names.add(class_name)
+                continue
+            elif obj_cls.geometry_type == Rectangle:
+                continue
+            class_name = class_name + "_bbox"
+            obj_cls = meta.obj_classes.get(class_name)
+            if obj_cls is None:
+                obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
+                meta = meta.add_obj_class(obj_cls)
+                existing_cls_names.add(class_name)
+            elif obj_cls.geometry_type == Rectangle:
+                pass
+            else:
+                class_name = generate_free_name(
+                    existing_cls_names, class_name, extend_used_names=True
+                )
+                obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
+                meta = meta.add_obj_class(obj_cls)
+            bbox_classes_map[original_class_name] = class_name
+
+    return meta

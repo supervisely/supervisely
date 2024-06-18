@@ -239,7 +239,8 @@ class Polyline(VectorGeometry):
         """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle
+        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
 
-        return [AnyGeometry, Rectangle, Bitmap, Polygon]
+        return [AnyGeometry, Rectangle, Bitmap, Polygon, AlphaMask]

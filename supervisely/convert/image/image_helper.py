@@ -2,7 +2,9 @@ import mimetypes
 from pathlib import Path
 
 import magic
+import numpy as np
 from PIL import Image
+from typing import Union
 
 from supervisely import logger
 from supervisely.imaging.image import read, write
@@ -52,10 +54,11 @@ def validate_mimetypes(name: str, path: str) -> list:
         return name
 
     new_img_ext = mimetypes.guess_extension(mimetype)
+    if new_img_ext == ".bin" or new_img_ext is None:
+        new_img_ext = ".jpeg"
     new_img_name = f"{get_file_name(name)}{new_img_ext}"
-    logger.warn(
-        f"Image {name} extension doesn't have correct mimetype {mimetype}. "
-        f"Image will be converted to {new_img_ext}"
+    logger.info(
+        f"Image {name} with mimetype {mimetype} will be converted to {new_img_ext}"
     )
 
     return new_img_name
@@ -74,3 +77,25 @@ def convert_to_jpg(path) -> tuple:
         image.convert("RGB").save(new_path)
     silent_remove(path)
     return new_path
+
+def read_tiff_image(path: str) -> Union[np.ndarray, None]:
+    """
+    Read tiff image.
+    Method will transpose image if it has shape (C, H, W) to (H, W, C).
+    """
+
+    import tifffile
+
+    logger.debug(f"Found tiff file: {path}.")
+    image = tifffile.imread(path)
+    name = get_file_name_with_ext(path)
+    if image is not None:
+        tiff_shape = image.shape
+        if image.ndim == 3:
+            if tiff_shape[0] < tiff_shape[1] and tiff_shape[0] < tiff_shape[2]:
+                image = image.transpose(1, 2, 0)
+                logger.warning(
+                    f"{name}: transposed shape from {tiff_shape} to {image.shape}"
+                )
+
+    return image

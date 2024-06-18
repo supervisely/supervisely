@@ -21,6 +21,7 @@ from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 
 class PointcloudEpisodeConverter(BaseConverter):
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
+    modality = "pointcloud episodes"
 
     class Item(BaseConverter.BaseItem):
         def __init__(
@@ -31,6 +32,7 @@ class PointcloudEpisodeConverter(BaseConverter):
             related_images: Optional[list] = None,
             custom_data: Optional[dict] = None,
         ):
+            self._name: str = None
             self._path = item_path
             self._frame_number = frame_number
             self._ann_data = ann_data

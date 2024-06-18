@@ -7,11 +7,6 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
 
 
-# suppress pycocotools logging and prints
-def suppressed_print(*args, **kwargs):
-    pass
-
-
 COCO_ANN_KEYS = ["images", "annotations"]
 
 
@@ -42,18 +37,17 @@ class COCOConverter(ImageConverter):
         return coco_helper.generate_meta_from_annotation(coco, meta)
 
     def validate_key_file(self, key_file_path) -> bool:
-        import pycocotools  # pylint: disable=import-error
+        from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        pycocotools.print = suppressed_print
-        coco = pycocotools.coco.COCO(key_file_path)  # wont throw error if not COCO
+        with coco_helper.HiddenCocoPrints():
+            coco = COCO(key_file_path)  # wont throw error if not COCO
         if not all(key in coco.dataset for key in COCO_ANN_KEYS):
             return False
         return True
 
     def validate_format(self) -> bool:
-        import pycocotools  # pylint: disable=import-error
+        from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        pycocotools.print = suppressed_print
 
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
@@ -75,7 +69,8 @@ class COCOConverter(ImageConverter):
         meta = ProjectMeta()
         for ann_path in ann_paths:
             try:
-                coco = pycocotools.coco.COCO(ann_path)
+                with coco_helper.HiddenCocoPrints():
+                    coco = COCO(ann_path)
             except:
                 continue
             if not all(key in coco.dataset for key in COCO_ANN_KEYS):
@@ -92,13 +87,14 @@ class COCOConverter(ImageConverter):
             # create ann dict
             for image_id, image_info in coco_items:
                 image_name = image_info["file_name"]
+                if "/" in image_name:
+                    image_name = os.path.basename(image_name)
                 coco_ann = coco_anns[image_id]
                 image_anns = ann_dict.get(image_name, None)
                 if image_anns is None:
                     ann_dict[image_name] = coco_ann
                 else:
                     ann_dict[image_name].extend(coco_ann)
-            detected_ann_cnt += 1
 
         # create Items
         self._items = []
@@ -109,6 +105,7 @@ class COCOConverter(ImageConverter):
                 # is_valid = self.validate_ann_file(ann_data, self._meta) in case of more detailed validation
                 # if is_valid:
                 item.ann_data = ann_data
+                detected_ann_cnt += 1
             self._items.append(item)
 
         self._meta = meta

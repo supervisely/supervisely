@@ -197,6 +197,9 @@ class GridGallery(Widget):
         self._update_annotations()
         self._update_project_meta()
 
+        DataJson().send_changes()
+        StateJson().send_changes()
+
     @property
     def loading(self):
         return self._loading

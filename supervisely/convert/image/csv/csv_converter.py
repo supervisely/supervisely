@@ -8,7 +8,6 @@ from tqdm import tqdm
 import supervisely.convert.image.csv.csv_helper as csv_helper
 from supervisely import (
     Annotation,
-    Api,
     batched,
     generate_free_name,
     is_development,
@@ -16,6 +15,7 @@ from supervisely import (
     ProjectMeta,
     TagCollection,
 )
+from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
@@ -268,6 +268,8 @@ class CSVConverter(ImageConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
+        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        project_id = dataset_info.project_id
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -320,7 +322,10 @@ class CSVConverter(ImageConverter):
                 progress_ann_cb = progress_ann.update
             else:
                 progress_ann_cb = None
-            api.annotation.upload_anns(img_ids, anns, progress_ann_cb)
+            with ApiContext(
+                api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
+            ):
+                api.annotation.upload_anns(img_ids, anns, progress_ann_cb)
 
         if log_progress:
             if is_development():

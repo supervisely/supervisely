@@ -11,12 +11,13 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from urllib.parse import urljoin, urlparse
 
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
+from pkg_resources import parse_version
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -49,11 +50,13 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_development
+from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
 )
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
@@ -64,6 +67,77 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
+
+class ApiContext:
+    """
+    Context manager for the API object for optimization purposes.
+    Use this context manager when you need to perform a series of operations on the same project or dataset.
+    It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
+
+    :param api: API object.
+    :type api: :class:`Api`
+    :param project_id: Project ID.
+    :type project_id: int, optional
+    :param dataset_id: Dataset ID.
+    :type dataset_id: int, optional
+    :param project_meta: ProjectMeta object.
+    :type project_meta: :class:`ProjectMeta`, optional
+    :raises: :class:`RuntimeError`, if api is None.
+
+    :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            with ApiContext(
+                api,
+                project_id=33333,
+                dataset_id=99999,
+                project_meta=project_meta,
+                with_alpha_masks=True,
+            ):
+                api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                # another code here
+    """
+
+    def __init__(
+        self,
+        api: Api,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        with_alpha_masks: Optional[bool] = True,
+    ):
+        if api is None:
+            raise RuntimeError("Api object is None")
+        self.api = api
+        self.project_id = project_id
+        self.dataset_id = dataset_id
+        self.project_meta = project_meta
+        self.with_alpha_masks = with_alpha_masks
+
+    def __enter__(self):
+        self.api.optimization_context = {
+            "project_id": self.project_id,
+            "dataset_id": self.dataset_id,
+            "project_meta": self.project_meta,
+            "with_alpha_masks": self.with_alpha_masks,
+        }
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.api.optimization_context = {}
 
 
 class UserSession:
@@ -175,6 +249,13 @@ class Api:
     :type external_logger: logger, optional
     :param ignore_task_id:
     :type ignore_task_id: bool, optional
+    :param api_server_address: Address of the API server.
+    :type api_server_address: str, optional
+    :param check_instance_version: Check if the given version is lower or equal to the current
+        Supervisely instance version. If set to True, will try to read the version from the environment variable
+        "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
+        If set to False, will skip the check.
+    :type check_instance_version: bool or str, optional
     :raises: :class:`ValueError`, if token is None or it length != 128
     :Usage example:
 
@@ -204,6 +285,7 @@ class Api:
         external_logger: Optional[Logger] = None,
         ignore_task_id: Optional[bool] = False,
         api_server_address: str = None,
+        check_instance_version: Union[bool, str] = False,
     ):
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
@@ -241,6 +323,7 @@ class Api:
             self.headers["x-task-id"] = self.task_id
         self.context = {}
         self.additional_fields = {}
+        self.optimization_context = {}
 
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
@@ -280,6 +363,9 @@ class Api:
 
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
+        if check_instance_version:
+            self._check_version(None if check_instance_version is True else check_instance_version)
+
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
         """ """
@@ -294,6 +380,7 @@ class Api:
         retry_count: int = 10,
         ignore_task_id: bool = False,
         env_file: str = SUPERVISELY_ENV_FILE,
+        check_instance_version: Union[bool, str] = False,
     ) -> Api:
         """
         Initialize API use environment variables.
@@ -302,8 +389,11 @@ class Api:
         :type retry_count: int
         :param ignore_task_id:
         :type ignore_task_id: bool
-        :param path: Path to your .env file.
-        :type path: str
+        :param env_file: Path to your .env file.
+        :type env_file: str
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            version of the Supervisely instance.
+        :type check_instance_version: bool or str, optional
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
@@ -313,7 +403,7 @@ class Api:
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             api = sly.Api.from_env()
@@ -355,6 +445,7 @@ class Api:
             token,
             retry_count=retry_count,
             ignore_task_id=ignore_task_id,
+            check_instance_version=check_instance_version,
         )
 
     def add_header(self, key: str, value: str) -> None:
@@ -388,6 +479,122 @@ class Api:
         :rtype: :class:`NoneType`
         """
         self.additional_fields[key] = value
+
+    @property
+    def instance_version(self) -> str:
+        """Return Supervisely instance version, e.g. "6.9.13".
+        If the version cannot be determined, return "unknown".
+
+        :return: Supervisely instance version or "unknown" if the version cannot be determined.
+        :rtype: str
+
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                print(api.instance_version)
+                # Output:
+                # '6.9.13'
+        """
+        try:
+            version = self.post("instance.version", {}).json().get(ApiField.VERSION)
+        except Exception as e:
+            logger.warning(f"Failed to get instance version from server: {e}")
+            version = "unknown"
+        return version
+
+    def is_version_supported(self, version: Optional[str] = None) -> Union[bool, None]:
+        """Check if the given version is lower or equal to the current Supervisely instance version.
+        If the version omitted, will try to read it from the environment variable "MINIMUM_INSTANCE_VERSION_FOR_SDK".
+        If the version is lower or equal, return True, otherwise False.
+        If the version of the instance cannot be determined, return False.
+
+        :param version: Version to check.
+        :type version: Optional[str], e.g. "6.9.13"
+        :return: True if the given version is lower or equal to the current Supervisely
+            instance version, otherwise False.
+        :rtype: bool
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+            version_to_check = "6.9.13"
+            print(api.is_version_supported(version_to_check))
+            # Output:
+            # True
+        """
+        instance_version = self.instance_version
+        if instance_version == "unknown":
+            return
+
+        if not version:
+            version = sly_env.mininum_instance_version_for_sdk()
+            if not version:
+                logger.debug(
+                    "Cant find MINIMUM_INSTANCE_VERSION_FOR_SDK in environment variables, "
+                    "check of the minimum version is skipped."
+                )
+                return
+
+        try:
+            version = str(version)
+        except Exception:
+            logger.warning(
+                f"Provided version {version!r} is not a valid version string "
+                f"(expected format: 'x.y.z'). The output of this function will be incorrect."
+            )
+            return
+
+        return parse_version(instance_version) >= parse_version(version)
+
+    def _check_version(self, version: Optional[str] = None) -> None:
+        """Check if the given version is compatible with the current Supervisely instance version.
+        Compatible means that the given version is lower or equal to the current Supervisely instance version.
+        If check was not successful, log a debug message, if the version is not supported, log a warning message.
+
+        :param version: Version to check.
+        :type version: Optional[str], e.g. "6.9.13"
+        """
+
+        # Since it's a informational message, we don't raise an exception if the check fails
+        # in any case, we don't want to interrupt the user's workflow.
+        try:
+            check_result = self.is_version_supported(version)
+            if check_result is None:
+                logger.debug(
+                    "Failed to check if the instance version meets the minimum requirements "
+                    "of current SDK version. "
+                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                    "Usually you can ignore this message, but if you're adding new features, "
+                    "which will require upgrade of the Supervisely instance, you should update "
+                    "it supervisely.__init__.py file."
+                )
+            if check_result is False:
+                message = (
+                    "The current version of the Supervisely instance is not supported by the SDK. "
+                    "Some features may not work correctly."
+                )
+                if not is_community():
+                    message += (
+                        " Please upgrade the Supervisely instance to the latest version (recommended) "
+                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
+                        "Refer to this docs for more information: "
+                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
+                        "Check out changelog for the latest version of Supervisely: "
+                        "https://app.supervisely.com/changelog"
+                    )
+                    logger.warning(message)
+        except Exception as e:
+            logger.debug(
+                f"Tried to check version compatibility between SDK and instance, but failed: {e}"
+            )
 
     def post(
         self,
@@ -441,6 +648,7 @@ class Api:
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                    self._check_version()
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -588,7 +796,7 @@ class Api:
                 message = details[0].get(MESSAGE_FIELD, default_message)
 
             return error, message
-        except Exception as e:
+        except Exception:
             return "", ""
 
     def pop_header(self, key: str) -> str:
@@ -621,6 +829,7 @@ class Api:
         password: str,
         override: bool = False,
         env_file: str = SUPERVISELY_ENV_FILE,
+        check_instance_version: Union[bool, str] = False,
     ) -> Api:
         """
         Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
@@ -638,6 +847,9 @@ class Api:
         :type override: bool, optional
         :param env_file: Path to your .env file.
         :type env_file: str, optional
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            version of the Supervisely instance.
+        :type check_instance_version: bool or str, optional
         :return: Api object
 
         :Usage example:
@@ -657,7 +869,12 @@ class Api:
         del password
         gc.collect()
 
-        api = cls(session.server_address, session.api_token, ignore_task_id=True)
+        api = cls(
+            session.server_address,
+            session.api_token,
+            ignore_task_id=True,
+            check_instance_version=check_instance_version,
+        )
 
         if override:
             if os.path.isfile(env_file):

@@ -1,6 +1,7 @@
 # coding: utf-8
 
 # fields names
+ALPHA_MASK = "alpha_mask"
 BITMAP = "bitmap"
 MASK_3D = "mask_3d"
 COLS = "cols"
