@@ -85,7 +85,6 @@ class ApiContext:
     :raises: :class:`RuntimeError`, if api is None.
     :Usage example:
          .. code-block:: python
-
             import os
             from dotenv import load_dotenv
 
