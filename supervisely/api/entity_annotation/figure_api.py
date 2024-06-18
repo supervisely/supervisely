@@ -373,6 +373,29 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
+    def create_bulk(self, entity_id, figures_json):
+        """
+        Create figures in Supervisely.
+
+        :param entity_id: Entity ID
+        :type entity_id: int
+        :param figures_json: List of figures in Supervisely JSON format.
+        :type figures_json: List[dict]
+        :return: List of figure IDs.
+        """
+
+        figure_ids = []
+        if len(figures_json) == 0:
+            return
+        for batch_jsons in batched(figures_json, batch_size=100):
+            response = self._api.post(
+                "figures.bulk.add",
+                {ApiField.ENTITY_ID: entity_id, ApiField.FIGURES: batch_jsons},
+            )
+            for resp_obj in response.json():
+                figure_ids.append(resp_obj[ApiField.ID])
+        return figure_ids
+
     def download(
         self,
         dataset_id: int,
