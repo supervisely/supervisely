@@ -1,32 +1,19 @@
 import io
 import os
+import socket
 import tarfile
 import tempfile
-import time
-from collections import defaultdict
 from datetime import datetime
 from typing import List, NamedTuple, Tuple, Union
 
 import requests
 import zstd
 
-from supervisely._utils import batched, logger
+from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
-from supervisely.io.fs import archive_directory, remove_dir, silent_remove
-from supervisely.project.project_meta import ProjectMeta
-
-
-def timing_decorator(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        logger.info(f"Time taken by {func.__name__}: {end_time - start_time} seconds")
-        return result
-
-    return wrapper
+from supervisely.io.fs import remove_dir, silent_remove
 
 
 class VersionInfo(NamedTuple):
@@ -105,7 +92,6 @@ class DataVersion(ModuleApiBase):
         if self.project_info.version is None:
             self._create_warning_system_file()
 
-    @timing_decorator  # TODO remove after testing
     def get_list(self, project_id: int) -> List[VersionInfo]:
         """
         Get list of project versions.
@@ -120,7 +106,6 @@ class DataVersion(ModuleApiBase):
             {ApiField.PROJECT_ID: project_id},
         )
 
-    @timing_decorator  # TODO remove after testing
     def load_json(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
         """
         Get project versions map from storage.
@@ -143,7 +128,6 @@ class DataVersion(ModuleApiBase):
             versions = {"format": self.__version_format}
         return versions
 
-    @timing_decorator  # TODO remove after testing
     def upload_json(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
         Save project versions to storage.
@@ -168,12 +152,11 @@ class DataVersion(ModuleApiBase):
         else:
             remove_dir(temp_dir)
 
-    @timing_decorator  # TODO remove after testing
     def create(
         self,
         project_info: Union[ProjectInfo, int],
-        version_title: str = "",
-        version_description: str = "",
+        version_title: str = None,
+        version_description: str = None,
     ):
         """
         Create a new project version.
@@ -189,31 +172,35 @@ class DataVersion(ModuleApiBase):
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
+
+        community = False
+        try:
+            ip_address = socket.gethostbyname(self._api.server_address)
+            if ip_address == "":
+                community = True
+        except socket.gaierror:
+            if (
+                "app.supervise.ly" in self._api.server_address
+                or "app.supervisely.com" in self._api.server_address
+            ):
+                community = True
+        if community:
+            if self._api.team.get_info_by_id(project_info.team_id).usage.plan == "free":
+                raise RuntimeError("Project versioning is not available for free plan")
+
         self.initialize(project_info)
         path = self._generate_save_path()
         latest = self._get_latest_id()
-        version_id, commit_token = self.reserve(project_info.id)  # TODO add title and description
+        version_id, commit_token = self.reserve(project_info.id)
         if version_id is None and commit_token is None:
             return latest
         try:
-            current_state = self._get_current_state()
-            # previous_state = (
-            #     self.versions[str(latest)]["state"] if latest else {"datasets": {}, "items": {}}
-            # )
-            # changes = self._compute_changes(previous_state, current_state)
-            changes = {}
-            file_info = self._upload_files(
-                path, changes=changes, all_files=True  # fix changes if uncomment previous line
-            )
+            file_info = self._upload_files(path)
             self.versions[version_id] = {
                 "path": path,
                 "updated_at": project_info.updated_at,
                 "previous": latest,
-                "state": current_state,
             }
-            if changes != {}:
-                self.versions[version_id]["changes"] = changes
-
             self.versions["latest"] = version_id
             self.upload_json(project_info, initialize=False)
         except Exception as e:
@@ -226,11 +213,20 @@ class DataVersion(ModuleApiBase):
             commit_token,
             project_info.updated_at,
             file_info.id,
+            title=version_title,
+            description=version_description,
         )
         return version_id
 
-    @timing_decorator  # TODO remove after testing
-    def commit(self, version_id: int, commit_token: str, updated_at: str, file_id: int):
+    def commit(
+        self,
+        version_id: int,
+        commit_token: str,
+        updated_at: str,
+        file_id: int,
+        title: str = None,
+        description: str = None,
+    ):
         """
         Commit a project version.
 
@@ -242,22 +238,28 @@ class DataVersion(ModuleApiBase):
         :type updated_at: str
         :param file_id: File ID
         :type file_id: int
+        :param title: Version title
+        :type title: str
+        :param description: Version description
+        :type description: str
         :return: None
         """
-        response = self._api.post(
-            "projects.versions.commit",
-            {
-                ApiField.ID: version_id,
-                ApiField.COMMIT_TOKEN: commit_token,
-                ApiField.PROJECT_UPDATED_AT: updated_at,
-                ApiField.TEAM_FILE_ID: file_id,
-            },
-        )
+        body = {
+            ApiField.ID: version_id,
+            ApiField.COMMIT_TOKEN: commit_token,
+            ApiField.PROJECT_UPDATED_AT: updated_at,
+            ApiField.TEAM_FILE_ID: file_id,
+        }
+        if title:
+            body[ApiField.TITLE] = title
+        if description:
+            body[ApiField.DESCRIPTION] = description
+
+        response = self._api.post("projects.versions.commit", body)
         commit_info = response.json()
         if not commit_info.get("success"):
             raise RuntimeError("Failed to commit version")
 
-    @timing_decorator  # TODO remove after testing
     def reserve(self, project_id: int) -> Tuple[int, str]:
         """
         Reserve a project for versioning.
@@ -285,7 +287,6 @@ class DataVersion(ModuleApiBase):
 
         return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
 
-    @timing_decorator  # TODO remove after testing
     def cancel_reservation(self, version_id: int, commit_token: str):
         """
         Cancel version reservation for a project.
@@ -303,54 +304,6 @@ class DataVersion(ModuleApiBase):
         reserve_info = response.json()
         return True if reserve_info.get("success") else False
 
-    @timing_decorator  # TODO remove after testing
-    def restore_via_diffs(self, project_info: Union[ProjectInfo, int], target_version: int):
-        """
-        Restore project to a specific version.
-
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
-        :param target_version: Version ID to restore to
-        :type target_version: int
-        :return: None
-        """
-
-        self.initialize(project_info)
-
-        if str(target_version) not in self.versions:
-            raise ValueError(f"Version {target_version} does not exist")
-
-        # Start from the latest version and walk back to the target version
-        version_chain = []
-        current_version = self._get_latest_id()
-
-        compare_version = current_version
-        while compare_version != target_version:
-            version_chain.append(compare_version)
-            compare_version = self.versions[str(compare_version)]["previous"]
-
-        # Apply changes in reverse order
-        for version_id in version_chain:
-            files_version = self.versions[str(current_version)]["previous"]
-            if files_version is None:
-                logger.info(
-                    f"Project can't be restored to version {version_id} because it's already on the initial version"
-                )
-                return
-
-            extracted_path = self._download_and_extract_version(
-                self.versions[str(files_version)]["path"]
-            )
-            self._apply_changes(self.versions[str(version_id)], extracted_path, reverse=True)
-        # TODO Do we need to set previous version or create new one?
-        self.commit(
-            target_version,
-            None,  # ? how to get commit token
-            self.project_info.updated_at,
-            self.versions[str(target_version)]["path"],
-        )
-
-    @timing_decorator  # TODO remove after testing
     def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
         """
         Restore project to a specific version.
@@ -362,6 +315,7 @@ class DataVersion(ModuleApiBase):
         :return: ProjectInfo object of the restored project
         :rtype: ProjectInfo or None
         """
+        from supervisely.project.project import Project
 
         self.initialize(project_info)
 
@@ -381,28 +335,10 @@ class DataVersion(ModuleApiBase):
             )
             return
 
-        extracted_path = self._download_and_extract_version(backup_files)
-        project_state = self.versions.pop(str(target_version)).get("state")
-        new_project_info = self._api.project.create(
-            self.project_info.workspace_id,
-            self.project_info.name + f"_v{target_version}",
-            change_name_if_conflict=True,
-        )
-        meta_json = json.load_json_file(os.path.join(extracted_path, "meta.json"))
-        self._api.project.update_meta(new_project_info.id, ProjectMeta.from_json(meta_json))
-        dataset_mapping = self._restore_datasets(project_state["datasets"], new_project_info.id)
-        self._restore_items(
-            project_state["items"], dataset_mapping, project_state["datasets"], extracted_path
-        )
-        custom_data = new_project_info.custom_data
-        custom_data["restored_from"] = {
-            "project_id": self.project_info.id,
-            "version": target_version,
-        }
-        self._api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
+        bin_io = self._download_and_extract_version(backup_files)
+        new_project_info = Project.upload_bin(self._api, bin_io, self.project_info.workspace_id)
         return new_project_info
 
-    @timing_decorator  # TODO remove after testing
     def _create_warning_system_file(self):
         """
         Create a file in the system directory to indicate that you cannot manually modify its contents.
@@ -414,177 +350,28 @@ class DataVersion(ModuleApiBase):
                 f.write("This directory is managed by Supervisely. Do not modify its contents.")
             self._api.file.upload(self.project_info.team_id, temp_file.name, warning_file)
 
-    @timing_decorator  # TODO remove after testing
     def _download_and_extract_version(self, path: str) -> str:
         """
         Download and extract a version from the repository.
 
         :param path: Path to the version file
         :type path: str
-        :return: Local path to the version directory with extracted files
-        :rtype: str
+        :return: Binary IO object with extracted file
+        :rtype: io.BytesIO
         """
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
         self._api.file.download(self.project_info.team_id, path, local_path)
-        extract_dir = os.path.join(temp_dir, "extracted")
         with open(local_path, "rb") as zst:
             decompressed_data = zstd.decompress(zst.read())
             with tarfile.open(fileobj=io.BytesIO(decompressed_data)) as tar:
-                tar.extractall(extract_dir)
-        return extract_dir
+                file = tar.extractfile("version.bin")
+                if file:
+                    data = file.read()
+                    bin_io = io.BytesIO(data)
+                    return bin_io
+        raise RuntimeError("Failed to extract version")
 
-    @timing_decorator  # TODO remove after testing
-    def _apply_changes(self, version: dict, extracted_version_path: str, reverse: bool = False):
-        """
-        Apply changes between nearby versions to the project.
-
-        :param version: Information about the version
-        :type version: dict
-        :param extracted_version_path: Local path to the version directory with extracted files
-        :type extracted_version_path: str
-        :param reverse: Apply changes in reverse order. For example, to restore a version from 5 to 6, set reverse to True.
-        :type reverse: bool
-        :return: None
-        """
-
-        changes = version["changes"]
-        state = version["state"]
-        dataset_infos = state["datasets"]
-        datasets_to_delete = list()
-        items_to_delete = list()
-        datasets_to_restore = dict()
-        items_to_restore = dict()
-        datasets_to_update = dict()
-        items_to_update = dict()
-
-        for state_type in ["datasets", "items"]:
-            # collect changes
-            added, deleted = ("deleted", "added") if reverse else ("added", "deleted")
-
-            for id, info in changes[added][state_type].items():
-                if state_type == "datasets":
-                    datasets_to_restore[id] = info
-                else:
-                    items_to_restore[id] = info
-
-            for id, info in changes[deleted][state_type].items():
-                if state_type == "datasets":
-                    datasets_to_delete.append(id)
-                elif state_type == "items" and info["parent"] not in datasets_to_delete:
-                    items_to_delete.append(id)
-
-            for id, info in changes["modified"][state_type].items():
-                if state_type == "datasets":
-                    datasets_to_update[id] = info
-                else:
-                    items_to_update[id] = info
-
-        # apply changes
-        meta_json = json.load_json_file(os.path.join(extracted_version_path, "meta.json"))
-        self._api.project.update_meta(self.project_info.id, ProjectMeta.from_json(meta_json))
-        for id in datasets_to_delete:
-            self._api.dataset.remove(id)
-        self._api.image.remove_batch(items_to_delete)
-        dataset_mapping = self._restore_datasets(datasets_to_restore)
-        self._restore_items(
-            items_to_restore, dataset_mapping, dataset_infos, extracted_version_path
-        )
-        for id, info in datasets_to_update.items():
-            self._api.dataset.update(id, info["name"])
-        ann_data = self._compute_ann_data(state, items_to_update, extracted_version_path)
-        for dataset_id, data in ann_data.items():
-            self._api.annotation.upload_paths(data["img_ids"], data["ann_paths"])
-
-    @timing_decorator  # TODO remove after testing
-    def _compute_ann_data(self, state: dict, items_to_update: dict, version_path: str):
-        """
-        Compute lists of image IDs and annotation paths for items in the project that were added or modified in the current version.
-        Results are grouped by dataset ID.
-
-        :param state: Project state map
-        :type state: dict
-        :param items_to_update: Items to update
-        :type items_to_update: dict
-        :param version_path: Local path to the version directory with extracted files
-        :type version_path: str
-        :return: Dictionary with dataset ids as keys and another dictionary as values.
-            The inner dictionary has keys 'img_ids' and 'ann_paths' with corresponding lists as values.
-        """
-
-        # Group img_ids by dataset_id
-        img_ids_by_dataset = defaultdict(list)
-        for img_id in items_to_update:
-            dataset_id = state["items"][str(img_id)]["parent"]
-            img_ids_by_dataset[dataset_id].append(int(img_id))
-
-        # Compute annotation paths for each dataset
-        data_by_datasets = {}
-        for dataset_id, img_ids in img_ids_by_dataset.items():
-            dataset_name = state["datasets"][str(dataset_id)]["name"]
-            ann_paths = [
-                os.path.join(
-                    version_path, dataset_name, "ann", state["items"][str(img_id)]["name"] + ".json"
-                )
-                for img_id in img_ids
-            ]
-            data_by_datasets[dataset_id] = {"img_ids": img_ids, "ann_paths": ann_paths}
-
-        return data_by_datasets
-
-    @timing_decorator  # TODO remove after testing
-    def _compute_changes(self, old_state: dict, new_state: dict):
-        """
-        Compute changes between two project version states.
-
-        :param old_state: Old project state map
-        :type old_state: dict
-        :param new_state: New project state map
-        :type new_state: dict
-        :return: Changes between old and new states
-        :rtype: dict
-        """
-
-        changes = {
-            "added": {"datasets": {}, "items": {}},
-            "deleted": {"datasets": {}, "items": {}},
-            "modified": {"datasets": {}, "items": {}},
-        }
-
-        for state_type in ["datasets", "items"]:
-            added = {
-                k: v
-                for k, v in new_state[state_type].items()
-                if str(k) not in old_state[state_type]
-            }
-            deleted = {
-                k: v
-                for k, v in old_state[state_type].items()
-                if int(k) not in new_state[state_type]
-            }
-
-            if state_type == "datasets":
-                modified = {
-                    k: v
-                    for k, v in new_state[state_type].items()
-                    if str(k) in old_state[state_type]
-                    and old_state[state_type][str(k)]["name"] != v["name"]
-                }
-            else:  # state_type == "items"
-                modified = {
-                    k: v
-                    for k, v in new_state[state_type].items()
-                    if str(k) in old_state[state_type]
-                    and old_state[state_type][str(k)]["updated_at"] != v["updated_at"]
-                }
-
-            changes["added"][state_type] = added
-            changes["deleted"][state_type] = deleted
-            changes["modified"][state_type] = modified
-
-        return changes
-
-    @timing_decorator  # TODO remove after testing
     def _generate_save_path(self):
         """
         Generate a path for the new version archive where it will be saved in the Team Files.
@@ -596,7 +383,6 @@ class DataVersion(ModuleApiBase):
         path = os.path.join(self.project_dir, timestamp + ".tar.zst")
         return path
 
-    @timing_decorator  # TODO remove after testing
     def _get_latest_id(self):
         """
         Get the ID of the latest version from the versions map (versions.json).
@@ -606,202 +392,43 @@ class DataVersion(ModuleApiBase):
             return None
         return latest
 
-    @timing_decorator  # TODO remove after testing
-    def _get_current_state(self):
+    def _upload_files(self, path: str):
         """
-        Scan project items and datasets to create a map of project state.
-
-        :return: Project state map
-        :rtype: dict
-        """
-
-        current_state = {"datasets": {}, "items": {}}
-
-        for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
-            parent_id = parents[-1] if parents else 0
-            current_state["datasets"][dataset_info.id] = {
-                "name": dataset_info.name,
-                "parent": parent_id,
-            }
-
-            for image_list in self._api.image.get_list_generator(dataset_info.id):
-                for image in image_list:
-                    current_state["items"][image.id] = {
-                        "name": image.name,
-                        "hash": image.hash,
-                        "parent": dataset_info.id,
-                        "updated_at": image.updated_at,
-                    }
-        return current_state
-
-    @timing_decorator  # TODO remove after testing
-    def _restore_datasets(self, datasets: dict, project_id: int = None) -> dict:
-        """
-        Restore datasets from the project state.
-
-        :param datasets: Datasets to restore
-        :type datasets: dict
-        :param project_id: Project ID. Use another project ID if you want to restore datasets to another project. Compatible with the restore_v2 method.
-        :type project_id: int
-        :return: Dataset mapping of old IDs to new IDs
-        :rtype: dict
-        """
-        if project_id is None:
-            project_id = self.project_info.id
-
-        dataset_mapping = {}
-        # Sort datasets by parent, so that datasets with parent = 0 are processed first
-        sorted_datasets = sorted(datasets.items(), key=lambda dataset: dataset[1]["parent"])
-        for dataset in sorted_datasets:
-            id, info = dataset
-            parent_id = info["parent"] if info["parent"] != 0 else None
-            dataset_info = self._api.dataset.create(project_id, info["name"], parent_id=parent_id)
-            if dataset_info is None:
-                raise RuntimeError(f"Failed to restore dataset {info['name']}")
-            dataset_mapping[id] = dataset_info.id
-        return dataset_mapping
-
-    @timing_decorator  # TODO remove after testing
-    def _restore_items(
-        self, items: dict, dataset_mapping: dict, dataset_infos: dict, version_path: str
-    ):
-        """
-        Restore items that were deleted since the previous version.
-
-        :param items: Items to restore
-        :type items: dict
-        :param dataset_mapping: Dataset mapping of old IDs to new IDs in case datasets were restored.
-        :type dataset_mapping: dict
-        :param dataset_infos: Dataset infos
-        :type dataset_infos: dict
-        :param version_path: Local path to the version directory with extracted files
-        :type version_path: str
-        :return: None
-        """
-
-        items_by_dataset = defaultdict(lambda: {"names": [], "hashes": []})
-
-        for item in items.items():
-            _, info = item
-            items_by_dataset[info["parent"]]["names"].append(info["name"])
-            items_by_dataset[info["parent"]]["hashes"].append(info["hash"])
-        for dataset_id, items in items_by_dataset.items():
-            if str(dataset_id) in dataset_mapping:
-                dataset_name = dataset_infos[str(dataset_id)]["name"]
-                dataset_id = dataset_mapping[str(dataset_id)]
-            file_infos = self._api.image.upload_hashes(dataset_id, items["names"], items["hashes"])
-            ids = []
-            paths = []
-            for file_info in file_infos:
-                ids.append(file_info.id)
-                ann_path = os.path.join(
-                    version_path,
-                    dataset_name,
-                    "ann",
-                    file_info.name + ".json",
-                )
-                paths.append(ann_path)
-            self._api.annotation.upload_paths(ids, paths)
-
-    @timing_decorator  # TODO remove after testing
-    def _upload_files(self, path: str, changes: dict, all_files: bool = False):
-        """
-        Save annotation files for items in project that were added or modified in the current version to the repository.
-        Structure of the repository follows Supervisely format.
+        Save project in binary format as archive to the Team Files.
 
         :param changes: Changes between current and previous version
-        :type changes: dict
-        :param all_files: Upload all files. Set to True to get annotations for all files in project.
-        :type all_files: bool
+        :type changes: bool
         :return: File info
         :rtype: dict
         """
-        from supervisely.project.project import (
-            Dataset,
-            OpenMode,
-            Project,
-            _maybe_append_image_extension,
-            download_project,
-        )
+        from supervisely.project.project import Project
 
-        timer = time.time()  # TODO remove after testing
         temp_dir = tempfile.mkdtemp()
-        if all_files:
-            download_project(self._api, self.project_info.id, temp_dir, save_images=False)
-        elif changes != {}:
-            items_to_save = list(
-                {**changes["added"]["items"], **changes["modified"]["items"]}.keys()
-            )
-            filters = [{"field": "id", "operator": "in", "value": items_to_save}]
 
-            project_fs = Project(temp_dir, OpenMode.CREATE)
-            meta = ProjectMeta.from_json(
-                self._api.project.get_meta(self.project_info.id, with_settings=True)
-            )
-            project_fs.set_meta(meta)
-
-            for parents, dataset_info in self._api.dataset.tree(self.project_info.id):
-                dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
-                dataset_name = dataset_info.name
-                dataset_id = dataset_info.id
-
-                dataset = project_fs.create_dataset(dataset_name, dataset_path)
-
-                images_to_download = self._api.image.get_list(dataset_id, filters)
-                ann_info_list = self._api.annotation.download_batch(dataset_id, items_to_save)
-                img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
-                for img_info_batch in batched(images_to_download):
-                    images_nps = [None] * len(img_info_batch)
-                    for index, _ in enumerate(images_nps):
-                        img_info = img_info_batch[index]
-                        image_name = _maybe_append_image_extension(img_info.name, img_info.ext)
-
-                        dataset.add_item_np(
-                            item_name=image_name,
-                            img=None,
-                            ann=img_name_to_ann[img_info.id],
-                            img_info=None,
-                        )
-        else:
-            raise ValueError("No changes to save")
-        logger.info(
-            f"Time taken to save files in _upload_files: {time.time() - timer} seconds"
-        )  # TODO remove after testing
+        data = Project.download_bin(
+            self._api, self.project_info.id, temp_dir, batch_size=200, return_bytesio=True
+        )
+        data.seek(0)
+        info = tarfile.TarInfo(name="version.bin")
+        info.size = len(data.getvalue())
         chunk_size = 1024 * 1024 * 50  # 50 MiB
         tar_data = io.BytesIO()
 
-        timer = time.time()  # TODO remove after testing
         # Create a tarfile object that writes into the BytesIO object
         with tarfile.open(fileobj=tar_data, mode="w") as tar:
-            for root, dirs, files in os.walk(temp_dir):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    relative_path = os.path.relpath(full_path, temp_dir)
-                    tar.add(full_path, arcname=relative_path)
-
-        logger.info(
-            f"Time taken to create tarfile in _upload_files: {time.time() - timer} seconds"
-        )  # TODO remove after testing
+            tar.addfile(tarinfo=info, fileobj=data)
+        data.close()
         # Reset the BytesIO object's cursor to the beginning
         tar_data.seek(0)
         zst_archive_path = os.path.join(os.path.dirname(temp_dir), "download.tar.zst")
 
-        timer = time.time()  # TODO remove after testing
         with open(zst_archive_path, "wb") as zst:
             while True:
                 chunk = tar_data.read(chunk_size)
                 if not chunk:
                     break
                 zst.write(zstd.compress(chunk))
-        logger.info(
-            f"Time taken to create zstd in _upload_files: {time.time() - timer} seconds"
-        )  # TODO remove after testing
-
-        timer = time.time()  # TODO remove after testing
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
-        logger.info(
-            f"Time taken to upload zstd in _upload_files: {time.time() - timer} seconds"
-        )  # TODO remove after testing
         tar_data.close()
         silent_remove(zst_archive_path)
         remove_dir(temp_dir)
