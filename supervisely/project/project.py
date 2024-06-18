@@ -2574,11 +2574,19 @@ class Project:
         log_progress: Optional[bool] = False,
         batch_size: Optional[int] = 100,
         progress_cb: Optional[Callable] = None,
-    ):
+    ) -> str:
         """
         Download project to the local directory in binary format. Faster than downloading project in the usual way.
         This type of project download is more suitable for creating local backups.
         It is also suitable for cases where you don't need access to individual project files, such as images or annotations.
+
+        Binary file contains the following data:
+        - ProjectInfo
+        - ProjectMeta
+        - List of DatasetInfo
+        - List of ImageInfo
+        - Dict of Figures
+        - Dict of AlphaGeometries
 
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervise.ly.api.api.Api>`
@@ -2594,8 +2602,29 @@ class Project:
         :type batch_size: :class:`int`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm` or :class:`callable`, optional
-        :return: None.
-        :rtype: :class:`NoneType`
+        :return: Path to the binary file.
+        :rtype: :class:`str`
+
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local destination Project folder
+                save_directory = "/home/admin/work/supervisely/source/project"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+                project_id = 8888
+
+                # Download Project in binary format
+                project_bin_path = sly.Project.download_bin(api, project_id, save_directory)
         """
         dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
         project_info = api.project.get_info_by_id(project_id)
@@ -2606,6 +2635,7 @@ class Project:
 
         image_infos = []
         figures = {}
+        alpha_geometries = {}
         for dataset_info in dataset_infos:
             dataset_id = dataset_info.id
             if dataset_ids is not None and dataset_id not in dataset_ids:
@@ -2624,6 +2654,15 @@ class Project:
             for batch in batched(ds_image_infos, batch_size):
                 image_ids = [image_info.id for image_info in batch]
                 ds_figures = api.image.figure.download(dataset_info.id, image_ids)
+                alpha_ids = [
+                    figure.id
+                    for figures in ds_figures.values()
+                    for figure in figures
+                    if figure.geometry_type == sly.AlphaMask.name()
+                ]
+                if len(alpha_ids) > 0:
+                    geometries_list = api.image.figure.download_geometries_batch(alpha_ids)
+                    alpha_geometries.update(dict(zip(alpha_ids, geometries_list)))
                 figures.update(ds_figures)
                 if log_progress:
                     ds_progress.iters_done_report(len(batch))
@@ -2632,7 +2671,10 @@ class Project:
         dataset_infos = [ds for ds in dataset_infos if ds.id not in dataset_skip_list]
         project_file_path = os.path.join(dest_dir, f"{project_info.id}_{project_info.name}")
         with open(project_file_path, "wb") as f:
-            pickle.dump((project_info, meta, dataset_infos, image_infos, figures), f)
+            pickle.dump(
+                (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries), f
+            )
+        return project_file_path
 
     @staticmethod
     def upload_bin(
@@ -2642,7 +2684,6 @@ class Project:
         project_name: Optional[str] = None,
         with_custom_data: Optional[bool] = True,
         log_progress: Optional[bool] = True,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> sly.ProjectInfo:
         """
         Uploads project to Supervisely from the given binary file and suitable only for projects downloaded in binary format.
@@ -2689,20 +2730,22 @@ class Project:
             )
         """
 
+        alpha_mask_name = sly.AlphaMask.name()
         project_info: sly.ProjectInfo
         meta: dict
         dataset_infos: List[sly.DatasetInfo]
         image_infos: List[ImageInfo]
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
+        alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
         with open(path, "rb") as f:
-            project_info, meta, dataset_infos, image_infos, figures = pickle.load(f)
-
+            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = pickle.load(
+                f
+            )
         if project_name is None:
             project_name = project_info.name
         new_project_info = api.project.create(
             workspace_id, project_name, change_name_if_conflict=True
         )
-
         custom_data = new_project_info.custom_data
         custom_data["restored_from"] = {
             "project_id": project_info.id,
@@ -2712,25 +2755,22 @@ class Project:
             custom_data.update(project_info.custom_data)
         api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
         new_meta = api.project.update_meta(new_project_info.id, meta)
-
         # remap tags
         old_tags = meta.tag_metas.to_json()
         new_tags = new_meta.tag_metas.to_json()
-        old_new_tag_id_mapping = dict(
+        old_new_tags_mapping = dict(
             map(lambda old_tag, new_tag: (old_tag["id"], new_tag["id"]), old_tags, new_tags)
         )
-
         # remap classes
         old_classes = meta.obj_classes.to_json()
         new_classes = new_meta.obj_classes.to_json()
-        old_new_class_id_mapping = dict(
+        old_new_classes_mapping = dict(
             map(
                 lambda old_class, new_class: (old_class["id"], new_class["id"]),
                 old_classes,
                 new_classes,
             )
         )
-
         dataset_mapping = {}
         new_dataset_infos = []
         # Sort datasets by parent, so that datasets with parent = 0 are processed first
@@ -2738,6 +2778,7 @@ class Project:
             dataset_infos,
             key=lambda dataset: float("inf") if dataset.parent_id is None else dataset.parent_id,
         )
+
         for dataset_info in sorted_dataset_infos:
             dataset_info: sly.DatasetInfo
             new_dataset_info = api.dataset.create(
@@ -2745,62 +2786,109 @@ class Project:
             )
             if new_dataset_info is None:
                 raise RuntimeError(f"Failed to restore dataset {dataset_info.name}")
-            dataset_mapping[dataset_info.id] = new_dataset_info.id
+            dataset_mapping[dataset_info.id] = (new_dataset_info.id, new_dataset_info.name)
             new_dataset_infos.append(new_dataset_info)
-
-        items_by_dataset = defaultdict(
+        info_values_by_dataset = defaultdict(
             lambda: {"infos": [], "ids": [], "names": [], "hashes": [], "metas": []}
         )
+        for info in image_infos:
+            info: ImageInfo
+            info_values_by_dataset[info.dataset_id]["infos"].append(info)
+            info_values_by_dataset[info.dataset_id]["ids"].append(info.id)
+            info_values_by_dataset[info.dataset_id]["names"].append(info.name)
+            info_values_by_dataset[info.dataset_id]["hashes"].append(info.hash)
+            info_values_by_dataset[info.dataset_id]["metas"].append(info.meta)
+        for dataset_id, values in info_values_by_dataset.items():
 
-        for item in image_infos:
-            item: ImageInfo
-            items_by_dataset[item.dataset_id]["infos"].append(item)
-            items_by_dataset[item.dataset_id]["ids"].append(item.id)
-            items_by_dataset[item.dataset_id]["names"].append(item.name)
-            items_by_dataset[item.dataset_id]["hashes"].append(item.hash)
-            items_by_dataset[item.dataset_id]["metas"].append(item.meta)
-
-        for dataset_id, items in items_by_dataset.items():
             if dataset_id in dataset_mapping:
-                dataset_id = dataset_mapping.get(dataset_id)
+                dataset_id, dataset_name = dataset_mapping.get(dataset_id)
                 if dataset_id is None:
                     raise KeyError(f"Dataset ID {dataset_id} not found in mapping")
-            # ? upload faster than
+
+            if log_progress:
+                ds_progress = tqdm_sly(
+                    desc="Uploading images to {!r}".format(dataset_name),
+                    total=len(values["names"]),
+                )
+
             new_file_infos = api.image.upload_hashes(
                 dataset_id,
-                names=items["names"],
-                hashes=items["hashes"],
-                metas=items["metas"],
+                names=values["names"],
+                hashes=values["hashes"],
+                metas=values["metas"],
+                progress_cb=ds_progress,
             )
-            image_lists_by_tags = defaultdict(lambda: defaultdict(list))
-
-            for old_file_info, new_file_info in zip(items["infos"], new_file_infos):
+            image_lists_by_tags = defaultdict(
+                lambda: defaultdict(list)
+            )  # tagId: {tagValue: [imageId]}
+            alpha_figures = []
+            other_figures = []
+            all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
+            old_alpha_figure_ids = []
+            if log_progress:
+                ds_fig_progress = tqdm_sly(
+                    desc="Processing figures for images in {!r}".format(dataset_name),
+                    total=len(new_file_infos),
+                )
+            for old_file_info, new_file_info in zip(values["infos"], new_file_infos):
                 for tag in old_file_info.tags:
-                    new_tag_id = old_new_tag_id_mapping[tag.get("tagId")]
+                    new_tag_id = old_new_tags_mapping[tag.get("tagId")]
                     image_lists_by_tags[new_tag_id][tag.get("value")].append(new_file_info.id)
                 image_figures = figures.get(old_file_info.id, [])
                 if len(image_figures) > 0:
-                    image_figures_jsons = [figure._asdict() for figure in image_figures]
-                    processed_image_figures_jsons = [
-                        {
+                    alpha_figure_jsons = []
+                    other_figure_jsons = []
+                    for figure in image_figures:
+                        figure_json = figure._asdict()
+                        if figure.geometry_type == alpha_mask_name:
+                            alpha_figure_jsons.append(figure_json)
+                            old_alpha_figure_ids.append(figure_json["id"])
+                        else:
+                            other_figure_jsons.append(figure_json)
+
+                    def create_figure_json(figure, geometry):
+                        return {
                             "meta": figure["meta"] if figure["meta"] is not None else {},
                             "entityId": new_file_info.id,
-                            "classId": old_new_class_id_mapping[figure["class_id"]],
-                            "geometry": figure["geometry"],
+                            "classId": old_new_classes_mapping[figure["class_id"]],
+                            "geometry": geometry,
                             "geometryType": figure["geometry_type"],
                         }
-                        for figure in image_figures_jsons
+
+                    new_figure_jsons = [
+                        create_figure_json(figure, figure["geometry"])
+                        for figure in other_figure_jsons
                     ]
+                    new_alpha_figure_jsons = [
+                        create_figure_json(figure, None) for figure in alpha_figure_jsons
+                    ]
+                    other_figures.extend(new_figure_jsons)
+                    alpha_figures.extend(new_alpha_figure_jsons)
 
-                    new_figure_ids = api.image.figure.create_bulk(
-                        new_file_info.id, processed_image_figures_jsons
-                    )  # TODO alpha-mask and speed up
-                    for new_figure_id, figure in zip(new_figure_ids, image_figures_jsons):
-                        for tag in figure["tags"]:
-                            new_tag_id = old_new_tag_id_mapping[tag.get("tagId")]
-                            tag_value = tag.get("value", None)
-                            api.advanced.add_tag_to_object(new_tag_id, new_figure_id, tag_value)
+                    def process_figures(figure_jsons, figure_tags):
+                        for figure in figure_jsons:
+                            figure_tags[figure.get("id")].extend(
+                                (tag.get("tagId"), tag.get("value", None)) for tag in figure["tags"]
+                            )
 
+                    process_figures(other_figure_jsons, all_figure_tags)
+                    process_figures(alpha_figure_jsons, all_figure_tags)
+                if log_progress:
+                    ds_fig_progress.update(1)
+            all_figure_ids = api.image.figure.create_bulk(
+                other_figures,
+                dataset_id=new_file_info.dataset_id,
+            )
+            new_alpha_figure_ids = api.image.figure.create_bulk(
+                alpha_figures, dataset_id=new_file_info.dataset_id
+            )
+            all_figure_ids.extend(new_alpha_figure_ids)
+            ordered_alpha_geometries = list(map(alpha_geometries.get, old_alpha_figure_ids))
+            api.image.figure.upload_geometries_batch(new_alpha_figure_ids, ordered_alpha_geometries)
+            for new_of_id, tags in zip(all_figure_ids, all_figure_tags.values()):
+                for tag_id, tag_value in tags:
+                    new_tag_id = old_new_tags_mapping[tag_id]
+                    api.advanced.add_tag_to_object(new_tag_id, new_of_id, tag_value)
             for tag, value in image_lists_by_tags.items():
                 for value, image_ids in value.items():
                     api.image.add_tag_batch(image_ids, tag, value)
