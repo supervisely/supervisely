@@ -55,8 +55,8 @@ from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
 )
-from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
@@ -85,9 +85,9 @@ class ApiContext:
     :raises: :class:`RuntimeError`, if api is None.
 
     :Usage example:
-    
+
          .. code-block:: python
-    
+
             import os
             from dotenv import load_dotenv
 
@@ -272,7 +272,7 @@ class Api:
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
     def __init__(
@@ -292,11 +292,11 @@ class Api:
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         if token is None:
             raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "API_TOKEN env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         self.server_address = Api.normalize_server_address(server_address)
 
@@ -401,14 +401,14 @@ class Api:
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             api = sly.Api.from_env()
 
             # alternatively you can store SERVER_ADDRESS and API_TOKEN
             # in "~/supervisely.env" .env file
-            # Learn more here: https://developer.supervise.ly/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
+            # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
 
             api = sly.Api.from_env()
         """
@@ -431,11 +431,11 @@ class Api:
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         if token is None:
             raise ValueError(
-                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
 
         return cls(
