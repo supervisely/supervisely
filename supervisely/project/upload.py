@@ -11,8 +11,8 @@ def upload(
     src_dir: str,
     api: Api,
     workspace_id: int,
-    project_name: Optional[None] = None,
-    log_progress: Optional[bool] = True,
+    project_name: Optional[str] = None,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
@@ -30,7 +30,7 @@ def upload(
     :param project_name: Custom project name. By default, it's a directory name.
     :type project_name: str, optional
     :param log_progress: Show uploading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking upload progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -107,7 +107,6 @@ def upload(
         log_progress = False
 
     project_class = get_project_class(project_fs.meta.project_type)
-
     project_class.upload(
         src_dir,
         api=api,

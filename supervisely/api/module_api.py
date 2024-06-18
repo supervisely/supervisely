@@ -840,7 +840,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -890,7 +890,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -929,7 +929,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -965,7 +965,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1064,7 +1064,7 @@ class CloneableModuleApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             # Load secrets and create API object from .env file (recommended)
@@ -1250,7 +1250,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1284,7 +1284,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

@@ -1,7 +1,8 @@
 # coding: utf-8
 
 from typing import Dict, List, Optional
-from supervisely.api.entity_annotation.figure_api import FigureApi, ApiField
+
+from supervisely.api.entity_annotation.figure_api import ApiField, FigureApi
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -40,7 +41,7 @@ class PointcloudFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -77,7 +78,7 @@ class PointcloudFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -133,7 +134,7 @@ class PointcloudFigureApi(FigureApi):
             from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

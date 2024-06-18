@@ -12,6 +12,7 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.medical2d import medical2d_helper as helper
 from supervisely.io.fs import remove_dir, get_file_ext, mkdir, get_file_name
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.volume.volume import is_nifti_file
 
 
@@ -31,7 +32,11 @@ class Medical2DImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only medical labeling interface can be used for medical images."""
-        return self._labeling_interface in ["default", "medical_imaging_single", "images_with_16_color"]
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.MEDICAL_IMAGING_SINGLE,
+            LabelingInterface.IMAGES_WITH_16_COLOR,
+        ]
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")

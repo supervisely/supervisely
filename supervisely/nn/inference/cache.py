@@ -65,29 +65,17 @@ class PersistentImageTTLCache(TTLCache):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
-    def __getitem__(self, key: Any) -> np.ndarray:
-        filepath = super(PersistentImageTTLCache, self).__getitem__(key)
-        return sly.image.read(str(filepath))
-
-    def __setitem__(self, key: Any, value: np.ndarray) -> None:
-        if not self._base_dir.exists():
-            self._base_dir.mkdir()
-
-        filepath = self._base_dir / f"{str(key)}.png"
-        super(PersistentImageTTLCache, self).__setitem__(key, filepath)
-
-        if filepath.exists():
-            sly.logger.debug(f"Rewrite image {str(filepath)}")
-        sly.image.write(str(filepath), value)
-
     def __delitem__(self, key: Any) -> None:
         self.__del_file(key)
         return super().__delitem__(key)
 
     def __del_file(self, key: str):
-        cache_getitme = Cache.__getitem__
-        filepath = cache_getitme(self, key)
-        silent_remove(filepath)
+        cache_getitem = Cache.__getitem__
+        filepath = cache_getitem(self, key)
+        try:
+            silent_remove(filepath)
+        except TypeError:
+            pass
 
     def __get_keys(self):
         # pylint: disable=no-member
@@ -122,6 +110,23 @@ class PersistentImageTTLCache(TTLCache):
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
 
+    def save_image(self, key, image: np.ndarray) -> None:
+        if not self._base_dir.exists():
+            self._base_dir.mkdir()
+
+        filepath = self._base_dir / f"{str(key)}.png"
+        super(PersistentImageTTLCache, self).__setitem__(key, filepath)
+
+        if filepath.exists():
+            sly.logger.debug(f"Rewrite image {str(filepath)}")
+        sly.image.write(str(filepath), image)
+
+    def get_image_path(self, key: Any) -> Path:
+        return super().__getitem__(key)
+
+    def get_image(self, key: Any):
+        return sly.image.read(str(self[key]))
+
     def save_video(self, video_id: int, src_video_path: str) -> None:
         video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
         if src_video_path != str(video_path):
@@ -152,7 +157,7 @@ class InferenceImageCache:
         is_persistent: bool = True,
         base_folder: str = sly.env.smart_cache_container_dir(),
     ) -> None:
-        self._is_persistent = is_persistent
+        self.is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
         self._lock = Lock()
@@ -181,7 +186,7 @@ class InferenceImageCache:
             return img
 
         api.logger.debug(f"Get image #{image_id} from cache")
-        return self._cache[name]
+        return self._cache.get_image(name)
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs):
         return_images = kwargs.get("return_images", True)
@@ -206,7 +211,7 @@ class InferenceImageCache:
             image = api.image.download_nps_by_hashes([img_hash])
             self._add_to_cache(image_key, image)
             return image
-        return self._cache[image_key]
+        return self._cache.get_image(image_key)
 
     def download_images_by_hashes(
         self, api: sly.Api, img_hashes: List[str], **kwargs
@@ -248,7 +253,7 @@ class InferenceImageCache:
         name = self._frame_name(video_id, frame_index)
         if isinstance(self._cache, PersistentImageTTLCache):
             if name in self._cache:
-                return self._cache.get(name)
+                return self._cache.get_image(name)
             return self._read_frames_from_cached_video(video_id, [frame_index])[0]
         frame = self._cache.get(name)
         if frame is None:
@@ -285,7 +290,7 @@ class InferenceImageCache:
             return frame
 
         api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
-        return self._cache[name]
+        return self._cache.get_image(name)
 
     def download_frames(
         self, api: sly.Api, video_id: int, frame_indexes: List[int], **kwargs
@@ -299,6 +304,7 @@ class InferenceImageCache:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
+                Thread(target=self.download_video, args=(api, video_id)).start()
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -518,7 +524,7 @@ class InferenceImageCache:
 
     @property
     def tmp_path(self):
-        if self._is_persistent:
+        if self.is_persistent:
             return str(self._data_dir)
         return None
 
@@ -561,7 +567,7 @@ class InferenceImageCache:
 
         for name, img in zip(names, images):
             with self._lock:
-                self._cache[name] = img
+                self._cache.save_image(name, img)
                 self._load_queue.delete(name)
 
     def _image_name(self, id_or_hash: Union[str, int]) -> str:
@@ -603,7 +609,7 @@ class InferenceImageCache:
                 indexes_to_load.append(hash_or_id)
                 pos_by_name[name] = pos
             elif return_images is True:
-                all_frames[pos] = self._cache[name]
+                all_frames[pos] = self._cache.get_image(name)
 
         if len(indexes_to_load) > 0:
             for id_or_hash, image in load_generator(indexes_to_load):
