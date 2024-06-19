@@ -1057,8 +1057,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts:
-            - "replace": Replace the existing images in the dataset with the new images, the images that are being deleted are logged.
-            - "skip": Skip the upload of new images that would result in a conflict. When an original image's ImageInfo list will be returned.
+            - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
+            - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
         :type conflict_resolution: Literal["replace", "skip", "rename"]
         :raises: :class:`ValueError` if len(names) != len(paths)
@@ -1144,8 +1144,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :param metas: Images metadata.
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts:
-            - "replace": Replace the existing images in the dataset with the new images, the images that are being deleted are logged.
-            - "skip": Skip the upload of new images that would result in a conflict. When an original image's ImageInfo list will be returned.
+            - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
+            - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
         :type conflict_resolution: Literal["replace", "skip", "rename"]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1266,8 +1266,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts:
-            - "replace": Replace the existing images in the dataset with the new images, the images that are being deleted are logged.
-            - "skip": Skip the upload of new images that would result in a conflict. When an original image's ImageInfo list will be returned.
+            - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
+            - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
         :type conflict_resolution: Literal["replace", "skip", "rename"]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1389,8 +1389,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts:
-            - "replace": Replace the existing images in the dataset with the new images, the images that are being deleted are logged.
-            - "skip": Skip the upload of new images that would result in a conflict. When an original image's ImageInfo list will be returned.
+            - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
+            - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
         :type conflict_resolution: Literal["replace", "skip", "rename"]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
@@ -1529,8 +1529,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts:
-            - "replace": Replace the existing images in the dataset with the new images, the images that are being deleted are logged.
-            - "skip": Skip the upload of new images that would result in a conflict. When an original image's ImageInfo list will be returned.
+            - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
+            - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
         :type conflict_resolution: Literal["replace", "skip", "rename"]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
