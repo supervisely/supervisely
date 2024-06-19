@@ -77,7 +77,7 @@ class MetricProvider:
         self.fn_matches = [m for m in self.matches if m['type'] == "FN"]
         self.confused_matches = [m for m in self.fp_matches if m['miss_cls']]
         self.fp_not_confused_matches = [m for m in self.fp_matches if not m['miss_cls']]
-        self.ious = np.array([m['iou'] for m in self.matches if m['iou']])
+        self.ious = np.array([m['iou'] for m in self.tp_matches])
 
         # Counts
         self.true_positives, self.false_negatives, self.false_positives = self._init_counts()
