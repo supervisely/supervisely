@@ -173,18 +173,10 @@ class DataVersion(ModuleApiBase):
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
 
-        community = False
-        try:
-            ip_address = socket.gethostbyname(self._api.server_address)
-            if ip_address == "":
-                community = True
-        except socket.gaierror:
-            if (
-                "app.supervise.ly" in self._api.server_address
-                or "app.supervisely.com" in self._api.server_address
-            ):
-                community = True
-        if community:
+        if (
+            "app.supervise.ly" in self._api.server_address
+            or "app.supervisely.com" in self._api.server_address
+        ):
             if self._api.team.get_info_by_id(project_info.team_id).usage.plan == "free":
                 raise RuntimeError("Project versioning is not available for free plan")
 
