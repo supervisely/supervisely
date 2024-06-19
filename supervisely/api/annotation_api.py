@@ -96,6 +96,7 @@ class AnnotationApi(ModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
         Get list of information about all annotations for a given dataset.
@@ -162,6 +163,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.FILTER: filters or [],
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: integer_coords,
             },
             progress_cb,
         )
@@ -173,6 +175,8 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
+        
     ) -> List[AnnotationInfo]:
         """
         Get list of information about all annotations for a given dataset.
@@ -238,6 +242,7 @@ class AnnotationApi(ModuleApi):
             ApiField.FILTER: filters or [],
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             ApiField.PAGINATION_MODE: ApiField.TOKEN,
+            ApiField.INTEGER_COORDS: integer_coords,
         }
         if batch_size is not None:
             data[ApiField.PER_PAGE] = batch_size
@@ -254,6 +259,7 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -299,6 +305,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_ID: image_id,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: integer_coords,
             },
         )
         result = response.json()
@@ -373,6 +380,7 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -445,6 +453,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: integer_coords,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
 

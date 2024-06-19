@@ -8,7 +8,16 @@ from typing import List, Tuple, Dict, Optional
 import supervisely as sly
 
 
-from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.constants import (
+    EXTERIOR,
+    INTERIOR,
+    POINTS,
+    LABELER_LOGIN,
+    UPDATED_AT,
+    CREATED_AT,
+    ID,
+    CLASS_ID,
+)
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely.geometry import validation
@@ -50,26 +59,47 @@ class Rectangle(Geometry):
         right = 900
         figure = sly.Rectangle(top, left, bottom, right)
     """
+
     @staticmethod
     def geometry_name():
-        """
-        """
-        return 'rectangle'
+        """ """
+        return "rectangle"
 
-    def __init__(self, top: int, left: int, bottom: int, right: int,
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        top: int,
+        left: int,
+        bottom: int,
+        right: int,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
 
         if top > bottom:
-            raise ValueError('Rectangle "top" argument must have less or equal value then "bottom"!')
+            raise ValueError(
+                'Rectangle "top" argument must have less or equal value then "bottom"!'
+            )
 
         if left > right:
-            raise ValueError('Rectangle "left" argument must have less or equal value then "right"!')
+            raise ValueError(
+                'Rectangle "left" argument must have less or equal value then "right"!'
+            )
 
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
-                         created_at=created_at)
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
-        self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
+        self._points = [
+            PointLocation(row=top, col=left),
+            PointLocation(row=bottom, col=right),
+        ]
 
     def to_json(self) -> Dict:
         """
@@ -96,7 +126,7 @@ class Rectangle(Geometry):
         packed_obj = {
             POINTS: {
                 EXTERIOR: points_to_row_col_list(self._points, flip_row_col_order=True),
-                INTERIOR: []
+                INTERIOR: [],
             }
         }
         self._add_creation_info(packed_obj)
@@ -137,11 +167,22 @@ class Rectangle(Geometry):
 
         exterior = data[POINTS][EXTERIOR]
         if len(exterior) != 2:
-            raise ValueError('"exterior" field must contain exactly two points to create Rectangle object.')
+            raise ValueError(
+                '"exterior" field must contain exactly two points to create Rectangle object.'
+            )
         [top, bottom] = sorted([exterior[0][1], exterior[1][1]])
         [left, right] = sorted([exterior[0][0], exterior[1][0]])
-        return cls(top=top, left=left, bottom=bottom, right=right,
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            top=top,
+            left=left,
+            bottom=bottom,
+            right=right,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -165,17 +206,33 @@ class Rectangle(Geometry):
         bottom = min(self.bottom, other.bottom)
         right = min(self.right, other.right)
         is_valid = (bottom >= top) and (left <= right)
-        return [Rectangle(top=top, left=left, bottom=bottom, right=right)] if is_valid else []
+        return (
+            [Rectangle(top=top, left=left, bottom=bottom, right=right)]
+            if is_valid
+            else []
+        )
 
     def _transform(self, transform_fn):
-        """
-        """
+        """ """
         transformed_corners = [transform_fn(p) for p in self.corners]
         rows, cols = zip(*points_to_row_col_list(transformed_corners))
-        return Rectangle(top=round(min(rows)), left=round(min(cols)), bottom=round(max(rows)), right=round(max(cols)))
+        # return Rectangle(
+        #     top=round(min(rows)),
+        #     left=round(min(cols)),
+        #     bottom=round(max(rows)),
+        #     right=round(max(cols)),
+        # )
+        return Rectangle(
+            top=min(rows),
+            left=min(cols),
+            bottom=max(rows),
+            right=max(cols),
+        )
 
     @property
-    def corners(self) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
+    def corners(
+        self,
+    ) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
         """
         Get list of Rectangle corners.
 
@@ -195,8 +252,19 @@ class Rectangle(Geometry):
             # 700 900
             # 700 100
         """
-        return [PointLocation(row=self.top, col=self.left), PointLocation(row=self.top, col=self.right),
-                PointLocation(row=self.bottom, col=self.right), PointLocation(row=self.bottom, col=self.left)]
+        # return [
+        #     PointLocation(row=self.top, col=self.left),
+        #     PointLocation(row=self.top, col=self.right),
+        #     PointLocation(row=self.bottom, col=self.right),
+        #     PointLocation(row=self.bottom, col=self.left),
+        # ]
+
+        return [
+            PointLocation(row=self.exact_top, col=self.exact_left),
+            PointLocation(row=self.exact_top, col=self.exact_right),
+            PointLocation(row=self.exact_bottom, col=self.exact_right),
+            PointLocation(row=self.exact_bottom, col=self.exact_left),
+        ]
 
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
         """
@@ -298,7 +366,12 @@ class Rectangle(Geometry):
             fliplr_figure = figure.fliplr((height, width))
         """
         img_width = img_size[1]
-        return Rectangle(top=self.top, left=(img_width - self.right), bottom=self.bottom, right=(img_width - self.left))
+        return Rectangle(
+            top=self.top,
+            left=(img_width - self.right),
+            bottom=self.bottom,
+            right=(img_width - self.left),
+        )
 
     def flipud(self, img_size: Tuple[int, int]) -> Rectangle:
         """
@@ -318,19 +391,28 @@ class Rectangle(Geometry):
             flipud_figure = figure.flipud((height, width))
         """
         img_height = img_size[0]
-        return Rectangle(top=(img_height - self.bottom), left=self.left, bottom=(img_height - self.top),
-                         right=self.right)
+        return Rectangle(
+            top=(img_height - self.bottom),
+            left=self.left,
+            bottom=(img_height - self.top),
+            right=self.right,
+        )
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
-        """
-        """
-        self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
+        """ """
+        self._draw_contour_impl(
+            bitmap, color, thickness=cv2.FILLED, config=config
+        )  # due to cv2
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
-        cv2.rectangle(bitmap, pt1=(self.left, self.top), pt2=(self.right, self.bottom), color=color,
-                      thickness=thickness)
+        """ """
+        cv2.rectangle(
+            bitmap,
+            pt1=(self.left, self.top),
+            pt2=(self.right, self.bottom),
+            color=color,
+            thickness=thickness,
+        )
 
     def to_bbox(self) -> Rectangle:
         """
@@ -452,6 +534,23 @@ class Rectangle(Geometry):
         return self._points[0].col
 
     @property
+    def exact_left(self) -> float:
+        """
+        Exact minimal horizontal value of Rectangle.
+
+        :return: Exact minimal horizontal value
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.left)
+            # Output: 100.545689
+        """
+        return self._points[0].exact_col
+
+    @property
     def right(self) -> int:
         """
         Maximal horizontal value of Rectangle.
@@ -467,6 +566,23 @@ class Rectangle(Geometry):
             # Output: 900
         """
         return self._points[1].col
+
+    @property
+    def exact_right(self) -> float:
+        """
+        Exact maximal horizontal value of Rectangle.
+
+        :return: Exact maximal horizontal value
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.right)
+            # Output: 900.52431156
+        """
+        return self._points[1].exact_col
 
     @property
     def top(self) -> int:
@@ -486,6 +602,23 @@ class Rectangle(Geometry):
         return self._points[0].row
 
     @property
+    def exact_top(self) -> float:
+        """
+        Exact minimal vertical value of Rectangle.
+
+        :return: Exact minimal vertical value
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(rectangle.top)
+            # Output: 100.5474568
+        """
+        return self._points[0].exact_row
+
+    @property
     def bottom(self) -> int:
         """
         Maximal vertical value of Rectangle.
@@ -503,6 +636,23 @@ class Rectangle(Geometry):
         return self._points[1].row
 
     @property
+    def exact_bottom(self) -> float:
+        """
+        Exact maximal vertical value of Rectangle.
+
+        :return: Exact maximal vertical value
+        :rtype: :class:`float`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            print(figure.bottom)
+            # Output: 700.534576
+        """
+        return self._points[1].exact_row
+
+    @property
     def center(self) -> PointLocation:
         """
         Center of Rectangle.
@@ -516,7 +666,9 @@ class Rectangle(Geometry):
 
             center = figure.center()
         """
-        return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
+        return PointLocation(
+            row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2
+        )
 
     @property
     def width(self) -> int:
@@ -571,10 +723,12 @@ class Rectangle(Geometry):
             print(figure.contains(rect))
             # Output: True
         """
-        return (self.left <= rect.left and
-                self.right >= rect.right and
-                self.top <= rect.top and
-                self.bottom >= rect.bottom)
+        return (
+            self.left <= rect.left
+            and self.right >= rect.right
+            and self.top <= rect.top
+            and self.bottom >= rect.bottom
+        )
 
     def contains_point_location(self, pt: PointLocation) -> bool:
         """
@@ -595,7 +749,9 @@ class Rectangle(Geometry):
             print(figure.contains_point_location(pt))
             # Output: True
         """
-        return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
+        return (self.left <= pt.col <= self.right) and (
+            self.top <= pt.row <= self.bottom
+        )
 
     def to_size(self) -> Tuple[int, int]:
         """
@@ -632,7 +788,7 @@ class Rectangle(Geometry):
             print(mask_slice.shape)
             # Output: (199, 499)
         """
-        return data[self.top:(self.bottom+1), self.left:(self.right+1), ...]
+        return data[self.top : (self.bottom + 1), self.left : (self.right + 1), ...]
 
     def intersects_with(self, rect: Rectangle) -> bool:
         """
@@ -661,10 +817,10 @@ class Rectangle(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
+        """ """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
+
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
