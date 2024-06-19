@@ -1041,7 +1041,7 @@ class ImageApi(RemoveableBulkModuleApi):
         paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1060,7 +1060,7 @@ class ImageApi(RemoveableBulkModuleApi):
             - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
             - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
-        :type conflict_resolution: Literal["replace", "skip", "rename"]
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1128,7 +1128,7 @@ class ImageApi(RemoveableBulkModuleApi):
         imgs: List[np.ndarray],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1147,7 +1147,7 @@ class ImageApi(RemoveableBulkModuleApi):
             - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
             - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
-        :type conflict_resolution: Literal["replace", "skip", "rename"]
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1246,7 +1246,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
         skip_validation: Optional[bool] = False,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1269,7 +1269,7 @@ class ImageApi(RemoveableBulkModuleApi):
             - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
             - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
-        :type conflict_resolution: Literal["replace", "skip", "rename"]
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1369,7 +1369,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1392,7 +1392,7 @@ class ImageApi(RemoveableBulkModuleApi):
             - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
             - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
-        :type conflict_resolution: Literal["replace", "skip", "rename"]
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1505,7 +1505,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: bool = True,
         infos: List[ImageInfo] = None,
         skip_validation: Optional[bool] = False,
-        conflict_resolution: Literal["rename", "skip", "replace"] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1532,7 +1532,7 @@ class ImageApi(RemoveableBulkModuleApi):
             - "replace": Replace the existing images in the dataset with the new images. The images that are being deleted are logged.
             - "skip": Skip the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead.
             - "rename": Rename the new images to prevent any conflict.
-        :type conflict_resolution: Literal["replace", "skip", "rename"]
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1633,7 +1633,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size=50,
         force_metadata_for_links=True,
         skip_validation=False,
-        conflict_resolution: Literal["skip", "rename", "replace"] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ):
         """ """
         if (
