@@ -259,7 +259,6 @@ class Rectangle(Geometry):
             PointLocation(row=self.bottom, col=self.left),
         ]
 
-
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
         """
         Rotates current Rectangle.
@@ -400,10 +399,18 @@ class Rectangle(Geometry):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
+        # cv2.rectangle require int values
+        left, top, right, bottom = (
+            round(self.left),
+            round(self.top),
+            round(self.right),
+            round(self.bottom),
+        )
+
         cv2.rectangle(
             bitmap,
-            pt1=(self.left, self.top),
-            pt2=(self.right, self.bottom),
+            pt1=(left, top),
+            pt2=(right, bottom),
             color=color,
             thickness=thickness,
         )
@@ -527,8 +534,6 @@ class Rectangle(Geometry):
         """
         return self._points[0].col
 
-
-
     @property
     def right(self) -> int:
         """
@@ -545,8 +550,6 @@ class Rectangle(Geometry):
             # Output: 900
         """
         return self._points[1].col
-
-
 
     @property
     def top(self) -> int:
@@ -565,8 +568,6 @@ class Rectangle(Geometry):
         """
         return self._points[0].row
 
-
-
     @property
     def bottom(self) -> int:
         """
@@ -583,8 +584,6 @@ class Rectangle(Geometry):
             # Output: 700
         """
         return self._points[1].row
-
-
 
     @property
     def center(self) -> PointLocation:
