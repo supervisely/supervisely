@@ -349,7 +349,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -381,7 +381,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -406,7 +406,8 @@ class FileApi(ModuleApiBase):
         dir_size = 0
         file_infos = self.list(team_id=team_id, path=path, recursive=True, return_type="fileinfo")
         for file_info in file_infos:
-            dir_size += file_info.sizeb
+            if file_info.sizeb is not None:
+                dir_size += file_info.sizeb
         return dir_size
 
     def _download(
@@ -455,7 +456,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -552,7 +553,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -596,7 +597,7 @@ class FileApi(ModuleApiBase):
         unpack_if_archive: Optional[bool] = True,
         remove_archive: Optional[bool] = True,
         force: Optional[bool] = False,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = False,
     ) -> None:
         """Downloads data for application from input using environment variables.
         Automatically detects is data is a file or a directory and saves it to the specified directory.
@@ -611,7 +612,7 @@ class FileApi(ModuleApiBase):
         :param force: if True, data will be downloaded even if it already exists in the specified directory
         :type force: Optional[bool]
         :param log_progress: if True, progress bar will be displayed
-        :type log_progress: Optional[bool]
+        :type log_progress: bool
         :raises RuntimeError: if both file and folder paths not found in environment variables
         :raises RuntimeError: if both file and folder paths found in environment variables (debug)
         :raises RuntimeError: if team id not found in environment variables
@@ -755,7 +756,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -792,7 +793,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -868,7 +869,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -905,7 +906,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -940,7 +941,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -975,7 +976,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1012,7 +1013,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1056,7 +1057,7 @@ class FileApi(ModuleApiBase):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -1087,7 +1088,7 @@ class FileApi(ModuleApiBase):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -1115,7 +1116,7 @@ class FileApi(ModuleApiBase):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -1157,7 +1158,7 @@ class FileApi(ModuleApiBase):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -1184,7 +1185,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1238,7 +1239,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1278,7 +1279,7 @@ class FileApi(ModuleApiBase):
 
            import supervisely as sly
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
            api = sly.Api.from_env()
 
@@ -1323,7 +1324,7 @@ class FileApi(ModuleApiBase):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

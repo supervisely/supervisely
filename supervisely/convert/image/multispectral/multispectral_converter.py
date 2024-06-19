@@ -10,8 +10,10 @@ from supervisely import is_development, logger, ProjectMeta
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.image.image_helper import read_tiff_image
 from supervisely.imaging.image import is_valid_ext
 from supervisely.io.fs import dirs_filter, get_file_ext, list_files
+from supervisely.project.project_settings import LabelingInterface
 
 SPLIT_TO_CHANNELS_DIR_NAME = "split"
 UPLOAD_AS_IMAGES_DIR_NAME = "images"
@@ -30,7 +32,7 @@ class MultiSpectralImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multispectral labeling interface can be used for multispectral images."""
-        return self._labeling_interface == "multispectral"
+        return self._labeling_interface == LabelingInterface.MULTISPECTRAL
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
@@ -122,16 +124,17 @@ class MultiSpectralImageConverter(ImageConverter):
         if file_ext == ".nrrd":
             logger.debug(f"Found nrrd file: {file_path}.")
             image, _ = nrrd.read(file_path)
-        elif file_ext == ".tif":
-            import tifffile
-
-            logger.debug(f"Found tiff file: {file_path}.")
-            image = tifffile.imread(file_path)
+        elif file_ext in [".tif", ".tiff"]:
+            image = read_tiff_image(file_path)
         elif is_valid_ext(file_ext):
             logger.debug(f"Found image file: {file_path}.")
             image = cv2.imread(file_path)
         else:
             logger.warning(f"File {file_path} has unsupported extension.")
+            return
+        
+        if image is None:
+            logger.warning(f"Failed to read image {file_path}.")
             return
 
         return [image[:, :, i] for i in range(image.shape[2])]

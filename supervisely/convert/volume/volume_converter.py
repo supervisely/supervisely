@@ -6,12 +6,12 @@ from typing import List, Optional, OrderedDict, Union
 from supervisely import (
     Api,
     ProjectMeta,
-    VolumeAnnotation,
     batched,
     generate_free_name,
     is_development,
     logger,
 )
+from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie_volume

@@ -59,11 +59,8 @@ class ImageConverter(BaseConverter):
                     if file_ext == ".nrrd":
                         logger.debug(f"Found nrrd file: {self.path}.")
                         image, _ = nrrd.read(self.path)
-                    elif file_ext == ".tif":
-                        import tifffile
-
-                        logger.debug(f"Found tiff file: {self.path}.")
-                        image = tifffile.imread(self.path)
+                    elif file_ext in [".tif", ".tiff"]:
+                        image = image_helper.read_tiff_image(self.path)
                     elif is_valid_ext(file_ext):
                         logger.debug(f"Found image file: {self.path}.")
                         image = cv2.imread(self.path)
@@ -125,7 +122,7 @@ class ImageConverter(BaseConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)

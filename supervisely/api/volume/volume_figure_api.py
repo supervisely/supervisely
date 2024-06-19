@@ -1,23 +1,25 @@
 # coding: utf-8
-import re
 import os
+import re
 import tempfile
-from uuid import UUID
-from numpy import uint8
-from typing import List, Dict
 from collections import OrderedDict
+from typing import Dict, List
+from uuid import UUID
+
+from numpy import uint8
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
-from supervisely.io.fs import ensure_base_path, file_exists
-from supervisely._utils import batched
-from supervisely.api.module_api import ApiField
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.api.entity_annotation.figure_api import FigureApi
-from supervisely.volume_annotation.plane import Plane
-from supervisely.geometry.mask_3d import Mask3D
+
 import supervisely.volume_annotation.constants as constants
-from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely._utils import batched
+from supervisely.api.entity_annotation.figure_api import FigureApi
+from supervisely.api.module_api import ApiField
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.geometry.mask_3d import Mask3D
+from supervisely.io.fs import ensure_base_path, file_exists
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume.nrrd_encoder import encode
+from supervisely.volume_annotation.plane import Plane
+from supervisely.volume_annotation.volume_figure import VolumeFigure
 
 
 class VolumeFigureApi(FigureApi):
@@ -60,7 +62,7 @@ class VolumeFigureApi(FigureApi):
 
             from supervisely.volume_annotation.plane import Plane
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -120,7 +122,7 @@ class VolumeFigureApi(FigureApi):
 
             from supervisely.volume_annotation.plane import Plane
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -198,7 +200,7 @@ class VolumeFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -253,7 +255,7 @@ class VolumeFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -377,7 +379,7 @@ class VolumeFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -497,7 +499,7 @@ class VolumeFigureApi(FigureApi):
             import supervisely as sly
             from supervisely.volume.nrrd_encoder import encode
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -569,7 +571,7 @@ class VolumeFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
