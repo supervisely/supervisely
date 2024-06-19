@@ -1645,18 +1645,17 @@ class ImageApi(RemoveableBulkModuleApi):
             )
         results = []
 
-        def generate_name(name: str) -> str:
+        def _add_timestamp(name: str) -> str:
 
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
-        def get_images(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
+        def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
             images = []
             for name, item, meta in zip(names, items, metas):
                 item_tuple = func_item_to_kv(item)
-                # @TODO: 'title' -> ApiField.NAME
-                image_data = {"title": name, item_tuple[0]: item_tuple[1]}
+                image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
                 images.append(image_data)
@@ -1682,7 +1681,7 @@ class ImageApi(RemoveableBulkModuleApi):
             )
         ):
             for retry in range(2):
-                images = get_images(batch_names, batch_items, batch_metas)
+                images = _pack_for_request(batch_names, batch_items, batch_metas)
                 try:
                     response = self._api.post(
                         "images.bulk.add",
@@ -1714,25 +1713,31 @@ class ImageApi(RemoveableBulkModuleApi):
                             f"Handling the exception above with '{conflict_resolution}' conflict resolution method"
                         )
 
-                        error_names = [error["name"] for error in error_details["errors"]]
-                        ids = [error["id"] for error in error_details["errors"]]
+                        errors: List[Dict] = error_details.get("errors", [])
 
                         if conflict_resolution == "replace":
-                            logger.info(f"Image ids to be removed: {ids}")
-                            self._api.image.remove_batch(ids)
+                            ids_to_remove = [error["id"] for error in errors]
+                            logger.info(f"Image ids to be removed: {ids_to_remove}")
+                            self._api.image.remove_batch(ids_to_remove)
                             continue
 
-                        batch_names_copy = batch_names.copy()
-                        for error_name in error_names:
-                            batch_index = batch_names_copy.index(error_name)
-                            idx = batch_names.index(error_name)
-                            if conflict_resolution == "rename":
-                                batch_names[idx] = generate_name(error_name)
-                            elif conflict_resolution == "skip":
-                                inserting_index = batch_index + batch_count * batch_size
-                                idx_to_id[inserting_index] = ids[batch_index]
+                        name_to_index = {name: idx for idx, name in enumerate(batch_names)}
+                        errors = sorted(
+                            errors, key=lambda x: name_to_index[x["name"]], reverse=True
+                        )
+                        if conflict_resolution == "rename":
+                            for error in errors:
+                                error_img_name = error["name"]
+                                idx = name_to_index[error_img_name]
+                                batch_names[idx] = _add_timestamp(error_img_name)
+                        elif conflict_resolution == "skip":
+                            for error in errors:
+                                error_img_name = error["name"]
+                                error_index = name_to_index[error_img_name]
+
+                                idx_to_id[error_index + batch_count * batch_size] = error["id"]
                                 for l in [batch_items, batch_metas, batch_names]:
-                                    l.pop(idx)
+                                    l.pop(error_index)
 
                         if len(batch_names) == 0:
                             break
@@ -1744,6 +1749,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if len(idx_to_id) > 0:
             logger.info("Inserting skipped image infos")
+
+            idx_to_id = dict(reversed(list(idx_to_id.items())))
             image_infos = self._api.image.get_info_by_id_batch(list(idx_to_id.values()))
             for idx, info in zip(list(idx_to_id.values()), image_infos):
                 results.insert(idx, info)
