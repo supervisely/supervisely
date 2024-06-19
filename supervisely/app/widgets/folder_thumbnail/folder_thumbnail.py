@@ -1,8 +1,9 @@
 import os
+
+from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
 from supervisely.api.file_api import FileInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
-from supervisely._utils import abs_url
 
 
 class FolderThumbnail(Widget):
@@ -38,7 +39,10 @@ class FolderThumbnail(Widget):
         self._id = info.id
         self._info = info
         self._description = os.path.dirname(info.path)
-        self._url = abs_url(f"/files/{info.id}")
+        if is_development() or is_debug_with_sly_net():
+            self._url = abs_url(f"files/{info.id}")
+        else:
+            self._url = f"files/{info.id}"
 
     def set(self, info):
         self._set_info(info)
