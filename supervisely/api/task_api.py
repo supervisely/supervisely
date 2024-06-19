@@ -12,7 +12,13 @@ from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Uni
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
-from supervisely._utils import batched, take_with_default
+from supervisely._utils import (
+    abs_url,
+    batched,
+    is_debug_with_sly_net,
+    is_development,
+    take_with_default,
+)
 from supervisely.api.module_api import (
     ApiField,
     ModuleApiBase,
@@ -835,7 +841,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     ):
         """_set_custom_output"""
         if file_url is None:
-            file_url = self._api.file.get_url(file_id)
+            # file_url = self._api.file.get_url(file_id)
+            if is_development() or is_debug_with_sly_net():
+                file_url = abs_url(f"files/{file_id}")
+            else:
+                file_url = f"/files/{file_id}"
 
         output = {
             ApiField.GENERAL: {
