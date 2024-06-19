@@ -42,7 +42,7 @@ class FolderThumbnail(Widget):
         if is_development() or is_debug_with_sly_net():
             self._url = abs_url(f"files/{info.id}")
         else:
-            self._url = f"files/{info.id}"
+            self._url = f"/files/{info.id}"
 
     def set(self, info):
         self._set_info(info)
