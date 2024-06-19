@@ -252,19 +252,13 @@ class Rectangle(Geometry):
             # 700 900
             # 700 100
         """
-        # return [
-        #     PointLocation(row=self.top, col=self.left),
-        #     PointLocation(row=self.top, col=self.right),
-        #     PointLocation(row=self.bottom, col=self.right),
-        #     PointLocation(row=self.bottom, col=self.left),
-        # ]
-
         return [
-            PointLocation(row=self.exact_top, col=self.exact_left),
-            PointLocation(row=self.exact_top, col=self.exact_right),
-            PointLocation(row=self.exact_bottom, col=self.exact_right),
-            PointLocation(row=self.exact_bottom, col=self.exact_left),
+            PointLocation(row=self.top, col=self.left),
+            PointLocation(row=self.top, col=self.right),
+            PointLocation(row=self.bottom, col=self.right),
+            PointLocation(row=self.bottom, col=self.left),
         ]
+
 
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
         """
@@ -533,22 +527,7 @@ class Rectangle(Geometry):
         """
         return self._points[0].col
 
-    @property
-    def exact_left(self) -> float:
-        """
-        Exact minimal horizontal value of Rectangle.
 
-        :return: Exact minimal horizontal value
-        :rtype: :class:`float`
-
-        :Usage Example:
-
-         .. code-block:: python
-
-            print(figure.left)
-            # Output: 100.545689
-        """
-        return self._points[0].exact_col
 
     @property
     def right(self) -> int:
@@ -567,22 +546,7 @@ class Rectangle(Geometry):
         """
         return self._points[1].col
 
-    @property
-    def exact_right(self) -> float:
-        """
-        Exact maximal horizontal value of Rectangle.
 
-        :return: Exact maximal horizontal value
-        :rtype: :class:`float`
-
-        :Usage Example:
-
-         .. code-block:: python
-
-            print(figure.right)
-            # Output: 900.52431156
-        """
-        return self._points[1].exact_col
 
     @property
     def top(self) -> int:
@@ -601,22 +565,7 @@ class Rectangle(Geometry):
         """
         return self._points[0].row
 
-    @property
-    def exact_top(self) -> float:
-        """
-        Exact minimal vertical value of Rectangle.
 
-        :return: Exact minimal vertical value
-        :rtype: :class:`float`
-
-        :Usage Example:
-
-         .. code-block:: python
-
-            print(rectangle.top)
-            # Output: 100.5474568
-        """
-        return self._points[0].exact_row
 
     @property
     def bottom(self) -> int:
@@ -635,22 +584,7 @@ class Rectangle(Geometry):
         """
         return self._points[1].row
 
-    @property
-    def exact_bottom(self) -> float:
-        """
-        Exact maximal vertical value of Rectangle.
 
-        :return: Exact maximal vertical value
-        :rtype: :class:`float`
-
-        :Usage Example:
-
-         .. code-block:: python
-
-            print(figure.bottom)
-            # Output: 700.534576
-        """
-        return self._points[1].exact_row
 
     @property
     def center(self) -> PointLocation:

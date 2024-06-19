@@ -35,11 +35,11 @@ class PointLocation(JsonSerializable):
     """
 
     def __init__(self, row: int, col: int):
-        self._row = round(unwrap_if_numpy(row))
-        self._col = round(unwrap_if_numpy(col))
+        self._row = unwrap_if_numpy(row)
+        self._col = unwrap_if_numpy(col)
 
-        self._exact_row = unwrap_if_numpy(row)
-        self._exact_col = unwrap_if_numpy(col)
+        # self._rounded_row = round(unwrap_if_numpy(row))
+        # self._rounded_col = round(unwrap_if_numpy(col))
 
     @property
     def row(self) -> int:
@@ -58,22 +58,6 @@ class PointLocation(JsonSerializable):
         return self._row
 
     @property
-    def exact_row(self) -> float:
-        """
-        Exact position of PointLocation on height.
-
-        :return: Height of PointLocation
-        :rtype: :class:`float`
-        :Usage example:
-
-         .. code-block:: python
-
-            print(loc.exact_row())
-            # Output: 542.5578350652526
-        """
-        return self._exact_row
-
-    @property
     def col(self) -> int:
         """
         Exact position of PointLocation on width.
@@ -88,22 +72,6 @@ class PointLocation(JsonSerializable):
             # Output: 200
         """
         return self._col
-
-    @property
-    def exact_col(self) -> float:
-        """
-        Position of PointLocation on width.
-
-        :return: Width of PointLocation
-        :rtype: :class:`float`
-        :Usage example:
-
-         .. code-block:: python
-
-                print(loc.exact_col())
-                # Output: 474.72839666836273
-        """
-        return self._exact_col
 
     def to_json(self) -> Dict:
         """
@@ -129,8 +97,7 @@ class PointLocation(JsonSerializable):
             #    }
             # }
         """
-        # packed_obj = {POINTS: {EXTERIOR: [[self.col, self.row]], INTERIOR: []}}
-        packed_obj = {POINTS: {EXTERIOR: [[self.exact_col, self.exact_row]], INTERIOR: []}}
+        packed_obj = {POINTS: {EXTERIOR: [[self.col, self.row]], INTERIOR: []}}
         return packed_obj
 
     @classmethod
@@ -225,8 +192,7 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             translate_loc = loc.translate(150, 350)
         """
-        # return PointLocation(row=(self.row + drow), col=(self.col + dcol))
-        return PointLocation(row=(self.exact_row + drow), col=(self.exact_col + dcol))
+        return PointLocation(row=(self.row + drow), col=(self.col + dcol))
 
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> PointLocation:
         """
@@ -292,8 +258,7 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             fliplr_loc = loc.fliplr((height, width))
         """
-        # return PointLocation(row=self.row, col=(img_size[1] - self.col))
-        return PointLocation(row=self.exact_row, col=(img_size[1] - self.exact_col))
+        return PointLocation(row=self.row, col=(img_size[1] - self.col))
 
     def flipud(self, img_size: Tuple[int, int]) -> PointLocation:
         """
@@ -312,8 +277,7 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             flipud_loc = loc.flipud((height, width))
         """
-        # return PointLocation(row=(img_size[0] - self.row), col=self.col)
-        return PointLocation(row=(img_size[0] - self.exact_row), col=self.exact_col)
+        return PointLocation(row=(img_size[0] - self.row), col=self.col)
 
     def clone(self) -> PointLocation:
         """
@@ -371,11 +335,8 @@ def points_to_row_col_list(
             print(points_row_col)
             # Output: [[100, 200], [300, 400]]
     """
-    # return _maybe_flip_row_col_order(
-    #     coords=[[p.row, p.col] for p in points], flip=flip_row_col_order
-    # )
     return _maybe_flip_row_col_order(
-        coords=[[p.exact_row, p.exact_col] for p in points], flip=flip_row_col_order
+        coords=[[p.row, p.col] for p in points], flip=flip_row_col_order
     )
 
 def row_col_list_to_points(
