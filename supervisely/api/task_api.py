@@ -841,11 +841,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     ):
         """_set_custom_output"""
         if file_url is None:
-            # file_url = self._api.file.get_url(file_id)
             if is_development() or is_debug_with_sly_net():
                 file_url = abs_url(f"files/{file_id}")
             else:
-                file_url = f"/files/{file_id}"
+                file_url = self._api.file.get_url(file_id)
 
         output = {
             ApiField.GENERAL: {
