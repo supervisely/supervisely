@@ -2817,8 +2817,10 @@ class Project:
             info_values_by_dataset[info.dataset_id]["metas"].append(info.meta)
         for dataset_id, values in info_values_by_dataset.items():
 
+            dataset_name = None
             if dataset_id in dataset_mapping:
-                dataset_id, dataset_name = dataset_mapping.get(dataset_id)
+                # return new dataset_id and name
+                dataset_id, dataset_name = dataset_mapping.get(dataset_id) 
                 if dataset_id is None:
                     raise KeyError(f"Dataset ID {dataset_id} not found in mapping")
 
