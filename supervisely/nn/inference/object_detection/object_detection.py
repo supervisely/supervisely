@@ -1,16 +1,9 @@
-import time
-import uuid
-from functools import partial
-from typing import Any, Dict, List
-
-from fastapi import Request
-
+from typing import Dict, List, Any
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.nn.prediction_dto import PredictionBBox
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.inference.inference import Inference
-from supervisely.nn.prediction_dto import PredictionBBox
-from supervisely.sly_logger import logger
 
 
 class ObjectDetection(Inference):
