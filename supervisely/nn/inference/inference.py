@@ -1271,6 +1271,7 @@ class Inference:
         project_id = state["projectId"]
         batch_size = state["batch_size"]
         num_iterations = state["num_iterations"]
+        num_warmup = state.get("num_warmup", 5)
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
 

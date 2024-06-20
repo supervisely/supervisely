@@ -114,8 +114,7 @@ class SessionJSON:
         return self._base_url
 
     def get_session_info(self) -> Dict[str, Any]:
-        if self._session_info is None:
-            self._session_info = self._get_from_endpoint("get_session_info")
+        self._session_info = self._get_from_endpoint("get_session_info")
         return self._session_info
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
@@ -141,9 +140,8 @@ class SessionJSON:
         return self._default_inference_settings
 
     def get_model_meta(self) -> Dict[str, Any]:
-        if self._model_meta is None:
-            meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-            self._model_meta = meta_json
+        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
+        self._model_meta = meta_json
         return self._model_meta
 
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
@@ -308,6 +306,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
         process_fn=None,
     ):
         if self._async_inference_uuid:
@@ -327,6 +326,7 @@ class SessionJSON:
         state["output_project_id"] = output_project_id
         state["cache_project_on_model"] = cache_project_on_model
         state["dataset_ids"] = dataset_ids
+        state["batch_size"] = batch_size
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -341,6 +341,9 @@ class SessionJSON:
     def run_benchmark(
         self,
         project_id: int,
+        batch_size: int = 1,
+        num_iterations: int = 100,
+        num_warmup: int = 5,
         dataset_ids: List[int] = None,
         cache_project_on_model: bool = False,
     ):
@@ -357,11 +360,15 @@ class SessionJSON:
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         state = json_body["state"]
-        state["projectId"] = project_id
-        state["cache_project_on_model"] = cache_project_on_model
-        state["dataset_ids"] = dataset_ids
-        state["batch_size"] = 1
-        state["num_iterations"] = 5
+        params = {
+            "projectId": project_id,
+            "cache_project_on_model": cache_project_on_model,
+            "dataset_ids": dataset_ids,
+            "batch_size": batch_size,
+            "num_iterations": num_iterations,
+            "num_warmup": num_warmup,
+        }
+        state.update(params)
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -378,6 +385,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
     ):
         return [
             pred
@@ -386,6 +394,7 @@ class SessionJSON:
                 dataset_ids,
                 output_project_id,
                 cache_project_on_model=cache_project_on_model,
+                batch_size=batch_size,
                 process_fn=None,
             )
         ]
@@ -679,12 +688,14 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
             dataset_ids,
             output_project_id,
             cache_project_on_model=cache_project_on_model,
+            batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
         )
         return frame_iterator
@@ -695,11 +706,12 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
     ):
         return [
             pred
             for pred in self.inference_project_id_async(
-                project_id, dataset_ids, output_project_id, cache_project_on_model
+                project_id, dataset_ids, output_project_id, cache_project_on_model, batch_size
             )
         ]
 
