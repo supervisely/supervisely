@@ -779,10 +779,14 @@ class AppApi(TaskApi):
         """
         Add input or output to a workflow node.
 
-        :param data: dict - data to be added to the workflow node.
-        :param transaction_type: str - type of transaction "input" or "output".
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param data: Data to be added to the workflow node.
+        :type data: dict
+        :param transaction_type: Type of transaction "input" or "output".
+        :type transaction_type: str
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
         if task_id is None:
             node_id = self._api.task_id
@@ -796,7 +800,7 @@ class AppApi(TaskApi):
 
         node_type = "task"
         if not getattr(self, "team_id", None) and node_id:
-            self.team_id = self._api.task.get_info_by_id(node_id).get("teamId")
+            self.team_id = self._api.task.get_info_by_id(node_id).get(ApiField.TEAM_ID)
 
         if not self.team_id:
             raise ValueError("Failed to get Team ID")
@@ -806,82 +810,75 @@ class AppApi(TaskApi):
         data_type = data.get("data_type")
         data_id = data.get("data_id") if data_type != "app_session" else node_id
         data_meta = data.get("meta")
-        project_version = data.get("project_version")
 
         payload = {
             ApiField.TEAM_ID: self.team_id,
             ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},
             ApiField.TYPE: data_type,
         }
-
         if data_id:
             payload[ApiField.ID] = data_id
-
-        if project_version:
-            payload[ApiField.PROJECT_VERSION] = project_version
-
         if data_meta:
             payload[ApiField.META] = data_meta
-        # TODO remove later start
-        logger.info(
-            f"""
-        🟥 Payload: {payload}
-                    """
-        )
-        # TODO remove later end
         response = self._api.post(api_endpoint, payload)
         return response.json()
 
     def add_input_project(
         self,
         project: Union[int, ProjectInfo] = None,
-        version: Optional[int] = None,
+        version_id: Optional[int] = None,
         task_id: Optional[int] = None,
     ) -> dict:
         """
         Add input type "project" to the workflow node.
-        The project version can be specified for following Project Versioning.
+        The project version can be specified to indicate that the project version was created especially for this task.
+        This type is used to show that the application has used the specified project.
 
-        :param project: Union[int, ProjectInfo] - project ID or ProjectInfo object.
-        :param version: Optional[int] - version of the project.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param project: Project ID or ProjectInfo object.
+        :type project: Union[int, ProjectInfo]
+        :param version_id: Version ID of the project.
+        :type version_id: Optional[int]
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
-        if project is None and version is None:
+        if project is None and version_id is None:
             raise ValueError("Project or version must be specified")
 
         data_type = "project"
-        project_version = None
+        data_id = None
 
         if isinstance(project, ProjectInfo):
-            project_id = project.id
-            # project_version = project.version
+            data_id = project.id
         elif isinstance(project, int):
-            project_id = project
-            # project_version = self._api.project.get_info_by_id(project_id).version
+            data_id = project
 
-        if version:
-            project_id = version
+        if version_id:
+            data_id = version_id
             data_type = "project_version"
 
         data = {
             "data_type": data_type,
-            "data_id": project_id,  # pylint: disable=possibly-used-before-assignment
-            "project_version": project_version,
+            "data_id": data_id,
         }
 
         return self._add_edge(data, "input", task_id)
 
     def add_input_dataset(
-        self, dataset: Union[id, DatasetInfo], task_id: Optional[int] = None
+        self, dataset: Union[int, DatasetInfo], task_id: Optional[int] = None
     ) -> dict:
         """
         Add input type "dataset" to the workflow node.
+        This type is used to show that the application has used the specified dataset.
 
-        :param dataset: Union[int, DatasetInfo] - dataset ID or DatasetInfo object.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param dataset: Dataset ID or DatasetInfo object.
+        :type dataset: Union[int, DatasetInfo]
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data_type = "dataset"
@@ -898,11 +895,16 @@ class AppApi(TaskApi):
     ) -> dict:
         """
         Add input type "file" to the workflow node.
+        This type is used to show that the application has used the specified file.
 
-        :param file: Union[int, FileInfo, str] - file ID, FileInfo object or file path int Team Files.
-        :param model_weight: bool - flag to indicate if the file is a model weight.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param file: File ID, FileInfo object or file path int Team Files.
+        :type file: Union[int, FileInfo, str]
+        :param model_weight: Flag to indicate if the file is a model weight.
+        :type model_weight: bool
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data = {}
@@ -916,7 +918,6 @@ class AppApi(TaskApi):
             if str_is_url(file):
                 raise NotImplementedError("URLs are not supported yet")
             file_id = self._api.file.get_info_by_path(env.team_id(), file).id
-            logger.info(f"Team ID: {env.team_id()}, File ID: {file}")  # TODO remove later
         else:
             raise ValueError(f"Invalid file type: {type(file)}")
 
@@ -932,10 +933,14 @@ class AppApi(TaskApi):
         """
         Add input type "folder" to the workflow node.
         Path to the folder is a path in Team Files.
+        This type is used to show that the application has used files from the specified folder.
 
-        :param path: str - path to the folder.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param path: Path to the folder in Team Files.
+        :type path: str
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
         from pathlib import Path
 
@@ -956,58 +961,59 @@ class AppApi(TaskApi):
     def add_output_project(
         self,
         project: Union[int, ProjectInfo],
-        version: Optional[int] = None,
+        version_id: Optional[int] = None,
         task_id: Optional[int] = None,
-        init_version=False,
     ) -> dict:
         """
         Add output type "project" to the workflow node.
-        The project version can be specified for following Project Versioning.
+        The project version can be specified with "version" argument to indicate that the project version was created especially as result of this task.
+        This type is used to show that the application has created a project with the result of its work.
 
-        :param project: Union[int, ProjectInfo] - project ID or ProjectInfo object.
-        :param version: Optional[int] - version of the project.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :param init_version: bool - flag to indicate if the first project version should be created.
-        :return: dict - response from the API.
+        :param project: Project ID or ProjectInfo object.
+        :type project: Union[int, ProjectInfo]
+        :param version_id: Version ID of the project.
+        :type version_id: Optional[int]
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
-        if project is None and version is None:
+        if project is None and version_id is None:
             raise ValueError("Project or version must be specified")
 
         data_type = "project"
-        project_version = None
+        data_id = None
 
         if isinstance(project, ProjectInfo):
-            project_id = project.id
-            # project_version = project.version
+            data_id = project.id
         elif isinstance(project, int):
-            project_id = project
-            # project_version = self._api.project.get_info_by_id(project_id).version
+            data_id = project
 
-        if version:
-            project_id = version
+        if version_id:
+            data_id = version_id
             data_type = "project_version"
-
-        if init_version:
-            project_version = self._api.project.version.create(project_id)
 
         data = {
             "data_type": data_type,
-            "data_id": project_id,
-            "project_version": project_version,
+            "data_id": data_id,
         }
 
         return self._add_edge(data, "output", task_id)
 
     def add_output_dataset(
-        self, dataset: Union[id, DatasetInfo], task_id: Optional[int] = None
+        self, dataset: Union[int, DatasetInfo], task_id: Optional[int] = None
     ) -> dict:
         """
         Add output type "dataset" to the workflow node.
+        This type is used to show that the application has created a dataset with the result of its work.
 
-        :param dataset: Union[int, DatasetInfo] - dataset ID or DatasetInfo object.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param dataset: Dataset ID or DatasetInfo object.
+        :type dataset: Union[int, DatasetInfo]
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data_type = "dataset"
@@ -1024,11 +1030,16 @@ class AppApi(TaskApi):
     ) -> dict:
         """
         Add output type "file" to the workflow node.
+        This type is used to show that the application has created a file with the result of its work.
 
-        :param file: Union[int, FileInfo] - file ID or FileInfo object.
-        :param model_weight: bool - flag to indicate if the file is a model weight.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param file: File ID or FileInfo object.
+        :type file: Union[int, FileInfo]
+        :param model_weight: Flag to indicate if the file is a model weight.
+        :type model_weight: bool
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data_type = "file"
@@ -1047,10 +1058,14 @@ class AppApi(TaskApi):
         """
         Add output type "folder" to the workflow node.
         Path to the folder is a path in Team Files.
+        This type is used to show that the application has created a folder with the result files of its work.
 
-        :param path: str - path to the folder.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param path: Path to the folder.
+        :type path: str
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
         from pathlib import Path
 
@@ -1071,9 +1086,12 @@ class AppApi(TaskApi):
     def add_output_app(self, task_id: Optional[int] = None) -> dict:
         """
         Add output type "app_session" to the workflow node.
+        This type is used to show that the application has an offline session in which you can find the result of its work.
 
-        :param task_id: Optional[int] - App Task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data_type = "app_session"
@@ -1082,28 +1100,36 @@ class AppApi(TaskApi):
 
         return self._add_edge(data, "output", task_id)
 
-    def add_output_task(self, id: int, node_task_id: Optional[int] = None) -> dict:
+    def add_output_task(self, new_task_id: int, task_id: Optional[int] = None) -> dict:
         """
         Add output type "task" to the workflow node.
+        This type is used to show that the application has created a task with the result of its work.
 
-        :param id: int - task ID.
-        :param node_task_id: Optional[int] - task ID of the node. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param new_task_id: Created task ID.
+        :type new_task_id: int
+        :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data_type = "task"
 
-        data = {"data_type": data_type, "data_id": id}
+        data = {"data_type": data_type, "data_id": new_task_id}
 
-        return self._add_edge(data, "output", node_task_id)
+        return self._add_edge(data, "output", task_id)
 
     def add_output_job(self, id: int, task_id: Optional[int] = None) -> dict:
         """
         Add output type "job" to the workflow node. Job is a Labeling Job.
+        This type is used to show that the application has created a labeling job with the result of its work.
 
-        :param id: int - Labeling Job ID.
-        :param task_id: Optional[int] - task ID. If not specified, the task ID will be determined automatically.
-        :return: dict - response from the API.
+        :param id: Labeling Job ID.
+        :type id: int
+        :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :return: Response from the API.
+        :rtype: dict
         """
 
         data_type = "job"
