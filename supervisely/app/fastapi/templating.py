@@ -7,7 +7,6 @@ from fastapi.templating import Jinja2Templates as _fastapi_Jinja2Templates
 from starlette.background import BackgroundTask
 from starlette.templating import _TemplateResponse as _TemplateResponse
 
-from supervisely import is_development
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
@@ -15,7 +14,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 js_bundle_version = "2.1.87"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
-js_frontend_version = "v0.0.52"
+js_frontend_version = "v0.0.50"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
@@ -54,7 +53,6 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
             "app_name": get_name_from_env(default="Supervisely App"),
-            "is_development": is_development(),
         }
 
         try:

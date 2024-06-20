@@ -1,39 +1,11 @@
-<link rel="stylesheet" href="./sly/css/app/widgets/text/style.css" />
-
-<div
-	id="{{{widget.widget_id}}}"
-	class="py-text-widget"
-	v-if="data.{{{widget.widget_id}}}.text"
-	{%
-	if
-	widget._scroll_to_widget
-	%}
-	class="py-text-widget scroll-to-widget"
-	@click="state.scrollIntoView='{{{widget._scroll_to_widget}}}'"
-	{%
-	endif
-	%}
->
-	<i
-		v-if="data.{{{widget.widget_id}}}.icon"
-		:class="data.{{{widget.widget_id}}}.icon"
-		style="margin-right: 5px"
-		:style="{color: data.{{{widget.widget_id}}}.icon_color}"
-	></i>
-	<span
-		{%
-		if
-		not
-		widget._scroll_to_widget
-		%}
-		:style="{color: data.{{{widget.widget_id}}}.text_color}"
-		{%
-		endif
-		%}
-	>
-		<span
-			v-html="data.{{{widget.widget_id}}}.text"
-			v-bind:style="{ fontSize: data.{{{widget.widget_id}}}.font_size }"
-		></span>
-	</span>
+<div v-if="data.{{{widget.widget_id}}}.text">
+  <i
+    v-if="data.{{{widget.widget_id}}}.icon"
+    :class="data.{{{widget.widget_id}}}.icon"
+    style="margin-right: 5px"
+    :style="{color: data.{{{widget.widget_id}}}.icon_color}"
+  ></i>
+  <span :style="{color: data.{{{widget.widget_id}}}.text_color}">
+    <span v-html="data.{{{widget.widget_id}}}.text" v-bind:style="{ fontSize: data.{{{widget.widget_id}}}.font_size }"></span>
+  </span>
 </div>

@@ -1,10 +1,10 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/tags_list_selector/style.css" />
 
 
-<div id="{{{widget.widget_id}}}" v-show="data.{{{widget.widget_id}}}.tags.length == 0">
+<div v-show="data.{{{widget.widget_id}}}.tags.length == 0">
 	{{{widget.empty_notification}}}
 </div>
-<div id="{{{widget.widget_id}}}" v-show="data.{{{widget.widget_id}}}.tags.length != 0">
+<div v-show="data.{{{widget.widget_id}}}.tags.length != 0">
 	<link
 		rel="stylesheet"
 		href="./sly/css/app/widgets/object_class_view/style.css"

@@ -1,13 +1,11 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/draggable/style.css" />
-<div
-	id="{{{widget.widget_id}}}"
-	class="py-draggable-widget"
-	draggable
-	@dragstart="(evt)=>{
+<div 
+  class="py-draggable-widget"
+  draggable
+  @dragstart="(evt)=>{
     evt.dataTransfer.dropEffect = 'move';
     evt.dataTransfer.effectAllowed = 'move';
     evt.dataTransfer.setData('itemId', '{{{widget._key}}}');
-  }"
->
-	{{{widget._content}}}
+  }">
+  {{{widget._content}}}
 </div>

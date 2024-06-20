@@ -1,14 +1,13 @@
 <el-checkbox
-	id="{{{widget.widget_id}}}"
-	v-model="state.{{{widget.widget_id}}}.checked"
-	{%
-	if
-	widget._changes_handled
-	%}
-	@change="post('/{{{widget.widget_id}}}/value_changed')"
-	{%
-	endif
-	%}
+  v-model="state.{{{widget.widget_id}}}.checked"
+  {%
+  if
+  widget._changes_handled
+  %}
+  @change="post('/{{{widget.widget_id}}}/value_changed')"
+  {%
+  endif
+  %}
 >
-	<div style="display: inline-block">{{{widget._content}}}</div>
+  <div style="display: inline-block">{{{widget._content}}}</div>
 </el-checkbox>

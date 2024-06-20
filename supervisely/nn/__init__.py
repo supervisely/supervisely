@@ -1,4 +1,5 @@
 import supervisely.nn.artifacts as artifacts
+import supervisely.nn.checkpoints as checkpoints
 import supervisely.nn.inference as inference
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts, TrainInfo
 from supervisely.nn.checkpoints.checkpoint import CheckpointInfo

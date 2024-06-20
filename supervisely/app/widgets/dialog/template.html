@@ -1,8 +1,9 @@
 <el-dialog
-	id="{{{widget.widget_id}}}"
-	:title="data.{{{widget.widget_id}}}.title"
-	:size="data.{{{widget.widget_id}}}.size"
-	:visible.sync="state.{{{widget.widget_id}}}.visible"
+  :title=data.{{{widget.widget_id}}}.title
+  :size=data.{{{widget.widget_id}}}.size
+  :visible.sync="state.{{{widget.widget_id}}}.visible"
 >
-	<div>{{{widget._content}}}</div>
+  <div>
+    {{{widget._content}}}
+  </div>
 </el-dialog>

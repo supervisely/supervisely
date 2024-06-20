@@ -1,5 +1,5 @@
 <el-dropdown
-  id="{{{widget.widget_id}}}"
+
   {% if widget._changes_handled == true %}
   @command="state.{{{ widget.widget_id }}}.clickedValue = $event;
             post('/{{{ widget.widget_id }}}/value_changed')"

@@ -1,5 +1,5 @@
 <el-pagination
-    id="{{{widget.widget_id}}}"
+
     {% if widget._current_change == true %}
     @current-change="post('/{{{widget.widget_id}}}/current_change')"
     {% endif %}

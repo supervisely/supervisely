@@ -1,5 +1,5 @@
 <el-time-select
-id="{{{widget.widget_id}}}"
+
 {% if widget._changes_handled == true %}
 @change="post('/{{{widget.widget_id}}}/value_changed')"
 {% endif %}

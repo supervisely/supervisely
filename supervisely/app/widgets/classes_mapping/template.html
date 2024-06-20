@@ -1,21 +1,15 @@
-<div
-	id="{{{widget.widget_id}}}"
-	v-show="data.{{{widget.widget_id}}}.classes.length == 0"
->
+<div v-show="data.{{{widget.widget_id}}}.classes.length == 0">
 	{{{widget.empty_notification}}}
 </div>
-<div
-	id="{{{widget.widget_id}}}"
-	v-show="data.{{{widget.widget_id}}}.classes.length != 0"
->
+<div v-show="data.{{{widget.widget_id}}}.classes.length != 0">
 	<link
 		rel="stylesheet"
 		href="./sly/css/app/widgets/object_class_view/style.css"
 	/>
-	<div>
-		<span style="margin-right: 10px">{{{widget._select_all_btn}}}</span>
-		<span style="margin-right: 10px">{{{widget._deselect_all_btn}}}</span>
-	</div>
+    <div>
+        <span style="margin-right: 10px">{{{widget._select_all_btn}}}</span>
+        <span style="margin-right: 10px">{{{widget._deselect_all_btn}}}</span>
+    </div>
 	<table>
 		<tr>
 			<th style="padding: 3px"></th>
