@@ -1,16 +1,15 @@
 # coding: utf-8
 
 # docs
-from typing import List, NamedTuple, Dict, Optional
+from typing import Dict, List, NamedTuple, Optional
 
-
+from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
-from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
-from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudAnnotationAPI(EntityAnnotationAPI):
@@ -58,7 +57,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -146,7 +145,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
