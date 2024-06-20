@@ -354,11 +354,11 @@ class InferenceImageCache:
         return_images = kwargs.get("return_images", True)
         progress_cb = kwargs.get("progress_cb", None)
 
+        video_info = api.video.get_info_by_id(video_id)
         self._wait_if_in_queue(video_id, api.logger)
         if not video_id in self._cache:
             self._load_queue.set(video_id, video_id)
             sly.logger.debug("Downloading video #%s", video_id)
-            video_info = api.video.get_info_by_id(video_id)
             temp_video_path = Path("/tmp/smart_cache").joinpath(
                 f"_{sly.rand_str(6)}_" + video_info.name
             )
