@@ -84,13 +84,15 @@ class SessionJSON:
             self._base_url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
         else:
             self._base_url = session_url
-        self.set_inference_settings(inference_settings)
-
+        self.inference_settings = {}
         self._session_info = None
         self._default_inference_settings = None
         self._model_meta = None
         self._async_inference_uuid = None
         self._stop_async_inference_flag = False
+
+        if inference_settings is not None:
+            self.set_inference_settings(inference_settings)
 
         # Check connection:
         try:
@@ -145,6 +147,7 @@ class SessionJSON:
         return self._model_meta
 
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
+        self._validate_new_inference_settings(inference_settings)
         self.inference_settings.update(inference_settings)
         return self.inference_settings
 
@@ -155,11 +158,21 @@ class SessionJSON:
     def _set_inference_settings_dict_or_yaml(self, dict_or_yaml_path) -> None:
         if isinstance(dict_or_yaml_path, str):
             with open(dict_or_yaml_path, "r") as f:
-                self.inference_settings: dict = yaml.safe_load(f)
+                new_settings = yaml.safe_load(f)
         elif isinstance(dict_or_yaml_path, dict):
-            self.inference_settings = dict_or_yaml_path
+            new_settings = dict_or_yaml_path
         else:
-            self.inference_settings = {}
+            raise ValueError(
+                "The `inference_settings` parameter must be either a dict or a path to a YAML file."
+            )
+        self._validate_new_inference_settings(new_settings)
+        self.inference_settings = new_settings
+
+    def _validate_new_inference_settings(self, new_settings: dict) -> None:
+        default_settings = self.get_default_inference_settings()
+        for key, value in new_settings.items():
+            if key not in default_settings:
+                raise ValueError(f"Key '{key}' is not acceptable. Acceptable keys are: {default_settings}")
 
     def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
