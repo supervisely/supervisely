@@ -1,83 +1,45 @@
 import os
 
-import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, Api, ProjectMeta, batched, is_development, logger
-from supervisely.convert.base_converter import AvailableImageConverters
-from supervisely.convert.image.coco.coco_converter import COCOConverter
+from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
+import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import get_file_ext
+from supervisely.io.json import load_json_file
 
-COCO_ANN_KEYS = ["images", "annotations"]
 
-
-class FastCOCOConverter(COCOConverter, ImageConverter):
-
-    def __str__(self) -> str:
-        return AvailableImageConverters.FAST_COCO
+class FastSlyImageConverter(SLYImageConverter, ImageConverter):
 
     def validate_format(self) -> bool:
-        from pycocotools.coco import COCO  # pylint: disable=import-error
 
         detected_ann_cnt = 0
-        ann_paths = []
+        self._items = []
+        meta = ProjectMeta()
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext == self.ann_ext:
-                    ann_paths.append(full_path)
+                    ann_json = load_json_file(full_path)
+                    if helper.annotation_high_level_validator(ann_json):
+                        meta = helper.get_meta_from_annotation(ann_json, meta)
+                        h, w = helper.get_image_size_from_annotation(ann_json)
+                        image_name = os.path.splitext(os.path.basename(full_path))[0]
+                        item = self.Item(image_name)
+                        item.ann_data = full_path
+                        item.set_shape((h, w))
+                        self._items.append(item)
+                        detected_ann_cnt += 1
                 elif self.is_image(full_path):
+                    self._items = []
                     return False
 
-        if len(ann_paths) == 0:
+        if detected_ann_cnt == 0:
+            self._items = []
             return False
-
-        # create Items
-        self._items = []
-        meta = ProjectMeta()
-        for ann_path in ann_paths:
-            try:
-                with coco_helper.HiddenCocoPrints():
-                    coco = COCO(ann_path)
-            except:
-                continue
-            if not all(key in coco.dataset for key in COCO_ANN_KEYS):
-                continue
-            coco_anns = coco.imgToAnns
-            coco_images = coco.imgs
-            if len(coco.cats) > 0:
-                coco_categories = coco.loadCats(ids=coco.getCatIds())
-            else:
-                coco_categories = []
-            self._coco_categories.extend(coco_categories)
-            coco_items = coco_images.items()
-            meta = self.generate_meta_from_annotation(coco, meta)
-            # create ann dict
-            for image_id, image_info in coco_items:
-                image_name = image_info.get("file_name", image_info.get("name"))
-                if "/" in image_name:
-                    image_name = os.path.basename(image_name)
-                image_url = image_info.get(
-                    "coco_url",
-                    image_info.get(
-                        "flickr_url", image_info.get("url", image_info.get("path", None))
-                    ),
-                )
-                width = image_info.get("width")
-                height = image_info.get("height")
-
-                coco_ann = coco_anns[image_id]
-                if len(coco_ann) == 0 or coco_ann is None or image_name is None:
-                    continue
-                item = self.Item(image_name) if image_url is None else self.Item(image_url)
-                item.name = image_name
-                item.ann_data = coco_ann
-                item.set_shape((height, width))
-                self._items.append(item)
-                detected_ann_cnt += len(coco_ann)
-
         self._meta = meta
         return detected_ann_cnt > 0
+
 
     def to_supervisely(
         self,
@@ -87,20 +49,20 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         renamed_tags: dict = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
+        if meta is None:
+            meta = self._meta
+
         try:
-            ann = coco_helper.create_supervisely_annotation(
-                item,
-                meta,
-                self._coco_categories,
-                renamed_classes,
-                renamed_tags,
-            )
-            return ann
+            ann_json = load_json_file(item.ann_data)
+            if "annotation" in ann_json:
+                ann_json = ann_json["annotation"]
+            if renamed_classes or renamed_tags:
+                ann_json = helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
+            return Annotation.from_json(ann_json, meta)
         except Exception as e:
-            logger.error(
-                f"Error during conversion of annotation for image '{item.name}': {repr(e)}"
-            )
+            logger.warn(f"Failed to convert annotation: {repr(e)}")
             return None
+
 
     def upload_dataset(
         self,
@@ -109,7 +71,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         batch_size: int = 50,
         log_progress=True,
     ) -> None:
-        """Convert COCO annootations to Supervisely and append to dataset images."""
+        """Convert Supervisely annootations to Supervisely and append to dataset images."""
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -118,11 +80,11 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
             raise RuntimeError(
                 "Not found images in the dataset. "
                 "Please start the import process from a dataset that contains images, "
-                "or upload both images and COCO annotations at once."
+                "or upload both images and annotations at once."
             )
         if log_progress:
             progress, progress_cb = self.get_progress(
-                self.items_count, "Adding COCO annotations..."
+                self.items_count, "Adding Supervisely annotations..."
             )
         else:
             progress_cb = None
@@ -136,7 +98,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
                     continue
                 if item.shape != (existing_image.height, existing_image.width):
                     logger.warn(
-                        f"Image '{item.name}' has different shapes in COCO annotation and Supervisely."
+                        f"Image '{item.name}' has different shapes in JSON file and server."
                     )
                     continue
 

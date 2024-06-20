@@ -1,18 +1,22 @@
-from typing import Dict, List, Any, Union, Optional
-from supervisely.geometry.graph import GraphNodes
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.nn.prediction_dto import PredictionKeypoints
-from supervisely.annotation.label import Label
-from supervisely.nn.inference.inference import Inference
-from supervisely.geometry.graph import Node, KeypointsTemplate
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.imaging import image as sly_image
-from supervisely.decorators.inference import _scale_ann_to_original_size, _process_image_path
-from supervisely.io.fs import silent_remove
-from supervisely.sly_logger import logger
 import functools
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
+
+from supervisely.annotation.label import Label
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.decorators.inference import (
+    _process_image_path,
+    _scale_ann_to_original_size,
+)
+from supervisely.geometry.graph import GraphNodes, KeypointsTemplate, Node
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import image as sly_image
+from supervisely.io.fs import silent_remove
+from supervisely.nn.inference.inference import Inference
+from supervisely.nn.prediction_dto import PredictionKeypoints
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 try:
     from typing import Literal
@@ -156,5 +160,7 @@ class PoseEstimation(Inference):
     ):
         logger.debug("Input path", extra={"path": image_path})
         predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, settings.get("classes", None)
+        )
         return ann

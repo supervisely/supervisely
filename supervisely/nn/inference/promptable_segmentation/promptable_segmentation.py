@@ -1,17 +1,17 @@
-from typing import Dict, List, Any, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from typing_extensions import Literal
 
 from supervisely import env as sly_env
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionMask
 from supervisely.annotation.label import Label
-from supervisely.sly_logger import logger
-from supervisely.nn.inference.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.decorators.inference import process_image_sliding_window
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.nn.inference.inference import Inference
+from supervisely.nn.prediction_dto import PredictionMask
+from supervisely.sly_logger import logger
 
 
-class PromptableSegmentation(Inference, InferenceImageCache):
+class PromptableSegmentation(Inference):
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -22,13 +22,6 @@ class PromptableSegmentation(Inference, InferenceImageCache):
         use_gui: Optional[bool] = False,
     ):
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
-        InferenceImageCache.__init__(
-            self,
-            maxsize=sly_env.smart_cache_size(),
-            ttl=sly_env.smart_cache_ttl(),
-            is_persistent=True,
-            base_folder=sly_env.smart_cache_container_dir(),
-        )
         logger.debug(
             "Smart cache params",
             extra={"ttl": sly_env.smart_cache_ttl(), "maxsize": sly_env.smart_cache_size()},
@@ -51,7 +44,7 @@ class PromptableSegmentation(Inference, InferenceImageCache):
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
             return None
-        geometry = Bitmap(dto.mask)
+        geometry = Bitmap(dto.mask, extra_validation=False)
         label = Label(geometry, obj_class)
         return label
 
@@ -79,7 +72,9 @@ class PromptableSegmentation(Inference, InferenceImageCache):
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, settings.get("classes", None)
+        )
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",

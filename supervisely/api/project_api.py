@@ -38,7 +38,7 @@ from supervisely.api.module_api import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
-from supervisely.project.project_settings import ProjectSettings
+from supervisely.project.project_settings import ProjectSettings, ProjectSettingsJsonFields
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -500,6 +500,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_name=mtag_name,
                 multiview_tag_id=json_settings.get("groupImagesByTagId"),
                 multiview_is_synced=json_settings.get("groupImagesSync", False),
+                labeling_interface=json_settings.get(ProjectSettingsJsonFields.LABELING_INTERFACE),
             ).to_json()
 
         return json_response
@@ -698,15 +699,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_name=mtag_name,
                 multiview_tag_id=mtag_id,
             )
+            labeling_interface = new_s.labeling_interface
             m = m.clone(project_settings=new_s)
-            self.update_settings(
-                id,
-                {
-                    "groupImages": new_s.multiview_enabled,
-                    "groupImagesByTagId": new_s.multiview_tag_id,
-                    "groupImagesSync": new_s.multiview_is_synced,
-                },
-            )
+            settings_json = {
+                "groupImages": new_s.multiview_enabled,
+                "groupImagesByTagId": new_s.multiview_tag_id,
+                "groupImagesSync": new_s.multiview_is_synced,
+            }
+            if labeling_interface is not None:
+                settings_json[ProjectSettingsJsonFields.LABELING_INTERFACE] = labeling_interface
+            self.update_settings(id, settings_json)
 
         return m
 

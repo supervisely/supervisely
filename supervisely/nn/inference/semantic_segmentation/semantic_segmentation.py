@@ -1,10 +1,12 @@
-from typing import Dict, List, Any
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionSegmentation
-from supervisely.annotation.label import Label
-from supervisely.sly_logger import logger
-from supervisely.nn.inference.inference import Inference
+from typing import Any, Dict, List
+
 import numpy as np
+
+from supervisely.annotation.label import Label
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.nn.inference.inference import Inference
+from supervisely.nn.prediction_dto import PredictionSegmentation
+from supervisely.sly_logger import logger
 
 
 class SemanticSegmentation(Inference):
@@ -36,7 +38,7 @@ class SemanticSegmentation(Inference):
             if not class_mask.any():  # skip empty masks
                 logger.debug(f"Mask of class {class_name} is empty and will be sklipped")
                 return None
-            geometry = Bitmap(class_mask)
+            geometry = Bitmap(class_mask, extra_validation=False)
             label = Label(geometry, obj_class)
             labels.append(label)
         return labels

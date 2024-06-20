@@ -125,7 +125,7 @@ class ImageConverter(BaseConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)

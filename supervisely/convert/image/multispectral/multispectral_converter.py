@@ -12,6 +12,7 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import is_valid_ext
 from supervisely.io.fs import dirs_filter, get_file_ext, list_files
+from supervisely.project.project_settings import LabelingInterface
 
 SPLIT_TO_CHANNELS_DIR_NAME = "split"
 UPLOAD_AS_IMAGES_DIR_NAME = "images"
@@ -30,7 +31,7 @@ class MultiSpectralImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only multispectral labeling interface can be used for multispectral images."""
-        return self._labeling_interface == "multispectral"
+        return self._labeling_interface == LabelingInterface.MULTISPECTRAL
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
