@@ -721,7 +721,8 @@ class Rectangle(Geometry):
             print(mask_slice.shape)
             # Output: (199, 499)
         """
-        return data[self.top : (self.bottom + 1), self.left : (self.right + 1), ...]
+        top, bottom, left, right = round(self.top), round(self.bottom), round(self.left), round(self.right)
+        return data[top : (bottom + 1), left : (right + 1), ...]
 
     def intersects_with(self, rect: Rectangle) -> bool:
         """

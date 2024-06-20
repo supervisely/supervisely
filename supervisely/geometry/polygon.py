@@ -216,11 +216,11 @@ class Polygon(VectorGeometry):
                 and len(intersection) > 0
                 and len(intersection[0]) >= 3
             ):
-                exterior = row_col_list_to_points(intersection[0], do_round=True)
+                exterior = row_col_list_to_points(intersection[0], do_round=False)
                 interiors = []
                 for interior_contour in intersection[1:]:
                     if len(interior_contour) > 2:
-                        interiors.append(row_col_list_to_points(interior_contour, do_round=True))
+                        interiors.append(row_col_list_to_points(interior_contour, do_round=False))
                 out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
@@ -290,8 +290,8 @@ class Polygon(VectorGeometry):
         interior_np = [
             self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np
         ]
-        exterior = row_col_list_to_points(exterior_np, do_round=True)
-        interior = [row_col_list_to_points(x, do_round=True) for x in interior_np]
+        exterior = row_col_list_to_points(exterior_np, do_round=False)
+        interior = [row_col_list_to_points(x, do_round=False) for x in interior_np]
         return Polygon(exterior, interior)
 
     @classmethod

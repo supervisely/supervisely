@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import supervisely as sly
 from supervisely._utils import unwrap_if_numpy
@@ -34,7 +34,7 @@ class PointLocation(JsonSerializable):
         loc = sly.PointLocation(row, col)
     """
 
-    def __init__(self, row: int, col: int):
+    def __init__(self, row: Union[int, float], col: Union[int, float]):
         self._row = unwrap_if_numpy(row)
         self._col = unwrap_if_numpy(col)
 
@@ -42,12 +42,12 @@ class PointLocation(JsonSerializable):
         # self._rounded_col = round(unwrap_if_numpy(col))
 
     @property
-    def row(self) -> int:
+    def row(self) -> Union[int, float]:
         """
         Position of PointLocation on height.
 
         :return: Height of PointLocation
-        :rtype: :class:`int`
+        :rtype: :class:`Union[int, float]`
         :Usage example:
 
          .. code-block:: python
@@ -58,12 +58,12 @@ class PointLocation(JsonSerializable):
         return self._row
 
     @property
-    def col(self) -> int:
+    def col(self) -> Union[int, float]:
         """
         Exact position of PointLocation on width.
 
         :return: Width of PointLocation
-        :rtype: :class:`int`
+        :rtype: :class:`Union[int, float]`
         :Usage example:
 
          .. code-block:: python
@@ -340,7 +340,7 @@ def points_to_row_col_list(
     )
 
 def row_col_list_to_points(
-    data: List[List[int, int]],
+    data: List[List[Union[int, float], Union[int, float]]],
     flip_row_col_order: Optional[bool] = False,
     do_round: Optional[bool] = False,
 ) -> List[PointLocation]:

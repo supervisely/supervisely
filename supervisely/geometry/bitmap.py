@@ -290,9 +290,10 @@ class Bitmap(BitmapBase):
             )
         if contours is not None:
             for cont in contours:
+                rouned_col, rounded_row = round(self.origin.col), round(self.origin.row)
                 cont[:, :] += (
-                    self.origin.col,
-                    self.origin.row,
+                    rouned_col,
+                    rounded_row,
                 )  # cont with shape (rows, ?, 2)
             cv2.drawContours(
                 bitmap, contours, -1, color, thickness=thickness

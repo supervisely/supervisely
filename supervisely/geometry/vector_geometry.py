@@ -197,7 +197,8 @@ class VectorGeometry(Geometry):
             #  [2479  402]
             #  [3746 1646]]
         """
-        return np.array(points_to_row_col_list(self._exterior), dtype=np.int64)
+        # return np.array(points_to_row_col_list(self._exterior), dtype=np.int64)
+        return np.array(points_to_row_col_list(self._exterior), dtype=np.float64)
 
     @property
     def interior(self) -> List[List[PointLocation]]:
