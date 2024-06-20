@@ -157,7 +157,7 @@ class DataVersion(ModuleApiBase):
         project_info: Union[ProjectInfo, int],
         version_title: str = None,
         version_description: str = None,
-    ):
+    ) -> int:
         """
         Create a new project version.
 
@@ -178,12 +178,19 @@ class DataVersion(ModuleApiBase):
             or "app.supervisely.com" in self._api.server_address
         ):
             if self._api.team.get_info_by_id(project_info.team_id).usage.plan == "free":
-                raise RuntimeError("Project versioning is not available for free plan")
+                logger.warn(
+                    "Project versioning is not available for teams with Free plan. Please upgrade to Pro to enable versioning."
+                )
+                return -1
 
         self.initialize(project_info)
         path = self._generate_save_path()
         latest = self._get_latest_id()
-        version_id, commit_token = self.reserve(project_info.id)
+        try:
+            version_id, commit_token = self.reserve(project_info.id)
+        except Exception as e:
+            logger.error(f"Failed to reserve project for versioning. Exception: {e}")
+            return -1
         if version_id is None and commit_token is None:
             return latest
         try:
@@ -195,20 +202,23 @@ class DataVersion(ModuleApiBase):
             }
             self.versions["latest"] = version_id
             self.upload_json(project_info, initialize=False)
+            self.commit(
+                version_id,
+                commit_token,
+                project_info.updated_at,
+                file_info.id,
+                title=version_title,
+                description=version_description,
+            )
+            return version_id
         except Exception as e:
             if self.cancel_reservation(version_id, commit_token):
-                raise e
+                logger.error(f"Version creation failed. Reservation was cancelled. Exception: {e}")
             else:
-                raise RuntimeError(f"Failed to cancel reservation when handling exception: {e}")
-        self.commit(
-            version_id,
-            commit_token,
-            project_info.updated_at,
-            file_info.id,
-            title=version_title,
-            description=version_description,
-        )
-        return version_id
+                logger.error(
+                    f"Failed to cancel reservation when handling exception. You can cancel your reservation on the web under the Versions tab of the project. Exception: {e}"
+                )
+            return -1
 
     def commit(
         self,
@@ -327,13 +337,18 @@ class DataVersion(ModuleApiBase):
             )
             return
 
-        bin_io = self._download_and_extract_version(backup_files)
+        bin_io = self._download_and_extract_version(
+            backup_files
+        )  # ? add slow method if out of memory
         new_project_info = Project.upload_bin(self._api, bin_io, self.project_info.workspace_id)
         return new_project_info
 
     def _create_warning_system_file(self):
         """
         Create a file in the system directory to indicate that you cannot manually modify its contents.
+
+        Path = /system/DO_NOT_DELETE_ANYTHING_HERE.txt
+
         """
         warning_file = "/system/DO_NOT_DELETE_ANYTHING_HERE.txt"
         if not self._api.file.exists(self.project_info.team_id, warning_file, recursive=False):
@@ -367,8 +382,9 @@ class DataVersion(ModuleApiBase):
     def _generate_save_path(self):
         """
         Generate a path for the new version archive where it will be saved in the Team Files.
+        Archive format: {timestamp}.tar.zst
 
-        :return: Path for the new version
+        :return: Path for the new version archive
         :rtype: str
         """
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -386,7 +402,8 @@ class DataVersion(ModuleApiBase):
 
     def _upload_files(self, path: str):
         """
-        Save project in binary format as archive to the Team Files.
+        Save project in binary format in archive to the Team Files.
+        Binary file name: version.bin
 
         :param changes: Changes between current and previous version
         :type changes: bool
