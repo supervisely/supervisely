@@ -2820,10 +2820,11 @@ class Project:
             dataset_name = None
             if dataset_id in dataset_mapping:
                 # return new dataset_id and name
-                dataset_id, dataset_name = dataset_mapping.get(dataset_id) 
+                dataset_id, dataset_name = dataset_mapping.get(dataset_id)
                 if dataset_id is None:
                     raise KeyError(f"Dataset ID {dataset_id} not found in mapping")
 
+            ds_progress = None
             if log_progress:
                 ds_progress = tqdm_sly(
                     desc="Uploading images to {!r}".format(dataset_name),
