@@ -1,5 +1,9 @@
-<link rel="stylesheet" href="./sly/css/app/widgets/image_annotation_preview/style.css" />
+<link
+	rel="stylesheet"
+	href="./sly/css/app/widgets/image_annotation_preview/style.css"
+/>
 <sly-py-labeled-image
+	id="{{{widget.widget_id}}}"
 	:img-url="data.{{{widget.widget_id}}}.imageUrl"
 	:project-meta="data.{{{widget.widget_id}}}.projectMeta"
 	:annotation="data.{{{widget.widget_id}}}.annotation"
