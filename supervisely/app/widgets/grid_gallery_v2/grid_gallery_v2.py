@@ -4,8 +4,7 @@ import uuid
 from collections import defaultdict
 from typing import List, Optional
 
-import supervisely as sly
-from supervisely.annotation.annotation import Annotation
+import supervisely
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
@@ -154,7 +153,7 @@ class GridGalleryV2(Widget):
         self.columns_number = columns_number
 
         self._last_used_column_index = 0
-        self._project_meta: ProjectMeta = None
+        self._project_meta: supervisely.ProjectMeta = None
         self._loading = False
 
         self._bindings_dict = defaultdict(list)
@@ -190,28 +189,20 @@ class GridGalleryV2(Widget):
 
     def _generate_project_meta(self):
         objects_dict = dict()
-        obj_tags_dict = dict()
 
         for cell_data in self._data:
             ann_info: AnnotationInfo = cell_data["annotation_info"]
-            project_meta: ProjectMeta = cell_data["project_meta"]
-
-            annotation = Annotation.from_json(ann_info.annotation, project_meta)
-
-            for idx, label in enumerate(annotation.labels):
+            project_meta = cell_data["project_meta"]
+            annotation = supervisely.Annotation.from_json(ann_info.annotation, project_meta)
+            for label in annotation.labels:
                 objects_dict[label.obj_class.name] = label.obj_class
-                for tag in label.tags:
-                    obj_tags_dict[tag.name] = project_meta.get_tag_meta(tag.name)
-                # if len(label.tags) == 0:
-                #     obj_tags_dict["confidence"] = tmp
-                #     ann_info.annotation["objects"][idx]["tags"].append(sly.Tag(tmp, 1.0))
-
-            cell_data["annotation_info"] = ann_info
 
         objects_list = list(objects_dict.values())
-        tags_list = list(obj_tags_dict.values())
+        objects_collection = (
+            supervisely.ObjClassCollection(objects_list) if len(objects_list) > 0 else None
+        )
 
-        self._project_meta = ProjectMeta(obj_classes=objects_list, tag_metas=tags_list)
+        self._project_meta = supervisely.ProjectMeta(obj_classes=objects_collection)
         return self._project_meta.to_json()
 
     def get_json_data(self):
@@ -357,10 +348,14 @@ class GridGalleryV2(Widget):
             seen_ids = set()
             seen_anns = set()
             unique_dicts = []
+
             for item in dict_list:
                 if item["id"] not in seen_ids:
                     seen_ids.add(item["id"])
+                    # if item["annotationKey"] not in seen_anns:
+                    #     seen_anns.add(item["annotationKey"])
                     unique_dicts.append(item)
+
             return unique_dicts
 
         for class_name, bindings in self._bindings_dict.items():
