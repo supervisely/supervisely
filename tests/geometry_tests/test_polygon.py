@@ -1,9 +1,11 @@
-import pytest
-from typing import List, Tuple, Union
 import random
-import supervisely_lib as sly
+from typing import List, Tuple, Union
+
 import numpy as np
-from supervisely import Polygon, PointLocation, Rectangle
+import pytest
+
+import supervisely_lib as sly
+from supervisely import PointLocation, Polygon, Rectangle
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point_location import _flip_row_col_order
 
@@ -27,8 +29,7 @@ def random_polygon_float() -> Tuple[
     List[Tuple[Union[int, float], Union[int, float]]],
 ]:
     exterior = [
-        (round(random.uniform(0, 1000), 6), round(random.uniform(0, 1000), 6))
-        for _ in range(15)
+        (round(random.uniform(0, 1000), 6), round(random.uniform(0, 1000), 6)) for _ in range(15)
     ]
     interior = []
     poly = Polygon(exterior=exterior, interior=interior)
@@ -156,16 +157,18 @@ def test_clone(random_polygon_int: Polygon, random_polygon_float: Polygon):
         check_points(clone_poly.exterior, exterior)
         check_points(clone_poly.interior, interior)
 
+
 def test_crop(random_polygon_int: Polygon, random_polygon_float: Polygon):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = polygon
-        rect = Rectangle(100,200,300,400)
+        rect = Rectangle(100, 200, 300, 400)
         cropped_polygons = poly.crop(rect)
         for cropped_poly in cropped_polygons:
             assert isinstance(cropped_poly, Polygon)
             for point in cropped_poly.exterior:
                 assert 0 <= point.row <= 500
                 assert 0 <= point.col <= 500
+
 
 def test_area(random_polygon_int: Polygon, random_polygon_float: Polygon):
     for polygon in [random_polygon_int, random_polygon_float]:
@@ -174,23 +177,24 @@ def test_area(random_polygon_int: Polygon, random_polygon_float: Polygon):
         assert isinstance(area, float)
         assert area >= 0
 
+
 # def test_approx_dp(random_polygon_int: Polygon, random_polygon_float: Polygon):
 #     for polygon in [random_polygon_int, random_polygon_float]:
 #         poly, exterior, interior = polygon
 #         epsilon = 0.75
 #         approx_poly = poly.approx_dp(epsilon)
 #         assert isinstance(approx_poly, Polygon)
-        
+
 #         # Check if the number of points in the approximated polygon is less than or equal to the original polygon
 #         assert len(approx_poly.exterior) <= len(poly.exterior)
-        
+
 #         # Check if the approximated polygon is not the same as the original polygon
 #         assert approx_poly.exterior != poly.exterior
-        
+
 #         # Check if the approximated polygon is still within the original polygon
 #         for point in approx_poly.exterior:
 #             assert poly.contains_point(point)
-        
+
 #         # Check if every point in the approximated polygon is within epsilon distance of the original polygon
 #         for point in approx_poly.exterior:
 #             min_distance = min(poly.distance_to_point(point) for point in poly.exterior)
@@ -215,8 +219,11 @@ def test_approx_dp(random_polygon_int: Polygon, random_polygon_float: Polygon):
         for approx_interior, original_interior in zip(approx_poly.interior, poly.interior):
             assert approx_interior != original_interior
 
+
 if __name__ == "__main__":
     pytest.main([__file__])
 
+if __name__ == "__main__":
+    pytest.main([__file__])
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -1,6 +1,8 @@
-import pytest
 import random
+
 import numpy as np
+import pytest
+
 import supervisely as sly
 from supervisely.geometry.image_rotator import ImageRotator
 
@@ -29,9 +31,7 @@ def test_constructor():
 def test_to_json():
     rectangle_int = sly.Rectangle(100, 200, 300, 400)
     json_data_int = rectangle_int.to_json()
-    expected_json_int = {
-        "points": {"exterior": [[200, 100], [400, 300]], "interior": []}
-    }
+    expected_json_int = {"points": {"exterior": [[200, 100], [400, 300]], "interior": []}}
     assert json_data_int == expected_json_int
 
     rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
@@ -55,9 +55,7 @@ def test_crop():
     check_corners(cropped_rectangles_int[0], expected_cropped_rectangles_int[0])
 
     rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    other_rectangle_float = sly.Rectangle(
-        150.123456, 250.123456, 350.123456, 450.123456
-    )
+    other_rectangle_float = sly.Rectangle(150.123456, 250.123456, 350.123456, 450.123456)
     cropped_rectangles_float = rectangle_float.crop(other_rectangle_float)
     expected_cropped_rectangles_float = [
         sly.Rectangle(150.123456, 250.123456, 300.123456, 400.123456)
@@ -222,9 +220,7 @@ def test_to_bbox():
 
     rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
     bbox_rect_float = rectangle_float.to_bbox()
-    expected_bbox_rect_float = sly.Rectangle(
-        100.123456, 200.123456, 300.123456, 400.123456
-    )
+    expected_bbox_rect_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
     check_corners(bbox_rect_float, expected_bbox_rect_float)
 
 
@@ -268,9 +264,7 @@ def test_from_geometries_list():
     ]
     rectangle_from_geom_objs_float = sly.Rectangle.from_geometries_list(geom_objs_float)
     expected_rectangle_from_geom_objs_float = sly.Rectangle(100, 201, 2480, 2104)
-    check_corners(
-        rectangle_from_geom_objs_float, expected_rectangle_from_geom_objs_float
-    )
+    check_corners(rectangle_from_geom_objs_float, expected_rectangle_from_geom_objs_float)
 
 
 def test_width():
@@ -345,5 +339,7 @@ def test_intersects_with():
     assert rect1_float.intersects_with(rect3_float) == False
 
 
+if __name__ == "__main__":
+    pytest.main([__file__])
 if __name__ == "__main__":
     pytest.main([__file__])

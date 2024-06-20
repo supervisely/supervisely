@@ -1,16 +1,16 @@
-import pytest
 import random
 from typing import Tuple, Union
-import supervisely_lib as sly
+
 import numpy as np
+import pytest
+
+import supervisely_lib as sly
 from supervisely import PointLocation
 from supervisely.geometry.image_rotator import ImageRotator
 
 
 @pytest.fixture
-def random_point_location_int() -> (
-    Tuple[PointLocation, Union[int, float], Union[int, float]]
-):
+def random_point_location_int() -> Tuple[PointLocation, Union[int, float], Union[int, float]]:
     row = random.randint(0, 1000)
     col = random.randint(0, 1000)
     loc = PointLocation(row, col)
@@ -18,9 +18,7 @@ def random_point_location_int() -> (
 
 
 @pytest.fixture
-def random_point_location_float() -> (
-    Tuple[PointLocation, Union[int, float], Union[int, float]]
-):
+def random_point_location_float() -> Tuple[PointLocation, Union[int, float], Union[int, float]]:
     row = round(random.uniform(0, 1000), 6)
     col = round(random.uniform(0, 1000), 6)
     loc = PointLocation(row, col)
@@ -59,9 +57,7 @@ def test_from_json():
     assert loc_int.row == 100
     assert loc_int.col == 200
 
-    loc_json_float = {
-        "points": {"exterior": [[200.548765, 100.213548]], "interior": []}
-    }
+    loc_json_float = {"points": {"exterior": [[200.548765, 100.213548]], "interior": []}}
     loc_float = PointLocation.from_json(loc_json_float)
     assert isinstance(loc_float, PointLocation)
     assert loc_float.col == 200.548765
@@ -171,5 +167,7 @@ def test_clone(
         assert clone_loc.col == loc.col
 
 
+if __name__ == "__main__":
+    pytest.main([__file__])
 if __name__ == "__main__":
     pytest.main([__file__])
