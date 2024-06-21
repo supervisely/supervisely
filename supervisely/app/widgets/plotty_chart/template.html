@@ -1,0 +1,25 @@
+<div>
+  <sly-plotly
+    v-loading="state.{{{widget.widget_id}}}.loading"
+    element-loading-text="data.{{{ widget.widget_id }}}.options.elementLoadingText"
+    :content="data.{{{ widget.widget_id }}}.content"
+    {%
+    if
+    widget._click_handled
+    %}
+    @chart-click="
+                console.log('chart clicked', $event.points);
+                state.{{{ widget.widget_id }}}.clicked_value = $event.points;
+                post('/{{{ widget.widget_id }}}/chart_clicked_cb')
+                "
+    {%
+    elif
+    not
+    widget._click_handled
+    %}
+    @chart-click="state.{{{ widget.widget_id }}}.clicked_value = $event.points"
+    {%
+    endif
+    %}
+  ></sly-plotly>
+</div>
