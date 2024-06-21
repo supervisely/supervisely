@@ -219,7 +219,7 @@ class DataVersion(ModuleApiBase):
                 "path": path,
                 "updated_at": project_info.updated_at,
                 "previous": latest,
-                "number": self.versions[latest] + 1 if latest else 1,
+                "number": self.versions[str(latest)] + 1 if latest else 1,
             }
             self.versions["latest"] = version_id
             self.upload_json(project_info, initialize=False)
