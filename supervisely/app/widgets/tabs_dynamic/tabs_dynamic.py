@@ -52,6 +52,8 @@ class TabsDynamic(Widget):
 
         yaml, CommentedMap = initialize()
         self._data = yaml.load(data_source)
+        if not isinstance(self._data, (dict, CommentedMap)):
+            raise ValueError("Invalid yaml path or file content.")
         self._common_data = self._data.copy()
         
         self._items_dict = {}
