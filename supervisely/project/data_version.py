@@ -160,6 +160,9 @@ class DataVersion(ModuleApiBase):
     ) -> int:
         """
         Create a new project version.
+        Returns the ID of the new version.
+        If the project is already on the latest version, returns the latest version ID.
+        If the project version cannot be created, returns -1.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
@@ -199,6 +202,7 @@ class DataVersion(ModuleApiBase):
                 "path": path,
                 "updated_at": project_info.updated_at,
                 "previous": latest,
+                "number": self.versions[latest] + 1 if latest else 1,
             }
             self.versions["latest"] = version_id
             self.upload_json(project_info, initialize=False)
@@ -306,34 +310,51 @@ class DataVersion(ModuleApiBase):
         reserve_info = response.json()
         return True if reserve_info.get("success") else False
 
-    def restore(self, project_info: Union[ProjectInfo, int], target_version: int):
+    def restore(
+        self, project_info: Union[ProjectInfo, int], version_id: int = None, version_num: int = None
+    ) -> ProjectInfo:
         """
         Restore project to a specific version.
+        Version can be specified by ID or number.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
-        :param target_version: Version ID to restore to
-        :type target_version: int
+        :param version_id: Version ID
+        :type version_id: Optional[int]
+        :param version_num: Version number
+        :type version_num: Optional[int]
         :return: ProjectInfo object of the restored project
         :rtype: ProjectInfo or None
         """
         from supervisely.project.project import Project
 
+        if version_id is None and version_num is None:
+            raise ValueError("Either version_id or version_num must be provided")
+
         self.initialize(project_info)
 
-        if str(target_version) not in self.versions:
-            raise ValueError(f"Version {target_version} does not exist")
+        if version_num:
+            version_id = None
+            for key, value in self.versions.items():
+                if value["number"] == version_num:
+                    version_id = key
+                    break
+            if version_id is None:
+                raise ValueError(f"Version {version_num} does not exist")
+        else:
+            if str(version_id) not in self.versions:
+                raise ValueError(f"Version {version_id} does not exist")
 
-        if self.versions[str(target_version)]["updated_at"] == self.project_info.updated_at:
+        if self.versions[str(version_id)]["updated_at"] == self.project_info.updated_at:
             logger.info(
-                f"Project is already on version {target_version} with the same updated_at timestamp"
+                f"Project is already on version {version_id} with the same updated_at timestamp"
             )
             return
 
-        backup_files = self.versions[str(target_version)]["path"]
+        backup_files = self.versions[str(version_id)]["path"]
         if backup_files is None:
             logger.info(
-                f"Project can't be restored to version {target_version} because it's already on the initial version"
+                f"Project can't be restored to version {version_id} because it's already on the initial version"
             )
             return
 
