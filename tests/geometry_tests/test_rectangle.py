@@ -1,345 +1,504 @@
 import random
+from typing import List, Tuple, Union
 
 import numpy as np
 import pytest
 
-import supervisely as sly
+from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.image_rotator import ImageRotator
+from supervisely.geometry.point_location import PointLocation, _flip_row_col_order
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.point import Point
 
 
-def check_corners(rect: sly.Rectangle, expected_rect: sly.Rectangle):
+@pytest.fixture
+def random_rect_int() -> Tuple[
+    Rectangle,
+    List[Tuple[Union[int, float], Union[int, float]]],
+]:
+    top = random.randint(0, 400)
+    left = random.randint(0, 400)
+    bottom = random.randint(401, 800)
+    right = random.randint(401, 800)
+
+    rect = Rectangle(top=top, left=left, bottom=bottom, right=right)
+    coords = [(top, left), (top, right), (bottom, right), (bottom, left)]
+    return rect, coords
+
+
+@pytest.fixture
+def random_rect_float() -> Tuple[
+    Rectangle,
+    List[Tuple[Union[int, float], Union[int, float]]],
+]:
+    top = round(random.uniform(0, 400), 6)
+    left = round(random.uniform(0, 400), 6)
+    bottom = round(random.uniform(401, 800), 6)
+    right = round(random.uniform(401, 800), 6)
+
+    rect = Rectangle(top=top, left=left, bottom=bottom, right=right)
+    coords = [(top, left), (top, right), (bottom, right), (bottom, left)]
+    return rect, coords
+
+
+def get_rect_and_coords(rectangle) -> Tuple[
+    Rectangle,
+    List[Tuple[Union[int, float], Union[int, float]]],
+]:
+    return rectangle
+
+
+def check_corners_equal(rect: Rectangle, expected_rect: Rectangle):
     assert rect.top == expected_rect.top
     assert rect.left == expected_rect.left
     assert rect.bottom == expected_rect.bottom
     assert rect.right == expected_rect.right
 
 
-def test_constructor():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    assert rectangle_int.top == 100
-    assert rectangle_int.left == 200
-    assert rectangle_int.bottom == 300
-    assert rectangle_int.right == 400
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    assert rectangle_float.top == 100.123456
-    assert rectangle_float.left == 200.123456
-    assert rectangle_float.bottom == 300.123456
-    assert rectangle_float.right == 400.123456
+def test_geometry_name(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.geometry_name() == "rectangle"
 
 
-def test_to_json():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    json_data_int = rectangle_int.to_json()
-    expected_json_int = {"points": {"exterior": [[200, 100], [400, 300]], "interior": []}}
-    assert json_data_int == expected_json_int
+def test_name(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.name() == "rectangle"
 
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    json_data_float = rectangle_float.to_json()
-    expected_json_float = {
-        "points": {
-            "exterior": [[200.123456, 100.123456], [400.123456, 300.123456]],
-            "interior": [],
+
+def test_to_json(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        json_data = rect.to_json()
+        expected_json = {
+            "points": {
+                "exterior": [[rect.left, rect.top], [rect.right, rect.bottom]],
+                "interior": [],
+            }
         }
-    }
-    assert json_data_float == expected_json_float
+        assert json_data == expected_json
 
 
-def test_crop():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    other_rectangle_int = sly.Rectangle(150, 250, 350, 450)
-    cropped_rectangles_int = rectangle_int.crop(other_rectangle_int)
-    expected_cropped_rectangles_int = [sly.Rectangle(150, 250, 300, 400)]
-    assert len(cropped_rectangles_int) == len(expected_cropped_rectangles_int)
-    assert cropped_rectangles_int[0].top == expected_cropped_rectangles_int[0].top
-    check_corners(cropped_rectangles_int[0], expected_cropped_rectangles_int[0])
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    other_rectangle_float = sly.Rectangle(150.123456, 250.123456, 350.123456, 450.123456)
-    cropped_rectangles_float = rectangle_float.crop(other_rectangle_float)
-    expected_cropped_rectangles_float = [
-        sly.Rectangle(150.123456, 250.123456, 300.123456, 400.123456)
-    ]
-    assert len(cropped_rectangles_float) == len(expected_cropped_rectangles_float)
-    check_corners(cropped_rectangles_float[0], expected_cropped_rectangles_float[0])
-
-
-def test_rotate():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    rotator_int = ImageRotator((600, 800), 90)
-    rotated_rectangle_int = rectangle_int.rotate(rotator_int)
-    expected_rotated_rectangle_int = sly.Rectangle(399, 100, 599, 300)
-    check_corners(rotated_rectangle_int, expected_rotated_rectangle_int)
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    rotator_float = ImageRotator((600, 800), 90)
-    rotated_rectangle_float = rectangle_float.rotate(rotator_float)
-    expected_rotated_rectangle_float = sly.Rectangle(399, 100, 599, 300)
-    check_corners(rotated_rectangle_float, expected_rotated_rectangle_float)
-
-
-def test_area():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    assert rectangle_int.area == 40401
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    assert rectangle_float.area == 40400.999999999985
-
-
-def test_center():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    expected_center_int = sly.PointLocation(200, 300)
-    assert rectangle_int.center.col == expected_center_int.col
-    assert rectangle_int.center.row == expected_center_int.row
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    expected_center_float = sly.PointLocation(200.0, 300.0)
-    assert rectangle_float.center.col == expected_center_float.col
-    assert rectangle_float.center.row == expected_center_float.row
-
-
-def test_corners():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    corners_int = rectangle_int.corners
-    expected_corners_int = [
-        sly.PointLocation(row=100, col=200),
-        sly.PointLocation(row=100, col=400),
-        sly.PointLocation(row=300, col=400),
-        sly.PointLocation(row=300, col=200),
-    ]
-    assert len(corners_int) == len(expected_corners_int)
-    for corner, expected_corner in zip(corners_int, expected_corners_int):
-        assert corner.row == expected_corner.row
-        assert corner.col == expected_corner.col
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    corners_float = rectangle_float.corners
-    expected_corners_float = [
-        sly.PointLocation(row=100.123456, col=200.123456),
-        sly.PointLocation(row=100.123456, col=400.123456),
-        sly.PointLocation(row=300.123456, col=400.123456),
-        sly.PointLocation(row=300.123456, col=200.123456),
-    ]
-    assert len(corners_float) == len(expected_corners_float)
-    for corner, expected_corner in zip(corners_float, expected_corners_float):
-        assert corner.row == expected_corner.row
-        assert corner.col == expected_corner.col
-
-
-def test_from_json():
-    figure_json_int = {"points": {"exterior": [[100, 100], [900, 700]], "interior": []}}
-    figure_int = sly.Rectangle.from_json(figure_json_int)
-    assert figure_int.top == 100
-    assert figure_int.left == 100
-    assert figure_int.bottom == 700
-    assert figure_int.right == 900
-
-    figure_json_float = {
-        "points": {
-            "exterior": [[100.123456, 100.123456], [900.123456, 700.123456]],
-            "interior": [],
+def test_from_json(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        json_data = {
+            "points": {
+                "exterior": [[rect.left, rect.top], [rect.right, rect.bottom]],
+                "interior": [],
+            }
         }
-    }
-    figure_float = sly.Rectangle.from_json(figure_json_float)
-    assert figure_float.top == 100.123456
-    assert figure_float.left == 100.123456
-    assert figure_float.bottom == 700.123456
-    assert figure_float.right == 900.123456
+        rect_from_json = Rectangle.from_json(json_data)
+        check_corners_equal(rect, rect_from_json)
 
 
-def test_resize():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    resized_rect_int = rectangle_int.resize((800, 600), (400, 300))
-    expected_resized_rect_int = sly.Rectangle(50, 100, 150, 200)
-    check_corners(resized_rect_int, expected_resized_rect_int)
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    resized_rect_float = rectangle_float.resize((800, 600), (400, 300))
-    expected_resized_rect_float = sly.Rectangle(50, 100, 150, 200)
-    check_corners(resized_rect_float, expected_resized_rect_float)
-
-
-def test_scale():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    scaled_rect_int = rectangle_int.scale(0.5)
-    expected_scaled_rect_int = sly.Rectangle(50, 100, 150, 200)
-    check_corners(scaled_rect_int, expected_scaled_rect_int)
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    scaled_rect_float = rectangle_float.scale(0.5)
-    expected_scaled_rect_float = sly.Rectangle(50, 100, 150, 200)
-    check_corners(scaled_rect_float, expected_scaled_rect_float)
+def test_crop(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        cropper = Rectangle(150, 250, 300, 400)
+        cropped_rectangles = rect.crop(cropper)
+        if (
+            rect.right < cropper.left
+            or rect.left > cropper.right
+            or rect.bottom < cropper.top
+            or rect.top > cropper.bottom
+        ):
+            assert cropped_rectangles == []
+        else:
+            assert len(cropped_rectangles) == 1
+            cropped_rectangle = cropped_rectangles[0]
+            assert cropped_rectangle.top == max(rect.top, cropper.top)
+            assert cropped_rectangle.left == max(rect.left, cropper.left)
+            assert cropped_rectangle.bottom == min(rect.bottom, cropper.bottom)
+            assert cropped_rectangle.right == min(rect.right, cropper.right)
 
 
-def test_translate():
-    rectangle = sly.Rectangle(100, 200, 300, 400)
-    translated_rect = rectangle.translate(50, 100)
-    expected_translated_rect = sly.Rectangle(150, 300, 350, 500)
-    check_corners(translated_rect, expected_translated_rect)
-
-    translated_rect_negative = rectangle.translate(-50, -100)
-    expected_translated_rect_negative = sly.Rectangle(50, 100, 250, 300)
-    check_corners(translated_rect_negative, expected_translated_rect_negative)
-
-
-def test_fliplr():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    img_size_int = (800, 600)
-    fliplr_rect_int = rectangle_int.fliplr(img_size_int)
-    expected_fliplr_rect_int = sly.Rectangle(100, 200, 300, 400)
-    check_corners(fliplr_rect_int, expected_fliplr_rect_int)
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    img_size_float = (800, 600)
-    fliplr_rect_float = rectangle_float.fliplr(img_size_float)
-    expected_fliplr_rect_float = sly.Rectangle(
-        100.123456, 199.87654400000002, 300.123456, 399.87654399999997
-    )
-    check_corners(fliplr_rect_float, expected_fliplr_rect_float)
-
-
-def test_flipud():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    img_size_int = (800, 600)
-    flipud_rect_int = rectangle_int.flipud(img_size_int)
-    expected_flipud_rect_int = sly.Rectangle(500, 200, 700, 400)
-    check_corners(flipud_rect_int, expected_flipud_rect_int)
-
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    img_size_float = (500.123456, 600.123456)
-    flipud_rect_float = rectangle_float.flipud(img_size_float)
-    expected_flipud_rect_float = sly.Rectangle(200.0, 200.123456, 400.0, 400.123456)
-    check_corners(flipud_rect_float, expected_flipud_rect_float)
+def test_relative_crop(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        cropper = Rectangle(150, 250, 300, 400)
+        cropped_rectangles = rect.relative_crop(cropper)
+        if (
+            rect.right < cropper.left
+            or rect.left > cropper.right
+            or rect.bottom < cropper.top
+            or rect.top > cropper.bottom
+        ):
+            assert cropped_rectangles == []
+        else:
+            assert len(cropped_rectangles) == 1
+            cropped_rectangle = cropped_rectangles[0]
+            assert cropped_rectangle.top == max(rect.top, cropper.top) - cropper.top
+            assert cropped_rectangle.left == max(rect.left, cropper.left) - cropper.left
+            assert (
+                cropped_rectangle.bottom
+                == min(rect.bottom, cropper.bottom) - cropper.top
+            )
+            assert (
+                cropped_rectangle.right == min(rect.right, cropper.right) - cropper.left
+            )
 
 
-def test_to_bbox():
-    rectangle_int = sly.Rectangle(100, 200, 300, 400)
-    bbox_rect_int = rectangle_int.to_bbox()
-    expected_bbox_rect_int = sly.Rectangle(100, 200, 300, 400)
-    check_corners(bbox_rect_int, expected_bbox_rect_int)
+def test_rotate(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        rotator = ImageRotator((800, 800), 45)
+        rotated_rect = rect.rotate(rotator)
 
-    rectangle_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    bbox_rect_float = rectangle_float.to_bbox()
-    expected_bbox_rect_float = sly.Rectangle(100.123456, 200.123456, 300.123456, 400.123456)
-    check_corners(bbox_rect_float, expected_bbox_rect_float)
-
-
-def test_from_array():
-    # numpy arrays cannot have float dimensions
-    np_array_int = np.zeros((800, 600), dtype=np.uint64)
-    rectangle_from_array_int = sly.Rectangle.from_array(np_array_int)
-    expected_rectangle_from_array_int = sly.Rectangle(0, 0, 799, 599)
-    check_corners(rectangle_from_array_int, expected_rectangle_from_array_int)
+        rotated_corners = [rotator.transform_point(p) for p in rect.corners]
+        rows, cols = zip(*[(p.row, p.col) for p in rotated_corners])
+        assert rotated_rect.top == min(rows)
+        assert rotated_rect.left == min(cols)
+        assert rotated_rect.bottom == max(rows)
+        assert rotated_rect.right == max(cols)
 
 
-def test_from_size():
-    size_int = (300, 400)
-    rectangle_from_size_int = sly.Rectangle.from_size(size_int)
-    expected_rectangle_from_size_int = sly.Rectangle(0, 0, 299, 399)
-    check_corners(rectangle_from_size_int, expected_rectangle_from_size_int)
-
-    size_float = (300.525468, 400.57894163)
-    rectangle_from_size_float = sly.Rectangle.from_size(size_float)
-    expected_rectangle_from_size_float = sly.Rectangle(0, 0, 299.525468, 399.57894163)
-    check_corners(rectangle_from_size_float, expected_rectangle_from_size_float)
+def test_resize(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        in_size = (300, 400)
+        out_size = (600, 800)
+        resized_rect = rect.resize(in_size, out_size)
+        assert resized_rect.width == round((rect.width * out_size[1] / in_size[1]))
+        assert resized_rect.height == round((rect.height * out_size[0] / in_size[0]))
 
 
-def test_from_geometries_list():
+def test_scale(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        factor = 0.75
+        scaled_rect = rect.scale(factor)
+        assert scaled_rect.width == round((rect.width * factor))
+        assert scaled_rect.height == round((rect.height * factor))
+
+
+def test_translate(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        drow, dcol = 50, 100
+        translated_rect = rect.translate(drow, dcol)
+        assert translated_rect.top == rect.top + drow
+        assert translated_rect.left == rect.left + dcol
+        assert translated_rect.bottom == rect.bottom + drow
+        assert translated_rect.right == rect.right + dcol
+
+
+def test_fliplr(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        flipped_rect = rect.fliplr(img_size)
+        assert flipped_rect.top == rect.top
+        assert flipped_rect.left == img_size[1] - rect.right
+        assert flipped_rect.bottom == rect.bottom
+        assert flipped_rect.right == img_size[1] - rect.left
+
+
+def test_flipud(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        flipped_rect = rect.flipud(img_size)
+        assert flipped_rect.top == img_size[0] - rect.bottom
+        assert flipped_rect.left == rect.left
+        assert flipped_rect.bottom == img_size[0] - rect.top
+        assert flipped_rect.right == rect.right
+
+
+def test_draw_bool_compatible(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bitmap = np.zeros(img_size, dtype=np.uint8)
+        rect._draw_bool_compatible(rect._draw_impl, bitmap, 255, 1)
+        assert np.any(bitmap)
+
+
+def test_draw(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bitmap = np.zeros(img_size, dtype=np.uint8)
+        color = [255, 255, 255]
+        rect.draw(bitmap, color, thickness=1)
+        assert np.any(bitmap)
+
+
+def test_get_mask(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        mask = rect.get_mask(img_size)
+        assert mask.shape == img_size
+        assert mask.dtype == np.bool
+        assert np.any(mask)
+
+
+def test_draw_impl(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bitmap = np.zeros((img_size[0], img_size[1], 3), dtype=np.uint8)
+        color = (255, 255, 255)
+        rect._draw_impl(bitmap, color)
+        assert np.any(bitmap[rect.top : rect.bottom, rect.left : rect.right] == color)
+
+
+def test_draw_contour(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bitmap = np.zeros(img_size, dtype=np.uint8)
+        color = [255, 255, 255]
+        rect.draw_contour(bitmap, color, thickness=1)
+        assert np.any(bitmap)
+
+
+def test_draw_contour_impl(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bitmap = np.zeros((img_size[0], img_size[1], 3), dtype=np.uint8)
+        color = (255, 255, 255)
+        rect._draw_contour_impl(bitmap, color)
+        assert np.any(bitmap[rect.top : rect.bottom, rect.left] == color)
+        assert np.any(bitmap[rect.top : rect.bottom, rect.right] == color)
+        assert np.any(bitmap[rect.top, rect.left : rect.right] == color)
+        assert np.any(bitmap[rect.bottom, rect.left : rect.right] == color)
+
+
+def test_area(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        expected_area = rect.width * rect.height
+        assert rect.area == expected_area
+
+
+def test_to_bbox(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bbox_rect = rect.to_bbox()
+        check_corners_equal(rect, bbox_rect)
+
+
+def test_clone(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        clone_rect = rect.clone()
+        check_corners_equal(rect, clone_rect)
+
+
+def test_validate(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.validate(rect.geometry_name(), settings=None) is None
+        with pytest.raises(
+            ValueError, match="Geometry validation error: shape names are mismatched!"
+        ):
+            rect.validate("different_shape_name", settings=None)
+
+
+def test_config_from_json(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        config = {"key": "value"}
+        returned_config = rect.config_from_json(config)
+        assert returned_config == config
+
+
+def test_config_to_json(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        config = {"key": "value"}
+        returned_config = rect.config_to_json(config)
+        assert returned_config == config
+
+
+def test_allowed_transforms(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        allowed_transforms = rect.allowed_transforms()
+        assert set(allowed_transforms) == set([AlphaMask, AnyGeometry, Bitmap, Polygon])
+
+
+def test_convert(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.convert(type(rect)) == [rect]
+        assert rect.convert(AnyGeometry) == [rect]
+        for new_geometry in rect.allowed_transforms():
+            converted = rect.convert(new_geometry)
+            assert all(isinstance(g, new_geometry) for g in converted)
+
+        class NotAllowedGeometry:
+            pass
+
+        with pytest.raises(
+            NotImplementedError,
+            match="from {!r} to {!r}".format(
+                rect.geometry_name(), "NotAllowedGeometry"
+            ),
+        ):
+            rect.convert(NotAllowedGeometry)
+
+
+# Rectangle specific methods
+# --------------------------
+
+
+def test_corners(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, coords = get_rect_and_coords(rectangle)
+        corners = rect.corners
+        for corner, coord in zip(corners, coords):
+            assert corner.row == coord[0]
+            assert corner.col == coord[1]
+
+
+def test_center(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, coords = get_rect_and_coords(rectangle)
+        center = rect.center
+        assert center.row == (rect.top + rect.bottom) / 2
+        assert center.col == (rect.left + rect.right) / 2
+
+
+def test_width(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.width == rect.right - rect.left
+
+
+def test_height(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.height == rect.bottom - rect.top
+
+
+def test_top(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        top = rect.top
+        assert top == rect.top
+
+
+def test_left(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        left = rect.left
+        assert left == rect.left
+
+
+def test_bottom(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        bottom = rect.bottom
+        assert bottom == rect.bottom
+
+
+def test_right(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        right = rect.right
+        assert right == rect.right
+
+
+def from_array(random_rect_int, random_rect_float):
+    np_array = np.zeros((800, 800), dtype=np.uint64)
+    rect_from_array = Rectangle.from_array(np_array)
+    expected_rectangle_from_array = Rectangle(0, 0, 799, 799)
+    check_corners_equal(rect_from_array, expected_rectangle_from_array)
+
+
+def from_size(random_rect_int, random_rect_float):
+    size_int = (800, 800)
+    rectangle_from_size_int = Rectangle.from_size(size_int)
+    expected_rectangle_from_size_int = Rectangle(0, 0, 799, 799)
+    check_corners_equal(rectangle_from_size_int, expected_rectangle_from_size_int)
+
+    size_float = (800.525468, 800.57894163)
+    rectangle_from_size_float = Rectangle.from_size(size_float)
+    expected_rectangle_from_size_float = Rectangle(0, 0, 799.525468, 799.57894163)
+    check_corners_equal(rectangle_from_size_float, expected_rectangle_from_size_float)
+
+
+def from_geometries_list(random_rect_int, random_rect_float):
     geom_objs_int = [
-        sly.Point(100, 200),
-        sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)]),
+        Point(100, 200),
+        Polyline([PointLocation(730, 2104), PointLocation(2479, 402)]),
     ]
-    rectangle_from_geom_objs_int = sly.Rectangle.from_geometries_list(geom_objs_int)
-    expected_rectangle_from_geom_objs_int = sly.Rectangle(100, 200, 2479, 2104)
-    check_corners(rectangle_from_geom_objs_int, expected_rectangle_from_geom_objs_int)
+    rectangle_from_geom_objs_int = Rectangle.from_geometries_list(geom_objs_int)
+    expected_rectangle_from_geom_objs_int = Rectangle(100, 200, 2479, 2104)
+    check_corners_equal(
+        rectangle_from_geom_objs_int, expected_rectangle_from_geom_objs_int
+    )
 
     geom_objs_float = [
-        sly.Point(100.124563, 200.724563),
-        sly.Polyline(
+        Point(100.124563, 200.724563),
+        Polyline(
             [
-                sly.PointLocation(730.324563, 2104.3454643),
-                sly.PointLocation(2479.62345, 402.554336),
+                PointLocation(730.324563, 2104.3454643),
+                PointLocation(2479.62345, 402.554336),
             ]
         ),
     ]
-    rectangle_from_geom_objs_float = sly.Rectangle.from_geometries_list(geom_objs_float)
-    expected_rectangle_from_geom_objs_float = sly.Rectangle(100, 201, 2480, 2104)
-    check_corners(rectangle_from_geom_objs_float, expected_rectangle_from_geom_objs_float)
+    rectangle_from_geom_objs_float = Rectangle.from_geometries_list(geom_objs_float)
+    expected_rectangle_from_geom_objs_float = Rectangle(100, 201, 2480, 2104)
+    check_corners_equal(
+        rectangle_from_geom_objs_float, expected_rectangle_from_geom_objs_float
+    )
 
 
-def test_width():
-    rect_int = sly.Rectangle(200, 250, 400, 500)
-    assert rect_int.width == 251
-
-    rect_float = sly.Rectangle(200.352234, 250.8795651, 400.1235536, 500.87464)
-    assert rect_float.width == 250.9950749
-
-
-def test_height():
-    rect_int = sly.Rectangle(200, 250, 400, 500)
-    assert rect_int.height == 201
-
-    rect_float = sly.Rectangle(200.352234, 250.8795651, 400.1235536, 500.87464)
-    assert rect_float.height == 200.77131959999997
+def test_contains(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        assert rect.contains(rect) == True
+        rect2 = Rectangle(rect.top + 1, rect.left + 1, rect.bottom - 1, rect.right - 1)
+        assert rect.contains(rect2) == True
+        rect3 = Rectangle(rect.top - 1, rect.left - 1, rect.bottom + 1, rect.right + 1)
+        assert rect.contains(rect3) == False
 
 
-def test_contains():
-    rect_int = sly.Rectangle(200, 250, 400, 500)
-    contained_rect_int = sly.Rectangle(250, 300, 350, 400)
-    assert rect_int.contains(contained_rect_int) == True
-
-    rect_float = sly.Rectangle(200.5, 250.5, 400.5, 500.5)
-    contained_rect_float = sly.Rectangle(250.5, 300.5, 350.5, 400.5)
-    assert rect_float.contains(contained_rect_float) == True
+def test_contains_point_location(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        pt = PointLocation(rect.top + 1, rect.left + 1)
+        assert rect.contains_point_location(pt) == True
 
 
-def test_contains_point_location():
-    rect_int = sly.Rectangle(200, 250, 400, 500)
-    pt_int = sly.PointLocation(250, 300)
-    assert rect_int.contains_point_location(pt_int) == True
-
-    rect_float = sly.Rectangle(200.5, 250.5, 400.5, 500.5)
-    pt_float = sly.PointLocation(250.5, 300.5)
-    assert rect_float.contains_point_location(pt_float) == True
+def test_to_size(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        size = rect.to_size()
+        assert size == (rect.width, rect.height)
 
 
-def test_to_size():
-    rect_int = sly.Rectangle(200, 250, 400, 500)
-    assert rect_int.to_size() == (201, 251)
-
-    rect_float = sly.Rectangle(200.352234, 250.8795651, 400.1235536, 500.87464)
-    assert rect_float.to_size() == (200.77131959999997, 250.9950749)
-
-
-def test_get_cropped_numpy_slice():
-    rect_int = sly.Rectangle(200, 250, 400, 500)
-    data_int = np.zeros((600, 600))
-    cropped_data_int = rect_int.get_cropped_numpy_slice(data_int)
-    assert cropped_data_int.shape == (201, 251)
-
-    rect_float = sly.Rectangle(200.52345, 250.652342, 400.734555, 500.23445)
-    data_float = np.zeros((600, 600))
-    cropped_data_float = rect_float.get_cropped_numpy_slice(data_float)
-    assert cropped_data_float.shape == (201, 250)
+def test_get_cropped_numpy_slice(random_rect_int, random_rect_float):
+    img_size = (800, 800)
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        data = np.zeros(img_size)
+        cropped_data = rect.get_cropped_numpy_slice(data)
+        assert cropped_data.shape == (rect.height, rect.width)
 
 
-def test_intersects_with():
-    rect1_int = sly.Rectangle(200, 250, 400, 500)
-    rect2_int = sly.Rectangle(300, 350, 500, 600)
-    assert rect1_int.intersects_with(rect2_int) == True
-
-    rect3_int = sly.Rectangle(0, 0, 100, 100)
-    assert rect1_int.intersects_with(rect3_int) == False
-
-    rect1_float = sly.Rectangle(200.5, 250.5, 400.5, 500.5)
-    rect2_float = sly.Rectangle(300.5, 350.5, 500.5, 600.5)
-    assert rect1_float.intersects_with(rect2_float) == True
-
-    rect3_float = sly.Rectangle(0.0, 0.0, 100.0, 100.0)
-    assert rect1_float.intersects_with(rect3_float) == False
+def test_intersects_with(random_rect_int, random_rect_float):
+    for rectangle in [random_rect_int, random_rect_float]:
+        rect, _ = get_rect_and_coords(rectangle)
+        rect2 = Rectangle(
+            rect.top + 100, rect.left + 100, rect.bottom + 100, rect.right + 100
+        )
+        assert rect.intersects_with(rect2) == True
+        rect3 = Rectangle(
+            rect.top - 100, rect.left - 100, rect.bottom - 100, rect.right - 100
+        )
+        assert rect.intersects_with(rect3) == False
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])
 if __name__ == "__main__":
     pytest.main([__file__])
