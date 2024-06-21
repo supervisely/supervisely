@@ -825,27 +825,40 @@ class AppApi(TaskApi):
 
     def add_input_project(
         self,
-        project: Union[int, ProjectInfo] = None,
+        project: Optional[Union[int, ProjectInfo]] = None,
         version_id: Optional[int] = None,
+        version_num: Optional[int] = None,
         task_id: Optional[int] = None,
     ) -> dict:
         """
         Add input type "project" to the workflow node.
-        The project version can be specified to indicate that the project version was created especially for this task.
+        The project version can be specified to indicate that the project version was used especially for this task.
+        Arguments project and version_id are mutually exclusive. If both are specified, version_id will be used.
+        Argument version_num can be used only with project.
         This type is used to show that the application has used the specified project.
 
         :param project: Project ID or ProjectInfo object.
-        :type project: Union[int, ProjectInfo]
+        :type project: Optional[Union[int, ProjectInfo]]
         :param version_id: Version ID of the project.
         :type version_id: Optional[int]
+        :param version_num: Version number of the project. Can be used only with project.
+        :type version_num: Optional[int]
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
         :return: Response from the API.
         :rtype: dict
         """
 
-        if project is None and version_id is None:
-            raise ValueError("Project or version must be specified")
+        if project is None and version_id is None and version_num is None:
+            raise ValueError("At least one of project, version_id or version_num must be specified")
+
+        if version_id is not None and version_num is not None:
+            raise ValueError("Only one of version_id or version_num can be specified")
+
+        if project is None and version_num is not None:
+            raise ValueError(
+                "Argument version_num cannot be used without specifying a project argument"
+            )
 
         data_type = "project"
         data_id = None
@@ -854,6 +867,9 @@ class AppApi(TaskApi):
             data_id = project.id
         elif isinstance(project, int):
             data_id = project
+
+        if version_num:
+            version_id = self._api.project.version.get_id_by_number(data_id, version_num)
 
         if version_id:
             data_id = version_id

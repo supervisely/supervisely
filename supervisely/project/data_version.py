@@ -106,6 +106,23 @@ class DataVersion(ModuleApiBase):
             {ApiField.PROJECT_ID: project_id},
         )
 
+    def get_id_by_number(self, project_id: int, version_num: int) -> int:
+        """
+        Get version ID by version number.
+
+        :param project_id: Project ID
+        :type project_id: int
+        :param version_num: Version number
+        :type version_num: int
+        :return: Version ID
+        :rtype: int
+        """
+        versions = self.get_list(project_id)
+        for version in versions:
+            if version.version == version_num:
+                return version.id
+        return None
+
     def load_json(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
         """
         Get project versions map from storage.
