@@ -28,7 +28,7 @@ _pool = ThreadPoolExecutor()
 
 
 @contextlib.asynccontextmanager
-async def async_lock(lock):
+async def async_lock(lock: threading.Lock):
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(_pool, lock.acquire)
     try:
@@ -93,7 +93,6 @@ class _PatchableJson(dict):
         self._ws = WebsocketManager()
         self._last = copy.deepcopy(dict(self))
         self._lock = threading.Lock()
-        self._loop = asyncio.get_event_loop()
         self._field = field.value
 
     def get_changes(self, patch=None):
