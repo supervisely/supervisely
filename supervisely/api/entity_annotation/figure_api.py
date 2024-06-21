@@ -3,13 +3,18 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional
+import json
+import re
+from collections import defaultdict
+from typing import Dict, Generator, List, NamedTuple, Optional, Tuple
+
+import numpy as np
+from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from collections import defaultdict
 
 
 class FigureInfo(NamedTuple):
@@ -105,7 +110,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -131,7 +136,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
             figure_id = 588801373
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -217,7 +222,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -435,3 +440,88 @@ class FigureApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=False):
         res = super()._convert_json_info(info, skip_missing=True)
         return FigureInfo(**res._asdict())
+
+    def _download_geometries_generator(
+        self, ids: List[int]
+    ) -> Generator[Tuple[int, MultipartDecoder.Part], None, None]:
+        """
+        Private method. Download figures geometries with given IDs from storage.
+        """
+
+        for batch_ids in batched(ids):
+            response = self._api.post("figures.bulk.download.geometry", {ApiField.IDS: batch_ids})
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                yield figure_id, part
+
+    def download_geometry(self, figure_id: int) -> dict:
+        """
+        Download figure geometry with given ID from storage.
+
+        :param figure_id: Figure ID in Supervisely.
+        :type figure_id: int
+        :return: Figure geometry in Supervisely JSON format.
+        :rtype: dict
+        """
+        return self.download_geometries_batch([figure_id])
+
+    def download_geometries_batch(self, ids: List[int]) -> List[dict]:
+        """
+        Download figure geometries with given IDs from storage.
+
+        :param ids: List of figure IDs in Supervisely.
+        :type ids: List[int]
+        :return: List of figure geometries in Supervisely JSON format.
+        :rtype: List[dict]
+        """
+        geometries = {}
+        for idx, part in self._download_geometries_generator(ids):
+            geometry_json = json.loads(part.content)
+            geometries[idx] = geometry_json
+
+        if len(geometries) != len(ids):
+            raise RuntimeError("Not all geometries were downloaded")
+        ordered_results = [geometries[i] for i in ids]
+        return ordered_results
+
+    def upload_geometry(self, figure_id: int, geometry: dict):
+        """
+        Upload figure geometry with given figure ID to storage.
+
+        :param figure_id: Figure ID in Supervisely.
+        :type figure_id: int
+        :param geometry: Figure geometry in Supervisely JSON format.
+        :type geometry: dict
+        :return: None
+        :rtype: None
+        """
+        self.upload_geometries_batch([figure_id], [geometry])
+
+    def upload_geometries_batch(self, figure_ids: List[int], geometries: List[dict]):
+        """
+        Upload figure geometries with given figure IDs to storage.
+
+        :param figure_ids: List of figure IDs in Supervisely.
+        :type figure_ids: List[int]
+        :param geometries: List of figure geometries in Supervisely JSON format.
+        :type geometries: List[dict]
+        :return: None
+        :rtype: None
+        """
+        geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
+
+        for batch_ids, batch_geometries in zip(
+            batched(figure_ids, batch_size=100), batched(geometries, batch_size=100)
+        ):
+            fields = []
+            for figure_id, geometry in zip(batch_ids, batch_geometries):
+                fields.append((ApiField.FIGURE_ID, str(figure_id)))
+                fields.append(
+                    (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
+                )
+            encoder = MultipartEncoder(fields=fields)
+            self._api.post("figures.bulk.upload.geometry", encoder)

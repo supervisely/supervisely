@@ -16,6 +16,7 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import BaseConverter
+from supervisely.api.api import ApiContext
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
 from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
@@ -58,11 +59,8 @@ class ImageConverter(BaseConverter):
                     if file_ext == ".nrrd":
                         logger.debug(f"Found nrrd file: {self.path}.")
                         image, _ = nrrd.read(self.path)
-                    elif file_ext == ".tif":
-                        import tifffile
-
-                        logger.debug(f"Found tiff file: {self.path}.")
-                        image = tifffile.imread(self.path)
+                    elif file_ext in [".tif", ".tiff"]:
+                        image = image_helper.read_tiff_image(self.path)
                     elif is_valid_ext(file_ext):
                         logger.debug(f"Found image file: {self.path}.")
                         image = cv2.imread(self.path)
@@ -124,6 +122,8 @@ class ImageConverter(BaseConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_id = dataset_info.project_id
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -153,10 +153,13 @@ class ImageConverter(BaseConverter):
                 if ann is not None:
                     anns.append(ann)
 
-            img_infos = api.image.upload_paths(dataset_id, item_names, item_paths, metas=item_metas)
-            img_ids = [img_info.id for img_info in img_infos]
-            if len(anns) == len(img_ids):
-                api.annotation.upload_anns(img_ids, anns)
+            with ApiContext(
+                api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
+            ):
+                img_infos = api.image.upload_paths(dataset_id, item_names, item_paths, metas=item_metas)
+                img_ids = [img_info.id for img_info in img_infos]
+                if len(anns) == len(img_ids):
+                    api.annotation.upload_anns(img_ids, anns)
 
             if log_progress:
                 progress_cb(len(batch))

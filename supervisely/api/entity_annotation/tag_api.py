@@ -1,7 +1,6 @@
 # coding: utf-8
 
-from supervisely.api.module_api import ModuleApi
-from supervisely.api.module_api import ApiField
+from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -25,21 +24,22 @@ class TagApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
             info_sequence = api.video.tag.info_sequence()
         """
 
-        return [ApiField.ID,
-                ApiField.PROJECT_ID,
-                ApiField.NAME,
-                ApiField.SETTINGS,
-                ApiField.COLOR,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT
-                ]
+        return [
+            ApiField.ID,
+            ApiField.PROJECT_ID,
+            ApiField.NAME,
+            ApiField.SETTINGS,
+            ApiField.COLOR,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -54,7 +54,7 @@ class TagApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -62,7 +62,7 @@ class TagApi(ModuleApi):
             print(tuple_name) # TagInfo
         """
 
-        return 'TagInfo'
+        return "TagInfo"
 
     def get_list(self, project_id: int, filters=None):
         """
@@ -76,7 +76,9 @@ class TagApi(ModuleApi):
         :rtype: list
         """
 
-        return self.get_list_all_pages('tags.list', {ApiField.PROJECT_ID: project_id, "filter": filters or []})
+        return self.get_list_all_pages(
+            "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
+        )
 
     def get_name_to_id_map(self, project_id: int):
         """
@@ -106,7 +108,13 @@ class TagApi(ModuleApi):
             tags_keys.append(tag.key())
         return tags_json, tags_keys
 
-    def append_to_entity(self, entity_id: int, project_id: int, tags: KeyIndexedCollection, key_id_map: KeyIdMap = None):
+    def append_to_entity(
+        self,
+        entity_id: int,
+        project_id: int,
+        tags: KeyIndexedCollection,
+        key_id_map: KeyIdMap = None,
+    ):
         """
         Add tags to entity in project with given ID.
 
@@ -138,11 +146,15 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
-        response = self._api.post(self._method_bulk_add, {self._entity_id_field: entity_id, ApiField.TAGS: tags_json})
+        response = self._api.post(
+            self._method_bulk_add, {self._entity_id_field: entity_id, ApiField.TAGS: tags_json}
+        )
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
-    def append_to_objects(self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap):
+    def append_to_objects(
+        self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap
+    ):
         """
         Add Tags to Annotation Objects.
 
@@ -160,7 +172,7 @@ class TagApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -175,8 +187,14 @@ class TagApi(ModuleApi):
         for object in objects:
             obj_id = key_id_map.get_object_id(object.key())
             if obj_id is None:
-                raise RuntimeError("Can not add tags to object: OBJECT_ID not found for key {}".format(object.key()))
-            tags_json, cur_tags_keys = self._tags_to_json(object.tags, tag_name_id_map=tag_name_id_map)
+                raise RuntimeError(
+                    "Can not add tags to object: OBJECT_ID not found for key {}".format(
+                        object.key()
+                    )
+                )
+            tags_json, cur_tags_keys = self._tags_to_json(
+                object.tags, tag_name_id_map=tag_name_id_map
+            )
             for tag in tags_json:
                 tag[ApiField.OBJECT_ID] = obj_id
                 tags_to_add.append(tag)
@@ -203,7 +221,9 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
-        response = self._api.post('annotation-objects.tags.bulk.add',
-                                  {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json})
+        response = self._api.post(
+            "annotation-objects.tags.bulk.add",
+            {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json},
+        )
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids

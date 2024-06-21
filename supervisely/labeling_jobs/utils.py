@@ -2,15 +2,17 @@
 """utilities used for labeling jobs"""
 
 from __future__ import annotations
-from typing import List, Tuple, NamedTuple
+
 import urllib.parse
+from typing import List, NamedTuple, Tuple
 
 from supervisely.api.labeling_job_api import LabelingJobApi
 
 Status = LabelingJobApi.Status
-from supervisely.labeling_jobs import constants as constants
-from supervisely.api.module_api import ApiField
 from pandas import DataFrame  # for typehints
+
+from supervisely.api.module_api import ApiField
+from supervisely.labeling_jobs import constants as constants
 
 
 def total_desc() -> Tuple[str, str]:
@@ -93,7 +95,10 @@ def labeled_items_count_desc() -> Tuple[str, str]:
     :return: Description about total number of labeled items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
-    return "LABELED", "the total number of labeled items (labelers marked as \"finished\") in all labeling jobs"
+    return (
+        "LABELED",
+        'the total number of labeled items (labelers marked as "finished") in all labeling jobs',
+    )
 
 
 # cnt images, that labeler marked as done
@@ -113,7 +118,10 @@ def reviewed_items_count_desc() -> Tuple[str, str]:
     :return: Description about total number of reviewed items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
-    return "REVIEWED", "the total number of reviewed items (reviewers marked as \"accepted\" or \"rejected\") in all labeling jobs"
+    return (
+        "REVIEWED",
+        'the total number of reviewed items (reviewers marked as "accepted" or "rejected") in all labeling jobs',
+    )
 
 
 # cnt images, that reviewer accepted or rejected
@@ -130,7 +138,10 @@ def accepted_items_count_desc() -> Tuple[str, str]:
     :return: Description about total number of accepted items in all Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
-    return "ACCEPTED", "the total number of accepted items (reviewers marked as \"accepted\") in all labeling jobs"
+    return (
+        "ACCEPTED",
+        'the total number of accepted items (reviewers marked as "accepted") in all labeling jobs',
+    )
 
 
 def accepted_items_count(job_info: NamedTuple) -> int:
@@ -146,7 +157,10 @@ def rejected_items_count_desc() -> Tuple[str, str]:
     :return: Description about total number of rejected items in Labeling Jobs
     :rtype: :class:`Tuple[str, str]`
     """
-    return "REJECTED", "the total number of rejected items (reviewers marked as \"rejected\") in all labeling jobs"
+    return (
+        "REJECTED",
+        'the total number of rejected items (reviewers marked as "rejected") in all labeling jobs',
+    )
 
 
 def rejected_items_count(job_info: NamedTuple) -> int:
@@ -158,7 +172,7 @@ def rejected_items_count(job_info: NamedTuple) -> int:
 
 
 def is_on_labeling_desc() -> str:
-    return 'LABELING IN PROGRESS', "the number of jobs with status IN_PROGRESS"
+    return "LABELING IN PROGRESS", "the number of jobs with status IN_PROGRESS"
 
 
 # labeling is in progress
@@ -177,7 +191,10 @@ def is_labeling_started_desc() -> Tuple[str, str]:
     :return: Description about total number of Labeling Jobs that are started by labeler
     :rtype: :class:`Tuple[str, str]`
     """
-    return 'LABELING STARTED', "the number of jobs that are started by labeler and with at least one labeled item (marked \"done\" by labeler)"
+    return (
+        "LABELING STARTED",
+        'the number of jobs that are started by labeler and with at least one labeled item (marked "done" by labeler)',
+    )
 
 
 # cnt jobs that are started by labeler and with at least one image that marked "done" by labeler
@@ -196,7 +213,7 @@ def is_on_review_desc() -> Tuple[str, str]:
     :return: Description about number of Labeling Jobs with status 'ON REVIEW'
     :rtype: :class:`Tuple[str, str]`
     """
-    return 'ON REVIEW', "the number of jobs with status ON_REVIEW"
+    return "ON REVIEW", "the number of jobs with status ON_REVIEW"
 
 
 # cnt jobs with "on review" status
@@ -215,7 +232,10 @@ def is_review_started_desc() -> Tuple[str, str]:
     :return: Description about number of Labeling Jobs that are started by reviewer
     :rtype: :class:`Tuple[str, str]`
     """
-    return 'REVIEW STARTED', "the number of jobs that are started by reviewer - with at least one reviewed item (marked \"accepted\" or \"rejected\")"
+    return (
+        "REVIEW STARTED",
+        'the number of jobs that are started by reviewer - with at least one reviewed item (marked "accepted" or "rejected")',
+    )
 
 
 # cnt jobs with at least one reviewed (accepted or rejected) item
@@ -234,7 +254,7 @@ def is_zero_labeling_desc() -> Tuple[str, str]:
     :return: Description about number of Labeling Jobs with status "IN PROGRESS" with zero labeled items
     :rtype: :class:`Tuple[str, str]`
     """
-    return 'ZERO LABELED', "the number of jobs with status \"IN PROGRESS\" with zero labeled items"
+    return "ZERO LABELED", 'the number of jobs with status "IN PROGRESS" with zero labeled items'
 
 
 def is_zero_reviewed_desc() -> Tuple[str, str]:
@@ -242,7 +262,7 @@ def is_zero_reviewed_desc() -> Tuple[str, str]:
     :return: Description about number of Labeling Jobs with status "ON REVIEW" with zero reviewed items
     :rtype: :class:`Tuple[str, str]`
     """
-    return 'ZERO REVIEWED', "the number of jobs with status \"ON REVIEW\" with zero reviewed items"
+    return "ZERO REVIEWED", 'the number of jobs with status "ON REVIEW" with zero reviewed items'
 
 
 def get_job_url(server_address: str, job: NamedTuple) -> str:
@@ -270,11 +290,12 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
         print(job_url)
         # Output: https://app.supervise.ly/app/images/4/8/58/54?jobId=2
     """
-    result = urllib.parse.urljoin(server_address, 'app/images/{}/{}/{}/{}?jobId={}'.format(job.team_id,
-                                                                                           job.workspace_id,
-                                                                                           job.project_id,
-                                                                                           job.dataset_id,
-                                                                                           job.id))
+    result = urllib.parse.urljoin(
+        server_address,
+        "app/images/{}/{}/{}/{}?jobId={}".format(
+            job.team_id, job.workspace_id, job.project_id, job.dataset_id, job.id
+        ),
+    )
 
     return result
 
@@ -295,7 +316,7 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
 
      .. code-block:: python
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
 
@@ -312,6 +333,7 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
         # 1   3  <a href="https://app.supervise.ly/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
     """
     import pandas as pd
+
     col_job_id = []
     col_job_name = []  # link here
     col_job_status = []
@@ -324,8 +346,11 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
 
     for job, stat in zip(jobs, stats):
         col_job_id.append(job.id)
-        col_job_name.append('<a href="{0}" rel="noopener noreferrer" target="_blank">{1}</a>'
-                            .format(get_job_url(server_address, job), job.name))
+        col_job_name.append(
+            '<a href="{0}" rel="noopener noreferrer" target="_blank">{1}</a>'.format(
+                get_job_url(server_address, job), job.name
+            )
+        )
         col_job_status.append(job.status)
         col_created_at.append(job.created_at)
         col_items_total.append(total_items_count(job))
@@ -334,19 +359,34 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
         col_items_accepted.append(accepted_items_count(job))
         col_items_rejected.append(rejected_items_count(job))
 
-    df = pd.DataFrame(list(zip(col_job_id,
-                               col_job_name,
-                               col_job_status,
-                               col_items_total,
-                               col_items_labeled,
-                               col_items_reviewed,
-                               col_items_accepted,
-                               col_items_rejected,
-                               col_created_at)),
-                      columns=['ID', 'NAME', 'STATUS', 'TOTAL', 'LABELED', 'REVIEWED', 'ACCEPTED', 'REJECTED',
-                               'CREATED_AT'])
+    df = pd.DataFrame(
+        list(
+            zip(
+                col_job_id,
+                col_job_name,
+                col_job_status,
+                col_items_total,
+                col_items_labeled,
+                col_items_reviewed,
+                col_items_accepted,
+                col_items_rejected,
+                col_created_at,
+            )
+        ),
+        columns=[
+            "ID",
+            "NAME",
+            "STATUS",
+            "TOTAL",
+            "LABELED",
+            "REVIEWED",
+            "ACCEPTED",
+            "REJECTED",
+            "CREATED_AT",
+        ],
+    )
 
-    df['CREATED_AT'] = pd.to_datetime(df['CREATED_AT']).dt.strftime('%d/%m/%Y %H:%M')
+    df["CREATED_AT"] = pd.to_datetime(df["CREATED_AT"]).dt.strftime("%d/%m/%Y %H:%M")
     return df
 
 
@@ -362,7 +402,7 @@ def jobs_summary(jobs: List[NamedTuple]) -> DataFrame:
 
      .. code-block:: python
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
 
@@ -386,6 +426,7 @@ def jobs_summary(jobs: List[NamedTuple]) -> DataFrame:
         # 9  9         ZERO REVIEWED         0     0.00 %  the number of jobs with status "ON REVIEW" wit...
     """
     import pandas as pd
+
     count_total = len(jobs)
 
     count_completed = 0
@@ -426,25 +467,31 @@ def jobs_summary(jobs: List[NamedTuple]) -> DataFrame:
     percentages = []
     descriptions = []
 
-    table_rows_f = [total_desc, is_completed_desc, is_stopped_desc,
-                    is_not_started_desc,
-                    is_on_labeling_desc, is_labeling_started_desc, is_zero_labeling_desc,
-                    is_on_review_desc, is_review_started_desc, is_zero_reviewed_desc]
+    table_rows_f = [
+        total_desc,
+        is_completed_desc,
+        is_stopped_desc,
+        is_not_started_desc,
+        is_on_labeling_desc,
+        is_labeling_started_desc,
+        is_zero_labeling_desc,
+        is_on_review_desc,
+        is_review_started_desc,
+        is_zero_reviewed_desc,
+    ]
 
-    values = [count_total,
-              count_completed,
-              count_stopped,
-
-              count_labeling_not_started,
-
-              count_on_labeling,
-              count_labeling_started,
-              count_labeling_zero_done,
-
-              count_on_review,
-              count_review_started,
-              count_review_zero_done,
-              ]
+    values = [
+        count_total,
+        count_completed,
+        count_stopped,
+        count_labeling_not_started,
+        count_on_labeling,
+        count_labeling_started,
+        count_labeling_zero_done,
+        count_on_review,
+        count_review_started,
+        count_review_zero_done,
+    ]
 
     for v, func in zip(values, table_rows_f):
         percentages.append("{:.2f} %".format(v * 100 / count_total))
@@ -452,8 +499,10 @@ def jobs_summary(jobs: List[NamedTuple]) -> DataFrame:
         names.append(name)
         descriptions.append(desc)
 
-    df = pd.DataFrame(list(zip(list(range(len(names))), names, values, percentages, descriptions)),
-                      columns=['#', 'JOB STATUS', 'QUANTITY', 'PERCENTAGE', 'DESCRIPTION'])
+    df = pd.DataFrame(
+        list(zip(list(range(len(names))), names, values, percentages, descriptions)),
+        columns=["#", "JOB STATUS", "QUANTITY", "PERCENTAGE", "DESCRIPTION"],
+    )
     return df
 
 
@@ -469,7 +518,7 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
 
      .. code-block:: python
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
 
@@ -488,6 +537,7 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
         # 4  4    REJECTED         1    20.00 %  the total number of rejected items (reviewers ...
     """
     import pandas as pd
+
     count_total_items = 0
     count_labeled_items = 0
     count_reviewed_items = 0
@@ -501,17 +551,21 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
         count_accepted_items += accepted_items_count(job)
         count_rejected_items += rejected_items_count(job)
 
-    values_items = [count_total_items,
-                    count_labeled_items,
-                    count_reviewed_items,
-                    count_accepted_items,
-                    count_rejected_items]
+    values_items = [
+        count_total_items,
+        count_labeled_items,
+        count_reviewed_items,
+        count_accepted_items,
+        count_rejected_items,
+    ]
 
-    items_f = [total_items_count_desc,
-               labeled_items_count_desc,
-               reviewed_items_count_desc,
-               accepted_items_count_desc,
-               rejected_items_count_desc]
+    items_f = [
+        total_items_count_desc,
+        labeled_items_count_desc,
+        reviewed_items_count_desc,
+        accepted_items_count_desc,
+        rejected_items_count_desc,
+    ]
 
     names_items = []
     percentages_items = []
@@ -524,13 +578,23 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
         descriptions_items.append(desc)
 
     df = pd.DataFrame(
-        list(zip(list(range(len(names_items))), names_items, values_items, percentages_items, descriptions_items)),
-        columns=['#', 'ITEM STATUS', 'QUANTITY', 'PERCENTAGE', 'DESCRIPTION'])
+        list(
+            zip(
+                list(range(len(names_items))),
+                names_items,
+                values_items,
+                percentages_items,
+                descriptions_items,
+            )
+        ),
+        columns=["#", "ITEM STATUS", "QUANTITY", "PERCENTAGE", "DESCRIPTION"],
+    )
     return df
 
 
 def classes_summary(stats: List) -> DataFrame:
     import pandas as pd
+
     class_id_stats = {}
     for stat in stats:
         for class_stat in stat[constants.CLASSES_STATS]:
@@ -542,9 +606,13 @@ def classes_summary(stats: List) -> DataFrame:
             class_color = class_stat[ApiField.COLOR]
 
             if class_id not in class_id_stats:
-                class_id_stats[class_id] = {ApiField.NAME: class_name, ApiField.SHAPE: class_shape,
-                                            ApiField.COLOR: class_color,
-                                            ApiField.IMAGES_COUNT: 0, ApiField.LABELS_COUNT: 0}
+                class_id_stats[class_id] = {
+                    ApiField.NAME: class_name,
+                    ApiField.SHAPE: class_shape,
+                    ApiField.COLOR: class_color,
+                    ApiField.IMAGES_COUNT: 0,
+                    ApiField.LABELS_COUNT: 0,
+                }
 
             class_id_stats[class_id][ApiField.IMAGES_COUNT] += image_count
             class_id_stats[class_id][ApiField.LABELS_COUNT] += object_count
@@ -555,19 +623,26 @@ def classes_summary(stats: List) -> DataFrame:
     col_object_count = []
     for class_id, value in class_id_stats.items():
         col_name.append(
-            '<b style="display: inline-block; border-radius: 50%; background: {}; width: 8px; height: 8px"></b> {}'
-            .format(value[ApiField.COLOR], value[ApiField.NAME]))
+            '<b style="display: inline-block; border-radius: 50%; background: {}; width: 8px; height: 8px"></b> {}'.format(
+                value[ApiField.COLOR], value[ApiField.NAME]
+            )
+        )
         col_shape.append(value[ApiField.SHAPE])
         col_image_count.append(value[ApiField.IMAGES_COUNT])
         col_object_count.append(value[ApiField.LABELS_COUNT])
 
-    df = pd.DataFrame(list(zip(list(range(len(col_name))), col_name, col_shape, col_image_count, col_object_count)),
-                      columns=['#', 'CLASS', 'SHAPE', 'IMAGES COUNT', 'OBJECTS COUNT'])
+    df = pd.DataFrame(
+        list(
+            zip(list(range(len(col_name))), col_name, col_shape, col_image_count, col_object_count)
+        ),
+        columns=["#", "CLASS", "SHAPE", "IMAGES COUNT", "OBJECTS COUNT"],
+    )
     return df
 
 
 def tags_summary(stats: List) -> DataFrame:
     import pandas as pd
+
     tag_id_stats = {}
     for stat in stats:
         for tag_stat in stat["job"][constants.TAGS_STATS]:
@@ -581,8 +656,12 @@ def tags_summary(stats: List) -> DataFrame:
             class_color = tag_stat[ApiField.COLOR]
 
             if tag_id not in tag_id_stats:
-                tag_id_stats[tag_id] = {ApiField.NAME: tag_name, ApiField.COLOR: class_color,
-                                        ApiField.IMAGES_COUNT: 0, ApiField.LABELS_COUNT: 0}
+                tag_id_stats[tag_id] = {
+                    ApiField.NAME: tag_name,
+                    ApiField.COLOR: class_color,
+                    ApiField.IMAGES_COUNT: 0,
+                    ApiField.LABELS_COUNT: 0,
+                }
 
             tag_id_stats[tag_id][ApiField.IMAGES_COUNT] += image_count
             tag_id_stats[tag_id][ApiField.LABELS_COUNT] += object_count
@@ -592,11 +671,15 @@ def tags_summary(stats: List) -> DataFrame:
     col_object_count = []
     for tag_id, value in tag_id_stats.items():
         col_name.append(
-            '<b style="display: inline-block; border-radius: 50%; background: {}; width: 8px; height: 8px"></b> {}'
-            .format(value[ApiField.COLOR], value[ApiField.NAME]))
+            '<b style="display: inline-block; border-radius: 50%; background: {}; width: 8px; height: 8px"></b> {}'.format(
+                value[ApiField.COLOR], value[ApiField.NAME]
+            )
+        )
         col_image_count.append(value[ApiField.IMAGES_COUNT])
         col_object_count.append(value[ApiField.LABELS_COUNT])
 
-    df = pd.DataFrame(list(zip(list(range(len(col_name))), col_name, col_image_count, col_object_count)),
-                      columns=['#', 'TAG', 'IMAGES COUNT', 'OBJECTS COUNT'])
+    df = pd.DataFrame(
+        list(zip(list(range(len(col_name))), col_name, col_image_count, col_object_count)),
+        columns=["#", "TAG", "IMAGES COUNT", "OBJECTS COUNT"],
+    )
     return df

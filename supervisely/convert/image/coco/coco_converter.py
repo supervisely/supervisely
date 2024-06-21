@@ -87,6 +87,8 @@ class COCOConverter(ImageConverter):
             # create ann dict
             for image_id, image_info in coco_items:
                 image_name = image_info["file_name"]
+                if "/" in image_name:
+                    image_name = os.path.basename(image_name)
                 coco_ann = coco_anns[image_id]
                 image_anns = ann_dict.get(image_name, None)
                 if image_anns is None:

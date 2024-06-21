@@ -35,6 +35,7 @@ from supervisely.api.module_api import (
     WaitingTimeExceeded,
 )
 from supervisely.collection.str_enum import StrEnum
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.point import Point
@@ -365,7 +366,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -586,7 +587,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -711,7 +712,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -733,7 +734,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -813,7 +814,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -835,7 +836,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -877,7 +878,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -908,7 +909,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1101,7 +1102,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1144,7 +1145,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             import supervisely as sly
             from supervisely.api.labeling_job_api.LabelingJobApi.Status import COMPLETED
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1207,6 +1208,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 geometry = Polyline.from_json(data)
             elif type == "graph":
                 geometry = GraphNodes.from_json(data)
+            elif type == "alpha_mask":
+                geometry = AlphaMask.from_json(data)
             else:
                 geometry = None
             return geometry
