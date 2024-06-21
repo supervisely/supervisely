@@ -162,7 +162,7 @@ class DataVersion(ModuleApiBase):
         Create a new project version.
         Returns the ID of the new version.
         If the project is already on the latest version, returns the latest version ID.
-        If the project version cannot be created, returns -1.
+        If the project version cannot be created, returns None.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
@@ -184,7 +184,7 @@ class DataVersion(ModuleApiBase):
                 logger.warn(
                     "Project versioning is not available for teams with Free plan. Please upgrade to Pro to enable versioning."
                 )
-                return -1
+                return None
 
         self.initialize(project_info)
         path = self._generate_save_path()
@@ -193,7 +193,7 @@ class DataVersion(ModuleApiBase):
             version_id, commit_token = self.reserve(project_info.id)
         except Exception as e:
             logger.error(f"Failed to reserve project for versioning. Exception: {e}")
-            return -1
+            return None
         if version_id is None and commit_token is None:
             return latest
         try:
@@ -222,7 +222,7 @@ class DataVersion(ModuleApiBase):
                 logger.error(
                     f"Failed to cancel reservation when handling exception. You can cancel your reservation on the web under the Versions tab of the project. Exception: {e}"
                 )
-            return -1
+            return None
 
     def commit(
         self,
