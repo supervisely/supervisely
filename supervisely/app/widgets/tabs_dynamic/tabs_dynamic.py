@@ -44,13 +44,16 @@ class TabsDynamic(Widget):
         widget_id=None,
     ):  
         self._disabled = disabled
-        if Path(filepath_or_raw_yaml[-50:]).is_file():
-            data_source = open(filepath_or_raw_yaml, "r")
-        else:
+        try:
+            with open(filepath_or_raw_yaml, "r") as file:
+                data_source = file.read()
+        except:
             data_source = filepath_or_raw_yaml
 
         yaml, CommentedMap = initialize()
         self._data = yaml.load(data_source)
+        if not isinstance(self._data, (dict, CommentedMap)):
+            raise ValueError("Invalid yaml path or file content.")
         self._common_data = self._data.copy()
         
         self._items_dict = {}
