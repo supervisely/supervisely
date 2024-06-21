@@ -13,7 +13,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 
-class EventLinstenerError(Exception):
+class EventListenerError(Exception):
     def __init__(self, message="An exception occurred due to conflicting event listeners."):
         self.message = message
         super().__init__(self.message)
@@ -477,7 +477,7 @@ class FastTable(Widget):
 
         if self._cell_click_handled is True:
             message = "An exception occurred due to conflicting event listeners: 'row_click' and 'cell_click'. To avoid errors, specify only one event listener. The 'cell_click' listener includes all information about the row as well."
-            raise EventLinstenerError(message)
+            raise EventListenerError(message)
 
         @server.post(row_clicked_route_path)
         def _click():
@@ -510,7 +510,7 @@ class FastTable(Widget):
 
         if self._row_click_handled is True:
             message = "An exception occurred due to conflicting event listeners: 'row_click' and 'cell_click'. To avoid errors, specify only one event listener. The 'cell_click' listener includes all information about the row as well."
-            raise EventLinstenerError(message)
+            raise EventListenerError(message)
 
         @server.post(cell_clicked_route_path)
         def _click():

@@ -191,7 +191,7 @@ def convert_keypoints(
     nodes = []
     step = 3 if num_dims == 3 else 2
     shift = 4
-    for i in range(shift, num_keypoints * step + shift, step):
+    for i in range(shift, num_keypoints + shift, step):
         x = coords[i]
         y = coords[i + 1]
         visibility = int(coords[i + 2]) if num_dims == 3 else 2
@@ -199,7 +199,7 @@ def convert_keypoints(
             continue  # skip invisible keypoints
         px_x = min(img_width, max(0, int(x * img_width)))
         px_y = min(img_height, max(0, int(y * img_height)))
-        node = Node(row=px_y, col=px_x)  # , disabled=v)
+        node = Node(row=px_x, col=px_y)  # , disabled=v)
         nodes.append(node)
     if len(nodes) > 0:
         return GraphNodes(nodes)

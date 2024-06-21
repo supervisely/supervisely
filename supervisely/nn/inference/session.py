@@ -91,7 +91,6 @@ class SessionJSON:
         self._model_meta = None
         self._async_inference_uuid = None
         self._stop_async_inference_flag = False
-        self.inference_result = None
 
         # Check connection:
         try:
@@ -219,7 +218,6 @@ class SessionJSON:
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
     ) -> Dict[str, Any]:
         endpoint = "inference_video_id"
         url = f"{self._base_url}/{endpoint}"
@@ -229,7 +227,6 @@ class SessionJSON:
         state.update(
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
-        state["tracker"] = tracker
         resp = self._post(url, json=json_body)
         return resp.json()
 
@@ -241,7 +238,6 @@ class SessionJSON:
         frames_direction: Literal["forward", "backward"] = None,
         process_fn=None,
         preparing_cb=None,
-        tracker: Literal["bot", "deepsort"] = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -260,7 +256,6 @@ class SessionJSON:
         state.update(
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
-        state["tracker"] = tracker
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -300,7 +295,7 @@ class SessionJSON:
                 progress_widget.update(current - prev_current)
                 prev_current = current
 
-        logger.info("Inference has started:", extra={"response": resp})
+        logger.info("Inference has started:", extra=resp)
         resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(
             resp["progress"]["total"], self, process_fn=process_fn
@@ -429,10 +424,6 @@ class SessionJSON:
     def _on_async_inference_end(self):
         logger.debug("callback: on_async_inference_end()")
         try:
-            try:
-                self.inference_result = self._get_inference_result()
-            except Exception:
-                pass
             self._clear_inference_request()
         finally:
             self._async_inference_uuid = None
@@ -468,12 +459,6 @@ class SessionJSON:
 
     def _get_from_endpoint_for_async_inference(self, endpoint) -> Dict[str, Any]:
         url = f"{self._base_url}/{endpoint}"
-        json_body = self._get_default_json_body_for_async_inference()
-        resp = self._post(url, json=json_body)
-        return resp.json()
-
-    def _get_inference_result(self):
-        url = f"{self._base_url}/get_inference_result"
         json_body = self._get_default_json_body_for_async_inference()
         resp = self._post(url, json=json_body)
         return resp.json()
@@ -630,10 +615,9 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
-            video_id, start_frame_index, frames_count, frames_direction, tracker
+            video_id, start_frame_index, frames_count, frames_direction
         )
         pred_list_raw = pred_list_raw["ann"]
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
@@ -645,7 +629,6 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
@@ -653,7 +636,6 @@ class Session(SessionJSON):
             frames_count,
             frames_direction,
             process_fn=self._convert_to_sly_annotation,
-            tracker=tracker,
         )
         return frame_iterator
 
@@ -709,5 +691,8 @@ class Session(SessionJSON):
         meta = self.get_model_meta()
         for pred in pred_list_raw:
             meta = get_meta_from_annotation(pred["annotation"], meta)
-        predictions = [sly.Annotation.from_json(pred["annotation"], meta) for pred in pred_list_raw]
+        predictions = [
+            sly.Annotation.from_json(pred["annotation"], meta)
+            for pred in pred_list_raw
+        ]
         return predictions

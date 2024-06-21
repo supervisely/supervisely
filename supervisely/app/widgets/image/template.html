@@ -1,10 +1,10 @@
-<div>
-  <img
-    v-if="data.{{{widget.widget_id}}}.url != ''"
-    :style="{
+<div id="{{{widget.widget_id}}}">
+	<img
+		v-if="data.{{{widget.widget_id}}}.url != ''"
+		:style="{
         width: data.{{{widget.widget_id}}}.width,
         height: data.{{{widget.widget_id}}}.height
     }"
-    :src="data.{{{widget.widget_id}}}.url"
-  />
+		:src="data.{{{widget.widget_id}}}.url"
+	/>
 </div>

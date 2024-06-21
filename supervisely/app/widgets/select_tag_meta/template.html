@@ -1,5 +1,6 @@
 {% if widget._project_id is not none %}
 <sly-select-tag
+  id="{{{widget.widget_id}}}"
   :project-id="state.{{{widget.widget_id}}}.projectId"
   :tags.sync="state.{{{widget.widget_id}}}.tags"
   :options="data.{{{widget.widget_id}}}.options"
@@ -13,6 +14,7 @@
   >Tag</label>
 
   <el-select
+    id="{{{widget.widget_id}}}"
     v-model="state.{{{widget.widget_id}}}.tags"
     placeholder="Select tag"
     :multiple="data.{{{widget.widget_id}}}.options.multiple"

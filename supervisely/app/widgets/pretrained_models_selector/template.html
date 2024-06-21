@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/pretrained_models_selector/style.css"/>
 
-<div v-if="!state.{{{widget.widget_id}}}.selectedArchType || !state.{{{widget.widget_id}}}.selectedTaskType">
+<div id="{{{widget.widget_id}}}" v-if="!state.{{{widget.widget_id}}}.selectedArchType || !state.{{{widget.widget_id}}}.selectedTaskType">
     <sly-notification-2 class="mt10" options="'type': 'warning'">
         <div slot="title">Couldn't create table</div>
         <div>Check if the models_list is in correct format</div>
@@ -8,7 +8,7 @@
 </div>
 
 <div>
-    <div v-if="Object.keys(data.{{{widget.widget_id}}}.tableData).length > 1">
+    <div id="{{{widget.widget_id}}}" v-if="Object.keys(data.{{{widget.widget_id}}}.tableData).length > 1">
         <sly-field
         title="Task Type"
         >

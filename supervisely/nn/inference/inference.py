@@ -25,7 +25,7 @@ import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
 import supervisely.nn.inference.gui as GUI
-from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
+from supervisely import DatasetInfo, ProjectInfo, batched
 from supervisely._utils import (
     add_callback,
     is_debug_with_sly_net,
@@ -92,7 +92,6 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker = None
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -416,7 +415,6 @@ class Inference:
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
-            "tracking_algorithms": ["bot", "deepsort"],
         }
 
     # pylint: enable=method-hidden
@@ -864,7 +862,6 @@ class Inference:
         video_info = api.video.get_info_by_id(state["videoId"])
         n_frames = state.get("framesCount", video_info.frames_count)
         start_frame_index = state.get("startFrameIndex", 0)
-        direction = state.get("direction", "forward")
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -874,7 +871,6 @@ class Inference:
                 n_frames=n_frames,
             ),
         )
-        tracking = state.get("tracker", None)
 
         preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
@@ -910,27 +906,9 @@ class Inference:
 
         logger.debug(f"Total frames to infer: {n_frames}")
 
-        if tracking == "bot":
-            from supervisely.nn.tracker import BoTTracker
-
-            tracker = BoTTracker(state)
-        elif tracking == "deepsort":
-            from supervisely.nn.tracker import DeepSortTracker
-
-            tracker = DeepSortTracker(state)
-        else:
-            if tracking is not None:
-                logger.warn(f"Unknown tracking type: {tracking}. Tracking is disabled.")
-            tracker = None
-
         results = []
         batch_size = 16
-        tracks_data = {}
-        direction = 1 if direction == "forward" else -1
-        for batch in batched(
-            range(start_frame_index, start_frame_index + direction * n_frames, direction),
-            batch_size,
-        ):
+        for batch in batched(range(start_frame_index, start_frame_index + n_frames), batch_size):
             if (
                 async_inference_request_uuid is not None
                 and inference_request["cancel_inference"] is True
@@ -951,9 +929,6 @@ class Inference:
                 settings=settings,
                 data_to_return=data_to_return,
             )
-            if tracker is not None:
-                for frame_index, frame, ann in zip(batch, frames, anns):
-                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
             batch_results = []
             for i, ann in enumerate(anns):
                 data = {}
@@ -970,18 +945,9 @@ class Inference:
                 sly_progress.iters_done(len(batch))
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
-        video_ann_json = None
-        if tracker is not None:
-            frames = self.cache.download_frames(
-                api, video_info.id, range(start_frame_index, start_frame_index + n_frames)
-            )
-            video_ann_json = tracker.get_annotation(
-                tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
-            ).to_json()
-        result = {"ann": results, "video_ann": video_ann_json}
         if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = result.copy()
-        return result
+            inference_request["result"] = {"ann": results}
+        return results
 
     def _inference_project_id(
         self,
@@ -1405,7 +1371,7 @@ class Inference:
         @server.post("/inference_video_id")
         def inference_video_id(request: Request):
             logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
-            return self._inference_video_id(request.state.api, request.state.state)
+            return {"ann": self._inference_video_id(request.state.api, request.state.state)}
 
         @server.post("/inference_image")
         def inference_image(
@@ -1585,30 +1551,6 @@ class Inference:
             )
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return inference_request
-
-        @server.post(f"/get_inference_result")
-        def get_inference_result(response: Response, request: Request):
-            inference_request_uuid = request.state.state.get("inference_request_uuid")
-            if inference_request_uuid is None:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message": "Error: 'inference_request_uuid' is required."}
-
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
-
-            # Logging
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
-            )
-            logger.debug(
-                f"Sending inference result with uuid:",
-                extra=log_extra,
-            )
-
-            return inference_request["result"]
 
         @server.post(f"/stop_inference")
         def stop_inference(response: Response, request: Request):
