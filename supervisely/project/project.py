@@ -2836,11 +2836,11 @@ class Project:
                 names=values["names"],
                 hashes=values["hashes"],
                 metas=values["metas"],
+                batch_size=200,
                 progress_cb=ds_progress,
             )
-            image_lists_by_tags = defaultdict(
-                lambda: defaultdict(list)
-            )  # tagId: {tagValue: [imageId]}
+            # image_lists_by_tags -> tagId: {tagValue: [imageId]}
+            image_lists_by_tags = defaultdict(lambda: defaultdict(list))
             alpha_figures = []
             other_figures = []
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
@@ -2905,13 +2905,13 @@ class Project:
             all_figure_ids.extend(new_alpha_figure_ids)
             ordered_alpha_geometries = list(map(alpha_geometries.get, old_alpha_figure_ids))
             api.image.figure.upload_geometries_batch(new_alpha_figure_ids, ordered_alpha_geometries)
+            for tag, value in image_lists_by_tags.items():
+                for value, image_ids in value.items():
+                    api.image.add_tag_batch(image_ids, tag, value, batch_size=200)
             for new_of_id, tags in zip(all_figure_ids, all_figure_tags.values()):
                 for tag_id, tag_value in tags:
                     new_tag_id = old_new_tags_mapping[tag_id]
                     api.advanced.add_tag_to_object(new_tag_id, new_of_id, tag_value)
-            for tag, value in image_lists_by_tags.items():
-                for value, image_ids in value.items():
-                    api.image.add_tag_batch(image_ids, tag, value)
         return new_project_info
 
     @staticmethod

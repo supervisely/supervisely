@@ -336,7 +336,7 @@ class DataVersion(ModuleApiBase):
         if version_num:
             version_id = None
             for key, value in self.versions.items():
-                if value["number"] == version_num:
+                if isinstance(value, dict) and value.get("number") == version_num:
                     version_id = key
                     break
             if version_id is None:
@@ -344,17 +344,19 @@ class DataVersion(ModuleApiBase):
         else:
             if str(version_id) not in self.versions:
                 raise ValueError(f"Version {version_id} does not exist")
+            version_num = self.versions[str(version_id)]["number"]
+        updated_at = self.versions[str(version_id)]["updated_at"]
+        backup_files = self.versions[str(version_id)]["path"]
 
-        if self.versions[str(version_id)]["updated_at"] == self.project_info.updated_at:
+        if updated_at == self.project_info.updated_at:
             logger.info(
-                f"Project is already on version {version_id} with the same updated_at timestamp"
+                f"Project is already on version {version_num} with the same updated_at timestamp"
             )
             return
 
-        backup_files = self.versions[str(version_id)]["path"]
         if backup_files is None:
             logger.info(
-                f"Project can't be restored to version {version_id} because it's already on the initial version"
+                f"Project can't be restored to version {version_num} because it doesn't have restore point."
             )
             return
 
