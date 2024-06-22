@@ -71,8 +71,8 @@ class PlottyChart(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _validate_figure(self, figure):
-        import plotly.graph_objects as go
-        from plotly.io import from_json
+        import plotly.graph_objects as go  # pylint: disable=import-error
+        from plotly.io import from_json  # pylint: disable=import-error
         import numpy as np
 
         def _convert_arrays_to_lists(d):
@@ -96,9 +96,7 @@ class PlottyChart(Widget):
             fig = from_json(json.dumps(figure), skip_invalid=True)
             figure = fig.to_dict()
         else:
-            raise ValueError(
-                f"figure must be Plotly Figure or dict, but {type(figure)} was given."
-            )
+            raise ValueError(f"figure must be Plotly Figure or dict, but {type(figure)} was given.")
 
         return _convert_arrays_to_lists(figure)
 
@@ -155,8 +153,8 @@ class PlottyChart(Widget):
         if return_type == "dict":
             return self._figure
         elif return_type == "plottly_figure":
-            from plotly.io import from_json
-            from plotly.utils import PlotlyJSONEncoder
+            from plotly.io import from_json  # pylint: disable=import-error
+            from plotly.utils import PlotlyJSONEncoder  # pylint: disable=import-error
 
             figure = DataJson()[self.widget_id]["figure"]
             figure = json.dumps(figure, cls=PlotlyJSONEncoder)
