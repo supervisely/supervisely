@@ -6,9 +6,9 @@ from supervisely.app.content import StateJson, DataJson
 import json
 
 
-class PlottyChart(Widget):
+class PlotlyChart(Widget):
     """
-    PlottyChart widget is a wrapper around Plotly chart library. It allows to display interactive charts in the app.
+    PlotlyChart widget is a wrapper around Plotly chart library. It allows to display interactive charts in the app.
     It supports click event on chart points and provides information about clicked datapoint.
 
     :param figure: Plotly Figure object or dict with Plotly Figure data.
@@ -24,14 +24,14 @@ class PlottyChart(Widget):
         import plotly.express as px
 
         from dotenv import load_dotenv
-        from supervisely.app.widgets import PlottyChart
+        from supervisely.app.widgets import PlotlyChart
 
         # demo data
         df = px.data.gapminder().query("continent == 'Europe' and year == 2007 and pop > 2.e6")
         figure = px.bar(df, y="pop", x="country")
 
-        # create PlottyChart widget
-        plotty_chart_14 = PlottyChart(figure=figure)
+        # create PlotlyChart widget
+        plotly_chart_14 = PlotlyChart(figure=figure)
     """
     class Routes:
         CLICK = "chart_clicked_cb"
@@ -139,7 +139,7 @@ class PlottyChart(Widget):
         }
 
     def click(self, func):
-        route_path = self.get_route_path(PlottyChart.Routes.CLICK)
+        route_path = self.get_route_path(PlotlyChart.Routes.CLICK)
         server = self._sly_app.get_server()
 
         self._click_handled = True
@@ -152,7 +152,7 @@ class PlottyChart(Widget):
 
         return _click
 
-    def get_clicked_datapoint(self) -> Union[PlottyChart.ClickedDataPoint, None]:
+    def get_clicked_datapoint(self) -> Union[PlotlyChart.ClickedDataPoint, None]:
         points = StateJson()[self.widget_id]["clicked_value"]
         if not isinstance(points, list):
             return None
@@ -167,7 +167,7 @@ class PlottyChart(Widget):
                     fields.append(point_data.get(field.replace("_", ".")))
                 else:
                     fields.append(point_data.get(field))
-            res.append(PlottyChart.ClickedDataPoint(*fields))
+            res.append(PlotlyChart.ClickedDataPoint(*fields))
         return res
 
     def set_figure(self, figure) -> None:
@@ -182,17 +182,17 @@ class PlottyChart(Widget):
 
             import plotly.express as px
 
-            from supervisely.app.widgets import PlottyChart
+            from supervisely.app.widgets import PlotlyChart
 
             # empty widget
-            plotty_chart = PlottyChart()
+            plotly_chart = PlotlyChart()
 
             # demo data
             df = px.data.gapminder().query("continent == 'Europe' and year == 2007 and pop > 2.e6")
             figure = px.bar(df, y="pop", x="country")
 
             # set new figure to the widget
-            plotty_chart.set_figure(figure)
+            plotly_chart.set_figure(figure)
         """
         self._figure = self._validate_figure(figure)
         DataJson()[self.widget_id]["figure"] = self._figure
