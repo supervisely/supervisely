@@ -2,10 +2,10 @@
 """get list of :class:`objects<supervisely.annotation.obj_class.ObjClass>` from supervisely project"""
 
 from __future__ import annotations
-from typing import NamedTuple, List, Dict, Optional
 
-from supervisely.api.module_api import ModuleApi
-from supervisely.api.module_api import ApiField
+from typing import Dict, List, NamedTuple, Optional
+
+from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -91,7 +91,7 @@ class ObjectClassApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -148,7 +148,7 @@ class ObjectClassApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

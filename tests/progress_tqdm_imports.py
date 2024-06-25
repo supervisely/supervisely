@@ -1,3 +1,5 @@
+# pylint: disable=no-member
+
 # case1 # monkeypatchin not working in venv
 from tqdm import tqdm  # isort: skip
 import supervisely as sly  # isort: skip
@@ -127,12 +129,12 @@ def upl_prj():
 
 
 def dwn_prj_img():
-    project = api.project.get_info_by_id(21394)
-    p = tqdm(
-        desc="download",
-        total=project.items_count,
-    )
-    sly.download_project(api, project.id, "/tmp/img/", progress_cb=p)
+    project = api.project.get_info_by_id(17732)
+    # p = tqdm(
+    #     desc="download",
+    #     total=project.items_count,
+    # )
+    sly.download_project(api, project.id, "/tmp/img/")  # , progress_cb=p)
     print("5")
 
 
@@ -142,7 +144,7 @@ def upl_prj_img():
         desc="upload",
         total=project_fs.total_items,
     )
-    sly.upload_project("/tmp/img/", api, 691, progress_cb=p)
+    sly.upload_project("/tmp/img/", api, 691)  # , progress_cb=p)
     print("6")
 
 

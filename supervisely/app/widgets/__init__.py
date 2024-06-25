@@ -142,3 +142,4 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 
 from supervisely.app.widgets.tags_table.tags_table import TagsTable
 from supervisely.app.widgets.checkbox_field.checkbox_field import CheckboxField
+from supervisely.app.widgets.plotly_chart.plotly_chart import PlotlyChart

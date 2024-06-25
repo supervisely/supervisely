@@ -56,6 +56,7 @@ class DestinationProject(Widget):
 
         self._project_name = ""
         self._dataset_name = ""
+        self._conflict_resolution = None
 
         self._use_project_datasets_structure = False
 
@@ -98,6 +99,7 @@ class DestinationProject(Widget):
             "dataset_id": self._dataset_id,
             "dataset_name": self._dataset_name,
             "use_project_datasets_structure": self._use_project_datasets_structure,
+            "conflict_resolution": self._conflict_resolution,
         }
 
     def get_selected_project_id(self) -> int:
@@ -118,7 +120,7 @@ class DestinationProject(Widget):
         dataset_mode = StateJson()[self.widget_id]["dataset_mode"]
         ds_name = StateJson()[self.widget_id]["dataset_id"]
         if project_id is not None and dataset_mode == "existing_dataset" and ds_name is not None:
-            ds = self._api.dataset.get_info_by_name(parent_id=project_id, name=ds_name)
+            ds = self._api.dataset.get_info_by_name(project_id=project_id, name=ds_name)
             return ds.id
         return None
 
@@ -145,3 +147,11 @@ class DestinationProject(Widget):
         :rtype: bool
         """
         return StateJson()[self.widget_id]["use_project_datasets_structure"]
+
+    def get_conflict_resolution(self):
+        """Returns selected conflict resolution method.
+
+        :return: selected conflict resolution method.
+        :rtype: str
+        """
+        return StateJson()[self.widget_id]["conflict_resolution"]
