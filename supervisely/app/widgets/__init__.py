@@ -1,4 +1,8 @@
-from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem, DynamicWidget
+from supervisely.app.widgets.widget import (
+    ConditionalWidget,
+    ConditionalItem,
+    DynamicWidget,
+)
 from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
@@ -44,7 +48,9 @@ from supervisely.app.widgets.select_workspace.select_workspace import SelectWork
 from supervisely.app.widgets.select_project.select_project import SelectProject
 from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.app.widgets.select_item.select_item import SelectItem
-from supervisely.app.widgets.select_app_session.select_app_session import SelectAppSession
+from supervisely.app.widgets.select_app_session.select_app_session import (
+    SelectAppSession,
+)
 from supervisely.app.widgets.identity.identity import Identity
 from supervisely.app.widgets.dataset_thumbnail.dataset_thumbnail import DatasetThumbnail
 from supervisely.app.widgets.select_tag_meta.select_tag_meta import SelectTagMeta
@@ -54,9 +60,13 @@ from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
 from supervisely.app.widgets.train_val_splits.train_val_splits import TrainValSplits
 from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.textarea.textarea import TextArea
-from supervisely.app.widgets.destination_project.destination_project import DestinationProject
+from supervisely.app.widgets.destination_project.destination_project import (
+    DestinationProject,
+)
 from supervisely.app.widgets.image.image import Image
-from supervisely.app.widgets.random_splits_table.random_splits_table import RandomSplitsTable
+from supervisely.app.widgets.random_splits_table.random_splits_table import (
+    RandomSplitsTable,
+)
 from supervisely.app.widgets.video_player.video_player import VideoPlayer
 from supervisely.app.widgets.radio_group.radio_group import RadioGroup
 from supervisely.app.widgets.switch.switch import Switch
@@ -73,17 +83,28 @@ from supervisely.app.widgets.match_tags_or_classes.match_tags_or_classes import 
 from supervisely.app.widgets.match_datasets.match_datasets import MatchDatasets
 from supervisely.app.widgets.line_plot.line_plot import LinePlot
 from supervisely.app.widgets.grid_plot.grid_plot import GridPlot
-from supervisely.app.widgets.binded_input_number.binded_input_number import BindedInputNumber
-from supervisely.app.widgets.augmentations.augmentations import Augmentations, AugmentationsWithTabs
+from supervisely.app.widgets.binded_input_number.binded_input_number import (
+    BindedInputNumber,
+)
+from supervisely.app.widgets.augmentations.augmentations import (
+    Augmentations,
+    AugmentationsWithTabs,
+)
 
 from supervisely.app.widgets.tabs_dynamic.tabs_dynamic import TabsDynamic
 from supervisely.app.widgets.stepper.stepper import Stepper
 from supervisely.app.widgets.slider.slider import Slider
 from supervisely.app.widgets.copy_to_clipboard.copy_to_clipboard import CopyToClipboard
-from supervisely.app.widgets.file_storage_upload.file_storage_upload import FileStorageUpload
-from supervisely.app.widgets.image_region_selector.image_region_selector import ImageRegionSelector
+from supervisely.app.widgets.file_storage_upload.file_storage_upload import (
+    FileStorageUpload,
+)
+from supervisely.app.widgets.image_region_selector.image_region_selector import (
+    ImageRegionSelector,
+)
 from supervisely.app.widgets.collapse.collapse import Collapse
-from supervisely.app.widgets.team_files_selector.team_files_selector import TeamFilesSelector
+from supervisely.app.widgets.team_files_selector.team_files_selector import (
+    TeamFilesSelector,
+)
 from supervisely.app.widgets.icons.icons import Icons
 from supervisely.app.widgets.badge.badge import Badge
 from supervisely.app.widgets.date_picker.date_picker import DatePicker
@@ -91,7 +112,9 @@ from supervisely.app.widgets.datetime_picker.datetime_picker import DateTimePick
 from supervisely.app.widgets.transfer.transfer import Transfer
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.reloadable_area.reloadable_area import ReloadableArea
-from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import ImagePairSequence
+from supervisely.app.widgets.image_pair_sequence.image_pair_sequence import (
+    ImagePairSequence,
+)
 from supervisely.app.widgets.markdown.markdown import Markdown
 from supervisely.app.widgets.class_balance.class_balance import ClassBalance
 from supervisely.app.widgets.image_slider.image_slider import ImageSlider
@@ -117,20 +140,34 @@ from supervisely.app.widgets.time_picker.time_picker import TimePicker
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.element_tag.element_tag import ElementTag
 from supervisely.app.widgets.element_tags_list.element_tags_list import ElementTagsList
-from supervisely.app.widgets.compare_annotations.compare_annotations import CompareAnnotations
+from supervisely.app.widgets.compare_annotations.compare_annotations import (
+    CompareAnnotations,
+)
 
 from supervisely.app.widgets.circle_progress.circle_progress import CircleProgress
-from supervisely.app.widgets.classes_color_mapping.classes_color_mapping import ClassesColorMapping
+from supervisely.app.widgets.classes_color_mapping.classes_color_mapping import (
+    ClassesColorMapping,
+)
 from supervisely.app.widgets.classes_mapping.classes_mapping import ClassesMapping
 from supervisely.app.widgets.classes_mapping_preview.classes_mapping_preview import (
     ClassesMappingPreview,
 )
-from supervisely.app.widgets.classes_list_selector.classes_list_selector import ClassesListSelector
-from supervisely.app.widgets.classes_list_preview.classes_list_preview import ClassesListPreview
-from supervisely.app.widgets.tags_list_selector.tags_list_selector import TagsListSelector
+from supervisely.app.widgets.classes_list_selector.classes_list_selector import (
+    ClassesListSelector,
+)
+from supervisely.app.widgets.classes_list_preview.classes_list_preview import (
+    ClassesListPreview,
+)
+from supervisely.app.widgets.tags_list_selector.tags_list_selector import (
+    TagsListSelector,
+)
 from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsListPreview
-from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector
-from supervisely.app.widgets.members_list_preview.members_list_preview import MembersListPreview
+from supervisely.app.widgets.members_list_selector.members_list_selector import (
+    MembersListSelector,
+)
+from supervisely.app.widgets.members_list_preview.members_list_preview import (
+    MembersListPreview,
+)
 from supervisely.app.widgets.custom_models_selector.custom_models_selector import (
     CustomModelsSelector,
 )
@@ -142,3 +179,4 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 
 from supervisely.app.widgets.tags_table.tags_table import TagsTable
 from supervisely.app.widgets.checkbox_field.checkbox_field import CheckboxField
+from supervisely.app.widgets.bokeh.bokeh import Bokeh
