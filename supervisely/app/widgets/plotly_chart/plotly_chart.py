@@ -198,10 +198,10 @@ class PlotlyChart(Widget):
         DataJson()[self.widget_id]["figure"] = self._figure
         DataJson().send_changes()
 
-    def get_figure(self, return_type: Literal["dict", "plottly_figure"] = "plottly_figure"):
+    def get_figure(self, return_type: Literal["dict", "plotly_figure"] = "plotly_figure"):
         if return_type == "dict":
             return self._figure
-        elif return_type == "plottly_figure":
+        elif return_type == "plotly_figure":
             from plotly.io import from_json  # pylint: disable=import-error
             from plotly.utils import PlotlyJSONEncoder  # pylint: disable=import-error
 
