@@ -20,6 +20,7 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io.fs import ensure_base_path, str_is_url
+from supervisely.io.json import validate_json
 from supervisely.task.progress import Progress
 
 _context_menu_targets = {
@@ -774,8 +775,44 @@ class AppApi(TaskApi):
         return is_ready
 
     # ----------------------------------------- App Workflow ----------------------------------------- #
+    __custom_meta_schema = {
+        "type": "object",
+        "properties": {
+            "customRelationSettings": {
+                "type": "object",
+                "properties": {
+                    "icon": {
+                        "type": "object",
+                        "properties": {
+                            "icon": {"type": "string"},
+                            "color": {"type": "string"},
+                            "backgroundColor": {"type": "string"},
+                        },
+                        "required": ["icon", "color", "backgroundColor"],
+                        "additionalProperties": False,
+                    },
+                    "title": {"type": "string"},  # html
+                    "mainLink": {
+                        "type": "object",
+                        "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
+                        "required": ["url", "title"],
+                        "additionalProperties": False,
+                    },
+                },
+                "additionalProperties": False,
+            }
+        },
+        "additionalProperties": False,
+        "required": ["customRelationSettings"],
+    }
 
-    def _add_edge(self, data: dict, transaction_type: str, task_id: Optional[int] = None) -> dict:
+    def _add_edge(
+        self,
+        data: dict,
+        transaction_type: str,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
         """
         Add input or output to a workflow node.
 
@@ -785,6 +822,8 @@ class AppApi(TaskApi):
         :type transaction_type: str
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
         """
@@ -809,7 +848,9 @@ class AppApi(TaskApi):
 
         data_type = data.get("data_type")
         data_id = data.get("data_id") if data_type != "app_session" else node_id
-        data_meta = data.get("meta")
+        data_meta = data.get("meta", {})
+        if meta and validate_json(meta, self.__custom_meta_schema):
+            data_meta.update(meta)
 
         payload = {
             ApiField.TEAM_ID: self.team_id,
@@ -829,6 +870,7 @@ class AppApi(TaskApi):
         version_id: Optional[int] = None,
         version_num: Optional[int] = None,
         task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
     ) -> dict:
         """
         Add input type "project" to the workflow node.
@@ -845,8 +887,27 @@ class AppApi(TaskApi):
         :type version_num: Optional[int]
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+        meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         if project is None and version_id is None and version_num is None:
@@ -880,10 +941,13 @@ class AppApi(TaskApi):
             "data_id": data_id,
         }
 
-        return self._add_edge(data, "input", task_id)
+        return self._add_edge(data, "input", task_id, meta)
 
     def add_input_dataset(
-        self, dataset: Union[int, DatasetInfo], task_id: Optional[int] = None
+        self,
+        dataset: Union[int, DatasetInfo],
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
     ) -> dict:
         """
         Add input type "dataset" to the workflow node.
@@ -893,8 +957,27 @@ class AppApi(TaskApi):
         :type dataset: Union[int, DatasetInfo]
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data_type = "dataset"
@@ -904,10 +987,14 @@ class AppApi(TaskApi):
 
         data = {"data_type": data_type, "data_id": dataset}
 
-        return self._add_edge(data, "input", task_id)
+        return self._add_edge(data, "input", task_id, meta)
 
     def add_input_file(
-        self, file: Union[int, FileInfo, str], model_weight=False, task_id: Optional[int] = None
+        self,
+        file: Union[int, FileInfo, str],
+        model_weight=False,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
     ) -> dict:
         """
         Add input type "file" to the workflow node.
@@ -919,8 +1006,27 @@ class AppApi(TaskApi):
         :type model_weight: bool
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data = {}
@@ -943,9 +1049,14 @@ class AppApi(TaskApi):
         data["data_type"] = data_type
         data["data_id"] = file_id
 
-        return self._add_edge(data, "input", task_id)
+        return self._add_edge(data, "input", task_id, meta)
 
-    def add_input_folder(self, path: str, task_id: Optional[int] = None) -> dict:
+    def add_input_folder(
+        self,
+        path: str,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
         """
         Add input type "folder" to the workflow node.
         Path to the folder is a path in Team Files.
@@ -955,8 +1066,27 @@ class AppApi(TaskApi):
         :type path: str
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
         from pathlib import Path
 
@@ -972,13 +1102,57 @@ class AppApi(TaskApi):
 
         data = {"data_type": data_type, "data_id": path}
 
-        return self._add_edge(data, "input", task_id)
+        return self._add_edge(data, "input", task_id, meta)
+
+    def add_input_task(
+        self,
+        input_task_id: int,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
+        """
+        Add input type "task" to the workflow node.
+        This type usually indicates that the one application has used another application for its work.
+
+        :param input_task_id: Task ID that is used as input.
+        :type input_task_id: int
+        :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
+        :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
+        :return: Response from the API.
+        :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
+        """
+
+        data_type = "task"
+
+        data = {"data_type": data_type, "data_id": input_task_id}
+
+        return self._add_edge(data, "input", task_id, meta)
 
     def add_output_project(
         self,
         project: Union[int, ProjectInfo],
         version_id: Optional[int] = None,
         task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
     ) -> dict:
         """
         Add output type "project" to the workflow node.
@@ -991,8 +1165,27 @@ class AppApi(TaskApi):
         :type version_id: Optional[int]
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         if project is None and version_id is None:
@@ -1015,10 +1208,13 @@ class AppApi(TaskApi):
             "data_id": data_id,
         }
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
     def add_output_dataset(
-        self, dataset: Union[int, DatasetInfo], task_id: Optional[int] = None
+        self,
+        dataset: Union[int, DatasetInfo],
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
     ) -> dict:
         """
         Add output type "dataset" to the workflow node.
@@ -1028,8 +1224,27 @@ class AppApi(TaskApi):
         :type dataset: Union[int, DatasetInfo]
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data_type = "dataset"
@@ -1039,10 +1254,14 @@ class AppApi(TaskApi):
 
         data = {"data_type": data_type, "data_id": dataset}
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
     def add_output_file(
-        self, file: Union[int, FileInfo], model_weight=False, task_id: Optional[int] = None
+        self,
+        file: Union[int, FileInfo],
+        model_weight=False,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
     ) -> dict:
         """
         Add output type "file" to the workflow node.
@@ -1054,8 +1273,27 @@ class AppApi(TaskApi):
         :type model_weight: bool
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data_type = "file"
@@ -1068,9 +1306,14 @@ class AppApi(TaskApi):
 
         data = {"data_type": data_type, "data_id": file}
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
-    def add_output_folder(self, path: str, task_id: Optional[int] = None) -> dict:
+    def add_output_folder(
+        self,
+        path: str,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
         """
         Add output type "folder" to the workflow node.
         Path to the folder is a path in Team Files.
@@ -1080,8 +1323,27 @@ class AppApi(TaskApi):
         :type path: str
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
         from pathlib import Path
 
@@ -1097,45 +1359,97 @@ class AppApi(TaskApi):
 
         data = {"data_type": data_type, "data_id": path}
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
-    def add_output_app(self, task_id: Optional[int] = None) -> dict:
+    def add_output_app(
+        self,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
         """
         Add output type "app_session" to the workflow node.
         This type is used to show that the application has an offline session in which you can find the result of its work.
 
         :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data_type = "app_session"
 
         data = {"data_type": data_type}
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
-    def add_output_task(self, new_task_id: int, task_id: Optional[int] = None) -> dict:
+    def add_output_task(
+        self,
+        output_task_id: int,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
         """
         Add output type "task" to the workflow node.
         This type is used to show that the application has created a task with the result of its work.
 
-        :param new_task_id: Created task ID.
-        :type new_task_id: int
+        :param output_task_id: Created task ID.
+        :type output_task_id: int
         :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data_type = "task"
 
-        data = {"data_type": data_type, "data_id": new_task_id}
+        data = {"data_type": data_type, "data_id": output_task_id}
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
-    def add_output_job(self, id: int, task_id: Optional[int] = None) -> dict:
+    def add_output_job(
+        self,
+        id: int,
+        task_id: Optional[int] = None,
+        meta: Optional[dict] = None,
+    ) -> dict:
         """
         Add output type "job" to the workflow node. Job is a Labeling Job.
         This type is used to show that the application has created a labeling job with the result of its work.
@@ -1144,15 +1458,34 @@ class AppApi(TaskApi):
         :type id: int
         :param task_id: Task ID. If not specified, the task ID will be determined automatically.
         :type task_id: Optional[int]
+        :param meta: Additional data for node customization.
+        :type meta: Optional[dict]
         :return: Response from the API.
         :rtype: dict
+
+         meta example:
+         .. code-block:: json
+             {
+                 "customRelationSettings": {
+                     "icon": {
+                         "icon": "icon-name",
+                         "color": "#000000",
+                         "backgroundColor": "#FFFFFF"
+                     },
+                     "title": "Custom title",
+                     "mainLink": {
+                         "url": "/ecosystem",
+                         "title": "Link title"
+                     }
+                 }
+             }
         """
 
         data_type = "job"
 
         data = {"data_type": data_type, "data_id": id}
 
-        return self._add_edge(data, "output", task_id)
+        return self._add_edge(data, "output", task_id, meta)
 
 
 # ----------------------------------------------- . ---------------------------------------------- #
