@@ -7,6 +7,32 @@ import json
 
 
 class PlottyChart(Widget):
+    """
+    PlottyChart widget is a wrapper around Plotly chart library. It allows to display interactive charts in the app.
+    It supports click event on chart points and provides information about clicked datapoint.
+
+    :param figure: Plotly Figure object or dict with Plotly Figure data.
+    :type figure: Union[plotly.graph_objects.Figure, dict, None]
+    :param element_loading_text: Text to display while chart is loading.
+    :type element_loading_text: str
+    :raises ValueError: If figure is not valid Plotly Figure object or dict.
+    :Usage example:
+
+     .. code-block:: python
+
+        import os    
+        import plotly.express as px
+
+        from dotenv import load_dotenv
+        from supervisely.app.widgets import PlottyChart
+
+        # demo data
+        df = px.data.gapminder().query("continent == 'Europe' and year == 2007 and pop > 2.e6")
+        figure = px.bar(df, y="pop", x="country")
+
+        # create PlottyChart widget
+        plotty_chart_14 = PlottyChart(figure=figure)
+    """
     class Routes:
         CLICK = "chart_clicked_cb"
 
@@ -144,7 +170,30 @@ class PlottyChart(Widget):
             res.append(PlottyChart.ClickedDataPoint(*fields))
         return res
 
-    def set_figure(self, figure):
+    def set_figure(self, figure) -> None:
+        """
+        Set new figure to the widget.
+
+        :param figure: Plotly Figure object or dict with Plotly Figure data.
+        :type figure: Union[plotly.graph_objects.Figure, dict]
+        :Usage example:
+
+         .. code-block:: python
+
+            import plotly.express as px
+
+            from supervisely.app.widgets import PlottyChart
+
+            # empty widget
+            plotty_chart = PlottyChart()
+
+            # demo data
+            df = px.data.gapminder().query("continent == 'Europe' and year == 2007 and pop > 2.e6")
+            figure = px.bar(df, y="pop", x="country")
+
+            # set new figure to the widget
+            plotty_chart.set_figure(figure)
+        """
         self._figure = self._validate_figure(figure)
         DataJson()[self.widget_id]["figure"] = self._figure
         DataJson().send_changes()
