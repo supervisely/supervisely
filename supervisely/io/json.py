@@ -1,7 +1,9 @@
 # coding: utf-8
-import os
 import json
+import os
 from typing import Dict, Optional
+
+import jsonschema
 
 
 class JsonSerializable:
@@ -206,3 +208,20 @@ def modify_keys(
         return res
 
     return {_modify(k): v for k, v in data.items()}
+
+
+def validate_json(data: Dict, schema: Dict) -> bool:
+    """
+    Validate json data.
+
+    :param data: Data in json format as a dict.
+    :type data: dict
+    :param schema: Schema in json format as a dict.
+    :type schema: dict
+    :returns: True if data is valid, False otherwise.
+    :rtype: :class:`bool`
+    """
+    try:
+        jsonschema.validate(instance=data, schema=schema)
+    except jsonschema.exceptions.ValidationError as err:
+        raise ValueError("JSON data is invalid. See error message for more details.") from err
