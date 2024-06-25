@@ -210,7 +210,7 @@ def modify_keys(
     return {_modify(k): v for k, v in data.items()}
 
 
-def validate_json(data: Dict, schema: Dict) -> bool:
+def validate_json(data: Dict, schema: Dict, raise_error: bool = False) -> bool:
     """
     Validate json data.
 
@@ -218,10 +218,15 @@ def validate_json(data: Dict, schema: Dict) -> bool:
     :type data: dict
     :param schema: Schema in json format as a dict.
     :type schema: dict
+    :param raise_error: If True, raise an error if data is invalid.
+    :type raise_error: bool, optional
     :returns: True if data is valid, False otherwise.
     :rtype: :class:`bool`
     """
     try:
         jsonschema.validate(instance=data, schema=schema)
+        return True
     except jsonschema.exceptions.ValidationError as err:
-        raise ValueError("JSON data is invalid. See error message for more details.") from err
+        if raise_error:
+            raise ValueError("JSON data is invalid. See error message for more details.") from err
+        return False
