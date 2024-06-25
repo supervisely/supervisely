@@ -1,8 +1,8 @@
 import io
 import os
-import socket
 import tarfile
 import tempfile
+import time
 from datetime import datetime
 from typing import List, NamedTuple, Tuple, Union
 
@@ -88,7 +88,7 @@ class DataVersion(ModuleApiBase):
         self.project_info: ProjectInfo = project_info
         self.project_dir: str = os.path.join(self.__storage_dir, str(self.project_info.id))
         self.versions_path: str = os.path.join(self.project_dir, "versions.json")
-        self.versions: dict = self.load_json(self.project_info, do_initialization=False)
+        self.versions: dict = self.get_map(self.project_info, do_initialization=False)
         if self.project_info.version is None:
             self._create_warning_system_file()
 
@@ -115,7 +115,7 @@ class DataVersion(ModuleApiBase):
         :param version_num: Version number
         :type version_num: int
         :return: Version ID
-        :rtype: int
+        :rtype: int or None
         """
         versions = self.get_list(project_id)
         for version in versions:
@@ -123,7 +123,7 @@ class DataVersion(ModuleApiBase):
                 return version.id
         return None
 
-    def load_json(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
+    def get_map(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
         """
         Get project versions map from storage.
 
@@ -145,9 +145,9 @@ class DataVersion(ModuleApiBase):
             versions = {"format": self.__version_format}
         return versions
 
-    def upload_json(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
+    def set_map(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
-        Save project versions to storage.
+        Save project versions map to storage.
 
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
@@ -209,7 +209,7 @@ class DataVersion(ModuleApiBase):
         try:
             version_id, commit_token = self.reserve(project_info.id)
         except Exception as e:
-            logger.error(f"Failed to reserve project for versioning. Exception: {e}")
+            logger.error(f"Failed to reserve version. Exception: {e}")
             return None
         if version_id is None and commit_token is None:
             return latest
@@ -222,7 +222,7 @@ class DataVersion(ModuleApiBase):
                 "number": int(self.versions[str(latest)]["number"]) + 1 if latest else 1,
             }
             self.versions["latest"] = version_id
-            self.upload_json(project_info, initialize=False)
+            self.set_map(project_info, initialize=False)
             self.commit(
                 version_id,
                 commit_token,
@@ -251,7 +251,10 @@ class DataVersion(ModuleApiBase):
         description: str = None,
     ):
         """
-        Commit a project version.
+        Commit project version.
+        This method is used to finalize the version creation process.
+        Requires active reservation.
+        You must call this method after creating project version backup and setting version map
 
         :param version_id: Version ID
         :type version_id: int
@@ -283,32 +286,46 @@ class DataVersion(ModuleApiBase):
         if not commit_info.get("success"):
             raise RuntimeError("Failed to commit version")
 
-    def reserve(self, project_id: int) -> Tuple[int, str]:
+    def reserve(self, project_id: int, retries: int = 6) -> Tuple[int, str]:
         """
-        Reserve a project for versioning.
+        Reserve project version.
+        This method is used before backing up a version to prevent another attempt to create a version at the same time.
+        The first delay of retry is 2 seconds, which doubles with each subsequent attempt.
 
         :param project_id: Project ID
         :type project_id: int
+        :param retries: Number of attempts to reserve version
+        :type retries: int
         :return: Version ID and commit token
         :rtype: Tuple[int, str]
         """
-        try:
-            response = self._api.post(
-                "projects.versions.reserve", {ApiField.PROJECT_ID: project_id}
-            )
-            reserve_info = response.json()
-        except requests.exceptions.HTTPError as e:
-            if e.response.json().get("details", {}).get("useExistingVersion"):
-                version_id = e.response.json().get("details", {}).get("version").get("id")
-                version = e.response.json().get("details", {}).get("version").get("version")
-                logger.info(
-                    f"No changes to the project since the last version '{version}' with ID '{version_id}'"
-                )
-                return (None, None)
-            else:
-                raise e
+        retry_delay = 2  # seconds
+        max_delay = retry_delay * 2**retries
 
-        return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
+        while True:
+            try:
+                response = self._api.post(
+                    "projects.versions.reserve", {ApiField.PROJECT_ID: project_id}
+                )
+                reserve_info = response.json()
+                return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
+
+            except requests.exceptions.HTTPError as e:
+                if e.response.json().get("details", {}).get("useExistingVersion"):
+                    version_id = e.response.json().get("details", {}).get("version").get("id")
+                    version = e.response.json().get("details", {}).get("version").get("version")
+                    logger.info(
+                        f"No changes to the project since the last version '{version}' with ID '{version_id}'"
+                    )
+                    return (None, None)
+                elif "is already committing" in e.response.json().get("details", {}).get("message"):
+                    if retry_delay >= max_delay:
+                        raise RuntimeError(
+                            "Failed to reserve version. Another process is already committing a version. Maximum number of attempts reached."
+                        )
+                    version = e.response.json().get("details", {}).get("version").get("version")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
 
     def cancel_reservation(self, version_id: int, commit_token: str):
         """
@@ -377,9 +394,7 @@ class DataVersion(ModuleApiBase):
             )
             return
 
-        bin_io = self._download_and_extract_version(
-            backup_files
-        )  # ? add slow method if out of memory
+        bin_io = self._download_and_extract_version(backup_files)
         new_project_info = Project.upload_bin(self._api, bin_io, self.project_info.workspace_id)
         return new_project_info
 
@@ -397,9 +412,9 @@ class DataVersion(ModuleApiBase):
                 f.write("This directory is managed by Supervisely. Do not modify its contents.")
             self._api.file.upload(self.project_info.team_id, temp_file.name, warning_file)
 
-    def _download_and_extract_version(self, path: str) -> str:
+    def _download_and_extract_version(self, path: str) -> io.BytesIO:
         """
-        Download and extract a version from the repository.
+        Download and extract version data to memory.
 
         :param path: Path to the version file
         :type path: str
