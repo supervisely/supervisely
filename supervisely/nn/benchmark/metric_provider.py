@@ -16,8 +16,8 @@ METRIC_NAMES = {
     "recall": "Recall",
     "iou": "Avg. IoU",
     "classification_accuracy": "Classification Accuracy",
-    "calibration_score": "Calibration Score"
-    }
+    "calibration_score": "Calibration Score",
+}
 
 
 def _get_outcomes_per_image(matches, cocoGt: COCO):
@@ -39,18 +39,18 @@ def _get_outcomes_per_image(matches, cocoGt: COCO):
 def filter_by_conf(matches: list, conf: float):
     matches_filtered = []
     for m in matches:
-        if m['score'] is not None and m['score'] < conf:
-            if m['type'] == 'TP':
+        if m["score"] is not None and m["score"] < conf:
+            if m["type"] == "TP":
                 # TP becomes FN
                 m = deepcopy(m)
-                m['type'] = 'FN'
-                m['score'] = None
-                m['dt_id'] = None
-                m['iou'] = None
-            elif m['type'] == 'FP':
+                m["type"] = "FN"
+                m["score"] = None
+                m["dt_id"] = None
+                m["iou"] = None
+            elif m["type"] == "FP":
                 continue
             else:
-                raise ValueError('Invalid match type')
+                raise ValueError("Invalid match type")
         matches_filtered.append(m)
     return matches_filtered
 
@@ -62,7 +62,7 @@ class MetricProvider:
 
         # metainfo
         self.cat_ids = cocoGt.getCatIds()
-        self.cat_names = [cocoGt.cats[cat_id]['name'] for cat_id in self.cat_ids]
+        self.cat_names = [cocoGt.cats[cat_id]["name"] for cat_id in self.cat_ids]
 
         # eval_data
         self.matches = matches
@@ -72,21 +72,23 @@ class MetricProvider:
         self.recThrs = params["recThrs"]
 
         # Matches
-        self.tp_matches = [m for m in self.matches if m['type'] == "TP"]
-        self.fp_matches = [m for m in self.matches if m['type'] == "FP"]
-        self.fn_matches = [m for m in self.matches if m['type'] == "FN"]
-        self.confused_matches = [m for m in self.fp_matches if m['miss_cls']]
-        self.fp_not_confused_matches = [m for m in self.fp_matches if not m['miss_cls']]
-        self.ious = np.array([m['iou'] for m in self.matches if m['iou']])
+        self.tp_matches = [m for m in self.matches if m["type"] == "TP"]
+        self.fp_matches = [m for m in self.matches if m["type"] == "FP"]
+        self.fn_matches = [m for m in self.matches if m["type"] == "FN"]
+        self.confused_matches = [m for m in self.fp_matches if m["miss_cls"]]
+        self.fp_not_confused_matches = [m for m in self.fp_matches if not m["miss_cls"]]
+        self.ious = np.array([m["iou"] for m in self.matches if m["iou"]])
 
         # Counts
         self.true_positives, self.false_negatives, self.false_positives = self._init_counts()
-        self.TP_count = int(self.true_positives[:,0].sum(0))
-        self.FP_count = int(self.false_positives[:,0].sum(0))
-        self.FN_count = int(self.false_negatives[:,0].sum(0))
+        self.TP_count = int(self.true_positives[:, 0].sum(0))
+        self.FP_count = int(self.false_positives[:, 0].sum(0))
+        self.FN_count = int(self.false_negatives[:, 0].sum(0))
 
         # Calibration
-        self.calibration_metrics = CalibrationMetrics(self.tp_matches, self.fp_matches, self.fn_matches, self.iouThrs)
+        self.calibration_metrics = CalibrationMetrics(
+            self.tp_matches, self.fp_matches, self.fn_matches, self.iouThrs
+        )
 
         # Score profile
         self._calculate_score_profile()
@@ -98,31 +100,32 @@ class MetricProvider:
         ious = []
         cats = []
         for match in self.tp_matches:
-            ious.append(match['iou'])
-            cats.append(catId2idx[match['category_id']])
+            ious.append(match["iou"])
+            cats.append(catId2idx[match["category_id"]])
         ious = np.array(ious) + np.spacing(1)
         iou_idxs = np.searchsorted(iouThrs, ious) - 1
         cats = np.array(cats)
         # TP
         true_positives = np.histogram2d(
-            cats, iou_idxs,
+            cats,
+            iou_idxs,
             bins=(len(cat_ids), len(iouThrs)),
-            range=((0, len(cat_ids)), (0, len(iouThrs)))
-            )[0].astype(int)
-        true_positives = true_positives[:,::-1].cumsum(1)[:,::-1]
-        tp_count = true_positives[:,0]
+            range=((0, len(cat_ids)), (0, len(iouThrs))),
+        )[0].astype(int)
+        true_positives = true_positives[:, ::-1].cumsum(1)[:, ::-1]
+        tp_count = true_positives[:, 0]
         # FN
-        cats_fn = np.array([catId2idx[match['category_id']] for match in self.fn_matches])
+        cats_fn = np.array([catId2idx[match["category_id"]] for match in self.fn_matches])
         fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
         gt_count = fn_count + tp_count
-        false_negatives = gt_count[:,None] - true_positives
+        false_negatives = gt_count[:, None] - true_positives
         # FP
-        cats_fp = np.array([catId2idx[match['category_id']] for match in self.fp_matches])
+        cats_fp = np.array([catId2idx[match["category_id"]] for match in self.fp_matches])
         fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
         dt_count = fp_count + tp_count
-        false_positives = dt_count[:,None] - true_positives
+        false_positives = dt_count[:, None] - true_positives
         return true_positives, false_negatives, false_positives
-    
+
     def base_metrics(self):
         tp = self.true_positives
         fp = self.false_positives
@@ -135,7 +138,7 @@ class MetricProvider:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             f1 = 2 * precision * recall / (precision + recall)
-        f1[(precision + recall) == 0.] = 0.
+        f1[(precision + recall) == 0.0] = 0.0
         iou = np.mean(self.ious)
         classification_accuracy = self.TP_count / (self.TP_count + confuse_count)
         calibration_score = 1 - self.calibration_metrics.maximum_calibration_error()
@@ -147,9 +150,9 @@ class MetricProvider:
             "recall": recall.mean(),
             "iou": iou,
             "classification_accuracy": classification_accuracy,
-            "calibration_score": calibration_score
+            "calibration_score": calibration_score,
         }
-    
+
     def per_class_metrics(self):
         tp = self.true_positives.mean(1)
         fp = self.false_positives.mean(1)
@@ -157,71 +160,73 @@ class MetricProvider:
         pr = tp / (tp + fp)
         rc = tp / (tp + fn)
         f1 = 2 * pr * rc / (pr + rc)
-        return pd.DataFrame({
-            "category": self.cat_names,
-            "precision": pr,
-            "recall": rc,
-            "f1": f1
-        })
-    
+        return pd.DataFrame({"category": self.cat_names, "precision": pr, "recall": rc, "f1": f1})
+
     def pr_curve(self):
-        pr_curve = self.coco_precision[:,:,:,0,2].mean(0)
+        pr_curve = self.coco_precision[:, :, :, 0, 2].mean(0)
         return pr_curve
-    
+
     def prediction_table(self):
         img_ids, outcomes_per_image = _get_outcomes_per_image(self.matches, self.cocoGt)
         image_names = [self.cocoGt.imgs[img_id]["file_name"] for img_id in img_ids]
         # inference_time = ...
-        n_gt = outcomes_per_image[:,0] + outcomes_per_image[:,2]
-        n_dt = outcomes_per_image[:,0] + outcomes_per_image[:,1]
+        n_gt = outcomes_per_image[:, 0] + outcomes_per_image[:, 2]
+        n_dt = outcomes_per_image[:, 0] + outcomes_per_image[:, 1]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            precision_per_image = outcomes_per_image[:,0] / n_dt
-            recall_per_image = outcomes_per_image[:,0] / n_gt
-            f1_per_image = 2 * precision_per_image * recall_per_image / (precision_per_image + recall_per_image)
-        prediction_table = pd.DataFrame({
-            "image_name": image_names,
-            "N gt": n_gt,
-            "N dt": n_dt,
-            "TP": outcomes_per_image[:,0],
-            "FP": outcomes_per_image[:,1],
-            "FN": outcomes_per_image[:,2],
-            "Precision": precision_per_image,
-            "Recall": recall_per_image,
-            "F1": f1_per_image
-            })
+            precision_per_image = outcomes_per_image[:, 0] / n_dt
+            recall_per_image = outcomes_per_image[:, 0] / n_gt
+            f1_per_image = (
+                2
+                * precision_per_image
+                * recall_per_image
+                / (precision_per_image + recall_per_image)
+            )
+        prediction_table = pd.DataFrame(
+            {
+                "image_name": image_names,
+                "N gt": n_gt,
+                "N dt": n_dt,
+                "TP": outcomes_per_image[:, 0],
+                "FP": outcomes_per_image[:, 1],
+                "FN": outcomes_per_image[:, 2],
+                "Precision": precision_per_image,
+                "Recall": recall_per_image,
+                "F1": f1_per_image,
+            }
+        )
         return prediction_table.round(2)
-    
+
     def confusion_matrix(self):
         K = len(self.cat_ids)
         catId2idx = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
         idx2catId = {i: cat_id for cat_id, i in catId2idx.items()}
 
-        confusion_matrix = np.zeros((K+1, K+1), dtype=int)
+        confusion_matrix = np.zeros((K + 1, K + 1), dtype=int)
 
         for m in self.confused_matches:
-            cat_idx_pred = catId2idx[m['category_id']]
-            cat_idx_gt = catId2idx[self.cocoGt.anns[m['gt_id']]['category_id']]
+            cat_idx_pred = catId2idx[m["category_id"]]
+            cat_idx_gt = catId2idx[self.cocoGt.anns[m["gt_id"]]["category_id"]]
             confusion_matrix[cat_idx_pred, cat_idx_gt] += 1
 
         for m in self.tp_matches:
-            cat_idx = catId2idx[m['category_id']]
+            cat_idx = catId2idx[m["category_id"]]
             confusion_matrix[cat_idx, cat_idx] += 1
 
         for m in self.fp_not_confused_matches:
-            cat_idx_pred = catId2idx[m['category_id']]
+            cat_idx_pred = catId2idx[m["category_id"]]
             confusion_matrix[cat_idx_pred, -1] += 1
 
         for m in self.fn_matches:
-            cat_idx_gt = catId2idx[m['category_id']]
+            cat_idx_gt = catId2idx[m["category_id"]]
             confusion_matrix[-1, cat_idx_gt] += 1
-        
+
         return confusion_matrix
-    
+
     def frequently_confused(self, confusion_matrix, topk_pairs=20):
         # Frequently confused class pairs
         idx2catId = {i: cat_id for i, cat_id in enumerate(self.cat_ids)}
-        cm = confusion_matrix[:-1,:-1]
+        cm = confusion_matrix[:-1, :-1]
         cm_l = np.tril(cm, -1)
         cm_u = np.triu(cm, 1)
         cm = cm_l + cm_u.T
@@ -243,16 +248,20 @@ class MetricProvider:
         confused_prob = confused_prob[inds_sort2]
         confused_catIds = [(idx2catId[i], idx2catId[j]) for i, j in confused_idxs]
 
-        return pd.DataFrame({
-            "category_pair": confused_name_pairs,
-            "category_id_pair": confused_catIds,
-            "count": confused_counts,
-            "probability": confused_prob
-        })
-    
+        return pd.DataFrame(
+            {
+                "category_pair": confused_name_pairs,
+                "category_id_pair": confused_catIds,
+                "count": confused_counts,
+                "probability": confused_prob,
+            }
+        )
+
     def confidence_score_profile_v0(self):
         n_gt = len(self.tp_matches) + len(self.fn_matches)
-        matches_sorted = sorted(self.tp_matches + self.fp_matches, key=lambda x: x['score'], reverse=True)
+        matches_sorted = sorted(
+            self.tp_matches + self.fp_matches, key=lambda x: x["score"], reverse=True
+        )
         scores = np.array([m["score"] for m in matches_sorted])
         tps = np.array([m["type"] == "TP" for m in matches_sorted])
         fps = ~tps
@@ -261,22 +270,19 @@ class MetricProvider:
         precision = tps_sum / (tps_sum + fps_sum)
         recall = tps_sum / n_gt
         f1 = 2 * precision * recall / (precision + recall)
-        return {
-            "scores": scores,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1
-        }
+        return {"scores": scores, "precision": precision, "recall": recall, "f1": f1}
 
     def confidence_score_profile(self):
         return self.score_profile
-    
+
     def _calculate_score_profile(self):
         iouThrs = self.iouThrs
         n_gt = len(self.tp_matches) + len(self.fn_matches)
-        matches_sorted = sorted(self.tp_matches + self.fp_matches, key=lambda x: x['score'], reverse=True)
+        matches_sorted = sorted(
+            self.tp_matches + self.fp_matches, key=lambda x: x["score"], reverse=True
+        )
         scores = np.array([m["score"] for m in matches_sorted])
-        ious = np.array([m["iou"] if m["type"] == "TP" else 0. for m in matches_sorted])
+        ious = np.array([m["iou"] if m["type"] == "TP" else 0.0 for m in matches_sorted])
         iou_idxs = np.searchsorted(iouThrs, ious + np.spacing(1))
 
         # Check
@@ -309,14 +315,14 @@ class MetricProvider:
             "f1": f1_line,
         }
         self.score_profile_f1s = f1s
-    
+
     def get_f1_optimal_conf(self):
-        argmax = np.nanargmax(self.score_profile['f1'])
-        f1_optimal_conf = self.score_profile['scores'][argmax]
-        best_f1 = self.score_profile['f1'][argmax]
+        argmax = np.nanargmax(self.score_profile["f1"])
+        f1_optimal_conf = self.score_profile["scores"][argmax]
+        best_f1 = self.score_profile["f1"][argmax]
         return f1_optimal_conf, best_f1
-    
-    
+
+
 class CalibrationMetrics:
     def __init__(self, tp_matches, fp_matches, fn_matches, iouThrs):
         self.iouThrs = iouThrs
@@ -329,15 +335,15 @@ class CalibrationMetrics:
         # TODO:
         # per_class_count = m.true_positives[:,0] + m.false_negatives[:,0]
         for m in p_matches:
-            if m['type'] == "TP" and m['iou'] is not None:
-                iou_idx = np.searchsorted(iouThrs, m['iou']+eps)
+            if m["type"] == "TP" and m["iou"] is not None:
+                iou_idx = np.searchsorted(iouThrs, m["iou"] + eps)
                 iou_idxs.append(iou_idx)
                 assert iou_idx > 0
             else:
                 iou_idxs.append(0)
-            scores.append(m['score'])
+            scores.append(m["score"])
             classes.append(m["category_id"])
-            if m['type'] == "TP":
+            if m["type"] == "TP":
                 per_class_count[m["category_id"]] += 1
         for m in fn_matches:
             per_class_count[m["category_id"]] += 1
@@ -375,13 +381,8 @@ class CalibrationMetrics:
         precision = tps_sum / (tps_sum + fps_sum)
         recall = tps_sum / n_positives
         f1 = 2 * precision * recall / (precision + recall)
-        return {
-            "scores": scores,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1
-        }
-    
+        return {"scores": scores, "precision": precision, "recall": recall, "f1": f1}
+
     def scores_vs_metrics_avg(self):
         res = []
         for iou_idx, iou_th in enumerate(self.iouThrs):
@@ -394,10 +395,10 @@ class CalibrationMetrics:
     def calibration_curve(self):
         true_probs, pred_probs = calibration_curve(self.y_true, self.scores, n_bins=10)
         return true_probs, pred_probs
-    
+
     def maximum_calibration_error(self):
         return metrics.maximum_calibration_error(self.y_true, self.scores, n_bins=10)
-    
+
     def scores_tp_and_fp(self, iou_idx=0):
         tps = self.iou_idxs > iou_idx
         scores_tp = self.scores[tps]

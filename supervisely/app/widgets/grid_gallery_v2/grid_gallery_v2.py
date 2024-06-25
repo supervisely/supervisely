@@ -5,126 +5,12 @@ from collections import defaultdict
 from typing import List, Optional
 
 import supervisely
+from supervisely.annotation.annotation import Annotation
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
 from supervisely.app.widgets import Widget
 from supervisely.project.project_meta import ProjectMeta
-
-ann_info = AnnotationInfo(
-    **{
-        "image_id": 30689223,
-        "image_name": "000000575815.jpg",
-        "annotation": {
-            "description": "",
-            "tags": [
-                {
-                    "id": 24692230,
-                    "tagId": 483629,
-                    "name": "caption",
-                    "value": "A pepperoni pizza sitting on top of a wooden cutting board.",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                },
-                {
-                    "id": 24692231,
-                    "tagId": 483629,
-                    "name": "caption",
-                    "value": "A pizza with pepperoni served on a wooden tray.",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                },
-                {
-                    "id": 24692232,
-                    "tagId": 483629,
-                    "name": "caption",
-                    "value": "A pepperoni pizza on a napkin on top of a wooden surface.",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                },
-                {
-                    "id": 24692233,
-                    "tagId": 483629,
-                    "name": "caption",
-                    "value": "a pepperoni pizza laying on a white piece of parchment paper",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                },
-                {
-                    "id": 24692234,
-                    "tagId": 483629,
-                    "name": "caption",
-                    "value": "A large pepperoni pizza on a cutting board.",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                },
-            ],
-            "size": {"height": 451, "width": 640},
-            "objects": [
-                {
-                    "id": 240870668,
-                    "classId": 9149150,
-                    "objectId": None,
-                    "description": "",
-                    "geometryType": "polygon",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                    "tags": [],
-                    "classTitle": "pizza",
-                    "points": {
-                        "exterior": [
-                            [237, 383],
-                            [160, 343],
-                            [104, 287],
-                            [99, 220],
-                            [110, 179],
-                            [118, 149],
-                            [134, 124],
-                            [152, 103],
-                            [204, 79],
-                            [245, 55],
-                            [289, 48],
-                            [341, 48],
-                            [388, 55],
-                            [422, 64],
-                            [456, 87],
-                            [504, 137],
-                            [516, 207],
-                            [508, 288],
-                            [446, 355],
-                            [390, 376],
-                            [327, 379],
-                            [300, 377],
-                            [266, 386],
-                        ],
-                        "interior": [],
-                    },
-                },
-                {
-                    "id": 240870669,
-                    "classId": 9149150,
-                    "objectId": None,
-                    "description": "",
-                    "geometryType": "rectangle",
-                    "labelerLogin": "grokhael",
-                    "createdAt": "2024-06-04T11:40:25.513Z",
-                    "updatedAt": "2024-06-04T11:40:25.513Z",
-                    "tags": [],
-                    "classTitle": "pizza",
-                    "points": {"exterior": [[99, 48], [516, 386]], "interior": []},
-                },
-            ],
-        },
-        "created_at": "2024-06-04T11:40:25.513Z",
-        "updated_at": "2024-06-04T11:40:25.513Z",
-    }
-)
 
 
 class GridGalleryV2(Widget):
@@ -187,22 +73,46 @@ class GridGalleryV2(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    # def _generate_project_meta(self):
+    #     objects_dict = dict()
+
+    #     for cell_data in self._data:
+    #         ann_info: AnnotationInfo = cell_data["annotation_info"]
+    #         project_meta = cell_data["project_meta"]
+    #         annotation = supervisely.Annotation.from_json(ann_info.annotation, project_meta)
+    #         for label in annotation.labels:
+    #             objects_dict[label.obj_class.name] = label.obj_class
+
+    #     objects_list = list(objects_dict.values())
+    #     objects_collection = (
+    #         supervisely.ObjClassCollection(objects_list) if len(objects_list) > 0 else None
+    #     )
+
+    #     self._project_meta = supervisely.ProjectMeta(obj_classes=objects_collection)
+    #     return self._project_meta.to_json()
+
     def _generate_project_meta(self):
         objects_dict = dict()
+        obj_tags_dict = dict()
 
         for cell_data in self._data:
             ann_info: AnnotationInfo = cell_data["annotation_info"]
-            project_meta = cell_data["project_meta"]
-            annotation = supervisely.Annotation.from_json(ann_info.annotation, project_meta)
-            for label in annotation.labels:
+            project_meta: ProjectMeta = cell_data["project_meta"]
+
+            # tmp = project_meta
+            # if self._project_meta is not None:  # TODO
+            #     project_meta = self._project_meta
+
+            annotation = Annotation.from_json(ann_info.annotation, project_meta)
+            for idx, label in enumerate(annotation.labels):
                 objects_dict[label.obj_class.name] = label.obj_class
+                for tag in label.tags:
+                    obj_tags_dict[tag.name] = project_meta.get_tag_meta(tag.name)
 
         objects_list = list(objects_dict.values())
-        objects_collection = (
-            supervisely.ObjClassCollection(objects_list) if len(objects_list) > 0 else None
-        )
+        tags_list = list(obj_tags_dict.values())
 
-        self._project_meta = supervisely.ProjectMeta(obj_classes=objects_collection)
+        self._project_meta = ProjectMeta(obj_classes=objects_list, tag_metas=tags_list)
         return self._project_meta.to_json()
 
     def get_json_data(self):
