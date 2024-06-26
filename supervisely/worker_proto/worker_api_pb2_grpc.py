@@ -31,9 +31,7 @@ if _version_not_supported:
 
 
 class GeneralAPIStub(object):
-    """package slyproto;
-
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
         """Constructor.
@@ -42,196 +40,194 @@ class GeneralAPIStub(object):
             channel: A grpc.Channel.
         """
         self.CreateProject = channel.unary_unary(
-                '/GeneralAPI/CreateProject',
+                '/slyproto.GeneralAPI/CreateProject',
                 request_serializer=worker__api__pb2.Project.SerializeToString,
                 response_deserializer=worker__api__pb2.Id.FromString,
                 _registered_method=True)
         self.CreateDataset = channel.unary_unary(
-                '/GeneralAPI/CreateDataset',
+                '/slyproto.GeneralAPI/CreateDataset',
                 request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
                 response_deserializer=worker__api__pb2.Id.FromString,
                 _registered_method=True)
         self.GetProjectByName = channel.unary_unary(
-                '/GeneralAPI/GetProjectByName',
+                '/slyproto.GeneralAPI/GetProjectByName',
                 request_serializer=worker__api__pb2.Project.SerializeToString,
                 response_deserializer=worker__api__pb2.Project.FromString,
                 _registered_method=True)
         self.GetDatasetByName = channel.unary_unary(
-                '/GeneralAPI/GetDatasetByName',
+                '/slyproto.GeneralAPI/GetDatasetByName',
                 request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
                 response_deserializer=worker__api__pb2.Dataset.FromString,
                 _registered_method=True)
         self.GetModelByName = channel.unary_unary(
-                '/GeneralAPI/GetModelByName',
+                '/slyproto.GeneralAPI/GetModelByName',
                 request_serializer=worker__api__pb2.ModelName.SerializeToString,
                 response_deserializer=worker__api__pb2.ModelInfo.FromString,
                 _registered_method=True)
         self.GetProjectMeta = channel.unary_unary(
-                '/GeneralAPI/GetProjectMeta',
+                '/slyproto.GeneralAPI/GetProjectMeta',
                 request_serializer=worker__api__pb2.Id.SerializeToString,
                 response_deserializer=worker__api__pb2.Project.FromString,
                 _registered_method=True)
         self.GetProjectDatasets = channel.unary_unary(
-                '/GeneralAPI/GetProjectDatasets',
+                '/slyproto.GeneralAPI/GetProjectDatasets',
                 request_serializer=worker__api__pb2.Id.SerializeToString,
                 response_deserializer=worker__api__pb2.DatasetArray.FromString,
                 _registered_method=True)
         self.GetDatasetImages = channel.unary_unary(
-                '/GeneralAPI/GetDatasetImages',
+                '/slyproto.GeneralAPI/GetDatasetImages',
                 request_serializer=worker__api__pb2.Id.SerializeToString,
                 response_deserializer=worker__api__pb2.ImageArray.FromString,
                 _registered_method=True)
         self.GetImagesInfo = channel.unary_unary(
-                '/GeneralAPI/GetImagesInfo',
+                '/slyproto.GeneralAPI/GetImagesInfo',
                 request_serializer=worker__api__pb2.ImageArray.SerializeToString,
                 response_deserializer=worker__api__pb2.ImagesInfo.FromString,
                 _registered_method=True)
         self.DownloadImages = channel.unary_stream(
-                '/GeneralAPI/DownloadImages',
+                '/slyproto.GeneralAPI/DownloadImages',
                 request_serializer=worker__api__pb2.ImagesHashes.SerializeToString,
                 response_deserializer=worker__api__pb2.ChunkImage.FromString,
                 _registered_method=True)
         self.DownloadAnnotations = channel.unary_stream(
-                '/GeneralAPI/DownloadAnnotations',
+                '/slyproto.GeneralAPI/DownloadAnnotations',
                 request_serializer=worker__api__pb2.ImageArray.SerializeToString,
                 response_deserializer=worker__api__pb2.ChunkImage.FromString,
                 _registered_method=True)
         self.FindImagesExist = channel.unary_unary(
-                '/GeneralAPI/FindImagesExist',
+                '/slyproto.GeneralAPI/FindImagesExist',
                 request_serializer=worker__api__pb2.ImagesHashes.SerializeToString,
                 response_deserializer=worker__api__pb2.ImagesHashes.FromString,
                 _registered_method=True)
         self.AddExistingImagesToDataset = channel.unary_unary(
-                '/GeneralAPI/AddExistingImagesToDataset',
+                '/slyproto.GeneralAPI/AddExistingImagesToDataset',
                 request_serializer=worker__api__pb2.ImagesToAdd.SerializeToString,
                 response_deserializer=worker__api__pb2.ImageArray.FromString,
                 _registered_method=True)
         self.UploadAnnotations = channel.stream_unary(
-                '/GeneralAPI/UploadAnnotations',
+                '/slyproto.GeneralAPI/UploadAnnotations',
                 request_serializer=worker__api__pb2.ChunkImage.SerializeToString,
                 response_deserializer=worker__api__pb2.ImageArray.FromString,
                 _registered_method=True)
         self.UploadArchive = channel.stream_unary(
-                '/GeneralAPI/UploadArchive',
+                '/slyproto.GeneralAPI/UploadArchive',
                 request_serializer=worker__api__pb2.Chunk.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.GetProjectStats = channel.unary_unary(
-                '/GeneralAPI/GetProjectStats',
+                '/slyproto.GeneralAPI/GetProjectStats',
                 request_serializer=worker__api__pb2.Id.SerializeToString,
                 response_deserializer=worker__api__pb2.ProjectStats.FromString,
                 _registered_method=True)
         self.SetProjectFinished = channel.unary_unary(
-                '/GeneralAPI/SetProjectFinished',
+                '/slyproto.GeneralAPI/SetProjectFinished',
                 request_serializer=worker__api__pb2.Id.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.Log = channel.unary_unary(
-                '/GeneralAPI/Log',
+                '/slyproto.GeneralAPI/Log',
                 request_serializer=worker__api__pb2.LogLines.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.GetImportStructure = channel.unary_unary(
-                '/GeneralAPI/GetImportStructure',
+                '/slyproto.GeneralAPI/GetImportStructure',
                 request_serializer=worker__api__pb2.Id.SerializeToString,
                 response_deserializer=worker__api__pb2.ListFiles.FromString,
                 _registered_method=True)
         self.GetImportFiles = channel.unary_stream(
-                '/GeneralAPI/GetImportFiles',
+                '/slyproto.GeneralAPI/GetImportFiles',
                 request_serializer=worker__api__pb2.ImportRequest.SerializeToString,
                 response_deserializer=worker__api__pb2.ChunkFile.FromString,
                 _registered_method=True)
         self.GetNewTask = channel.unary_stream(
-                '/GeneralAPI/GetNewTask',
+                '/slyproto.GeneralAPI/GetNewTask',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.Task.FromString,
                 _registered_method=True)
         self.GetStopTask = channel.unary_stream(
-                '/GeneralAPI/GetStopTask',
+                '/slyproto.GeneralAPI/GetStopTask',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.Id.FromString,
                 _registered_method=True)
         self.AgentConnected = channel.unary_unary(
-                '/GeneralAPI/AgentConnected',
+                '/slyproto.GeneralAPI/AgentConnected',
                 request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
                 response_deserializer=worker__api__pb2.ServerInfo.FromString,
                 _registered_method=True)
         self.AgentPing = channel.unary_unary(
-                '/GeneralAPI/AgentPing',
+                '/slyproto.GeneralAPI/AgentPing',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.UploadModel = channel.stream_unary(
-                '/GeneralAPI/UploadModel',
+                '/slyproto.GeneralAPI/UploadModel',
                 request_serializer=worker__api__pb2.ChunkModel.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.DownloadModel = channel.unary_stream(
-                '/GeneralAPI/DownloadModel',
+                '/slyproto.GeneralAPI/DownloadModel',
                 request_serializer=worker__api__pb2.ModelDescription.SerializeToString,
                 response_deserializer=worker__api__pb2.Chunk.FromString,
                 _registered_method=True)
         self.GenerateNewModelId = channel.unary_unary(
-                '/GeneralAPI/GenerateNewModelId',
+                '/slyproto.GeneralAPI/GenerateNewModelId',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.ModelDescription.FromString,
                 _registered_method=True)
         self.GetTelemetryTask = channel.unary_stream(
-                '/GeneralAPI/GetTelemetryTask',
+                '/slyproto.GeneralAPI/GetTelemetryTask',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.Task.FromString,
                 _registered_method=True)
         self.UpdateTelemetry = channel.unary_unary(
-                '/GeneralAPI/UpdateTelemetry',
+                '/slyproto.GeneralAPI/UpdateTelemetry',
                 request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.AddImages = channel.unary_unary(
-                '/GeneralAPI/AddImages',
+                '/slyproto.GeneralAPI/AddImages',
                 request_serializer=worker__api__pb2.ImagesInfo.SerializeToString,
                 response_deserializer=worker__api__pb2.ImageArray.FromString,
                 _registered_method=True)
         self.UploadImages = channel.stream_unary(
-                '/GeneralAPI/UploadImages',
+                '/slyproto.GeneralAPI/UploadImages',
                 request_serializer=worker__api__pb2.ChunkImage.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.GetUsedImageList = channel.unary_stream(
-                '/GeneralAPI/GetUsedImageList',
+                '/slyproto.GeneralAPI/GetUsedImageList',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.NodeObjectHash.FromString,
                 _registered_method=True)
         self.GetUsedModelList = channel.unary_stream(
-                '/GeneralAPI/GetUsedModelList',
+                '/slyproto.GeneralAPI/GetUsedModelList',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.NodeObjectHash.FromString,
                 _registered_method=True)
         self.GetGeneralEventsStream = channel.unary_stream(
-                '/GeneralAPI/GetGeneralEventsStream',
+                '/slyproto.GeneralAPI/GetGeneralEventsStream',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.GeneralEvent.FromString,
                 _registered_method=True)
         self.GetGeneralEventData = channel.unary_stream(
-                '/GeneralAPI/GetGeneralEventData',
+                '/slyproto.GeneralAPI/GetGeneralEventData',
                 request_serializer=worker__api__pb2.Empty.SerializeToString,
                 response_deserializer=worker__api__pb2.Chunk.FromString,
                 _registered_method=True)
         self.SendGeneralEventData = channel.stream_unary(
-                '/GeneralAPI/SendGeneralEventData',
+                '/slyproto.GeneralAPI/SendGeneralEventData',
                 request_serializer=worker__api__pb2.Chunk.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
         self.AddMetaToProject = channel.unary_unary(
-                '/GeneralAPI/AddMetaToProject',
+                '/slyproto.GeneralAPI/AddMetaToProject',
                 request_serializer=worker__api__pb2.Project.SerializeToString,
                 response_deserializer=worker__api__pb2.Empty.FromString,
                 _registered_method=True)
 
 
 class GeneralAPIServicer(object):
-    """package slyproto;
-
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def CreateProject(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -646,6 +642,1010 @@ def add_GeneralAPIServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'GeneralAPI', rpc_method_handlers)
+            'slyproto.GeneralAPI', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('GeneralAPI', rpc_method_handlers)
+    server.add_registered_method_handlers('slyproto.GeneralAPI', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class GeneralAPI(object):
+    """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def CreateProject(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/CreateProject',
+            worker__api__pb2.Project.SerializeToString,
+            worker__api__pb2.Id.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateDataset(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/CreateDataset',
+            worker__api__pb2.ProjectDataset.SerializeToString,
+            worker__api__pb2.Id.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetProjectByName(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetProjectByName',
+            worker__api__pb2.Project.SerializeToString,
+            worker__api__pb2.Project.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetDatasetByName(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetDatasetByName',
+            worker__api__pb2.ProjectDataset.SerializeToString,
+            worker__api__pb2.Dataset.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetModelByName(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetModelByName',
+            worker__api__pb2.ModelName.SerializeToString,
+            worker__api__pb2.ModelInfo.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetProjectMeta(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetProjectMeta',
+            worker__api__pb2.Id.SerializeToString,
+            worker__api__pb2.Project.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetProjectDatasets(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetProjectDatasets',
+            worker__api__pb2.Id.SerializeToString,
+            worker__api__pb2.DatasetArray.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetDatasetImages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetDatasetImages',
+            worker__api__pb2.Id.SerializeToString,
+            worker__api__pb2.ImageArray.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetImagesInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetImagesInfo',
+            worker__api__pb2.ImageArray.SerializeToString,
+            worker__api__pb2.ImagesInfo.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DownloadImages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/DownloadImages',
+            worker__api__pb2.ImagesHashes.SerializeToString,
+            worker__api__pb2.ChunkImage.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DownloadAnnotations(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/DownloadAnnotations',
+            worker__api__pb2.ImageArray.SerializeToString,
+            worker__api__pb2.ChunkImage.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def FindImagesExist(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/FindImagesExist',
+            worker__api__pb2.ImagesHashes.SerializeToString,
+            worker__api__pb2.ImagesHashes.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddExistingImagesToDataset(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/AddExistingImagesToDataset',
+            worker__api__pb2.ImagesToAdd.SerializeToString,
+            worker__api__pb2.ImageArray.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UploadAnnotations(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/slyproto.GeneralAPI/UploadAnnotations',
+            worker__api__pb2.ChunkImage.SerializeToString,
+            worker__api__pb2.ImageArray.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UploadArchive(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/slyproto.GeneralAPI/UploadArchive',
+            worker__api__pb2.Chunk.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetProjectStats(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetProjectStats',
+            worker__api__pb2.Id.SerializeToString,
+            worker__api__pb2.ProjectStats.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetProjectFinished(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/SetProjectFinished',
+            worker__api__pb2.Id.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Log(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/Log',
+            worker__api__pb2.LogLines.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetImportStructure(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetImportStructure',
+            worker__api__pb2.Id.SerializeToString,
+            worker__api__pb2.ListFiles.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetImportFiles(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetImportFiles',
+            worker__api__pb2.ImportRequest.SerializeToString,
+            worker__api__pb2.ChunkFile.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetNewTask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetNewTask',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.Task.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetStopTask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetStopTask',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.Id.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AgentConnected(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/AgentConnected',
+            worker__api__pb2.AgentInfo.SerializeToString,
+            worker__api__pb2.ServerInfo.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AgentPing(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/AgentPing',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UploadModel(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/slyproto.GeneralAPI/UploadModel',
+            worker__api__pb2.ChunkModel.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DownloadModel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/DownloadModel',
+            worker__api__pb2.ModelDescription.SerializeToString,
+            worker__api__pb2.Chunk.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GenerateNewModelId(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GenerateNewModelId',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.ModelDescription.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetTelemetryTask(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetTelemetryTask',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.Task.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateTelemetry(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/UpdateTelemetry',
+            worker__api__pb2.AgentInfo.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddImages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/AddImages',
+            worker__api__pb2.ImagesInfo.SerializeToString,
+            worker__api__pb2.ImageArray.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UploadImages(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/slyproto.GeneralAPI/UploadImages',
+            worker__api__pb2.ChunkImage.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetUsedImageList(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetUsedImageList',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.NodeObjectHash.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetUsedModelList(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetUsedModelList',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.NodeObjectHash.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetGeneralEventsStream(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetGeneralEventsStream',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.GeneralEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetGeneralEventData(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/slyproto.GeneralAPI/GetGeneralEventData',
+            worker__api__pb2.Empty.SerializeToString,
+            worker__api__pb2.Chunk.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SendGeneralEventData(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/slyproto.GeneralAPI/SendGeneralEventData',
+            worker__api__pb2.Chunk.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddMetaToProject(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/slyproto.GeneralAPI/AddMetaToProject',
+            worker__api__pb2.Project.SerializeToString,
+            worker__api__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

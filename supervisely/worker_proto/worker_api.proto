@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 
-//package slyproto;
+package slyproto;
 
 service GeneralAPI {
     rpc CreateProject(Project) returns (Id) {}
