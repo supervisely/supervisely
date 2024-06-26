@@ -777,8 +777,8 @@ class AppApi(TaskApi):
     # ----------------------------------------- App Workflow ----------------------------------------- #
     __custom_meta_schema = {
         "type": "object",
-        "properties": {
-            "customRelationSettings": {
+        "definitions": {
+            "settings": {
                 "type": "object",
                 "properties": {
                     "icon": {
@@ -802,8 +802,12 @@ class AppApi(TaskApi):
                 "additionalProperties": False,
             }
         },
+        "properties": {
+            "customRelationSettings": {"$ref": "#/definitions/settings"},
+            "customNodeSettings": {"$ref": "#/definitions/settings"},
+        },
         "additionalProperties": False,
-        "required": ["customRelationSettings"],
+        "anyOf": [{"required": ["customRelationSettings"]}, {"required": ["customNodeSettings"]}],
     }
 
     def _add_edge(
