@@ -138,7 +138,7 @@ class MetricProvider:
         f1[(precision + recall) == 0.] = 0.
         iou = np.mean(self.ious)
         classification_accuracy = self.TP_count / (self.TP_count + confuse_count)
-        calibration_score = 1 - self.calibration_metrics.maximum_calibration_error()
+        calibration_score = 1 - self.calibration_metrics.expected_calibration_error()
 
         return {
             "mAP": mAP,
@@ -397,6 +397,9 @@ class CalibrationMetrics:
     
     def maximum_calibration_error(self):
         return metrics.maximum_calibration_error(self.y_true, self.scores, n_bins=10)
+    
+    def expected_calibration_error(self):
+        return metrics.expected_calibration_error(self.y_true, self.scores, n_bins=10)
     
     def scores_tp_and_fp(self, iou_idx=0):
         tps = self.iou_idxs > iou_idx
