@@ -194,6 +194,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             #     "finishedAt": "2019-12-19T12:13:09.701Z",
             #     "userId": 16154,
             #     "meta": {
+            #         "app": {
+            #             "id": 10370,
+            #             "name": "Auto Import",
+            #             "version": "test-branch",
+            #             "isBranch": true,
+            #         },
             #         "input": {
             #             "model": {
             #                 "id": 1849

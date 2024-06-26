@@ -383,13 +383,13 @@ class DataVersion(ModuleApiBase):
         backup_files = self.versions[str(version_id)]["path"]
 
         if updated_at == self.project_info.updated_at:
-            logger.info(
+            logger.warn(
                 f"Project is already on version {version_num} with the same updated_at timestamp"
             )
             return
 
         if backup_files is None:
-            logger.info(
+            logger.warn(
                 f"Project can't be restored to version {version_num} because it doesn't have restore point."
             )
             return
