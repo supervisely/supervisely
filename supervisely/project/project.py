@@ -2570,7 +2570,7 @@ class Project:
     def download_bin(
         api: sly.Api,
         project_id: int,
-        dest_dir: str,
+        dest_dir: str = None,
         dataset_ids: Optional[List[int]] = None,
         log_progress: Optional[bool] = True,
         batch_size: Optional[int] = 100,
@@ -2595,7 +2595,7 @@ class Project:
         :param project_id: Project ID to download.
         :type project_id: :class:`int`
         :param dest_dir: Destination path to local directory.
-        :type dest_dir: :class:`str`
+        :type dest_dir: :class:`str`, optional
         :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
         :type dataset_ids: :class:`list` [ :class:`int` ], optional
         :param log_progress: Show downloading logs in the output.
@@ -2630,6 +2630,11 @@ class Project:
                 # Download Project in binary format
                 project_bin_path = sly.Project.download_bin(api, project_id, save_directory)
         """
+        if dest_dir is None and not return_bytesio:
+            raise ValueError(
+                "Local save directory dest_dir must be specified if return_bytesio is False"
+            )
+
         dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))

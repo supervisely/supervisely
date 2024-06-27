@@ -175,8 +175,8 @@ class DataVersion(ModuleApiBase):
         )
         if file_info is None:
             raise RuntimeError("Failed to save versions")
-        else:
-            remove_dir(temp_dir)
+
+        remove_dir(temp_dir)
 
     def create(
         self,
@@ -223,7 +223,7 @@ class DataVersion(ModuleApiBase):
         if version_id is None and commit_token is None:
             return latest
         try:
-            file_info = self._upload_files(path)
+            file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
                 "path": path,
                 "updated_at": project_info.updated_at,
@@ -403,7 +403,7 @@ class DataVersion(ModuleApiBase):
             )
             return
 
-        bin_io = self._download_and_extract_version(backup_files)
+        bin_io = self._download_and_extract(backup_files)
         new_project_info = Project.upload_bin(self._api, bin_io, self.project_info.workspace_id)
         return new_project_info
 
@@ -421,7 +421,7 @@ class DataVersion(ModuleApiBase):
                 f.write("This directory is managed by Supervisely. Do not modify its contents.")
             self._api.file.upload(self.project_info.team_id, temp_file.name, warning_file)
 
-    def _download_and_extract_version(self, path: str) -> io.BytesIO:
+    def _download_and_extract(self, path: str) -> io.BytesIO:
         """
         Download and extract version data to memory.
 
@@ -432,16 +432,21 @@ class DataVersion(ModuleApiBase):
         """
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
-        self._api.file.download(self.project_info.team_id, path, local_path)
-        with open(local_path, "rb") as zst:
-            decompressed_data = zstd.decompress(zst.read())
+        try:
+            self._api.file.download(self.project_info.team_id, path, local_path)
+            with open(local_path, "rb") as zst:
+                decompressed_data = zstd.decompress(zst.read())
             with tarfile.open(fileobj=io.BytesIO(decompressed_data)) as tar:
                 file = tar.extractfile("version.bin")
-                if file:
-                    data = file.read()
-                    bin_io = io.BytesIO(data)
-                    return bin_io
-        raise RuntimeError("Failed to extract version")
+                if not file:
+                    raise RuntimeError("version.bin not found in the archive")
+                data = file.read()
+                bin_io = io.BytesIO(data)
+                return bin_io
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract version: {e}")
+        finally:
+            remove_dir(temp_dir)
 
     def _generate_save_path(self):
         """
@@ -464,7 +469,7 @@ class DataVersion(ModuleApiBase):
             return None
         return latest
 
-    def _upload_files(self, path: str):
+    def _compress_and_upload(self, path: str):
         """
         Save project in binary format in archive to the Team Files.
         Binary file name: version.bin
@@ -479,7 +484,7 @@ class DataVersion(ModuleApiBase):
         temp_dir = tempfile.mkdtemp()
 
         data = Project.download_bin(
-            self._api, self.project_info.id, temp_dir, batch_size=200, return_bytesio=True
+            self._api, self.project_info.id, batch_size=200, return_bytesio=True
         )
         data.seek(0)
         info = tarfile.TarInfo(name="version.bin")
@@ -493,7 +498,7 @@ class DataVersion(ModuleApiBase):
         data.close()
         # Reset the BytesIO object's cursor to the beginning
         tar_data.seek(0)
-        zst_archive_path = os.path.join(os.path.dirname(temp_dir), "download.tar.zst")
+        zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
 
         with open(zst_archive_path, "wb") as zst:
             while True:
@@ -503,6 +508,5 @@ class DataVersion(ModuleApiBase):
                 zst.write(zstd.compress(chunk))
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
         tar_data.close()
-        silent_remove(zst_archive_path)
         remove_dir(temp_dir)
         return file_info
