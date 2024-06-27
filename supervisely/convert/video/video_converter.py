@@ -1,11 +1,9 @@
 import os
 import subprocess
-from functools import partial
-from typing import List
+from typing import List, Union
 
 import cv2
 import magic
-from tqdm import tqdm
 
 from supervisely import (
     Api,
@@ -19,7 +17,6 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.env import task_id
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name,
@@ -77,13 +74,20 @@ class VideoConverter(BaseConverter):
         def create_empty_annotation(self) -> VideoAnnotation:
             return VideoAnnotation(self._shape, self._frame_count)
 
-    def __init__(self, input_data: str, labeling_interface: str, upload_as_links: bool):
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: str,
+            upload_as_links: bool,
+            remote_files_map: dict = None,
+    ):
         self._input_data: str = input_data
         self._meta: ProjectMeta = None
         self._items: List[self.Item] = []
         self._key_id_map: KeyIdMap = None
         self._labeling_interface: str = labeling_interface
         self._upload_as_links: bool = upload_as_links
+        self._remote_files_map: Union[dict, None] = remote_files_map
         self._converter = self._detect_format()
 
     @property
