@@ -147,7 +147,7 @@ class ImageConverter(BaseConverter):
                 if item.path is None:
                     continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if self._upload_as_links:
+                if self.upload_as_links:
                     ann = None  # TODO: implement
                 else:
                     ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
@@ -164,7 +164,7 @@ class ImageConverter(BaseConverter):
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
                 upload_method = (
-                    api.image.upload_links if self._upload_as_links else api.image.upload_paths
+                    api.image.upload_links if self.upload_as_links else api.image.upload_paths
                 )
                 img_infos = upload_method(dataset_id, item_names, item_paths, metas=item_metas)
                 img_ids = [img_info.id for img_info in img_infos]
@@ -180,7 +180,7 @@ class ImageConverter(BaseConverter):
         logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
 
     def validate_image(self, path: str) -> Tuple[str, str]:
-        if self._upload_as_links:
+        if self.upload_as_links:
             return self._remote_files_map.get(path)
         return image_helper.validate_image(path)
 
