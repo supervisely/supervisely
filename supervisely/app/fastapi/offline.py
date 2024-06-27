@@ -81,6 +81,21 @@ def get_offline_session_files_path(task_id) -> pathlib.Path:
     return pathlib.Path("/", "offline-sessions", str(task_id), "app-template")
 
 
+def get_directory_size(directory_path):
+    sly.logger.info(f"Calculating size of directory: {directory_path}")
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if os.path.isfile(fp):
+                file_size = os.path.getsize(fp)
+                total_size += file_size
+                sly.logger.info(f"File: {fp} has size: {file_size / (1024**2):.2f} MB")
+    sly.logger.info(f"Total size of directory: {directory_path} is: {total_size / (1024**2):.2f} MB")
+    return total_size
+
+
 def upload_to_supervisely(static_dir_path):
     api_token = sly.env.spawn_api_token(raise_not_found=False) or sly.env.api_token()
     # spawn_api_token - is a token of user, that spawned application.
@@ -90,6 +105,7 @@ def upload_to_supervisely(static_dir_path):
     # For example, if we'lll use annotator's token, we'll get 403 error, when
     # trying to upload files, because annotator doesn't have corresponding permissions.
     api = sly.Api(sly.env.server_address(), api_token)
+    directory_size = get_directory_size(static_dir_path.as_posix())
 
     team_id = sly.env.team_id()
     task_id = sly.env.task_id(raise_not_found=False)
