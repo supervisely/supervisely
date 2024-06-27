@@ -155,10 +155,11 @@ class Inference:
 
         self.cache = InferenceImageCache(
             maxsize=env.smart_cache_size(),
-            ttl=env.smart_cache_ttl(),
+            ttl=1 * 60,
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
         )
+        logger.debug(f"cache ttl: {self.cache.ttl}")
 
     def _prepare_device(self, device):
         if device is None:
