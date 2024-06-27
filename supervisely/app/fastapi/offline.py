@@ -107,6 +107,7 @@ def upload_to_supervisely(static_dir_path):
     api = sly.Api(sly.env.server_address(), api_token)
     # directory_size = get_directory_size(static_dir_path)
     frozen_copy_path = pathlib.Path("/frozen-copy")
+    os.makedirs(frozen_copy_path.as_posix(), exist_ok=True)
     copy_tree(static_dir_path.as_posix(), frozen_copy_path.as_posix(), preserve_symlinks=True)
     sly.logger.info(f"Made a copy in {frozen_copy_path.as_posix()}")
 
