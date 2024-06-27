@@ -126,7 +126,7 @@ class VideoConverter(BaseConverter):
         existing_names = set([vid.name for vid in api.video.get_list(dataset_id)])
 
         # check video codecs, mimetypes and convert if needed
-        convert_progress, convert_progress_cb = self.get_progress(self.items_count, "Converting videos...")
+        convert_progress, convert_progress_cb = self.get_progress(self.items_count, "Preparing videos...")
         for item in self._items:
             item_name, item_path = self.convert_to_mp4_if_needed(item.path)
             item.name = item_name
@@ -135,18 +135,18 @@ class VideoConverter(BaseConverter):
         if is_development():
             convert_progress.close()
 
-
-        if log_progress:
+        if log_progress and not self.upload_as_links:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
             file_sizes = [get_file_size(item.path) for item in self._items]
             has_large_files = any([self._check_video_file_size(file_size) for file_size in file_sizes])
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
             if has_large_files:
                 upload_progress = []
                 size_progress_cb = self._get_video_upload_progress(upload_progress)
+            batch_size = 1 if has_large_files else batch_size
         else:
             has_large_files = False
-            progress_cb = None
-        batch_size = 1 if has_large_files else batch_size
+            progress_cb, progress = None, None
+            batch_size = 1
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -160,38 +160,51 @@ class VideoConverter(BaseConverter):
                 item_paths.append(item.path)
                 item_names.append(item.name)
 
-                ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                figures_cnt += len(ann.figures)
-                anns.append(ann)
+                if not self.upload_as_links:
+                    # TODO: implement generating annotations for remote videos
+                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                    figures_cnt += len(ann.figures)
+                    anns.append(ann)
 
-            vid_infos = api.video.upload_paths(
-                dataset_id,
-                item_names,
-                item_paths,
-                progress_cb=progress_cb if log_progress else None,
-                item_progress=size_progress_cb if log_progress and has_large_files else None, # pylint: disable=used-before-assignment
-            )
-            vid_ids = [vid_info.id for vid_info in vid_infos]
-
-            if log_progress and has_large_files and figures_cnt > 0:
-                ann_progress, ann_progress_cb = self.get_progress(figures_cnt, "Uploading annotations...")
+            if self.upload_as_links:
+                vid_infos = api.video.upload_links(
+                    dataset_id,
+                    item_paths,
+                    item_names,
+                )
             else:
-                ann_progress, ann_progress_cb = None, None
+                vid_infos = api.video.upload_paths(
+                    dataset_id,
+                    item_names,
+                    item_paths,
+                    progress_cb=progress_cb if log_progress else None,
+                    item_progress=size_progress_cb if log_progress and has_large_files else None, # pylint: disable=used-before-assignment
+                )
+                vid_ids = [vid_info.id for vid_info in vid_infos]
 
-            for video_id, ann in zip(vid_ids, anns):
-                if ann is None:
-                    ann = VideoAnnotation(item.shape, item.frame_count)
-                api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
+                if log_progress and has_large_files and figures_cnt > 0:
+                    ann_progress, ann_progress_cb = self.get_progress(figures_cnt, "Uploading annotations...")
+                else:
+                    ann_progress, ann_progress_cb = None, None
+
+                for video_id, ann in zip(vid_ids, anns):
+                    if ann is None:
+                        ann = VideoAnnotation(item.shape, item.frame_count)
+                    api.video.annotation.append(video_id, ann, progress_cb=ann_progress_cb)
 
         if log_progress and is_development():
             if progress is not None: # pylint: disable=possibly-used-before-assignment
                 progress.close()
-            if ann_progress is not None:
-                ann_progress.close()
+            if not self.upload_as_links:
+                if ann_progress is not None:
+                    ann_progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def convert_to_mp4_if_needed(self, video_path):
-        video_name = get_file_name(video_path)
+        video_name = get_file_name_with_ext(video_path)
+        if self.upload_as_links:
+            video_path = self.remote_files_map.get(video_path)
+            return video_name, video_path
         video_ext = get_file_ext(video_path)
         if video_ext.lower() != video_ext:
             # rename video file to make extension lowercase
