@@ -155,7 +155,7 @@ class Inference:
 
         self.cache = InferenceImageCache(
             maxsize=env.smart_cache_size(),
-            ttl=env.smart_cache_ttl(),
+            ttl=60,
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
         )
