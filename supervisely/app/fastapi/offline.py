@@ -105,7 +105,10 @@ def upload_to_supervisely(static_dir_path):
     # For example, if we'lll use annotator's token, we'll get 403 error, when
     # trying to upload files, because annotator doesn't have corresponding permissions.
     api = sly.Api(sly.env.server_address(), api_token)
-    directory_size = get_directory_size(static_dir_path.as_posix())
+    # directory_size = get_directory_size(static_dir_path)
+    frozen_copy_path = pathlib.Path("/frozen-copy")
+    copy_tree(static_dir_path.as_posix(), frozen_copy_path.as_posix(), preserve_symlinks=True)
+    sly.logger.info(f"Made a copy in {frozen_copy_path.as_posix()}")
 
     team_id = sly.env.team_id()
     task_id = sly.env.task_id(raise_not_found=False)
@@ -114,11 +117,15 @@ def upload_to_supervisely(static_dir_path):
 
     res_remote_dir: str = api.file.upload_directory(
         team_id=team_id,
-        local_dir=static_dir_path.as_posix(),
+        # local_dir=static_dir_path.as_posix(),
+        local_dir=frozen_copy_path.as_posix(),
         remote_dir=remote_dir.as_posix(),
         change_name_if_conflict=False,
         replace_if_conflict=True,
     )
+    
+    shutil.rmtree(frozen_copy_path.as_posix())
+    sly.logger.info(f"Removed copy in {frozen_copy_path.as_posix()}")
 
     if os.getenv("TASK_ID") is not None:
         api.task.update_meta(id=task_id, data={"templateRootDirectory": res_remote_dir})
