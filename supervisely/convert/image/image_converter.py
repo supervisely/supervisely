@@ -85,11 +85,15 @@ class ImageConverter(BaseConverter):
         self,
         input_data: str,
         labeling_interface: str,
+        upload_as_links: bool = False,
+        remote_files_map: dict = None,
     ):
         self._input_data: str = input_data
         self._meta: ProjectMeta = None
         self._items: List[self.Item] = []
         self._labeling_interface: str = labeling_interface
+        self._upload_as_links: bool = upload_as_links
+        self._remote_files_map: Union[dict, None] = remote_files_map
         self._converter = self._detect_format()
 
     @property
@@ -141,9 +145,12 @@ class ImageConverter(BaseConverter):
             for item in batch:
                 item.path = self.validate_image(item.path)
                 if item.path is None:
-                    continue # image has failed validation
+                    continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                if self._upload_as_links:
+                    ann = None  # TODO: implement
+                else:
+                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
@@ -156,7 +163,10 @@ class ImageConverter(BaseConverter):
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
-                img_infos = api.image.upload_paths(dataset_id, item_names, item_paths, metas=item_metas)
+                upload_method = (
+                    api.image.upload_links if self._upload_as_links else api.image.upload_paths
+                )
+                img_infos = upload_method(dataset_id, item_names, item_paths, metas=item_metas)
                 img_ids = [img_info.id for img_info in img_infos]
                 if len(anns) == len(img_ids):
                     api.annotation.upload_anns(img_ids, anns)
@@ -170,6 +180,8 @@ class ImageConverter(BaseConverter):
         logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
 
     def validate_image(self, path: str) -> Tuple[str, str]:
+        if self._upload_as_links:
+            return self._remote_files_map.get(path)
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:

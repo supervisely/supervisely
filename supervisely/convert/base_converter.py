@@ -143,11 +143,14 @@ class BaseConverter:
         self,
         input_data: str,
         labeling_interface: Optional[LabelingInterface] = LabelingInterface.DEFAULT,
+        upload_as_links: bool = False,
     ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+        self._upload_as_links: bool = upload_as_links
+        self._remote_files_map: dict = {}
 
         if self._labeling_interface not in LabelingInterface.values():
             raise ValueError(
@@ -170,6 +173,29 @@ class BaseConverter:
     @property
     def key_file_ext(self) -> str:
         raise NotImplementedError()
+
+    @property
+    def upload_as_links(self) -> bool:
+        return self._upload_as_links
+
+    @upload_as_links.setter
+    def upload_as_links(self, upload_as_links: bool) -> None:
+        self._upload_as_links = upload_as_links
+
+    @property
+    def remote_files_map(self) -> dict:
+        return self._remote_files_map
+
+    @remote_files_map.setter
+    def remote_files_map(self, remote_files_map: dict) -> None:
+        self._remote_files_map = remote_files_map
+
+    def validate_upload_method(self, upload_as_links: bool = False) -> bool:
+        """
+        Validate if the converter supports the uploading by links
+        (restrict for all converters, must be overridden in subclasses if supported).
+        """
+        return upload_as_links is False
 
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == LabelingInterface.DEFAULT
@@ -215,7 +241,12 @@ class BaseConverter:
             if converter.__name__ == "BaseConverter":
                 continue
             converter = converter(self._input_data, self._labeling_interface)
+            converter.upload_as_links = self.upload_as_links
+            converter.remote_files_map = self.remote_files_map
+
             if not converter.validate_labeling_interface():
+                continue
+            if not converter.validate_upload_method(upload_as_links=self.upload_as_links):
                 continue
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")

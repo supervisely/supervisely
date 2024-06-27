@@ -77,12 +77,13 @@ class VideoConverter(BaseConverter):
         def create_empty_annotation(self) -> VideoAnnotation:
             return VideoAnnotation(self._shape, self._frame_count)
 
-    def __init__(self, input_data: str, labeling_interface: str):
+    def __init__(self, input_data: str, labeling_interface: str, upload_as_links: bool):
         self._input_data: str = input_data
         self._meta: ProjectMeta = None
         self._items: List[self.Item] = []
         self._key_id_map: KeyIdMap = None
         self._labeling_interface: str = labeling_interface
+        self._upload_as_links: bool = upload_as_links
         self._converter = self._detect_format()
 
     @property
