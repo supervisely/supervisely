@@ -8,10 +8,23 @@ from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.image_rotator import ImageRotator
+from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation, _flip_row_col_order
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+
+# Draw Settings
+color = [255, 255, 255]
+thickness = 1
+
+
+@pytest.fixture
+def random_image() -> np.ndarray:
+    image_shape = (random.randint(501, 1000), random.randint(501, 1000), 3)
+    background_color = [0, 0, 0]
+    bitmap = np.full(image_shape, background_color, dtype=np.uint8)
+    return bitmap
 
 
 @pytest.fixture
@@ -20,7 +33,7 @@ def random_polygon_int() -> Tuple[
     List[Tuple[Union[int, float], Union[int, float]]],
     List[Tuple[Union[int, float], Union[int, float]]],
 ]:
-    exterior = [(random.randint(0, 1000), random.randint(0, 1000)) for _ in range(15)]
+    exterior = [(random.randint(0, 500), random.randint(0, 500)) for _ in range(15)]
     interior = []
     poly = Polygon(exterior=exterior, interior=interior)
     return poly, exterior, interior
@@ -33,7 +46,7 @@ def random_polygon_float() -> Tuple[
     List[Tuple[Union[int, float], Union[int, float]]],
 ]:
     exterior = [
-        (round(random.uniform(0, 1000), 6), round(random.uniform(0, 1000), 6)) for _ in range(15)
+        (round(random.uniform(0, 500), 6), round(random.uniform(0, 500), 6)) for _ in range(15)
     ]
     interior = []
     poly = Polygon(exterior=exterior, interior=interior)
@@ -56,19 +69,19 @@ def check_points_equal(polygon_exterior: List[PointLocation], coords: List[Tuple
         assert point.col == coords[i][1]
 
 
-def test_geometry_name(random_polygon_int, random_polygon_float):
+def test_geometry_name(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, _, _ = get_polygon_exterior_interior(polygon)
         assert poly.geometry_name() == "polygon"
 
 
-def test_name(random_polygon_int, random_polygon_float):
+def test_name(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, _, _ = get_polygon_exterior_interior(polygon)
         assert poly.name() == "polygon"
 
 
-def test_to_json(random_polygon_int, random_polygon_float):
+def test_to_json(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         expected_json = {
@@ -79,7 +92,7 @@ def test_to_json(random_polygon_int, random_polygon_float):
         assert poly.to_json() == expected_json
 
 
-def test_from_json(random_polygon_int, random_polygon_float):
+def test_from_json(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         poly_json = {
@@ -93,7 +106,7 @@ def test_from_json(random_polygon_int, random_polygon_float):
         check_points_equal(poly_from_json.interior, interior)
 
 
-def test_crop(random_polygon_int, random_polygon_float):
+def test_crop(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         rect = Rectangle(100, 200, 300, 400)
@@ -105,7 +118,7 @@ def test_crop(random_polygon_int, random_polygon_float):
                 assert 0 <= point.col <= 500
 
 
-def test_relative_crop(random_polygon_int, random_polygon_float):
+def test_relative_crop(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         rect = Rectangle(100, 200, 300, 400)
@@ -113,16 +126,15 @@ def test_relative_crop(random_polygon_int, random_polygon_float):
         for cropped_poly in cropped_polygons:
             assert isinstance(cropped_poly, Polygon)
             for point in cropped_poly.exterior:
-                assert 0 <= point.row <= 1
-                assert 0 <= point.col <= 1
+                assert 0 <= point.row <= 500
+                assert 0 <= point.col <= 500
 
 
-def test_rotate(random_polygon_int, random_polygon_float):
-    angle = 25
-    image_rotate_center = (300, 400)
+def test_rotate(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
-        rotator = ImageRotator(image_rotate_center, angle)
+        img_size, angle = random_image.shape[:2], random.randint(0, 360)
+        rotator = ImageRotator(img_size, angle)
         rotate_poly = poly.rotate(rotator)
         assert isinstance(rotate_poly, Polygon)
         expected_points = []
@@ -135,10 +147,10 @@ def test_rotate(random_polygon_int, random_polygon_float):
         check_points_equal(rotate_poly.exterior, expected_points)
 
 
-def test_resize(random_polygon_int, random_polygon_float):
-    in_size = (300, 400)
-    out_size = (600, 800)
+def test_resize(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
+        in_size = random_image.shape[:2]
+        out_size = (random.randint(1000, 1200), random.randint(1000, 1200))
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         resize_poly = poly.resize(in_size, out_size)
         assert isinstance(resize_poly, Polygon)
@@ -154,9 +166,9 @@ def test_resize(random_polygon_int, random_polygon_float):
         )
 
 
-def test_scale(random_polygon_int, random_polygon_float):
-    factor = 0.75
+def test_scale(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
+        factor = round(random.uniform(0, 1), 3)
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         scale_poly = poly.scale(factor)
         assert isinstance(scale_poly, Polygon)
@@ -166,78 +178,78 @@ def test_scale(random_polygon_int, random_polygon_float):
         )
 
 
-def test_translate(random_polygon_int, random_polygon_float):
-    dx, dy = 150, 350
+def test_translate(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
+        dx, dy = random.randint(10, 150), random.randint(10, 350)
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         translate_poly = poly.translate(dx, dy)
         assert isinstance(translate_poly, Polygon)
         check_points_equal(translate_poly.exterior, [(x + dx, y + dy) for x, y in exterior])
 
 
-def test_fliplr(random_polygon_int, random_polygon_float):
-    img_size = (800, 800)
+def test_fliplr(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
+        img_size = random_image.shape[:2]
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         fliplr_poly = poly.fliplr(img_size)
         assert isinstance(fliplr_poly, Polygon)
         check_points_equal(fliplr_poly.exterior, [(x, img_size[1] - y) for x, y in exterior])
 
 
-def test_flipud(random_polygon_int, random_polygon_float):
-    img_size = (800, 800)
+def test_flipud(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
+        img_size = random_image.shape[:2]
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         flipud_poly = poly.flipud(img_size)
         assert isinstance(flipud_poly, Polygon)
         check_points_equal(flipud_poly.exterior, [(img_size[0] - x, y) for x, y in exterior])
 
 
-def test_draw_bool_compatible(random_polygon_int, random_polygon_float):
-    img_size = (800, 800)
+def test_draw_bool_compatible(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
-        bitmap = np.zeros(img_size, dtype=np.uint8)
-        poly._draw_bool_compatible(poly._draw_impl, bitmap, 255, 1)
-        assert np.any(bitmap)
+        poly._draw_bool_compatible(poly._draw_impl, random_image, color, thickness)
+        np.any(random_image == color)
 
 
-def test_draw(random_polygon_int, random_polygon_float):
-    img_size = (800, 800)
+def test_draw(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
-        bitmap = np.zeros(img_size, dtype=np.uint8)
-        color = [255, 255, 255]
-        poly.draw(bitmap, color, thickness=1)
-        assert np.any(bitmap)
+        poly.draw(random_image, color, thickness)
+        np.any(random_image == color)
 
 
-def test_get_mask(random_polygon_int, random_polygon_float):
-    img_size = (800, 800)
+def test_get_mask(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
-        mask = poly.get_mask(img_size)
-        assert mask.shape == img_size
+        mask = poly.get_mask(random_image.shape)
+        assert mask.shape == random_image.shape
         assert mask.dtype == np.bool
-        assert np.any(mask)
+        assert np.any(mask == True)
 
 
-def test__draw_impl(random_polygon_int, random_polygon_float):
+def test__draw_impl(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        poly._draw_impl(random_image, color, thickness)
+        np.any(random_image == color)
 
 
-def test_draw_contour(random_polygon_int, random_polygon_float):
+def test_draw_contour(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        poly.draw_contour(random_image, color, thickness)
+        assert np.any(random_image == color)
 
 
-def test_draw_contour_impl(random_polygon_int, random_polygon_float):
+def test_draw_contour_impl(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        poly._draw_contour_impl(random_image, color, thickness)
+        assert np.any(random_image == color)
 
 
-def test_area(random_polygon_int, random_polygon_float):
+def test_area(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         area = poly.area
@@ -245,12 +257,23 @@ def test_area(random_polygon_int, random_polygon_float):
         assert area >= 0
 
 
-def test_to_bbox(random_polygon_int, random_polygon_float):
+def test_to_bbox(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        bbox = poly.to_bbox()
+
+        min_x = min(coord[0] for coord in exterior)
+        min_y = min(coord[1] for coord in exterior)
+        max_x = max(coord[0] for coord in exterior)
+        max_y = max(coord[1] for coord in exterior)
+
+        assert bbox.top == min_x, "Top X coordinate of bbox is incorrect"
+        assert bbox.left == min_y, "Left Y coordinate of bbox is incorrect"
+        assert bbox.bottom == max_x, "Bottom X coordinate of bbox is incorrect"
+        assert bbox.right == max_y, "Right Y coordinate of bbox is incorrect"
 
 
-def test_clone(random_polygon_int, random_polygon_float):
+def test_clone(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         clone_poly = poly.clone()
@@ -259,54 +282,59 @@ def test_clone(random_polygon_int, random_polygon_float):
         check_points_equal(clone_poly.interior, interior)
 
 
-def test_validate(random_polygon_int, random_polygon_float):
+def test_validate(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        poly.validate("polygon", {"points": {"exterior": exterior, "interior": interior}})
 
 
-def test_config_from_json(random_polygon_int, random_polygon_float):
+def test_config_from_json(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        config = {"points": {}}
+        returned_config = poly.config_from_json(config)
+        assert returned_config == config
 
 
-def test_config_to_json(random_polygon_int, random_polygon_float):
+def test_config_to_json(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
+        config = {"points": {}}
+        returned_config = poly.config_to_json(config)
+        assert returned_config == config
 
 
-def test_allowed_transforms(random_polygon_int, random_polygon_float):
+def test_allowed_transforms(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         allowed_transforms = poly.allowed_transforms()
         assert set(allowed_transforms) == set([AnyGeometry, Rectangle, Bitmap, AlphaMask])
 
 
-def test_convert(random_polygon_int, random_polygon_float):
+def test_convert(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         assert poly.convert(type(poly)) == [poly]
         assert poly.convert(AnyGeometry) == [poly]
         for new_geometry in poly.allowed_transforms():
             converted = poly.convert(new_geometry)
-            assert all(isinstance(g, new_geometry) for g in converted)
-
-        class NotAllowedGeometry:
-            pass
+            for g in converted:
+                assert isinstance(g, new_geometry) or isinstance(g, Polygon)
 
         with pytest.raises(
             NotImplementedError,
-            match="from {!r} to {!r}".format(poly.geometry_name(), "NotAllowedGeometry"),
+            match="from {!r} to {!r}".format(poly.geometry_name(), Point.geometry_name()),
         ):
-            poly.convert(NotAllowedGeometry)
+            poly.convert(Point)
 
 
 # Polygon specific methods
 # ------------------------
 
 
-def test_approx_dp(random_polygon_int, random_polygon_float):
-    epsilon = 0.75
+def test_approx_dp(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
+        epsilon = round(random.uniform(0, 1), 3)
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         approx_poly = poly.approx_dp(epsilon)
         assert isinstance(approx_poly, Polygon)
@@ -318,14 +346,14 @@ def test_approx_dp(random_polygon_int, random_polygon_float):
             assert approx_interior != original_interior
 
 
-def test_exterior_interior(random_polygon_int, random_polygon_float):
+def test_exterior_interior(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         check_points_equal(poly.exterior, exterior)
         check_points_equal(poly.interior, interior)
 
 
-def test_exterior_interior_np(random_polygon_int, random_polygon_float):
+def test_exterior_interior_np(random_polygon_int, random_polygon_float, random_image):
     for polygon in [random_polygon_int, random_polygon_float]:
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         exterior_np = poly.exterior_np

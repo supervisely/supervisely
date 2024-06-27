@@ -2,25 +2,26 @@
 
 # docs
 from __future__ import annotations
+
+from typing import Dict, List, Optional, Tuple
+
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+
 import supervisely as sly
-
-
+from supervisely.geometry import validation
 from supervisely.geometry.constants import (
-    EXTERIOR,
-    INTERIOR,
-    POINTS,
-    LABELER_LOGIN,
-    UPDATED_AT,
-    CREATED_AT,
-    ID,
     CLASS_ID,
+    CREATED_AT,
+    EXTERIOR,
+    ID,
+    INTERIOR,
+    LABELER_LOGIN,
+    POINTS,
+    UPDATED_AT,
 )
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation, points_to_row_col_list
-from supervisely.geometry import validation
 
 
 class Rectangle(Geometry):
@@ -206,11 +207,7 @@ class Rectangle(Geometry):
         bottom = min(self.bottom, other.bottom)
         right = min(self.right, other.right)
         is_valid = (bottom >= top) and (left <= right)
-        return (
-            [Rectangle(top=top, left=left, bottom=bottom, right=right)]
-            if is_valid
-            else []
-        )
+        return [Rectangle(top=top, left=left, bottom=bottom, right=right)] if is_valid else []
 
     def _transform(self, transform_fn):
         """ """
@@ -393,9 +390,7 @@ class Rectangle(Geometry):
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
         """ """
-        self._draw_contour_impl(
-            bitmap, color, thickness=cv2.FILLED, config=config
-        )  # due to cv2
+        self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
@@ -599,9 +594,7 @@ class Rectangle(Geometry):
 
             center = figure.center()
         """
-        return PointLocation(
-            row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2
-        )
+        return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
     @property
     def width(self) -> int:
@@ -682,9 +675,7 @@ class Rectangle(Geometry):
             print(figure.contains_point_location(pt))
             # Output: True
         """
-        return (self.left <= pt.col <= self.right) and (
-            self.top <= pt.row <= self.bottom
-        )
+        return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
 
     def to_size(self) -> Tuple[int, int]:
         """
@@ -721,8 +712,14 @@ class Rectangle(Geometry):
             print(mask_slice.shape)
             # Output: (199, 499)
         """
-        top, bottom, left, right = round(self.top), round(self.bottom), round(self.left), round(self.right)
-        return data[top : (bottom + 1), left : (right + 1), ...]
+        top, bottom, left, right = (
+            round(self.top),
+            round(self.bottom),
+            round(self.left),
+            round(self.right),
+        )
+        new_data = data[top : (bottom + 1), left : (right + 1), ...]
+        return new_data
 
     def intersects_with(self, rect: Rectangle) -> bool:
         """
@@ -752,8 +749,8 @@ class Rectangle(Geometry):
     @classmethod
     def allowed_transforms(cls):
         """ """
-        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.alpha_mask import AlphaMask
+        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
 
