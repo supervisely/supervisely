@@ -2,7 +2,7 @@ import copy
 import time
 import uuid
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import supervisely
 from supervisely.annotation.annotation import Annotation
@@ -30,6 +30,7 @@ class GridGalleryV2(Widget):
         show_filter: bool = True,
         fill_rectangle: bool = True,
         border_width: int = 3,
+        default_tag_filters: List[Union[str, dict]] = None,
         widget_id: str = None,
     ):
         self._data = []
@@ -58,6 +59,11 @@ class GridGalleryV2(Widget):
         self._enable_pointer_events: bool = enable_pointer_events
         self._transparent_background: bool = transparent_background
         self._show_filter: bool = show_filter
+
+        self._filters_tags = default_tag_filters
+        # if filters_tags is not None:
+        #     if isinstance(filters_tags[0], str):
+        #         self._filters_tags = {tag_name: None for tag_name in filters_tags}
 
         # self._show_opacity_header: bool = show_opacity_slider
         # self._opacity: float = annotations_opacity
@@ -176,6 +182,7 @@ class GridGalleryV2(Widget):
         project_meta: ProjectMeta,
         title: str = "",
         column_index: int = None,
+        ignore_tags_filtering: bool = False,
         # zoom_to: int = None,
         # zoom_factor: float = 1.2,
         # title_url=None,
@@ -188,6 +195,15 @@ class GridGalleryV2(Widget):
             ).hex
         )
 
+        if ignore_tags_filtering is True:
+            pass
+
+        # {
+        #     "layoutDataKey": "ann_2",
+        #     "options": {
+        #     "skipObjectTagsFiltering": true
+        #     }
+        # }
         self._data.append(
             {
                 "image_url": image_url,
@@ -201,6 +217,7 @@ class GridGalleryV2(Widget):
                 #     title if title_url is None else title + ' <i class="zmdi zmdi-open-in-new"></i>'
                 # ),
                 "cell_uuid": cell_uuid,
+                "skipObjectTagsFiltering": ignore_tags_filtering,
                 # "zoom_to": zoom_to,
                 # "zoom_factor": zoom_factor,
                 # "title_url": title_url,
@@ -221,7 +238,14 @@ class GridGalleryV2(Widget):
         layout = [[] for _ in range(self.columns_number)]
 
         for cell_data in self._data:
-            layout[cell_data["column_index"]].append(cell_data["cell_uuid"])
+            tmp = cell_data["cell_uuid"]
+            if cell_data.get("skipObjectTagsFiltering") is True:
+                tmp = {
+                    "layoutDataKey": cell_data["cell_uuid"],
+                    "options": {"skipObjectTagsFiltering": True},
+                }
+
+            layout[cell_data["column_index"]].append(tmp)
 
         self._layout = copy.deepcopy(layout)
         DataJson()[self.widget_id]["content"]["layout"] = self._layout
@@ -275,11 +299,20 @@ class GridGalleryV2(Widget):
     def _update_project_meta(self):
         DataJson()[self.widget_id]["content"]["projectMeta"] = self._generate_project_meta()
 
+    def _update_filters(self):
+        filters = []
+        if self._filters_tags is not None:
+            for filters_tag in self._filters_tags:
+                tmp = list(filters_tag.items())[0]
+                filters.append({"type": "tag", "tagId": tmp[0], "value": tmp[1]})
+        StateJson()[self.widget_id]["filters"] = filters
+
     def _update(self):
         self._update_layout()
         self._update_annotations()
         self._update_object_bindings()
         self._update_project_meta()
+        self._update_filters()
 
         DataJson().send_changes()
         StateJson().send_changes()
