@@ -45,10 +45,10 @@ class PlotlyChart(Widget):
         """
 
         type: Optional[str]
-        x: Optional[int]
-        y: Optional[int]
-        z: Optional[int]
-        i: Optional[int]
+        x: Union[int, float, str, None]
+        y: Union[int, float, str, None]
+        z: Union[int, float, str, None]
+        i: Union[int, float, str, None]
         curveNumber: Optional[int]
         pointIndex: Optional[int]
         label: Optional[str]
@@ -154,7 +154,7 @@ class PlotlyChart(Widget):
 
         return _click
 
-    def get_clicked_datapoint(self) -> Union[PlotlyChart.ClickedDataPoint, None]:
+    def get_clicked_datapoint(self) -> Union[List[PlotlyChart.ClickedDataPoint], None]:
         points = StateJson()[self.widget_id]["clicked_value"]
         if not isinstance(points, list):
             return None
