@@ -272,11 +272,9 @@ class Bitmap(BitmapBase):
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_impl"""
         # self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
-
         rect = self.to_bbox()
         cropped_slice = rect.get_cropped_numpy_slice(bitmap)
         slice = cropped_slice[self.data] = color
-        print(slice)
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_contour_impl"""

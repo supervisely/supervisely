@@ -189,7 +189,7 @@ class Polyline(VectorGeometry):
         exterior_np, _ = self._round_exterior_interior_coords_np()
         exterior = exterior_np[:, ::-1]
         if thickness == -1:
-            thickness = 1
+            thickness = 0
         cv2.polylines(bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness)
 
     @property

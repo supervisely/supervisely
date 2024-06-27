@@ -32,7 +32,7 @@ def random_polyline_int() -> Tuple[
     Polyline,
     List[Tuple[Union[int, float], Union[int, float]]],
 ]:
-    exterior = [(random.randint(0, 500), random.randint(0, 500)) for _ in range(5)]
+    exterior = [(random.randint(0, 500), random.randint(0, 500)) for _ in range(10)]
     poly = Polyline(exterior=exterior)
     return poly, exterior
 
@@ -43,7 +43,7 @@ def random_polyline_float() -> Tuple[
     List[Tuple[Union[int, float], Union[int, float]]],
 ]:
     exterior = [
-        (round(random.uniform(0, 500), 6), round(random.uniform(0, 500), 6)) for _ in range(5)
+        (round(random.uniform(0, 500), 6), round(random.uniform(0, 500), 6)) for _ in range(10)
     ]
     poly = Polyline(exterior=exterior)
     return poly, exterior
@@ -230,6 +230,13 @@ def test_get_mask(random_polyline_int, random_polyline_float, random_image):
         poly, exterior = get_polyline_and_exterior(polyline)
         img_size = random_image.shape[:2]
         mask = poly.get_mask(img_size)
+
+        # debug draw mask
+        # import os
+        # import supervisely as sly
+        # mask_uint8 = np.uint8(mask * 255)
+        # sly.image.write(os.path.join(os.getcwd(), "mask.png"), mask_uint8)
+
         assert mask.shape == img_size, "Mask shape should match image size"
         assert mask.dtype == bool, "Mask dtype should be boolean"
         assert np.any(mask), "Mask should have at least one True value"

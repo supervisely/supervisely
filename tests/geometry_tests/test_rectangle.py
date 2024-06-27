@@ -168,9 +168,8 @@ def test_rotate(random_rect_int, random_rect_float, random_image):
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_rect = rect.rotate(rotator)
-
-        rotated_corners = [rotator.transform_point(p) for p in rect.corners]
-        rows, cols = zip(*[(p.row, p.col) for p in rotated_corners])
+        expected_corners = [rotator.transform_point(p) for p in rect.corners]
+        rows, cols = zip(*[(p.row, p.col) for p in expected_corners])
         assert rotated_rect.top == min(rows)
         assert rotated_rect.left == min(cols)
         assert rotated_rect.bottom == max(rows)

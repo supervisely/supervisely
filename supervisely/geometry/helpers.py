@@ -16,7 +16,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 def _geometry_to_mask_base(
-    geomtery_type: Union[AlphaMask, Bitmap],
+    geometry_type: Union[AlphaMask, Bitmap],
     geometry: Geometry,
     radius: Optional[int] = 0,
     crop_image_shape: Optional[Tuple] = None,
@@ -31,14 +31,21 @@ def _geometry_to_mask_base(
         bottom=bbox.bottom + radius,
         right=bbox.right + radius,
     )
+
+    if isinstance(geometry, AlphaMask):
+        fill_value, color = 0, 255
+
+    else:
+        fill_value, color = False, True
+
     bitmap_data = np.full(
-        shape=(round(extended_bbox.height), round(extended_bbox.width)), fill_value=False
+        shape=(round(extended_bbox.height), round(extended_bbox.width)), fill_value=fill_value
     )
     geometry = geometry.translate(-extended_bbox.top, -extended_bbox.left)
-    geometry.draw(bitmap_data, color=True, thickness=thickness)
+    geometry.draw(bitmap_data, color=color, thickness=thickness)
 
     origin = PointLocation(extended_bbox.top, extended_bbox.left)
-    bitmap_geometry = geomtery_type(data=bitmap_data, origin=origin)
+    bitmap_geometry = geometry_type(data=bitmap_data, origin=origin)
     if crop_image_shape is not None:
         crop_rect = Rectangle.from_size(*crop_image_shape)
         return bitmap_geometry.crop(crop_rect)

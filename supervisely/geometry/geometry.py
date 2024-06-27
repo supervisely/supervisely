@@ -208,7 +208,7 @@ class Geometry(JsonSerializable):
         raise NotImplementedError()
 
     def clone(self):
-        """Clone from GEOMETRYYY"""
+        """Clone from Geometry"""
         return deepcopy(self)
 
     def validate(self, obj_class_shape, settings):
