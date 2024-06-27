@@ -3,18 +3,13 @@ from __future__ import annotations
 import os
 from typing import List, Optional, Tuple, Union
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
 from tqdm import tqdm
 
 from supervisely._utils import is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
-from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -193,7 +188,7 @@ class BaseConverter:
     def validate_upload_method(self, upload_as_links: bool = False) -> bool:
         """
         Validate if the converter supports the uploading by links
-        (restrict for all converters, must be overridden in subclasses if supported).
+        (restricted for all converters, must be overridden in subclasses if supported).
         """
         return upload_as_links is False
 
@@ -241,8 +236,10 @@ class BaseConverter:
             if converter.__name__ == "BaseConverter":
                 continue
             converter = converter(self._input_data, self._labeling_interface)
-            converter.upload_as_links = self.upload_as_links
-            converter.remote_files_map = self.remote_files_map
+
+            if self.modality in ["images", "videos"]:  # pylint: disable=no-member
+                converter.upload_as_links = self.upload_as_links
+                converter.remote_files_map = self.remote_files_map
 
             if not converter.validate_labeling_interface():
                 continue
