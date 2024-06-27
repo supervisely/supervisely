@@ -1,9 +1,11 @@
+import inspect
 import random
 from typing import List, Tuple, Union
 
 import cv2
 import numpy as np
 import pytest
+from test_geometry import draw_test
 
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
@@ -84,19 +86,19 @@ def check_origin_equal(bitmap: Bitmap, origin: List[Union[int, float]]):
 
 
 def test_geometry_name(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.geometry_name() == "bitmap"
 
 
 def test_name(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.name() == "bitmap"
 
 
 def test_to_json(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         base_64_data = bitmap.data_2_base64(data)
         expected_json = {
@@ -108,7 +110,7 @@ def test_to_json(random_mask_int, random_mask_float, random_image):
 
 
 def test_from_json(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         base_64_data = bitmap.data_2_base64(data)
         bitmap_json = {
@@ -122,11 +124,11 @@ def test_from_json(random_mask_int, random_mask_float, random_image):
 
 
 def test_crop(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         rect = Rectangle(top=10, left=10, bottom=20, right=20)
         cropped_bitmaps = bitmap.crop(rect)
-        for cropped_bitmap in cropped_bitmaps:
+        for cidx, cropped_bitmap in enumerate(cropped_bitmaps, 1):
 
             bitmap_height, bitmap_width = bitmap.data.shape[0], bitmap.data.shape[1]
 
@@ -144,23 +146,28 @@ def test_crop(random_mask_int, random_mask_float, random_image):
             assert cropped_bitmap.data.size > 0, "Cropped bitmap data is empty."
             assert cropped_bitmap.data.shape[0] == round(expected_height) + 1
             assert cropped_bitmap.data.shape[1] == round(expected_width) + 1
+            function_name = inspect.currentframe().f_code.co_name
+            draw_test(f"{function_name}_{cidx}_geometry_{idx}", random_image, cropped_bitmap)
 
 
 def test_relative_crop(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         cropper = Rectangle(top=10, left=10, bottom=20, right=20)
         cropped_bitmaps = bitmap.relative_crop(cropper)
-        for cropped_bitmap in cropped_bitmaps:
+        for cidx, cropped_bitmap in enumerate(cropped_bitmaps):
             assert isinstance(cropped_bitmap, Bitmap)
             assert cropped_bitmap.data.size > 0, "Cropped bitmap data is empty."
             assert bitmap.data.shape != cropped_bitmap.data.shape
             assert bitmap.data.shape[0] != cropped_bitmap.data.shape[0]
             assert bitmap.data.shape[1] != cropped_bitmap.data.shape[1]
 
+            function_name = inspect.currentframe().f_code.co_name
+            draw_test(f"{function_name}_{cidx}_geometry_{idx}", random_image, cropped_bitmap)
+
 
 def test_rotate(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
@@ -168,18 +175,24 @@ def test_rotate(random_mask_int, random_mask_float, random_image):
         assert isinstance(rotated_bitmap, Bitmap)
         assert rotated_bitmap.data.shape != data.shape
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, rotated_bitmap)
+
 
 def test_resize(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         in_size = data.shape[:2]
         out_size = (in_size[0] // 2, in_size[1] // 2)
         resized_bitmap = bitmap.resize(in_size, out_size)
         assert resized_bitmap.data.shape == out_size
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, resized_bitmap)
+
 
 def test_scale(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         factor = round(random.uniform(0, 1), 3)
         bitmap, data, origin = get_bitmap_data_origin(mask)
         scaled_bitmap = bitmap.scale(factor)
@@ -188,93 +201,127 @@ def test_scale(random_mask_int, random_mask_float, random_image):
             round(data.shape[1] * factor),
         )
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, scaled_bitmap)
+
 
 def test_translate(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         drow, dcol = random.randint(10, 150), random.randint(10, 350)
         translated_bitmap = bitmap.translate(drow, dcol)
         expected_trans_origin = [origin[0] + drow, origin[1] + dcol]
         check_origin_equal(translated_bitmap, expected_trans_origin)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, translated_bitmap)
+
 
 def test_fliplr(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         img_size = random_image.shape[:2]
         flipped_bitmap = bitmap.fliplr(img_size)
         assert np.array_equal(flipped_bitmap.data, np.fliplr(data))
+        draw_test(f"fliplr_geometry_{idx}", random_image, flipped_bitmap)
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, flipped_bitmap)
 
 
 def test_flipud(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         img_size = random_image.shape[:2]
         flipped_bitmap = bitmap.flipud(img_size)
         assert np.array_equal(flipped_bitmap.data, np.flipud(data))
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, flipped_bitmap)
+
 
 def test_draw_bool_compatible(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap._draw_bool_compatible(bitmap._draw_impl, random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image)
+
 
 def test_draw(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap.draw(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image)
+
 
 def test_get_mask(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bmask = bitmap.get_mask(random_image.shape)
         assert bmask.shape == random_image.shape
         assert bmask.dtype == np.bool
         assert np.any(bmask == True)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image, bmask)
+
 
 def test_draw_impl(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap._draw_impl(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image)
+
 
 def test_draw_contour(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap.draw_contour(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image)
+
 
 def test__draw_contour_impl(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap._draw_contour_impl(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", random_image)
+
 
 def test_area(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.area == np.sum(data)
 
 
 def test_to_bbox(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap_bbox = bitmap.to_bbox()
         assert isinstance(bitmap_bbox, Rectangle)
         assert round(bitmap_bbox.height) == data.shape[0]
         assert round(bitmap_bbox.width) == data.shape[1]
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(f"{function_name}_geometry_{idx}", bitmap_bbox)
+
 
 def test_clone(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         cloned_bitmap = bitmap.clone()
         assert isinstance(cloned_bitmap, Bitmap)
@@ -282,7 +329,7 @@ def test_clone(random_mask_int, random_mask_float, random_image):
 
 
 def test_validate(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.validate(bitmap.geometry_name(), settings=None) is None
         with pytest.raises(
@@ -292,7 +339,7 @@ def test_validate(random_mask_int, random_mask_float, random_image):
 
 
 def test_config_from_json(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         config = {"key": "value"}
         returned_config = bitmap.config_from_json(config)
@@ -300,7 +347,7 @@ def test_config_from_json(random_mask_int, random_mask_float, random_image):
 
 
 def test_config_to_json(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         config = {"key": "value"}
         returned_config = bitmap.config_to_json(config)
@@ -308,14 +355,14 @@ def test_config_to_json(random_mask_int, random_mask_float, random_image):
 
 
 def test_allowed_transforms(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         allowed_transforms = bitmap.allowed_transforms()
         assert set(allowed_transforms) == set([AlphaMask, AnyGeometry, Polygon, Rectangle])
 
 
 def test_convert(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.convert(type(bitmap)) == [bitmap]
         assert bitmap.convert(AnyGeometry) == [bitmap]
@@ -323,6 +370,9 @@ def test_convert(random_mask_int, random_mask_float, random_image):
             converted = bitmap.convert(new_geometry)
             for g in converted:
                 assert isinstance(g, new_geometry) or isinstance(g, Bitmap)
+
+                function_name = inspect.currentframe().f_code.co_name
+                draw_test(f"{function_name}_geometry_{idx}_converted_{g.name()}", random_image, g)
 
         with pytest.raises(
             NotImplementedError,
@@ -336,19 +386,19 @@ def test_convert(random_mask_int, random_mask_float, random_image):
 
 
 def test_data(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert np.array_equal(bitmap.data, data)
 
 
 def test_origin(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         check_origin_equal(bitmap, origin)
 
 
 def test_base64_2_data(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         encoded = bitmap.data_2_base64(data)
         decoded = Bitmap.base64_2_data(encoded)
@@ -356,7 +406,7 @@ def test_base64_2_data(random_mask_int, random_mask_float, random_image):
 
 
 def test_data_2_base64(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         encoded = bitmap.data_2_base64(data)
         decoded = Bitmap.base64_2_data(encoded)
@@ -364,26 +414,30 @@ def test_data_2_base64(random_mask_int, random_mask_float, random_image):
 
 
 def test_skeletonize(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         for method in SkeletonizeMethod:
             skeleton = bitmap.skeletonize(method)
             assert isinstance(skeleton, Bitmap)
 
+            function_name = inspect.currentframe().f_code.co_name
+            draw_test(f"{function_name}_geometry_{idx}_{method.name}", random_image, skeleton)
+
 
 def test_to_contours(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         contours = bitmap.to_contours()
         assert isinstance(contours, list), "Output should be a list"
         assert len(contours) > 0, "List should not be empty"
-        assert all(
-            isinstance(contour, Polygon) for contour in contours
-        ), "All elements in the list should be numpy arrays"
+        for cidx, contour in enumerate(contours, 1):
+            assert isinstance(contour, Polygon), "All elements in the list should be Polygons"
+            function_name = inspect.currentframe().f_code.co_name
+            draw_test(f"{function_name}_{cidx}_geometry_{idx}", random_image, contour)
 
 
 def test_bitwise_mask(random_mask_int, random_mask_float, random_image):
-    for mask in [random_mask_int, random_mask_float]:
+    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         return
         # @TODO: Fix this test
