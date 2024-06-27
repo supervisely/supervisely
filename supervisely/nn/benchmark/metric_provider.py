@@ -77,7 +77,7 @@ class MetricProvider:
         self.fn_matches = [m for m in self.matches if m["type"] == "FN"]
         self.confused_matches = [m for m in self.fp_matches if m["miss_cls"]]
         self.fp_not_confused_matches = [m for m in self.fp_matches if not m["miss_cls"]]
-        self.ious = np.array([m["iou"] for m in self.matches if m["iou"]])
+        self.ious = np.array([m["iou"] for m in self.tp_matches])
 
         # Counts
         self.true_positives, self.false_negatives, self.false_positives = self._init_counts()
@@ -141,13 +141,13 @@ class MetricProvider:
         f1[(precision + recall) == 0.0] = 0.0
         iou = np.mean(self.ious)
         classification_accuracy = self.TP_count / (self.TP_count + confuse_count)
-        calibration_score = 1 - self.calibration_metrics.maximum_calibration_error()
+        calibration_score = 1 - self.calibration_metrics.expected_calibration_error()
 
         return {
             "mAP": mAP,
-            "f1": f1.mean(),
-            "precision": precision.mean(),
-            "recall": recall.mean(),
+            "f1": np.nanmean(f1),
+            "precision": np.nanmean(precision),
+            "recall": np.nanmean(recall),
             "iou": iou,
             "classification_accuracy": classification_accuracy,
             "calibration_score": calibration_score,
@@ -398,6 +398,9 @@ class CalibrationMetrics:
 
     def maximum_calibration_error(self):
         return metrics.maximum_calibration_error(self.y_true, self.scores, n_bins=10)
+
+    def expected_calibration_error(self):
+        return metrics.expected_calibration_error(self.y_true, self.scores, n_bins=10)
 
     def scores_tp_and_fp(self, iou_idx=0):
         tps = self.iou_idxs > iou_idx
