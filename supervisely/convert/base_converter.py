@@ -237,14 +237,14 @@ class BaseConverter:
                 continue
             converter = converter(self._input_data, self._labeling_interface)
 
+            if not converter.validate_labeling_interface():
+                continue
+
             if self.modality in ["images", "videos"]:  # pylint: disable=no-member
                 converter.upload_as_links = self.upload_as_links
                 converter.remote_files_map = self.remote_files_map
-
-            if not converter.validate_labeling_interface():
-                continue
-            if not converter.validate_upload_method(upload_as_links=self.upload_as_links):
-                continue
+                if not converter.validate_upload_method(upload_as_links=self.upload_as_links):
+                    continue
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)
