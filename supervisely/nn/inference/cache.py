@@ -83,10 +83,14 @@ class PersistentImageTTLCache(TTLCache):
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
-        existing = set(self.__get_keys())
+        # pylint: disable=no-member
+        existing_items = self._Cache__data.copy()
+        sly.logger.debug("items:", extra={"itmes": existing_items})
         super().expire(time)
-        deleted = existing.difference(self.__get_keys())
+        deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
+            for key in deleted:
+                silent_remove(existing_items[key])
             sly.logger.debug(f"Deleted keys: {deleted}")
 
     def clear(self, rm_base_folder=True) -> None:
@@ -100,14 +104,14 @@ class PersistentImageTTLCache(TTLCache):
             self._base_dir.mkdir()
 
         filepath = self._base_dir / f"{str(key)}.png"
-        super(PersistentImageTTLCache, self).__setitem__(key, filepath)
+        self[key] = filepath
 
         if filepath.exists():
             sly.logger.debug(f"Rewrite image {str(filepath)}")
         sly.image.write(str(filepath), image)
 
     def get_image_path(self, key: Any) -> Path:
-        return super().__getitem__(key)
+        return self[key]
 
     def get_image(self, key: Any):
         return sly.image.read(str(self[key]))
@@ -116,16 +120,16 @@ class PersistentImageTTLCache(TTLCache):
         video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
-        super().__setitem__(video_id, video_path)
+        self[video_id] = video_path
 
     def get_video_path(self, video_id: int) -> Path:
-        return super().__getitem__(video_id)
+        return self[video_id]
 
     def save_project_meta(self, key, value):
-        super().__setitem__(key, value)
+        self[key] = value
 
     def get_project_meta(self, project_meta_name):
-        return super().__getitem__(project_meta_name)
+        return self[project_meta_name]
 
 
 class InferenceImageCache:
