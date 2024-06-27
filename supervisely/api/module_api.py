@@ -538,6 +538,8 @@ class ApiField:
     """"""
     NODE = "node"
     """"""
+    OPERATOR = "operator"
+    """"""
 
 
 def _get_single_item(items):

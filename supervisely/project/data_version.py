@@ -92,19 +92,22 @@ class DataVersion(ModuleApiBase):
         if self.project_info.version is None:
             self._create_warning_system_file()
 
-    def get_list(self, project_id: int) -> List[VersionInfo]:
+    def get_list(self, project_id: int, filters: List = None) -> List[VersionInfo]:
         """
         Get list of project versions.
 
         :param project_id: Project ID
         :type project_id: int
+        :param filters: Filters
+        :type filters: Optional[List]
         :return: List of project versions
         :rtype: List[VersionInfo]
         """
-        return self.get_list_all_pages(
-            "projects.versions.list",
-            {ApiField.PROJECT_ID: project_id},
-        )
+        data = {ApiField.PROJECT_ID: project_id}
+        if filters:
+            data[ApiField.FILTER] = filters
+
+        return self.get_list_all_pages("projects.versions.list", data)
 
     def get_id_by_number(self, project_id: int, version_num: int) -> int:
         """
@@ -117,10 +120,16 @@ class DataVersion(ModuleApiBase):
         :return: Version ID
         :rtype: int or None
         """
-        versions = self.get_list(project_id)
-        for version in versions:
-            if version.version == version_num:
-                return version.id
+        filter = [
+            {
+                ApiField.FIELD: ApiField.VERSION,
+                ApiField.OPERATOR: "=",
+                ApiField.VALUE: int(version_num),
+            }
+        ]
+        versions = self.get_list(project_id, filters=filter)
+        if len(versions) > 0:
+            return versions[0].id
         return None
 
     def get_map(self, project_info: Union[ProjectInfo, int], do_initialization: bool = True):
