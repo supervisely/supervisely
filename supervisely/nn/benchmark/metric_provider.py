@@ -142,9 +142,9 @@ class MetricProvider:
 
         return {
             "mAP": mAP,
-            "f1": f1.mean(),
-            "precision": precision.mean(),
-            "recall": recall.mean(),
+            "f1": np.nanmean(f1),
+            "precision": np.nanmean(precision),
+            "recall": np.nanmean(recall),
             "iou": iou,
             "classification_accuracy": classification_accuracy,
             "calibration_score": calibration_score
