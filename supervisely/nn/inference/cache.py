@@ -84,22 +84,7 @@ class PersistentImageTTLCache(TTLCache):
     def expire(self, time=None):
         """Remove expired items from the cache."""
         existing = set(self.__get_keys())
-        if time is None:
-            # pylint: disable=no-member
-            time = self._TTLCache__timer()
-        # pylint: disable=no-member
-        root = self._TTLCache__root
-        curr = root.next
-        # pylint: disable=no-member
-        links = self._TTLCache__links
-        cache_delitem = Cache.__delitem__
-        while curr is not root and curr.expire < time:
-            self.__del_file(curr.key)
-            cache_delitem(self, curr.key)
-            del links[curr.key]
-            next = curr.next
-            curr.unlink()
-            curr = next
+        super().expire(time)
         deleted = existing.difference(self.__get_keys())
         if len(deleted) > 0:
             sly.logger.debug(f"Deleted keys: {deleted}")
