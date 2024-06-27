@@ -281,6 +281,7 @@ class InferenceImageCache:
         self, api: sly.Api, video_id: int, frame_indexes: List[int], **kwargs
     ) -> List[np.ndarray]:
         return_images = kwargs.get("return_images", True)
+        redownload_video = kwargs.get("redownload_video", False)
 
         if video_id in self._cache:
             try:
@@ -290,6 +291,8 @@ class InferenceImageCache:
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
                 Thread(target=self.download_video, args=(api, video_id)).start()
+        elif redownload_video:
+            Thread(target=self.download_video, args=(api, video_id)).start()
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)

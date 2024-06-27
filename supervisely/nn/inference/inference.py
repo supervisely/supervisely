@@ -944,7 +944,7 @@ class Inference:
             logger.debug(
                 f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
-            frames = self.cache.download_frames(api, video_info.id, batch)
+            frames = self.cache.download_frames(api, video_info.id, batch, redownload_video=True)
             data_to_return = {}
             anns = self._inference_images_batch(
                 source=frames,
@@ -973,7 +973,10 @@ class Inference:
         video_ann_json = None
         if tracker is not None:
             frames = self.cache.download_frames(
-                api, video_info.id, range(start_frame_index, start_frame_index + n_frames)
+                api,
+                video_info.id,
+                range(start_frame_index, start_frame_index + n_frames),
+                redownload_video=True,
             )
             video_ann_json = tracker.get_annotation(
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
