@@ -181,7 +181,7 @@ class ImageConverter(BaseConverter):
 
     def validate_image(self, path: str) -> Tuple[str, str]:
         if self.upload_as_links:
-            return self._remote_files_map.get(path)
+            return self.remote_files_map.get(path)
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
