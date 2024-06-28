@@ -296,9 +296,15 @@ class InferenceImageCache:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
-                Thread(target=self.download_video, args=(api, video_id)).start()
+                Thread(
+                    target=self.download_video,
+                    args=(api, video_id),
+                    kwargs={"return_images": False},
+                ).start()
         elif redownload_video:
-            Thread(target=self.download_video, args=(api, video_id)).start()
+            Thread(
+                target=self.download_video, args=(api, video_id), kwargs={"return_images": False}
+            ).start()
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
