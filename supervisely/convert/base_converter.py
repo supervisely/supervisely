@@ -177,7 +177,7 @@ class BaseConverter:
         return self._upload_as_links
 
     @property
-    def remote_files_map(self) -> dict:
+    def remote_files_map(self) -> Dict[str, str]:
         return self._remote_files_map
 
     def validate_upload_method(self, upload_as_links: bool = False) -> bool:
