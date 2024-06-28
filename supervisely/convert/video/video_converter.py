@@ -146,6 +146,7 @@ class VideoConverter(BaseConverter):
         else:
             has_large_files = False
             progress_cb, progress = None, None
+            ann_progress, ann_progress_cb = None, None
             batch_size = 1
 
         for batch in batched(self._items, batch_size=batch_size):
@@ -184,8 +185,6 @@ class VideoConverter(BaseConverter):
 
                 if log_progress and has_large_files and figures_cnt > 0:
                     ann_progress, ann_progress_cb = self.get_progress(figures_cnt, "Uploading annotations...")
-                else:
-                    ann_progress, ann_progress_cb = None, None
 
                 for video_id, ann in zip(vid_ids, anns):
                     if ann is None:
@@ -195,9 +194,8 @@ class VideoConverter(BaseConverter):
         if log_progress and is_development():
             if progress is not None: # pylint: disable=possibly-used-before-assignment
                 progress.close()
-            if not self.upload_as_links:
-                if ann_progress is not None:
-                    ann_progress.close()
+            if not self.upload_as_links and ann_progress is not None:
+                ann_progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def convert_to_mp4_if_needed(self, video_path):
