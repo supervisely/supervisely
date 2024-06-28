@@ -1,7 +1,7 @@
 import os
+from pathlib import Path
 
 from tqdm import tqdm
-from pathlib import Path
 
 try:
     from typing import Literal
@@ -85,28 +85,22 @@ class ImportManager:
 
     def get_converter(self):
         """Return correct converter"""
-        if str(self._modality) == ProjectType.IMAGES.value:
-            return ImageConverter(
-                self._input_data,
-                self._labeling_interface,
-                self._upload_as_links,
-                self._remote_files_map,
-            )._converter
-        elif str(self._modality) == ProjectType.VIDEOS.value:
-            return VideoConverter(
-                self._input_data,
-                self._labeling_interface,
-                self._upload_as_links,
-                self._remote_files_map,
-            )._converter
-        elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
-            return PointcloudConverter(self._input_data, self._labeling_interface)._converter
-        elif str(self.modality) == ProjectType.VOLUMES.value:
-            return VolumeConverter(self._input_data, self._labeling_interface)._converter
-        elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
-            return PointcloudEpisodeConverter(self._input_data, self._labeling_interface)._converter
-        else:
+        modality_converter_map = {
+            ProjectType.IMAGES.value: ImageConverter,
+            ProjectType.VIDEOS.value: VideoConverter,
+            ProjectType.POINT_CLOUDS.value: PointcloudConverter,
+            ProjectType.VOLUMES.value: VolumeConverter,
+            ProjectType.POINT_CLOUD_EPISODES.value: PointcloudEpisodeConverter,
+        }
+        if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
+        modality_converter = modality_converter_map[str(self._modality)](
+            self._input_data,
+            self._labeling_interface,
+            self._upload_as_links,
+            self._remote_files_map,
+        )
+        return modality_converter.detect_format()
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""

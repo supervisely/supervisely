@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import List, Union
+from typing import Dict, Optional, Union
 
 import cv2
 import magic
@@ -9,7 +9,6 @@ from supervisely import (
     Api,
     KeyIdMap,
     Progress,
-    ProjectMeta,
     VideoAnnotation,
     batched,
     generate_free_name,
@@ -24,6 +23,7 @@ from supervisely.io.fs import (
     get_file_size,
     silent_remove,
 )
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
@@ -77,18 +77,12 @@ class VideoConverter(BaseConverter):
     def __init__(
             self,
             input_data: str,
-            labeling_interface: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
             upload_as_links: bool,
-            remote_files_map: dict = None,
+            remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        self._input_data: str = input_data
-        self._meta: ProjectMeta = None
-        self._items: List[self.Item] = []
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._key_id_map: KeyIdMap = None
-        self._labeling_interface: str = labeling_interface
-        self._upload_as_links: bool = upload_as_links
-        self._remote_files_map: Union[dict, None] = remote_files_map
-        self._converter = self._detect_format()
 
     @property
     def format(self):
@@ -101,12 +95,6 @@ class VideoConverter(BaseConverter):
     @property
     def key_file_ext(self):
         return None
-
-    def get_meta(self) -> ProjectMeta:
-        return self._meta
-
-    def get_items(self) -> List[BaseConverter.BaseItem]:
-        return self._items
 
     @staticmethod
     def validate_ann_file(ann_path, meta=None):

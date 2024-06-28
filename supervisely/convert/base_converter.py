@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -137,15 +137,18 @@ class BaseConverter:
     def __init__(
         self,
         input_data: str,
-        labeling_interface: Optional[LabelingInterface] = LabelingInterface.DEFAULT,
+        labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
+        remote_files_map: Optional[Dict[str, str]] = None,
     ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
         self._upload_as_links: bool = upload_as_links
-        self._remote_files_map: dict = {}
+        self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
+        self._support_links = False # if converter supports uploading by links
+        self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
             raise ValueError(
@@ -173,24 +176,14 @@ class BaseConverter:
     def upload_as_links(self) -> bool:
         return self._upload_as_links
 
-    @upload_as_links.setter
-    def upload_as_links(self, upload_as_links: bool) -> None:
-        self._upload_as_links = upload_as_links
-
     @property
     def remote_files_map(self) -> dict:
         return self._remote_files_map
 
-    @remote_files_map.setter
-    def remote_files_map(self, remote_files_map: dict) -> None:
-        self._remote_files_map = remote_files_map
-
     def validate_upload_method(self, upload_as_links: bool = False) -> bool:
-        """
-        Validate if the converter supports the uploading by links
-        (restricted for all converters, must be overridden in subclasses if supported).
-        """
-        return upload_as_links is False
+        """Validate if the converter supports the uploading by links"""
+
+        return upload_as_links is False or upload_as_links is True and self._support_links
 
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == LabelingInterface.DEFAULT
@@ -200,6 +193,10 @@ class BaseConverter:
 
     def validate_key_file(self) -> bool:
         raise NotImplementedError()
+
+    def detect_format(self) -> BaseConverter:
+        self._converter = self._detect_format()
+        return self._converter
 
     def validate_format(self) -> bool:
         """
@@ -235,16 +232,18 @@ class BaseConverter:
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
-            converter = converter(self._input_data, self._labeling_interface)
+            converter = converter(
+                self._input_data,
+                self._labeling_interface,
+                self._upload_as_links,
+                self._remote_files_map,
+            )
 
             if not converter.validate_labeling_interface():
                 continue
 
-            if self.modality in ["images", "videos"]:  # pylint: disable=no-member
-                converter.upload_as_links = self.upload_as_links
-                converter.remote_files_map = self.remote_files_map
-                if not converter.validate_upload_method(upload_as_links=self.upload_as_links):
-                    continue
+            if not converter.validate_upload_method(upload_as_links=self.upload_as_links):
+                continue
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)

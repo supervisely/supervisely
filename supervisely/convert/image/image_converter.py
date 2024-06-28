@@ -1,5 +1,5 @@
 import mimetypes
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import magic
@@ -81,21 +81,6 @@ class ImageConverter(BaseConverter):
                 self.set_shape()
             return Annotation(self._shape)
 
-    def __init__(
-        self,
-        input_data: str,
-        labeling_interface: str,
-        upload_as_links: bool = False,
-        remote_files_map: dict = None,
-    ):
-        self._input_data: str = input_data
-        self._meta: ProjectMeta = None
-        self._items: List[self.Item] = []
-        self._labeling_interface: str = labeling_interface
-        self._upload_as_links: bool = upload_as_links
-        self._remote_files_map: Union[dict, None] = remote_files_map
-        self._converter = self._detect_format()
-
     @property
     def format(self) -> str:
         return self._converter.format
@@ -107,12 +92,6 @@ class ImageConverter(BaseConverter):
     @property
     def key_file_ext(self) -> str:
         return None
-
-    def get_meta(self) -> ProjectMeta:
-        return self._meta
-
-    def get_items(self) -> List[BaseConverter.BaseItem]:
-        return super().get_items()
 
     @staticmethod
     def validate_ann_file(ann_path: str, meta: ProjectMeta = None) -> bool:

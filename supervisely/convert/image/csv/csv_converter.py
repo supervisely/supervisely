@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -25,6 +25,7 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.io.json import load_json_file
+from supervisely.project.project_settings import LabelingInterface
 
 
 class CSVConverter(ImageConverter):
@@ -76,13 +77,17 @@ class CSVConverter(ImageConverter):
         ".tsv": csv_helper.convert_tsv_to_csv,
     }
 
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._csv_reader = None
         self._team_id = None
-        self._labeling_interface: str = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.CSV

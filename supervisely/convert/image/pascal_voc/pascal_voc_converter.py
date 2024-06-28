@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Dict, Optional, Union
 
 from supervisely import Annotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailableImageConverters
@@ -13,6 +13,7 @@ from supervisely.io.fs import (
     list_files_recursively,
     remove_junk_from_dir,
 )
+from supervisely.project.project_settings import LabelingInterface
 
 
 class PascalVOCConverter(ImageConverter):
@@ -42,16 +43,20 @@ class PascalVOCConverter(ImageConverter):
         def inst_path(self, inst_path: str) -> None:
             self._inst_path = inst_path
 
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self.color2class_name = None
         self.with_instances = False
         self._imgs_dir = None
         self._segm_dir = None
         self._inst_dir = None
-        self._labeling_interface = labeling_interface
         self._bbox_classes_map = {}
 
     def __str__(self) -> str:
