@@ -1,12 +1,16 @@
+import inspect
+import os
 import random
 from typing import Dict, List, Tuple, Union
 
+import cv2
 import numpy as np
 import pytest
+from test_geometry import draw_test
 
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.bitmap import Bitmap, SkeletonizeMethod
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point import Point
@@ -14,15 +18,16 @@ from supervisely.geometry.point_location import PointLocation, _flip_row_col_ord
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.io.fs import get_file_name
 
+dir_name = get_file_name(os.path.abspath(__file__))
 # Draw Settings
 color = [255, 255, 255]
 thickness = 1
 
 
-@pytest.fixture
-def random_image() -> np.ndarray:
-    image_shape = (random.randint(100, 1000), random.randint(100, 1000), 3)
+def get_random_image() -> np.ndarray:
+    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
     background_color = [0, 0, 0]
     bitmap = np.full(image_shape, background_color, dtype=np.uint8)
     return bitmap
@@ -78,20 +83,20 @@ def check_graphs_equal(graph1: GraphNodes, graph2: GraphNodes) -> bool:
     return True
 
 
-def test_geometry_name(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_geometry_name(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         assert graph.geometry_name() == "graph"
 
 
-def test_name(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_name(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         assert graph.name() == "graph"
 
 
-def test_to_json(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_to_json(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
 
         node_json = graph.to_json()
@@ -105,8 +110,8 @@ def test_to_json(random_kp_int, random_kp_float, random_image):
         assert node_json == expected_json
 
 
-def test_from_json(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_from_json(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
 
         graph_json = {
@@ -119,8 +124,8 @@ def test_from_json(random_kp_int, random_kp_float, random_image):
         check_graphs_equal(graph, graph_from_json)
 
 
-def test_crop(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_crop(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
 
         min_x = min(coord[0] for coord in coords.values()) - 1
@@ -138,9 +143,16 @@ def test_crop(random_kp_int, random_kp_float, random_image):
         cropped_no_inside = graph.crop(no_inside_rect)
         assert len(cropped_no_inside) == 0, "Crop failed when no nodes are inside the rectangle"
 
+        for cidx, cropped_graph in enumerate(cropped_all_inside, 1):
+            random_image = get_random_image()
+            function_name = inspect.currentframe().f_code.co_name
+            draw_test(
+                dir_name, f"{function_name}_{cidx}_geometry_{idx}", random_image, cropped_graph
+            )
 
-def test_relative_crop(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_relative_crop(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
 
         min_x = min(coord[0] for coord in coords.values())
@@ -160,10 +172,18 @@ def test_relative_crop(random_kp_int, random_kp_float, random_image):
         cropped_outside = graph.relative_crop(outside_rect)
         assert len(cropped_outside) == 0, "Crop outside graph bounds failed"
 
+        for cidx, cropped_graph in enumerate(cropped_and_shifted, 1):
+            random_image = get_random_image()
+            function_name = inspect.currentframe().f_code.co_name
+            draw_test(
+                dir_name, f"{function_name}_{cidx}_geometry_{idx}", random_image, cropped_graph
+            )
 
-def test_rotate(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_rotate(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_graph = graph.rotate(rotator)
@@ -172,9 +192,12 @@ def test_rotate(random_kp_int, random_kp_float, random_image):
             assert graph_node.location.row == rotated_pt.row
             assert graph_node.location.col == rotated_pt.col
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_graph)
 
-def test_resize(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_resize(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
 
         in_size = (300, 400)
@@ -186,9 +209,13 @@ def test_resize(random_kp_int, random_kp_float, random_image):
             assert graph_node.location.row == resized_pt.row
             assert graph_node.location.col == resized_pt.col
 
+        random_image = get_random_image()
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, resized_graph)
 
-def test_scale(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_scale(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
 
         scale_factor = 0.75
@@ -198,9 +225,13 @@ def test_scale(random_kp_int, random_kp_float, random_image):
             assert graph_node.location.row == scaled_pt.row
             assert graph_node.location.col == scaled_pt.col
 
+        random_image = get_random_image()
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, scaled_graph)
 
-def test_translate(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_translate(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         drow = 10
         dcol = 20
@@ -210,83 +241,120 @@ def test_translate(random_kp_int, random_kp_float, random_image):
             assert graph_node.location.row == translated_pt.row
             assert graph_node.location.col == translated_pt.col
 
+        random_image = get_random_image()
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, translated_graph)
 
-def test_fliplr(random_kp_int, random_kp_float, random_image):
-    img_size = (300, 400)
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_fliplr(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
+        img_size = random_image.shape[:2]
         fliplr_graph = graph.fliplr(img_size)
         for node, graph_node in zip(nodes.values(), fliplr_graph.nodes.values()):
             fliplr_pt = node.location.fliplr(img_size)
             assert graph_node.location.row == fliplr_pt.row
             assert graph_node.location.col == fliplr_pt.col
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, fliplr_graph)
 
-def test_flipud(random_kp_int, random_kp_float, random_image):
-    img_size = (300, 400)
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_flipud(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
+        img_size = random_image.shape[:2]
         flipud_graph = graph.fliplr(img_size)
         for node, graph_node in zip(nodes.values(), flipud_graph.nodes.values()):
             flipud_pt = node.location.fliplr(img_size)
             assert graph_node.location.row == flipud_pt.row
             assert graph_node.location.col == flipud_pt.col
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, flipud_graph)
 
-def test__draw_bool_compatible(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test__draw_bool_compatible(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
-        graph._draw_bool_compatible(graph._draw_impl, random_image, 255, 1)
+        random_image = get_random_image()
+        graph._draw_bool_compatible(graph._draw_impl, random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
-def test_draw(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_draw(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
-        graph.draw(random_image, 255, 1)
+        random_image = get_random_image()
+        graph.draw(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
-def test_get_mask(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_get_mask(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
         mask = graph.get_mask(random_image.shape[:2])
         assert mask.shape == random_image.shape[:2]
         assert mask.dtype == np.bool
         assert np.any(mask == True)
 
+        new_bitmap = Bitmap(mask)
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, new_bitmap)
 
-def test__draw_impl(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test__draw_impl(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
         graph._draw_impl(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
-def test_draw_contour(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_draw_contour(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
         graph.draw_contour(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
-def test__draw_contour_impl(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test__draw_contour_impl(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
+        random_image = get_random_image()
         graph._draw_contour_impl(random_image, color, thickness)
         assert np.any(random_image == color)
 
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
-def test_area(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_area(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         area = graph.area
         assert isinstance(area, float)
         assert area >= 0
 
 
-def test_to_bbox(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_to_bbox(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         bbox = graph.to_bbox()
 
@@ -300,45 +368,49 @@ def test_to_bbox(random_kp_int, random_kp_float, random_image):
         assert bbox.bottom == max_x, "Bottom X coordinate of bbox is incorrect"
         assert bbox.right == max_y, "Right Y coordinate of bbox is incorrect"
 
+        random_image = get_random_image()
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, bbox)
 
-def test_clone(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+
+def test_clone(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         cloned_graph = graph.clone()
         check_graphs_equal(graph, cloned_graph)
 
 
-def test_validate(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_validate(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         graph.validate("graph", {"nodes": coords})
 
 
-def test_config_from_json(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_config_from_json(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         config = {"nodes": {}}
         returned_config = graph.config_from_json(config)
         assert returned_config == config
 
 
-def test_config_to_json(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_config_to_json(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         config = {"nodes": {}}
         returned_config = graph.config_to_json(config)
         assert returned_config == config
 
 
-def test_allowed_transforms(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_allowed_transforms(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         allowed_transforms = graph.allowed_transforms()
         assert set(allowed_transforms) == set([AnyGeometry, Rectangle])
 
 
-def test_convert(random_kp_int, random_kp_float, random_image):
-    for graph_nodes in [random_kp_int, random_kp_float]:
+def test_convert(random_kp_int, random_kp_float):
+    for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
         assert graph.convert(type(graph)) == [graph]
         assert graph.convert(AnyGeometry) == [graph]
@@ -346,6 +418,15 @@ def test_convert(random_kp_int, random_kp_float, random_image):
             converted = graph.convert(new_geometry)
             for g in converted:
                 assert isinstance(g, new_geometry) or isinstance(g, GraphNodes)
+
+                random_image = get_random_image()
+                function_name = inspect.currentframe().f_code.co_name
+                draw_test(
+                    dir_name,
+                    f"{function_name}_geometry_{idx}_converted_{g.name()}",
+                    random_image,
+                    g,
+                )
 
         with pytest.raises(
             NotImplementedError,
