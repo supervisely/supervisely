@@ -1,5 +1,7 @@
 # coding: utf-8
 
+from typing import List
+
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -156,14 +158,16 @@ class TagApi(ModuleApi):
         self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap
     ):
         """
-        Add Tags to Annotation Objects.
+        Add Tags to Annotation Objects for a specific entity (image etc.).
 
-        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :param entity_id: ID of the entity in Supervisely to add a tag to its objects
         :type entity_id: int
-        :param project_id: Project ID in Supervisely.
+        :param project_id: Project ID in Supervisely. Uses to get tag name to tag ID mapping.
         :type project_id: int
-        :param tags_json: Collection of tags
-        :type tags_json: KeyIndexedCollection
+        :param objects: Collection of Annotation Objects.
+        :type objects: KeyIndexedCollection
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
         :return: List of tags IDs
         :rtype: list
         :Usage example:
@@ -176,8 +180,8 @@ class TagApi(ModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            pointcloud_id = 19373170
-            pcd_info = api.
+            img_id = 19373170
+            img_info = api.
         """
 
         tag_name_id_map = self.get_name_to_id_map(project_id)
@@ -206,12 +210,13 @@ class TagApi(ModuleApi):
             return
         ids = self.append_to_objects_json(entity_id, tags_to_add)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
+        return ids
 
     def append_to_objects_json(self, entity_id: int, tags_json: dict) -> list:
         """
-        Add Tags to Annotation Objects.
+        Add Tags to Annotation Objects for specific entity (image etc.).
 
-        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :param entity_id: ID of the entity in Supervisely to add a tag to its objects
         :type entity_id: int
         :param tags_json: Collection of tags in JSON format
         :type tags_json: dict
@@ -227,3 +232,70 @@ class TagApi(ModuleApi):
         )
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
+
+    def add_to_figures(self, project_id: int, tags_list: List[dict]):
+        """
+        Add Tags to existing Annotation Figures.
+        All figures must belong to entities of the same project.
+        Applies only to images project.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_list: List of tag object infos as dictionaries.
+        :type tags_list: List[dict]
+
+        Usage example:
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address, token)
+
+            tag_list = [
+                {
+                    "tagId": 25926,
+                    "figureId": 652959,
+                    "value": None # value is optional for tag with type 'None'
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652959,
+                    "value": "v1"
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652958,
+                    "value": "v2"
+                }
+            ]
+            response = api.image.tag.add_to_figures(12345, tag_list)
+
+            print(response)
+            # Output:
+            #    [
+            #        {
+            #            "id": 80421101,
+            #            "tagId": 25926,
+            #            "figureId": 652959,
+            #            "value": None
+            #        },
+            #        {
+            #            "id": 80421102,
+            #            "tagId": 25927,
+            #            "figureId": 652959,
+            #            "value": "v1"
+            #        },
+            #        {
+            #            "id": 80421103,
+            #            "tagId": 25927,
+            #            "figureId": 652958,
+            #            "value": "v2"
+            #        }
+            #    ]
+        """
+        if type(self) is not TagApi:
+            raise NotImplementedError("This method is not available for classes except TagApi")
+
+        data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: tags_list}
+        response = self._api.post("figures.tags.bulk.add", data)
+        return response.json()
