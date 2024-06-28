@@ -147,7 +147,7 @@ class BaseConverter:
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
-        self._support_links = False # if converter supports uploading by links
+        self._supports_links = False # if converter supports uploading by links
         self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
@@ -180,10 +180,9 @@ class BaseConverter:
     def remote_files_map(self) -> Dict[str, str]:
         return self._remote_files_map
 
-    def validate_upload_method(self, upload_as_links: bool = False) -> bool:
-        """Validate if the converter supports the uploading by links"""
-
-        return upload_as_links is False or upload_as_links is True and self._support_links
+    @property
+    def supports_links(self) -> bool:
+        return self._supports_links
 
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == LabelingInterface.DEFAULT
@@ -242,8 +241,9 @@ class BaseConverter:
             if not converter.validate_labeling_interface():
                 continue
 
-            if not converter.validate_upload_method(upload_as_links=self.upload_as_links):
+            if self.upload_as_links and not converter.supports_links:
                 continue
+
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)
