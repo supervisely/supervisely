@@ -167,10 +167,11 @@ class ImportManager:
     def _scan_remote_files(self, remote_path, is_dir=False):
         """Scan remote directory and create dummy structure locally"""
 
+        dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         if is_dir:
             dir_name = os.path.basename(os.path.normpath(remote_path))
         else:
-            dir_name = os.path.basename(os.path.dirname(remote_path))
+            dir_name = os.path.basename(dir_path)
         local_path = os.path.join(get_data_dir(), dir_name)
         mkdir(local_path, remove_content_if_exists=True)
 
@@ -180,7 +181,7 @@ class ImportManager:
             files = [self._api.storage.get_info_by_path(self._team_id, remote_path)]
 
         for file in files:
-            new_path = file.path.replace(remote_path.rstrip("/"), local_path)
+            new_path = file.path.replace(dir_path, local_path)
             self._remote_files_map[new_path] = file.path
             Path(new_path).parent.mkdir(parents=True, exist_ok=True)
             touch(new_path)
