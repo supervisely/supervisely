@@ -22,8 +22,7 @@
       <div v-if="state.{{{widget.widget_id}}}.project_mode === 'new_project'">
         <el-input placeholder="Please input project name" v-model="state.{{{widget.widget_id}}}.project_name"></el-input>
         <div class="mt5" style="color: #5a6772">
-          <i>If project with the same name already exists, a new name will be
-            generated automatically</i>
+          <i>If project with the same name already exists, a new name will be generated automatically</i>
         </div>
       </div>
       <div v-if="state.{{{widget.widget_id}}}.project_mode === 'existing_project'">
@@ -67,8 +66,7 @@
       <div v-if="state.{{{widget.widget_id}}}.dataset_mode === 'new_dataset'">
         <el-input placeholder="Please input dataset name" v-model="state.{{{widget.widget_id}}}.dataset_name"></el-input>
         <div class="mt5" style="color: #5a6772">
-          <i>If dataset with the same name already exists, a new name will be
-            generated automatically</i>
+          <i>If dataset with the same name already exists, a new name will be generated automatically</i>
         </div>
       </div>
       <div v-if="state.{{{widget.widget_id}}}.dataset_mode === 'existing_dataset'">
@@ -79,30 +77,30 @@
     </div>
   </sly-field>
   
-<sly-field 
-  title="Conflict resolution"
-  v-if="state.{{{widget.widget_id}}}.dataset_id"
-  description="Select which conflict resolution method to use while uploading images"
->
-  <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
-    <el-option label="Rename" value="rename">Rename</el-option>
-    <el-option label="Skip" value="skip">Skip</el-option>
-    <el-option label="Replace" value="replace">Replace</el-option>
-  </el-select>
+  <sly-field 
+    title="Conflict resolution"
+    v-if="state.{{{widget.widget_id}}}.dataset_id || state.{{{widget.widget_id}}}.use_project_datasets_structure"
+    description="Select which conflict resolution method to use while uploading images"
+  >
+    <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
+      <el-option label="Rename" value="rename">Rename</el-option>
+      <el-option label="Skip" value="skip">Skip</el-option>
+      <el-option label="Replace" value="replace">Replace</el-option>
+    </el-select>
 
-  <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'rename'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
-    <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
-    Existing images will be renamed to avoid conflicts.
-  </div>
+    <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'rename'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
+      <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
+      Existing images will be renamed to avoid conflicts.
+    </div>
 
-  <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'skip'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
-    <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
-    Existing images will be kept, and new conflicting images will not be uploaded.
-  </div>
+    <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'skip'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
+      <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
+      Existing images will be kept, and new conflicting images will not be uploaded.
+    </div>
 
-  <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'replace'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
-    <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
-    Existing images will be replaced with the new ones. The existing images will be removed in the process, this action could not be reverted.
-  </div>
-</sly-field>
+    <div v-if="state.{{{widget.widget_id}}}.conflict_resolution === 'replace'" style="margin-top: 10px; color: #5a6772; font-style: italic;">
+      <i class="el-icon-info" style="margin-right: 5px; color: #3B96FF;"></i>
+      Existing images will be replaced with the new ones. The existing images will be removed in the process, this action could not be reverted.
+    </div>
+  </sly-field>
 </div> 
