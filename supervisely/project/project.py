@@ -2850,6 +2850,7 @@ class Project:
             other_figures = []
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
             old_alpha_figure_ids = []
+            tags_list = []  # to append tags to figures in bulk
             if log_progress:
                 ds_fig_progress = tqdm_sly(
                     desc="Processing figures for images in {!r}".format(dataset_name),
@@ -2916,7 +2917,12 @@ class Project:
             for new_of_id, tags in zip(all_figure_ids, all_figure_tags.values()):
                 for tag_id, tag_value in tags:
                     new_tag_id = old_new_tags_mapping[tag_id]
-                    api.advanced.add_tag_to_object(new_tag_id, new_of_id, tag_value)
+                    tags_list.append(
+                        {"tagId": new_tag_id, "figureId": new_of_id, "value": tag_value}
+                    )
+            api.image.tag.add_to_figures(
+                new_project_info.id, tags_list, batch_size=300, log_progress=True
+            )
         return new_project_info
 
     @staticmethod
