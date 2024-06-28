@@ -79,7 +79,7 @@
   
   <sly-field 
     title="Conflict resolution"
-    v-if="state.{{{widget.widget_id}}}.dataset_id || state.{{{widget.widget_id}}}.use_project_datasets_structure"
+    v-if="state.{{{widget.widget_id}}}.project_mode === 'existing_project' && (state.{{{widget.widget_id}}}.dataset_id || state.{{{widget.widget_id}}}.use_project_datasets_structure)"
     description="Select which conflict resolution method to use while uploading images"
   >
     <el-select v-model="state.{{{widget.widget_id}}}.conflict_resolution" placeholder="Select conflict resolution method">
@@ -103,4 +103,4 @@
       Existing images will be replaced with the new ones. The existing images will be removed in the process, this action could not be reverted.
     </div>
   </sly-field>
-</div> 
+</div>
