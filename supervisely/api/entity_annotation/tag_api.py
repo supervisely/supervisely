@@ -2,8 +2,10 @@
 
 from typing import List
 
+from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -233,7 +235,13 @@ class TagApi(ModuleApi):
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
-    def add_to_figures(self, project_id: int, tags_list: List[dict]):
+    def add_to_figures(
+        self,
+        project_id: int,
+        tags_list: List[dict],
+        batch_size: int = 100,
+        log_progress: bool = False,
+    ) -> List[dict]:
         """
         Add Tags to existing Annotation Figures.
         All figures must belong to entities of the same project.
@@ -243,6 +251,12 @@ class TagApi(ModuleApi):
         :type project_id: int
         :param tags_list: List of tag object infos as dictionaries.
         :type tags_list: List[dict]
+        :param batch_size: Number of tags to add in one request.
+        :type batch_size: int
+        :param log_progress: If True, will display a progress bar.
+        :type log_progress: bool
+        :return: List of tags infos as dictionaries.
+        :rtype: List[dict]
 
         Usage example:
         .. code-block:: python
@@ -296,6 +310,19 @@ class TagApi(ModuleApi):
         if type(self) is not TagApi:
             raise NotImplementedError("This method is not available for classes except TagApi")
 
-        data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: tags_list}
-        response = self._api.post("figures.tags.bulk.add", data)
-        return response.json()
+        if len(tags_list) == 0:
+            return []
+
+        result = []
+        if log_progress:
+            ds_progress = tqdm_sly(
+                desc="Uploading tags to figures",
+                total=len(tags_list),
+            )
+        for batch in batched(tags_list, batch_size):
+            data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
+            response = self._api.post("figures.tags.bulk.add", data)
+            result.extend(response.json())
+            if log_progress:
+                ds_progress.update(len(batch))
+        return result
