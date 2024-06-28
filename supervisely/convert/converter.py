@@ -105,15 +105,9 @@ class ImportManager:
                 self._labeling_interface,
             )._converter
         elif str(self.modality) == ProjectType.VOLUMES.value:
-            return VolumeConverter(
-                self._input_data,
-                self._labeling_interface,
-            )._converter
+            return VolumeConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
-            return PointcloudEpisodeConverter(
-                self._input_data,
-                self._labeling_interface,
-            )._converter
+            return PointcloudEpisodeConverter(self._input_data, self._labeling_interface)._converter
         else:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
 
