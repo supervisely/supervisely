@@ -100,10 +100,7 @@ class ImportManager:
                 self._remote_files_map,
             )._converter
         elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
-            return PointcloudConverter(
-                self._input_data,
-                self._labeling_interface,
-            )._converter
+            return PointcloudConverter(self._input_data, self._labeling_interface)._converter
         elif str(self.modality) == ProjectType.VOLUMES.value:
             return VolumeConverter(self._input_data, self._labeling_interface)._converter
         elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
