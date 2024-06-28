@@ -10,11 +10,6 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
 
 
 class PlyConverter(PointcloudConverter):
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[PointcloudConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.PLY

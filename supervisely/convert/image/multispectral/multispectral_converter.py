@@ -21,11 +21,6 @@ ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
 
 
 class MultiSpectralImageConverter(ImageConverter):
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.MULTISPECTRAL

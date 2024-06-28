@@ -1,12 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Tuple, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -14,7 +9,7 @@ from supervisely._utils import is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
-from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -142,12 +137,18 @@ class BaseConverter:
     def __init__(
         self,
         input_data: str,
-        labeling_interface: Optional[LabelingInterface] = LabelingInterface.DEFAULT,
+        labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
+        upload_as_links: bool = False,
+        remote_files_map: Optional[Dict[str, str]] = None,
     ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+        self._upload_as_links: bool = upload_as_links
+        self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
+        self._supports_links = False # if converter supports uploading by links
+        self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
             raise ValueError(
@@ -171,6 +172,18 @@ class BaseConverter:
     def key_file_ext(self) -> str:
         raise NotImplementedError()
 
+    @property
+    def upload_as_links(self) -> bool:
+        return self._upload_as_links
+
+    @property
+    def remote_files_map(self) -> Dict[str, str]:
+        return self._remote_files_map
+
+    @property
+    def supports_links(self) -> bool:
+        return self._supports_links
+
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == LabelingInterface.DEFAULT
 
@@ -179,6 +192,10 @@ class BaseConverter:
 
     def validate_key_file(self) -> bool:
         raise NotImplementedError()
+
+    def detect_format(self) -> BaseConverter:
+        self._converter = self._detect_format()
+        return self._converter
 
     def validate_format(self) -> bool:
         """
@@ -214,9 +231,19 @@ class BaseConverter:
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
-            converter = converter(self._input_data, self._labeling_interface)
+            converter = converter(
+                self._input_data,
+                self._labeling_interface,
+                self._upload_as_links,
+                self._remote_files_map,
+            )
+
             if not converter.validate_labeling_interface():
                 continue
+
+            if self.upload_as_links and not converter.supports_links:
+                continue
+
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)
