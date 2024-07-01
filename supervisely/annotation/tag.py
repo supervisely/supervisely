@@ -3,17 +3,17 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict, Union
-from supervisely.annotation.tag_meta import TagMeta
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
+from typing import Dict, List, Optional, Union
 
-from supervisely.annotation.tag_meta import TagValueType
-from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely._utils import take_with_default
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.collection.key_indexed_collection import KeyObject
+from supervisely.collection.str_enum import StrEnum
 
 
-class TagJsonFields:
+class TagJsonFields(StrEnum):
     """Json fields for :class:`Annotation<supervisely.annotation.tag.Tag>`"""
 
     TAG_NAME = "name"
@@ -219,9 +219,7 @@ class Tag(KeyObject):
             #  "createdAt": "2021-01-22T18:00:00.000Z"
             # }
         """
-        res = {
-            TagJsonFields.TAG_NAME: self.meta.name
-        }
+        res = {TagJsonFields.TAG_NAME: self.meta.name}
         if self.meta.value_type != TagValueType.NONE:
             res[TagJsonFields.VALUE] = self.value
         if self.labeler_login is not None:
