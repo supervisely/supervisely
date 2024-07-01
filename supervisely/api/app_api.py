@@ -853,10 +853,11 @@ class AppApi(TaskApi):
         data_type = data.get("data_type")
         data_id = data.get("data_id") if data_type != "app_session" else node_id
         data_meta = data.get("meta", {})
-        if meta and validate_json(meta, self.__custom_meta_schema):
-            data_meta.update(meta)
-        else:
-            logger.warn("Invalid customization meta, will not be added to the node.")
+        if meta is not None:
+            if validate_json(meta, self.__custom_meta_schema):
+                data_meta.update(meta)
+            else:
+                logger.warn("Invalid customization meta, will not be added to the node.")
 
         payload = {
             ApiField.TEAM_ID: self.team_id,
