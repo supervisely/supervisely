@@ -15,6 +15,9 @@ from starlette.templating import _TemplateResponse
 
 import supervisely as sly
 
+_offline_session_uploader = None
+_pending_offline_session = None
+
 
 def get_static_paths_by_mounted_object(mount) -> list:
     StaticPath = namedtuple("StaticPath", ["local_path", "url_path"])
@@ -150,22 +153,39 @@ def dump_files_to_supervisely(app: FastAPI, template_response):
         os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "False"
 
 
+def _upload_offline_session():
+    global _pending_offline_session
+    sly.logger.info(f"Start dumping app UI for offline mode")
+    if _pending_offline_session is not None:
+        app, template_response = _pending_offline_session
+        _pending_offline_session = None
+        dump_files_to_supervisely(app, template_response)
+    if _pending_offline_session is not None:
+        _upload_offline_session()
+
+
 def available_after_shutdown(app: FastAPI):
     def func_layer_wrapper(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
+            global _offline_session_uploader
+            global _pending_offline_session
             template_response = f(*args, **kwargs)
             sly.logger.debug(f"response type: {type(template_response)}")
             if not isinstance(template_response, _TemplateResponse):
                 return template_response
             try:
                 if sly.utils.is_production():
-                    sly.logger.info(f"Start dumping app UI for offline mode")
-                    threading.Thread(
-                        target=functools.partial(dump_files_to_supervisely, app, template_response),
-                        daemon=False,
-                    ).start()
-
+                    _pending_offline_session = (app, template_response)
+                    if (
+                        _offline_session_uploader is None
+                        or not _offline_session_uploader.is_alive()
+                    ):
+                        _offline_session_uploader = threading.Thread(
+                            target=_upload_offline_session,
+                            daemon=False,
+                        )
+                        _offline_session_uploader.start()
             except Exception as ex:
                 traceback.print_exc()
                 sly.logger.warning(f"Cannot dump files for offline usage, reason: {ex}")
