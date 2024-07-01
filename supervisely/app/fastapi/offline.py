@@ -84,7 +84,7 @@ def get_offline_session_files_path(task_id) -> pathlib.Path:
     return pathlib.Path("/", "offline-sessions", str(task_id), "app-template")
 
 
-def upload_to_supervisely(static_dir_path: pathlib.Path):
+def upload_to_supervisely(static_dir_path):
     api_token = sly.env.spawn_api_token(raise_not_found=False) or sly.env.api_token()
     # spawn_api_token - is a token of user, that spawned application.
     # api_token - is a token of user for which application was spawned.
@@ -98,17 +98,6 @@ def upload_to_supervisely(static_dir_path: pathlib.Path):
     task_id = sly.env.task_id(raise_not_found=False)
     task_id = 0000 if task_id is None else task_id
     remote_dir = get_offline_session_files_path(task_id)
-
-    def _iter_dir(path: pathlib.Path):
-        for sub in path.iterdir():
-            if sub.is_dir():
-                yield from _iter_dir(sub)
-            else:
-                yield sub
-
-    sly.logger.debug("Static dir to dump:")
-    for p in _iter_dir(static_dir_path):
-        sly.logger.debug(f"{p.as_posix()}")
 
     res_remote_dir: str = api.file.upload_directory(
         team_id=team_id,
@@ -171,7 +160,6 @@ def available_after_shutdown(app: FastAPI):
             global _offline_session_uploader
             global _pending_offline_session
             template_response = f(*args, **kwargs)
-            sly.logger.debug(f"response type: {type(template_response)}")
             if not isinstance(template_response, _TemplateResponse):
                 return template_response
             try:

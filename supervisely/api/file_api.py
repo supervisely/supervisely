@@ -807,8 +807,6 @@ class FileApi(ModuleApiBase):
             return open(path, "rb")
 
         content_dict = []
-        log_data = []
-        total = 0
         for idx, (src, dst) in enumerate(zip(src_paths, dst_paths)):
             name = get_file_name_with_ext(dst)
             content_dict.append((ApiField.NAME, name))
@@ -826,12 +824,6 @@ class FileApi(ModuleApiBase):
                     ),
                 )
             )
-            size = os.path.getsize(src) / 1024
-            log_data.append({ApiField.NAME: name, ApiField.PATH: dst_dir, "size": f"{size:.3f} KB"})
-            total += size
-
-        logger.debug("Uploading files:", extra={"files_data": log_data, "total": f"{total:.3f} KB"})
-
         encoder = MultipartEncoder(fields=content_dict)
 
         # progress = None
@@ -1349,8 +1341,7 @@ class FileApi(ModuleApiBase):
         else:
             res_remote_dir = remote_dir
 
-        local_files = sorted(list_files_recursively(local_dir))
-        assert len(local_files) == len(set(local_files)), "Duplicate files in the directory"
+        local_files = list_files_recursively(local_dir)
         remote_files = []
         dir_parts = local_dir.strip("/").split("/")
         for file in local_files:
