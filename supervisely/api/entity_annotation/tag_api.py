@@ -235,7 +235,7 @@ class TagApi(ModuleApi):
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
-    def add_to_figures(
+    def add_to_objects(
         self,
         project_id: int,
         tags_list: List[dict],
