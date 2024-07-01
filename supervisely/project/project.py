@@ -2748,20 +2748,15 @@ class Project:
 
         alpha_mask_name = sly.AlphaMask.name()
         project_info: sly.ProjectInfo
-        meta: dict
+        meta: ProjectMeta
         dataset_infos: List[sly.DatasetInfo]
         image_infos: List[ImageInfo]
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
-        if isinstance(file, io.BytesIO):
+        with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
             project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = pickle.load(
-                file
+                f
             )
-        else:
-            with open(file, "rb") as f:
-                project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
-                    pickle.load(f)
-                )
 
         if project_name is None:
             project_name = project_info.name
@@ -2769,9 +2764,10 @@ class Project:
             workspace_id, project_name, change_name_if_conflict=True
         )
         custom_data = new_project_info.custom_data
+        version_num = project_info.version.get("version", None)
         custom_data["restored_from"] = {
             "project_id": project_info.id,
-            "version": project_info.version,
+            "version_num": version_num + 1 if version_num else "Unable to determine",
         }
         if with_custom_data:
             custom_data.update(project_info.custom_data)
@@ -2794,25 +2790,27 @@ class Project:
             )
         )
         dataset_mapping = {}
-        new_dataset_infos = []
         # Sort datasets by parent, so that datasets with parent = 0 are processed first
         sorted_dataset_infos = sorted(
-            dataset_infos,
-            key=lambda dataset: float("inf") if dataset.parent_id is None else dataset.parent_id,
+            dataset_infos, key=lambda dataset: (dataset.parent_id is not None, dataset.parent_id)
         )
 
         for dataset_info in sorted_dataset_infos:
             dataset_info: sly.DatasetInfo
+            new_parent_id = (
+                dataset_mapping.get(dataset_info.parent_id).id if dataset_info.parent_id else None
+            )
             new_dataset_info = api.dataset.create(
-                new_project_info.id, dataset_info.name, parent_id=dataset_info.parent_id
+                new_project_info.id, dataset_info.name, parent_id=new_parent_id
             )
             if new_dataset_info is None:
                 raise RuntimeError(f"Failed to restore dataset {dataset_info.name}")
-            dataset_mapping[dataset_info.id] = (new_dataset_info.id, new_dataset_info.name)
-            new_dataset_infos.append(new_dataset_info)
+            dataset_mapping[dataset_info.id] = new_dataset_info
         info_values_by_dataset = defaultdict(
-            lambda: {"infos": [], "ids": [], "names": [], "hashes": [], "metas": []}
+            lambda: {"infos": [], "ids": [], "names": [], "hashes": [], "metas": [], "links": []}
         )
+
+        image_infos = sorted(image_infos, key=lambda info: info.link is not None)
         for info in image_infos:
             info: ImageInfo
             info_values_by_dataset[info.dataset_id]["infos"].append(info)
@@ -2820,12 +2818,14 @@ class Project:
             info_values_by_dataset[info.dataset_id]["names"].append(info.name)
             info_values_by_dataset[info.dataset_id]["hashes"].append(info.hash)
             info_values_by_dataset[info.dataset_id]["metas"].append(info.meta)
-        for dataset_id, values in info_values_by_dataset.items():
+            info_values_by_dataset[info.dataset_id]["links"].append(info.link)
 
+        for dataset_id, values in info_values_by_dataset.items():
             dataset_name = None
             if dataset_id in dataset_mapping:
                 # return new dataset_id and name
-                dataset_id, dataset_name = dataset_mapping.get(dataset_id)
+                new_ds_info = dataset_mapping.get(dataset_id)
+                dataset_id, dataset_name = new_ds_info.id, new_ds_info.name
                 if dataset_id is None:
                     raise KeyError(f"Dataset ID {dataset_id} not found in mapping")
 
@@ -2836,14 +2836,58 @@ class Project:
                     total=len(values["names"]),
                 )
 
-            new_file_infos = api.image.upload_hashes(
-                dataset_id,
-                names=values["names"],
-                hashes=values["hashes"],
-                metas=values["metas"],
-                batch_size=200,
-                progress_cb=ds_progress,
-            )
+            # ------------------------------------ Determine Upload Method ----------------------------------- #
+
+            none_link_indices = [i for i, link in enumerate(values["links"]) if link is None]
+
+            if len(none_link_indices) == len(values["links"]):
+                new_file_infos = api.image.upload_hashes(
+                    dataset_id,
+                    names=values["names"],
+                    hashes=values["hashes"],
+                    metas=values["metas"],
+                    batch_size=200,
+                    progress_cb=ds_progress,
+                )
+            elif not none_link_indices:
+                new_file_infos = api.image.upload_links(
+                    dataset_id,
+                    names=values["names"],
+                    links=values["links"],
+                    metas=values["metas"],
+                    batch_size=200,
+                    progress_cb=ds_progress,
+                )
+            else:
+                if not all(
+                    none_link_indices[i] - none_link_indices[i - 1] == 1
+                    for i in range(1, len(none_link_indices))
+                ):
+                    raise ValueError(
+                        "Internal upload_bin Error. Images with links and without links are not in continuous blocks"
+                    )
+                i = none_link_indices[0]  # first image without link
+                j = none_link_indices[-1]  # last image without link
+
+                new_file_infos = api.image.upload_hashes(
+                    dataset_id,
+                    names=values["names"][i : j + 1],
+                    hashes=values["hashes"][i : j + 1],
+                    metas=values["metas"][i : j + 1],
+                    batch_size=200,
+                    progress_cb=ds_progress,
+                )
+                new_file_infos_link = api.image.upload_links(
+                    dataset_id,
+                    names=values["names"][j + 1 :],
+                    links=values["links"][j + 1 :],
+                    metas=values["metas"][j + 1 :],
+                    batch_size=200,
+                    progress_cb=ds_progress,
+                )
+                new_file_infos.extend(new_file_infos_link)
+            # ----------------------------------------------- - ---------------------------------------------- #
+
             # image_lists_by_tags -> tagId: {tagValue: [imageId]}
             image_lists_by_tags = defaultdict(lambda: defaultdict(list))
             alpha_figures = []
@@ -2920,7 +2964,7 @@ class Project:
                     tags_list.append(
                         {"tagId": new_tag_id, "figureId": new_of_id, "value": tag_value}
                     )
-            api.image.tag.add_to_figures(
+            api.image.tag.add_to_objects(
                 new_project_info.id, tags_list, batch_size=300, log_progress=True
             )
         return new_project_info
