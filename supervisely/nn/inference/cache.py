@@ -83,13 +83,10 @@ class PersistentImageTTLCache(TTLCache):
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
-        sly.logger.debug("Expire cache")
         # pylint: disable=no-member
         existing_items = self._Cache__data.copy()
-        sly.logger.debug("items:", extra={"itmes": existing_items})
         super().expire(time)
         deleted = set(existing_items.keys()).difference(self.__get_keys())
-        sly.logger.debug(f"Deleted keys: {deleted}")
         if len(deleted) > 0:
             for key in deleted:
                 silent_remove(existing_items[key])
