@@ -102,7 +102,10 @@ class PersistentImageTTLCache(TTLCache):
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
             for key in deleted:
-                silent_remove(existing_items[key])
+                try:
+                    silent_remove(existing_items[key])
+                except TypeError:
+                    pass
             sly.logger.debug(f"Deleted keys: {deleted}")
 
     def clear(self, rm_base_folder=True) -> None:
