@@ -194,6 +194,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             #     "finishedAt": "2019-12-19T12:13:09.701Z",
             #     "userId": 16154,
             #     "meta": {
+            #         "app": {
+            #             "id": 10370,
+            #             "name": "Auto Import",
+            #             "version": "test-branch",
+            #             "isBranch": true,
+            #         },
             #         "input": {
             #             "model": {
             #                 "id": 1849
@@ -1024,6 +1030,77 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "title": title,
                 "showLogs": show_logs,
                 "isError": True,
+            }
+        }
+
+        if description is not None:
+            output[ApiField.GENERAL]["description"] = description
+
+        resp = self._api.post(
+            "tasks.output.set",
+            {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output},
+        )
+        return resp.json()
+
+    def set_output_text(
+        self,
+        task_id: int,
+        title: str,
+        description: Optional[str] = None,
+        show_logs: Optional[bool] = False,
+        zmdi_icon: Optional[str] = "zmdi-comment-alt-text",
+        icon_color: Optional[str] = "#33c94c",
+        background_color: Optional[str] = "#d9f7e4",
+    ) -> Dict:
+        """
+        Set custom text message to the task output.
+
+        :param task_id: Application task ID.
+        :type task_id: int
+        :param title: Text message to be displayed in the task output.
+        :type title: str
+        :param description: Description to be displayed in the task output.
+        :type description: Optional[str]
+        :param show_logs: If True, the link to the task logs will be displayed in the task output.
+        :type show_logs: Optional[bool], default False
+        :param zmdi_icon: Icon class name from Material Design Icons (ZMDI).
+        :type zmdi_icon: Optional[str], default "zmdi-comment-alt-text"
+        :param icon_color: Icon color in HEX format.
+        :type icon_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)
+        :param background_color: Background color in HEX format.
+        :type background_color: Optional[str], default "#d9f7e4" (Cosmic Latte)
+        :return: Response JSON.
+        :rtype: Dict
+        :Usage example:
+
+        .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            task_id = 12345
+            title = "Task is finished"
+            api.task.set_output_text(task_id, title)
+        """
+
+        output = {
+            ApiField.GENERAL: {
+                "icon": {
+                    "className": f"zmdi {zmdi_icon}",
+                    "color": icon_color,
+                    "backgroundColor": background_color,
+                },
+                "title": title,
+                "showLogs": show_logs,
+                "isError": False,
             }
         }
 
