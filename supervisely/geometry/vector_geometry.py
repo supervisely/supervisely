@@ -2,20 +2,22 @@
 
 # docs
 from __future__ import annotations
+
 from copy import deepcopy
+from typing import Dict, Iterable, List, Optional, Tuple, Union
+
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Optional, Union, Iterable
-from supervisely.geometry.image_rotator import ImageRotator
 
 from supervisely.geometry.constants import (
     EXTERIOR,
-    INTERIOR,
-    POINTS,
     GEOMETRY_SHAPE,
     GEOMETRY_TYPE,
+    INTERIOR,
+    POINTS,
 )
 from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point_location import PointLocation, points_to_row_col_list
 from supervisely.geometry.rectangle import Rectangle
 
@@ -57,20 +59,18 @@ class VectorGeometry(Geometry):
     """
 
     def __init__(
-            self,
-            exterior: Union[
-                List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
-            ],
-            interior: Union[
-                List[List[PointLocation]],
-                List[List[List[int, int]]],
-                List[List[Tuple[int, int]]],
-            ] = [],
-            sly_id: Optional[int] = None,
-            class_id: Optional[int] = None,
-            labeler_login: Optional[int] = None,
-            updated_at: Optional[str] = None,
-            created_at: Optional[str] = None,
+        self,
+        exterior: Union[List[PointLocation], List[List[int, int]], List[Tuple[int, int]]],
+        interior: Union[
+            List[List[PointLocation]],
+            List[List[List[int, int]]],
+            List[List[Tuple[int, int]]],
+        ] = [],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
     ):
         result_exterior = []
         if not isinstance(exterior, list):
@@ -89,9 +89,7 @@ class VectorGeometry(Geometry):
 
         result_interior = []
         if not isinstance(interior, list):
-            raise TypeError(
-                'Argument "interior" must be a list of lists with coordinates'
-            )
+            raise TypeError('Argument "interior" must be a list of lists with coordinates')
         for coords in interior:
             if not isinstance(interior, list):
                 raise TypeError('"interior" coords must be a list of coordinates')
@@ -150,12 +148,9 @@ class VectorGeometry(Geometry):
         """
         packed_obj = {
             POINTS: {
-                EXTERIOR: points_to_row_col_list(
-                    self._exterior, flip_row_col_order=True
-                ),
+                EXTERIOR: points_to_row_col_list(self._exterior, flip_row_col_order=True),
                 INTERIOR: [
-                    points_to_row_col_list(i, flip_row_col_order=True)
-                    for i in self._interior
+                    points_to_row_col_list(i, flip_row_col_order=True) for i in self._interior
                 ],
             },
             GEOMETRY_SHAPE: self.geometry_name(),
@@ -197,7 +192,8 @@ class VectorGeometry(Geometry):
             #  [2479  402]
             #  [3746 1646]]
         """
-        return np.array(points_to_row_col_list(self._exterior), dtype=np.int64)
+        # return np.array(points_to_row_col_list(self._exterior), dtype=np.int64)
+        return np.array(points_to_row_col_list(self._exterior), dtype=np.float64)
 
     @property
     def interior(self) -> List[List[PointLocation]]:
@@ -232,21 +228,17 @@ class VectorGeometry(Geometry):
             #        [2468,  875],
             #        [2679, 1577]])]
         """
-        return [
-            np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._interior
-        ]
+        # return [np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._interior]
+        return [np.array(points_to_row_col_list(i), dtype=np.float64) for i in self._interior]
 
     def _transform(self, transform_fn):
-        """
-        """
+        """ """
         result = deepcopy(self)
         result._exterior = [transform_fn(p) for p in self._exterior]
         result._interior = [[transform_fn(p) for p in i] for i in self._interior]
         return result
 
-    def resize(
-            self, in_size: Tuple[int, int], out_size: Tuple[int, int]
-    ) -> VectorGeometry:
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> VectorGeometry:
         """
         Resizes current VectorGeometry.
 
@@ -382,12 +374,31 @@ class VectorGeometry(Geometry):
         """
         exterior_np = self.exterior_np
         rows, cols = exterior_np[:, 0], exterior_np[:, 1]
+        # return Rectangle(
+        #     top=round(min(rows).item()),
+        #     left=round(min(cols).item()),
+        #     bottom=round(max(rows).item()),
+        #     right=round(max(cols).item()),
+        # )
         return Rectangle(
-            top=round(min(rows).item()),
-            left=round(min(cols).item()),
-            bottom=round(max(rows).item()),
-            right=round(max(cols).item()),
+            top=min(rows).item(),
+            left=min(cols).item(),
+            bottom=max(rows).item(),
+            right=max(cols).item(),
         )
+
+    def _round_exterior_interior_coords(self):
+        """ """
+        exterior = [np.round(x).astype(np.int64) for x in self.exterior_np]
+        interior = [np.round(x).astype(np.int64) for x in self.interior_np]
+        return exterior, interior
+
+    def _round_exterior_interior_coords_np(self):
+        """ """
+        exterior_np = np.round(self.exterior_np).astype(np.int64)
+        interior_np = [np.round(x).astype(np.int64) for x in self.interior_np]
+
+        return exterior_np, interior_np
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """
@@ -407,8 +418,7 @@ class VectorGeometry(Geometry):
 
     @staticmethod
     def _approx_ring_dp(ring, epsilon, closed):
-        """
-        """
+        """ """
         new_ring = cv2.approxPolyDP(ring.astype(np.int32), epsilon, closed)
         new_ring = np.squeeze(new_ring, 1)
         if len(new_ring) < 3 and closed:
@@ -416,6 +426,5 @@ class VectorGeometry(Geometry):
         return new_ring
 
     def approx_dp(self, epsilon):
-        """
-        """
+        """ """
         raise NotImplementedError()

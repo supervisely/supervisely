@@ -216,18 +216,19 @@ class Polygon(VectorGeometry):
                 and len(intersection) > 0
                 and len(intersection[0]) >= 3
             ):
-                exterior = row_col_list_to_points(intersection[0], do_round=True)
+                exterior = row_col_list_to_points(intersection[0], do_round=False)
                 interiors = []
                 for interior_contour in intersection[1:]:
                     if len(interior_contour) > 2:
-                        interiors.append(row_col_list_to_points(interior_contour, do_round=True))
+                        interiors.append(row_col_list_to_points(interior_contour, do_round=False))
                 out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        exterior = self.exterior_np[:, ::-1]
-        interior = [x[:, ::-1] for x in self.interior_np]
+        exterior_np, interior_np = self._round_exterior_interior_coords_np()
+        exterior = exterior_np[:, ::-1]
+        interior = [x[:, ::-1] for x in interior_np]
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
         cv2.fillPoly(bmp_to_draw, pts=[exterior], color=1)
         cv2.fillPoly(bmp_to_draw, pts=interior, color=0)
@@ -236,8 +237,9 @@ class Polygon(VectorGeometry):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        exterior = self.exterior_np[:, ::-1]
-        interior = [x[:, ::-1] for x in self.interior_np]
+        exterior_np, interior_np = self._round_exterior_interior_coords_np()
+        exterior = exterior_np[:, ::-1]
+        interior = [x[:, ::-1] for x in interior_np]
 
         poly_lines = [exterior] + interior
         cv2.polylines(bitmap, pts=poly_lines, isClosed=True, color=color, thickness=thickness)
@@ -290,15 +292,15 @@ class Polygon(VectorGeometry):
         interior_np = [
             self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np
         ]
-        exterior = row_col_list_to_points(exterior_np, do_round=True)
-        interior = [row_col_list_to_points(x, do_round=True) for x in interior_np]
+        exterior = row_col_list_to_points(exterior_np, do_round=False)
+        interior = [row_col_list_to_points(x, do_round=False) for x in interior_np]
         return Polygon(exterior, interior)
 
     @classmethod
     def allowed_transforms(cls):
         """ """
-        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.alpha_mask import AlphaMask
+        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
 
