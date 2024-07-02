@@ -530,7 +530,8 @@ class ApiField:
     """"""
     LIMIT_BY_WORKSPACE = "limitByWorkspace"
     """"""
-
+    SMART_TOOL_INPUT = "smartToolInput"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
