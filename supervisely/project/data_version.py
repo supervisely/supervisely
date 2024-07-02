@@ -354,7 +354,11 @@ class DataVersion(ModuleApiBase):
         return True if reserve_info.get("success") else False
 
     def restore(
-        self, project_info: Union[ProjectInfo, int], version_id: int = None, version_num: int = None
+        self,
+        project_info: Union[ProjectInfo, int],
+        version_id: int = None,
+        version_num: int = None,
+        skip_missed_entities: bool = False,
     ) -> ProjectInfo:
         """
         Restore project to a specific version.
@@ -366,6 +370,8 @@ class DataVersion(ModuleApiBase):
         :type version_id: Optional[int]
         :param version_num: Version number
         :type version_num: Optional[int]
+        :param skip_missed_entities: Skip missed Images
+        :type skip_missed_entities: bool, default False
         :return: ProjectInfo object of the restored project
         :rtype: ProjectInfo or None
         """
@@ -404,7 +410,12 @@ class DataVersion(ModuleApiBase):
             return
 
         bin_io = self._download_and_extract(backup_files)
-        new_project_info = Project.upload_bin(self._api, bin_io, self.project_info.workspace_id)
+        new_project_info = Project.upload_bin(
+            self._api,
+            bin_io,
+            self.project_info.workspace_id,
+            skip_missed=skip_missed_entities,
+        )
         return new_project_info
 
     def _create_warning_system_file(self):
