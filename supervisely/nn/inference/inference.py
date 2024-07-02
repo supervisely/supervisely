@@ -714,25 +714,18 @@ class Inference:
         logger.debug("Inferring image...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
-        is_benchmark = state.get("benchmark", False)
         image_np = sly_image.read_bytes(file.file.read())
         logger.debug("Inference settings:", extra=settings)
         logger.debug("Image info:", extra={"w": image_np.shape[1], "h": image_np.shape[0]})
         sly_image.write(image_path, image_np)
-        if is_benchmark:
-            ann, benchmark = self._inference_image_benchmark(image_path, settings)
-            result_dict = {"annotation": ann.to_json(), "benchmark": benchmark}
-        else:
-            data_to_return = {}
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
-            )
-            result_dict = {"annotation": ann.to_json(), "data": data_to_return}
-
+        data_to_return = {}
+        ann = self._inference_image_path(
+            image_path=image_path,
+            settings=settings,
+            data_to_return=data_to_return,
+        )
         fs.silent_remove(image_path)
-        return result_dict
+        return {"annotation": ann.to_json(), "data": data_to_return}
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
@@ -807,7 +800,6 @@ class Inference:
         logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
         upload = state.get("upload", False)
-        is_benchmark = state.get("benchmark", False)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
         image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
@@ -819,30 +811,25 @@ class Inference:
         )
         logger.debug(f"Downloaded path: {image_path}")
 
-        if is_benchmark:
-            ann, benchmark = self._inference_image_benchmark(image_path, settings)
-            result_dict = {"annotation": ann.to_json(), "benchmark": benchmark}
-        else:
-            inference_request = {}
-            if async_inference_request_uuid is not None:
-                try:
-                    inference_request = self._inference_requests[async_inference_request_uuid]
-                except Exception as ex:
-                    import traceback
+        inference_request = {}
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
 
-                    logger.error(traceback.format_exc())
-                    raise RuntimeError(
-                        f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                        f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                    )
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
 
-            data_to_return = {}
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
-            )
-            result_dict = {"annotation": ann.to_json(), "data": data_to_return}
+        data_to_return = {}
+        ann = self._inference_image_path(
+            image_path=image_path,
+            settings=settings,
+            data_to_return=data_to_return,
+        )
         fs.silent_remove(image_path)
 
         if upload:
@@ -868,9 +855,10 @@ class Inference:
             )
             api.annotation.upload_ann(image_id, ann)
 
+        result = {"annotation": ann.to_json(), "data": data_to_return}
         if async_inference_request_uuid is not None and ann is not None:
-            inference_request["result"] = result_dict
-        return result_dict
+            inference_request["result"] = result
+        return result
 
     def _inference_image_url(self, api: Api, state: dict):
         logger.debug("Inferring image_url...", extra={"state": state})
