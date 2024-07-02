@@ -128,9 +128,9 @@ class PersistentImageTTLCache(TTLCache):
 
     def save_video(self, video_id: int, src_video_path: str) -> None:
         video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
+        self[video_id] = video_path
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
-        self[video_id] = video_path
         sly.logger.debug(f"Saved video to {video_path}")
 
         def _print_dir():
