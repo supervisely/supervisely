@@ -79,9 +79,12 @@ class PersistentImageTTLCache(TTLCache):
 
     def __update_timer(self, key):
         try:
+            # pylint: disable=no-member
             link = self._TTLCache__getlink(key)
         except KeyError:
+            # pylint: disable=no-member
             self._TTLCache__links[key] = link = _Link(key)
+        # pylint: disable=no-member
         link.expire = self._TTLCache__timer() + self._TTLCache__ttl
 
     def __getitem__(self, key: Any) -> Any:
