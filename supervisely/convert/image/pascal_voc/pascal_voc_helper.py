@@ -99,7 +99,12 @@ def get_ann(
     height, width = item.shape
 
     ann = Annotation(img_size=(height, width))
-    if segm_path is None and inst_path is None:
+
+    if item.ann_data is not None:
+        bbox_labels = xml_to_sly_labels(item.ann_data, meta, bbox_classes_map, renamed_classes)
+        ann = ann.add_labels(bbox_labels)
+
+    if segm_path is None:
         return ann
 
     segmentation_img = read(segm_path)
@@ -144,10 +149,6 @@ def get_ann(
         logger.warn(
             f"Not all objects or classes are captured from source segmentation: {item.name}"
         )
-
-    if item.ann_data is not None:
-        bbox_labels = xml_to_sly_labels(item.ann_data, meta, bbox_classes_map, renamed_classes)
-        ann = ann.add_labels(bbox_labels)
 
     return ann
 
