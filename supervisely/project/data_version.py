@@ -347,7 +347,7 @@ class DataVersion(ModuleApiBase):
         :return: True if reservation was cancelled, False otherwise
         """
         response = self._api.post(
-            "projects.versions.reserve",
+            "projects.versions.cancel-reservation",
             {ApiField.ID: version_id, ApiField.COMMIT_TOKEN: commit_token},
         )
         reserve_info = response.json()
@@ -480,7 +480,7 @@ class DataVersion(ModuleApiBase):
             return None
         return latest
 
-    def _compress_and_upload(self, path: str):
+    def _compress_and_upload(self, path: str) -> dict:
         """
         Save project in binary format in archive to the Team Files.
         Binary file name: version.bin
