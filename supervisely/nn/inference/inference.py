@@ -973,12 +973,18 @@ class Inference:
         video_ann_json = None
         if tracker is not None:
             logger.debug("Downloading frames for tracking...")
-            frames = self.cache.download_frames(
-                api,
-                video_info.id,
-                range(start_frame_index, start_frame_index + n_frames),
-                redownload_video=True,
-            )
+            frames = []
+            for frame_indexes_batch in batched(
+                range(start_frame_index, start_frame_index + n_frames), batch_size
+            ):
+                frames.extend(
+                    self.cache.download_frames(
+                        api,
+                        video_info.id,
+                        frame_indexes_batch,
+                        redownload_video=True,
+                    )
+                )
             logger.debug("Downloaded frames for tracking. Tracking...")
             t = time.time()
             video_ann_json = tracker.get_annotation(
