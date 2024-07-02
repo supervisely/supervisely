@@ -133,18 +133,6 @@ class PersistentImageTTLCache(TTLCache):
             shutil.move(src_video_path, str(video_path))
         sly.logger.debug(f"Saved video to {video_path}")
 
-        def _print_dir():
-            for p in self._base_dir.iterdir():
-                if p.is_dir():
-                    _print_dir()
-                else:
-                    sly.logger.debug(f"File: {p}")
-
-        sly.logger.debug(f"TMP dir:")
-        _print_dir()
-        sly.logger.debug(f"Video path: {video_path}")
-        sly.logger.debug(f"Src video path: {src_video_path}")
-
     def get_video_path(self, video_id: int) -> Path:
         return self[video_id]
 
@@ -246,7 +234,6 @@ class InferenceImageCache:
     ) -> List[np.ndarray]:
         video_path = self._cache.get_video_path(video_id)
         if video_path is None or not video_path.exists():
-            sly.logger.debug("TMP dir:" + "\n".join([str(p) for p in video_path.parent.iterdir()]))
             raise KeyError(f"Video {video_id} not found in cache. video_path: {video_path}")
         cap = cv2.VideoCapture(str(video_path))
         frames = []
