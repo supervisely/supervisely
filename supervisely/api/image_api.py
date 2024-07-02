@@ -9,6 +9,7 @@ import json
 import re
 import urllib.parse
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -27,6 +28,7 @@ from typing import (
 from uuid import uuid4
 
 import numpy as np
+import requests
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
@@ -918,6 +920,39 @@ class ImageApi(RemoveableBulkModuleApi):
 
             if progress_cb is not None:
                 progress_cb(len(hashes_batch))
+        return results
+
+    def check_existing_links(
+        self, links: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> List[str]:
+        """
+        Checks existing links for Images.
+
+        :param links: List of links.
+        :type links: List[str]
+        :param progress_cb: Function for tracking progress of checking.
+        :type progress_cb: tqdm or callable, optional
+        :return: List of existing links
+        :rtype: List[str]
+        """
+
+        def _is_image_available(url):
+            if self._api.remote_storage.is_bucket_url(url):
+                response = self._api.remote_storage.is_path_exist(url)
+                return url if response else None
+            response = requests.head(url)
+            return url if response.status_code == 200 else None
+
+        results = []
+        if len(links) == 0:
+            return results
+        for links_batch in batched(links, batch_size=900):
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                b_results = list(executor.map(_is_image_available, links))
+            results.extend(b_results)
+
+            if progress_cb is not None:
+                progress_cb(len(links_batch))
         return results
 
     def check_image_uploaded(self, hash: str) -> bool:
