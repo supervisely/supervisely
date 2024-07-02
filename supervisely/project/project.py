@@ -2700,6 +2700,7 @@ class Project:
         project_name: Optional[str] = None,
         with_custom_data: Optional[bool] = True,
         log_progress: Optional[bool] = True,
+        skip_missed: Optional[bool] = False,
     ) -> sly.ProjectInfo:
         """
         Uploads project to Supervisely from the given binary file and suitable only for projects downloaded in binary format.
@@ -2718,6 +2719,8 @@ class Project:
         :type log_progress: :class:`bool`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
+        :param skip_missed: Skip missed images.
+        :type skip_missed: :class:`bool`, optional
         :return: ProjectInfo object.
         :rtype: :class:`ProjectInfo<supervisely.api.project.ProjectInfo>`
         :Usage example:
@@ -2810,15 +2813,31 @@ class Project:
             lambda: {"infos": [], "ids": [], "names": [], "hashes": [], "metas": [], "links": []}
         )
 
+        if skip_missed:
+            existing_hashes = api.image.check_existing_hashes(
+                list(set([inf.hash for inf in image_infos if inf.hash and not inf.link]))
+            )
+            existing_links = api.image.check_existing_links(
+                list(set([inf.link for inf in image_infos if inf.link]))
+            )
         image_infos = sorted(image_infos, key=lambda info: info.link is not None)
+
+        attributes = ["infos", "ids", "names", "hashes", "metas", "links"]
         for info in image_infos:
-            info: ImageInfo
-            info_values_by_dataset[info.dataset_id]["infos"].append(info)
-            info_values_by_dataset[info.dataset_id]["ids"].append(info.id)
-            info_values_by_dataset[info.dataset_id]["names"].append(info.name)
-            info_values_by_dataset[info.dataset_id]["hashes"].append(info.hash)
-            info_values_by_dataset[info.dataset_id]["metas"].append(info.meta)
-            info_values_by_dataset[info.dataset_id]["links"].append(info.link)
+            if skip_missed and info.hash and not info.link:
+                if info.hash not in existing_hashes:
+                    logger.warning(
+                        f"Image with name {info.name} can't be uploaded. Hash {info.hash} not found"
+                    )
+                    continue
+            if skip_missed and info.link:
+                if info.link not in existing_links:
+                    logger.warning(
+                        f"Image with name {info.name} can't be uploaded. Link {info.link} can't be accessed"
+                    )
+                    continue
+            for attr in attributes:
+                info_values_by_dataset[info.dataset_id][attr].append(getattr(info, attr))
 
         for dataset_id, values in info_values_by_dataset.items():
             dataset_name = None
