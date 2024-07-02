@@ -2825,6 +2825,7 @@ class Project:
         values_lists = ["infos", "ids", "names", "hashes", "metas", "links"]
         attributes = [None, "id", "name", "hash", "meta", "link"]
         for info in image_infos:
+            # pylint: disable=possibly-used-before-assignment
             if skip_missed and info.hash and not info.link:
                 if info.hash not in existing_hashes:
                     logger.warning(
