@@ -11,7 +11,7 @@ from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 from cacheout import Cache as CacheOut
-from cachetools import Cache, LRUCache, TTLCache
+from cachetools import Cache, LRUCache, TTLCache, _Link
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
@@ -76,6 +76,17 @@ class PersistentImageTTLCache(TTLCache):
             silent_remove(filepath)
         except TypeError:
             pass
+
+    def __update_timer(self, key):
+        try:
+            link = self._TTLCache__getlink(key)
+        except KeyError:
+            self._TTLCache__links[key] = link = _Link(key)
+        link.expire = self._TTLCache__timer() + self._TTLCache__ttl
+
+    def __getitem__(self, key: Any) -> Any:
+        self.__update_timer(key)
+        return super().__getitem__(key)
 
     def __get_keys(self):
         # pylint: disable=no-member
