@@ -144,10 +144,10 @@ def dump_files_to_supervisely(app: FastAPI, template_response):
 
 def _upload_offline_session():
     global _pending_offline_session
-    sly.logger.info(f"Start dumping app UI for offline mode")
     if _pending_offline_session is not None:
         app, template_response = _pending_offline_session
         _pending_offline_session = None
+        sly.logger.info(f"Start dumping app UI for offline mode")
         dump_files_to_supervisely(app, template_response)
     if _pending_offline_session is not None:
         _upload_offline_session()
