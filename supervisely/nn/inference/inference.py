@@ -972,18 +972,6 @@ class Inference:
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if tracker is not None:
-            frames = []
-            for frame_indexes_batch in batched(
-                range(start_frame_index, start_frame_index + n_frames), batch_size
-            ):
-                frames.extend(
-                    self.cache.download_frames(
-                        api,
-                        video_info.id,
-                        frame_indexes_batch,
-                        redownload_video=True,
-                    )
-                )
             video_ann_json = tracker.get_annotation(
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
             ).to_json()
