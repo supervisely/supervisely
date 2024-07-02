@@ -94,6 +94,14 @@ class PersistentImageTTLCache(TTLCache):
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
+
+        ttlcache_timer = self._TTLCache__timer
+        sly.logger.debug(f"Cache time: {ttlcache_timer()}")
+        for link_key, link in self._TTLCache__links.items():
+            sly.logger.debug(
+                f"Link {link_key} expire time: {link.expire}. diff: {link.expire - ttlcache_timer()}"
+            )
+
         # pylint: disable=no-member
         existing_items = self._Cache__data.copy()
         super().expire(time)
