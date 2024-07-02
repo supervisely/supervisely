@@ -2822,7 +2822,7 @@ class Project:
             )
         image_infos = sorted(image_infos, key=lambda info: info.link is not None)
 
-        lists = ["infos", "ids", "names", "hashes", "metas", "links"]
+        values_lists = ["infos", "ids", "names", "hashes", "metas", "links"]
         attributes = [None, "id", "name", "hash", "meta", "link"]
         for info in image_infos:
             if skip_missed and info.hash and not info.link:
@@ -2837,11 +2837,11 @@ class Project:
                         f"Image with name {info.name} can't be uploaded. Link {info.link} can't be accessed"
                     )
                     continue
-            for list, attr in zip(lists, attributes):
-                if list == "infos":
-                    info_values_by_dataset[info.dataset_id][list].append(info)
+            for value_list, attr in zip(values_lists, attributes):
+                if value_list == "infos":
+                    info_values_by_dataset[info.dataset_id][value_list].append(info)
                 else:
-                    info_values_by_dataset[info.dataset_id][list].append(getattr(info, attr))
+                    info_values_by_dataset[info.dataset_id][value_list].append(getattr(info, attr))
 
         for dataset_id, values in info_values_by_dataset.items():
             dataset_name = None
