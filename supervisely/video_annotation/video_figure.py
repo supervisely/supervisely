@@ -235,7 +235,7 @@ class VideoFigure:
         return self._smart_tool_input
 
     @smart_tool_input.setter
-    def smart_tool_input(self, smtool_input: dict):
+    def smart_tool_input(self, smtool_input: Dict):
         smtool_input_keys = ["crop", "visible", "negative", "positive"]
         for k in smtool_input_keys:
             if k not in smtool_input:

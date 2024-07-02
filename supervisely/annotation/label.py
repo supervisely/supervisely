@@ -94,7 +94,7 @@ class LabelBase:
         tags: Optional[Union[TagCollection, List[Tag]]] = None,
         description: Optional[str] = "",
         binding_key: Optional[str] = None,
-        smart_tool_input: Optional[dict] = None,
+        smart_tool_input: Optional[Dict] = None,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -422,7 +422,7 @@ class LabelBase:
         tags: Optional[Union[TagCollection, List[Tag]]] = None,
         description: Optional[str] = None,
         binding_key: Optional[str] = None,
-        smart_tool_input: Optional[dict] = None,
+        smart_tool_input: Optional[Dict] = None,
     ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -835,7 +835,7 @@ class LabelBase:
         return self._smart_tool_input
 
     @smart_tool_input.setter
-    def smart_tool_input(self, smtool_input: dict):
+    def smart_tool_input(self, smtool_input: Dict):
         smtool_input_keys = ["crop", "visible", "negative", "positive"]
         for k in smtool_input_keys:
             if k not in smtool_input:
