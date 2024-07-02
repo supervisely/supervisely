@@ -972,7 +972,6 @@ class Inference:
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if tracker is not None:
-            logger.debug("Downloading frames for tracking...")
             frames = []
             for frame_indexes_batch in batched(
                 range(start_frame_index, start_frame_index + n_frames), batch_size
@@ -985,12 +984,9 @@ class Inference:
                         redownload_video=True,
                     )
                 )
-            logger.debug("Downloaded frames for tracking. Tracking...")
-            t = time.time()
             video_ann_json = tracker.get_annotation(
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
             ).to_json()
-            logger.debug("tracker.get_annotation time:", extra={"time": time.time() - t})
         result = {"ann": results, "video_ann": video_ann_json}
         if async_inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = result.copy()

@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-import time
 from enum import Enum
 from logging import Logger
 from pathlib import Path
@@ -66,14 +65,9 @@ class PersistentImageTTLCache(TTLCache):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
-    def __getitem__(self, key: Any):
-        existing_items = self._Cache__data.copy()
-        sly.logger.debug("GETITEM ITEMS:", extra={"itmes": existing_items})
-        return TTLCache.__getitem__(self, key)
-
     def __delitem__(self, key: Any) -> None:
         self.__del_file(key)
-        return TTLCache.__delitem__(self, key)
+        return super().__delitem__(key)
 
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
@@ -89,9 +83,10 @@ class PersistentImageTTLCache(TTLCache):
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
+        sly.logger.debug("Expire cache")
         # pylint: disable=no-member
         existing_items = self._Cache__data.copy()
-        sly.logger.debug("EXPIRE CACHE ITEMS:", extra={"itmes": existing_items})
+        sly.logger.debug("items:", extra={"itmes": existing_items})
         super().expire(time)
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         sly.logger.debug(f"Deleted keys: {deleted}")
@@ -99,9 +94,6 @@ class PersistentImageTTLCache(TTLCache):
             for key in deleted:
                 silent_remove(existing_items[key])
             sly.logger.debug(f"Deleted keys: {deleted}")
-        sly.logger.debug("EXPIRE CACHE ITEMS AFTER:", extra={"itmes": self.__get_keys()})
-        existing_items = self._Cache__data.copy()
-        sly.logger.debug("EXPIRE CACHE ITEMS AFTER 2:", extra={"itmes": existing_items})
 
     def clear(self, rm_base_folder=True) -> None:
         while self.currsize > 0:
@@ -234,7 +226,7 @@ class InferenceImageCache:
     ) -> List[np.ndarray]:
         video_path = self._cache.get_video_path(video_id)
         if video_path is None or not video_path.exists():
-            raise KeyError(f"Video {video_id} not found in cache. video_path: {video_path}")
+            raise KeyError(f"Video {video_id} not found in cache")
         cap = cv2.VideoCapture(str(video_path))
         frames = []
         prev_idx = -1
@@ -308,12 +300,11 @@ class InferenceImageCache:
                 Thread(
                     target=self.download_video,
                     args=(api, video_id),
-                    kwargs={"return_images": True},
+                    kwargs={"return_images": False},
                 ).start()
         elif redownload_video:
-            sly.logger.debug("Redownload video")
             Thread(
-                target=self.download_video, args=(api, video_id), kwargs={"return_images": True}
+                target=self.download_video, args=(api, video_id), kwargs={"return_images": False}
             ).start()
 
         def name_constuctor(frame_index: int):
@@ -374,7 +365,6 @@ class InferenceImageCache:
             )
             api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
             self.add_video_to_cache(video_id, temp_video_path)
-            time.sleep(0.1)
         if return_images:
             return self.get_frames_from_cache(video_id, list(range(video_info.frames_count)))
 
