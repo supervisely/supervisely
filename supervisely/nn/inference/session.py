@@ -361,7 +361,7 @@ class SessionJSON:
         project_id: int,
         batch_size: int = 1,
         num_iterations: int = 100,
-        num_warmup: int = 5,
+        num_warmup: int = 3,
         dataset_ids: List[int] = None,
         cache_project_on_model: bool = False,
     ):
