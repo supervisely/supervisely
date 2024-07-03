@@ -27,6 +27,7 @@ from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
 from supervisely.convert.image.sly.fast_sly_image_converter import FastSlyImageConverter
 from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
 from supervisely.convert.image.multi_view.multi_view import MultiViewImageConverter
+from supervisely.convert.image.label_me.label_me_converter import LabelmeConverter
 
 
 
