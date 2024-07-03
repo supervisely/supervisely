@@ -166,7 +166,7 @@ class MetricProvider:
         pr_curve = self.coco_precision[:, :, :, 0, 2].mean(0)
         return pr_curve
 
-    def prediction_table(self):
+    def prediction_table(self) -> pd.DataFrame:
         img_ids, outcomes_per_image = _get_outcomes_per_image(self.matches, self.cocoGt)
         image_names = [self.cocoGt.imgs[img_id]["file_name"] for img_id in img_ids]
         # inference_time = ...
