@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -26,6 +27,7 @@ from supervisely.io.fs import (
     mkdir,
     remove_junk_from_dir,
     silent_remove,
+    touch,
     unpack_archive,
 )
 from supervisely.project.project_type import ProjectType
@@ -46,6 +48,7 @@ class ImportManager:
             "images_with_16_color",
             "medical_imaging_single",
         ] = "default",
+        upload_as_links: bool = False,
     ):
         self._api = Api.from_env()
         if team_id is not None:
@@ -57,6 +60,8 @@ class ImportManager:
         else:
             self._team_id = env_team_id()
         self._labeling_interface = labeling_interface
+        self._upload_as_links = upload_as_links
+        self._remote_files_map = {}
 
         self._input_data = self._prepare_input_data(input_data)
         self._unpack_archives(self._input_data)
@@ -80,18 +85,22 @@ class ImportManager:
 
     def get_converter(self):
         """Return correct converter"""
-        if str(self._modality) == ProjectType.IMAGES.value:
-            return ImageConverter(self._input_data, self._labeling_interface)._converter
-        elif str(self._modality) == ProjectType.VIDEOS.value:
-            return VideoConverter(self._input_data, self._labeling_interface)._converter
-        elif str(self._modality) == ProjectType.POINT_CLOUDS.value:
-            return PointcloudConverter(self._input_data, self._labeling_interface)._converter
-        elif str(self.modality) == ProjectType.VOLUMES.value:
-            return VolumeConverter(self._input_data, self._labeling_interface)._converter
-        elif str(self._modality) == ProjectType.POINT_CLOUD_EPISODES.value:
-            return PointcloudEpisodeConverter(self._input_data, self._labeling_interface)._converter
-        else:
+        modality_converter_map = {
+            ProjectType.IMAGES.value: ImageConverter,
+            ProjectType.VIDEOS.value: VideoConverter,
+            ProjectType.POINT_CLOUDS.value: PointcloudConverter,
+            ProjectType.VOLUMES.value: VolumeConverter,
+            ProjectType.POINT_CLOUD_EPISODES.value: PointcloudEpisodeConverter,
+        }
+        if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
+        modality_converter = modality_converter_map[str(self._modality)](
+            self._input_data,
+            self._labeling_interface,
+            self._upload_as_links,
+            self._remote_files_map,
+        )
+        return modality_converter.detect_format()
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
@@ -108,11 +117,19 @@ class ImportManager:
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
             return os.path.dirname(input_data)
         elif self._api.storage.exists(self._team_id, input_data):
-            logger.info(f"Input data is a remote file: {input_data}")
-            return self._download_input_data(input_data)
+            if self._upload_as_links:
+                logger.info(f"Input data is a remote file: {input_data}. Scanning...")
+                return self._scan_remote_files(input_data)
+            else:
+                logger.info(f"Input data is a remote file: {input_data}. Downloading...")
+                return self._download_input_data(input_data)
         elif self._api.storage.dir_exists(self._team_id, input_data):
-            logger.info(f"Input data is a remote directory: {input_data}")
-            return self._download_input_data(input_data, is_dir=True)
+            if self._upload_as_links:
+                logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
+                return self._scan_remote_files(input_data, is_dir=True)
+            else:
+                logger.info(f"Input data is a remote directory: {input_data}. Downloading...")
+                return self._download_input_data(input_data, is_dir=True)
         else:
             raise RuntimeError(f"Input data not found: {input_data}")
 
@@ -147,6 +164,28 @@ class ImportManager:
 
         return local_path
 
+    def _scan_remote_files(self, remote_path, is_dir=False):
+        """Scan remote directory and create dummy structure locally"""
+
+        dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
+        dir_name = os.path.basename(dir_path)
+
+        local_path = os.path.join(get_data_dir(), dir_name)
+        mkdir(local_path, remove_content_if_exists=True)
+
+        if is_dir:
+            files = self._api.storage.list(self._team_id, remote_path)
+        else:
+            files = [self._api.storage.get_info_by_path(self._team_id, remote_path)]
+
+        for file in files:
+            new_path = file.path.replace(dir_path, local_path)
+            self._remote_files_map[new_path] = file.path
+            Path(new_path).parent.mkdir(parents=True, exist_ok=True)
+            touch(new_path)
+
+        return local_path
+
     def _unpack_archives(self, local_path):
         """Unpack if input data contains an archive."""
 
@@ -159,7 +198,7 @@ class ImportManager:
                     file_path = os.path.join(root, file)
                     if is_archive(file_path=file_path):
                         try:
-                            new_path = os.path.splitext(os.path.normpath(file_path))[0]
+                            new_path = file_path.replace("".join(Path(file_path).suffixes), "")
                             unpack_archive(file_path, new_path)
                             archives.append(file_path)
                             new_paths_to_scan.append(new_path)

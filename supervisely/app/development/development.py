@@ -33,6 +33,9 @@ def supervisely_vpn_network(
     :raises subprocess.CalledProcessError: If an error occurs while connecting and raise_on_error is True.
     :raises RuntimeError: If an error occurs while connecting and raise_on_error is True.
     """
+    # Saving the original directory, to chdir back to it after the VPN connection is established.
+    # Otherwise, the CWD will be changed to the VPN configuration directory, which may cause issues.
+    current_directory = os.getcwd()
     if shutil.which("wg-quick") is None:
         if raise_on_error:
             raise RuntimeError(
@@ -145,6 +148,9 @@ def supervisely_vpn_network(
             raise RuntimeError(f"Error while connecting to VPN: {test_response.text}")
     else:
         logger.info(f"VPN connection has been successfully established to {gateway}")
+    
+    # Changing back CWB to the original directory.
+    os.chdir(current_directory)
 
 
 def create_debug_task(team_id, port="8000"):

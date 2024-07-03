@@ -1,22 +1,28 @@
 import os
+from typing import Dict, Optional, Union
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, ProjectMeta
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
+from supervisely.project.project_settings import LabelingInterface
 
 
 COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
-    def __init__(self, input_data, labeling_interface):
-        self._input_data = input_data
-        self._items = []
-        self._meta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._coco_categories = []
-        self._labeling_interface = labeling_interface
 
     def __str__(self) -> str:
         return AvailableImageConverters.COCO
@@ -87,6 +93,8 @@ class COCOConverter(ImageConverter):
             # create ann dict
             for image_id, image_info in coco_items:
                 image_name = image_info["file_name"]
+                if "/" in image_name:
+                    image_name = os.path.basename(image_name)
                 coco_ann = coco_anns[image_id]
                 image_anns = ann_dict.get(image_name, None)
                 if image_anns is None:

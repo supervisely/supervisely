@@ -13,20 +13,19 @@ from supervisely.io.fs import (
 )
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
+from supervisely.project.project_settings import LabelingInterface
 
 
 class SLYImageConverter(ImageConverter):
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.SLY
 
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface in ["default", "image_matting"]
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.IMAGE_MATTING,
+        ]
 
     @property
     def ann_ext(self) -> str:
@@ -37,7 +36,8 @@ class SLYImageConverter(ImageConverter):
         return ".json"
 
     def generate_meta_from_annotation(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
-        meta = sly_image_helper.get_meta_from_annotation(ann_path, meta)
+        ann_json = load_json_file(ann_path)
+        meta = sly_image_helper.get_meta_from_annotation(ann_json, meta)
         return meta
 
     def validate_ann_file(self, ann_path: str, meta: ProjectMeta) -> bool:
@@ -143,10 +143,13 @@ class SLYImageConverter(ImageConverter):
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
                 logger.info("Found multiple Supervisely projects")
-            meta = ProjectMeta()
+            meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
-                meta = meta.merge(project_fs.meta)
+                if meta is None:
+                    meta = project_fs.meta
+                else:
+                    meta = meta.merge(project_fs.meta)
                 for dataset in project_fs.datasets:
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)

@@ -2,11 +2,10 @@
 
 # docs
 from typing import List, Optional, Union
-from supervisely.annotation.tag_meta import TagMeta
-from supervisely.video_annotation.video_tag import VideoTag
 
-from supervisely.api.module_api import ApiField
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.api.module_api import ApiField
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
@@ -34,7 +33,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -60,7 +59,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -88,7 +87,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -123,7 +122,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -158,7 +157,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -218,7 +217,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -260,7 +259,7 @@ class VideoTagApi(TagApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict
 
 from tqdm import tqdm
 
@@ -10,21 +10,17 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.io.fs import get_file_ext, list_files
+from supervisely.project.project_settings import LabelingInterface
 
 
 class MultiViewImageConverter(ImageConverter):
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.MULTI_VIEW
 
     def validate_labeling_interface(self) -> bool:
         """Only multi_view labeling interface can be used to group images on single screen."""
-        return self._labeling_interface == "multi_view"
+        return self._labeling_interface == LabelingInterface.MULTIVIEW
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")
