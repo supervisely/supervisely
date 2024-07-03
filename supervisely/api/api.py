@@ -55,8 +55,8 @@ from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
 )
-from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
 SUPERVISELY_PUBLIC_API_RETRIES = "SUPERVISELY_PUBLIC_API_RETRIES"
@@ -85,9 +85,9 @@ class ApiContext:
     :raises: :class:`RuntimeError`, if api is None.
 
     :Usage example:
-    
+
          .. code-block:: python
-    
+
             import os
             from dotenv import load_dotenv
 
@@ -401,7 +401,7 @@ class Api:
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             api = sly.Api.from_env()

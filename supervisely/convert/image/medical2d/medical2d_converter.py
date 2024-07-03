@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import List, Union
+from typing import Dict, List, Optional, Union
 
 import magic
 import nrrd
@@ -12,17 +12,22 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.medical2d import medical2d_helper as helper
 from supervisely.io.fs import remove_dir, get_file_ext, mkdir, get_file_name
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.volume.volume import is_nifti_file
 
 
 # @TODO: add group tags?
 class Medical2DImageConverter(ImageConverter):
 
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface = labeling_interface
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._filtered = None
         self._group_tag_names = defaultdict(int)
 
@@ -31,7 +36,11 @@ class Medical2DImageConverter(ImageConverter):
 
     def validate_labeling_interface(self) -> bool:
         """Only medical labeling interface can be used for medical images."""
-        return self._labeling_interface in ["default", "medical_imaging_single", "images_with_16_color"]
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.MEDICAL_IMAGING_SINGLE,
+            LabelingInterface.IMAGES_WITH_16_COLOR,
+        ]
 
     def validate_format(self) -> bool:
         logger.debug(f"Validating format: {self.__str__()}")

@@ -502,7 +502,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         download_related_images: Optional[bool] = True,
         download_pointclouds_info: Optional[bool] = False,
         batch_size: Optional[int] = 10,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
@@ -525,7 +525,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param batch_size: The number of images in the batch when they are loaded to a host.
         :type batch_size: :class:`int`, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm` or callable, optional
         :return: None
@@ -572,26 +572,26 @@ class PointcloudEpisodeProject(PointcloudProject):
         api: Api,
         workspace_id: int,
         project_name: Optional[str] = None,
-        log_progress: Optional[bool] = False,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
         Uploads pointcloud episodes project to Supervisely from the given directory.
 
         :param directory: Path to project directory.
-        :type directory: :class:`str`
+        :type directory: str
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :type api: Api
         :param workspace_id: Workspace ID, where project will be uploaded.
-        :type workspace_id: :class:`int`
+        :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
-        :type project_name: :class:`str`, optional
+        :type project_name: str, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: :class:`tqdm` or callable, optional
+        :type progress_cb: tqdm or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
-        :rtype: :class:`int`, :class:`str`
+        :rtype: int, str
         :Usage example:
 
         .. code-block:: python
@@ -637,7 +637,7 @@ def download_pointcloud_episode_project(
     download_annotations: Optional[bool] = True,
     download_pointclouds_info: Optional[bool] = False,
     batch_size: Optional[int] = 10,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     """
@@ -662,7 +662,7 @@ def download_pointcloud_episode_project(
     :param batch_size: Size of a downloading batch.
     :type batch_size: int, optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -708,6 +708,9 @@ def download_pointcloud_episode_project(
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
 
+    if progress_cb is not None:
+        log_progress = False
+
     datasets_infos = []
     if dataset_ids is not None:
         for ds_id in dataset_ids:
@@ -730,10 +733,11 @@ def download_pointcloud_episode_project(
         frame_pointcloud_map_path = dataset_fs.get_frame_pointcloud_map_path()
         dump_json_file(frame_name_map, frame_pointcloud_map_path)
 
-        # Download data
+        ds_progress = progress_cb
         if log_progress:
-            ds_progress = Progress(
-                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(pointclouds)
+            ds_progress = tqdm_sly(
+                desc="Downloading episodes from: {!r}".format(dataset.name),
+                total=len(pointclouds),
             )
 
         for batch in batched(pointclouds, batch_size=batch_size):
@@ -842,10 +846,8 @@ def download_pointcloud_episode_project(
                     )
                     raise e
 
-                if progress_cb is not None:
-                    progress_cb(1)
-            if log_progress:
-                ds_progress.iters_done_report(len(batch))
+                if log_progress is True or progress_cb is not None:
+                    ds_progress(1)
 
     project_fs.set_key_id_map(key_id_map)
 
@@ -855,7 +857,7 @@ def upload_pointcloud_episode_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
     # STEP 0 — create project remotely
@@ -903,7 +905,7 @@ def upload_pointcloud_episode_project(
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
-                desc="Uploading pointclouds to {!r}".format(dataset.name),
+                desc="Uploading clouds to {!r}".format(dataset.name),
                 total=len(dataset_fs),
             )
         try:

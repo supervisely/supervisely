@@ -2,33 +2,36 @@
 
 import os
 import re
+from typing import Callable, List, Literal, Optional, Tuple, Union
+
 import numpy as np
 from tqdm import tqdm
-from typing import List, Optional, Union, Callable, Tuple, Literal
 
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.api.module_api import ApiField
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
-from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
-from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.geometry.mask_3d import Mask3D
-from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
-from supervisely.io.json import load_json_file
+from supervisely.api.module_api import ApiField
+from supervisely.collection.key_indexed_collection import DuplicateKeyError
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import (
+    change_directory_at_index,
     dir_exists,
+    file_exists,
     get_file_name,
     list_files,
-    file_exists,
     silent_remove,
-    change_directory_at_index,
 )
-from supervisely.volume import stl_converter
-from supervisely.collection.key_indexed_collection import DuplicateKeyError
-from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.annotation.obj_class import ObjClass
+from supervisely.io.json import load_json_file
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.volume import stl_converter
+from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
+from supervisely.volume_annotation.volume_figure import VolumeFigure
+from supervisely.volume_annotation.volume_object import VolumeObject
+from supervisely.volume_annotation.volume_object_collection import (
+    VolumeObjectCollection,
+)
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
@@ -79,7 +82,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             from pprint import pprint
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -144,7 +147,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -203,7 +206,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

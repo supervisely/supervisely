@@ -3,10 +3,10 @@
 # docs
 from typing import List, Optional
 
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 from supervisely.api.entity_annotation.object_api import ObjectApi
 from supervisely.api.video.video_tag_api import VideoObjectTagApi
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 
 class VideoObjectApi(ObjectApi):
@@ -44,7 +44,7 @@ class VideoObjectApi(ObjectApi):
 
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
