@@ -70,8 +70,6 @@ def labelme_circle_to_sly(coords: List[List[int]]) -> Polygon:
         raise ValueError("Each point must have exactly 2 coordinates: row and column.")
     center_col, center_row = int(coords[0][0]), int(coords[0][1])
     point_col, point_row = int(coords[1][0]), int(coords[1][1])
-    # center = row_col_list_to_points([[center_row, center_col]], do_round=True)[0]
-    # point_on_circle = row_col_list_to_points([[point_row, point_col]], do_round=True)[0]
     radius = int(np.sqrt((center_row - point_row) ** 2 + (center_col - point_col) ** 2))
     points = []
     for i in range(0, 360, 10):
@@ -114,6 +112,21 @@ def convert_labelme_to_sly(shape: Dict, obj_cls: ObjClass) -> Optional[Label]:
         return None
 
 
+def decode_and_save_image_data(image_data: str, image_path: str) -> str:
+    try:
+        imencoded = zlib.decompress(base64.b64decode(image_data))
+        n = np.frombuffer(imencoded, np.uint8)
+        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)
+    except zlib.error:
+        # If the string is not compressed, we'll not use zlib.
+        img = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        imdecoded = np.array(img)
+
+    imdecoded = cv2.cvtColor(imdecoded, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(image_path, imdecoded)
+    return image_path
+
+
 def get_image_from_data(ann_path: str, possible_image_path: Optional[str]) -> str:
     if possible_image_path is not None and file_exists(possible_image_path):
         return possible_image_path
@@ -127,34 +140,23 @@ def get_image_from_data(ann_path: str, possible_image_path: Optional[str]) -> st
     # if contains encoded image data in base64
     image_data = ann_json.get("imageData")
     if image_data is not None:
-        try:
-            imencoded = zlib.decompress(base64.b64decode(image_data))
-            n = np.frombuffer(imencoded, np.uint8)
-            imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)
-        except zlib.error:
-            # If the string is not compressed, we'll not use zlib.
-            img = Image.open(io.BytesIO(base64.b64decode(image_data)))
-            imdecoded = np.array(img)
-
-        imdecoded = cv2.cvtColor(imdecoded, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(image_path, imdecoded)
-        return image_path
+        return decode_and_save_image_data(image_data, image_path)
     return
 
 
-def generate_new_obj_cls_name(
+def generate_new_cls_name(
     meta: ProjectMeta,
     cls_name: str,
-    geometry_type: type,
+    expected_geometry_type: type,
     i: Optional[int] = None,
 ) -> str:
     new_cls_name = f"{cls_name}_{i}" if i else cls_name
     obj_cls: ObjClass = meta.get_obj_class(new_cls_name)
     if obj_cls is None:
         return new_cls_name
-    elif obj_cls.geometry_type == geometry_type:
+    elif obj_cls.geometry_type == expected_geometry_type:
         return new_cls_name
-    return generate_new_obj_cls_name(meta, cls_name, geometry_type, i + 1 if i else 1)
+    return generate_new_cls_name(meta, cls_name, expected_geometry_type, i + 1 if i else 1)
 
 
 def update_meta_from_labelme_annotation(meta: ProjectMeta, ann_path: str) -> ProjectMeta:
@@ -176,12 +178,13 @@ def update_meta_from_labelme_annotation(meta: ProjectMeta, ann_path: str) -> Pro
             obj_cls = ObjClass(cls_name, geometry_type)
             meta = meta.add_obj_class(obj_cls)
         elif obj_cls.geometry_type != geometry_type:
-            new_cls_name = generate_new_obj_cls_name(meta, cls_name, geometry_type)
-            logger.warn(
-                f"Geometry type mismatch for class '{cls_name}'. Renamed to '{new_cls_name}'"
-            )
-            shape["label"] = new_cls_name
-            json_updated = True
+            new_cls_name = generate_new_cls_name(meta, cls_name, geometry_type)
+            if new_cls_name != cls_name:
+                logger.warn(
+                    f"{ann_path}: shape type mismatch for class '{cls_name}'. Renamed to '{new_cls_name}'"
+                )
+                shape["label"] = new_cls_name
+                json_updated = True
             if not meta.obj_classes.has_key(new_cls_name):
                 obj_cls = ObjClass(new_cls_name, geometry_type)
                 meta = meta.add_obj_class(obj_cls)
