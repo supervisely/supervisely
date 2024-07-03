@@ -771,7 +771,7 @@ class Inference:
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
-        if type(self).predict_batch == Inference.predict_batch:
+        if not self.is_batch_inference_supported():
             paths = []
             temp_dir = os.path.join(get_data_dir(), rand_str(10))
             fs.mkdir(temp_dir)
@@ -2174,7 +2174,7 @@ class WriteImagesInTempDir:
         fs.mkdir(self.temp_dir)
         image_paths = []
         for img in self.input_images:
-            img_path = os.path.join(self.temp_dir, f"{rand_str(10)}.{format}")
+            img_path = os.path.join(self.temp_dir, f"{rand_str(10)}.{self.format}")
             sly_image.write(img_path, img)
             image_paths.append(img_path)
         if self.return_list:
