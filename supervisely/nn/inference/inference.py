@@ -703,7 +703,9 @@ class Inference:
             return predictions, empty_benchmark
         elif len(input_images) == 1:
             empty_benchmark = {}
-            prediction = self.predict(input_images[0], settings)
+            img = input_images[0]
+            with WriteImagesInTempDir(img) as img_path:
+                prediction = self.predict(img_path, settings)
             return [prediction], empty_benchmark
         else:
             raise NotImplementedError("Have to be implemented in child class")
@@ -1303,8 +1305,6 @@ class Inference:
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
 
-        if batch_size > 1:
-
         datasets_infos = api.dataset.get_list(project_id, recursive=True)
         if dataset_ids is not None:
             datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
@@ -1415,7 +1415,7 @@ class Inference:
 
         batch_generator = image_batch_generator(batch_size)
         try:
-            for i in range(num_iterations):
+            for i in range(num_iterations + num_warmup):
                 if stop:
                     break
                 if (
@@ -1454,13 +1454,15 @@ class Inference:
                     input_batch=images_nps,
                     settings=settings,
                 )
-                results.append(benchmark)
-                upload_queue.put(benchmark)
+                # Collect results if warmup is done
+                if i >= num_warmup:
+                    results.append(benchmark)
+                    upload_queue.put(benchmark)
         except Exception:
             stop_upload_event.set()
             raise
         if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = {"ann": results}
+            inference_request["result"] = results
         stop_upload_event.set()
         return results
 
@@ -1735,15 +1737,23 @@ class Inference:
             }
 
         @server.post("/run_benchmark")
-        def run_benchmark(request: Request):
+        def run_benchmark(response: Response, request: Request):
             logger.debug(
                 f"'run_benchmark' request in json format:{request.state.state}"
             )
             project_id = request.state.state["projectId"]
             project_info = request.state.api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                response.body = {"message": "Only images projects are supported."}
                 raise ValueError("Only images projects are supported.")
-
+            batch_size = request.state.state["batch_size"]
+            if batch_size > 1 and not self.is_batch_inference_supported():
+                response.status_code = status.HTTP_501_NOT_IMPLEMENTED
+                return {
+                    "message": "Batch inference is not implemented for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2148,3 +2158,28 @@ class Timer:
 
     def get_time(self):
         return self.duration
+
+
+class WriteImagesInTempDir:
+    def __init__(self, input_images: Union[np.ndarray, List[np.ndarray]], format: str = "png"):
+        self.input_images = input_images
+        self.format = format
+        self.return_list = True
+        if isinstance(input_images, np.ndarray):
+            self.input_images = [input_images]
+            self.return_list = False
+        self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
+
+    def __enter__(self):
+        fs.mkdir(self.temp_dir)
+        image_paths = []
+        for img in self.input_images:
+            img_path = os.path.join(self.temp_dir, f"{rand_str(10)}.{format}")
+            sly_image.write(img_path, img)
+            image_paths.append(img_path)
+        if self.return_list:
+            return image_paths
+        return image_paths[0]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        fs.remove_dir(self.temp_dir)
