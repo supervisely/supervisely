@@ -558,18 +558,12 @@ class Inference:
         settings: Dict,
     ) -> Tuple[List[Annotation], List[dict]]:
         images_np = [sly_image.read(img) if isinstance(img, str) else img for img in source]
-        data_to_return = {}
+        slides_data = []
         anns = self._inference_batched(
             source=images_np,
             settings=settings,
-            data_to_return=data_to_return,
+            data_to_return=slides_data,
         )
-        slides_data = []
-        for i, ann in enumerate(anns):
-            data = {}
-            if "slides" in data_to_return:
-                data = data_to_return["slides"][i]
-            slides_data.append(data)
         return anns, slides_data
     
     @process_images_batch_sliding_window
@@ -578,7 +572,7 @@ class Inference:
         self,
         source: List[np.ndarray],
         settings: Dict,
-        data_to_return: Dict,
+        data_to_return: list,
     ) -> List[Annotation]:
         images_np = source
         inference_mode = settings.get("inference_mode", "full_image")
