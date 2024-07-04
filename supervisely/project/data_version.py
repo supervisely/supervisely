@@ -150,6 +150,7 @@ class DataVersion(ModuleApiBase):
             versions = self._api.file.get_json_file_content(
                 self.project_info.team_id, self.versions_path
             )
+            versions = versions if versions else {}
         except FileNotFoundError:
             versions = {"format": self.__version_format}
         return versions

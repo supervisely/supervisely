@@ -1375,7 +1375,7 @@ class FileApi(ModuleApiBase):
         :param download: If True, download file in temp dir to get content.
         :type download: bool, optional
         :return: JSON file content
-        :rtype: :class:`dict`
+        :rtype: :class:`dict` or :class:`NoneType`
         :Usage example:
 
          .. code-block:: python
@@ -1395,6 +1395,7 @@ class FileApi(ModuleApiBase):
         if file_info:
             if file_info.mime != "application/json":
                 raise ValueError(f"File is not JSON: {remote_path}")
+            content = None
             if file_info.sizeb <= max_readable_size or not download:
                 response = requests.get(file_info.full_storage_url)
                 if response.status_code != 200:
