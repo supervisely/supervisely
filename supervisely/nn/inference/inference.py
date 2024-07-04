@@ -680,9 +680,9 @@ class Inference:
 
     def predict_batch(self, images_np: List[np.ndarray], settings: Dict[str, Any]) -> List[List[Prediction]]:
         """Predict batch of images. `source` is a list of numpy arrays in RGB format"""
-        # Пока этот метод не переопределен в дочернем классе, работает следующая fallback логика:
-        # Если predict_benchmark переопределен, то вызываем predict_benchmark
-        # Иначе raise NotImplementedError
+        # If this method is not overridden in a subclass, the following fallback logic works:
+        # - If predict_benchmark is overridden, then call predict_benchmark
+        # - Otherwise, raise NotImplementedError
         is_predict_benchmark_overridden = type(self).predict_benchmark != Inference.predict_benchmark
         if is_predict_benchmark_overridden:
             return self.predict_benchmark(images_np, settings)[0]
@@ -710,10 +710,10 @@ class Inference:
             - postprocess: time of postprocessing (e.g. resizing output masks, aligning predictions with the input image, formatting, etc.)
             If some of the keys are missing, they will be considered as None.
         '''
-        # Пока этот метод не переопределен в дочернем классе, работает следующая fallback логика:
-        # Если predict_batch переопределен, то используем его
-        # Если predict_batch не переопределен, но батч сайз равен 1, то используем predict
-        # Если predict_batch не переопределен и батч сайз больше 1, то raise NotImplementedError
+        # If this method is not overridden in a subclass, the following fallback logic works:
+        # - If predict_batch is overridden, then call it
+        # - If predict_batch is not overridden but the batch size is 1, then use `predict`
+        # - If predict_batch is not overridden and the batch size is greater than 1, then raise NotImplementedError
         is_predict_batch_overridden = type(self).predict_batch != Inference.predict_batch
         empty_benchmark = {}
         if is_predict_batch_overridden:
