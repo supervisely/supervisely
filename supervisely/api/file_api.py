@@ -8,10 +8,12 @@ import os
 import re
 import shutil
 import tarfile
+import tempfile
 import urllib
 from pathlib import Path
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
+import requests
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from typing_extensions import Literal
@@ -32,6 +34,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 from supervisely.io.fs_cache import FileCache
+from supervisely.io.json import load_json_file
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm, tqdm_sly
 
@@ -1360,3 +1363,49 @@ class FileApi(ModuleApiBase):
         ):
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
+
+    def get_json_file_content(self, team_id: int, remote_path: str, download: bool = False) -> dict:
+        """
+        Get JSON file content.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Path to JSON file in Team Files.
+        :type remote_path: str
+        :param download: If True, download file in temp dir to get content.
+        :type download: bool, optional
+        :return: JSON file content
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api("https://app.supervisely.com", "YourAccessToken")
+
+            file_content = api.file.get_json_file_content()
+            print(file_content)
+        """
+
+        MB = 1024 * 1024
+        max_readable_size = 100 * MB
+
+        file_info = self._api.file.get_info_by_path(team_id, remote_path)
+        if file_info:
+            if file_info.mime != "application/json":
+                raise ValueError(f"File is not JSON: {remote_path}")
+            if file_info.sizeb <= max_readable_size or not download:
+                response = requests.get(file_info.full_storage_url)
+                if response.status_code != 200:
+                    download = True
+                else:
+                    content = response.json()
+            if file_info.sizeb > max_readable_size or download:
+                temp_path = os.path.join(tempfile.mkdtemp(), "temp.json")
+                self._download(team_id, remote_path, temp_path)
+                content = load_json_file(temp_path)
+                sly_fs.remove_dir(temp_path)
+            return content
+        else:
+            raise FileNotFoundError(f"File not found: {remote_path}")
