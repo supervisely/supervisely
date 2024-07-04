@@ -145,12 +145,12 @@ class DataVersion(ModuleApiBase):
         """
         if do_initialization:
             self.initialize(project_info)
-        file_info = self._api.file.get_info_by_path(self.project_info.team_id, self.versions_path)
-        if file_info:
-            response = requests.get(file_info.full_storage_url, stream=True)
-            response.raise_for_status()
-            versions = response.json()
-        else:
+
+        try:
+            versions = self._api.file.get_json_file_content(
+                self.project_info.team_id, self.versions_path
+            )
+        except FileNotFoundError:
             versions = {"format": self.__version_format}
         return versions
 
