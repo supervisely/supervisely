@@ -2572,8 +2572,8 @@ class Project:
         project_id: int,
         dest_dir: str = None,
         dataset_ids: Optional[List[int]] = None,
-        log_progress: Optional[bool] = True,
         batch_size: Optional[int] = 100,
+        log_progress: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
         return_bytesio: Optional[bool] = False,
     ) -> Union[str, io.BytesIO]:
@@ -2598,11 +2598,11 @@ class Project:
         :type dest_dir: :class:`str`, optional
         :param dataset_ids: Specified list of Dataset IDs which will be downloaded. If you want to download nested datasets, you should specify all nested IDs.
         :type dataset_ids: :class:`list` [ :class:`int` ], optional
-        :param log_progress: Show downloading logs in the output.
-        :type log_progress: :class:`bool`, optional
         :param batch_size: Size of a downloading batch.
         :type batch_size: :class:`int`, optional
-        :param progress_cb: Function for tracking download progress.
+        :param log_progress: Show downloading logs in the output.
+        :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking download progress. Has a higher priority than log_progress.
         :type progress_cb: :class:`tqdm` or :class:`callable`, optional
         :param return_bytesio: If True, returns BytesIO object instead of saving it to the disk.
         :type return_bytesio: :class:`bool`, optional
@@ -2654,7 +2654,7 @@ class Project:
             image_infos.extend(ds_image_infos)
 
             ds_progress = progress_cb
-            if log_progress:
+            if log_progress and progress_cb is None:
                 ds_progress = tqdm_sly(
                     desc="Downloading dataset: {!r}".format(dataset_info.name),
                     total=len(ds_image_infos),
@@ -2673,9 +2673,10 @@ class Project:
                     geometries_list = api.image.figure.download_geometries_batch(alpha_ids)
                     alpha_geometries.update(dict(zip(alpha_ids, geometries_list)))
                 figures.update(ds_figures)
-                if log_progress or progress_cb is not None:
+                if ds_progress is not None:
                     ds_progress(len(batch))
-
+        if dataset_infos != [] and ds_progress is not None:
+            ds_progress.close()
         data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
         file = (
             io.BytesIO()
@@ -2719,7 +2720,7 @@ class Project:
         :type with_custom_data: :class:`bool`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking upload progress for datasets.
+        :param progress_cb: Function for tracking upload progress for datasets. Has a higher priority than log_progress.
         :type progress_cb: tqdm or callable, optional
         :param skip_missed: Skip missed images.
         :type skip_missed: :class:`bool`, optional
@@ -2804,7 +2805,7 @@ class Project:
             dataset_info: sly.DatasetInfo
             parent_ds_info = dataset_mapping.get(dataset_info.parent_id, None)
             new_parent_id = parent_ds_info.id if parent_ds_info else None
-            if new_parent_id is None:
+            if new_parent_id is None and dataset_info.parent_id is not None:
                 logger.warning(
                     f"Parent dataset for dataset '{dataset_info.name}' not found. Will be added to project root."
                 )
@@ -2859,7 +2860,7 @@ class Project:
                     raise KeyError(f"Dataset ID {dataset_id} not found in mapping")
 
             ds_progress = progress_cb
-            if log_progress is True:
+            if log_progress and progress_cb is None:
                 ds_progress = tqdm_sly(
                     desc="Uploading images to {!r}".format(dataset_name),
                     total=len(values["names"]),
@@ -2924,7 +2925,7 @@ class Project:
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
             old_alpha_figure_ids = []
             tags_list = []  # to append tags to figures in bulk
-            if log_progress or progress_cb is not None:
+            if ds_progress is not None:
                 ds_fig_progress = tqdm_sly(
                     desc="Processing figures for images in {!r}".format(dataset_name),
                     total=len(new_file_infos),
@@ -2972,7 +2973,7 @@ class Project:
 
                     process_figures(other_figure_jsons, all_figure_tags)
                     process_figures(alpha_figure_jsons, all_figure_tags)
-                if log_progress or progress_cb is not None:
+                if ds_progress is not None:
                     ds_fig_progress.update(1)
             all_figure_ids = api.image.figure.create_bulk(
                 other_figures,
@@ -2993,8 +2994,12 @@ class Project:
                     tags_list.append(
                         {"tagId": new_tag_id, "figureId": new_of_id, "value": tag_value}
                     )
+
             api.image.tag.add_to_objects(
-                new_project_info.id, tags_list, batch_size=300, log_progress=True
+                new_project_info.id,
+                tags_list,
+                batch_size=300,
+                log_progress=True if ds_progress is not None else False,
             )
         return new_project_info
 
