@@ -207,7 +207,7 @@ class DataVersion(ModuleApiBase):
             or "app.supervisely.com" in self._api.server_address
         ):
             if self._api.team.get_info_by_id(project_info.team_id).usage.plan == "free":
-                logger.warn(
+                logger.warning(
                     "Project versioning is not available for teams with Free plan. Please upgrade to Pro to enable versioning."
                 )
                 return None
@@ -398,13 +398,13 @@ class DataVersion(ModuleApiBase):
         backup_files = self.versions[str(version_id)]["path"]
 
         if updated_at == self.project_info.updated_at:
-            logger.warn(
+            logger.warning(
                 f"Project is already on version {version_num} with the same updated_at timestamp"
             )
             return
 
         if backup_files is None:
-            logger.warn(
+            logger.warning(
                 f"Project can't be restored to version {version_num} because it doesn't have restore point."
             )
             return
