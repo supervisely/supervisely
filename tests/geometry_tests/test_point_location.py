@@ -2,7 +2,7 @@ import random
 from typing import Tuple, Union
 
 import numpy as np
-import pytest
+import pytest  # pylint: disable=import-error
 
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point_location import PointLocation

@@ -1,10 +1,10 @@
 import inspect
 import os
 import random
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
-import pytest
+import pytest  # pylint: disable=import-error
 from test_geometry import draw_test
 
 from supervisely.geometry.alpha_mask import AlphaMask

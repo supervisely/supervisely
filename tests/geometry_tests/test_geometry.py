@@ -2,7 +2,7 @@ import os
 from typing import List
 
 import numpy as np
-import pytest
+import pytest  # pylint: disable=import-error
 
 import supervisely.imaging.image as sly_image
 from supervisely.geometry.geometry import Geometry
