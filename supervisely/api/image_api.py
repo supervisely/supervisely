@@ -10,6 +10,7 @@ import re
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -936,23 +937,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :rtype: List[str]
         """
 
-        def _is_image_available(url):
+        if len(links) == 0:
+            return []
+
+        def _is_image_available(url, progress_cb=None):
             if self._api.remote_storage.is_bucket_url(url):
                 response = self._api.remote_storage.is_path_exist(url)
-                return url if response else None
-            response = requests.head(url)
-            return url if response.status_code == 200 else None
-
-        results = []
-        if len(links) == 0:
-            return results
-        for links_batch in batched(links, batch_size=900):
-            with ThreadPoolExecutor(max_workers=20) as executor:
-                b_results = list(executor.map(_is_image_available, links))
-            results.extend(b_results)
-
+                result =  url if response else None
+            else:
+                response = requests.head(url)            
+                result = url if response.status_code == 200 else None
             if progress_cb is not None:
-                progress_cb(len(links_batch))
+                progress_cb(1)
+            return result
+
+        _is_image_available_with_progress = partial(_is_image_available, progress_cb=progress_cb)
+
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            results = list(executor.map(_is_image_available_with_progress, links))
+
         return results
 
     def check_image_uploaded(self, hash: str) -> bool:
