@@ -386,6 +386,7 @@ class DataVersion(ModuleApiBase):
         if version_num:
             version_id = None
             for key, value in self.versions.items():
+                # pylint: disable=no-member
                 if isinstance(value, dict) and value.get("number") == version_num:
                     version_id = key
                     break
