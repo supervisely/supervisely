@@ -316,7 +316,7 @@ class TagApi(ModuleApi):
         result = []
         if log_progress:
             ds_progress = tqdm_sly(
-                desc="Uploading tags to figures",
+                desc="Adding tags to figures",
                 total=len(tags_list),
             )
         for batch in batched(tags_list, batch_size):
