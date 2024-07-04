@@ -1408,9 +1408,9 @@ class Inference:
         stop = False
 
         def image_batch_generator(batch_size):
-            batch = []
             while True:
                 for dataset_info in datasets_infos:
+                    batch = [] # guarantee the full batch comes from the same dataset.
                     for image_info in images_infos_dict[dataset_info.id]:
                         batch.append(image_info)
                         if len(batch) == batch_size:
