@@ -2596,7 +2596,7 @@ class Project:
         :type project_id: :class:`int`
         :param dest_dir: Destination path to local directory.
         :type dest_dir: :class:`str`, optional
-        :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+        :param dataset_ids: Specified list of Dataset IDs which will be downloaded. If you want to download nested datasets, you should specify all nested IDs.
         :type dataset_ids: :class:`list` [ :class:`int` ], optional
         :param log_progress: Show downloading logs in the output.
         :type log_progress: :class:`bool`, optional
@@ -2635,29 +2635,29 @@ class Project:
                 "Local save directory dest_dir must be specified if return_bytesio is False"
             )
 
-        dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+        ds_filters = (
+            [{"field": "id", "operator": "in", "value": dataset_ids}]
+            if dataset_ids is not None
+            else None
+        )
+
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
 
-        dataset_infos = api.dataset.get_list(project_id, recursive=True)
-        dataset_skip_list = []
+        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
 
         image_infos = []
         figures = {}
         alpha_geometries = {}
         for dataset_info in dataset_infos:
-            dataset_id = dataset_info.id
-            if dataset_ids is not None and dataset_id not in dataset_ids:
-                dataset_skip_list.append(dataset_id)
-                continue
-            ds_image_infos = api.image.get_list(dataset_id)
+            ds_image_infos = api.image.get_list(dataset_info.id)
             image_infos.extend(ds_image_infos)
 
-            ds_progress = None
+            ds_progress = progress_cb
             if log_progress:
-                ds_progress = Progress(
-                    "Downloading dataset: {!r}".format(dataset_info.name),
-                    total_cnt=len(ds_image_infos),
+                ds_progress = tqdm_sly(
+                    desc="Downloading dataset: {!r}".format(dataset_info.name),
+                    total=len(ds_image_infos),
                 )
 
             for batch in batched(ds_image_infos, batch_size):
@@ -2673,24 +2673,23 @@ class Project:
                     geometries_list = api.image.figure.download_geometries_batch(alpha_ids)
                     alpha_geometries.update(dict(zip(alpha_ids, geometries_list)))
                 figures.update(ds_figures)
-                if log_progress:
-                    ds_progress.iters_done_report(len(batch))
-                if progress_cb is not None:
-                    progress_cb(len(batch))
-        dataset_infos = [ds for ds in dataset_infos if ds.id not in dataset_skip_list]
-        if return_bytesio:
-            data = io.BytesIO()
-            pickle.dump(
-                (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries), data
-            )
-            return data
+                if log_progress or progress_cb is not None:
+                    ds_progress(len(batch))
+
+        data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
+        file = (
+            io.BytesIO()
+            if return_bytesio
+            else open(os.path.join(dest_dir, f"{project_info.id}_{project_info.name}"), "wb")
+        )
+
+        if isinstance(file, io.BytesIO):
+            pickle.dump(data, file)
         else:
-            project_file_path = os.path.join(dest_dir, f"{project_info.id}_{project_info.name}")
-            with open(project_file_path, "wb") as f:
-                pickle.dump(
-                    (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries), f
-                )
-            return project_file_path
+            with file as f:
+                pickle.dump(data, f)
+
+        return file if return_bytesio else file.name
 
     @staticmethod
     def upload_bin(
@@ -2700,6 +2699,7 @@ class Project:
         project_name: Optional[str] = None,
         with_custom_data: Optional[bool] = True,
         log_progress: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: Optional[bool] = False,
     ) -> sly.ProjectInfo:
         """
@@ -2707,17 +2707,19 @@ class Project:
         This method is a counterpart to :func:`download_bin`.
         Faster than uploading project in the usual way.
 
-        :param file: Path to the binary file or BytesIO object.
-        :type file: :class:`str` or :class:`BytesIO`
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
+        :param file: Path to the binary file or BytesIO object.
+        :type file: :class:`str` or :class:`BytesIO`
         :param workspace_id: Workspace ID, where project will be uploaded.
         :type workspace_id: :class:`int`
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
         :type project_name: :class:`str`, optional
+        :param with_custom_data: If True, custom data from source project will be added to a new project.
+        :type with_custom_data: :class:`bool`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`, optional
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking upload progress for datasets.
         :type progress_cb: tqdm or callable, optional
         :param skip_missed: Skip missed images.
         :type skip_missed: :class:`bool`, optional
@@ -2800,9 +2802,12 @@ class Project:
 
         for dataset_info in sorted_dataset_infos:
             dataset_info: sly.DatasetInfo
-            new_parent_id = (
-                dataset_mapping.get(dataset_info.parent_id).id if dataset_info.parent_id else None
-            )
+            parent_ds_info = dataset_mapping.get(dataset_info.parent_id, None)
+            new_parent_id = parent_ds_info.id if parent_ds_info else None
+            if new_parent_id is None:
+                logger.warning(
+                    f"Parent dataset for dataset '{dataset_info.name}' not found. Will be added to project root."
+                )
             new_dataset_info = api.dataset.create(
                 new_project_info.id, dataset_info.name, parent_id=new_parent_id
             )
@@ -2853,8 +2858,8 @@ class Project:
                 if dataset_id is None:
                     raise KeyError(f"Dataset ID {dataset_id} not found in mapping")
 
-            ds_progress = None
-            if log_progress:
+            ds_progress = progress_cb
+            if log_progress is True:
                 ds_progress = tqdm_sly(
                     desc="Uploading images to {!r}".format(dataset_name),
                     total=len(values["names"]),
@@ -2919,7 +2924,7 @@ class Project:
             all_figure_tags = defaultdict(list)  # figure_id: List of (tagId, value)
             old_alpha_figure_ids = []
             tags_list = []  # to append tags to figures in bulk
-            if log_progress:
+            if log_progress or progress_cb is not None:
                 ds_fig_progress = tqdm_sly(
                     desc="Processing figures for images in {!r}".format(dataset_name),
                     total=len(new_file_infos),
@@ -2967,7 +2972,7 @@ class Project:
 
                     process_figures(other_figure_jsons, all_figure_tags)
                     process_figures(alpha_figure_jsons, all_figure_tags)
-                if log_progress:
+                if log_progress or progress_cb is not None:
                     ds_fig_progress.update(1)
             all_figure_ids = api.image.figure.create_bulk(
                 other_figures,
