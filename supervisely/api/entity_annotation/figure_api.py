@@ -386,6 +386,8 @@ class FigureApi(RemoveableBulkModuleApi):
         In this case figure jsons list can contain figures from different entities for the same dataset.
         Every figure json must contain corresponding entity ID.
 
+        *NOTE*: Geometries for AlphaMask must be uploaded separately via `upload_geometries_batch` method.
+
         :param figures_json: List of figures in Supervisely JSON format.
         :type figures_json: List[dict]
         :param entity_id: Entity ID.
