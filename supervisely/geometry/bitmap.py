@@ -185,7 +185,7 @@ class Bitmap(BitmapBase):
         """
         Rotates current Bitmap.
 
-        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
+        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitmap rotation.
         :type rotator: ImageRotator
         :return: Bitmap object
         :rtype: :class:`Bitmap<Bitmap>`
@@ -273,6 +273,11 @@ class Bitmap(BitmapBase):
         """_draw_impl"""
         self.to_bbox().get_cropped_numpy_slice(bitmap)[self.data] = color
 
+        # For debug
+        # rect = self.to_bbox()
+        # cropped_slice = rect.get_cropped_numpy_slice(bitmap)
+        # slice = cropped_slice[self.data] = color
+
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_contour_impl"""
         # pylint: disable=(no-member, unpacking-non-sequence)
@@ -290,13 +295,12 @@ class Bitmap(BitmapBase):
             )
         if contours is not None:
             for cont in contours:
+                rounded_col, rounded_row = round(self.origin.col), round(self.origin.row)
                 cont[:, :] += (
-                    self.origin.col,
-                    self.origin.row,
+                    rounded_col,
+                    rounded_row,
                 )  # cont with shape (rows, ?, 2)
-            cv2.drawContours(
-                bitmap, contours, -1, color, thickness=thickness
-            )
+            cv2.drawContours(bitmap, contours, -1, color, thickness=thickness)
         # pylint: enable=(no-member, unpacking-non-sequence)
 
     @property
@@ -352,9 +356,13 @@ class Bitmap(BitmapBase):
             return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
 
-        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=(no-member, unpacking-non-sequenc)
+        imdecoded = cv2.imdecode(
+            n, cv2.IMREAD_UNCHANGED
+        )  # pylint: disable=(no-member, unpacking-non-sequenc)
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] >= 4):
-            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs # pylint: disable=unsubscriptable-object
+            mask = imdecoded[:, :, 3].astype(
+                bool
+            )  # 4-channel imgs # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded.astype(bool)  # flat 2d mask
         else:

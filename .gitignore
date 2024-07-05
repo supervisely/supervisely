@@ -52,3 +52,5 @@ docs/build
 docs/source/rst_templates/api
 docs/source/sdk
 panda.deb
+
+tests/geometry_tests/test_results
