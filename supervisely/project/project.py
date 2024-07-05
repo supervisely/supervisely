@@ -2770,10 +2770,10 @@ class Project:
             workspace_id, project_name, change_name_if_conflict=True
         )
         custom_data = new_project_info.custom_data
-        version_num = project_info.version.get("version", None)
+        version_num = project_info.version.get("version", None) if project_info.version else 0
         custom_data["restored_from"] = {
             "project_id": project_info.id,
-            "version_num": version_num + 1 if version_num else "Unable to determine",
+            "version_num": version_num + 1 if version_num is not None else "Unable to determine",
         }
         if with_custom_data:
             custom_data.update(project_info.custom_data)
