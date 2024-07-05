@@ -203,7 +203,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
-        Version information is not available while getting list of projects.
+
+        *NOTE*: Version information is not available while getting list of projects.
         If you need version information, use :func:`get_info_by_id`.
 
         :param workspace_id: Workspace ID in which the Projects are located.
