@@ -1044,6 +1044,7 @@ class AppApi(TaskApi):
             return self._add_edge(data, "output", task_id, meta)
 
     def __init__(self, api):
+        super().__init__(api)
         self.workflow = self.Workflow(api)
 
     @staticmethod
