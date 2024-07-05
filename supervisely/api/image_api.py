@@ -9,6 +9,8 @@ import json
 import re
 import urllib.parse
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -27,6 +29,7 @@ from typing import (
 from uuid import uuid4
 
 import numpy as np
+import requests
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
@@ -922,6 +925,41 @@ class ImageApi(RemoveableBulkModuleApi):
 
             if progress_cb is not None:
                 progress_cb(len(hashes_batch))
+        return results
+
+    def check_existing_links(
+        self, links: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
+    ) -> List[str]:
+        """
+        Checks existing links for Images.
+
+        :param links: List of links.
+        :type links: List[str]
+        :param progress_cb: Function for tracking progress of checking.
+        :type progress_cb: tqdm or callable, optional
+        :return: List of existing links
+        :rtype: List[str]
+        """
+
+        if len(links) == 0:
+            return []
+
+        def _is_image_available(url, progress_cb=None):
+            if self._api.remote_storage.is_bucket_url(url):
+                response = self._api.remote_storage.is_path_exist(url)
+                result =  url if response else None
+            else:
+                response = requests.head(url)            
+                result = url if response.status_code == 200 else None
+            if progress_cb is not None:
+                progress_cb(1)
+            return result
+
+        _is_image_available_with_progress = partial(_is_image_available, progress_cb=progress_cb)
+
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            results = list(executor.map(_is_image_available_with_progress, links))
+
         return results
 
     def check_image_uploaded(self, hash: str) -> bool:
@@ -2705,7 +2743,8 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
     ):
         """
-        Remove images from supervisely by ids.
+        Remove images from supervisely by IDs.
+        IDs must belong to the same project.
 
         :param ids: List of Images IDs in Supervisely.
         :type ids: List[int]
