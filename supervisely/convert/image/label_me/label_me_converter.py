@@ -23,6 +23,8 @@ class LabelmeConverter(ImageConverter):
         """Validate LabelMe annotation file."""
 
         ann_json = load_json_file(ann_path)
+        if not isinstance(ann_json, dict):
+            return False
         shapes = ann_json.get("shapes")
         if shapes is None or not isinstance(shapes, list):
             return False
