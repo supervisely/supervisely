@@ -770,7 +770,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_imgs_count)
             # Output: 24
         """
-        datasets = self._api.dataset.get_list(id)
+        datasets = self._api.dataset.get_list(id, recursive=True)
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):
