@@ -63,6 +63,10 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
 )
 from supervisely.sly_logger import logger
+from requests.exceptions import HTTPError
+from datetime import datetime
+
+SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 
 
 class ImageInfo(NamedTuple):
@@ -1100,6 +1104,7 @@ class ImageApi(RemoveableBulkModuleApi):
         paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1114,6 +1119,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1137,7 +1144,10 @@ class ImageApi(RemoveableBulkModuleApi):
         hashes = [get_file_hash(x) for x in paths]
 
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
-        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
+
+        return self.upload_hashes(
+            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+        )
 
     def upload_np(
         self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None
@@ -1178,6 +1188,7 @@ class ImageApi(RemoveableBulkModuleApi):
         imgs: List[np.ndarray],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1192,6 +1203,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Images metadata.
         :type metas: List[dict], optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1229,7 +1242,9 @@ class ImageApi(RemoveableBulkModuleApi):
         self._upload_data_bulk(
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
-        return self.upload_hashes(dataset_id, names, hashes, metas=metas)
+        return self.upload_hashes(
+            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+        )
 
     def upload_link(
         self,
@@ -1288,6 +1303,7 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         force_metadata_for_links: Optional[bool] = True,
         skip_validation: Optional[bool] = False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1306,6 +1322,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1335,6 +1353,7 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
         )
 
     def upload_hash(
@@ -1404,6 +1423,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1422,6 +1442,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1462,6 +1484,7 @@ class ImageApi(RemoveableBulkModuleApi):
             metas=metas,
             batch_size=batch_size,
             skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
         )
 
     def upload_id(
@@ -1533,6 +1556,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: bool = True,
         infos: List[ImageInfo] = None,
         skip_validation: Optional[bool] = False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1555,6 +1579,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type infos: List[ImageInfo], optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1624,6 +1650,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 batch_size=batch_size,
                 force_metadata_for_links=force_metadata_for_links,
                 skip_validation=skip_validation,
+                conflict_resolution=conflict_resolution,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1637,10 +1664,10 @@ class ImageApi(RemoveableBulkModuleApi):
                 metas=hashes_metas,
                 batch_size=batch_size,
                 skip_validation=skip_validation,
+                conflict_resolution=conflict_resolution,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
-
         return result
 
     def _upload_bulk_add(
@@ -1654,9 +1681,33 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size=50,
         force_metadata_for_links=True,
         skip_validation=False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ):
         """ """
+        if (
+            conflict_resolution is not None
+            and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
+        ):
+            raise ValueError(
+                f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
+            )
         results = []
+
+        def _add_timestamp(name: str) -> str:
+
+            now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+            return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
+
+        def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
+            images = []
+            for name, item, meta in zip(names, items, metas):
+                item_tuple = func_item_to_kv(item)
+                image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
+                if len(meta) != 0 and type(meta) == dict:
+                    image_data[ApiField.META] = meta
+                images.append(image_data)
+            return images
 
         if len(names) == 0:
             return results
@@ -1669,37 +1720,88 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(names) != len(metas):
                 raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
 
-        for batch in batched(list(zip(names, items, metas)), batch_size=batch_size):
-            images = []
-            for name, item, meta in batch:
-                item_tuple = func_item_to_kv(item)
-                # @TODO: 'title' -> ApiField.NAME
-                image_data = {"title": name, item_tuple[0]: item_tuple[1]}
-                if len(meta) != 0 and type(meta) == dict:
-                    image_data[ApiField.META] = meta
-                images.append(image_data)
-
-            response = self._api.post(
-                "images.bulk.add",
-                {
-                    ApiField.DATASET_ID: dataset_id,
-                    ApiField.IMAGES: images,
-                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    ApiField.SKIP_VALIDATION: skip_validation,
-                },
+        idx_to_id = {}
+        for batch_count, (batch_names, batch_items, batch_metas) in enumerate(
+            zip(
+                batched(names, batch_size=batch_size),
+                batched(items, batch_size=batch_size),
+                batched(metas, batch_size=batch_size),
             )
-            if progress_cb is not None:
-                progress_cb(len(images))
+        ):
+            for retry in range(2):
+                images = _pack_for_request(batch_names, batch_items, batch_metas)
+                try:
+                    response = self._api.post(
+                        "images.bulk.add",
+                        {
+                            ApiField.DATASET_ID: dataset_id,
+                            ApiField.IMAGES: images,
+                            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                            ApiField.SKIP_VALIDATION: skip_validation,
+                        },
+                    )
+                    if progress_cb is not None:
+                        progress_cb(len(images))
 
-            for info_json in response.json():
-                info_json_copy = info_json.copy()
-                if info_json.get(ApiField.MIME, None) is not None:
-                    info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
-                # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
-                results.append(self._convert_json_info(info_json_copy))
+                    for info_json in response.json():
+                        info_json_copy = info_json.copy()
+                        if info_json.get(ApiField.MIME, None) is not None:
+                            info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
+                        # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
+                        results.append(self._convert_json_info(info_json_copy))
+                    break
+                except HTTPError as e:
+                    error_details = e.response.json().get("details")
+                    if (
+                        conflict_resolution is not None
+                        and e.response.status_code == 400
+                        and error_details.get("type") == "NONUNIQUE"
+                    ):
+                        logger.info(
+                            f"Handling the exception above with '{conflict_resolution}' conflict resolution method"
+                        )
+
+                        errors: List[Dict] = error_details.get("errors", [])
+
+                        if conflict_resolution == "replace":
+                            ids_to_remove = [error["id"] for error in errors]
+                            logger.info(f"Image ids to be removed: {ids_to_remove}")
+                            self._api.image.remove_batch(ids_to_remove)
+                            continue
+
+                        name_to_index = {name: idx for idx, name in enumerate(batch_names)}
+                        errors = sorted(
+                            errors, key=lambda x: name_to_index[x["name"]], reverse=True
+                        )
+                        if conflict_resolution == "rename":
+                            for error in errors:
+                                error_img_name = error["name"]
+                                idx = name_to_index[error_img_name]
+                                batch_names[idx] = _add_timestamp(error_img_name)
+                        elif conflict_resolution == "skip":
+                            for error in errors:
+                                error_img_name = error["name"]
+                                error_index = name_to_index[error_img_name]
+
+                                idx_to_id[error_index + batch_count * batch_size] = error["id"]
+                                for l in [batch_items, batch_metas, batch_names]:
+                                    l.pop(error_index)
+
+                        if len(batch_names) == 0:
+                            break
+                    else:
+                        raise
 
         # name_to_res = {img_info.name: img_info for img_info in results}
         # ordered_results = [name_to_res[name] for name in names]
+
+        if len(idx_to_id) > 0:
+            logger.info("Inserting skipped image infos")
+
+            idx_to_id = dict(reversed(list(idx_to_id.items())))
+            image_infos = self._api.image.get_info_by_id_batch(list(idx_to_id.values()))
+            for idx, info in zip(list(idx_to_id.values()), image_infos):
+                results.insert(idx, info)
 
         return results  # ordered_results
 

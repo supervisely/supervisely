@@ -11,12 +11,6 @@ from supervisely.video.video import validate_ext as validate_video_ext
 
 
 class SLYVideoConverter(VideoConverter):
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[VideoConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._key_id_map: KeyIdMap = None
-        self._labeling_interface: str = labeling_interface
 
     def __str__(self) -> str:
         return AvailableVideoConverters.SLY
