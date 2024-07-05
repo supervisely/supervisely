@@ -557,6 +557,7 @@ class Inference:
         source: List[Union[str, np.ndarray]],
         settings: Dict,
     ) -> Tuple[List[Annotation], List[dict]]:
+        # This method read images and collect slides_data (data_to_return)
         images_np = [sly_image.read(img) if isinstance(img, str) else img for img in source]
         slides_data = []
         anns = self._inference_batched(
@@ -622,7 +623,7 @@ class Inference:
         image_path: str,
         settings: Dict,
         data_to_return: Dict,  # for decorators
-    ):
+    ) -> Annotation:
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
             "Inferring image_path:",
@@ -673,10 +674,12 @@ class Inference:
         )
 
     def predict_batch(self, images_np: List[np.ndarray], settings: Dict[str, Any]) -> List[List[Prediction]]:
-        """Predict batch of images. `source` is a list of numpy arrays in RGB format"""
-        # If this method is not overridden in a subclass, the following fallback logic works:
-        # - If predict_benchmark is overridden, then call predict_benchmark
-        # - Otherwise, raise NotImplementedError
+        """Predict batch of images. `images_np` is a list of numpy arrays in RGB format
+
+        If this method is not overridden in a subclass, the following fallback logic works:
+            - If predict_benchmark is overridden, then call predict_benchmark
+            - Otherwise, raise NotImplementedError
+        """
         is_predict_benchmark_overridden = type(self).predict_benchmark != Inference.predict_benchmark
         if is_predict_benchmark_overridden:
             return self.predict_benchmark(images_np, settings)[0]
@@ -691,7 +694,7 @@ class Inference:
 
     def predict_benchmark(self, images_np: List[np.ndarray], settings: dict) -> Tuple[List[List[Prediction]], dict]:
         '''
-        Inference on a batch of images with speedtest benchmarking.
+        Inference a batch of images with speedtest benchmarking.
 
         :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
@@ -700,14 +703,16 @@ class Inference:
             The benchmark dict should contain the following keys (all values are in seconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
-                steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to get a meaningful prediction.
+                steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to calculate meaningful predictions.
             - postprocess: time of postprocessing (e.g. resizing output masks, aligning predictions with the input image, formatting, etc.)
             If some of the keys are missing, they will be considered as None.
+
+        Note:
+        If this method is not overridden in a subclass, the following fallback logic works:
+            - If predict_batch is overridden, then call it
+            - If predict_batch is not overridden but the batch size is 1, then use `predict`
+            - If predict_batch is not overridden and the batch size is greater than 1, then raise NotImplementedError
         '''
-        # If this method is not overridden in a subclass, the following fallback logic works:
-        # - If predict_batch is overridden, then call it
-        # - If predict_batch is not overridden but the batch size is 1, then use `predict`
-        # - If predict_batch is not overridden and the batch size is greater than 1, then raise NotImplementedError
         is_predict_batch_overridden = type(self).predict_batch != Inference.predict_batch
         empty_benchmark = {}
         if is_predict_batch_overridden:
