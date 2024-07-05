@@ -2,7 +2,7 @@ import functools
 import os
 from typing import List, Optional, Tuple
 
-import numpy
+import numpy as np
 
 from supervisely._utils import rand_str as sly_rand_str
 from supervisely.annotation.annotation import Annotation
@@ -144,7 +144,7 @@ def process_image_roi(func):
         rectangle = Rectangle.from_json(rectangle_json)
         if "image_np" in kwargs.keys():
             image_np = kwargs["image_np"]
-            if not isinstance(image_np, numpy.ndarray):
+            if not isinstance(image_np, np.ndarray):
                 raise ValueError("Invalid input. Image path must be numpy.ndarray")
             original_image_size = image_np.shape[:2]
             image_crop_np = sly_image.crop(image_np, rectangle)
@@ -182,6 +182,7 @@ def process_image_sliding_window(func):
             ann = func(*args, **kwargs)
             return ann
 
+        assert isinstance(data_to_return, dict)
         sliding_window_params = settings["sliding_window_params"]
         image_path = kwargs["image_path"]
         img = sly_image.read(image_path)
@@ -277,31 +278,23 @@ def process_images_batch_sliding_window(func):
     def wrapper_inference(*args, **kwargs):
         settings = kwargs["settings"]
         data_to_return = kwargs["data_to_return"]
+        assert isinstance(data_to_return, list)
         inference_mode = settings.get("inference_mode", "full_image")
-        if inference_mode != "sliding_window":
-            anns = func(*args, **kwargs)
-            return anns
         sliding_window_mode = settings.get("sliding_window_mode", "basic")
-        if sliding_window_mode == "none":
+        if inference_mode != "sliding_window" or sliding_window_mode == "none":
             anns = func(*args, **kwargs)
+            for i in range(len(anns)):
+                data_to_return.append({})
             return anns
 
         sliding_window_params = settings["sliding_window_params"]
-        source = kwargs["source"]
-        data_to_return["slides"] = []
-        anns = []
-
-        images_crops = []
-        original_images_sizes = []
-        images_slices_lengths = []
-        images_shapes = []
-        for src in source:
-            if isinstance(src, str):
-                img = sly_image.read(src)
-            else:
-                img = src
+        source: List[np.ndarray] = kwargs["source"]
+        result_anns = []
+        for img in source:
+            if isinstance(img, str):
+                img = sly_image.read(img)
             img_h, img_w = img.shape[:2]
-            images_shapes.append((img_h, img_w))
+            original_image_size = (img_h, img_w)
             windowHeight = sliding_window_params.get("windowHeight", img_h)
             windowWidth = sliding_window_params.get("windowWidth", img_w)
             overlapY = sliding_window_params.get("overlapY", 0)
@@ -311,64 +304,51 @@ def process_images_batch_sliding_window(func):
             slider = SlidingWindowsFuzzy(
                 [windowHeight, windowWidth], [overlapY, overlapX], borderStrategy
             )
-            rectangles = []
-            for window in slider.get(img.shape[:2]):
-                rectangles.append(window)
+            
+            rects = []
+            crops = []
+            for rect in slider.get(img.shape[:2]):
+                rects.append(rect)
+                crops.append(sly_image.crop(img, rect))
 
-            for rect in rectangles:
-                original_image_size = (img_h, img_w)
-                image_crop = sly_image.crop(img, rect)
-                images_crops.append(image_crop)
-                original_images_sizes.append(original_image_size)
-            images_slices_lengths.append(len(rectangles))
-
-            ann = Annotation((img_h, img_w))
-            anns.append(ann)
-
-        kwargs["source"] = images_crops
-        slices_anns: List[Annotation] = func(*args, **kwargs)
-        slices_anns = [
-            _scale_ann_to_original_size(slice_ann, original_image_size, rect)
-            for slice_ann in slices_anns
-        ]
-        for i in range(len(images_slices_lengths)):
-            i_from = sum(images_slices_lengths[:i])
-            i_to = sum(images_slices_lengths[: i + 1])
-            image_rects = rectangles[i_from:i_to]
-            image_slices = slices_anns[i_from:i_to]
-            data_to_return["slides"].append(
-                [
-                    {"rectangle": rect.to_json(), "labels": [l.to_json() for l in slice_ann.labels]}
-                    for rect, slice_ann in zip(image_rects, image_slices)
-                ]
-            )
-
-        for i, image_shape in enumerate(images_shapes):
-            img_h, img_w = image_shape
-            all_json_labels = [slide["labels"] for slide in data_to_return["slides"][i]]
-            full_rect = Rectangle(0, 0, img_h, img_w)
-            all_labels_slide = {"rectangle": full_rect.to_json(), "labels": all_json_labels}
-            data_to_return["slides"][i].append(all_labels_slide)  # for visualization
-
-            i_from = sum(images_slices_lengths[:i])
-            i_to = sum(images_slices_lengths[: i + 1])
-            image_slices = slices_anns[i_from:i_to]
+            # Inference
+            kwargs["source"] = crops
+            slice_anns: List[Annotation] = func(*args, **kwargs)
 
             all_labels = []
-            for slice_ann in image_slices:
-                all_labels.extend(slice_ann.labels)
+            all_json_labels = []
+            slides = []
+            for rect, slice_ann in zip(rects, slice_anns):
+                slice_ann = _scale_ann_to_original_size(slice_ann, original_image_size, rect)
+                json_labels = [l.to_json() for l in slice_ann.labels]
+                slides.append({
+                    "rectangle": rect.to_json(),
+                    "labels": json_labels,
+                })
+                all_labels += slice_ann.labels
+                all_json_labels += json_labels
+            
+            # Add full image slide
+            full_rect = Rectangle(0, 0, img_h, img_w)
+            all_labels_slide = {"rectangle": full_rect.to_json(), "labels": all_json_labels}
+            slides.append(all_labels_slide)  # for visualization
+
+            # Apply NMS
+            ann = Annotation((img_h, img_w))
             if sliding_window_mode == "advanced":
                 labels_after_nms = _apply_agnostic_nms(all_labels)
-                anns[i] = anns[i].add_labels(labels_after_nms)
-                all_labels_after_nms_slide = {
+                ann = ann.add_labels(labels_after_nms)
+                slides.append({
                     "rectangle": full_rect.to_json(),
                     "labels": [l.to_json() for l in labels_after_nms],
-                }
-                data_to_return["slides"][i].append(all_labels_after_nms_slide)
+                })
             else:
-                anns[i] = anns[i].add_labels(all_labels)
-                data_to_return["slides"][i].append(all_labels_slide)
+                ann = ann.add_labels(all_labels)
+                slides.append(all_labels_slide)
 
-        return anns
+            result_anns.append(ann)
+            data_to_return.append({"slides": slides})
+
+        return result_anns
 
     return wrapper_inference
