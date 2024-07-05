@@ -771,8 +771,9 @@ class Inference:
             anns: List[Annotation],
             slides_data: List[dict] = None,
         ) -> List[dict]:
-        if slides_data is None:
+        if not slides_data:
             slides_data = [{} for _ in range(len(anns))]
+        assert len(anns) == len(slides_data)
         return [
             {"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)
         ]

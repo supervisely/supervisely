@@ -278,16 +278,15 @@ def process_images_batch_sliding_window(func):
     def wrapper_inference(*args, **kwargs):
         settings = kwargs["settings"]
         data_to_return = kwargs["data_to_return"]
-        inference_mode = settings.get("inference_mode", "full_image")
-        if inference_mode != "sliding_window":
-            ann = func(*args, **kwargs)
-            return ann
-        sliding_window_mode = settings.get("sliding_window_mode", "basic")
-        if sliding_window_mode == "none":
-            ann = func(*args, **kwargs)
-            return ann
-
         assert isinstance(data_to_return, list)
+        inference_mode = settings.get("inference_mode", "full_image")
+        sliding_window_mode = settings.get("sliding_window_mode", "basic")
+        if inference_mode != "sliding_window" or sliding_window_mode == "none":
+            anns = func(*args, **kwargs)
+            for i in range(len(anns)):
+                data_to_return.append({})
+            return anns
+
         sliding_window_params = settings["sliding_window_params"]
         source: List[np.ndarray] = kwargs["source"]
         result_anns = []
