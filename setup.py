@@ -18,7 +18,7 @@ version = response.json()["tag_name"]
 
 
 INSTALL_REQUIRES = [
-    "cachetools<5.0.0",
+    "cachetools>=4.2.3, <5.0.0",
     "numpy>=1.19, <2.0.0",
     "opencv-python>=4.5.5.62, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
