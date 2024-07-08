@@ -172,7 +172,8 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             loc_scale_rc = loc.scale_frow_fcol(0.1, 2.7)
         """
-        return PointLocation(row=round(self.row * frow), col=round(self.col * fcol))
+        # return PointLocation(row=round(self.row * frow), col=round(self.col * fcol))
+        return PointLocation(row=self.row * frow, col=self.col * fcol)
 
     def translate(self, drow: int, dcol: int) -> PointLocation:
         """
@@ -216,7 +217,9 @@ class PointLocation(JsonSerializable):
         """
         return rotator.transform_point(self)
 
-    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> PointLocation:
+    def resize(
+        self, in_size: Tuple[int, int], out_size: Tuple[int, int]
+    ) -> PointLocation:
         """
         Resize current PointLocation object.
 
@@ -236,7 +239,9 @@ class PointLocation(JsonSerializable):
             out_height, out_width = 600, 800
             resize_loc = loc.resize((in_height, in_width), (out_height, out_width))
         """
-        new_size = sly_image.restore_proportional_size(in_size=in_size, out_size=out_size)
+        new_size = sly_image.restore_proportional_size(
+            in_size=in_size, out_size=out_size
+        )
         frow = new_size[0] / in_size[0]
         fcol = new_size[1] / in_size[1]
         return self.scale_frow_fcol(frow=frow, fcol=fcol)
@@ -302,12 +307,21 @@ def _flip_row_col_order(coords):
         raise ValueError(
             "Flipping row and column order values is only possible within tuples of 2 elements."
         )
-    return [[y, x] for x, y in coords]
+    # return [[y, x] for x, y in coords]
+    flipped_coords = []
+    for x, y in coords:
+        flipped_coords.append([y, x])
+        
+    return flipped_coords
+
 
 
 def _maybe_flip_row_col_order(coords, flip=False):
     """ """
-    return _flip_row_col_order(coords) if flip else coords
+    # return _flip_row_col_order(coords) if flip else coords
+    if flip:
+        coords = _flip_row_col_order(coords)
+    return coords
 
 
 def points_to_row_col_list(
@@ -339,6 +353,7 @@ def points_to_row_col_list(
         coords=[[p.row, p.col] for p in points], flip=flip_row_col_order
     )
 
+
 def row_col_list_to_points(
     data: List[List[Union[int, float], Union[int, float]]],
     flip_row_col_order: Optional[bool] = False,
@@ -367,9 +382,18 @@ def row_col_list_to_points(
     """
 
     def _maybe_round(v):
-        return v if not do_round else round(v)
 
-    return [
-        PointLocation(row=_maybe_round(r), col=_maybe_round(c))
-        for r, c in _maybe_flip_row_col_order(data, flip=flip_row_col_order)
-    ]
+        # return v if not do_round else round(v)
+        if do_round:
+            return round(v)
+        return v
+
+    # return [
+    # PointLocation(row=_maybe_round(r), col=_maybe_round(c))
+    # for r, c in _maybe_flip_row_col_order(data, flip=flip_row_col_order)
+    # ]
+    points = []
+    for r, c in _maybe_flip_row_col_order(data, flip=flip_row_col_order):
+        point = PointLocation(row=_maybe_round(r), col=_maybe_round(c))
+        points.append(point)
+    return points

@@ -43,10 +43,15 @@ def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size:
     # TODO: Double check (+restore_proportional_size) or not? bitmap.shape and in_size are equal?
     # Make sure the resulting size has at least one pixel in every direction (i.e. limit the shrinkage to avoid having
     # empty bitmaps as a result).
-    scaled_rows = max(round(bitmap.shape[0] * row_scale), 1)
-    scaled_cols = max(round(bitmap.shape[1] * col_scale), 1)
+    
+    # scaled_rows = max(round(bitmap.shape[0] * row_scale), 1)
+    # scaled_cols = max(round(bitmap.shape[1] * col_scale), 1)
+    
+    scaled_rows = max(bitmap.shape[0] * row_scale, 1)
+    scaled_cols = max(bitmap.shape[1] * col_scale, 1)
 
-    scaled_origin = PointLocation(row=round(origin.row * row_scale), col=round(origin.col * col_scale))
+    # scaled_origin = PointLocation(row=round(origin.row * row_scale), col=round(origin.col * col_scale))
+    scaled_origin = PointLocation(row=origin.row * row_scale, col=origin.col * col_scale)
     scaled_bitmap = resize_inter_nearest(bitmap, (scaled_rows, scaled_cols))
     return scaled_origin, scaled_bitmap
 

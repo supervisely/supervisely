@@ -123,8 +123,9 @@ class Polyline(VectorGeometry):
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
+        exterior = row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True)
         return cls(
-            exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
+            exterior=exterior,
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,

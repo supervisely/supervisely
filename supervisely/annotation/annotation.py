@@ -31,6 +31,7 @@ from supervisely.imaging import font as sly_font
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import ensure_base_path
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.api.module_api import ApiField
 
 if TYPE_CHECKING:
     try:
@@ -67,7 +68,6 @@ class AnnotationJsonFields:
     """"""
     IMAGE_ID = "imageId"
     """"""
-
 
 class Annotation:
     """
@@ -158,6 +158,7 @@ class Annotation:
         )
         self._custom_data = take_with_default(custom_data, {})
         self._image_id = image_id
+        self._integer_coords = True
 
     @property
     def img_size(self) -> Tuple[int, int]:
@@ -386,11 +387,18 @@ class Annotation:
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
         img_size = (img_height, img_width)
+        integer_coords = data.get(ApiField.INTEGER_COORDS, True)
         try:
-            labels = [
-                Label.from_json(label_json, project_meta)
-                for label_json in data[AnnotationJsonFields.LABELS]
-            ]
+            labels = []
+            for label_json in data[AnnotationJsonFields.LABELS]:
+                try:
+                    label_json[ApiField.INTEGER_COORDS] = integer_coords
+                    label = Label.from_json(label_json, project_meta)
+                    labels.append(label)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
+                    )
         except Exception as e:
             raise RuntimeError(
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
@@ -408,17 +416,25 @@ class Annotation:
 
             # @TODO: tony, maybe link with project meta (add probability classes???)
             prob_project_meta = ProjectMeta(obj_classes=prob_classes)
-            prob_labels = [
-                Label.from_json(label_json, prob_project_meta)
-                for label_json in custom_data[AnnotationJsonFields.PROBABILITY_LABELS]
-            ]
+            prob_labels = []
+            for label_json in custom_data[AnnotationJsonFields.PROBABILITY_LABELS]:
+                try:
+                    label_json[ApiField.INTEGER_COORDS] = integer_coords
+                    label = Label.from_json(label_json, prob_project_meta)
+                    prob_labels.append(label)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
+                    )
+            
 
             custom_data.pop(AnnotationJsonFields.PROBABILITY_CLASSES)
             custom_data.pop(AnnotationJsonFields.PROBABILITY_LABELS)
 
         image_id = data.get(AnnotationJsonFields.IMAGE_ID, None)
 
-        return cls(
+
+        ann = cls(
             img_size=img_size,
             labels=labels,
             img_tags=TagCollection.from_json(
@@ -429,6 +445,8 @@ class Annotation:
             custom_data=custom_data,
             image_id=image_id,
         )
+        ann._integer_coords = integer_coords
+        return ann
 
     @classmethod
     def load_json_file(cls, path: str, project_meta: ProjectMeta) -> Annotation:

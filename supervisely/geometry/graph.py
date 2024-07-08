@@ -523,6 +523,9 @@ class GraphNodes(Geometry):
             # consistent with the our set of points.
             self.validate(self.geometry_name(), config)
 
+        if thickness == -1:
+            thickness = 1
+
         # Draw edges first so that nodeas are then drawn on top.
         for edge in self._get_nested_or_default(config, [EDGES], []):
             src = self._nodes.get(edge[SRC], None)
@@ -534,10 +537,14 @@ class GraphNodes(Geometry):
                 and (not dst.disabled)
             ):
                 edge_color = edge.get(COLOR, color)
+                
+                src_col, src_row = round(src.location.col), round(src.location.row)
+                dst_col, dst_row = round(dst.location.col), round(dst.location.row)
+                
                 cv2.line(
                     bitmap,
-                    (src.location.col, src.location.row),
-                    (dst.location.col, dst.location.row),
+                    (src_col, src_row),
+                    (dst_col, dst_row),
                     tuple(edge_color),
                     thickness,
                 )

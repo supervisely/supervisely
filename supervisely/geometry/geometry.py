@@ -113,6 +113,8 @@ class Geometry(JsonSerializable):
 
     def translate(self, drow, dcol):
         """
+        Translate the geometry by drow rows and dcol cols.
+        
         :param drow: int rows shift
         :param dcol: int cols shift
         :return: Geometry
@@ -121,6 +123,8 @@ class Geometry(JsonSerializable):
 
     def fliplr(self, img_size):
         """
+        Flip the geometry horizontally.
+        
         :param img_size: (rows, cols)
         :return: Geometry
         """
@@ -128,6 +132,8 @@ class Geometry(JsonSerializable):
 
     def flipud(self, img_size):
         """
+        Flip the geometry vertically.
+        
         :param img_size: (rows, cols)
         :return: Geometry
         """

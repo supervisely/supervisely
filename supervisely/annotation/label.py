@@ -23,7 +23,7 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import font as sly_font
 from supervisely.imaging import image as sly_image
 from supervisely.project.project_meta import ProjectMeta
-
+from supervisely.api.module_api import ApiField
 
 class LabelJsonFields:
     """Json fields for :class:`Annotation<supervisely.annotation.label.Label>`"""
@@ -99,6 +99,7 @@ class LabelBase:
             self._tags = TagCollection(tags)
 
         self._binding_key = binding_key
+        self._integer_coords = True
 
     def _validate_geometry(self):
         """
@@ -328,13 +329,15 @@ class LabelBase:
             geometry = obj_class.geometry_type.from_json(data)
 
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
-        return cls(
+        label = cls(
             geometry=geometry,
             obj_class=obj_class,
             tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             binding_key=binding_key,
         )
+        label._integer_coords = data.get(ApiField.INTEGER_COORDS, True)
+        return label
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """

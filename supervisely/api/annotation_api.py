@@ -266,8 +266,12 @@ class AnnotationApi(ModuleApi):
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
         :Usage example:
@@ -309,6 +313,9 @@ class AnnotationApi(ModuleApi):
             },
         )
         result = response.json()
+        
+        # Set integer coords flag
+        result[ApiField.ANNOTATION][ApiField.INTEGER_COORDS] = integer_coords
 
         # check if there are any AlphaMask geometries in the batch
         additonal_geometries = defaultdict(int)
@@ -326,6 +333,7 @@ class AnnotationApi(ModuleApi):
                 label_idx = additonal_geometries[figure_id]
                 labels[label_idx].update({BITMAP: geometry})
         ann_info = self._convert_json_info(result)
+        
 
         return ann_info
 
@@ -334,14 +342,19 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
         :return: Annotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -371,6 +384,7 @@ class AnnotationApi(ModuleApi):
             image_id=image_id,
             with_custom_data=with_custom_data,
             force_metadata_for_links=force_metadata_for_links,
+            integer_coords=integer_coords,
         ).annotation
 
     def download_batch(
@@ -391,6 +405,12 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -479,6 +499,7 @@ class AnnotationApi(ModuleApi):
                         ].update({BITMAP: geometry})
 
             for ann_dict in results:
+                ann_dict[ApiField.ANNOTATION][ApiField.INTEGER_COORDS] = integer_coords
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
 
@@ -493,6 +514,7 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> List[Dict]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -503,6 +525,10 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
 
@@ -530,6 +556,7 @@ class AnnotationApi(ModuleApi):
             image_ids=image_ids,
             progress_cb=progress_cb,
             force_metadata_for_links=force_metadata_for_links,
+            integer_coords=integer_coords,
         )
         return [ann_info.annotation for ann_info in results]
 
