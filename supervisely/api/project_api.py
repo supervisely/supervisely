@@ -33,6 +33,7 @@ from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
@@ -1823,16 +1824,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def recreate(
         self, src_project_id: int, dst_project_id: int
-    ) -> Generator[Tuple[int, int], None, None]:
+    ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
         """This method can be used to recreate a project with hierarchial datasets and
-        yields the tuple of source and destination dataset ids.
+        yields the tuple of source and destination DatasetInfo objects.
 
         :param src_project_id: Source project ID
         :type src_project_id: int
         :param dst_project_id: Destination project ID
         :type dst_project_id: int
 
-        :return: Generator of tuples of source and destination dataset ids
+        :return: Generator of tuples of source and destination DatasetInfo objects
+        :rtype: Generator[Tuple[DatasetInfo, DatasetInfo], None, None]
 
         :Usage example:
 
@@ -1845,8 +1847,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             src_project_id = 123
             dst_project_id = api.project.create("new_project", "images").id
 
-            for src_ds_id, dst_ds_id in api.project.recreate(src_project_id, dst_project_id):
-                print(f"Recreated dataset {src_ds_id} -> {dst_ds_id}")
+            for src_ds, dst_ds in api.project.recreate(src_project_id, dst_project_id):
+                print(f"Recreated dataset {src_ds.id} -> {dst_ds.id}")
                 # Implement your logic here to process the datasets.
         """
         # dataset_map is a dict, where key is the path to the dataset in the source project
@@ -1871,4 +1873,4 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
             dataset_map[os.path.join(parent, dst_dataset.name)] = dst_dataset.id
 
-            yield ds_info.id, dst_dataset.id
+            yield ds_info, dst_dataset
