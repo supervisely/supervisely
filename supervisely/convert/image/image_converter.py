@@ -191,8 +191,10 @@ class ImageConverter(BaseConverter):
     def _collect_items_if_format_not_detected(self):
 
         def _is_meta_dir(dirpath: str) -> bool:
-            jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
-            return os.path.basename(dirpath).lower() == "meta" and len(jsons) > 0
+            if os.path.basename(dirpath).lower() == "meta":
+                jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
+                return len(jsons) > 0
+            return False
 
         meta_dirs = [d for d in dirs_filter(self._input_data, _is_meta_dir)]
         if len(meta_dirs) == 0:
