@@ -14,6 +14,7 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
+from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.constants import GEOMETRY_SHAPE, GEOMETRY_TYPE
 from supervisely.geometry.geometry import Geometry
@@ -99,6 +100,7 @@ class LabelBase:
             self._tags = TagCollection(tags)
 
         self._binding_key = binding_key
+        self._integer_coords = True
 
     def _validate_geometry(self):
         """
@@ -269,7 +271,7 @@ class LabelBase:
 
         if self.binding_key is not None:
             res[LabelJsonFields.INSTANCE_KEY] = self.binding_key
-
+        res[ApiField.INTEGER_COORDS] = self._integer_coords
         return res
 
     @classmethod
@@ -319,6 +321,7 @@ class LabelBase:
                 f"label class name {obj_class_name} was not found in the given project meta."
             )
 
+        integer_coords = data.get(ApiField.INTEGER_COORDS, True)
         if obj_class.geometry_type is AnyGeometry:
             geometry_type_actual = GET_GEOMETRY_FROM_STR(
                 data[GEOMETRY_TYPE] if GEOMETRY_TYPE in data else data[GEOMETRY_SHAPE]
@@ -328,13 +331,15 @@ class LabelBase:
             geometry = obj_class.geometry_type.from_json(data)
 
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
-        return cls(
+        label = cls(
             geometry=geometry,
             obj_class=obj_class,
             tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             binding_key=binding_key,
         )
+        label._integer_coords = integer_coords
+        return label
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """

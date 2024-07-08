@@ -2,17 +2,16 @@
 
 # docs
 from __future__ import annotations
+
 from copy import deepcopy
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple, Union
+
 import supervisely as sly
-
-
-
-from supervisely.io.json import JsonSerializable
-from supervisely.imaging import image as sly_image
+from supervisely._utils import unwrap_if_numpy
 from supervisely.geometry import validation
 from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS
-from supervisely._utils import unwrap_if_numpy
+from supervisely.imaging import image as sly_image
+from supervisely.io.json import JsonSerializable
 
 
 class PointLocation(JsonSerializable):
@@ -34,12 +33,32 @@ class PointLocation(JsonSerializable):
         col = 200
         loc = sly.PointLocation(row, col)
     """
-    def __init__(self, row: int, col: int):
-        self._row = round(unwrap_if_numpy(row))
-        self._col = round(unwrap_if_numpy(col))
+
+    def __init__(self, row: Union[int, float], col: Union[int, float]):
+        self._row = unwrap_if_numpy(row)
+        self._col = unwrap_if_numpy(col)
+
+        self._rounded_row = round(unwrap_if_numpy(row))
+        self._rounded_col = round(unwrap_if_numpy(col))
 
     @property
-    def row(self) -> int:
+    def row(self) -> Union[int, float]:
+        """
+        Exact position of PointLocation on height.
+
+        :return: Height of PointLocation
+        :rtype: int or float
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.row)
+            # Output: 100
+        """
+        return self._row
+
+    @property
+    def rounded_row(self) -> int:
         """
         Position of PointLocation on height.
 
@@ -52,10 +71,26 @@ class PointLocation(JsonSerializable):
             print(loc.row)
             # Output: 100
         """
-        return self._row
+        return self._rounded_row
 
     @property
-    def col(self) -> int:
+    def col(self) -> Union[int, float]:
+        """
+        Exact position of PointLocation on width.
+
+        :return: Width of PointLocation
+        :rtype: int or float
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.col)
+            # Output: 200
+        """
+        return self._col
+
+    @property
+    def rounded_col(self) -> int:
         """
         Position of PointLocation on width.
 
@@ -68,7 +103,7 @@ class PointLocation(JsonSerializable):
             print(loc.col)
             # Output: 200
         """
-        return self._col
+        return self._rounded_col
 
     def to_json(self) -> Dict:
         """
@@ -94,12 +129,11 @@ class PointLocation(JsonSerializable):
             #    }
             # }
         """
-        packed_obj = {
-            POINTS: {
-                EXTERIOR: [[self.col, self.row]],
-                INTERIOR: []
-            }
-        }
+        if isinstance(self.row, float) or isinstance(self.col, float):
+            exterior = [[self.col, self.row]]
+        else:
+            exterior = [[self.rounded_col, self.rounded_row]]
+        packed_obj = {POINTS: {EXTERIOR: [exterior], INTERIOR: []}}
         return packed_obj
 
     @classmethod
@@ -133,7 +167,9 @@ class PointLocation(JsonSerializable):
         validation.validate_geometry_points_fields(data)
         exterior = data[POINTS][EXTERIOR]
         if len(exterior) != 1:
-            raise ValueError('"exterior" field must contain exactly one point to create "PointLocation" object.')
+            raise ValueError(
+                '"exterior" field must contain exactly one point to create "PointLocation" object.'
+            )
         return cls(row=exterior[0][1], col=exterior[0][0])
 
     def scale(self, factor: float) -> PointLocation:
@@ -172,7 +208,11 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             loc_scale_rc = loc.scale_frow_fcol(0.1, 2.7)
         """
-        return PointLocation(row=round(self.row * frow), col=round(self.col * fcol))
+        if isinstance(self.row, float) or isinstance(self.col, float):
+            row, col = self.row * frow, self.col * fcol
+        else:
+            row, col = round(self.row * frow), round(self.col * fcol)
+        return PointLocation(row=row, col=col)
 
     def translate(self, drow: int, dcol: int) -> PointLocation:
         """
@@ -192,7 +232,11 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             translate_loc = loc.translate(150, 350)
         """
-        return PointLocation(row=(self.row + drow), col=(self.col + dcol))
+        if isinstance(self.row, float) or isinstance(self.col, float):
+            row, col = self.row + drow, self.col + dcol
+        else:
+            row, col = round(self.row + drow), round(self.col + dcol)
+        return PointLocation(row=row, col=col)
 
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> PointLocation:
         """
@@ -258,7 +302,11 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             fliplr_loc = loc.fliplr((height, width))
         """
-        return PointLocation(row=self.row, col=(img_size[1] - self.col))
+        if isinstance(self.row, float) or isinstance(self.col, float):
+            row, col = self.row, img_size[1] - self.col
+        else:
+            row, col = self.rounded_row, img_size[1] - self.rounded_col
+        return PointLocation(row=row, col=col)
 
     def flipud(self, img_size: Tuple[int, int]) -> PointLocation:
         """
@@ -277,7 +325,12 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             flipud_loc = loc.flipud((height, width))
         """
-        return PointLocation(row=(img_size[0] - self.row), col=self.col)
+        if isinstance(self.row, float) or isinstance(self.col, float):
+            row, col = img_size[0] - self.row, self.col
+        else:
+            row, col = img_size[0] - self.rounded_row, self.rounded_col
+
+        return PointLocation(row=row, col=col)
 
     def clone(self) -> PointLocation:
         """
@@ -297,20 +350,22 @@ class PointLocation(JsonSerializable):
 
 
 def _flip_row_col_order(coords):
-    """
-    """
+    """ """
     if not all(len(x) == 2 for x in coords):
-        raise ValueError('Flipping row and column order values is only possible within tuples of 2 elements.')
+        raise ValueError(
+            "Flipping row and column order values is only possible within tuples of 2 elements."
+        )
     return [[y, x] for x, y in coords]
 
 
 def _maybe_flip_row_col_order(coords, flip=False):
-    """
-    """
+    """ """
     return _flip_row_col_order(coords) if flip else coords
 
 
-def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: Optional[bool] = False) -> List[List[int]]:
+def points_to_row_col_list(
+    points: List[PointLocation], flip_row_col_order: Optional[bool] = False
+) -> List[List[int]]:
     """
     Convert list of PointLocation objects to list of coords.
 
@@ -333,11 +388,16 @@ def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: Opti
             print(points_row_col)
             # Output: [[100, 200], [300, 400]]
     """
-    return _maybe_flip_row_col_order(coords=[[p.row, p.col] for p in points], flip=flip_row_col_order)
+    return _maybe_flip_row_col_order(
+        coords=[[p.row, p.col] for p in points], flip=flip_row_col_order
+    )
 
 
-def row_col_list_to_points(data: List[List[int, int]], flip_row_col_order: Optional[bool] = False,
-                           do_round: Optional[bool] = False) -> List[PointLocation]:
+def row_col_list_to_points(
+    data: List[List[int, int]],
+    flip_row_col_order: Optional[bool] = False,
+    do_round: Optional[bool] = False,
+) -> List[PointLocation]:
     """
     Convert list of coords to list of PointLocation objects.
 
@@ -359,8 +419,11 @@ def row_col_list_to_points(data: List[List[int, int]], flip_row_col_order: Optio
             coords = [(row_1, col_1), (row_2, col_2)]
             locs = row_col_list_to_points(coords)
     """
+
     def _maybe_round(v):
         return v if not do_round else round(v)
 
-    return [PointLocation(row=_maybe_round(r), col=_maybe_round(c)) for r, c in
-            _maybe_flip_row_col_order(data, flip=flip_row_col_order)]
+    return [
+        PointLocation(row=_maybe_round(r), col=_maybe_round(c))
+        for r, c in _maybe_flip_row_col_order(data, flip=flip_row_col_order)
+    ]
