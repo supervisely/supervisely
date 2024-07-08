@@ -29,6 +29,8 @@ class AvailableImageConverters:
     MULTI_VIEW = "multi_view"
     PDF = "pdf"
     CITYSCAPES = "cityscapes"
+    LABEL_ME = "label_me"
+    LABEL_STUDIO = "label_studio"
 
 
 class AvailableVideoConverters:
