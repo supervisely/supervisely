@@ -4,16 +4,19 @@
 # docs
 from __future__ import annotations
 
+import os
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
+    Generator,
     List,
     Literal,
     NamedTuple,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -1817,3 +1820,55 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
         _convert_entities(first_response)
         return first_response
+
+    def recreate(
+        self, src_project_id: int, dst_project_id: int
+    ) -> Generator[Tuple[int, int], None, None]:
+        """This method can be used to recreate a project with hierarchial datasets and
+        yields the tuple of source and destination dataset ids.
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int
+
+        :return: Generator of tuples of source and destination dataset ids
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            src_project_id = 123
+            dst_project_id = api.project.create("new_project", "images").id
+
+            for src_ds_id, dst_ds_id in api.project.recreate(src_project_id, dst_project_id):
+                print(f"Recreated dataset {src_ds_id} -> {dst_ds_id}")
+                # Implement your logic here to process the datasets.
+        """
+        # dataset_map is a dict, where key is the path to the dataset in the source project
+        # e.g. "ds1/ds2" and value is the id of the dataset in the destination project.
+        # Example: {
+        #     "ds1": 1, <<< This dataset will be created in the root of the destination project.
+        #     "ds1/ds2": 2 <<< This dataset will be created inside "ds1" dataset.
+        # }
+        dataset_map = {}
+        for parents, ds_info in self._api.dataset.tree(src_project_id):
+            if len(parents) > 0:
+                parent = f"{os.path.sep}".join(parents)
+                parent_id = dataset_map.get(parent)
+            else:
+                # If the dataset is in the root of the project, parent_id should be None.
+                # And the path (key) will be just a name of the dataset.
+                parent = ""
+                parent_id = None
+
+            dst_dataset = self._api.dataset.create(
+                dst_project_id, ds_info.name, parent_id=parent_id
+            )
+            dataset_map[os.path.join(parent, dst_dataset.name)] = dst_dataset.id
+
+            yield ds_info.id, dst_dataset.id
