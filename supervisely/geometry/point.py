@@ -95,9 +95,9 @@ class Point(Geometry):
     @property
     def rounded_row(self) -> int:
         """
-        Position of PointLocation on height.
+        Position of Point on height.
 
-        :return: Height of PointLocation
+        :return: Height of Point
         :rtype: :class:`int`
         :Usage example:
 
@@ -127,9 +127,9 @@ class Point(Geometry):
     @property
     def rounded_col(self) -> int:
         """
-        Position of PointLocation on width.
+        Position of Point on width.
 
-        :return: Width of PointLocation
+        :return: Width of Point
         :rtype: :class:`int`
         :Usage example:
 

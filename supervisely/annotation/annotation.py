@@ -159,7 +159,6 @@ class Annotation:
         )
         self._custom_data = take_with_default(custom_data, {})
         self._image_id = image_id
-        self._integer_coords = True
 
     @property
     def img_size(self) -> Tuple[int, int]:
@@ -351,7 +350,6 @@ class Annotation:
             res[AnnotationJsonFields.CUSTOM_DATA].update(probabilities)
         if self.image_id is not None:
             res[AnnotationJsonFields.IMAGE_ID] = self.image_id
-        res[ApiField.INTEGER_COORDS] = self._integer_coords
         return res
 
     @classmethod
@@ -389,12 +387,10 @@ class Annotation:
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
         img_size = (img_height, img_width)
-        integer_coords = data.get(ApiField.INTEGER_COORDS, True)
         try:
             labels = []
             for label_json in data[AnnotationJsonFields.LABELS]:
                 try:
-                    label_json[ApiField.INTEGER_COORDS] = integer_coords
                     label = Label.from_json(label_json, project_meta)
                     labels.append(label)
                 except Exception as e:
@@ -420,7 +416,6 @@ class Annotation:
             prob_project_meta = ProjectMeta(obj_classes=prob_classes)
             prob_labels = []
             for label_json in custom_data[AnnotationJsonFields.PROBABILITY_LABELS]:
-                label_json[ApiField.INTEGER_COORDS] = integer_coords
                 label = Label.from_json(label_json, prob_project_meta)
                 prob_labels.append(label)
 
@@ -440,9 +435,8 @@ class Annotation:
             custom_data=custom_data,
             image_id=image_id,
         )
-        ann._integer_coords = integer_coords
         return ann
-    
+
     @classmethod
     def load_json_file(cls, path: str, project_meta: ProjectMeta) -> Annotation:
         """

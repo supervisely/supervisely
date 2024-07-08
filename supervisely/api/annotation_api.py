@@ -304,12 +304,10 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_ID: image_id,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: integer_coords,
             },
         )
         result = response.json()
-
-        # Set integer coords flag
-        result[ApiField.ANNOTATION][ApiField.INTEGER_COORDS] = integer_coords
 
         # check if there are any AlphaMask geometries in the batch
         additonal_geometries = defaultdict(int)
@@ -492,7 +490,6 @@ class AnnotationApi(ModuleApi):
                         ].update({BITMAP: geometry})
 
             for ann_dict in results:
-                ann_dict[ApiField.ANNOTATION][ApiField.INTEGER_COORDS] = integer_coords
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
 
