@@ -256,18 +256,9 @@ class BaseConverter:
         progress_cb(1)
 
         if len(found_formats) == 0:
-            only_modality_items = True
-            unsupported_exts = set()
-            for root, _, files in os.walk(self._input_data):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    ext = get_file_ext(full_path)
-                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
-                        self._items.append(self.Item(full_path))  # pylint: disable=no-member
-                        continue
-                    only_modality_items = False
-                    if ext.lower() in self.unsupported_exts:
-                        unsupported_exts.add(ext)
+            self._items, only_modality_items, unsupported_exts = (
+                self._collect_items_if_format_not_detected()
+            )
 
             if self.items_count == 0:
                 if unsupported_exts:
@@ -290,6 +281,23 @@ class BaseConverter:
 
         if len(found_formats) == 1:
             return found_formats[0]
+
+    def _collect_items_if_format_not_detected(self):
+        only_modality_items = True
+        unsupported_exts = set()
+        items = []
+        for root, _, files in os.walk(self._input_data):
+            for file in files:
+                full_path = os.path.join(root, file)
+                ext = get_file_ext(full_path)
+                if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
+                    items.append(self.Item(full_path))  # pylint: disable=no-member
+                    continue
+                only_modality_items = False
+                if ext.lower() in self.unsupported_exts:
+                    unsupported_exts.add(ext)
+
+        return items, only_modality_items, unsupported_exts
 
     def merge_metas_with_conflicts(
         self, api: Api, dataset_id: int

@@ -1,3 +1,4 @@
+import os
 import mimetypes
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -18,8 +19,9 @@ from supervisely import (
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.api.api import ApiContext
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.fs import get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name, dirs_filter, list_files
 from supervisely.io.json import load_json_file
+from supervisely.project.project_settings import LabelingInterface
 
 
 class ImageConverter(BaseConverter):
@@ -92,6 +94,13 @@ class ImageConverter(BaseConverter):
     @property
     def key_file_ext(self) -> str:
         return None
+
+    def validate_labeling_interface(self) -> bool:
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.IMAGE_MATTING,
+            LabelingInterface.FISHEYE,
+        ]
 
     @staticmethod
     def validate_ann_file(ann_path: str, meta: ProjectMeta = None) -> bool:
@@ -178,3 +187,44 @@ class ImageConverter(BaseConverter):
             if file_ext.lower() == ".bin" and get_file_ext(path).lower() == ".avif":
                 return True
             return file_ext.lower() in self.allowed_exts
+
+    def _collect_items_if_format_not_detected(self):
+
+        def _is_meta_dir(dirpath: str) -> bool:
+            jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
+            return os.path.basename(dirpath).lower() == "meta" and len(jsons) > 0
+
+        meta_dirs = [d for d in dirs_filter(self._input_data, _is_meta_dir)]
+        if len(meta_dirs) == 0:
+            return super()._collect_items_if_format_not_detected()
+        else:
+            logger.debug("Found folders with meta information for images.")
+            only_modality_items = True
+            unsupported_exts = set()
+            images_map = {}
+            metas_map = {}
+            for root, _, files in os.walk(self._input_data):
+                for file in files:
+                    dirname = os.path.basename(root)
+                    full_path = os.path.join(root, file)
+                    ext = get_file_ext(full_path)
+                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
+                        images_map[file] = full_path
+                        continue
+                    elif ext.lower() == ".json" and dirname == "meta":
+                        file_name_no_ext = get_file_name(file)
+                        metas_map[file_name_no_ext] = full_path
+                        continue
+                    only_modality_items = False
+                    if ext.lower() in self.unsupported_exts:
+                        unsupported_exts.add(ext)
+
+            items = []
+            for image_name, image_path in images_map.items():
+                item = self.Item(image_path)
+                meta_path = metas_map.get(image_name)
+                if meta_path is not None:
+                    item.set_meta_data(meta_path)
+                items.append(item)
+
+            return items, only_modality_items, unsupported_exts
