@@ -56,6 +56,7 @@ from supervisely.decorators.inference import (
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
+from supervisely.nn.inference.utils import DeployInfo, ModelInfo, Runtime, _get_hardware_info
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -83,8 +84,10 @@ class Inference:
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
             fs.mkdir(model_dir)
+        self.model_info: ModelInfo = None
         self._model_dir = model_dir
         self._model_served = False
+        self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -129,6 +132,7 @@ class Inference:
                 if isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
                     self.load_model(**deploy_params)
+                    self._deploy_params = deploy_params
                     self.update_gui(self._model_served)
                 else:  # GUI.InferenceGUI
                     device = gui.get_device()
@@ -433,6 +437,16 @@ class Inference:
                 hr_info[hr_name] = data
 
         return hr_info
+    
+    def _get_deploy_info(self) -> DeployInfo:
+        deploy_info = {
+            **self.model_info,
+            "device": self.device,
+            "runtime": getattr(self, "runtime", Runtime.PYTORCH),
+            "hardware": _get_hardware_info(),
+            "deploy_params": self._deploy_params,
+        }
+        return DeployInfo(**deploy_info)
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -1718,6 +1732,7 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 self.load_model(**deploy_params)
+                self._deploy_params = deploy_params
                 self.update_gui(self._model_served)
                 self.set_params_to_gui(deploy_params)
 
@@ -1738,6 +1753,10 @@ class Inference:
                 "deployed": self._model_served,
                 "description:": "Model is ready to receive requests",
             }
+        
+        @server.post("/get_deployed_model_info")
+        def _get_deployed_model_info():
+            return self._get_deploy_info()
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
