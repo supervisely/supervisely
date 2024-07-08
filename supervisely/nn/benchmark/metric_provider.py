@@ -133,8 +133,9 @@ class MetricProvider:
         confuse_count = len(self.confused_matches)
 
         mAP = self.coco_mAP
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
+        with np.errstate(invalid="ignore"):
+            precision = tp / (tp + fp)
+            recall = tp / (tp + fn)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             f1 = 2 * precision * recall / (precision + recall)
@@ -157,9 +158,10 @@ class MetricProvider:
         tp = self.true_positives.mean(1)
         fp = self.false_positives.mean(1)
         fn = self.false_negatives.mean(1)
-        pr = tp / (tp + fp)
-        rc = tp / (tp + fn)
-        f1 = 2 * pr * rc / (pr + rc)
+        with np.errstate(invalid="ignore"):
+            pr = tp / (tp + fp)
+            rc = tp / (tp + fn)
+            f1 = 2 * pr * rc / (pr + rc)
         return pd.DataFrame({"category": self.cat_names, "precision": pr, "recall": rc, "f1": f1})
 
     def pr_curve(self):
