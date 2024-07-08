@@ -41,6 +41,10 @@ class PointLocation(JsonSerializable):
         self._rounded_row = round(unwrap_if_numpy(row))
         self._rounded_col = round(unwrap_if_numpy(col))
 
+        self._integer_coords = True
+        if isinstance(self._row, float) or isinstance(self._col, float):
+            self._integer_coords = False
+
     @property
     def row(self) -> Union[int, float]:
         """
@@ -129,7 +133,7 @@ class PointLocation(JsonSerializable):
             #    }
             # }
         """
-        if isinstance(self.row, float) or isinstance(self.col, float):
+        if not self._integer_coords:
             exterior = [[self.col, self.row]]
         else:
             exterior = [[self.rounded_col, self.rounded_row]]
@@ -208,7 +212,7 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             loc_scale_rc = loc.scale_frow_fcol(0.1, 2.7)
         """
-        if isinstance(self.row, float) or isinstance(self.col, float):
+        if not self._integer_coords:
             row, col = self.row * frow, self.col * fcol
         else:
             row, col = round(self.row * frow), round(self.col * fcol)
@@ -232,7 +236,7 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             translate_loc = loc.translate(150, 350)
         """
-        if isinstance(self.row, float) or isinstance(self.col, float):
+        if not self._integer_coords:
             row, col = self.row + drow, self.col + dcol
         else:
             row, col = round(self.row + drow), round(self.col + dcol)
@@ -302,7 +306,7 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             fliplr_loc = loc.fliplr((height, width))
         """
-        if isinstance(self.row, float) or isinstance(self.col, float):
+        if not self._integer_coords:
             row, col = self.row, img_size[1] - self.col
         else:
             row, col = self.rounded_row, img_size[1] - self.rounded_col
@@ -325,7 +329,7 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             flipud_loc = loc.flipud((height, width))
         """
-        if isinstance(self.row, float) or isinstance(self.col, float):
+        if not self._integer_coords:
             row, col = img_size[0] - self.row, self.col
         else:
             row, col = img_size[0] - self.rounded_row, self.rounded_col

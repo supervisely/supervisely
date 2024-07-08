@@ -129,7 +129,6 @@ class VectorGeometry(Geometry):
             created_at=created_at,
         )
 
-        # self._integer_coords = True
         if any(not isinstance(p.row, int) for p in self._exterior):
             self._integer_coords = False
 

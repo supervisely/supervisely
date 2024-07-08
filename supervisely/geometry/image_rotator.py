@@ -142,7 +142,7 @@ class ImageRotator:
             #    }
             # }
         """
-        if isinstance(point.row, float) or isinstance(point.col, float):
+        if not point._integer_coords:
             point_np_uniform = np.array([point.row, point.col, 1])
         else:
             point_np_uniform = np.array([point.rounded_row, point.rounded_col, 1], dtype=np.int64)

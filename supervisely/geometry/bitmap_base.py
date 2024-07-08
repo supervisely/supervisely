@@ -128,6 +128,7 @@ class BitmapBase(Geometry):
 
         self._origin = origin.clone()
         self._data = data.copy()
+        self._integer_coords = self._origin._integer_coords
 
     @classmethod
     def _impl_json_class_name(cls):
