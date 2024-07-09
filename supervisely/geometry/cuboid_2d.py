@@ -169,7 +169,7 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
     """
 
     def __init__(self, color: List[int]):
-        color = _validate_color(color)
+        _validate_color(color)
         self._point_names = []
         self._config = self._create_template(color)
 
