@@ -110,7 +110,7 @@ class VideoFigure:
         self.updated_at = updated_at
         self.created_at = created_at
         self.track_id = track_id
-        self.smart_tool_input = smart_tool_input
+        self._smart_tool_input = smart_tool_input
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
