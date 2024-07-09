@@ -1,6 +1,5 @@
 import imghdr
 import os
-from typing import List
 
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
 from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, logger
@@ -14,14 +13,6 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[PointcloudEpisodeConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
-        self._annotation = None
-        self._frame_pointcloud_map = None
-        self._frame_count = None
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY

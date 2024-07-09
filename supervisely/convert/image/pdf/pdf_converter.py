@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 import supervisely.convert.image.pdf.pdf_helper as helper
 from supervisely import Annotation, ProjectMeta, logger
@@ -16,12 +15,6 @@ from supervisely.io.json import load_json_file
 
 
 class PDFConverter(ImageConverter):
-
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.PDF

@@ -19,9 +19,10 @@ class Input(Widget):
         placeholder: str = "",
         size: Literal["mini", "small", "large"] = None,
         readonly: bool = False,
-        type: Literal["text", "password"] = "text",
+        type: Literal["text", "password", "textarea"] = "text",
         widget_id: str = None,
         icon: Literal["search", "edit"] = None,
+        autosize_textarea: bool = True,
     ):
         self._value = value  # initial value
         self._minlength = minlength
@@ -33,6 +34,7 @@ class Input(Widget):
         self._changes_handled = False
         self._type = type
         self._icon = icon
+        self._autosize_textarea = autosize_textarea
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -43,6 +45,7 @@ class Input(Widget):
             "placeholder": self._placeholder,
             "size": self._size,
             "readonly": self._readonly,
+            "autosize": self._autosize_textarea,
         }
 
     def get_json_state(self):
@@ -51,6 +54,15 @@ class Input(Widget):
             "type": self._type,
             "icon": self._icon,
         }
+
+    @property
+    def autosize_textarea(self):
+        return self._autosize_textarea
+
+    @autosize_textarea.setter
+    def autosize_textarea(self, value: bool):
+        self._autosize_textarea = value
+        DataJson()[self.widget_id]["autosize_textarea"] = value
 
     def set_value(self, value):
         StateJson()[self.widget_id]["value"] = value
@@ -65,7 +77,7 @@ class Input(Widget):
 
     def get_type(self):
         return StateJson()[self.widget_id]["type"]
-    
+
     def set_icon(self, value: Literal["search", "edit"]):
         StateJson()[self.widget_id]["icon"] = value
         StateJson().send_changes()

@@ -7,11 +7,11 @@ import sys
 import threading
 import time
 import uuid
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from queue import Queue
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -483,7 +483,7 @@ class Inference:
 
     def _predictions_to_annotation(
         self,
-        image_path: str,
+        image_path: Union[str, np.ndarray],
         predictions: List[Prediction],
         classes_whitelist: Optional[List[str]] = None,
     ) -> Annotation:
@@ -536,6 +536,89 @@ class Inference:
             logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
             raise e
 
+    def _inference_auto(
+        self,
+        source: List[Union[str, np.ndarray]],
+        settings: Dict[str, Any],
+    ) -> Tuple[List[Annotation], List[dict]]:
+        inference_mode = settings.get("inference_mode", "full_image")
+        use_raw = (
+            inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
+        )
+        is_predict_batch_raw_implemented = (
+            type(self).predict_batch_raw != Inference.predict_batch_raw
+        )
+        if (not use_raw and self.is_batch_inference_supported()) or (
+            use_raw and is_predict_batch_raw_implemented
+        ):
+            return self._inference_batched_wrapper(source, settings)
+        else:
+            return self._inference_one_by_one_wrapper(source, settings)
+
+    def _inference_batched_wrapper(
+        self,
+        source: List[Union[str, np.ndarray]],
+        settings: Dict,
+    ) -> Tuple[List[Annotation], List[dict]]:
+        # This method read images and collect slides_data (data_to_return)
+        images_np = [sly_image.read(img) if isinstance(img, str) else img for img in source]
+        slides_data = []
+        anns = self._inference_batched(
+            source=images_np,
+            settings=settings,
+            data_to_return=slides_data,
+        )
+        return anns, slides_data
+
+    @process_images_batch_sliding_window
+    @process_images_batch_roi
+    def _inference_batched(
+        self,
+        source: List[np.ndarray],
+        settings: Dict,
+        data_to_return: list,
+    ) -> List[Annotation]:
+        images_np = source
+        inference_mode = settings.get("inference_mode", "full_image")
+        use_raw = (
+            inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
+        )
+        if not use_raw:
+            predictions = self.predict_batch(images_np=images_np, settings=settings)
+        else:
+            predictions = self.predict_batch_raw(images_np=images_np, settings=settings)
+        anns = []
+        for src, prediction in zip(source, predictions):
+            ann = self._predictions_to_annotation(
+                src, prediction, classes_whitelist=settings.get("classes", None)
+            )
+            anns.append(ann)
+        return anns
+
+    def _inference_one_by_one_wrapper(
+        self,
+        source: List[Union[str, np.ndarray]],
+        settings: Dict[str, Any],
+    ) -> Tuple[List[Annotation], List[dict]]:
+        anns = []
+        slides_data = []
+        writer = TempImageWriter()
+        for img in source:
+            if isinstance(img, np.ndarray):
+                image_path = writer.write(img)
+            else:
+                image_path = img
+            data_to_return = {}
+            ann = self._inference_image_path(
+                image_path=image_path,
+                settings=settings,
+                data_to_return=data_to_return,
+            )
+            anns.append(ann)
+            slides_data.append(data_to_return)
+        writer.clean()
+        return anns, slides_data
+
     @process_image_sliding_window
     @process_image_roi
     def _inference_image_path(
@@ -543,7 +626,7 @@ class Inference:
         image_path: str,
         settings: Dict,
         data_to_return: Dict,  # for decorators
-    ):
+    ) -> Annotation:
         inference_mode = settings.get("inference_mode", "full_image")
         logger.debug(
             "Inferring image_path:",
@@ -565,86 +648,24 @@ class Inference:
         return ann
 
     def _inference_benchmark(
-            self,
-            image_nps: list,
-            settings: dict,
-        ) -> Tuple[Annotation, dict]:
+        self,
+        images_np: List[np.ndarray],
+        settings: dict,
+    ) -> Tuple[List[Annotation], dict]:
         t0 = time.time()
-        predictions, benchmark = self.predict_benchmark(image_nps, settings)
+        predictions, benchmark = self.predict_benchmark(images_np, settings)
         total_time = time.time() - t0
         benchmark = {
             "total": total_time,
             "preprocess": benchmark.get("preprocess"),
             "inference": benchmark.get("inference"),
             "postprocess": benchmark.get("postprocess"),
-            }
+        }
         anns = []
-        for i, image_np in enumerate(image_nps):
+        for i, image_np in enumerate(images_np):
             ann = self._predictions_to_annotation(image_np, predictions[i])
             anns.append(ann)
         return anns, benchmark
-
-    @process_images_batch_sliding_window
-    @process_images_batch_roi
-    def _inference_images_batch(
-        self,
-        source: List,
-        settings: Dict,
-        data_to_return: Dict,  # for decorators
-    ) -> List[Annotation]:
-        inference_mode = settings.get("inference_mode", "full_image")
-        logger.debug(
-            "Inferring images batch:",
-            extra={"inference_mode": inference_mode, "items": len(source)},
-        )
-        if len(source) == 0:
-            return []
-
-        def _predict(source: List, predict_func: Callable):
-            temp_dir = None
-            if isinstance(source[0], np.ndarray):
-                temp_dir = os.path.join(get_data_dir(), rand_str(10))
-                fs.mkdir(temp_dir)
-                images_paths = [os.path.join(temp_dir, f"{rand_str(10)}.png") for _ in source]
-                for img_path, img in zip(images_paths, source):
-                    sly_image.write(img_path, img)
-            else:
-                images_paths = source
-            predictions = [
-                predict_func(image_path=img_path, settings=settings) for img_path in images_paths
-            ]
-            if temp_dir is not None:
-                fs.remove_dir(temp_dir)
-            return predictions
-
-        if inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced":
-            if type(self).predict_batch_raw == Inference.predict_batch_raw:
-                predictions = _predict(source, self.predict_raw)
-            else:
-                predictions = self.predict_batch_raw(source=source, settings=settings)
-        else:
-            if type(self).predict_batch == Inference.predict_batch:
-                predictions = _predict(source, self.predict)
-            else:
-                predictions = self.predict_batch(source=source, settings=settings)
-
-        anns = [
-            self._predictions_to_annotation(
-                image_path, prediction, classes_whitelist=settings.get("classes", None)
-            )
-            for image_path, prediction in zip(source, predictions)
-        ]
-
-        logger.debug(
-            f"Inferring images batch done. pred_annotations:",
-            extra={
-                "annotations": [
-                    dict(w=ann.img_size[1], h=ann.img_size[0], n_labels=len(ann.labels))
-                    for ann in anns
-                ]
-            },
-        )
-        return anns
 
     # pylint: disable=method-hidden
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
@@ -655,36 +676,75 @@ class Inference:
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
-    def predict_batch(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
-        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
-        If source is a list of numpy arrays, it should be in BGR format"""
-        raise NotImplementedError("Have to be implemented in child class")
+    def predict_batch(
+        self, images_np: List[np.ndarray], settings: Dict[str, Any]
+    ) -> List[List[Prediction]]:
+        """Predict batch of images. `images_np` is a list of numpy arrays in RGB format
 
-    def predict_batch_raw(self, source: List, settings: Dict[str, Any]) -> List[List[Prediction]]:
-        """Predict batch of images. source can be either list of image paths or list of numpy arrays.
-        If source is a list of numpy arrays, it should be in BGR format"""
+        If this method is not overridden in a subclass, the following fallback logic works:
+            - If predict_benchmark is overridden, then call predict_benchmark
+            - Otherwise, raise NotImplementedError
+        """
+        is_predict_benchmark_overridden = (
+            type(self).predict_benchmark != Inference.predict_benchmark
+        )
+        if is_predict_benchmark_overridden:
+            return self.predict_benchmark(images_np, settings)[0]
+        else:
+            raise NotImplementedError("Have to be implemented in child class")
+
+    def predict_batch_raw(
+        self, images_np: List[np.ndarray], settings: Dict[str, Any]
+    ) -> List[List[Prediction]]:
+        """Predict batch of images. `source` is a list of numpy arrays in RGB format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
-    def predict_benchmark(self, image_nps: str, settings: dict) -> Tuple[List[List[Prediction]], dict]:
-        '''
-        Inference on a batch of images with speedtest benchmarking.
+    def predict_benchmark(
+        self, images_np: List[np.ndarray], settings: dict
+    ) -> Tuple[List[List[Prediction]], dict]:
+        """
+        Inference a batch of images with speedtest benchmarking.
 
-        :param image_nps: list of numpy arrays
+        :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
 
         :return: tuple of annotation and benchmark dict with speedtest results in seconds.
             The benchmark dict should contain the following keys (all values are in seconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
-                steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to get a meaningful prediction.
+                steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to calculate meaningful predictions.
             - postprocess: time of postprocessing (e.g. resizing output masks, aligning predictions with the input image, formatting, etc.)
             If some of the keys are missing, they will be considered as None.
-        '''
+
+        Note:
+        If this method is not overridden in a subclass, the following fallback logic works:
+            - If predict_batch is overridden, then call it
+            - If predict_batch is not overridden but the batch size is 1, then use `predict`
+            - If predict_batch is not overridden and the batch size is greater than 1, then raise NotImplementedError
+        """
+        is_predict_batch_overridden = type(self).predict_batch != Inference.predict_batch
         empty_benchmark = {}
-        predictions = self.predict_batch(image_nps, settings)
-        return predictions, empty_benchmark
+        if is_predict_batch_overridden:
+            predictions = self.predict_batch(images_np, settings)
+            return predictions, empty_benchmark
+        elif len(images_np) == 1:
+            image_np = images_np[0]
+            writer = TempImageWriter()
+            image_path = writer.write(image_np)
+            prediction = self.predict(image_path, settings)
+            writer.clean()
+            return [prediction], empty_benchmark
+        else:
+            raise NotImplementedError("Have to be implemented in child class")
+
+    def is_batch_inference_supported(self) -> bool:
+        is_predict_batch_overridden = type(self).predict_batch != Inference.predict_batch
+        is_predict_benchmark_overridden = (
+            type(self).predict_benchmark != Inference.predict_benchmark
+        )
+        return is_predict_batch_overridden or is_predict_benchmark_overridden
 
     # pylint: enable=method-hidden
     def _get_inference_settings(self, state: dict):
@@ -724,140 +784,88 @@ class Inference:
             fill_rectangles=False,
         )
 
+    def _format_output(
+        self,
+        anns: List[Annotation],
+        slides_data: List[dict] = None,
+    ) -> List[dict]:
+        if not slides_data:
+            slides_data = [{} for _ in range(len(anns))]
+        assert len(anns) == len(slides_data)
+        return [{"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)]
+
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
         settings = self._get_inference_settings(state)
-        image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{file.filename}")
-        is_benchmark = state.get("benchmark", False)
         image_np = sly_image.read_bytes(file.file.read())
         logger.debug("Inference settings:", extra=settings)
         logger.debug("Image info:", extra={"w": image_np.shape[1], "h": image_np.shape[0]})
-        sly_image.write(image_path, image_np)
-        if is_benchmark:
-            ann, benchmark = self._inference_image_benchmark(image_path, settings)
-            result_dict = {"annotation": ann.to_json(), "benchmark": benchmark}
-        else:
-            data_to_return = {}
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
-            )
-            result_dict = {"annotation": ann.to_json(), "data": data_to_return}
-
-        fs.silent_remove(image_path)
-        return result_dict
+        anns, slides_data = self._inference_auto(
+            [image_np],
+            settings=settings,
+        )
+        results = self._format_output(anns, slides_data)
+        return results[0]
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
-        if type(self).predict_batch == Inference.predict_batch:
-            paths = []
-            temp_dir = os.path.join(get_data_dir(), rand_str(10))
-            fs.mkdir(temp_dir)
-            for file in files:
-                image_path = os.path.join(temp_dir, f"{rand_str(10)}_{file.filename}")
-                image_np = sly_image.read_bytes(file.file.read())
-                sly_image.write(image_path, image_np)
-                paths.append(image_path)
-            results = self._inference_images_dir(paths, state)
-            fs.remove_dir(temp_dir)
-            return results
-        else:
-            images = [sly_image.read_bytes(file.file.read()) for file in files]
-            return self._inference_images_dir(images, state)
+        settings = self._get_inference_settings(state)
+        images = [sly_image.read_bytes(file.file.read()) for file in files]
+        anns, slides_data = self._inference_auto(
+            images,
+            settings=settings,
+        )
+        return self._format_output(anns, slides_data)
 
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
+        settings = self._get_inference_settings(state)
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
-        paths = []
-        temp_dir = os.path.join(get_data_dir(), rand_str(10))
-        fs.mkdir(temp_dir)
+        datasets = defaultdict(list)
         for info in infos:
-            paths.append(os.path.join(temp_dir, f"{rand_str(10)}_{info.name}"))
-        api.image.download_paths(
-            infos[0].dataset_id, ids, paths
-        )  # TODO: check if this is correct (from the same ds)
-        results = self._inference_images_dir(paths, state)
-        fs.remove_dir(temp_dir)
-        return results
-
-    def _inference_images_dir(self, img_paths: List[str], state: Dict):
-        logger.debug("Inferring images_dir (or batch)...")
-        settings = self._get_inference_settings(state)
-        logger.debug("Inference settings:", extra=settings)
+            datasets[info.dataset_id].append(info.id)
         results = []
-        data_to_return = {}
-        if type(self).predict_batch == Inference.predict_batch:
-            n_imgs = len(img_paths)
-            for i, image_path in enumerate(img_paths):
-                data_to_return = {}
-                logger.debug(f"Inferring image {i+1}/{n_imgs}.", extra={"path": image_path})
-                ann = self._inference_image_path(
-                    image_path=image_path,
-                    settings=settings,
-                    data_to_return=data_to_return,
-                )
-                results.append({"annotation": ann.to_json(), "data": data_to_return})
-        else:
-            anns = self._inference_images_batch(
-                source=img_paths,
+        for dataset_id, ids in datasets.items():
+            images_np = api.image.download_nps(dataset_id, ids)
+            anns, slides_data = self._inference_auto(
+                source=images_np,
                 settings=settings,
-                data_to_return=data_to_return,
             )
-            for i, ann in enumerate(anns):
-                data = {}
-                if "slides" in data_to_return:
-                    data = data_to_return["slides"][i]
-                results.append(
-                    {
-                        "annotation": ann.to_json(),
-                        "data": data,
-                    }
-                )
+            results.extend(self._format_output(anns, slides_data))
         return results
 
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         logger.debug("Inferring image_id...", extra={"state": state})
         settings = self._get_inference_settings(state)
         upload = state.get("upload", False)
-        is_benchmark = state.get("benchmark", False)
         image_id = state["image_id"]
         image_info = api.image.get_info_by_id(image_id)
-        image_path = os.path.join(get_data_dir(), f"{rand_str(10)}_{image_info.name}")
-        api.image.download_path(image_id, image_path)
+        image_np = api.image.download_np(image_id)
         logger.debug("Inference settings:", extra=settings)
         logger.debug(
             "Image info:",
             extra={"id": image_id, "w": image_info.width, "h": image_info.height},
         )
-        logger.debug(f"Downloaded path: {image_path}")
 
-        if is_benchmark:
-            ann, benchmark = self._inference_image_benchmark(image_path, settings)
-            result_dict = {"annotation": ann.to_json(), "benchmark": benchmark}
-        else:
-            inference_request = {}
-            if async_inference_request_uuid is not None:
-                try:
-                    inference_request = self._inference_requests[async_inference_request_uuid]
-                except Exception as ex:
-                    import traceback
+        inference_request = {}
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
 
-                    logger.error(traceback.format_exc())
-                    raise RuntimeError(
-                        f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                        f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                    )
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
 
-            data_to_return = {}
-            ann = self._inference_image_path(
-                image_path=image_path,
-                settings=settings,
-                data_to_return=data_to_return,
-            )
-            result_dict = {"annotation": ann.to_json(), "data": data_to_return}
-        fs.silent_remove(image_path)
+        anns, slides_data = self._inference_auto(
+            [image_np],
+            settings=settings,
+        )
+        ann = anns[0]
 
         if upload:
             ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
@@ -882,9 +890,10 @@ class Inference:
             )
             api.annotation.upload_ann(image_id, ann)
 
+        result = self._format_output(anns, slides_data)[0]
         if async_inference_request_uuid is not None and ann is not None:
-            inference_request["result"] = result_dict
-        return result_dict
+            inference_request["result"] = result
+        return result
 
     def _inference_image_url(self, api: Api, state: dict):
         logger.debug("Inferring image_url...", extra={"state": state})
@@ -897,14 +906,12 @@ class Inference:
         fs.download(image_url, image_path)
         logger.debug("Inference settings:", extra=settings)
         logger.debug(f"Downloaded path: {image_path}")
-        data_to_return = {}
-        ann = self._inference_image_path(
-            image_path=image_path,
+        anns, slides_data = self._inference_auto(
+            [image_path],
             settings=settings,
-            data_to_return=data_to_return,
         )
         fs.silent_remove(image_path)
-        return {"annotation": ann.to_json(), "data": data_to_return}
+        return self._format_output(anns, slides_data)[0]
 
     def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
@@ -973,12 +980,10 @@ class Inference:
             logger.debug(
                 f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
-            frames = self.cache.download_frames(api, video_info.id, batch)
-            data_to_return = {}
-            anns = self._inference_images_batch(
+            frames = self.cache.download_frames(api, video_info.id, batch, redownload_video=True)
+            anns, slides_data = self._inference_auto(
                 source=frames,
                 settings=settings,
-                data_to_return=data_to_return,
             )
             batch_results = []
             for i, ann in enumerate(anns):
@@ -1245,7 +1250,7 @@ class Inference:
                                 [ii.name for ii in images_infos_batch],
                             )
                         )
-                        images_nps = images_paths
+                        images_nps = [sly_image.read(img_path) for img_path in images_paths]
                     else:
                         images_nps = self.cache.download_images(
                             api,
@@ -1253,20 +1258,16 @@ class Inference:
                             [info.id for info in images_infos_batch],
                             return_images=True,
                         )
-                    anns = self._inference_images_batch(
+                    anns, slides_data = self._inference_auto(
                         source=images_nps,
                         settings=settings,
-                        data_to_return=data_to_return,
                     )
                     batch_results = []
                     for i, ann in enumerate(anns):
-                        data = {}
-                        if "slides" in data_to_return:
-                            data = data_to_return["slides"][i]
                         batch_results.append(
                             {
                                 "annotation": ann.to_json(),
-                                "data": data,
+                                "data": slides_data[i],
                                 "image_id": images_infos_batch[i].id,
                                 "image_name": images_infos_batch[i].name,
                                 "dataset_id": dataset_info.id,
@@ -1290,13 +1291,12 @@ class Inference:
         state: dict,
         async_inference_request_uuid: str = None,
     ):
-        """Run benchmark on project images.
-        """
+        """Run benchmark on project images."""
         logger.debug("Inferring project...", extra={"state": state})
         project_id = state["projectId"]
         batch_size = state["batch_size"]
         num_iterations = state["num_iterations"]
-        num_warmup = state.get("num_warmup", 5)
+        num_warmup = state.get("num_warmup", 3)
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
 
@@ -1401,7 +1401,7 @@ class Inference:
         def image_batch_generator(batch_size):
             while True:
                 for dataset_info in datasets_infos:
-                    batch = []  # guaranty that images from the same dataset are in the same batch
+                    batch = []  # guarantee the full batch comes from the same dataset.
                     for image_info in images_infos_dict[dataset_info.id]:
                         batch.append(image_info)
                         if len(batch) == batch_size:
@@ -1410,7 +1410,7 @@ class Inference:
 
         batch_generator = image_batch_generator(batch_size)
         try:
-            for i in range(num_iterations):
+            for i in range(num_iterations + num_warmup):
                 if stop:
                     break
                 if (
@@ -1446,16 +1446,18 @@ class Inference:
                     )
                 # Inference
                 anns, benchmark = self._inference_benchmark(
-                    image_nps=images_nps,
+                    images_np=images_nps,
                     settings=settings,
                 )
-                results.append(benchmark)
-                upload_queue.put(benchmark)
+                # Collect results if warmup is done
+                if i >= num_warmup:
+                    results.append(benchmark)
+                    upload_queue.put(benchmark)
         except Exception:
             stop_upload_event.set()
             raise
         if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = {"ann": results}
+            inference_request["result"] = results
         stop_upload_event.set()
         return results
 
@@ -1730,15 +1732,21 @@ class Inference:
             }
 
         @server.post("/run_benchmark")
-        def run_benchmark(request: Request):
-            logger.debug(
-                f"'run_benchmark' request in json format:{request.state.state}"
-            )
+        def run_benchmark(response: Response, request: Request):
+            logger.debug(f"'run_benchmark' request in json format:{request.state.state}")
             project_id = request.state.state["projectId"]
             project_info = request.state.api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                response.body = {"message": "Only images projects are supported."}
                 raise ValueError("Only images projects are supported.")
-
+            batch_size = request.state.state["batch_size"]
+            if batch_size > 1 and not self.is_batch_inference_supported():
+                response.status_code = status.HTTP_501_NOT_IMPLEMENTED
+                return {
+                    "message": "Batch inference is not implemented for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2143,3 +2151,18 @@ class Timer:
 
     def get_time(self):
         return self.duration
+
+
+class TempImageWriter:
+    def __init__(self, format: str = "png"):
+        self.format = format
+        self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
+        fs.mkdir(self.temp_dir)
+
+    def write(self, image: np.ndarray):
+        image_path = os.path.join(self.temp_dir, f"{rand_str(10)}.{self.format}")
+        sly_image.write(image_path, image)
+        return image_path
+
+    def clean(self):
+        fs.remove_dir(self.temp_dir)

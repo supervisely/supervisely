@@ -84,8 +84,8 @@ def set_download(local_path: str):
 
     :param local_path: path to the local file or directory, which will be uploaded to the teamfiles
     :type local_path: str
-    :return: None
-    :rtype: None
+    :return: FileInfo object
+    :rtype: FileInfo
     """
     if os.path.isdir(local_path):
         archive_path = f"{local_path}.tar"
@@ -132,6 +132,6 @@ def set_download(local_path: str):
 
         logger.info(f"Remote file: id={file_info.id}, name={file_info.name}")
         silent_remove(local_path)
-
+        return file_info
     else:
-        print(f"Output file: '{local_path}'")
+        logger.info(f"Output file: '{local_path}'")

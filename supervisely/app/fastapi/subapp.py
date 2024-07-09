@@ -110,6 +110,8 @@ class Event:
                     elif tool_option == "erase":
                         is_fill = False
                         is_erase = True
+                    else:
+                        raise ValueError(f"Unknown tool option: {tool_option}")
                 else:
                     is_fill = False
                     is_erase = False

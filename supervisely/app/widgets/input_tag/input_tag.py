@@ -71,7 +71,7 @@ class InputTag(Widget):
     def _init_input_components(self):
         self._input_widgets[str(TagValueType.NONE)] = Empty()
         self._input_widgets[str(TagValueType.ANY_NUMBER)] = InputNumber(debounce=500)
-        self._input_widgets[str(TagValueType.ANY_STRING)] = Input()
+        self._input_widgets[str(TagValueType.ANY_STRING)] = Input(type="textarea")
         self._input_widgets[str(TagValueType.ONEOF_STRING)] = RadioGroup(items=[])
 
     def _get_max_width(self, value):

@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+
+import asyncio
+import contextlib
 import copy
 import enum
 import json
 import os
 import queue
+import os
+import queue
 import threading
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
+
 from concurrent.futures import ThreadPoolExecutor
 
 import jsonpatch
@@ -18,7 +25,13 @@ from fastapi import Request
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.fastapi import run_sync
+
+from supervisely._utils import is_production
+from supervisely.api.api import Api
+from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.singleton import Singleton
+from supervisely.io import env as sly_env
 from supervisely.app.singleton import Singleton
 from supervisely.io import env as sly_env
 from supervisely.io.fs import dir_exists, mkdir
@@ -107,6 +120,7 @@ class _PatchableJson(dict):
 
     async def _apply_patch(self, patch):
         async with async_lock(self._lock):
+        async with async_lock(self._lock):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
 
@@ -128,9 +142,11 @@ class _PatchableJson(dict):
 
 class StateJson(_PatchableJson, metaclass=Singleton):
     _global_lock: threading.Lock = None
+    _global_lock: threading.Lock = None
 
     def __init__(self, *args, **kwargs):
         if StateJson._global_lock is None:
+            StateJson._global_lock = threading.Lock()
             StateJson._global_lock = threading.Lock()
         super().__init__(Field.STATE, *args, **kwargs)
 
@@ -156,6 +172,7 @@ class StateJson(_PatchableJson, metaclass=Singleton):
     async def _replace_global(cls, d: dict):
         # pylint: disable=not-async-context-manager
         async with async_lock(cls._global_lock):
+        async with async_lock(cls._global_lock):
             global_state = cls()
             # !!! May cause problems with some apps !!!
             # global_state.clear()
@@ -169,6 +186,7 @@ class DataJson(_PatchableJson, metaclass=Singleton):
         super().__init__(Field.DATA, *args, **kwargs)
 
     async def _apply_patch(self, patch):
+        async with async_lock(self._lock):
         async with async_lock(self._lock):
             patch.apply(self._last, in_place=True)
             self._last = copy.deepcopy(self._last)
