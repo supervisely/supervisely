@@ -28,7 +28,7 @@ def download_image_from_context(
             try:
                 res = cache_load_img(api, context["image_id"])
             except Exception as e:
-                sly.logger.warning(f"Failed to load image from cache: {e}. Downloading from server.")
+                sly.logger.warning(f"Failed to load image from cache: {repr(e)}. Downloading from server.")
                 res = api.image.download_np(context["image_id"])
         else:
             res = api.image.download_np(context["image_id"])
