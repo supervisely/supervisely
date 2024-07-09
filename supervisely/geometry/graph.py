@@ -161,7 +161,6 @@ def _maybe_transform_colors(elements, process_fn):
 
 
 class GraphNodes(Geometry):
-    items_json_field = NODES
     """
     GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
 
@@ -191,6 +190,8 @@ class GraphNodes(Geometry):
         nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
         figure = GraphNodes(nodes)
     """
+
+    items_json_field = NODES
 
     @staticmethod
     def geometry_name():

@@ -35,7 +35,6 @@ CUBOID2D_EDGES_MAPPING = [
 
 
 class Cuboid2d(GraphNodes):
-    items_json_field = VERTICES
     """
     GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
 
@@ -65,6 +64,8 @@ class Cuboid2d(GraphNodes):
         nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
         figure = GraphNodes(nodes)
     """
+
+    items_json_field = VERTICES
 
     @staticmethod
     def geometry_name():
