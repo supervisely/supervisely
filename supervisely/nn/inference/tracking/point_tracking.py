@@ -122,6 +122,11 @@ class PointTracking(Inference):
                         geom,
                         video_interface.frames,
                     )
+                elif isinstance(geom, sly.Cuboid2d):
+                    geometries = self._predict_2d_cuboid_geometries(
+                        geom,
+                        video_interface.frames,
+                    )
                 elif isinstance(geom, sly.GraphNodes):
                     geometries = self._predict_graph_geometries(
                         geom,
@@ -158,6 +163,12 @@ class PointTracking(Inference):
                 if len(geometry.interior) > 0:
                     raise ValueError("Can't track polygons with interior.")
                 predictions = self._predict_polygon_geometries(
+                    geometry,
+                    frames,
+                    updated_settings,
+                )
+            elif isinstance(geometry, sly.Cuboid2d):
+                predictions = self._predict_2d_cuboid_geometries(
                     geometry,
                     frames,
                     updated_settings,
@@ -330,6 +341,11 @@ class PointTracking(Inference):
                                 stop_upload_event.set()
                                 raise ValueError("Can't track polygons with interior.")
                             geometries = self._predict_polygon_geometries(
+                                geom,
+                                video_interface.frames_with_notification,
+                            )
+                        elif isinstance(geom, sly.Cuboid2d):
+                            geometries = self._predict_2d_cuboid_geometries(
                                 geom,
                                 video_interface.frames_with_notification,
                             )
@@ -516,6 +532,35 @@ class PointTracking(Inference):
             nodes.append(frame_nodes)
 
         return F.nodes_to_sly_graph(nodes)
+
+    def _predict_2d_cuboid_geometries(
+        self,
+        geom: sly.Cuboid2d,
+        frames: List[np.ndarray],
+        settings: Dict[str, Any] = None,
+    ) -> List[sly.Cuboid2d]:
+        if settings is None:
+            settings = self.custom_inference_settings_dict
+        points, pids = F.cuboid2d_to_dto_points(geom)
+
+        if type(self).predict_batch == PointTracking.predict_batch:
+            # if predict_batch is not implemented, we can't use it
+            preds = list(zip(*[self.predict(frames, settings, point) for point in points]))
+        else:
+            preds: List[List[PredictionPoint]] = self.predict_batch(
+                frames,
+                settings,
+                points,
+            )
+
+        nodes = []
+        for frame_preds in preds:
+            frame_nodes = []
+            for pred, pid in zip(frame_preds, pids):
+                frame_nodes.extend(F.dto_points_to_sly_nodes([pred], pid))
+            nodes.append(frame_nodes)
+
+        return F.nodes_to_sly_2d_cuboid(nodes)
 
     def _predict_polyline_geometries(
         self,

@@ -2,7 +2,7 @@ from typing import List
 
 from supervisely.geometry.helpers import GET_GEOMETRY_FROM_STR
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
+from supervisely.geometry.graph import GraphNodes, KeypointsTemplate, NODES
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.tag import TagJsonFields
 from supervisely import ObjClass, ProjectMeta, TagMeta, TagValueType, logger
@@ -78,11 +78,12 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
 
     obj_class = None
     geometry_config = None
-    if issubclass(geometry_type, GraphNodes) and "nodes" in object:
-        geometry_config = KeypointsTemplate()
-        for uuid, node in object["nodes"].items():
-            if "loc" in node and len(node["loc"]) == 2:
-                geometry_config.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
+    if issubclass(geometry_type, GraphNodes):
+        if NODES in object:
+            geometry_config = KeypointsTemplate()
+            for uuid, node in object[NODES].items():
+                if "loc" in node and len(node["loc"]) == 2:
+                    geometry_config.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
     obj_class = ObjClass(name=class_name, geometry_type=geometry_type, geometry_config=geometry_config)
     existing_class = meta.get_obj_class(class_name)
 

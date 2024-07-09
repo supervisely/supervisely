@@ -19,6 +19,10 @@ def graph_to_dto_points(graph: sly.GraphNodes) -> Tuple[List[PredictionPoint], L
     return points, node_ids
 
 
+def cuboid2d_to_dto_points(cuboid: sly.Cuboid2d) -> Tuple[List[PredictionPoint], List[str]]:
+    return graph_to_dto_points(cuboid)
+
+
 def dto_points_to_point_location(points: List[PredictionPoint]) -> List[sly.PointLocation]:
     return [sly.PointLocation(row=p.row, col=p.col) for p in points]
 
@@ -33,6 +37,10 @@ def exterior_to_sly_polyline(exteriors: List[List[sly.PointLocation]]) -> List[s
 
 def nodes_to_sly_graph(nodes: List[List[sly.Node]]) -> List[sly.GraphNodes]:
     return [sly.GraphNodes(tn) for tn in nodes]
+
+
+def nodes_to_sly_2d_cuboid(nodes: List[List[sly.Node]]) -> List[sly.Cuboid2d]:
+    return [sly.Cuboid2d(tn) for tn in nodes]
 
 
 def dto_points_to_sly_points(points: List[PredictionPoint]) -> List[sly.Point]:

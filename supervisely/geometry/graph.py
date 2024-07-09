@@ -161,6 +161,7 @@ def _maybe_transform_colors(elements, process_fn):
 
 
 class GraphNodes(Geometry):
+    items_json_field = NODES
     """
     GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
 
@@ -260,13 +261,13 @@ class GraphNodes(Geometry):
             from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
-        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data["nodes"].items()}
+        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data[cls.items_json_field].items()}
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return GraphNodes(
+        return cls(
             nodes=nodes,
             sly_id=sly_id,
             class_id=class_id,
@@ -310,7 +311,7 @@ class GraphNodes(Geometry):
             #    }
             # }
         """
-        res = {NODES: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        res = {self.items_json_field: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
         self._add_creation_info(res)
         return res
 
@@ -361,7 +362,7 @@ class GraphNodes(Geometry):
         :return: GraphNodes object
         :rtype: :class:`GraphNodes<GraphNodes>`
         """
-        return GraphNodes(
+        return self.__class__(
             nodes={node_id: transform_fn(node) for node_id, node in self._nodes.items()}
         )
 
@@ -542,7 +543,7 @@ class GraphNodes(Geometry):
                     thickness,
                 )
 
-        nodes_config = self._get_nested_or_default(config, [NODES])
+        nodes_config = self._get_nested_or_default(config, [self.items_json_field])
         for node_id, node in self._nodes.items():
             if not node.disabled:
                 effective_color = self._get_nested_or_default(nodes_config, [node_id, COLOR], color)
@@ -607,7 +608,7 @@ class GraphNodes(Geometry):
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
-        nodes_not_in_template = set(self._nodes.keys()) - set(settings[NODES].keys())
+        nodes_not_in_template = set(self._nodes.keys()) - set(settings[self.items_json_field].keys())
         if len(nodes_not_in_template) > 0:
             raise ValueError(
                 "Graph contains nodes not declared in the template: {!r}.".format(
@@ -670,15 +671,15 @@ class GraphNodes(Geometry):
 
 class KeypointsTemplate(GraphNodes, Geometry):
     def __init__(self):
-        self._config = {"nodes": {}, "edges": []}
+        self._config = {self.items_json_field: {}, EDGES: []}
         self._point_names = []
 
     def add_point(self, label: str, row: int, col: int, color: list = [0, 0, 255]):
         _validate_color(color)
-        if label in self._config["nodes"]:
+        if label in self._config[self.items_json_field]:
             raise KeyError(f"Label {label} already exists in the graph")
         self._point_names.append(label)
-        self._config["nodes"][label] = {
+        self._config[self.items_json_field][label] = {
             "label": label,
             "loc": [row, col],
             "color": color,
@@ -687,14 +688,14 @@ class KeypointsTemplate(GraphNodes, Geometry):
     def add_edge(self, src: str, dst: str, color: list = [0, 255, 0]):
         _validate_color(color)
         for elem in (src, dst):
-            if elem not in self._config["nodes"]:
+            if elem not in self._config[self.items_json_field]:
                 raise ValueError(f"There is no such node in the graph: {elem}")
-        self._config["edges"].append({"src": src, "dst": dst, "color": color})
+        self._config[EDGES].append({"src": src, "dst": dst, "color": color})
 
     def get_nodes(self):
         self._nodes = {}
-        for node in self._config["nodes"]:
-            loc = self._config["nodes"][node]["loc"]
+        for node in self._config[self.items_json_field]:
+            loc = self._config[self.items_json_field][node]["loc"]
             self._nodes[node] = Node(PointLocation(loc[1], loc[0]))
 
     def draw(self, image: np.ndarray, thickness=7):
