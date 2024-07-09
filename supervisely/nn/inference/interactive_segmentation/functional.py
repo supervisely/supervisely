@@ -25,8 +25,14 @@ def download_image_from_context(
 ):
     if "image_id" in context:
         if cache_load_img is not None:
-            return cache_load_img(api, context["image_id"])
-        return api.image.download_np(context["image_id"])
+            try:
+                res = cache_load_img(api, context["image_id"])
+            except Exception as e:
+                sly.logger.info(f"Failed to load image from cache: {e}. Downloading from server.")
+                res = api.image.download_np(context["image_id"])
+        else:
+            res = api.image.download_np(context["image_id"])
+        return res
     elif "image_hash" in context:
         if cache_load_img_hash is not None:
             return cache_load_img_hash(api, context["image_hash"])
