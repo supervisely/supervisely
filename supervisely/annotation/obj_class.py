@@ -296,11 +296,12 @@ class ObjClass(KeyObject, JsonSerializable):
             else:
                 raise e
 
-        geometry_config = geometry_type.config_from_json(
-            data.get(ObjClassJsonFields.GEOMETRY_CONFIG)
-        )
         if geometry_type == Cuboid2d:
             geometry_config = Cuboid2dTemplate(color=color)
+        else:
+            geometry_config = geometry_type.config_from_json(
+                data.get(ObjClassJsonFields.GEOMETRY_CONFIG)
+            )
         sly_id = data.get(ObjClassJsonFields.ID, None)
         hotkey = data.get(ObjClassJsonFields.HOTKEY, "")
         description = data.get(ObjClassJsonFields.DESCRIPTION, "")
