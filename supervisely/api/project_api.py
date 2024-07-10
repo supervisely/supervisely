@@ -1858,7 +1858,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         #     "ds1/ds2": 2 <<< This dataset will be created inside "ds1" dataset.
         # }
         dataset_map = {}
-        for parents, ds_info in self._api.dataset.tree(src_project_id):
+        for parents, src_dataset_info in self._api.dataset.tree(src_project_id):
             if len(parents) > 0:
                 parent = f"{os.path.sep}".join(parents)
                 parent_id = dataset_map.get(parent)
@@ -1868,9 +1868,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 parent = ""
                 parent_id = None
 
-            dst_dataset = self._api.dataset.create(
-                dst_project_id, ds_info.name, parent_id=parent_id
+            dst_dataset_info = self._api.dataset.create(
+                dst_project_id, src_dataset_info.name, parent_id=parent_id
             )
-            dataset_map[os.path.join(parent, dst_dataset.name)] = dst_dataset.id
+            dataset_map[os.path.join(parent, dst_dataset_info.name)] = dst_dataset_info.id
 
-            yield ds_info, dst_dataset
+            yield src_dataset_info, dst_dataset_info
