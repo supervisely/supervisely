@@ -948,14 +948,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         tree = self.get_tree(project_id)
 
-        childs = []
+        nested = []
 
         def recurse(tree: Dict[DatasetInfo, Dict], needed_dataset: bool = False):
             for dataset_info, dataset_childs in tree.items():
                 if needed_dataset:
-                    childs.append(dataset_info)
+                    nested.append(dataset_info)
 
                 recurse(dataset_childs, needed_dataset or dataset_info.id == dataset_id)
 
         recurse(tree)
-        return childs
+        return nested
