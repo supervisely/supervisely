@@ -918,3 +918,44 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                     yield from yield_tree(children, new_path)
 
         yield from yield_tree(self.get_tree(project_id), [])
+
+    def get_childs(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
+        """Returns a list of all child datasets of the specified dataset.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :param dataset_id: Dataset ID for which the child datasets are returned.
+        :type dataset_id: int
+
+        :return: List of child datasets.
+        :rtype: List[DatasetInfo]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+            dataset_id = 456
+
+            childs = api.dataset.get_childs(project_id, dataset_id)
+            for child in childs:
+                print(child.name, child.id) # Output: ds1 123
+
+        """
+        tree = self.get_tree(project_id)
+
+        childs = []
+
+        def recurse(tree: Dict[DatasetInfo, Dict], needed_dataset: bool = False):
+            for dataset_info, dataset_childs in tree.items():
+                if needed_dataset:
+                    childs.append(dataset_info)
+
+                recurse(dataset_childs, needed_dataset or dataset_info.id == dataset_id)
+
+        recurse(tree)
+        return childs
