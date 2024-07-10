@@ -919,15 +919,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         yield from yield_tree(self.get_tree(project_id), [])
 
-    def get_childs(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
-        """Returns a list of all child datasets of the specified dataset.
+    def get_nested(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
+        """Returns a list of all nested datasets in the specified dataset.
 
         :param project_id: Project ID in which the Dataset is located.
         :type project_id: int
-        :param dataset_id: Dataset ID for which the child datasets are returned.
+        :param dataset_id: Dataset ID for which the nested datasets are returned.
         :type dataset_id: int
 
-        :return: List of child datasets.
+        :return: List of nested datasets.
         :rtype: List[DatasetInfo]
 
         :Usage example:
@@ -941,9 +941,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             project_id = 123
             dataset_id = 456
 
-            childs = api.dataset.get_childs(project_id, dataset_id)
-            for child in childs:
-                print(child.name, child.id) # Output: ds1 123
+            datasets = api.dataset.get_nested(project_id, dataset_id)
+            for dataset in datasets:
+                print(dataset.name, dataset.id) # Output: ds1 123
 
         """
         tree = self.get_tree(project_id)
