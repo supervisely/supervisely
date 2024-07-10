@@ -198,10 +198,12 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
 
         for edges in CUBOID2D_EDGES_MAPPING:
             if len(edges) == 2:
-                config[EDGES].append({"src": edges[0], "dst": edges[1]})
+                config[EDGES].append({"src": edges[0], "dst": edges[1], "color": color})
             else:
                 for i in range(len(edges)):
-                    config[EDGES].append({"src": edges[i], "dst": edges[(i + 1) % len(edges)]})
+                    config[EDGES].append(
+                        {"src": edges[i], "dst": edges[(i + 1) % len(edges)], "color": color}
+                    )
 
         return config
 
@@ -209,7 +211,7 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
         self._nodes = {}
         for node in self._config[self.items_json_field]:
             loc = self._config[self.items_json_field][node]["loc"]
-            self._nodes[node] = Node(PointLocation(loc[1], loc[0]))
+            self._nodes[node] = Node(PointLocation(loc[1], loc[0]), label=node)
 
     def draw(self, image: np.ndarray, thickness=7):
         self.get_nodes()
