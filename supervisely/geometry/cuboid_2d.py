@@ -183,18 +183,12 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
         Returns a template for a single :class:`Cuboid2d<Cuboid2d>`.
         """
         config = {VERTICES: {}, EDGES: []}
-        # create coordinates for the 8 vertices of the cuboid
-        x, y, w, h, s = 0, 0, 100, 100, 150
-        verices_coords = [
-            (x, y),
-            (x + w, y),
-            (x + w, y + h),
-            (x, y + h),
-            (x + s, y + s),
-            (x + w + s, y + s),
-            (x + w + s, y + h + s),
-            (x + s, y + h + s),
-        ]
+
+        x = y = w = h = s = 1 # sample values only for config creation
+        base_vertices = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+        shifted_vertices = [(vx + s, vy + s) for vx, vy in base_vertices]
+        verices_coords = base_vertices + shifted_vertices
+
         for label, coords in zip(CUBOID2D_VERTICES_NAMES, verices_coords):
             col, row = coords
             self._point_names.append(label)
