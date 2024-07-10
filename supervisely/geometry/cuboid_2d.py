@@ -106,10 +106,14 @@ class Cuboid2d(GraphNodes):
         """
         Checks the graph for correctness and compliance with the template
         """
-        super().validate(name, settings)
 
+        missing_nodes = set(settings[self.items_json_field].keys()) - set(self._nodes.keys())
+        if len(missing_nodes) > 0:
+            raise ValueError(f"Missing vertices in the Cuboid2d: {missing_nodes}.")
         if len(self._nodes) != 8:
-            raise ValueError("Cuboid2d must have exactly 8 nodes")
+            raise ValueError("Cuboid2d must have exactly 8 vertices")
+
+        super().validate(name, settings)
 
     @staticmethod
     def _transform_config_colors(config, transform_fn):
