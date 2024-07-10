@@ -138,8 +138,8 @@ class SessionJSON:
             self._model_meta = meta_json
         return self._model_meta
 
-    def get_deployed_model_info(self) -> Dict[str, Any]:
-        return self._get_from_endpoint("get_deployed_model_info")
+    def get_deploy_info(self) -> Dict[str, Any]:
+        return self._get_from_endpoint("get_deploy_info")
     
     def get_default_inference_settings(self) -> Dict[str, Any]:
         if self._default_inference_settings is None:

@@ -1758,9 +1758,9 @@ class Inference:
                 "description:": "Model is ready to receive requests",
             }
         
-        @server.post("/get_deployed_model_info")
+        @server.post("/get_deploy_info")
         @self._check_serve_before_call
-        def _get_deployed_model_info():
+        def _get_deploy_info():
             return self._get_deploy_info()._asdict()
 
 
