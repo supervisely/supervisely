@@ -951,11 +951,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         nested = []
 
         def recurse(tree: Dict[DatasetInfo, Dict], needed_dataset: bool = False):
-            for dataset_info, dataset_childs in tree.items():
+            for dataset_info, children in tree.items():
                 if needed_dataset:
                     nested.append(dataset_info)
 
-                recurse(dataset_childs, needed_dataset or dataset_info.id == dataset_id)
+                recurse(children, needed_dataset or dataset_info.id == dataset_id)
 
         recurse(tree)
         return nested
