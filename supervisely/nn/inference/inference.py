@@ -56,7 +56,7 @@ from supervisely.decorators.inference import (
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.inference.utils import DeployInfo, ModelInfo, Runtime, _get_hardware_info
+from supervisely.nn.inference.info import DeployInfo, ModelInfo, Runtime, get_hardware_info
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -84,6 +84,8 @@ class Inference:
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
             fs.mkdir(model_dir)
+        self.device: str = None
+        self.runtime: str = Runtime.PYTORCH
         self.model_info: ModelInfo = None
         self._model_dir = model_dir
         self._model_served = False
@@ -113,7 +115,6 @@ class Inference:
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
-        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -128,16 +129,13 @@ class Inference:
 
             def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
-
                 if isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
-                    self.load_model(**deploy_params)
-                    self._deploy_params = deploy_params
-                    self.update_gui(self._model_served)
+                    self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
                     device = gui.get_device()
                     self.load_on_device(self._model_dir, device)
-                gui.show_deployed_model_info(self)
+                    gui.show_deployed_model_info(self)
 
             def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 self.shutdown_model()
@@ -383,8 +381,18 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _load_model(self, deploy_params: dict):
+        self.load_model(**deploy_params)
+        self._model_served = True
+        self._deploy_params = deploy_params
+        gui = self.gui
+        if gui is not None:
+            self.update_gui(self._model_served)
+            gui.show_deployed_model_info(self)
+
     def shutdown_model(self):
         self._model_served = False
+        self.model_info = None
         clean_up_cuda()
         logger.info("Model has been stopped")
 
@@ -439,11 +447,13 @@ class Inference:
         return hr_info
     
     def _get_deploy_info(self) -> DeployInfo:
+        if not self.model_info:
+            raise RuntimeError("Model info (`self.model_info`) is not set. Please, set it in `load_model` method.")
         deploy_info = {
-            **self.model_info,
+            **self.model_info._asdict(),
             "device": self.device,
-            "runtime": getattr(self, "runtime", Runtime.PYTORCH),
-            "hardware": _get_hardware_info(),
+            "runtime": self.runtime,
+            "hardware": get_hardware_info(),
             "deploy_params": self._deploy_params,
         }
         return DeployInfo(**deploy_info)
@@ -1731,17 +1741,11 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                self.load_model(**deploy_params)
-                self._deploy_params = deploy_params
-                self.update_gui(self._model_served)
+                self._load_model(deploy_params)
                 self.set_params_to_gui(deploy_params)
-
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")
                 self.gui.set_deployed(device)
-
-                self.gui.show_deployed_model_info(self)
-                self._model_served = True
                 return {"result": "model was successfully deployed"}
             except Exception as e:
                 self.gui._success_label.hide()
@@ -1755,8 +1759,9 @@ class Inference:
             }
         
         @server.post("/get_deployed_model_info")
+        @self._check_serve_before_call
         def _get_deployed_model_info():
-            return self._get_deploy_info()
+            return self._get_deploy_info()._asdict()
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):

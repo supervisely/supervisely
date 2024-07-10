@@ -1,8 +1,7 @@
-from supervisely.collection.str_enum import StrEnum
 from typing import NamedTuple, Dict, Any
 
 
-class TaskType(StrEnum):
+class TaskType:
     OBJECT_DETECTION = "object detection"
     INSTANCE_SEGMENTATION = "instance segmentation"
     SEMANTIC_SEGMENTATION = "semantic segmentation"
@@ -15,7 +14,7 @@ class TaskType(StrEnum):
     OBJECT_DETECTION_3D = "object detection 3d"
 
 
-class Runtime(StrEnum):
+class Runtime:
     PYTORCH = "PyTorch"
     ONNX = "ONNX"
     TENSORRT = "TensorRT"
@@ -26,7 +25,6 @@ class ModelInfo(NamedTuple):
     architecture: str
     task_type: str
     model_source: str
-    checkpoint_info: Dict[str, Any]
 
 
 class DeployInfo(NamedTuple):
@@ -34,14 +32,13 @@ class DeployInfo(NamedTuple):
     architecture: str
     task_type: str
     model_source: str
-    checkpoint_info: Dict[str, Any]
     device: str
     runtime: str
     hardware: str
     deploy_params: Dict[str, Any]
 
 
-def _get_hardware_info(idx: int = 0) -> str:
+def get_hardware_info(idx: int = 0) -> str:
     import subprocess
     try:
         gpus = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]).decode("utf-8").strip()
