@@ -66,9 +66,16 @@ class PersistentImageTTLCache(TTLCache):
         self._base_dir = filepath
 
     def __delitem__(self, key: Any) -> None:
-        sly.logger.debug(f"__delitem__ {key}")
+        sly.logger.debug(
+            f"__delitem__ {key}", extra={"links": self.__links.keys(), "data": self.__data.keys()}
+        )
         self.__del_file(key)
-        return super().__delitem__(key)
+        super().__delitem__(key)
+        sly.logger.debug(
+            f"after __delitem__ {key}",
+            extra={"links": self.__links.keys(), "data": self.__data.keys()},
+        )
+        return
 
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
@@ -87,7 +94,12 @@ class PersistentImageTTLCache(TTLCache):
                 "data": self._Cache__data.keys(),
             },
         )
-        return super().__setitem__(key, value)
+        super().__setitem__(key, value)
+        sly.logger.debug(
+            f"after __setitem__ {key}",
+            extra={"links": self.__links.keys(), "data": self.__data.keys()},
+        )
+        return
 
     def __update_timer(self, key):
         try:
@@ -99,9 +111,16 @@ class PersistentImageTTLCache(TTLCache):
             return
 
     def __getitem__(self, key: Any) -> Any:
-        sly.logger.debug(f"__getitem__ {key}")
+        sly.logger.debug(
+            f"__getitem__ {key}", extra={"links": self.__links.keys(), "data": self.__data.keys()}
+        )
         self.__update_timer(key)
-        return super().__getitem__(key)
+        item = super().__getitem__(key)
+        sly.logger.debug(
+            f"after __getitem__ {key}",
+            extra={"links": self.__links.keys(), "data": self.__data.keys()},
+        )
+        return item
 
     def __get_keys(self):
         # pylint: disable=no-member
