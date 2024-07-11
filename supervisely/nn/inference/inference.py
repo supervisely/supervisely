@@ -11,7 +11,7 @@ from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from queue import Queue
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -154,8 +154,8 @@ class Inference:
         self.get_info = self._check_serve_before_call(self.get_info)
 
         self.cache = InferenceImageCache(
-            maxsize=env.smart_cache_size(),
-            ttl=env.smart_cache_ttl(),
+            maxsize=1,
+            ttl=60,
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
         )
