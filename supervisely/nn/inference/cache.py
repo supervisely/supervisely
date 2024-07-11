@@ -67,13 +67,20 @@ class PersistentImageTTLCache(TTLCache):
 
     def __delitem__(self, key: Any) -> None:
         sly.logger.debug(
-            f"__delitem__ {key}", extra={"links": self.__links.keys(), "data": self.__data.keys()}
+            f"__delitem__ {key}",
+            extra={
+                "links": self._TTLCache__links.keys(),
+                "data": self._Cache__data.keys(),
+            },
         )
         self.__del_file(key)
         super().__delitem__(key)
         sly.logger.debug(
             f"after __delitem__ {key}",
-            extra={"links": self.__links.keys(), "data": self.__data.keys()},
+            extra={
+                "links": self._TTLCache__links.keys(),
+                "data": self._Cache__data.keys(),
+            },
         )
         return
 
@@ -97,7 +104,10 @@ class PersistentImageTTLCache(TTLCache):
         super().__setitem__(key, value)
         sly.logger.debug(
             f"after __setitem__ {key}",
-            extra={"links": self.__links.keys(), "data": self.__data.keys()},
+            extra={
+                "links": self._TTLCache__links.keys(),
+                "data": self._Cache__data.keys(),
+            },
         )
         return
 
@@ -112,13 +122,20 @@ class PersistentImageTTLCache(TTLCache):
 
     def __getitem__(self, key: Any) -> Any:
         sly.logger.debug(
-            f"__getitem__ {key}", extra={"links": self.__links.keys(), "data": self.__data.keys()}
+            f"__getitem__ {key}",
+            extra={
+                "links": self._TTLCache__links.keys(),
+                "data": self._Cache__data.keys(),
+            },
         )
         self.__update_timer(key)
         item = super().__getitem__(key)
         sly.logger.debug(
             f"after __getitem__ {key}",
-            extra={"links": self.__links.keys(), "data": self.__data.keys()},
+            extra={
+                "links": self._TTLCache__links.keys(),
+                "data": self._Cache__data.keys(),
+            },
         )
         return item
 
