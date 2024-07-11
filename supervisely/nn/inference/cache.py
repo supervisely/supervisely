@@ -66,6 +66,7 @@ class PersistentImageTTLCache(TTLCache):
         self._base_dir = filepath
 
     def __delitem__(self, key: Any) -> None:
+        sly.logger.debug(f"__delitem__ {key}")
         self.__del_file(key)
         return super().__delitem__(key)
 
@@ -77,6 +78,17 @@ class PersistentImageTTLCache(TTLCache):
         except TypeError:
             pass
 
+    def __setitem__(self, key: Any, value: Any) -> None:
+        sly.logger.debug(
+            f"__setitem__ {key}",
+            # pylint: disable=no-member
+            extra={
+                "links": self._TTLCache__links.keys(),
+                "data": self._Cache__data.keys(),
+            },
+        )
+        return super().__setitem__(key, value)
+
     def __update_timer(self, key):
         try:
             # pylint: disable=no-member
@@ -87,6 +99,7 @@ class PersistentImageTTLCache(TTLCache):
             return
 
     def __getitem__(self, key: Any) -> Any:
+        sly.logger.debug(f"__getitem__ {key}")
         self.__update_timer(key)
         return super().__getitem__(key)
 
