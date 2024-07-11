@@ -1,12 +1,11 @@
 import warnings
 from copy import deepcopy
-from collections import defaultdict
 import numpy as np
 import pandas as pd
 from sklearn.calibration import calibration_curve
 from pycocotools.coco import COCO
 
-from supervisely.nn.benchmark import functional as metrics
+from supervisely.nn.benchmark.object_detection import functional as metrics
 
 
 METRIC_NAMES = {
@@ -57,6 +56,104 @@ def filter_by_conf(matches: list, conf: float):
 
 class MetricProvider:
     def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt: COCO, cocoDt: COCO):
+        self.matches = matches
+        self.coco_metrics = coco_metrics
+        self.params = params
+        self.cocoGt = cocoGt
+        self.cocoDt = cocoDt
+
+        # metainfo
+        self.cat_ids = cocoGt.getCatIds()
+        self.cat_names = [cocoGt.cats[cat_id]['name'] for cat_id in self.cat_ids]
+
+        # eval_data
+        self.matches = matches
+        self.coco_mAP = coco_metrics["mAP"]
+        self.coco_precision = coco_metrics["precision"]
+        self.iouThrs = params["iouThrs"]
+        self.recThrs = params["recThrs"]
+
+    def calculate(self):
+        self.m_full = _MetricProvider(self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt)
+        self.m_full._calculate_score_profile()
+
+        # Find optimal confidence threshold
+        self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
+
+        # Filter by optimal confidence threshold
+        matches_filtered = filter_by_conf(self.matches, self.f1_optimal_conf)
+        self.m = _MetricProvider(matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt)
+        self.m._init_counts()
+
+        self.ious = self.m.ious
+        self.TP_count = self.m.TP_count
+        self.FP_count = self.m.FP_count
+        self.FN_count = self.m.FN_count
+        self.true_positives = self.m.true_positives
+        self.false_negatives = self.m.false_negatives
+        self.false_positives = self.m.false_positives
+        self.confused_matches = self.m.confused_matches
+
+        self.score_profile_f1s = self.m_full.score_profile_f1s
+
+        # base metrics
+        self._base_metrics = self.m.base_metrics()
+        self._per_class_metrics = self.m.per_class_metrics()
+        self._pr_curve = self.m.pr_curve()
+        self._prediction_table = self.m.prediction_table()
+        self._confusion_matrix = self.m.confusion_matrix()
+        self._frequently_confused = self.m.frequently_confused(self._confusion_matrix)
+        # calibration metrics
+        self._confidence_score_profile = self.m_full.confidence_score_profile()
+        self._calibration_curve = self.m_full.calibration_curve()
+        self._scores_tp_and_fp = self.m_full.scores_tp_and_fp()
+        self._maximum_calibration_error = self.m_full.maximum_calibration_error()
+        self._expected_calibration_error = self.m_full.expected_calibration_error()
+
+    def base_metrics(self):
+        base = self._base_metrics
+        calibration_score = 1 - self._expected_calibration_error
+        return {
+            **base,
+            "calibration_score": calibration_score
+        }
+    
+    def per_class_metrics(self):
+        return self._per_class_metrics
+    
+    def pr_curve(self):
+        return self._pr_curve
+    
+    def prediction_table(self):
+        return self._prediction_table
+    
+    def confusion_matrix(self):
+        return self._confusion_matrix
+
+    def frequently_confused(self):
+        return self._frequently_confused
+    
+    def confidence_score_profile(self):
+        return self._confidence_score_profile
+    
+    def calibration_curve(self):
+        return self._calibration_curve
+    
+    def scores_tp_and_fp(self):
+        return self._scores_tp_and_fp
+    
+    def maximum_calibration_error(self):
+        return self._maximum_calibration_error
+    
+    def expected_calibration_error(self):
+        return self._expected_calibration_error
+    
+    def get_f1_optimal_conf(self):
+        return self.f1_optimal_conf, self.best_f1
+
+
+class _MetricProvider:
+    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt: COCO, cocoDt: COCO):
 
         self.cocoGt = cocoGt
 
@@ -78,18 +175,6 @@ class MetricProvider:
         self.confused_matches = [m for m in self.fp_matches if m['miss_cls']]
         self.fp_not_confused_matches = [m for m in self.fp_matches if not m['miss_cls']]
         self.ious = np.array([m['iou'] for m in self.tp_matches])
-
-        # Counts
-        self.true_positives, self.false_negatives, self.false_positives = self._init_counts()
-        self.TP_count = int(self.true_positives[:,0].sum(0))
-        self.FP_count = int(self.false_positives[:,0].sum(0))
-        self.FN_count = int(self.false_negatives[:,0].sum(0))
-
-        # Calibration
-        self.calibration_metrics = CalibrationMetrics(self.tp_matches, self.fp_matches, self.fn_matches, self.iouThrs)
-
-        # Score profile
-        self._calculate_score_profile()
 
     def _init_counts(self):
         cat_ids = self.cat_ids
@@ -121,7 +206,13 @@ class MetricProvider:
         fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
         dt_count = fp_count + tp_count
         false_positives = dt_count[:,None] - true_positives
-        return true_positives, false_negatives, false_positives
+        
+        self.true_positives = true_positives
+        self.false_negatives = false_negatives
+        self.false_positives = false_positives
+        self.TP_count = int(self.true_positives[:,0].sum(0))
+        self.FP_count = int(self.false_positives[:,0].sum(0))
+        self.FN_count = int(self.false_negatives[:,0].sum(0))
     
     def base_metrics(self):
         tp = self.true_positives
@@ -138,7 +229,6 @@ class MetricProvider:
         f1[(precision + recall) == 0.] = 0.
         iou = np.mean(self.ious)
         classification_accuracy = self.TP_count / (self.TP_count + confuse_count)
-        calibration_score = 1 - self.calibration_metrics.expected_calibration_error()
 
         return {
             "mAP": mAP,
@@ -147,7 +237,6 @@ class MetricProvider:
             "recall": np.nanmean(recall),
             "iou": iou,
             "classification_accuracy": classification_accuracy,
-            "calibration_score": calibration_score
         }
     
     def per_class_metrics(self):
@@ -250,27 +339,6 @@ class MetricProvider:
             "probability": confused_prob
         })
     
-    def confidence_score_profile_v0(self):
-        n_gt = len(self.tp_matches) + len(self.fn_matches)
-        matches_sorted = sorted(self.tp_matches + self.fp_matches, key=lambda x: x['score'], reverse=True)
-        scores = np.array([m["score"] for m in matches_sorted])
-        tps = np.array([m["type"] == "TP" for m in matches_sorted])
-        fps = ~tps
-        tps_sum = np.cumsum(tps)
-        fps_sum = np.cumsum(fps)
-        precision = tps_sum / (tps_sum + fps_sum)
-        recall = tps_sum / n_gt
-        f1 = 2 * precision * recall / (precision + recall)
-        return {
-            "scores": scores,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1
-        }
-
-    def confidence_score_profile(self):
-        return self.score_profile
-    
     def _calculate_score_profile(self):
         iouThrs = self.iouThrs
         n_gt = len(self.tp_matches) + len(self.fn_matches)
@@ -309,6 +377,31 @@ class MetricProvider:
             "f1": f1_line,
         }
         self.score_profile_f1s = f1s
+
+        self.iou_idxs = iou_idxs
+        self.scores = scores
+        self.y_true = iou_idxs > 0
+
+    # def confidence_score_profile_v0(self):
+    #     n_gt = len(self.tp_matches) + len(self.fn_matches)
+    #     matches_sorted = sorted(self.tp_matches + self.fp_matches, key=lambda x: x['score'], reverse=True)
+    #     scores = np.array([m["score"] for m in matches_sorted])
+    #     tps = np.array([m["type"] == "TP" for m in matches_sorted])
+    #     fps = ~tps
+    #     tps_sum = np.cumsum(tps)
+    #     fps_sum = np.cumsum(fps)
+    #     precision = tps_sum / (tps_sum + fps_sum)
+    #     recall = tps_sum / n_gt
+    #     f1 = 2 * precision * recall / (precision + recall)
+    #     return {
+    #         "scores": scores,
+    #         "precision": precision,
+    #         "recall": recall,
+    #         "f1": f1
+    #     }
+
+    def confidence_score_profile(self):
+        return self.score_profile
     
     def get_f1_optimal_conf(self):
         argmax = np.nanargmax(self.score_profile['f1'])
@@ -316,81 +409,6 @@ class MetricProvider:
         best_f1 = self.score_profile['f1'][argmax]
         return f1_optimal_conf, best_f1
     
-    
-class CalibrationMetrics:
-    def __init__(self, tp_matches, fp_matches, fn_matches, iouThrs):
-        self.iouThrs = iouThrs
-        eps = np.spacing(1)
-        scores = []
-        classes = []
-        iou_idxs = []
-        p_matches = tp_matches + fp_matches
-        per_class_count = defaultdict(int)
-        # TODO:
-        # per_class_count = m.true_positives[:,0] + m.false_negatives[:,0]
-        for m in p_matches:
-            if m['type'] == "TP" and m['iou'] is not None:
-                iou_idx = np.searchsorted(iouThrs, m['iou']+eps)
-                iou_idxs.append(iou_idx)
-                assert iou_idx > 0
-            else:
-                iou_idxs.append(0)
-            scores.append(m['score'])
-            classes.append(m["category_id"])
-            if m['type'] == "TP":
-                per_class_count[m["category_id"]] += 1
-        for m in fn_matches:
-            per_class_count[m["category_id"]] += 1
-        per_class_count = dict(per_class_count)
-        scores = np.array(scores)
-        inds_sort = np.argsort(-scores)
-        scores = scores[inds_sort]
-        classes = np.array(classes)[inds_sort]
-        iou_idxs = np.array(iou_idxs)[inds_sort]
-
-        self.scores = scores
-        self.classes = classes
-        self.iou_idxs = iou_idxs
-        self.per_class_count = per_class_count
-
-        # y_true not include False Negatives, as scores for FNs can't be calculated
-        self.y_true = self.iou_idxs > 0
-
-    def scores_vs_metrics(self, iou_idx=0, cat_id=None):
-        tps = self.iou_idxs > iou_idx
-        if cat_id is not None:
-            cls_mask = self.classes == cat_id
-            tps = tps[cls_mask]
-            scores = self.scores[cls_mask]
-            n_positives = self.per_class_count[cat_id]
-        else:
-            scores = self.scores
-            n_positives = sum(self.per_class_count.values())
-        fps = ~tps
-
-        tps_sum = tps.cumsum()
-        fps_sum = fps.cumsum()
-
-        # Precision, recall, f1
-        precision = tps_sum / (tps_sum + fps_sum)
-        recall = tps_sum / n_positives
-        f1 = 2 * precision * recall / (precision + recall)
-        return {
-            "scores": scores,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1
-        }
-    
-    def scores_vs_metrics_avg(self):
-        res = []
-        for iou_idx, iou_th in enumerate(self.iouThrs):
-            metric_dict = self.scores_vs_metrics(iou_idx)
-            res.append(list(metric_dict.values()))
-        x = np.array(res).mean(axis=0)
-        df = pd.DataFrame(x.T, columns=metric_dict.keys())
-        return df
-
     def calibration_curve(self):
         true_probs, pred_probs = calibration_curve(self.y_true, self.scores, n_bins=10)
         return true_probs, pred_probs
@@ -401,8 +419,8 @@ class CalibrationMetrics:
     def expected_calibration_error(self):
         return metrics.expected_calibration_error(self.y_true, self.scores, n_bins=10)
     
-    def scores_tp_and_fp(self, iou_idx=0):
-        tps = self.iou_idxs > iou_idx
+    def scores_tp_and_fp(self):
+        tps = self.y_true
         scores_tp = self.scores[tps]
         scores_fp = self.scores[~tps]
         return scores_tp, scores_fp
