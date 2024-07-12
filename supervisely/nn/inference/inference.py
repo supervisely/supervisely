@@ -154,8 +154,8 @@ class Inference:
         self.get_info = self._check_serve_before_call(self.get_info)
 
         self.cache = InferenceImageCache(
-            maxsize=2,
-            ttl=60,
+            maxsize=env.smart_cache_size(),
+            ttl=env.smart_cache_ttl(),
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
         )
