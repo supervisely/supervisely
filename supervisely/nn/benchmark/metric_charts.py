@@ -63,7 +63,7 @@ template_chart_str = """
 """
 
 
-class MetricChart:
+class MetricVisualization:
 
     cv_tasks: Tuple[CVTask] = tuple(CVTask.values())
     clickable: bool = False
@@ -105,7 +105,7 @@ class MetricChart:
         raise NotImplementedError()
 
 
-class Overview(MetricChart):
+class Overview(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -156,7 +156,7 @@ class Overview(MetricChart):
         }
 
 
-class OutcomeCounts(MetricChart):
+class OutcomeCounts(MetricVisualization):
 
     clickable: bool = True
 
@@ -230,7 +230,7 @@ class OutcomeCounts(MetricChart):
         # }
 
 
-class Recall(MetricChart):
+class Recall(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -253,7 +253,7 @@ class Recall(MetricChart):
         return fig
 
 
-class Precision(MetricChart):
+class Precision(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -276,7 +276,7 @@ class Precision(MetricChart):
         return fig
 
 
-class RecallVsPrecision(MetricChart):
+class RecallVsPrecision(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -309,7 +309,7 @@ class RecallVsPrecision(MetricChart):
         return fig
 
 
-class PRCurve(MetricChart):
+class PRCurve(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -348,7 +348,7 @@ class PRCurve(MetricChart):
         return fig
 
 
-class PRCurveByClass(MetricChart):
+class PRCurveByClass(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -374,7 +374,7 @@ class PRCurveByClass(MetricChart):
         return fig
 
 
-class ConfusionMatrix(MetricChart):
+class ConfusionMatrix(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -414,7 +414,7 @@ class ConfusionMatrix(MetricChart):
         return fig
 
 
-class FrequentlyConfused(MetricChart):
+class FrequentlyConfused(MetricVisualization):
 
     clickable: bool = True
 
@@ -445,7 +445,7 @@ class FrequentlyConfused(MetricChart):
         return tuple(figs)
 
 
-class IOUDistribution(MetricChart):
+class IOUDistribution(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -477,7 +477,7 @@ class IOUDistribution(MetricChart):
         return fig
 
 
-class ReliabilityDiagram(MetricChart):
+class ReliabilityDiagram(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -520,7 +520,7 @@ class ReliabilityDiagram(MetricChart):
         return fig
 
 
-class ConfidenceScore(MetricChart):
+class ConfidenceScore(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -560,7 +560,7 @@ class ConfidenceScore(MetricChart):
         return fig
 
 
-class ConfidenceDistribution(MetricChart):
+class ConfidenceDistribution(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -640,7 +640,7 @@ class ConfidenceDistribution(MetricChart):
         return fig
 
 
-class F1ScoreAtDifferentIOU(MetricChart):
+class F1ScoreAtDifferentIOU(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -687,7 +687,7 @@ class F1ScoreAtDifferentIOU(MetricChart):
         return fig
 
 
-class PerClassAvgPrecision(MetricChart):
+class PerClassAvgPrecision(MetricVisualization):
 
     @classmethod
     def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
@@ -710,7 +710,7 @@ class PerClassAvgPrecision(MetricChart):
         return fig
 
 
-class PerClassOutcomeCounts(MetricChart):
+class PerClassOutcomeCounts(MetricVisualization):
 
     clickable: bool = True
 
@@ -783,7 +783,7 @@ class PerClassOutcomeCounts(MetricChart):
         return (fig, fig_)
 
 
-class OverallErrorAnalysis(MetricChart):
+class OverallErrorAnalysis(MetricVisualization):
 
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
@@ -878,7 +878,7 @@ class OverallErrorAnalysis(MetricChart):
         return fig
 
 
-class ClasswiseErrorAnalysis(MetricChart):
+class ClasswiseErrorAnalysis(MetricVisualization):
 
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 

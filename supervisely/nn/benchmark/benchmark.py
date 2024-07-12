@@ -22,12 +22,12 @@ from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
 from supervisely.io.fs import *
 from supervisely.nn.benchmark import metric_provider
 from supervisely.nn.benchmark.metric_charts import *
-from supervisely.nn.benchmark.metric_charts import MetricChart
+from supervisely.nn.benchmark.metric_charts import MetricVisualization
 from supervisely.nn.benchmark.metric_provider import MetricProvider
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
-_METRIC_CHARTS = (
+_METRIC_VISUALIZATIONS = (
     Overview,
     OutcomeCounts,
     # Recall,
@@ -51,7 +51,7 @@ _METRIC_CHARTS = (
 )
 
 
-def generate_main_template(metric_charts: List[MetricChart]):
+def generate_main_template(metric_charts: List[MetricVisualization]):
     template_str = """<div>
     <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false }">
         <div slot="sidebar">
@@ -73,7 +73,7 @@ def generate_main_template(metric_charts: List[MetricChart]):
     return template_str
 
 
-main_template_str = generate_main_template(_METRIC_CHARTS)
+main_template_str = generate_main_template(_METRIC_VISUALIZATIONS)
 
 
 class IdMapper:
@@ -221,10 +221,9 @@ class Benchmark:
 
         api = Api.from_env()
 
-        self._process_metric_charts(_METRIC_CHARTS)
-
-        self._process_prediction_table()
-        self._save_template(_METRIC_CHARTS)
+        self._process_visualizations(_METRIC_VISUALIZATIONS)
+        self._process_prediction_table()  # TODO integrate into sections
+        self._save_template(_METRIC_VISUALIZATIONS)
 
         with tqdm_sly(
             desc="Uploading .json to teamfiles",
@@ -246,20 +245,23 @@ class Benchmark:
 
         logger.info("Done.")
 
-    def _process_metric_charts(self, metric_charts: List[MetricChart]):
-        for metric_chart in metric_charts:
-            fig = metric_chart.get_figure(self)
-            if fig is not None:
-                self._write_json_data(metric_chart.name, fig)
+    def _process_visualizations(self, metric_visualization: List[MetricVisualization]):
+        for mv in metric_visualization:
+            visualization_methods = [
+                (mv.get_figure, mv.name, False),
+                (mv.get_switchable_figures, mv.name, True),
+                # (mv.get_table, mv.name),
+                (mv.get_click_data, f"{mv.name}_chart_click", False),
+            ]
 
-            figs = metric_chart.get_switchable_figures(self)
-            if figs is not None:
-                for idx, fig in enumerate(figs, start=1):
-                    self._write_json_data(metric_chart.name, fig, fig_idx=idx)
-
-            click_data = metric_chart.get_click_data(self)
-            if click_data is not None:
-                self._write_json_data(f"{metric_chart.name}_chart_click", click_data)
+            for method, name, is_iterable in visualization_methods:
+                vis = method(self)
+                if vis is not None:
+                    if is_iterable:
+                        for idx, single_vis in enumerate(vis, start=1):
+                            self._write_json_data(name, single_vis, fig_idx=idx)
+                    else:
+                        self._write_json_data(name, vis)
 
     def _process_prediction_table(self):
         self._write_json_data("prediction_table", self.m.prediction_table())
@@ -291,14 +293,14 @@ class Benchmark:
 
         logger.info("Saved: %r", f"{basename}.json")
 
-    def _generate_template(self, metric_charts: Tuple[MetricChart]) -> str:
+    def _generate_template(self, metric_charts: Tuple[MetricVisualization]) -> str:
         html_snippets = {}
         main_template = Template(main_template_str)
         for metric_chart in metric_charts:
             html_snippets.update(metric_chart.get_html_snippets(self))
         return main_template.render(**html_snippets)
 
-    def _save_template(self, metric_charts: Tuple[MetricChart]):
+    def _save_template(self, metric_charts: Tuple[MetricVisualization]):
         template_content = self._generate_template(metric_charts)
         local_path = f"{self.tmp_dir}/template.vue"
         with open(local_path, "w", encoding="utf-8") as f:
