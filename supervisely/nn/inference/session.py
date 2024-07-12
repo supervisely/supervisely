@@ -133,6 +133,14 @@ class SessionJSON:
 
         return hr_info
 
+    def get_model_meta(self) -> Dict[str, Any]:
+        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
+        self._model_meta = meta_json
+        return self._model_meta
+
+    def get_deploy_info(self) -> Dict[str, Any]:
+        return self._get_from_endpoint("get_deploy_info")
+    
     def get_default_inference_settings(self) -> Dict[str, Any]:
         if self._default_inference_settings is None:
             resp = self._get_from_endpoint("get_custom_inference_settings")
@@ -141,11 +149,6 @@ class SessionJSON:
                 settings = yaml.safe_load(settings)
             self._default_inference_settings = settings
         return self._default_inference_settings
-
-    def get_model_meta(self) -> Dict[str, Any]:
-        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-        self._model_meta = meta_json
-        return self._model_meta
 
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
         self._validate_new_inference_settings(inference_settings)
