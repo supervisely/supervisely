@@ -112,6 +112,7 @@ class ImageConverter(BaseConverter):
         dataset_id: int,
         batch_size: int = 50,
         log_progress=True,
+        items: List[Item] = None,
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
@@ -125,7 +126,7 @@ class ImageConverter(BaseConverter):
         else:
             progress_cb = None
 
-        for batch in batched(self._items, batch_size=batch_size):
+        for batch in batched(items or self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
             item_metas = []
