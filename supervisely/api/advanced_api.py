@@ -1,19 +1,19 @@
 # coding: utf-8
 
 # docs
-from typing import List, Tuple, Optional, Dict, Callable, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely._utils import batched
+from supervisely.api.module_api import ApiField, ModuleApiBase
 
 
 class AdvancedApi(ModuleApiBase):
     """class AdvancedApi"""
 
     def add_tag_to_object(
-        self, tag_meta_id: int, figure_id: int, value: Optional[str or int] = None
+        self, tag_meta_id: int, figure_id: int, value: Optional[Union[str, int]] = None
     ) -> Dict:
         """add_tag_to_object"""
         data = {ApiField.TAG_ID: tag_meta_id, ApiField.FIGURE_ID: figure_id}
