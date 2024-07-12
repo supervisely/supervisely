@@ -4,8 +4,9 @@ import json
 import os
 import pickle
 from collections import defaultdict
+from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -215,37 +216,15 @@ class Benchmark:
         self.tmp_dir = None
 
     def upload_layout(self, team_id: str, dest_dir: str):
-
         self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
         api = Api.from_env()
 
-        for metric_chart in _METRIC_CHARTS:
-            fig = metric_chart.get_figure(self)
-            if fig is not None:
-                self._write_fig(metric_chart, fig)
-            figs = metric_chart.get_switchable_figures(self)
-            if figs is not None:
-                for idx, fig in enumerate(figs, start=1):
-                    self._write_fig(metric_chart, fig, fig_idx=idx)
-            click_data = metric_chart.get_click_data(self)
-            if click_data is not None:
-                self._write_click_data(metric_chart, click_data)
+        self._process_metric_charts(_METRIC_CHARTS)
 
-        table_preds = self.m.prediction_table()
-        basename = "prediction_table.json"
-        local_path = f"{self.tmp_dir}/data/{basename}"
-        with open(local_path, "w", encoding="utf-8") as f:
-            f.write(table_preds.to_json())
-        logger.info("Saved: %r", basename)
-
-        basename = "template.vue"
-        local_path = f"{self.tmp_dir}/{basename}"
-        template = self._generate_template(_METRIC_CHARTS)
-        with open(local_path, "w", encoding="utf-8") as f:
-            f.write(template)
-        logger.info("Saved: %r", basename)
+        self._process_prediction_table()
+        self._save_template(_METRIC_CHARTS)
 
         with tqdm_sly(
             desc="Uploading .json to teamfiles",
@@ -267,47 +246,61 @@ class Benchmark:
 
         logger.info("Done.")
 
-    def _write_fig(self, chart: MetricChart, fig: go.Figure, fig_idx: Optional[int] = None) -> None:
+    def _process_metric_charts(self, metric_charts: List[MetricChart]):
+        for metric_chart in metric_charts:
+            fig = metric_chart.get_figure(self)
+            if fig is not None:
+                self._write_json_data(metric_chart.name, fig)
 
-        res = {
-            "selected": None,
-            "galleryContent": "",
-            "dialogVisible": False,
-        }
-        res["chartContent"] = json.loads(fig.to_json())
+            figs = metric_chart.get_switchable_figures(self)
+            if figs is not None:
+                for idx, fig in enumerate(figs, start=1):
+                    self._write_json_data(metric_chart.name, fig, fig_idx=idx)
 
-        basename = f"{chart.name}.json"
-        local_path = f"{self.tmp_dir}/data/{basename}"
+            click_data = metric_chart.get_click_data(self)
+            if click_data is not None:
+                self._write_json_data(f"{metric_chart.name}_chart_click", click_data)
 
-        if fig_idx is not None:
-            fig_idx = "{:02d}".format(fig_idx)
-            basename = f"{chart.name}_{fig_idx}.json"
-            local_path = f"{self.tmp_dir}/data/{basename}"
+    def _process_prediction_table(self):
+        self._write_json_data("prediction_table", self.m.prediction_table())
 
-        with open(local_path, "w", encoding="utf-8") as f:
-            json.dump(res, f)
-
-        sly.logger.info("Saved: %r", basename)
-
-    def _write_click_data(
-        self, chart: MetricChart, click_data: dict, fig_idx: Optional[int] = None
+    def _write_json_data(
+        self,
+        basename: str,
+        data: Union[go.Figure, dict, pd.DataFrame],
+        fig_idx: Optional[int] = None,
     ):
-        basename = f"{chart.name}_chart_click.json"
-        local_path = f"{self.tmp_dir}/data/{basename}"
+        _data = deepcopy(data)
+        if isinstance(data, go.Figure):
+            _data = {
+                "selected": None,
+                "galleryContent": "",
+                "dialogVisible": False,
+                "chartContent": json.loads(_data.to_json()),
+            }
+        elif isinstance(data, pd.DataFrame):
+            _data = data.to_dict()
 
         if fig_idx is not None:
             fig_idx = "{:02d}".format(fig_idx)
-            basename = f"{chart.name}_{fig_idx}.json"
-            local_path = f"{self.tmp_dir}/{basename}"
+            basename = f"{basename}_{fig_idx}"
 
+        local_path = f"{self.tmp_dir}/data/{basename}.json"
         with open(local_path, "w", encoding="utf-8") as f:
-            json.dump(click_data, f)
+            json.dump(_data, f)
+
+        logger.info("Saved: %r", f"{basename}.json")
 
     def _generate_template(self, metric_charts: Tuple[MetricChart]) -> str:
-
         html_snippets = {}
         main_template = Template(main_template_str)
         for metric_chart in metric_charts:
             html_snippets.update(metric_chart.get_html_snippets(self))
-
         return main_template.render(**html_snippets)
+
+    def _save_template(self, metric_charts: Tuple[MetricChart]):
+        template_content = self._generate_template(metric_charts)
+        local_path = f"{self.tmp_dir}/template.vue"
+        with open(local_path, "w", encoding="utf-8") as f:
+            f.write(template_content)
+        logger.info("Saved: %r", "template.vue")
