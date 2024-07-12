@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+from abc import abstractmethod
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from supervisely.nn.benchmark.metrics_loader import MetricsLoader
+    from supervisely.nn.benchmark.benchmark import Benchmark
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from jinja2 import Template
 from plotly.subplots import make_subplots
 
 from supervisely._utils import camel_to_snake
@@ -30,10 +32,50 @@ class CVTask(StrEnum):
     SEGMENTATION: str = "segmentation"
 
 
-class BaseMetric:
+template_markdown_str = """
+            <sly-iw-markdown
+              id="{{ widget_id }}"
+              iw-widget-id="{{ widget_id }}"
+              :actions="{
+                'init': {
+                  'dataSource': '{{ data_source }}',
+                },
+              }"
+              :command="{{ command }}"
+              :data="{{ data }}"
+            />
+"""
+
+template_chart_str = """
+            <sly-iw-chart
+              iw-widget-id="{{ widget_id }}"
+              :actions="{
+                'init': {
+                  'dataSource': '{{ init_data_source }}',
+                },{% if chart_click_data_source %}
+                'chart-click': {
+                  'dataSource': '{{ chart_click_data_source }}',
+                },{% endif %}
+              }"
+              :command="{{ command }}"
+              :data="{{ data }}"
+            />
+"""
+
+
+class MetricChart:
 
     cv_tasks: Tuple[CVTask] = tuple(CVTask.values())
     clickable: bool = False
+
+    _template_markdown = Template(template_markdown_str)
+    _template_chart = Template(template_chart_str)
+
+    # # pylint: disable=no-self-argument
+    # @classproperty
+    # def _template_markdown(cls) -> str:
+    #     # pylint: disable=no-member
+    #     return Template(template_markdown_str)
 
     # pylint: disable=no-self-argument
     @classproperty
@@ -42,18 +84,31 @@ class BaseMetric:
         return camel_to_snake(cls.__name__)
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         pass
 
     @classmethod
-    def get_switchable_figures(cls, loader: MetricsLoader) -> Optional[Tuple[go.Figure]]:
+    def get_switchable_figures(cls, loader: Benchmark) -> Optional[Tuple[go.Figure]]:
         pass
 
-
-class Overview(BaseMetric):
+    @classmethod
+    def get_click_data(cls, loader: Benchmark) -> Optional[dict]:
+        pass
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_metric_chart(cls, loader: Benchmark) -> Optional[dict]:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def get_html_snippets(cls, loader: Benchmark) -> List[str]:
+        raise NotImplementedError()
+
+
+class Overview(MetricChart):
+
+    @classmethod
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # Overall Metrics
         base_metrics = loader.m.base_metrics()
         r = list(base_metrics.values())
@@ -79,13 +134,34 @@ class Overview(BaseMetric):
         )
         return fig
 
+    @classmethod
+    def get_html_snippets(cls, loader: Benchmark) -> dict:
+        context_markdown = {
+            "widget_id": "markdown-1",
+            "data_source": "/data/markdown-1.md",
+            "command": "command",
+            "data": "data",
+        }
+        context_chart = {
+            "widget_id": f"{cls.name}-chart-01",
+            "init_data_source": f"/data/{cls.name}.json",
+            "command": "command",
+            "data": "data",
+        }
 
-class OutcomeCounts(BaseMetric):
+        return {
+            f"{cls.name}_html": cls._template_chart.render(context_chart),
+            # context_markdown["widget_id"]: cls._template_markdown.render(context_markdown),
+            # context_chart["widget_id"]: cls._template_chart.render(context_chart),
+        }
+
+
+class OutcomeCounts(MetricChart):
 
     clickable: bool = True
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # Outcome counts
         fig = go.Figure()
         fig.add_trace(
@@ -125,11 +201,39 @@ class OutcomeCounts(BaseMetric):
 
         return fig
 
-
-class Recall(BaseMetric):
+    @classmethod
+    def get_click_data(cls, loader: Benchmark) -> Optional[dict]:
+        return loader.click_data.outcome_counts
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_html_snippets(cls, loader: Benchmark) -> List[str]:
+        context_markdown = {
+            "widget_id": "markdown-1",
+            "data_source": "/data/markdown-1.md",
+            "command": "command",
+            "data": "data",
+        }
+        context_chart = {
+            "widget_id": f"{cls.name}-chart-01",
+            "init_data_source": f"/data/{cls.name}.json",
+            "chart_click_data_source": f"/data/{cls.name}_chart_click.json",  # Optional
+            "command": "command",
+            "data": "data",
+        }
+        return {
+            f"{cls.name}_html": cls._template_chart.render(context_chart),
+        }
+
+        # return {
+        #     context_markdown["widget_id"]: cls._template_markdown.render(context_markdown),
+        #     context_chart["widget_id"]: cls._template_chart.render(context_chart),
+        # }
+
+
+class Recall(MetricChart):
+
+    @classmethod
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")
         fig = px.bar(
@@ -149,10 +253,10 @@ class Recall(BaseMetric):
         return fig
 
 
-class Precision(BaseMetric):
+class Precision(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="precision")
         fig = px.bar(
@@ -172,10 +276,10 @@ class Precision(BaseMetric):
         return fig
 
 
-class RecallVsPrecision(BaseMetric):
+class RecallVsPrecision(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
         fig = go.Figure()
@@ -205,10 +309,10 @@ class RecallVsPrecision(BaseMetric):
         return fig
 
 
-class PRCurve(BaseMetric):
+class PRCurve(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # Precision-Recall curve
         fig = px.line(
             x=loader.m.recThrs,
@@ -244,10 +348,10 @@ class PRCurve(BaseMetric):
         return fig
 
 
-class PRCurveByClass(BaseMetric):
+class PRCurveByClass(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
 
         # Precision-Recall curve per-class
         df = pd.DataFrame(loader.m.pr_curve(), columns=loader.m.cat_names)
@@ -270,10 +374,10 @@ class PRCurveByClass(BaseMetric):
         return fig
 
 
-class ConfusionMatrix(BaseMetric):
+class ConfusionMatrix(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         confusion_matrix = loader.m.confusion_matrix()
         # Confusion Matrix
         # TODO: Green-red
@@ -310,12 +414,12 @@ class ConfusionMatrix(BaseMetric):
         return fig
 
 
-class FrequentlyConfused(BaseMetric):
+class FrequentlyConfused(MetricChart):
 
     clickable: bool = True
 
     @classmethod
-    def get_switchable_figures(cls, loader: MetricsLoader) -> Optional[Tuple[go.Figure]]:
+    def get_switchable_figures(cls, loader: Benchmark) -> Optional[Tuple[go.Figure]]:
 
         confusion_matrix = loader.m.confusion_matrix()
 
@@ -341,10 +445,10 @@ class FrequentlyConfused(BaseMetric):
         return tuple(figs)
 
 
-class IOUDistribution(BaseMetric):
+class IOUDistribution(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
 
         fig = go.Figure()
         nbins = 40
@@ -373,10 +477,10 @@ class IOUDistribution(BaseMetric):
         return fig
 
 
-class ReliabilityDiagram(BaseMetric):
+class ReliabilityDiagram(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # Calibration curve (only positive predictions)
         true_probs, pred_probs = loader.m_full.calibration_metrics.calibration_curve()
 
@@ -416,10 +520,10 @@ class ReliabilityDiagram(BaseMetric):
         return fig
 
 
-class ConfidenceScore(BaseMetric):
+class ConfidenceScore(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
 
         color_map = {
             "Precision": "#1f77b4",
@@ -456,10 +560,10 @@ class ConfidenceScore(BaseMetric):
         return fig
 
 
-class ConfidenceDistribution(BaseMetric):
+class ConfidenceDistribution(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
 
         f1_optimal_conf, best_f1 = loader.m_full.get_f1_optimal_conf()
 
@@ -536,10 +640,10 @@ class ConfidenceDistribution(BaseMetric):
         return fig
 
 
-class F1ScoreAtDifferentIOU(BaseMetric):
+class F1ScoreAtDifferentIOU(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         # score_profile = loader.m_full.confidence_score_profile()
         f1s = loader.m_full.score_profile_f1s
 
@@ -583,10 +687,10 @@ class F1ScoreAtDifferentIOU(BaseMetric):
         return fig
 
 
-class PerClassAvgPrecision(BaseMetric):
+class PerClassAvgPrecision(MetricChart):
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
 
         # AP per-class
         ap_per_class = loader.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
@@ -606,12 +710,12 @@ class PerClassAvgPrecision(BaseMetric):
         return fig
 
 
-class PerClassOutcomeCounts(BaseMetric):
+class PerClassOutcomeCounts(MetricChart):
 
     clickable: bool = True
 
     @classmethod
-    def get_switchable_figures(cls, loader: MetricsLoader) -> Optional[Tuple[go.Figure]]:
+    def get_switchable_figures(cls, loader: Benchmark) -> Optional[Tuple[go.Figure]]:
         # Per-class Counts
         iou_thres = 0
 
@@ -679,12 +783,12 @@ class PerClassOutcomeCounts(BaseMetric):
         return (fig, fig_)
 
 
-class OverallErrorAnalysis(BaseMetric):
+class OverallErrorAnalysis(MetricChart):
 
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         fig = make_subplots(
             rows=1,
             cols=3,
@@ -774,12 +878,12 @@ class OverallErrorAnalysis(BaseMetric):
         return fig
 
 
-class ClasswiseErrorAnalysis(BaseMetric):
+class ClasswiseErrorAnalysis(MetricChart):
 
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
     @classmethod
-    def get_figure(cls, loader: MetricsLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
         pd.options.mode.chained_assignment = None  # TODO rm later
 
         df = loader.result_df

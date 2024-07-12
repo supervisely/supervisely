@@ -10,44 +10,69 @@ from typing import List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from jinja2 import Template
 from pycocotools.coco import COCO
 
 import supervisely as sly
-from src.click_data import ClickData
-from src.utils import IdMapper
 from supervisely._utils import *
 from supervisely.api.api import Api
 from supervisely.collection.str_enum import StrEnum
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
 from supervisely.io.fs import *
 from supervisely.nn.benchmark import metric_provider
+from supervisely.nn.benchmark.metric_charts import *
+from supervisely.nn.benchmark.metric_charts import MetricChart
 from supervisely.nn.benchmark.metric_provider import MetricProvider
-from supervisely.nn.benchmark.metrics import *
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
-_METRICS = (
+_METRIC_CHARTS = (
     Overview,
     OutcomeCounts,
-    Recall,
-    Precision,
-    RecallVsPrecision,
-    PRCurve,
-    PRCurveByClass,
-    ConfusionMatrix,
-    FrequentlyConfused,
-    IOUDistribution,
-    ReliabilityDiagram,
-    ConfidenceScore,
-    ConfidenceDistribution,
-    F1ScoreAtDifferentIOU,
-    PerClassAvgPrecision,
-    PerClassOutcomeCounts,
+    # Recall,
+    # Precision,
+    # RecallVsPrecision,
+    # PRCurve,
+    # PRCurveByClass,
+    # ConfusionMatrix,
+    # FrequentlyConfused,
+    # IOUDistribution,
+    # ReliabilityDiagram,
+    # ConfidenceScore,
+    # ConfidenceDistribution,
+    # F1ScoreAtDifferentIOU,
+    # PerClassAvgPrecision,
+    # PerClassOutcomeCounts,
     # segmentation-only
     # # TODO integrate binary files while saving to self.tmp_dir to the current solution
     # OverallErrorAnalysis,
     # ClasswiseErrorAnalysis,
 )
+
+
+def generate_main_template(metric_charts: List[MetricChart]):
+    template_str = """<div>
+    <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false }">
+        <div slot="sidebar">
+          <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown-1'">Overview</el-button>
+          </div>
+          <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown-2'">Key Metrics</el-button>
+          </div>
+        </div>
+      
+        <div style="padding: 0 15px;">"""
+
+    for chart in metric_charts:
+        template_str += "\n            {{ " + f"{chart.name}_html" + " }}"
+
+    template_str += "\n        </div>\n    </sly-iw-sidebar>\n</div>"
+
+    return template_str
+
+
+main_template_str = generate_main_template(_METRIC_CHARTS)
 
 
 class IdMapper:
@@ -63,13 +88,7 @@ class ClickData:
         self.gt_id_mapper = gt_id_mapper
         self.dt_id_mapper = dt_id_mapper
         self.catId2name = {cat_id: cat["name"] for cat_id, cat in m.cocoGt.cats.items()}
-        self.outcome_counts = None
-        self.outcome_counts_by_class = None
-        self.objects_by_class = None
-        self.confusion_matrix = None
-        self.frequently_confused = None
 
-    def create_data(self):
         self.outcome_counts = {
             "TP": self._gather_matches(self.m.tp_matches),
             "FN": self._gather_matches(self.m.fn_matches),
@@ -138,7 +157,7 @@ class ClickData:
         return [self._gather(d) for d in matches]
 
 
-class MetricsLoader:
+class Benchmark:
 
     def __init__(self, cocoGt_path: str, cocoDt_path: str, eval_data_path: str) -> None:
 
@@ -157,7 +176,7 @@ class MetricsLoader:
         with open(eval_data_path, "rb") as f:
             eval_data = pickle.load(f)
 
-        self.m_full = metric_provider.MetricProvider(
+        self.m_full = MetricProvider(
             eval_data["matches"],
             eval_data["coco_metrics"],
             eval_data["params"],
@@ -171,11 +190,12 @@ class MetricsLoader:
         matches_thresholded = metric_provider.filter_by_conf(
             eval_data["matches"], self.f1_optimal_conf
         )
-        self.m = metric_provider.MetricProvider(
+        self.m = MetricProvider(
             matches_thresholded, eval_data["coco_metrics"], eval_data["params"], cocoGt, cocoDt
         )
-        self.df_score_profile = pd.DataFrame(self.score_profile)
-        self.df_score_profile.columns = ["scores", "Precision", "Recall", "F1"]
+        self.df_score_profile = pd.DataFrame(
+            self.score_profile, columns=["scores", "Precision", "Recall", "F1"]
+        )
 
         self.per_class_metrics: pd.DataFrame = self.m.per_class_metrics()
         self.per_class_metrics_sorted: pd.DataFrame = self.per_class_metrics.sort_values(by="f1")
@@ -191,28 +211,40 @@ class MetricsLoader:
         dt_id_mapper = IdMapper(cocoDt_dataset)
 
         self.click_data = ClickData(self.m, gt_id_mapper, dt_id_mapper)
-        self.click_data.create_data()
 
-        self.tmp_dir = f"/tmp/{rand_str(10)}"
+        self.tmp_dir = None
 
-    def upload_to(self, team_id: str, dest_dir: str):
+    def upload_layout(self, team_id: str, dest_dir: str):
+
+        self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
+        mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
         api = Api.from_env()
 
-        for metric in _METRICS:
-            fig = metric.get_figure(self)
+        for metric_chart in _METRIC_CHARTS:
+            fig = metric_chart.get_figure(self)
             if fig is not None:
-                self._write_fig(metric, fig)
-            figs = metric.get_switchable_figures(self)
+                self._write_fig(metric_chart, fig)
+            figs = metric_chart.get_switchable_figures(self)
             if figs is not None:
                 for idx, fig in enumerate(figs, start=1):
-                    self._write_fig(metric, fig, fig_idx=idx)
+                    self._write_fig(metric_chart, fig, fig_idx=idx)
+            click_data = metric_chart.get_click_data(self)
+            if click_data is not None:
+                self._write_click_data(metric_chart, click_data)
 
         table_preds = self.m.prediction_table()
         basename = "prediction_table.json"
-        local_path = f"{self.tmp_dir}/{basename}"
+        local_path = f"{self.tmp_dir}/data/{basename}"
         with open(local_path, "w", encoding="utf-8") as f:
             f.write(table_preds.to_json())
+        logger.info("Saved: %r", basename)
+
+        basename = "template.vue"
+        local_path = f"{self.tmp_dir}/{basename}"
+        template = self._generate_template(_METRIC_CHARTS)
+        with open(local_path, "w", encoding="utf-8") as f:
+            f.write(template)
         logger.info("Saved: %r", basename)
 
         with tqdm_sly(
@@ -230,28 +262,52 @@ class MetricsLoader:
                 progress_size_cb=pbar,
             )
 
+        if dir_exists(self.tmp_dir):
+            remove_dir(self.tmp_dir)
+
         logger.info("Done.")
 
-    def _write_fig(self, metric: BaseMetric, fig: go.Figure, fig_idx: Optional[int] = None) -> None:
-        json_fig = fig.to_json()
+    def _write_fig(self, chart: MetricChart, fig: go.Figure, fig_idx: Optional[int] = None) -> None:
 
-        basename = f"{metric.name}.json"
-        local_path = f"{self.tmp_dir}/{basename}"
+        res = {
+            "selected": None,
+            "galleryContent": "",
+            "dialogVisible": False,
+        }
+        res["chartContent"] = json.loads(fig.to_json())
+
+        basename = f"{chart.name}.json"
+        local_path = f"{self.tmp_dir}/data/{basename}"
 
         if fig_idx is not None:
             fig_idx = "{:02d}".format(fig_idx)
-            basename = f"{metric.name}_{fig_idx}.json"
-            local_path = f"{self.tmp_dir}/{basename}"
+            basename = f"{chart.name}_{fig_idx}.json"
+            local_path = f"{self.tmp_dir}/data/{basename}"
 
         with open(local_path, "w", encoding="utf-8") as f:
-            f.write(json_fig)
+            json.dump(res, f)
 
         sly.logger.info("Saved: %r", basename)
 
-    def __enter__(self):
-        mkdir(self.tmp_dir, remove_content_if_exists=True)
-        return self
+    def _write_click_data(
+        self, chart: MetricChart, click_data: dict, fig_idx: Optional[int] = None
+    ):
+        basename = f"{chart.name}_chart_click.json"
+        local_path = f"{self.tmp_dir}/data/{basename}"
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        if dir_exists(self.tmp_dir):
-            remove_dir(self.tmp_dir)
+        if fig_idx is not None:
+            fig_idx = "{:02d}".format(fig_idx)
+            basename = f"{chart.name}_{fig_idx}.json"
+            local_path = f"{self.tmp_dir}/{basename}"
+
+        with open(local_path, "w", encoding="utf-8") as f:
+            json.dump(click_data, f)
+
+    def _generate_template(self, metric_charts: Tuple[MetricChart]) -> str:
+
+        html_snippets = {}
+        main_template = Template(main_template_str)
+        for metric_chart in metric_charts:
+            html_snippets.update(metric_chart.get_html_snippets(self))
+
+        return main_template.render(**html_snippets)
