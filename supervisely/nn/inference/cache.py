@@ -65,9 +65,19 @@ class PersistentImageTTLCache(TTLCache):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
+    def pop(self, *args, **kwargs):
+        try:
+            super().pop(*args, **kwargs)
+        except KeyError:
+            sly.logger.warning(
+                "Key not found in cache",
+                exc_info=True,
+                extra={"links": self._TTLCache__links.keys(), "data": self._Cache__data.keys()},
+            )
+
     def __delitem__(self, key: Any) -> None:
         sly.logger.debug(
-            f"__delitem__ {key}",
+            f"PersistentImageTTLCache.__delitem__ {key}",
             extra={
                 "links": self._TTLCache__links.keys(),
                 "data": self._Cache__data.keys(),
@@ -76,7 +86,7 @@ class PersistentImageTTLCache(TTLCache):
         self.__del_file(key)
         super().__delitem__(key)
         sly.logger.debug(
-            f"after __delitem__ {key}",
+            f"after PersistentImageTTLCache.__delitem__ {key}",
             extra={
                 "links": self._TTLCache__links.keys(),
                 "data": self._Cache__data.keys(),
@@ -94,7 +104,7 @@ class PersistentImageTTLCache(TTLCache):
 
     def __setitem__(self, key: Any, value: Any) -> None:
         sly.logger.debug(
-            f"__setitem__ {key}",
+            f"PersistentImageTTLCache.__setitem__ {key}",
             # pylint: disable=no-member
             extra={
                 "links": self._TTLCache__links.keys(),
@@ -103,7 +113,7 @@ class PersistentImageTTLCache(TTLCache):
         )
         super().__setitem__(key, value)
         sly.logger.debug(
-            f"after __setitem__ {key}",
+            f"after PersistentImageTTLCache.__setitem__ {key}",
             extra={
                 "links": self._TTLCache__links.keys(),
                 "data": self._Cache__data.keys(),
@@ -122,7 +132,7 @@ class PersistentImageTTLCache(TTLCache):
 
     def __getitem__(self, key: Any) -> Any:
         sly.logger.debug(
-            f"__getitem__ {key}",
+            f"PersistentImageTTLCache.__getitem__ {key}",
             extra={
                 "links": self._TTLCache__links.keys(),
                 "data": self._Cache__data.keys(),
@@ -131,7 +141,7 @@ class PersistentImageTTLCache(TTLCache):
         self.__update_timer(key)
         item = super().__getitem__(key)
         sly.logger.debug(
-            f"after __getitem__ {key}",
+            f"after PersistentImageTTLCache.__getitem__ {key}",
             extra={
                 "links": self._TTLCache__links.keys(),
                 "data": self._Cache__data.keys(),
