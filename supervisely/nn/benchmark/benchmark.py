@@ -275,7 +275,7 @@ class Benchmark:
 
             local_path = f"{self.tmp_dir}/data/{md_name}.md"
             with open(local_path, "w", encoding="utf-8") as f:
-                json.dump(contents.__dict__[md_name], f)
+                f.write(contents.__dict__[md_name])
 
             logger.info("Saved: %r", f"{md_name}.md")
 
