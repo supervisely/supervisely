@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
 
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.benchmark import Benchmark
+
+from collections import namedtuple
 
 import numpy as np
 import pandas as pd
@@ -13,7 +15,7 @@ import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
 
-from supervisely._utils import camel_to_snake
+from supervisely._utils import camel_to_snake, rand_str
 from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark import metric_provider
 
@@ -67,15 +69,28 @@ class MetricVisualization:
 
     cv_tasks: Tuple[CVTask] = tuple(CVTask.values())
     clickable: bool = False
+    switchable: bool = False
 
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
 
-    # # pylint: disable=no-self-argument
-    # @classproperty
-    # def _template_markdown(cls) -> str:
-    #     # pylint: disable=no-member
-    #     return Template(template_markdown_str)
+    class Schema(NamedTuple):
+        markdowns_up: List[str] = []
+        markdowns_bottom: List[str] = []
+        tables: List[str] = []
+
+    schema = None
+
+    # pylint: disable=no-self-argument
+    @classproperty
+    def template_str(cls) -> str:
+        res = ""
+        for md in cls.schema.markdowns_up:
+            res += "\n            {{ " + f"{md}_html" + " }}"
+        res += "\n            {{ " + f"{cls.name}_html" + " }}"
+        for md in cls.schema.markdowns_bottom:
+            res += "\n            {{ " + f"{md}_html" + " }}"
+        return res
 
     # pylint: disable=no-self-argument
     @classproperty
@@ -84,33 +99,35 @@ class MetricVisualization:
         return camel_to_snake(cls.__name__)
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         pass
 
     @classmethod
-    def get_switchable_figures(cls, loader: Benchmark) -> Optional[Tuple[go.Figure]]:
+    def get_switchable_figures(cls, benchmark: Benchmark) -> Optional[Tuple[go.Figure]]:
         pass
 
     @classmethod
-    def get_click_data(cls, loader: Benchmark) -> Optional[dict]:
+    def get_click_data(cls, benchmark: Benchmark) -> Optional[dict]:
         pass
 
     @classmethod
-    def get_metric_chart(cls, loader: Benchmark) -> Optional[dict]:
+    def get_table(cls, benchmark: Benchmark) -> Optional[dict]:
         pass
 
     @classmethod
     @abstractmethod
-    def get_html_snippets(cls, loader: Benchmark) -> List[str]:
+    def get_html_snippets(cls, benchmark: Benchmark) -> List[str]:
         raise NotImplementedError()
 
 
 class Overview(MetricVisualization):
 
+    schema = MetricVisualization.Schema(["markdown_overview", "markdown_key_metrics"])
+
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         # Overall Metrics
-        base_metrics = loader.m.base_metrics()
+        base_metrics = benchmark.m.base_metrics()
         r = list(base_metrics.values())
         theta = [metric_provider.METRIC_NAMES[k] for k in base_metrics.keys()]
         fig = go.Figure()
@@ -135,38 +152,46 @@ class Overview(MetricVisualization):
         return fig
 
     @classmethod
-    def get_html_snippets(cls, loader: Benchmark) -> dict:
-        context_markdown = {
-            "widget_id": "markdown-1",
-            "data_source": "/data/markdown-1.md",
-            "command": "command",
-            "data": "data",
-        }
-        context_chart = {
-            "widget_id": f"{cls.name}-chart-01",
-            "init_data_source": f"/data/{cls.name}.json",
-            "command": "command",
-            "data": "data",
-        }
+    def get_html_snippets(cls, benchmark: Benchmark) -> dict:
 
-        return {
-            f"{cls.name}_html": cls._template_chart.render(context_chart),
-            # context_markdown["widget_id"]: cls._template_markdown.render(context_markdown),
-            # context_chart["widget_id"]: cls._template_chart.render(context_chart),
-        }
+        res = {}
+
+        for md_name in cls.schema.markdowns_up:
+
+            res[f"{md_name}_html"] = cls._template_markdown.render(
+                {
+                    "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
+                    "data_source": f"/data/{md_name}.md",
+                    "command": "command",
+                    "data": "data",
+                }
+            )
+
+        res[f"{cls.name}_html"] = cls._template_chart.render(
+            {
+                "widget_id": f"{cls.name}-chart-{rand_str(5)}",
+                "init_data_source": f"/data/{cls.name}.json",
+                "command": "command",
+                "data": "data",
+            }
+        )
+
+        return res
 
 
 class OutcomeCounts(MetricVisualization):
 
     clickable: bool = True
 
+    schema = MetricVisualization.Schema(["markdown_outcome_counts"])
+
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         # Outcome counts
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                x=[loader.m.TP_count],
+                x=[benchmark.m.TP_count],
                 y=["Outcome"],
                 name="TP",
                 orientation="h",
@@ -175,7 +200,7 @@ class OutcomeCounts(MetricVisualization):
         )
         fig.add_trace(
             go.Bar(
-                x=[loader.m.FN_count],
+                x=[benchmark.m.FN_count],
                 y=["Outcome"],
                 name="FN",
                 orientation="h",
@@ -184,7 +209,7 @@ class OutcomeCounts(MetricVisualization):
         )
         fig.add_trace(
             go.Bar(
-                x=[loader.m.FP_count],
+                x=[benchmark.m.FP_count],
                 y=["Outcome"],
                 name="FP",
                 orientation="h",
@@ -202,51 +227,54 @@ class OutcomeCounts(MetricVisualization):
         return fig
 
     @classmethod
-    def get_click_data(cls, loader: Benchmark) -> Optional[dict]:
-        return loader.click_data.outcome_counts
+    def get_click_data(cls, benchmark: Benchmark) -> Optional[dict]:
+        return benchmark.click_data.outcome_counts
 
     @classmethod
-    def get_html_snippets(cls, loader: Benchmark) -> List[str]:
-        context_markdown = {
-            "widget_id": "markdown-1",
-            "data_source": "/data/markdown-1.md",
-            "command": "command",
-            "data": "data",
-        }
-        context_chart = {
-            "widget_id": f"{cls.name}-chart-01",
-            "init_data_source": f"/data/{cls.name}.json",
-            "chart_click_data_source": f"/data/{cls.name}_chart_click.json",  # Optional
-            "command": "command",
-            "data": "data",
-        }
-        return {
-            f"{cls.name}_html": cls._template_chart.render(context_chart),
-        }
+    def get_html_snippets(cls, benchmark: Benchmark) -> dict:
 
-        # return {
-        #     context_markdown["widget_id"]: cls._template_markdown.render(context_markdown),
-        #     context_chart["widget_id"]: cls._template_chart.render(context_chart),
-        # }
+        res = {}
+
+        for md_name in cls.schema.markdowns_up:
+
+            res[f"{md_name}_html"] = cls._template_markdown.render(
+                {
+                    "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
+                    "data_source": f"/data/{md_name}.md",
+                    "command": "command",
+                    "data": "data",
+                }
+            )
+
+        res[f"{cls.name}_html"] = cls._template_chart.render(
+            {
+                "widget_id": f"{cls.name}-chart-{rand_str(5)}",
+                "init_data_source": f"/data/{cls.name}.json",
+                "command": "command",
+                "data": "data",
+            }
+        )
+
+        return res
 
 
 class Recall(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")
         fig = px.bar(
-            loader.per_class_metrics_sorted,
+            benchmark.per_class_metrics_sorted,
             x="category",
             y="recall",
             title="Per-class Recall (Sorted by F1)",
             color="recall",
             color_continuous_scale="Plasma",
         )
-        if len(loader.per_class_metrics_sorted) <= 20:
+        if len(benchmark.per_class_metrics_sorted) <= 20:
             fig.update_traces(
-                text=loader.per_class_metrics_sorted["recall"].round(2), textposition="outside"
+                text=benchmark.per_class_metrics_sorted["recall"].round(2), textposition="outside"
             )
         fig.update_xaxes(title_text="Category")
         fig.update_yaxes(title_text="Recall", range=[0, 1])
@@ -256,20 +284,21 @@ class Recall(MetricVisualization):
 class Precision(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="precision")
         fig = px.bar(
-            loader.per_class_metrics_sorted,
+            benchmark.per_class_metrics_sorted,
             x="category",
             y="precision",
             title="Per-class Precision (Sorted by F1)",
             color="precision",
             color_continuous_scale="Plasma",
         )
-        if len(loader.per_class_metrics_sorted) <= 20:
+        if len(benchmark.per_class_metrics_sorted) <= 20:
             fig.update_traces(
-                text=loader.per_class_metrics_sorted["precision"].round(2), textposition="outside"
+                text=benchmark.per_class_metrics_sorted["precision"].round(2),
+                textposition="outside",
             )
         fig.update_xaxes(title_text="Category")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
@@ -279,22 +308,22 @@ class Precision(MetricVisualization):
 class RecallVsPrecision(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                y=loader.per_class_metrics_sorted["precision"],
-                x=loader.per_class_metrics_sorted["category"],
+                y=benchmark.per_class_metrics_sorted["precision"],
+                x=benchmark.per_class_metrics_sorted["category"],
                 name="Precision",
                 marker=dict(color=blue_color),
             )
         )
         fig.add_trace(
             go.Bar(
-                y=loader.per_class_metrics_sorted["recall"],
-                x=loader.per_class_metrics_sorted["category"],
+                y=benchmark.per_class_metrics_sorted["recall"],
+                x=benchmark.per_class_metrics_sorted["category"],
                 name="Recall",
                 marker=dict(color=orange_color),
             )
@@ -312,11 +341,11 @@ class RecallVsPrecision(MetricVisualization):
 class PRCurve(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         # Precision-Recall curve
         fig = px.line(
-            x=loader.m.recThrs,
-            y=loader.m.pr_curve().mean(-1),
+            x=benchmark.m.recThrs,
+            y=benchmark.m.pr_curve().mean(-1),
             # title="Precision-Recall Curve",
             labels={"x": "Recall", "y": "Precision"},
             width=600,
@@ -327,15 +356,15 @@ class PRCurve(MetricVisualization):
         fig.update_traces(fill="tozeroy", line=dict(color="#1f77b4"))
         fig.add_trace(
             go.Scatter(
-                x=loader.m.recThrs,
-                y=[1] * len(loader.m.recThrs),
+                x=benchmark.m.recThrs,
+                y=[1] * len(benchmark.m.recThrs),
                 name="Perfect",
                 line=dict(color="orange", dash="dash"),
                 showlegend=True,
             )
         )
         fig.add_annotation(
-            text=f"mAP = {loader.m.base_metrics()['mAP']:.2f}",
+            text=f"mAP = {benchmark.m.base_metrics()['mAP']:.2f}",
             xref="paper",
             yref="paper",
             x=0.98,
@@ -351,14 +380,14 @@ class PRCurve(MetricVisualization):
 class PRCurveByClass(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
 
         # Precision-Recall curve per-class
-        df = pd.DataFrame(loader.m.pr_curve(), columns=loader.m.cat_names)
+        df = pd.DataFrame(benchmark.m.pr_curve(), columns=benchmark.m.cat_names)
 
         fig = px.line(
             df,
-            x=loader.m.recThrs,
+            x=benchmark.m.recThrs,
             y=df.columns,
             # title="Precision-Recall Curve per Class",
             labels={"x": "Recall", "value": "Precision", "variable": "Category"},
@@ -377,11 +406,11 @@ class PRCurveByClass(MetricVisualization):
 class ConfusionMatrix(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
-        confusion_matrix = loader.m.confusion_matrix()
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
+        confusion_matrix = benchmark.m.confusion_matrix()
         # Confusion Matrix
         # TODO: Green-red
-        cat_names = loader.m.cat_names
+        cat_names = benchmark.m.cat_names
         none_name = "(None)"
 
         with np.errstate(divide="ignore"):
@@ -417,14 +446,15 @@ class ConfusionMatrix(MetricVisualization):
 class FrequentlyConfused(MetricVisualization):
 
     clickable: bool = True
+    switchable: bool = True
 
     @classmethod
-    def get_switchable_figures(cls, loader: Benchmark) -> Optional[Tuple[go.Figure]]:
+    def get_switchable_figures(cls, benchmark: Benchmark) -> Optional[Tuple[go.Figure]]:
 
-        confusion_matrix = loader.m.confusion_matrix()
+        confusion_matrix = benchmark.m.confusion_matrix()
 
         # Frequency of confusion as bar chart
-        confused_df = loader.m.frequently_confused(confusion_matrix, topk_pairs=20)
+        confused_df = benchmark.m.frequently_confused(confusion_matrix, topk_pairs=20)
         confused_name_pairs = confused_df["category_pair"]
         confused_prob = confused_df["probability"]
         confused_cnt = confused_df["count"]
@@ -448,11 +478,11 @@ class FrequentlyConfused(MetricVisualization):
 class IOUDistribution(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
 
         fig = go.Figure()
         nbins = 40
-        fig.add_trace(go.Histogram(x=loader.m.ious, nbinsx=nbins))
+        fig.add_trace(go.Histogram(x=benchmark.m.ious, nbinsx=nbins))
         fig.update_layout(
             # title="IoU Distribution",
             xaxis_title="IoU",
@@ -462,8 +492,8 @@ class IOUDistribution(MetricVisualization):
         )
 
         # Add annotation for mean IoU as vertical line
-        mean_iou = loader.m.ious.mean()
-        y1 = len(loader.m.ious) // nbins
+        mean_iou = benchmark.m.ious.mean()
+        y1 = len(benchmark.m.ious) // nbins
         fig.add_shape(
             type="line",
             x0=mean_iou,
@@ -480,9 +510,9 @@ class IOUDistribution(MetricVisualization):
 class ReliabilityDiagram(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         # Calibration curve (only positive predictions)
-        true_probs, pred_probs = loader.m_full.calibration_metrics.calibration_curve()
+        true_probs, pred_probs = benchmark.m_full.calibration_metrics.calibration_curve()
 
         fig = go.Figure()
         fig.add_trace(
@@ -523,14 +553,14 @@ class ReliabilityDiagram(MetricVisualization):
 class ConfidenceScore(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
 
         color_map = {
             "Precision": "#1f77b4",
             "Recall": "orange",
         }
         fig = px.line(
-            loader.dfsp_down,
+            benchmark.dfsp_down,
             x="scores",
             y=["Precision", "Recall", "F1"],
             # title="Confidence Score Profile",
@@ -544,16 +574,16 @@ class ConfidenceScore(MetricVisualization):
         # Add vertical line for the best threshold
         fig.add_shape(
             type="line",
-            x0=loader.f1_optimal_conf,
-            x1=loader.f1_optimal_conf,
+            x0=benchmark.f1_optimal_conf,
+            x1=benchmark.f1_optimal_conf,
             y0=0,
-            y1=loader.best_f1,
+            y1=benchmark.best_f1,
             line=dict(color="gray", width=2, dash="dash"),
         )
         fig.add_annotation(
-            x=loader.f1_optimal_conf,
-            y=loader.best_f1 + 0.04,
-            text=f"F1-optimal threshold: {loader.f1_optimal_conf:.2f}",
+            x=benchmark.f1_optimal_conf,
+            y=benchmark.best_f1 + 0.04,
+            text=f"F1-optimal threshold: {benchmark.f1_optimal_conf:.2f}",
             showarrow=False,
         )
         # fig.show()
@@ -563,12 +593,12 @@ class ConfidenceScore(MetricVisualization):
 class ConfidenceDistribution(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
 
-        f1_optimal_conf, best_f1 = loader.m_full.get_f1_optimal_conf()
+        f1_optimal_conf, best_f1 = benchmark.m_full.get_f1_optimal_conf()
 
         # Histogram of confidence scores (TP vs FP)
-        scores_tp, scores_fp = loader.m_full.calibration_metrics.scores_tp_and_fp(iou_idx=0)
+        scores_tp, scores_fp = benchmark.m_full.calibration_metrics.scores_tp_and_fp(iou_idx=0)
 
         tp_y, tp_x = np.histogram(scores_tp, bins=40, range=[0, 1])
         fp_y, fp_x = np.histogram(scores_fp, bins=40, range=[0, 1])
@@ -643,15 +673,15 @@ class ConfidenceDistribution(MetricVisualization):
 class F1ScoreAtDifferentIOU(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
-        # score_profile = loader.m_full.confidence_score_profile()
-        f1s = loader.m_full.score_profile_f1s
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
+        # score_profile = benchmark.m_full.confidence_score_profile()
+        f1s = benchmark.m_full.score_profile_f1s
 
         # downsample
         f1s_down = f1s[:, :: f1s.shape[1] // 1000]
-        iou_names = list(map(lambda x: str(round(x, 2)), loader.m.iouThrs.tolist()))
+        iou_names = list(map(lambda x: str(round(x, 2)), benchmark.m.iouThrs.tolist()))
         df = pd.DataFrame(
-            np.concatenate([loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
+            np.concatenate([benchmark.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
             columns=["scores"] + iou_names,
         )
 
@@ -671,7 +701,7 @@ class F1ScoreAtDifferentIOU(MetricVisualization):
         for i, iou in enumerate(iou_names):
             argmax_f1 = f1s[i].argmax()
             max_f1 = f1s[i][argmax_f1]
-            score = loader.score_profile["scores"][argmax_f1]
+            score = benchmark.score_profile["scores"][argmax_f1]
             fig.add_annotation(
                 x=score,
                 y=max_f1,
@@ -690,14 +720,14 @@ class F1ScoreAtDifferentIOU(MetricVisualization):
 class PerClassAvgPrecision(MetricVisualization):
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
 
         # AP per-class
-        ap_per_class = loader.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
+        ap_per_class = benchmark.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
         # Per-class Average Precision (AP)
         fig = px.scatter_polar(
             r=ap_per_class,
-            theta=loader.m.cat_names,
+            theta=benchmark.m.cat_names,
             title="Per-class Average Precision (AP)",
             labels=dict(r="Average Precision", theta="Category"),
             width=800,
@@ -715,13 +745,13 @@ class PerClassOutcomeCounts(MetricVisualization):
     clickable: bool = True
 
     @classmethod
-    def get_switchable_figures(cls, loader: Benchmark) -> Optional[Tuple[go.Figure]]:
+    def get_switchable_figures(cls, benchmark: Benchmark) -> Optional[Tuple[go.Figure]]:
         # Per-class Counts
         iou_thres = 0
 
-        tp = loader.m.true_positives[:, iou_thres]
-        fp = loader.m.false_positives[:, iou_thres]
-        fn = loader.m.false_negatives[:, iou_thres]
+        tp = benchmark.m.true_positives[:, iou_thres]
+        fp = benchmark.m.false_positives[:, iou_thres]
+        fn = benchmark.m.false_negatives[:, iou_thres]
 
         # normalize
         support = tp + fn
@@ -733,9 +763,9 @@ class PerClassOutcomeCounts(MetricVisualization):
             # sort by f1
             sort_scores = 2 * tp / (2 * tp + fp + fn)
 
-        K = len(loader.m.cat_names)
+        K = len(benchmark.m.cat_names)
         sort_indices = np.argsort(sort_scores)
-        cat_names_sorted = [loader.m.cat_names[i] for i in sort_indices]
+        cat_names_sorted = [benchmark.m.cat_names[i] for i in sort_indices]
         tp_rel, fn_rel, fp_rel = tp_rel[sort_indices], fn_rel[sort_indices], fp_rel[sort_indices]
 
         # Stacked per-class counts
@@ -788,7 +818,7 @@ class OverallErrorAnalysis(MetricVisualization):
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         fig = make_subplots(
             rows=1,
             cols=3,
@@ -883,10 +913,10 @@ class ClasswiseErrorAnalysis(MetricVisualization):
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
     @classmethod
-    def get_figure(cls, loader: Benchmark) -> Optional[go.Figure]:
+    def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
         pd.options.mode.chained_assignment = None  # TODO rm later
 
-        df = loader.result_df
+        df = benchmark.result_df
         df.drop(["mean"], inplace=True)
         df = df[["IoU", "E_extent_oU", "E_boundary_oU", "E_segment_oU"]]
         df.sort_values(by="IoU", ascending=False, inplace=True)

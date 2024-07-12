@@ -15,15 +15,16 @@ from jinja2 import Template
 from pycocotools.coco import COCO
 
 import supervisely as sly
+import supervisely.nn.benchmark.metric_texts as contents
 from supervisely._utils import *
 from supervisely.api.api import Api
 from supervisely.collection.str_enum import StrEnum
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
 from supervisely.io.fs import *
 from supervisely.nn.benchmark import metric_provider
-from supervisely.nn.benchmark.metric_charts import *
-from supervisely.nn.benchmark.metric_charts import MetricVisualization
 from supervisely.nn.benchmark.metric_provider import MetricProvider
+from supervisely.nn.benchmark.metric_visualizations import *
+from supervisely.nn.benchmark.metric_visualizations import MetricVisualization
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
@@ -51,7 +52,7 @@ _METRIC_VISUALIZATIONS = (
 )
 
 
-def generate_main_template(metric_charts: List[MetricVisualization]):
+def generate_main_template(metric_visualizations: List[MetricVisualization]):
     template_str = """<div>
     <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false }">
         <div slot="sidebar">
@@ -65,8 +66,8 @@ def generate_main_template(metric_charts: List[MetricVisualization]):
       
         <div style="padding: 0 15px;">"""
 
-    for chart in metric_charts:
-        template_str += "\n            {{ " + f"{chart.name}_html" + " }}"
+    for vis in metric_visualizations:
+        template_str += vis.template_str
 
     template_str += "\n        </div>\n    </sly-iw-sidebar>\n</div>"
 
@@ -245,14 +246,16 @@ class Benchmark:
 
         logger.info("Done.")
 
-    def _process_visualizations(self, metric_visualization: List[MetricVisualization]):
-        for mv in metric_visualization:
+    def _process_visualizations(self, metric_visualizations: List[MetricVisualization]):
+        for mv in metric_visualizations:
             visualization_methods = [
                 (mv.get_figure, mv.name, False),
                 (mv.get_switchable_figures, mv.name, True),
                 # (mv.get_table, mv.name),
                 (mv.get_click_data, f"{mv.name}_chart_click", False),
             ]
+
+            self._write_markdown_data(mv)
 
             for method, name, is_iterable in visualization_methods:
                 vis = method(self)
@@ -265,6 +268,16 @@ class Benchmark:
 
     def _process_prediction_table(self):
         self._write_json_data("prediction_table", self.m.prediction_table())
+
+    def _write_markdown_data(self, metric_visualization: MetricVisualization):
+
+        for md_name in metric_visualization.schema.markdowns_up:
+
+            local_path = f"{self.tmp_dir}/data/{md_name}.md"
+            with open(local_path, "w", encoding="utf-8") as f:
+                json.dump(contents.__dict__[md_name], f)
+
+            logger.info("Saved: %r", f"{md_name}.md")
 
     def _write_json_data(
         self,
@@ -293,15 +306,15 @@ class Benchmark:
 
         logger.info("Saved: %r", f"{basename}.json")
 
-    def _generate_template(self, metric_charts: Tuple[MetricVisualization]) -> str:
+    def _generate_template(self, metric_visualizations: Tuple[MetricVisualization]) -> str:
         html_snippets = {}
         main_template = Template(main_template_str)
-        for metric_chart in metric_charts:
-            html_snippets.update(metric_chart.get_html_snippets(self))
+        for vis in metric_visualizations:
+            html_snippets.update(vis.get_html_snippets(self))
         return main_template.render(**html_snippets)
 
-    def _save_template(self, metric_charts: Tuple[MetricVisualization]):
-        template_content = self._generate_template(metric_charts)
+    def _save_template(self, metric_visualizations: Tuple[MetricVisualization]):
+        template_content = self._generate_template(metric_visualizations)
         local_path = f"{self.tmp_dir}/template.vue"
         with open(local_path, "w", encoding="utf-8") as f:
             f.write(template_content)
