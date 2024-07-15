@@ -271,7 +271,7 @@ class SLYImageConverter(ImageConverter):
                 items = value.get(DATASET_ITEMS, [])
                 if items:
                     super(SLYImageConverter, self).upload_dataset(
-                        api, dataset_id, batch_size, log_progress, items=items
+                        api, dataset_id, batch_size, log_progress, entities=items
                     )
 
                 nested_datasets = value.get(NESTED_DATASETS, {})
