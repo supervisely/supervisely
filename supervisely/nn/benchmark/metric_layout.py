@@ -14,8 +14,6 @@ import plotly.graph_objects as go
 from jinja2 import Template
 from pycocotools.coco import COCO
 
-import supervisely as sly
-import supervisely.nn.benchmark.metric_texts as contents
 from supervisely._utils import *
 from supervisely.api.api import Api
 from supervisely.collection.str_enum import StrEnum
@@ -178,6 +176,17 @@ class Benchmark:
         with open(eval_data_path, "rb") as f:
             eval_data = pickle.load(f)
 
+        # mp = MetricProvider(
+        #     matches,
+        #     eval_data["coco_metrics"],
+        #     eval_data["params"],
+        #     cocoGt,
+        #     cocoDt,
+        # )
+        # mp.calculate()
+
+        # self.m = mp.m
+
         self.m_full = MetricProvider(
             eval_data["matches"],
             eval_data["coco_metrics"],
@@ -248,7 +257,7 @@ class Benchmark:
 
     def _process_visualizations(self, metric_visualizations: List[MetricVisualization]):
         for mv in metric_visualizations:
-            visualization_methods = [
+            methods = [
                 (mv.get_figure, mv.name, False),
                 (mv.get_switchable_figures, mv.name, True),
                 # (mv.get_table, mv.name),
@@ -257,7 +266,7 @@ class Benchmark:
 
             self._write_markdown_data(mv)
 
-            for method, name, is_iterable in visualization_methods:
+            for method, name, is_iterable in methods:
                 vis = method(self)
                 if vis is not None:
                     if is_iterable:
@@ -270,14 +279,15 @@ class Benchmark:
         self._write_json_data("prediction_table", self.m.prediction_table())
 
     def _write_markdown_data(self, metric_visualization: MetricVisualization):
+        for item in metric_visualization.schema:
+            if isinstance(item, Schema.Markdown):
 
-        for md_name in metric_visualization.schema.markdowns_up:
+                content = metric_visualization.get_md_content(self, item)
+                local_path = f"{self.tmp_dir}/data/{item.name}.md"
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(content)
 
-            local_path = f"{self.tmp_dir}/data/{md_name}.md"
-            with open(local_path, "w", encoding="utf-8") as f:
-                f.write(contents.__dict__[md_name])
-
-            logger.info("Saved: %r", f"{md_name}.md")
+                logger.info("Saved: %r", f"{item.name}.md")
 
     def _write_json_data(
         self,

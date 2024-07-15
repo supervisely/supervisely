@@ -4,9 +4,10 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
 
 if TYPE_CHECKING:
-    from supervisely.nn.benchmark.benchmark import Benchmark
+    from supervisely.nn.benchmark.metric_layout import Benchmark
 
 from collections import namedtuple
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -15,9 +16,11 @@ import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
 
+import supervisely.nn.benchmark.metric_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
 from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark import metric_provider
+from supervisely.nn.benchmark.metric_texts import definitions
 
 
 class classproperty:
@@ -65,6 +68,19 @@ template_chart_str = """
 """
 
 
+class Schema(SimpleNamespace):
+
+    class Markdown:
+        def __init__(self, name) -> None:
+            self.name = name
+            self.type = camel_to_snake(self.__class__.__name__)
+            self.is_before_chart = None  # see self.template_str
+
+    class Chart:
+        def __init__(self) -> None:
+            self.type = camel_to_snake(self.__class__.__name__)
+
+
 class MetricVisualization:
 
     cv_tasks: Tuple[CVTask] = tuple(CVTask.values())
@@ -74,22 +90,30 @@ class MetricVisualization:
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
 
-    class Schema(NamedTuple):
-        markdowns_up: List[str] = []
-        markdowns_bottom: List[str] = []
-        tables: List[str] = []
-
-    schema = None
+    schema: Tuple[Schema] = ()
 
     # pylint: disable=no-self-argument
     @classproperty
     def template_str(cls) -> str:
         res = ""
-        for md in cls.schema.markdowns_up:
-            res += "\n            {{ " + f"{md}_html" + " }}"
-        res += "\n            {{ " + f"{cls.name}_html" + " }}"
-        for md in cls.schema.markdowns_bottom:
-            res += "\n            {{ " + f"{md}_html" + " }}"
+        _is_before_chart = True
+        for item in cls.schema:
+            if isinstance(item, Schema.Chart):
+                _is_before_chart = False
+            item.is_before_chart = _is_before_chart
+
+            if isinstance(item, Schema.Markdown) and item.is_before_chart:
+                res += "\n            {{ " + f"{item.name}_html" + " }}"
+                continue
+
+            if isinstance(item, Schema.Chart):
+                res += "\n            {{ " + f"{cls.name}_html" + " }}"
+                continue
+
+            if isinstance(item, Schema.Markdown) and not item.is_before_chart:
+                res += "\n            {{ " + f"{item.name}_html" + " }}"
+                continue
+
         return res
 
     # pylint: disable=no-self-argument
@@ -115,14 +139,63 @@ class MetricVisualization:
         pass
 
     @classmethod
-    @abstractmethod
-    def get_html_snippets(cls, benchmark: Benchmark) -> List[str]:
-        raise NotImplementedError()
+    def get_html_snippets(cls, benchmark: Benchmark) -> dict:
+        res = {}
+
+        for item in cls.schema:
+
+            if isinstance(item, Schema.Markdown) and item.is_before_chart:
+                res[f"{item.name}_html"] = cls._template_markdown.render(
+                    {
+                        "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
+                        "data_source": f"/data/{item.name}.md",
+                        "command": "command",
+                        "data": "data",
+                    }
+                )
+                continue
+
+            if isinstance(item, Schema.Chart):
+                res[f"{cls.name}_html"] = cls._template_chart.render(
+                    {
+                        "widget_id": f"{cls.name}-chart-{rand_str(5)}",
+                        "init_data_source": f"/data/{cls.name}.json",
+                        "command": "command",
+                        "data": "data",
+                    }
+                )
+                continue
+
+            if isinstance(item, Schema.Markdown) and not item.is_before_chart:
+                res[f"{item.name}_html"] = cls._template_markdown.render(
+                    {
+                        "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
+                        "data_source": f"/data/{item.name}.md",
+                        "command": "command",
+                        "data": "data",
+                    }
+                )
+                continue
+
+        return res
+
+    @classmethod
+    def _get_md_content(cls, item: Schema):
+        return getattr(contents, item.name)
+
+    @classmethod
+    def get_md_content(cls, benchmark: Benchmark, item: Schema):
+        # redefinable method
+        return cls._get_md_content(item.name)
 
 
 class Overview(MetricVisualization):
 
-    schema = MetricVisualization.Schema(["markdown_overview", "markdown_key_metrics"])
+    schema = (
+        Schema.Markdown("markdown_overview"),
+        Schema.Markdown("markdown_key_metrics"),
+        Schema.Chart(),
+    )
 
     @classmethod
     def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
@@ -152,38 +225,23 @@ class Overview(MetricVisualization):
         return fig
 
     @classmethod
-    def get_html_snippets(cls, benchmark: Benchmark) -> dict:
-
-        res = {}
-
-        for md_name in cls.schema.markdowns_up:
-
-            res[f"{md_name}_html"] = cls._template_markdown.render(
-                {
-                    "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
-                    "data_source": f"/data/{md_name}.md",
-                    "command": "command",
-                    "data": "data",
-                }
-            )
-
-        res[f"{cls.name}_html"] = cls._template_chart.render(
-            {
-                "widget_id": f"{cls.name}-chart-{rand_str(5)}",
-                "init_data_source": f"/data/{cls.name}.json",
-                "command": "command",
-                "data": "data",
-            }
+    def get_md_content(cls, benchmark: Benchmark, item: Schema):
+        res = cls._get_md_content(item)
+        return res.format(
+            definitions.average_precision,
+            definitions.confidence_threshold,
+            definitions.confidence_score,
         )
-
-        return res
 
 
 class OutcomeCounts(MetricVisualization):
 
     clickable: bool = True
 
-    schema = MetricVisualization.Schema(["markdown_outcome_counts"])
+    schema = (
+        Schema.Markdown("markdown_outcome_counts"),
+        Schema.Chart(),
+    )
 
     @classmethod
     def get_figure(cls, benchmark: Benchmark) -> Optional[go.Figure]:
@@ -231,31 +289,13 @@ class OutcomeCounts(MetricVisualization):
         return benchmark.click_data.outcome_counts
 
     @classmethod
-    def get_html_snippets(cls, benchmark: Benchmark) -> dict:
-
-        res = {}
-
-        for md_name in cls.schema.markdowns_up:
-
-            res[f"{md_name}_html"] = cls._template_markdown.render(
-                {
-                    "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
-                    "data_source": f"/data/{md_name}.md",
-                    "command": "command",
-                    "data": "data",
-                }
-            )
-
-        res[f"{cls.name}_html"] = cls._template_chart.render(
-            {
-                "widget_id": f"{cls.name}-chart-{rand_str(5)}",
-                "init_data_source": f"/data/{cls.name}.json",
-                "command": "command",
-                "data": "data",
-            }
+    def get_md_content(cls, benchmark: Benchmark, item: Schema):
+        res = cls._get_md_content(item)
+        return res.format(
+            definitions.true_positives,
+            definitions.false_positives,
+            definitions.false_negatives,
         )
-
-        return res
 
 
 class Recall(MetricVisualization):
