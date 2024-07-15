@@ -1,7 +1,7 @@
 import supervisely.nn.artifacts as artifacts
 import supervisely.nn.inference as inference
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts, TrainInfo
-from supervisely.nn.benchmark.metric_layout import Benchmark
+from supervisely.nn.benchmark.metric_loader import MetricsLoader
 from supervisely.nn.prediction_dto import (
     Prediction,
     PredictionBBox,

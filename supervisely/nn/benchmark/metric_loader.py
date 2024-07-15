@@ -157,7 +157,7 @@ class ClickData:
         return [self._gather(d) for d in matches]
 
 
-class Benchmark:
+class MetricsLoader:
 
     def __init__(self, cocoGt_path: str, cocoDt_path: str, eval_data_path: str) -> None:
 
