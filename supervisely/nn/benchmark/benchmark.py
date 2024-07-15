@@ -40,7 +40,7 @@ class Benchmark:
     def _init_model_session(
             self,
             api: sly.Api,
-            model_session: Union[str, int, SessionJSON],
+            model_session: Union[int, str, SessionJSON],
             inference_settings: dict = None
             ):
         if isinstance(model_session, int):

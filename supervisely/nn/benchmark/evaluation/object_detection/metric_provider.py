@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.calibration import calibration_curve
 from pycocotools.coco import COCO
 
-from supervisely.nn.benchmark.object_detection import functional as metrics
+from supervisely.nn.benchmark.evaluation.object_detection import metrics
 
 
 METRIC_NAMES = {
