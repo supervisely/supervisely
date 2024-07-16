@@ -81,6 +81,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
                 self._items.append(item)
                 detected_ann_cnt += len(coco_ann)
 
+        self._meta = meta
         if len(warnings) > 0:
             for warning, failed_items in warnings.items():
                 logger.warn(f"{warning}: {failed_items}")
