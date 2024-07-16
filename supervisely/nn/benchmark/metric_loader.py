@@ -287,7 +287,7 @@ class MetricLoader:
 
     def _write_markdown_data(self, metric_visualization: MetricVisualization):
         for item in metric_visualization.schema:
-            if isinstance(item, Schema.Markdown):
+            if isinstance(item, Asset.Markdown):
 
                 content = metric_visualization.get_md_content(self, item)
                 local_path = f"{self.tmp_dir}/data/{item.name}.md"

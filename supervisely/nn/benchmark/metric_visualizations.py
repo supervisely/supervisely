@@ -87,16 +87,22 @@ class Asset:
             super().__init__()
 
 
-class Schema(SimpleNamespace):
+class Schema:
 
     def __init__(self, **kwargs) -> None:
         for argname, asset in kwargs.items():
             asset.name = argname
+            setattr(self, argname, asset)
 
     def __iter__(self):
         # Iterate over all attributes of the instance
         for attr in vars(self).values():
             yield attr
+
+    def __repr__(self):
+        # Create a string representation of the schema elements
+        elements = ", ".join(f"{attr.name} ({attr.type})" for attr in self)
+        return f"Schema({elements})"
 
 
 class MetricVisualization:
