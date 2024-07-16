@@ -30,9 +30,8 @@ class TreeSelect(Widget):
 
     - `get_selected() -> Union[List[TreeSelect.Item], TreeSelect.Item]`: Get the selected item(s).
     - `set_selected(value: Union[List[TreeSelect.Item], TreeSelect.Item])`: Set the selected item(s).
-    - `set_items(items: List[TreeSelect.Item])`: Set the items (for multiple items mode).
-    - `add_items(items: List[TreeSelect.Item])`: Add the items (for multiple items mode).
-    - `set_item(item: TreeSelect.Item)`: Set the item (for single item mode).
+    - `set_items(items: List[TreeSelect.Item])`: Set the items (overwrite the existing items).
+    - `add_items(items: List[TreeSelect.Item])`: Add the items (append to the existing items).
     - `clear_items()`: Clear the items.
 
     :Usage example:
@@ -204,9 +203,16 @@ class TreeSelect(Widget):
 
         :param value: The selected item(s).
         :type value: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :raises ValueError: If the widget is set to single selection mode and a list of items
+            is provided.
         """
         if self._multiple and not isinstance(value, list):
             value = [value]
+        if not self._multiple and isinstance(value, list):
+            raise ValueError(
+                "The widget is set to single selection mode, but a list of items was provided."
+                "Either set the widget to multiple selection mode or provide a single item."
+            )
         self._set_value(value)
 
     def _update_items(
@@ -231,10 +237,7 @@ class TreeSelect(Widget):
 
         :param items: The items to set.
         :type items: List[TreeSelect.Item]
-        :raises ValueError: If multiple items mode is disabled.
         """
-        if not self._multiple:
-            raise ValueError("Multiple items mode is disabled, use set_item instead")
         self._update_items(items, overwrite=True)
 
     def add_items(self, items: List[TreeSelect.Item]) -> None:
@@ -242,22 +245,8 @@ class TreeSelect(Widget):
 
         :param items: The items to add.
         :type items: List[TreeSelect.Item]
-        :raises ValueError: If multiple items mode is disabled.
         """
-        if not self._multiple:
-            raise ValueError("Multiple items mode is disabled, use add_item instead")
         self._update_items(items, overwrite=False)
-
-    def set_item(self, item: TreeSelect.Item) -> None:
-        """Set the item in the widget.
-
-        :param item: The item to set.
-        :type item: TreeSelect.Item
-        :raises ValueError: If multiple items mode is enabled.
-        """
-        if self._multiple:
-            raise ValueError("Multiple items mode is enabled, use set_items instead")
-        self._update_items(item, overwrite=True)
 
     def clear_items(self) -> None:
         """Clear the items in the widget."""
