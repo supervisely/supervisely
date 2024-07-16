@@ -13,6 +13,7 @@ from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
+from supervisely.geometry.cuboid_2d import Cuboid2d, Cuboid2dTemplate
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
 from supervisely.sly_logger import logger
@@ -80,15 +81,18 @@ class ObjClass(KeyObject, JsonSerializable):
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)
+        _validate_color(self._color)
         if geometry_type == GraphNodes and geometry_config is None:
             raise ValueError("sly.GraphNodes requires geometry_config to be passed to sly.ObjClass")
+        elif geometry_type == Cuboid2d:
+            # create cuboid2d template with predefined settings (8 vertices, 12 edges)
+            geometry_config = Cuboid2dTemplate(self._color) # ? should we create or pass the template ?
 
-        if isinstance(geometry_config, KeypointsTemplate):
+        if isinstance(geometry_config, (Cuboid2dTemplate, KeypointsTemplate)):
             geometry_config = geometry_config.config
         self._geometry_config = deepcopy(take_with_default(geometry_config, {}))
         self._sly_id = sly_id
         self._hotkey = take_with_default(hotkey, "")
-        _validate_color(self._color)
         self._description = take_with_default(description, "")
 
     @property
@@ -246,6 +250,8 @@ class ObjClass(KeyObject, JsonSerializable):
                 self._geometry_config
             ),
         }
+        if self.geometry_type == Cuboid2d:
+            res[ObjClassJsonFields.GEOMETRY_CONFIG] = {} # we don't need to save cuboid2d template in json meta
         if self.sly_id is not None:
             res[ObjClassJsonFields.ID] = self.sly_id
         if self._hotkey is not None:
@@ -290,9 +296,12 @@ class ObjClass(KeyObject, JsonSerializable):
             else:
                 raise e
 
-        geometry_config = geometry_type.config_from_json(
-            data.get(ObjClassJsonFields.GEOMETRY_CONFIG)
-        )
+        if geometry_type == Cuboid2d:
+            geometry_config = Cuboid2dTemplate(color=color)
+        else:
+            geometry_config = geometry_type.config_from_json(
+                data.get(ObjClassJsonFields.GEOMETRY_CONFIG)
+            )
         sly_id = data.get(ObjClassJsonFields.ID, None)
         hotkey = data.get(ObjClassJsonFields.HOTKEY, "")
         description = data.get(ObjClassJsonFields.DESCRIPTION, "")

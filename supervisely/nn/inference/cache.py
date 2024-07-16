@@ -11,7 +11,7 @@ from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 from cacheout import Cache as CacheOut
-from cachetools import Cache, LRUCache, TTLCache
+from cachetools import Cache, LRUCache, TTLCache, _Link
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
@@ -77,31 +77,35 @@ class PersistentImageTTLCache(TTLCache):
         except TypeError:
             pass
 
+    def __update_timer(self, key):
+        try:
+            # pylint: disable=no-member
+            link = self._TTLCache__getlink(key)
+            # pylint: disable=no-member
+            link.expire = self._TTLCache__timer() + self._TTLCache__ttl
+        except KeyError:
+            return
+
+    def __getitem__(self, key: Any) -> Any:
+        self.__update_timer(key)
+        return super().__getitem__(key)
+
     def __get_keys(self):
         # pylint: disable=no-member
         return self._TTLCache__links.keys()
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
-        existing = set(self.__get_keys())
-        if time is None:
-            # pylint: disable=no-member
-            time = self._TTLCache__timer()
         # pylint: disable=no-member
-        root = self._TTLCache__root
-        curr = root.next
-        # pylint: disable=no-member
-        links = self._TTLCache__links
-        cache_delitem = Cache.__delitem__
-        while curr is not root and curr.expire < time:
-            self.__del_file(curr.key)
-            cache_delitem(self, curr.key)
-            del links[curr.key]
-            next = curr.next
-            curr.unlink()
-            curr = next
-        deleted = existing.difference(self.__get_keys())
+        existing_items = self._Cache__data.copy()
+        super().expire(time)
+        deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
+            for key in deleted:
+                try:
+                    silent_remove(existing_items[key])
+                except TypeError:
+                    pass
             sly.logger.debug(f"Deleted keys: {deleted}")
 
     def clear(self, rm_base_folder=True) -> None:
@@ -115,32 +119,33 @@ class PersistentImageTTLCache(TTLCache):
             self._base_dir.mkdir()
 
         filepath = self._base_dir / f"{str(key)}.png"
-        super(PersistentImageTTLCache, self).__setitem__(key, filepath)
+        self[key] = filepath
 
         if filepath.exists():
             sly.logger.debug(f"Rewrite image {str(filepath)}")
         sly.image.write(str(filepath), image)
 
     def get_image_path(self, key: Any) -> Path:
-        return super().__getitem__(key)
+        return self[key]
 
     def get_image(self, key: Any):
         return sly.image.read(str(self[key]))
 
     def save_video(self, video_id: int, src_video_path: str) -> None:
         video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
+        self[video_id] = video_path
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
-        super().__setitem__(video_id, video_path)
+        sly.logger.debug(f"Saved video to {video_path}")
 
     def get_video_path(self, video_id: int) -> Path:
-        return super().__getitem__(video_id)
+        return self[video_id]
 
     def save_project_meta(self, key, value):
-        super().__setitem__(key, value)
+        self[key] = value
 
     def get_project_meta(self, project_meta_name):
-        return super().__getitem__(project_meta_name)
+        return self[project_meta_name]
 
 
 class InferenceImageCache:
@@ -296,6 +301,7 @@ class InferenceImageCache:
         self, api: sly.Api, video_id: int, frame_indexes: List[int], **kwargs
     ) -> List[np.ndarray]:
         return_images = kwargs.get("return_images", True)
+        redownload_video = kwargs.get("redownload_video", False)
 
         if video_id in self._cache:
             try:
@@ -304,7 +310,15 @@ class InferenceImageCache:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
-                Thread(target=self.download_video, args=(api, video_id)).start()
+                Thread(
+                    target=self.download_video,
+                    args=(api, video_id),
+                    kwargs={"return_images": False},
+                ).start()
+        elif redownload_video:
+            Thread(
+                target=self.download_video, args=(api, video_id), kwargs={"return_images": False}
+            ).start()
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -354,11 +368,11 @@ class InferenceImageCache:
         return_images = kwargs.get("return_images", True)
         progress_cb = kwargs.get("progress_cb", None)
 
+        video_info = api.video.get_info_by_id(video_id)
         self._wait_if_in_queue(video_id, api.logger)
         if not video_id in self._cache:
             self._load_queue.set(video_id, video_id)
             sly.logger.debug("Downloading video #%s", video_id)
-            video_info = api.video.get_info_by_id(video_id)
             temp_video_path = Path("/tmp/smart_cache").joinpath(
                 f"_{sly.rand_str(6)}_" + video_info.name
             )

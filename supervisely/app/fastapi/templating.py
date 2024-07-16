@@ -12,7 +12,7 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
 # https://github.com/supervisely/js-bundle
-js_bundle_version = "2.1.83"
+js_bundle_version = "2.1.93"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
 js_frontend_version = "v0.0.51"

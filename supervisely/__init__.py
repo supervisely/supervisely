@@ -88,6 +88,7 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.cuboid_2d import Cuboid2d
 
 from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.geometry.helpers import deserialize_geometry
@@ -307,4 +308,4 @@ except Exception as e:
 # If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
 # set a new value for the environment variable MINIMUM_INSTANCE_VERSION_FOR_SDK, otherwise
 # users can face compatibility issues, if the instance version is lower than the SDK version.
-os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.9.22"
+os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.10.0"

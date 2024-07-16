@@ -1,12 +1,8 @@
-import os
-
-from pathlib import Path
-from typing import List, Optional
+from typing import Dict, Optional, Union
 
 from supervisely import (
     Api,
     PointcloudEpisodeAnnotation,
-    ProjectMeta,
     batched,
     generate_free_name,
     is_development,
@@ -15,7 +11,7 @@ from supervisely import (
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 
 
@@ -50,15 +46,17 @@ class PointcloudEpisodeConverter(BaseConverter):
         def set_related_images(self, related_images: dict) -> None:
             self._related_images.append(related_images)
 
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[self.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool = False,
+        remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._annotation = None
         self._frame_pointcloud_map = None
         self._frame_count = None
-        self._labeling_interface: str = labeling_interface
-        self._converter = self._detect_format()
 
     @property
     def format(self):

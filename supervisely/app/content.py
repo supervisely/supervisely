@@ -28,7 +28,7 @@ _pool = ThreadPoolExecutor()
 
 
 @contextlib.asynccontextmanager
-async def async_lock(lock):
+async def async_lock(lock: threading.Lock):
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(_pool, lock.acquire)
     try:

@@ -18,7 +18,7 @@ version = response.json()["tag_name"]
 
 
 INSTALL_REQUIRES = [
-    "cachetools<5.0.0",
+    "cachetools>=4.2.3, <5.0.0",
     "numpy>=1.19, <2.0.0",
     "opencv-python>=4.5.5.62, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
@@ -65,6 +65,7 @@ INSTALL_REQUIRES = [
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
+    "zstd",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -126,7 +127,13 @@ setup(
     ),
     package_data={
         "": ["*.html", "*.css", "*.js", "*.md"],
-        "supervisely": ["video/*.sh", "app/development/*.sh", "imaging/colors.json.gz"],
+        "supervisely": [
+            "video/*.sh",
+            "app/development/*.sh",
+            "imaging/colors.json.gz",
+            "nn/tracker/bot_sort/configs/MOT17/*.yml",
+            "nn/tracker/bot_sort/configs/MOT20/*.yml",
+        ],
     },
     entry_points={
         "console_scripts": [
@@ -197,6 +204,18 @@ setup(
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
+        ],
+        "tracking": [
+            "yacs",
+            "matplotlib>=3.3.2, <4.0.0",
+            "scipy>=1.5.2, <2.0.0",
+            "lap",
+            "cython_bbox",
+            "termcolor",
+            "scikit-learn",
+            "faiss-gpu",
+            "tabulate",
+            "tensorboard",
         ],
     },
 )
