@@ -70,20 +70,20 @@ template_chart_str = """
 """
 
 
-class _Asset:
+class BaseBidget:
     def __init__(self) -> None:
         self.type = camel_to_snake(self.__class__.__name__)
         self.name = None
 
 
-class Asset:
+class Bidget:
 
-    class Markdown(_Asset):
+    class Markdown(BaseBidget):
         def __init__(self) -> None:
             self.is_before_chart = None  # see self.template_str
             super().__init__()
 
-    class Chart(_Asset):
+    class Chart(BaseBidget):
         def __init__(self) -> None:
             super().__init__()
 
@@ -123,22 +123,22 @@ class MetricVisualization:
         res = ""
         _is_before_chart = True
         for item in cls.schema:
-            if isinstance(item, Asset.Chart):
+            if isinstance(item, Bidget.Chart):
                 _is_before_chart = False
-            if isinstance(item, Asset.Markdown):
+            if isinstance(item, Bidget.Markdown):
                 item.is_before_chart = _is_before_chart
 
-            if isinstance(item, Asset.Markdown) and item.is_before_chart:
+            if isinstance(item, Bidget.Markdown) and item.is_before_chart:
                 res += "\n            {{ " + f"{item.name}_html" + " }}"
                 continue
 
-            if isinstance(item, Asset.Chart):
+            if isinstance(item, Bidget.Chart):
                 res += "\n            {{ " + f"{cls.name}_html" + " }}"
                 if cls.clickable:
                     res += "\n            {{ " + f"{cls.name}_chart_click_html" + " }}"
                 continue
 
-            if isinstance(item, Asset.Markdown) and not item.is_before_chart:
+            if isinstance(item, Bidget.Markdown) and not item.is_before_chart:
                 res += "\n            {{ " + f"{item.name}_html" + " }}"
                 continue
 
@@ -169,10 +169,9 @@ class MetricVisualization:
     @classmethod
     def get_html_snippets(cls, loader: MetricLoader) -> dict:
         res = {}
-
         for item in cls.schema:
+            if isinstance(item, Bidget.Markdown) and item.is_before_chart:
 
-            if isinstance(item, Asset.Markdown) and item.is_before_chart:
                 res[f"{item.name}_html"] = cls._template_markdown.render(
                     {
                         "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
@@ -183,7 +182,7 @@ class MetricVisualization:
                 )
                 continue
 
-            if isinstance(item, Asset.Chart):
+            if isinstance(item, Bidget.Chart):
                 chart_click_path = f"/data/{cls.name}_chart_click.json" if cls.clickable else None
                 res[f"{cls.name}_html"] = cls._template_chart.render(
                     {
@@ -196,7 +195,7 @@ class MetricVisualization:
                 )
                 continue
 
-            if isinstance(item, Asset.Markdown) and not item.is_before_chart:
+            if isinstance(item, Bidget.Markdown) and not item.is_before_chart:
                 res[f"{item.name}_html"] = cls._template_markdown.render(
                     {
                         "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
@@ -210,11 +209,11 @@ class MetricVisualization:
         return res
 
     @classmethod
-    def _get_md_content(cls, item: Asset):
+    def _get_md_content(cls, item: Bidget):
         return getattr(contents, item.name)
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Asset):
+    def get_md_content(cls, loader: MetricLoader, item: Bidget):
         # redefinable method
         return cls._get_md_content(item.name)
 
@@ -222,9 +221,9 @@ class MetricVisualization:
 class Overview(MetricVisualization):
 
     schema = Schema(
-        markdown_overview=Asset.Markdown(),
-        markdown_key_metrics=Asset.Markdown(),
-        chart=Asset.Chart(),
+        markdown_overview=Bidget.Markdown(),
+        markdown_key_metrics=Bidget.Markdown(),
+        chart=Bidget.Chart(),
     )
 
     @classmethod
@@ -255,7 +254,7 @@ class Overview(MetricVisualization):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Asset):
+    def get_md_content(cls, loader: MetricLoader, item: Bidget):
         res = cls._get_md_content(item)
         if item.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
             return res.format(
@@ -271,8 +270,8 @@ class OutcomeCounts(MetricVisualization):
     clickable: bool = True
 
     schema = Schema(
-        markdown_outcome_counts=Asset.Markdown(),
-        chart=Asset.Chart(),
+        markdown_outcome_counts=Bidget.Markdown(),
+        chart=Bidget.Chart(),
     )
 
     @classmethod
@@ -352,7 +351,7 @@ class OutcomeCounts(MetricVisualization):
         return res
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Asset):
+    def get_md_content(cls, loader: MetricLoader, item: Bidget):
         res = cls._get_md_content(item)
         return res.format(
             definitions.true_positives,
@@ -363,9 +362,9 @@ class OutcomeCounts(MetricVisualization):
 
 class Recall(MetricVisualization):
     schema = Schema(
-        markdown_R=Asset.Markdown(),
-        markdown_R_perclass=Asset.Markdown(),
-        chart=Asset.Chart(),
+        markdown_R=Bidget.Markdown(),
+        markdown_R_perclass=Bidget.Markdown(),
+        chart=Bidget.Chart(),
     )
 
     @classmethod
@@ -389,7 +388,7 @@ class Recall(MetricVisualization):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Asset):
+    def get_md_content(cls, loader: MetricLoader, item: Bidget):
         res = cls._get_md_content(item)
         return res.format(
             definitions.f1_score,
@@ -398,9 +397,9 @@ class Recall(MetricVisualization):
 
 class Precision(MetricVisualization):
     schema = Schema(
-        markdown_R=Asset.Markdown(),
-        markdown_R_perclass=Asset.Markdown(),
-        chart=Asset.Chart(),
+        markdown_R=Bidget.Markdown(),
+        markdown_R_perclass=Bidget.Markdown(),
+        chart=Bidget.Chart(),
     )
 
     @classmethod
