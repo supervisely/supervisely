@@ -96,8 +96,9 @@ class TreeSelect(Widget):
 
             return data
 
-        def from_json(data: Dict[str, Union[str, List[Dict]]]) -> TreeSelect.Item:
-            return TreeSelect.Item(
+        @classmethod
+        def from_json(cls, data: Dict[str, Union[str, List[Dict]]]) -> TreeSelect.Item:
+            return cls(
                 id=data["id"],
                 label=data.get("label"),
                 children=[TreeSelect.Item.from_json(child) for child in data.get("children", [])],
