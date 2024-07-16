@@ -3,10 +3,16 @@
 	href="./sly/css/app/widgets/classes_list_selector/style.css"
 />
 
-<div v-show="data.{{{widget.widget_id}}}.classes.length == 0">
+<div
+	id="{{{widget.widget_id}}}"
+	v-show="data.{{{widget.widget_id}}}.classes.length == 0"
+>
 	{{{widget.empty_notification}}}
 </div>
-<div v-show="data.{{{widget.widget_id}}}.classes.length != 0">
+<div
+	id="{{{widget.widget_id}}}"
+	v-show="data.{{{widget.widget_id}}}.classes.length != 0"
+>
 	<link
 		rel="stylesheet"
 		href="./sly/css/app/widgets/object_class_view/style.css"

@@ -10,7 +10,6 @@ import yaml
 import supervisely.app.widgets as Widgets
 import supervisely.io.env as env
 from supervisely import Api
-from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
 from supervisely.api.file_api import FileApi
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -201,11 +200,7 @@ class InferenceGUI(BaseInferenceGUI):
 
         if self._support_custom_models:
             self._file_thumbnail = Widgets.FileThumbnail()
-
-            if is_development() or is_debug_with_sly_net():
-                team_files_url = abs_url("files/")
-            else:
-                team_files_url = "/files/"
+            team_files_url = f"{env.server_address()}/files/"
 
             self._team_files_link = Widgets.Button(
                 text="Open Team Files",

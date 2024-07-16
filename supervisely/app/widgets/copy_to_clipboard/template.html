@@ -1,4 +1,5 @@
 <sly-copy-to-clipboard
+  id="{{{widget.widget_id}}}"
   {% if widget._content_widget_type == 'input' %}
   :data="state.{{{widget._content.widget_id}}}[state.{{{widget.widget_id}}}.curr_property]"
   {% endif %}

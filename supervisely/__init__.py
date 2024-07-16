@@ -3,10 +3,12 @@
 import pkg_resources  # isort: skip
 import os
 
+# isort: off
 try:
     __version__ = pkg_resources.require("supervisely")[0].version
 except TypeError as e:
     __version__ = "development"
+# isort: on
 
 from supervisely.sly_logger import (
     logger,
