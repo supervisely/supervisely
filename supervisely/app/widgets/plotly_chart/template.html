@@ -1,0 +1,27 @@
+<div>
+  <sly-plotly
+    v-loading="state.{{{widget.widget_id}}}.loading"
+    element-loading-text="data.{{{ widget.widget_id }}}.options.elementLoadingText"
+    :content="data.{{{ widget.widget_id }}}.figure"
+    {%
+    if
+    widget._click_handled
+    %}
+    @chart-click="
+                ($event) => {
+                    state.{{{ widget.widget_id }}}.clicked_value = $event.points.map(p => {
+                        return Object.keys(p).reduce((acc, key) => {
+                            if (!['fullData', 'xaxis', 'yaxis'].includes(key)) {
+                                acc[key] = p[key];
+                            }
+                            return acc;
+                        }, {});
+                    });
+                    post('/{{{ widget.widget_id }}}/chart_clicked_cb')
+                }
+                "
+    {%
+    endif
+    %}
+  ></sly-plotly>
+</div>
