@@ -18,6 +18,7 @@ from plotly.subplots import make_subplots
 
 import supervisely.nn.benchmark.metric_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
+from supervisely.api.image_api import ImageInfo
 from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark import metric_provider
 from supervisely.nn.benchmark.metric_texts import definitions
@@ -183,10 +184,12 @@ class MetricVisualization:
                 continue
 
             if isinstance(item, Asset.Chart):
+                chart_click_path = f"/data/{cls.name}_chart_click.json" if cls.clickable else None
                 res[f"{cls.name}_html"] = cls._template_chart.render(
                     {
                         "widget_id": f"{cls.name}-chart-{rand_str(5)}",
                         "init_data_source": f"/data/{cls.name}.json",
+                        "chart_click_data_source": chart_click_path,
                         "command": "command",
                         "data": "data",
                     }
@@ -254,7 +257,7 @@ class Overview(MetricVisualization):
     @classmethod
     def get_md_content(cls, loader: MetricLoader, item: Asset):
         res = cls._get_md_content(item)
-        if item.name == cls.schema.markdown_key_metrics.name:
+        if item.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
             return res.format(
                 definitions.average_precision,
                 definitions.confidence_threshold,
@@ -320,18 +323,33 @@ class OutcomeCounts(MetricVisualization):
             res[k] = {}
             res[k]["projectMeta"] = loader.dt_project_meta.to_json()
             res[k]["layoutData"] = {}
-            res[k]["layout"] = [[]] * 4
-            for idx, elem in enumerate(v):
-                img_id = elem["dt_img_id"]
-                _id = f"ann_{img_id}"
-                info = loader._api.image.get_info_by_id(img_id)
-                res[k]["layoutData"][_id] = {
-                    "imageUrl": info.preview_url,
-                    "annotation": loader._api.annotation.download_json(img_id),
-                }
-                res[k]["layout"][idx % 4].append(_id)
+            res[k]["layout"] = []
 
-        return loader.click_data.outcome_counts
+            tmp = {0: [], 1: [], 2: [], 3: []}
+
+            images = set(x["dt_img_id"] for x in v)
+
+            for idx, img_id in enumerate(images):
+                ui_id = f"ann_{img_id}"
+                info: ImageInfo = loader.dt_images[img_id]
+                res[k]["layoutData"][ui_id] = {
+                    "imageUrl": info.preview_url,
+                    "annotation": {
+                        "imageId": info.id,
+                        "imageName": info.name,
+                        "createdAt": info.created_at,
+                        "updatedAt": info.updated_at,
+                        "link": info.link,
+                        "annotation": loader.dt_ann_jsons[img_id],
+                    },
+                }
+                if len(tmp[3]) < 5:
+                    tmp[idx % 4].append(ui_id)
+
+            for key, val in tmp.items():
+                res[k]["layout"].append(val)
+
+        return res
 
     @classmethod
     def get_md_content(cls, loader: MetricLoader, item: Asset):

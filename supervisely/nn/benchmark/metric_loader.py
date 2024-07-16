@@ -234,6 +234,22 @@ class MetricLoader:
             data=self._api.project.get_meta(id=dt_project_id)
         )
 
+        datasets = self._api.dataset.get_list(dt_project_id)
+
+        tmp = {}
+        self.dt_images = {}
+        for d in datasets:
+            images = self._api.image.get_list(d.id)
+            tmp[d.id] = [x.id for x in images]
+            for image in images:
+                self.dt_images[image.id] = image
+
+        self.dt_ann_jsons = {
+            ann.image_id: ann.annotation
+            for d in datasets
+            for ann in self._api.annotation.download_batch(d.id, tmp[d.id])
+        }
+
     def upload_layout(self, team_id: str, dest_dir: str):
         self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
@@ -260,7 +276,7 @@ class MetricLoader:
         if dir_exists(self.tmp_dir):
             remove_dir(self.tmp_dir)
 
-        logger.info("Done.")
+        logger.info(f"Uploaded to: {dest_dir!r}")
 
     def _process_visualizations(self, metric_visualizations: List[MetricVisualization]):
         for mv in metric_visualizations:
