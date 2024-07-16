@@ -23,6 +23,7 @@ from supervisely.nn.benchmark import metric_provider
 from supervisely.nn.benchmark.metric_provider import MetricProvider
 from supervisely.nn.benchmark.metric_visualizations import *
 from supervisely.nn.benchmark.metric_visualizations import MetricVisualization
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
@@ -157,9 +158,11 @@ class ClickData:
         return [self._gather(d) for d in matches]
 
 
-class MetricsLoader:
+class MetricLoader:
 
-    def __init__(self, cocoGt_path: str, cocoDt_path: str, eval_data_path: str) -> None:
+    def __init__(
+        self, dt_project_id: int, cocoGt_path: str, cocoDt_path: str, eval_data_path: str
+    ) -> None:
 
         with open(cocoGt_path, "r") as f:
             cocoGt_dataset = json.load(f)
@@ -225,11 +228,15 @@ class MetricsLoader:
 
         self.tmp_dir = None
 
+        self._api = Api.from_env()
+        self.dt_project_info = self._api.project.get_info_by_id(dt_project_id, raise_error=True)
+        self.dt_project_meta = ProjectMeta.from_json(
+            data=self._api.project.get_meta(id=dt_project_id)
+        )
+
     def upload_layout(self, team_id: str, dest_dir: str):
         self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
-
-        api = Api.from_env()
 
         self._process_visualizations(_METRIC_VISUALIZATIONS)
         self._process_prediction_table()  # TODO integrate into sections
@@ -241,7 +248,7 @@ class MetricsLoader:
             unit="B",
             unit_scale=True,
         ) as pbar:
-            api.file.upload_directory(
+            self._api.file.upload_directory(
                 team_id,
                 self.tmp_dir,
                 dest_dir,

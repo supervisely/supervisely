@@ -48,3 +48,24 @@ markdown_outcome_counts = """## Outcome Counts
 
 This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.
 """
+
+markdown_R = """## Recall
+
+This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, this answers the question: “Of all instances in the dataset, how many of them is the model managed to find out?”
+
+To measure this, we calculate **Recall**. Recall counts errors, when the model does not detect an object that actually is present in a dataset and should be detected. Recall is calculated as the portion of correct predictions (true positives) over all instances in the dataset (true positives + false negatives).
+"""
+
+# recall_metric = NotificationBox(
+#     f"Recall = {base_metrics['recall']:.4f}",
+#     f"The model correctly found <b>{g.m.TP_count} of {g.m.TP_count + g.m.FN_count}</b> total instances in the dataset.",
+# )
+
+markdown_R_perclass = """### Per-class Recall
+
+This chart further analyzes Recall, breaking it down to each class in separate.
+
+Since the overall recall is calculated as an average across all classes, we provide a chart showing the recall for each individual class. This illustrates how much each class contributes to the overall recall.
+
+_Bars in the chart are sorted by <abbr title="{definitions.f1_score}">F1-score</abbr> to keep a unified order of classes between different charts._
+"""
