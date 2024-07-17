@@ -23,6 +23,10 @@ class TreeSelect(Widget):
     :type flat: bool, optional
     :param always_open: If set to true, the widget will be expanded by default.
     :type always_open: bool, optional
+    :param width: The width of the widget.
+    :type width: int, optional
+    :param append_to_body: Determines where the popover is attached. If False, it is positioned inside the input's container. This can cause the popover to be hidden if the input is within a Card or a widget that restricts visibility.
+    :type append_to_body: bool, optional
     :widget_id: The unique identifier of the widget.
     :type widget_id: str, optional
 

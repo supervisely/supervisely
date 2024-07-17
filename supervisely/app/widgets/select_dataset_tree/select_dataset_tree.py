@@ -34,6 +34,8 @@ class SelectDatasetTree(Widget):
     :type team_is_selectable: bool
     :param workspace_is_selectable: Whether the workspace selector should be selectable.
     :type workspace_is_selectable: bool
+    :param append_to_body: Determines where the popover is attached. If False, it is positioned inside the input's container. This can cause the popover to be hidden if the input is within a Card or a widget that restricts visibility.
+    :type append_to_body: bool
     :param widget_id: The unique identifier of the widget.
     :type widget_id: Union[str, None]
 
@@ -87,6 +89,7 @@ class SelectDatasetTree(Widget):
         always_open: bool = False,
         team_is_selectable: bool = True,
         workspace_is_selectable: bool = True,
+        append_to_body: bool = True,
         widget_id: Union[str, None] = None,
     ):
         self._api = Api()
@@ -108,6 +111,7 @@ class SelectDatasetTree(Widget):
 
         self._multiselect = multiselect
         self._compact = compact
+        self._append_to_body = append_to_body
 
         # Extract values from Enum to match the .type property of the ProjectInfo object.
         self._project_types = (
@@ -297,7 +301,7 @@ class SelectDatasetTree(Widget):
             multiple_select=self._multiselect,
             flat=flat,
             always_open=always_open,
-            append_to_body=False,
+            append_to_body=self._append_to_body,
             width=193,
         )
         if self._dataset_id is not None:
