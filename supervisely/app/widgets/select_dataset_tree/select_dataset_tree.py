@@ -21,6 +21,8 @@ class SelectDatasetTree(Widget):
         allowed_project_types: Optional[List[ProjectType]] = None,
         flat: bool = False,
         always_open: bool = False,
+        team_is_selectable: bool = False,
+        workspace_is_selectable: bool = False,
         widget_id: Union[str, None] = None,
     ):
         self._api = Api()
@@ -53,10 +55,10 @@ class SelectDatasetTree(Widget):
 
         if not compact:
             # If the widget is not compact, create team, workspace, and project selectors.
-            self._create_selectors()
+            self._create_selectors(team_is_selectable, workspace_is_selectable)
 
         # Create the dataset selector.
-        self._create_dataset_selector(multiselect, flat, always_open, select_all_datasets)
+        self._create_dataset_selector(flat, always_open, select_all_datasets)
 
         # Group the selectors and the dataset selector into a container.
         self._content = Container(self._widgets)
@@ -93,12 +95,10 @@ class SelectDatasetTree(Widget):
 
         return _click
 
-    def _create_dataset_selector(
-        self, multiselect: bool, flat: bool, always_open: bool, select_all_datasets: bool
-    ):
+    def _create_dataset_selector(self, flat: bool, always_open: bool, select_all_datasets: bool):
         self._select_dataset = TreeSelect(
             items=self._read_datasets(self._project_id),
-            multiple_select=multiselect,
+            multiple_select=self._multiselect,
             flat=flat,
             always_open=always_open,
             width=193,
@@ -110,7 +110,7 @@ class SelectDatasetTree(Widget):
 
         self._widgets.append(self._select_dataset)
 
-    def _create_selectors(self):
+    def _create_selectors(self, team_is_selectable: bool, workspace_is_selectable: bool):
 
         def team_selector_handler(team_id: int):
             self._select_workspace.set(items=self._get_select_items(team_id=team_id))
@@ -128,12 +128,16 @@ class SelectDatasetTree(Widget):
             items=self._get_select_items(),
         )
         self._select_team.set_value(self._team_id)
+        if not team_is_selectable:
+            self._select_team.disable()
 
         self._select_workspace = Select(
             items=self._get_select_items(team_id=self._team_id),
             filterable=True,
         )
         self._select_workspace.set_value(self._workspace_id)
+        if not workspace_is_selectable:
+            self._select_workspace.disable()
 
         self._select_project = Select(
             items=self._get_select_items(workspace_id=self._workspace_id),
