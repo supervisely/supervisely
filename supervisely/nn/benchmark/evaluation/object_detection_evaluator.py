@@ -20,10 +20,9 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         return cocoGt_json, cocoDt_json
 
     def _dump_eval_results(self):
-        cocoGt_path, cocoDt_path, eval_data_path, eval_info_path = self._get_eval_paths()
+        cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
         sly.json.dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
         sly.json.dump_json_file(self.cocoDt_json, cocoDt_path, indent=None)
-        # sly.json.dump_json_file(eval_info, eval_info_path, indent=2)
         self._dump_pickle(self.eval_data, eval_data_path)
 
     def _get_eval_paths(self):
@@ -31,5 +30,4 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         cocoGt_path = os.path.join(base_dir, "cocoGt.json")
         cocoDt_path = os.path.join(base_dir, "cocoDt.json")
         eval_data_path = os.path.join(base_dir, "eval_data.pkl")
-        eval_info_path = os.path.join(base_dir, "info.json")
         return cocoGt_path, cocoDt_path, eval_data_path
