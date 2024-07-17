@@ -49,6 +49,7 @@ class SelectDatasetTree(Widget):
     - `set_team_id(team_id: int) -> None`: Set the team ID to read workspaces from.
     - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
     - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
+    - `is_all_selected() -> bool`: Check if all datasets are selected.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -488,3 +489,11 @@ class SelectDatasetTree(Widget):
         if self._multiselect:
             raise ValueError("This method can only be called when multiselect is disabled.")
         return self._get_selected()
+
+    def is_all_selected(self) -> bool:
+        """Check if all datasets are selected.
+
+        return: True if all datasets are selected, False otherwise.
+        rtype: bool
+        """
+        return self._select_dataset.is_all_selected()
