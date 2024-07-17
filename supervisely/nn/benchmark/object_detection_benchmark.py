@@ -4,7 +4,8 @@ from tqdm import tqdm
 
 import supervisely as sly
 from supervisely.nn.inference import SessionJSON
-from supervisely.nn.benchmark.evaluation import BaseBenchmark, ObjectDetectionEvaluator
+from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
+from supervisely.nn.benchmark.evaluation.object_detection_evaluator import ObjectDetectionEvaluator
 
 
 CONF_THRES = 0.05
