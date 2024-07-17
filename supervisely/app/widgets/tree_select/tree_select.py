@@ -23,6 +23,10 @@ class TreeSelect(Widget):
     :type flat: bool, optional
     :param always_open: If set to true, the widget will be expanded by default.
     :type always_open: bool, optional
+    :param width: The width of the widget.
+    :type width: int, optional
+    :param append_to_body: Determines where the popover is attached. If False, it is positioned inside the input's container. This can cause the popover to be hidden if the input is within a Card or a widget that restricts visibility.
+    :type append_to_body: bool, optional
     :widget_id: The unique identifier of the widget.
     :type widget_id: str, optional
 
@@ -123,6 +127,7 @@ class TreeSelect(Widget):
         flat: bool = False,
         always_open: bool = False,
         width: Optional[int] = None,
+        append_to_body: bool = True,
         widget_id: Optional[str] = None,
     ):
         self._items = items or []
@@ -132,6 +137,7 @@ class TreeSelect(Widget):
         self._value_format = "object"  # On the frontend side can be "object" or "id".
         self._value = [] if multiple_select else None
         self._width = width
+        self._append_to_body = append_to_body
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -159,6 +165,7 @@ class TreeSelect(Widget):
                 "flat": self._flat,
                 "alwaysOpen": self._always_open,
                 "valueFormat": self._value_format,
+                "appendToBody": self._append_to_body,
             },
         }
 
