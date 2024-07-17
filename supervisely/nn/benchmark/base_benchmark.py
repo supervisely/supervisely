@@ -65,7 +65,7 @@ class BaseBenchmark:
         iterator = self.session.inference_project_id_async(
             self.gt_project_info.id,
             self.gt_dataset_ids,
-            output_project_id=output_project_id,
+            output_project_id=self.dt_project_info.id,
             cache_project_on_model=cache_project_on_agent,
             batch_size=batch_size,
         )
@@ -167,10 +167,15 @@ class BaseBenchmark:
         return gt_path, dt_path
     
     def get_eval_results_dir(self) -> str:
-        return os.path.join(self.get_base_dir(), "evaluation")
+        dir = os.path.join(self.get_base_dir(), "evaluation")
+        os.makedirs(dir, exist_ok=True)
+        return dir
     
     def get_speedtest_results_dir(self) -> str:
-        return os.path.join(self.get_base_dir(), "speedtest")
+        checkpoint_name = self._speedtest["model_info"]["model_name"]
+        dir = os.path.join(self.output_dir, "speedtest", checkpoint_name)  # TODO: use checkpoint_name instead of model_name
+        os.makedirs(dir, exist_ok=True)
+        return dir
     
     def upload_eval_results(self, remote_dir: str):
         eval_dir = self.get_eval_results_dir()
@@ -217,7 +222,7 @@ class BaseBenchmark:
         if not os.path.exists(dt_path):
             print(f"DT annotations will be downloaded to: {dt_path}")
             sly.download_project(self.api,
-            self.dt_project_info,
+            self.dt_project_info.id,
             dt_path,
             log_progress=True,
             save_images=False,
@@ -265,8 +270,7 @@ class BaseBenchmark:
 
     def _dump_project_info(self, project_info: sly.ProjectInfo, project_path):
         project_info_path = os.path.join(project_path, "project_info.json")
-        with open(project_info_path, 'w') as f:
-            sly.json.dump_json_file(project_info._asdict(), f, indent=2)
+        sly.json.dump_json_file(project_info._asdict(), project_info_path, indent=2)
         return project_info_path
 
     def _dump_eval_inference_info(self, eval_inference_info):
