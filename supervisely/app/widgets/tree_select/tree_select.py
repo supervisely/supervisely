@@ -80,7 +80,10 @@ class TreeSelect(Widget):
         """
 
         def __init__(
-            self, id: str, label: Optional[str] = None, children: List[TreeSelect.Item] = None
+            self,
+            id: str,
+            label: Optional[str] = None,
+            children: List[TreeSelect.Item] = None,
         ):
             self.id = id
             self.label = label or id
@@ -113,6 +116,7 @@ class TreeSelect(Widget):
         multiple_select: bool = False,
         flat: bool = False,
         always_open: bool = False,
+        width: Optional[int] = None,
         widget_id: Optional[str] = None,
     ):
         self._items = items or []
@@ -121,6 +125,7 @@ class TreeSelect(Widget):
         self._always_open = always_open
         self._value_format = "object"  # On the frontend side can be "object" or "id".
         self._value = [] if multiple_select else None
+        self._width = width
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -132,6 +137,7 @@ class TreeSelect(Widget):
         """
         return {
             "items": [item.to_json() for item in self._items],
+            "width": self._width,
         }
 
     def get_json_state(self) -> Dict[str, Union[Dict, List[Dict]]]:
@@ -188,8 +194,18 @@ class TreeSelect(Widget):
         :type value: Union[List[TreeSelect.Item], TreeSelect.Item]
         """
         self.value = value
-        StateJson()[self.widget_id]["value"] = value
+        if isinstance(value, list):
+            json_value = [item.to_json() for item in value]
+        elif value is not None:
+            json_value = value.to_json()
+        else:
+            json_value = None
+        StateJson()[self.widget_id]["value"] = json_value
         StateJson().send_changes()
+
+    def clear_selected(self) -> None:
+        """Clear the selected item(s)."""
+        self._set_value([] if self._multiple else None)
 
     def get_selected(self) -> Union[List[TreeSelect.Item], TreeSelect.Item]:
         """Get the selected item(s).
@@ -214,7 +230,73 @@ class TreeSelect(Widget):
                 "The widget is set to single selection mode, but a list of items was provided."
                 "Either set the widget to multiple selection mode or provide a single item."
             )
+
         self._set_value(value)
+
+    def get_all_items(self) -> List[TreeSelect.Item]:
+        """Get all items in the tree.
+
+        :return: All items in the tree.
+        :rtype: List[TreeSelect.Item]
+        """
+
+        # Recursively, including all children.
+        def _get_all_items(items: List[TreeSelect.Item]) -> List[TreeSelect.Item]:
+            res = []
+            for item in items:
+                res.append(item)
+                res.extend(_get_all_items(item.children))
+            return res
+
+        return _get_all_items(self._items)
+
+    def select_all(self) -> None:
+        """Select all items, including children."""
+        if not self._multiple:
+            raise ValueError(
+                "The widget is set to single selection mode, but tried to select all items."
+            )
+        self._set_value(self.get_all_items())
+
+    def get_item_by_id(self, item_id: str) -> Optional[TreeSelect.Item]:
+        """Get the item by its ID.
+
+        :param item_id: The ID of the item.
+        :type item_id: str
+        :return: The item with the specified ID.
+        :rtype: Optional[TreeSelect.Item]
+        """
+
+        def _get_item_by_id(
+            items: List[TreeSelect.Item], item_id: str
+        ) -> Optional[TreeSelect.Item]:
+            for item in items:
+                if item.id == item_id:
+                    return item
+                res = _get_item_by_id(item.children, item_id)
+                if res:
+                    return res
+            return None
+
+        return _get_item_by_id(self._items, item_id)
+
+    def set_selected_by_id(self, value: Union[List[str], str]) -> None:
+        if not self._multiple and isinstance(value, list):
+            raise ValueError(
+                "The widget is set to single selection mode, but a list of items was provided."
+                "Either set the widget to multiple selection mode or provide a single item."
+            )
+        if not isinstance(value, list):
+            value = [value]
+
+        items = []
+        for item_id in value:
+            item = self.get_item_by_id(item_id)
+            if item:
+                items.append(item)
+
+        if items:
+            self.set_selected(items if self._multiple else items[0])
 
     def _update_items(
         self, items: Union[List[TreeSelect.Item], TreeSelect.Item], overwrite: bool
@@ -228,6 +310,7 @@ class TreeSelect(Widget):
         """
         if overwrite:
             self._items = items
+            self.clear_selected()
         else:
             self._items.extend(items)
         DataJson()[self.widget_id] = self.get_json_data()

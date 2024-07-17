@@ -143,3 +143,4 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 from supervisely.app.widgets.tags_table.tags_table import TagsTable
 from supervisely.app.widgets.checkbox_field.checkbox_field import CheckboxField
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
+from supervisely.app.widgets.select_dataset_tree.select_dataset_tree import SelectDatasetTree
