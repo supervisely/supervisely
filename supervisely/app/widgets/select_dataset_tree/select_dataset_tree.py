@@ -45,6 +45,10 @@ class SelectDatasetTree(Widget):
     - `set_dataset_id(dataset_id: int) -> None`: Set the ID of the dataset to be selected by default.
     - `set_dataset_ids(dataset_ids: List[int]) -> None`: Set the IDs of the datasets to be selected by default.
     - `get_selected_project_id() -> Optional[int]`: Get the ID of the selected project.
+    - `get_selected_team_id() -> int`: Get the ID of the selected team.
+    - `set_team_id(team_id: int) -> None`: Set the team ID to read workspaces from.
+    - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
+    - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -140,6 +144,34 @@ class SelectDatasetTree(Widget):
         """
         return self._team_id
 
+    @team_id.setter
+    def team_id(self, team_id: int) -> None:
+        """Set the team ID to read workspaces from.
+
+        :param team_id: The ID of the team.
+        :type team_id: int
+        """
+        if not self._compact:
+            self._select_team.set_value(team_id)
+            self._select_workspace.set_items(self._get_select_items(team_id=team_id))
+        self._team_id = team_id
+
+    def get_selected_team_id(self) -> int:
+        """Get the ID of the selected team.
+
+        :return: The ID of the selected team.
+        :rtype: int
+        """
+        return self.team_id
+
+    def set_team_id(self, team_id: int) -> None:
+        """Set the team ID to read workspaces from.
+
+        :param team_id: The ID of the team.
+        :type team_id: int
+        """
+        self.team_id = team_id
+
     @property
     def workspace_id(self) -> int:
         """The ID of the workspace selected in the widget.
@@ -148,6 +180,34 @@ class SelectDatasetTree(Widget):
         :rtype: int
         """
         return self._workspace_id
+
+    @workspace_id.setter
+    def workspace_id(self, workspace_id: int) -> None:
+        """Set the workspace ID to read projects from.
+
+        :param workspace_id: The ID of the workspace.
+        :type workspace_id: int
+        """
+        if not self._compact:
+            self._select_workspace.set_value(workspace_id)
+            self._select_project.set_items(self._get_select_items(workspace_id=workspace_id))
+        self._workspace_id = workspace_id
+
+    def get_selected_workspace_id(self) -> int:
+        """Get the ID of the selected workspace.
+
+        :return: The ID of the selected workspace.
+        :rtype: int
+        """
+        return self.workspace_id
+
+    def set_workspace_id(self, workspace_id: int) -> None:
+        """Set the workspace ID to read projects from.
+
+        :param workspace_id: The ID of the workspace.
+        :type workspace_id: int
+        """
+        self.workspace_id = workspace_id
 
     @property
     def project_id(self) -> Optional[int]:
