@@ -42,6 +42,13 @@ class SelectDatasetTree(Widget):
     - `get_selected_ids() -> Optional[List[int]]`: Get the IDs of the selected datasets.
     - `get_selected_id() -> Optional[int]`: Get the ID of the selected dataset.
     - `value_changed(func: Callable) -> Callable`: Decorator to set the callback function for the value changed event.
+    - `set_dataset_id(dataset_id: int) -> None`: Set the ID of the dataset to be selected by default.
+    - `set_dataset_ids(dataset_ids: List[int]) -> None`: Set the IDs of the datasets to be selected by default.
+    - `get_selected_project_id() -> Optional[int]`: Get the ID of the selected project.
+    - `get_selected_team_id() -> int`: Get the ID of the selected team.
+    - `set_team_id(team_id: int) -> None`: Set the team ID to read workspaces from.
+    - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
+    - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -89,10 +96,14 @@ class SelectDatasetTree(Widget):
         if not multiselect and select_all_datasets:
             raise ValueError("Select all datasets is only available in multiselect mode.")
 
+        # Reading team_id and workspace_id from environment variables.
+        # If not found, error will be raised.
         self._team_id = env.team_id()
         self._workspace_id = env.workspace_id()
-        self._project_id = project_id
-        self._dataset_id = default_id
+
+        # Using environment variables to set the default values if they are not provided.
+        self._project_id = project_id or env.project_id(raise_not_found=False)
+        self._dataset_id = default_id or env.dataset_id(raise_not_found=False)
 
         self._multiselect = multiselect
         self._compact = compact
@@ -133,6 +144,34 @@ class SelectDatasetTree(Widget):
         """
         return self._team_id
 
+    @team_id.setter
+    def team_id(self, team_id: int) -> None:
+        """Set the team ID to read workspaces from.
+
+        :param team_id: The ID of the team.
+        :type team_id: int
+        """
+        if not self._compact:
+            self._select_team.set_value(team_id)
+            self._select_workspace.set_items(self._get_select_items(team_id=team_id))
+        self._team_id = team_id
+
+    def get_selected_team_id(self) -> int:
+        """Get the ID of the selected team.
+
+        :return: The ID of the selected team.
+        :rtype: int
+        """
+        return self.team_id
+
+    def set_team_id(self, team_id: int) -> None:
+        """Set the team ID to read workspaces from.
+
+        :param team_id: The ID of the team.
+        :type team_id: int
+        """
+        self.team_id = team_id
+
     @property
     def workspace_id(self) -> int:
         """The ID of the workspace selected in the widget.
@@ -141,6 +180,34 @@ class SelectDatasetTree(Widget):
         :rtype: int
         """
         return self._workspace_id
+
+    @workspace_id.setter
+    def workspace_id(self, workspace_id: int) -> None:
+        """Set the workspace ID to read projects from.
+
+        :param workspace_id: The ID of the workspace.
+        :type workspace_id: int
+        """
+        if not self._compact:
+            self._select_workspace.set_value(workspace_id)
+            self._select_project.set_items(self._get_select_items(workspace_id=workspace_id))
+        self._workspace_id = workspace_id
+
+    def get_selected_workspace_id(self) -> int:
+        """Get the ID of the selected workspace.
+
+        :return: The ID of the selected workspace.
+        :rtype: int
+        """
+        return self.workspace_id
+
+    def set_workspace_id(self, workspace_id: int) -> None:
+        """Set the workspace ID to read projects from.
+
+        :param workspace_id: The ID of the workspace.
+        :type workspace_id: int
+        """
+        self.workspace_id = workspace_id
 
     @property
     def project_id(self) -> Optional[int]:
@@ -162,6 +229,35 @@ class SelectDatasetTree(Widget):
             self._select_project.set_value(project_id)
         self._project_id = project_id
         self._select_dataset.set_items(self._read_datasets(project_id))
+
+    def get_selected_project_id(self) -> Optional[int]:
+        """Get the ID of the selected project.
+
+        :return: The ID of the selected project.
+        :rtype: Optional[int]
+        """
+        return self.project_id
+
+    def set_dataset_id(self, dataset_id: int) -> None:
+        """Set the ID of the dataset to be selected by default.
+
+        :param id: The ID of the dataset.
+        :type id: int
+        """
+        self._dataset_id = dataset_id
+        self._select_dataset.set_selected_by_id(dataset_id)
+
+    def set_dataset_ids(self, dataset_ids: List[int]) -> None:
+        """Set the IDs of the datasets to be selected by default.
+
+        :raise ValueError: If multiselect is disabled.
+        :param ids: The IDs of the datasets.
+        :type ids: List[int]
+        """
+        if not self._multiselect:
+            raise ValueError("This method can only be called when multiselect is enabled.")
+        self._dataset_id = dataset_ids
+        self._select_dataset.set_selected_by_id(dataset_ids)
 
     def value_changed(self, func: Callable) -> Callable:
         """Decorator to set the callback function for the value changed event.
