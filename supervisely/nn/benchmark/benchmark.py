@@ -22,7 +22,7 @@ class Benchmark:
     def run_evaluation(self):
         self.evaluator.run_evaluation()
 
-    def run_speedtest(self, batch_sizes: List[int] = [1, 2, 4, 8, 16, 32, 64]):
+    def run_speedtest(self, batch_sizes: List[int] = [1, 8, 16]):
         pass
 
     def upload_layout(self):

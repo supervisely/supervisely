@@ -6,7 +6,7 @@ from pycocotools.coco import COCO
 
 import supervisely as sly
 from supervisely.nn.inference import SessionJSON
-from supervisely.nn.benchmark.sly2coco import sly2coco
+from supervisely.nn.benchmark.coco_utils.sly2coco import sly2coco
 from supervisely.nn.benchmark.evaluation.object_detection import MetricProvider, calculate_metrics
 
 

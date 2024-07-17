@@ -88,16 +88,17 @@ class BaseBenchmark:
     def evaluate(self, dt_project_id):
         self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
         gt_project_path, dt_project_path = self._download_projects()
-        self.evaluator = self._init_evaluator(gt_project_path, dt_project_path)
-        self.evaluator.result_dir = self.get_eval_results_dir()
-        eval_dir = self._evaluate()
-        info_path = os.path.join(self.get_eval_results_dir(), "inference_info.json")
-        sly.json.dump_json_file(self._eval_inference_info, info_path)
-        return eval_dir
-    
-    def _evaluate(self):
-        eval_dir = self.evaluator.evaluate()
-        return eval_dir
+        self._evaluate(gt_project_path, dt_project_path)
+        self._dump_eval_inference_info()
+
+    def _evaluate(self, gt_project_path, dt_project_path):
+        eval_results_dir = self.get_eval_results_dir()
+        self.evaluator = self._get_evaluator_class()(
+            gt_project_path=gt_project_path,
+            dt_project_path=dt_project_path,
+            result_dir=eval_results_dir
+        )
+        self.evaluator.evaluate()
 
     def get_eval_results_dir(self) -> str:
         return os.path.join(self.get_base_dir(), "eval_results")
@@ -113,8 +114,7 @@ class BaseBenchmark:
     def upload_speedtest_results(self, remote_dir: str):
         pass
     
-    # TODO: get_evaluator_class
-    def _init_evaluator(self) -> BaseEvaluator:
+    def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
 
     def get_base_dir(self):
@@ -158,8 +158,8 @@ class BaseBenchmark:
             )
         else:
             print(f"DT annotations already exist: {dt_path}")
-        _dump_project_info(self.gt_project_info, gt_path)
-        _dump_project_info(self.dt_project_info, dt_path)
+        self._dump_project_info(self.gt_project_info, gt_path)
+        self._dump_project_info(self.dt_project_info, dt_path)
         return gt_path, dt_path
     
     def _fetch_model_info(self):
@@ -196,9 +196,13 @@ class BaseBenchmark:
             session.set_inference_settings(inference_settings)
         return session
 
+    def _dump_project_info(self, project_info: sly.ProjectInfo, project_path):
+        project_info_path = os.path.join(project_path, "project_info.json")
+        with open(project_info_path, 'w') as f:
+            sly.json.dump_json_file(project_info._asdict(), f, indent=2)
+        return project_info_path
 
-def _dump_project_info(project_info: sly.ProjectInfo, project_path):
-    project_info_path = os.path.join(project_path, "project_info.json")
-    with open(project_info_path, 'w') as f:
-        sly.json.dump_json_file(project_info._asdict(), f, indent=2)
-    return project_info_path
+    def _dump_eval_inference_info(self):
+        info_path = os.path.join(self.get_eval_results_dir(), "inference_info.json")
+        sly.json.dump_json_file(self._eval_inference_info, info_path)
+        return info_path
