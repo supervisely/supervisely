@@ -38,6 +38,7 @@ class TreeSelect(Widget):
     - `clear_selected()`: Clear the selected item(s).
     - `get_all_items() -> List[TreeSelect.Item]`: Get all items in the tree.
     - `select_all()`: Select all items, including children.
+    - `is_all_selected() -> bool`: Check if all items are selected.
 
     :Usage example:
 
@@ -261,6 +262,22 @@ class TreeSelect(Widget):
                 "The widget is set to single selection mode, but tried to select all items."
             )
         self._set_value(self.get_all_items())
+
+    def is_all_selected(self) -> bool:
+        """Check if all items are selected.
+
+        :return: True if all items are selected, False otherwise.
+        :rtype: bool
+        """
+        if not self._multiple:
+            raise ValueError(
+                "The widget is set to single selection mode, but tried to check if all items are selected."
+            )
+
+        all_item_ids = {item.id for item in self.get_all_items()}
+        selected_ids = {item.id for item in self.get_selected()}
+
+        return all_item_ids.issubset(selected_ids)
 
     def get_item_by_id(self, item_id: str) -> Optional[TreeSelect.Item]:
         """Get the item by its ID.

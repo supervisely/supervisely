@@ -49,6 +49,7 @@ class SelectDatasetTree(Widget):
     - `set_team_id(team_id: int) -> None`: Set the team ID to read workspaces from.
     - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
     - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
+    - `is_all_selected() -> bool`: Check if all datasets are selected.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -84,8 +85,8 @@ class SelectDatasetTree(Widget):
         allowed_project_types: Optional[List[ProjectType]] = None,
         flat: bool = False,
         always_open: bool = False,
-        team_is_selectable: bool = False,
-        workspace_is_selectable: bool = False,
+        team_is_selectable: bool = True,
+        workspace_is_selectable: bool = True,
         widget_id: Union[str, None] = None,
     ):
         self._api = Api()
@@ -153,7 +154,7 @@ class SelectDatasetTree(Widget):
         """
         if not self._compact:
             self._select_team.set_value(team_id)
-            self._select_workspace.set_items(self._get_select_items(team_id=team_id))
+            self._select_workspace.set(self._get_select_items(team_id=team_id))
         self._team_id = team_id
 
     def get_selected_team_id(self) -> int:
@@ -190,7 +191,7 @@ class SelectDatasetTree(Widget):
         """
         if not self._compact:
             self._select_workspace.set_value(workspace_id)
-            self._select_project.set_items(self._get_select_items(workspace_id=workspace_id))
+            self._select_project.set(self._get_select_items(workspace_id=workspace_id))
         self._workspace_id = workspace_id
 
     def get_selected_workspace_id(self) -> int:
@@ -488,3 +489,11 @@ class SelectDatasetTree(Widget):
         if self._multiselect:
             raise ValueError("This method can only be called when multiselect is disabled.")
         return self._get_selected()
+
+    def is_all_selected(self) -> bool:
+        """Check if all datasets are selected.
+
+        return: True if all datasets are selected, False otherwise.
+        rtype: bool
+        """
+        return self._select_dataset.is_all_selected()
