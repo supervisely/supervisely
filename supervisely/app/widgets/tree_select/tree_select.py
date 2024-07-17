@@ -123,6 +123,7 @@ class TreeSelect(Widget):
         flat: bool = False,
         always_open: bool = False,
         width: Optional[int] = None,
+        append_to_body: bool = True,
         widget_id: Optional[str] = None,
     ):
         self._items = items or []
@@ -132,6 +133,7 @@ class TreeSelect(Widget):
         self._value_format = "object"  # On the frontend side can be "object" or "id".
         self._value = [] if multiple_select else None
         self._width = width
+        self._append_to_body = append_to_body
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -159,6 +161,7 @@ class TreeSelect(Widget):
                 "flat": self._flat,
                 "alwaysOpen": self._always_open,
                 "valueFormat": self._value_format,
+                "appendToBody": self._append_to_body,
             },
         }
 

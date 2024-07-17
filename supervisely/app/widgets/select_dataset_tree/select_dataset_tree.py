@@ -297,6 +297,7 @@ class SelectDatasetTree(Widget):
             multiple_select=self._multiselect,
             flat=flat,
             always_open=always_open,
+            append_to_body=False,
             width=193,
         )
         if self._dataset_id is not None:
