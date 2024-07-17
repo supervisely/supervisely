@@ -84,8 +84,8 @@ class SelectDatasetTree(Widget):
         allowed_project_types: Optional[List[ProjectType]] = None,
         flat: bool = False,
         always_open: bool = False,
-        team_is_selectable: bool = False,
-        workspace_is_selectable: bool = False,
+        team_is_selectable: bool = True,
+        workspace_is_selectable: bool = True,
         widget_id: Union[str, None] = None,
     ):
         self._api = Api()
@@ -153,7 +153,7 @@ class SelectDatasetTree(Widget):
         """
         if not self._compact:
             self._select_team.set_value(team_id)
-            self._select_workspace.set_items(self._get_select_items(team_id=team_id))
+            self._select_workspace.set(self._get_select_items(team_id=team_id))
         self._team_id = team_id
 
     def get_selected_team_id(self) -> int:
@@ -190,7 +190,7 @@ class SelectDatasetTree(Widget):
         """
         if not self._compact:
             self._select_workspace.set_value(workspace_id)
-            self._select_project.set_items(self._get_select_items(workspace_id=workspace_id))
+            self._select_project.set(self._get_select_items(workspace_id=workspace_id))
         self._workspace_id = workspace_id
 
     def get_selected_workspace_id(self) -> int:
