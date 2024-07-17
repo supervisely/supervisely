@@ -33,6 +33,11 @@ class TreeSelect(Widget):
     - `set_items(items: List[TreeSelect.Item])`: Set the items (overwrite the existing items).
     - `add_items(items: List[TreeSelect.Item])`: Add the items (append to the existing items).
     - `clear_items()`: Clear the items.
+    - `get_item_by_id(item_id: str) -> Optional[TreeSelect.Item]`: Get the item by its ID.
+    - `set_selected_by_id(value: Union[List[str], str])`: Set the selected item(s) by their IDs.
+    - `clear_selected()`: Clear the selected item(s).
+    - `get_all_items() -> List[TreeSelect.Item]`: Get all items in the tree.
+    - `select_all()`: Select all items, including children.
 
     :Usage example:
 
@@ -240,7 +245,6 @@ class TreeSelect(Widget):
         :rtype: List[TreeSelect.Item]
         """
 
-        # Recursively, including all children.
         def _get_all_items(items: List[TreeSelect.Item]) -> List[TreeSelect.Item]:
             res = []
             for item in items:
