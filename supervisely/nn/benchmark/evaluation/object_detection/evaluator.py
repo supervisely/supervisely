@@ -6,7 +6,7 @@ from supervisely.nn.benchmark.coco_utils import sly2coco, read_coco_datasets
 
 
 class ObjectDetectionEvaluator(BaseEvaluator):
-    def evaluate(self) -> str:
+    def evaluate(self):
         self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
         cocoGt, cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
         self.eval_data = calculate_metrics(cocoGt, cocoDt)

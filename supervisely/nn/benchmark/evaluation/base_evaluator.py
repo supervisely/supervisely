@@ -12,10 +12,10 @@ class BaseEvaluator:
         self.dt_project_path = dt_project_path
         self.result_dir = result_dir
 
-    def evaluate(self) -> str:
+    def evaluate(self):
         raise NotImplementedError()
     
-    def get_result_dir(self):
+    def get_result_dir(self) -> str:
         return self.result_dir
 
     def _dump_pickle(self, data, file_path):
