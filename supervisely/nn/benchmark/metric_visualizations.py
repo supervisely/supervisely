@@ -57,8 +57,9 @@ template_markdown_str = """
 
 template_chart_str = """
             <sly-iw-chart
-              iw-widget-id="{{ widget_id }}"
-              :actions="{
+              iw-widget-id="{{ widget_id }}"{% if switchable %}
+              v-if="state.{{ radio_group }} === {{ switch_key }}"
+              {% endif %}:actions="{
                 'init': {
                   'dataSource': '{{ init_data_source }}',
                 },{% if chart_click_data_source %}
@@ -72,6 +73,8 @@ template_chart_str = """
               :data="{{ data }}"
             />
 """
+
+template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" :label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
 
 
 class BaseBidget:
@@ -92,8 +95,8 @@ class Bidget:
 
     class Chart(BaseBidget):
 
-        def __init__(self, key: Optional[str] = None) -> None:
-            self.key = key
+        def __init__(self, switch_key: Optional[str] = None) -> None:
+            self.switch_key = switch_key
             super().__init__()
 
     class Table(BaseBidget):
@@ -129,9 +132,16 @@ class MetricVis:
 
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
+    _template_radiogroup = Template(template_radiogroup_str)
     _keypair_sep = "&-|-&"
 
     schema: Schema = None
+
+    # pylint: disable=no-self-argument
+    @classproperty
+    def radiogroup_id(cls) -> Optional[str]:
+        if cls.switchable:
+            return f"radiogroup_" + cls.name
 
     # pylint: disable=no-self-argument
     @classproperty
@@ -148,25 +158,74 @@ class MetricVis:
     def template_main_str(cls) -> str:
         res = ""
         _is_before_chart = True
-        for item in cls.schema:
-            if isinstance(item, Bidget.Chart):
+        if cls.switchable:
+            for widget in cls.schema:
+                if isinstance(widget, Bidget.Chart):
+                    res += "\n            {{ " + f"el_radio_{cls.name}_{widget.name}_html" + " }}"
+
+        for widget in cls.schema:
+            if isinstance(widget, Bidget.Chart):
                 _is_before_chart = False
-            if isinstance(item, Bidget.Markdown):
-                item.is_before_chart = _is_before_chart
+            if isinstance(widget, Bidget.Markdown):
+                widget.is_before_chart = _is_before_chart
 
-            if isinstance(item, Bidget.Markdown) and item.is_before_chart:
-                res += "\n            {{ " + f"{item.name}_html" + " }}"
+            if isinstance(widget, Bidget.Markdown) and widget.is_before_chart:
+                res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
-            if isinstance(item, Bidget.Chart):
-                res += "\n            {{ " + f"{cls.name}_html" + " }}"
+            if isinstance(widget, Bidget.Chart):
+                res += "\n            {{ " + f"{cls.name}_{widget.name}_html" + " }}"
                 if cls.clickable:
-                    res += "\n            {{ " + f"{cls.name}_chart_click_html" + " }}"
+                    res += "\n            {{ " + f"{cls.name}_{widget.name}_clickdata_html" + " }}"
                 continue
 
-            if isinstance(item, Bidget.Markdown) and not item.is_before_chart:
-                res += "\n            {{ " + f"{item.name}_html" + " }}"
+            if isinstance(widget, Bidget.Markdown) and not widget.is_before_chart:
+                res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
+
+        return res
+
+    @classmethod
+    def get_html_snippets(cls, loader: MetricLoader) -> dict:
+        res = {}
+        for widget in cls.schema:
+            if isinstance(widget, Bidget.Markdown):
+                res[f"{widget.name}_html"] = cls._template_markdown.render(
+                    {
+                        "widget_id": widget.id,
+                        "data_source": f"/data/{widget.name}.md",
+                        "command": "command",
+                        "data": "data",
+                    }
+                )
+
+            if isinstance(widget, Bidget.Chart):
+                if cls.switchable:
+                    res[f"el_radio_{cls.name}_{widget.name}_html"] = (
+                        cls._template_radiogroup.render(
+                            {
+                                "radio_group": cls.radiogroup_id,
+                                "switch_key": widget.switch_key,
+                            }
+                        )
+                    )
+                chart_click_path = (
+                    f"/data/{cls.name}_{widget.name}_clickdata.json" if cls.clickable else None
+                )
+                res[f"{cls.name}_{widget.name}_html"] = cls._template_chart.render(
+                    {
+                        "widget_id": widget.id,
+                        "init_data_source": f"/data/{cls.name}_{widget.name}.json",
+                        "chart_click_data_source": chart_click_path,
+                        "command": "command",
+                        "data": "data",
+                        "cls_name": cls.name,
+                        "key_separator": cls._keypair_sep,
+                        "switchable": cls.switchable,
+                        "radio_group": cls.radiogroup_id,
+                        "switch_key": widget.switch_key,
+                    }
+                )
 
         return res
 
@@ -187,52 +246,6 @@ class MetricVis:
     @classmethod
     def get_table(cls, loader: MetricLoader) -> Optional[dict]:
         pass
-
-    @classmethod
-    def get_html_snippets(cls, loader: MetricLoader) -> dict:
-        res = {}
-        for widget in cls.schema:
-            if isinstance(widget, Bidget.Markdown) and widget.is_before_chart:
-
-                res[f"{widget.name}_html"] = cls._template_markdown.render(
-                    {
-                        "widget_id": widget.id,
-                        "data_source": f"/data/{widget.name}.md",
-                        "command": "command",
-                        "data": "data",
-                    }
-                )
-                continue
-
-            if isinstance(widget, Bidget.Chart):
-                chart_click_path = (
-                    f"/data/{cls.name}_{widget.name}_clickdata.json" if cls.clickable else None
-                )
-                res[f"{cls.name}_html"] = cls._template_chart.render(
-                    {
-                        "widget_id": widget.id,
-                        "init_data_source": f"/data/{cls.name}_{widget.name}.json",
-                        "chart_click_data_source": chart_click_path,
-                        "command": "command",
-                        "data": "data",
-                        "cls_name": cls.name,
-                        "key_separator": cls._keypair_sep,
-                    }
-                )
-                continue
-
-            if isinstance(widget, Bidget.Markdown) and not widget.is_before_chart:
-                res[f"{widget.name}_html"] = cls._template_markdown.render(
-                    {
-                        "widget_id": widget.id,
-                        "data_source": f"/data/{widget.name}.md",
-                        "command": "command",
-                        "data": "data",
-                    }
-                )
-                continue
-
-        return res
 
     @classmethod
     def _get_md_content(cls, widget: Bidget):
@@ -688,8 +701,8 @@ class FrequentlyConfused(MetricVis):
 
     schema = Schema(
         markdown_frequently_confused=Bidget.Markdown(header="Frequently Confused Classes"),
-        chart_01=Bidget.Chart(key="probability"),
-        chart_02=Bidget.Chart(key="count"),
+        chart_01=Bidget.Chart(switch_key="probability"),
+        chart_02=Bidget.Chart(switch_key="count"),
     )
 
     @classmethod
@@ -701,7 +714,7 @@ class FrequentlyConfused(MetricVis):
         confused_df = loader.m.frequently_confused(confusion_matrix, topk_pairs=20)
         confused_name_pairs = confused_df["category_pair"]
         x_labels = [f"{pair[0]} - {pair[1]}" for pair in confused_name_pairs]
-        y_labels = confused_df[widget.key]
+        y_labels = confused_df[widget.switch_key]
 
         fig = go.Figure()
         fig.add_trace(

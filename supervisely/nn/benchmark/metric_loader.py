@@ -36,8 +36,8 @@ _METRIC_VISUALIZATIONS = (
     # RecallVsPrecision,
     # PRCurve,
     # PRCurveByClass,
-    ConfusionMatrix,
-    # FrequentlyConfused,
+    # ConfusionMatrix,
+    FrequentlyConfused,
     # IOUDistribution,
     # ReliabilityDiagram,
     # ConfidenceScore,
@@ -324,9 +324,21 @@ class MetricLoader:
             html_snippets.update(vis.get_html_snippets(self))
         return main_template.render(**html_snippets)
 
+    def _generate_state(self, metric_visualizations: Tuple[MetricVis]) -> dict:
+        res = {}
+        for mv in metric_visualizations:
+            for widget in mv.schema:
+                if isinstance(widget, Bidget.Chart) and mv.clickable:
+                    res[mv.radiogroup_id] = widget.switch_key
+                    break
+        return res
+
     def _save_template(self, metric_visualizations: Tuple[MetricVis]):
-        template_content = self._generate_template(metric_visualizations)
         local_path = f"{self.tmp_dir}/template.vue"
         with open(local_path, "w", encoding="utf-8") as f:
-            f.write(template_content)
+            f.write(self._generate_template(metric_visualizations))
         logger.info("Saved: %r", "template.vue")
+        local_path = f"{self.tmp_dir}/state.json"
+        with open(local_path, "w", encoding="utf-8") as f:
+            json.dump(self._generate_state(metric_visualizations), f)
+        logger.info("Saved: %r", "state.json")
