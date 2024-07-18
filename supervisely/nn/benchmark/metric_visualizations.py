@@ -64,7 +64,8 @@ template_chart_str = """
                 },{% if chart_click_data_source %}
                 'chart-click': {
                   'dataSource': '{{ chart_click_data_source }}',{% if cls_name=='outcome_counts' %}
-                  'getKey': (payload) => payload.points[0].data.name,{% endif %}
+                  'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name=='confusion_matrix' %}
+                  'keySeparator'= '{{ key_separator }}',{% endif %}
                 },{% endif %}
               }"
               :command="{{ command }}"
@@ -128,6 +129,7 @@ class MetricVis:
 
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
+    _keypair_sep = "&-|-&"
 
     schema: Schema = None
 
@@ -189,38 +191,41 @@ class MetricVis:
     @classmethod
     def get_html_snippets(cls, loader: MetricLoader) -> dict:
         res = {}
-        for item in cls.schema:
-            if isinstance(item, Bidget.Markdown) and item.is_before_chart:
+        for widget in cls.schema:
+            if isinstance(widget, Bidget.Markdown) and widget.is_before_chart:
 
-                res[f"{item.name}_html"] = cls._template_markdown.render(
+                res[f"{widget.name}_html"] = cls._template_markdown.render(
                     {
-                        "widget_id": item.id,
-                        "data_source": f"/data/{item.name}.md",
+                        "widget_id": widget.id,
+                        "data_source": f"/data/{widget.name}.md",
                         "command": "command",
                         "data": "data",
                     }
                 )
                 continue
 
-            if isinstance(item, Bidget.Chart):
-                chart_click_path = f"/data/{cls.name}_chart_click.json" if cls.clickable else None
+            if isinstance(widget, Bidget.Chart):
+                chart_click_path = (
+                    f"/data/{cls.name}_{widget.name}_clickdata.json" if cls.clickable else None
+                )
                 res[f"{cls.name}_html"] = cls._template_chart.render(
                     {
-                        "widget_id": item.id,
-                        "init_data_source": f"/data/{cls.name}_{item.name}.json",
+                        "widget_id": widget.id,
+                        "init_data_source": f"/data/{cls.name}_{widget.name}.json",
                         "chart_click_data_source": chart_click_path,
                         "command": "command",
                         "data": "data",
                         "cls_name": cls.name,
+                        "key_separator": cls._keypair_sep,
                     }
                 )
                 continue
 
-            if isinstance(item, Bidget.Markdown) and not item.is_before_chart:
-                res[f"{item.name}_html"] = cls._template_markdown.render(
+            if isinstance(widget, Bidget.Markdown) and not widget.is_before_chart:
+                res[f"{widget.name}_html"] = cls._template_markdown.render(
                     {
-                        "widget_id": item.id,
-                        "data_source": f"/data/{item.name}.md",
+                        "widget_id": widget.id,
+                        "data_source": f"/data/{widget.name}.md",
                         "command": "command",
                         "data": "data",
                     }
@@ -632,13 +637,23 @@ class ConfusionMatrix(MetricVis):
 
     @classmethod
     def get_click_data(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[dict]:
-        res = {}
+        res = dict(projectMeta=loader.dt_project_meta.to_json())
+        res["clickData"] = {}
+
+        unique_pairs = set()
+        filtered_pairs = []
         for k, v in loader.click_data.confusion_matrix.items():
-            key = f"{k[0]}-{k[1]}"
-            res[key] = {}
-            res[key]["projectMeta"] = loader.dt_project_meta.to_json()
-            res[key]["layoutData"] = {}
-            res[key]["layout"] = []
+            ordered_pair = tuple(sorted(k))
+            if ordered_pair not in unique_pairs:
+                unique_pairs.add(ordered_pair)
+            else:
+                continue
+
+            subkey1, subkey2 = ordered_pair
+            key = subkey1 + cls._keypair_sep + subkey2
+            res["clickData"][key] = {}
+            res["clickData"][key]["layoutData"] = {}
+            res["clickData"][key]["layout"] = []
 
             tmp = {0: [], 1: [], 2: [], 3: []}
             images = set(x["dt_img_id"] for x in v)
@@ -646,7 +661,7 @@ class ConfusionMatrix(MetricVis):
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
                 info: ImageInfo = loader.dt_images[img_id]
-                res[key]["layoutData"][ui_id] = {
+                res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
                         "imageId": info.id,
@@ -661,7 +676,7 @@ class ConfusionMatrix(MetricVis):
                     tmp[idx % 4].append(ui_id)
 
             for _, val in tmp.items():
-                res[key]["layout"].append(val)
+                res["clickData"][key]["layout"].append(val)
 
         return res
 

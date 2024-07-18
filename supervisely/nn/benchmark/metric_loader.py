@@ -11,6 +11,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import ujson
 from jinja2 import Template
 from pycocotools.coco import COCO
 
@@ -28,15 +29,15 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
-    Overview,
-    OutcomeCounts,
-    Recall,
-    Precision,
-    RecallVsPrecision,
-    PRCurve,
-    PRCurveByClass,
-    # ConfusionMatrix,
-    FrequentlyConfused,
+    # Overview,
+    # OutcomeCounts,
+    # Recall,
+    # Precision,
+    # RecallVsPrecision,
+    # PRCurve,
+    # PRCurveByClass,
+    ConfusionMatrix,
+    # FrequentlyConfused,
     # IOUDistribution,
     # ReliabilityDiagram,
     # ConfidenceScore,
@@ -252,8 +253,9 @@ class MetricLoader:
         self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
-        self._process_visualizations(_METRIC_VISUALIZATIONS)
-        # self._process_prediction_table()  # TODO integrate into sections
+        for mv in _METRIC_VISUALIZATIONS:
+            self._write_markdown_data(mv)
+            self._write_json_data(mv)
         self._save_template(_METRIC_VISUALIZATIONS)
 
         with tqdm_sly(
@@ -275,11 +277,6 @@ class MetricLoader:
             remove_dir(self.tmp_dir)
 
         logger.info(f"Uploaded to: {dest_dir!r}")
-
-    def _process_visualizations(self, metric_visualizations: List[MetricVis]):
-        for mv in metric_visualizations:
-            self._write_markdown_data(mv)
-            self._write_json_data(mv)
 
     def _process_prediction_table(self):
         self._write_json_data("prediction_table", self.m.prediction_table())
@@ -306,19 +303,19 @@ class MetricLoader:
                         "dialogVisible": False,
                         "chartContent": json.loads(fig.to_json()),
                     }
-                    basename = f"{mv.name}_{widget.name}"
-                    local_path = f"{self.tmp_dir}/data/{basename}.json"
+                    basename = f"{widget.name}_{mv.name}.json"
+                    local_path = f"{self.tmp_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
                         json.dump(fig_data, f)
-                    logger.info("Saved: %r", f"{basename}.json")
+                    logger.info("Saved: %r", basename)
 
-                click_data = mv.get_click_data(self, widget)
-                if click_data is not None:
-                    basename = f"{mv.name}_{widget.name}_click_chart"
-                    local_path = f"{self.tmp_dir}/data/{basename}.json"
-                    with open(local_path, "w", encoding="utf-8") as f:
-                        json.dump(click_data, f)
-                    logger.info("Saved: %r", f"{basename}.json")
+                    click_data = mv.get_click_data(self, widget)
+                    if click_data is not None:
+                        basename = f"{widget.name}_{mv.name}_clickdata.json"
+                        local_path = f"{self.tmp_dir}/data/{basename}"
+                        with open(local_path, "w", encoding="utf-8") as f:
+                            f.write(ujson.dumps(click_data))
+                        logger.info("Saved: %r", basename)
 
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}
