@@ -260,7 +260,6 @@ class _MetricProvider:
     def prediction_table(self):
         img_ids, outcomes_per_image = _get_outcomes_per_image(self.matches, self.cocoGt)
         image_names = [self.cocoGt.imgs[img_id]["file_name"] for img_id in img_ids]
-        # inference_time = ...
         n_gt = outcomes_per_image[:,0] + outcomes_per_image[:,2]
         n_dt = outcomes_per_image[:,0] + outcomes_per_image[:,1]
         with warnings.catch_warnings():

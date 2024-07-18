@@ -1,8 +1,3 @@
-import os
-from typing import Union, List
-from tqdm import tqdm
-
-import supervisely as sly
 from supervisely.nn.inference import SessionJSON
 from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 from supervisely.nn.benchmark.evaluation.object_detection_evaluator import ObjectDetectionEvaluator
