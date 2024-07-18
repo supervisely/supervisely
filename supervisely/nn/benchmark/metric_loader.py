@@ -30,13 +30,13 @@ from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
     # Overview,
-    # OutcomeCounts,
+    OutcomeCounts,
     # Recall,
     # Precision,
     # RecallVsPrecision,
     # PRCurve,
     # PRCurveByClass,
-    # ConfusionMatrix,
+    ConfusionMatrix,
     FrequentlyConfused,
     # IOUDistribution,
     # ReliabilityDiagram,
@@ -283,7 +283,7 @@ class MetricLoader:
 
     def _write_markdown_data(self, metric_visualization: MetricVis):
         for item in metric_visualization.schema:
-            if isinstance(item, Bidget.Markdown):
+            if isinstance(item, Widget.Markdown):
 
                 content = metric_visualization.get_md_content(self, item)
                 local_path = f"{self.tmp_dir}/data/{item.name}.md"
@@ -294,7 +294,7 @@ class MetricLoader:
 
     def _write_json_data(self, mv: MetricVis):
         for widget in mv.schema:
-            if isinstance(widget, Bidget.Chart):
+            if isinstance(widget, Widget.Chart):
                 fig = mv.get_figure(self, widget)
                 if fig is not None:
                     fig_data = {
@@ -328,7 +328,7 @@ class MetricLoader:
         res = {}
         for mv in metric_visualizations:
             for widget in mv.schema:
-                if isinstance(widget, Bidget.Chart) and mv.clickable:
+                if isinstance(widget, Widget.Chart) and mv.clickable:
                     res[mv.radiogroup_id] = widget.switch_key
                     break
         return res
