@@ -614,7 +614,7 @@ class TagMeta(KeyObject, JsonSerializable):
             isinstance(other, TagMeta)
             and self.name == other.name
             and self.value_type == other.value_type
-            and self.possible_values == other.possible_values
+            and sorted(self.possible_values) == sorted(other.possible_values)
         )
 
     def clone(
