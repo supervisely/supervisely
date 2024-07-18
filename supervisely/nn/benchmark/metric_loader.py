@@ -22,7 +22,7 @@ from supervisely.io.fs import *
 from supervisely.nn.benchmark import metric_provider
 from supervisely.nn.benchmark.metric_provider import MetricProvider
 from supervisely.nn.benchmark.metric_visualizations import *
-from supervisely.nn.benchmark.metric_visualizations import MetricVisualization
+from supervisely.nn.benchmark.metric_visualizations import MetricVis
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -30,13 +30,13 @@ from supervisely.task.progress import tqdm_sly
 _METRIC_VISUALIZATIONS = (
     Overview,
     OutcomeCounts,
-    # Recall,
-    # Precision,
-    # RecallVsPrecision,
-    # PRCurve,
-    # PRCurveByClass,
+    Recall,
+    Precision,
+    RecallVsPrecision,
+    PRCurve,
+    PRCurveByClass,
     # ConfusionMatrix,
-    # FrequentlyConfused,
+    FrequentlyConfused,
     # IOUDistribution,
     # ReliabilityDiagram,
     # ConfidenceScore,
@@ -51,22 +51,20 @@ _METRIC_VISUALIZATIONS = (
 )
 
 
-def generate_main_template(metric_visualizations: List[MetricVisualization]):
+def generate_main_template(metric_visualizations: List[MetricVis]):
     template_str = """<div>
     <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false }">
-        <div slot="sidebar">
-          <div>
-            <el-button type="text" @click="data.scrollIntoView='markdown-1'">Overview</el-button>
-          </div>
-          <div>
-            <el-button type="text" @click="data.scrollIntoView='markdown-2'">Key Metrics</el-button>
-          </div>
-        </div>
+        <div slot="sidebar">"""
+
+    for vis in metric_visualizations:
+        template_str += vis.template_sidebar_str
+
+    template_str += """\n        </div>
       
         <div style="padding: 0 15px;">"""
 
     for vis in metric_visualizations:
-        template_str += vis.template_str
+        template_str += vis.template_main_str
 
     template_str += "\n        </div>\n    </sly-iw-sidebar>\n</div>"
 
@@ -199,7 +197,7 @@ class MetricLoader:
         )
         self.score_profile = self.m_full.confidence_score_profile()
         self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
-        print(f"F1-Optimal confidence: {self.f1_optimal_conf:.4f} with f1: {self.best_f1:.4f}")
+        # print(f"F1-Optimal confidence: {self.f1_optimal_conf:.4f} with f1: {self.best_f1:.4f}")
 
         matches_thresholded = metric_provider.filter_by_conf(
             eval_data["matches"], self.f1_optimal_conf
@@ -255,7 +253,7 @@ class MetricLoader:
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
         self._process_visualizations(_METRIC_VISUALIZATIONS)
-        self._process_prediction_table()  # TODO integrate into sections
+        # self._process_prediction_table()  # TODO integrate into sections
         self._save_template(_METRIC_VISUALIZATIONS)
 
         with tqdm_sly(
@@ -278,30 +276,15 @@ class MetricLoader:
 
         logger.info(f"Uploaded to: {dest_dir!r}")
 
-    def _process_visualizations(self, metric_visualizations: List[MetricVisualization]):
+    def _process_visualizations(self, metric_visualizations: List[MetricVis]):
         for mv in metric_visualizations:
-            methods = [
-                (mv.get_figure, mv.name, False),
-                (mv.get_switchable_figures, mv.name, True),
-                # (mv.get_table, mv.name),
-                (mv.get_click_data, f"{mv.name}_chart_click", False),
-            ]
-
             self._write_markdown_data(mv)
-
-            for method, name, is_iterable in methods:
-                vis = method(self)
-                if vis is not None:
-                    if is_iterable:
-                        for idx, single_vis in enumerate(vis, start=1):
-                            self._write_json_data(name, single_vis, fig_idx=idx)
-                    else:
-                        self._write_json_data(name, vis)
+            self._write_json_data(mv)
 
     def _process_prediction_table(self):
         self._write_json_data("prediction_table", self.m.prediction_table())
 
-    def _write_markdown_data(self, metric_visualization: MetricVisualization):
+    def _write_markdown_data(self, metric_visualization: MetricVis):
         for item in metric_visualization.schema:
             if isinstance(item, Bidget.Markdown):
 
@@ -312,41 +295,39 @@ class MetricLoader:
 
                 logger.info("Saved: %r", f"{item.name}.md")
 
-    def _write_json_data(
-        self,
-        basename: str,
-        data: Union[go.Figure, dict, pd.DataFrame],
-        fig_idx: Optional[int] = None,
-    ):
-        _data = deepcopy(data)
-        if isinstance(data, go.Figure):
-            _data = {
-                "selected": None,
-                "galleryContent": "",
-                "dialogVisible": False,
-                "chartContent": json.loads(_data.to_json()),
-            }
-        elif isinstance(data, pd.DataFrame):
-            _data = data.to_dict()
+    def _write_json_data(self, mv: MetricVis):
+        for widget in mv.schema:
+            if isinstance(widget, Bidget.Chart):
+                fig = mv.get_figure(self, widget)
+                if fig is not None:
+                    fig_data = {
+                        "selected": None,
+                        "galleryContent": "",
+                        "dialogVisible": False,
+                        "chartContent": json.loads(fig.to_json()),
+                    }
+                    basename = f"{mv.name}_{widget.name}"
+                    local_path = f"{self.tmp_dir}/data/{basename}.json"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        json.dump(fig_data, f)
+                    logger.info("Saved: %r", f"{basename}.json")
 
-        if fig_idx is not None:
-            fig_idx = "{:02d}".format(fig_idx)
-            basename = f"{basename}_{fig_idx}"
+                click_data = mv.get_click_data(self, widget)
+                if click_data is not None:
+                    basename = f"{mv.name}_{widget.name}_click_chart"
+                    local_path = f"{self.tmp_dir}/data/{basename}.json"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        json.dump(click_data, f)
+                    logger.info("Saved: %r", f"{basename}.json")
 
-        local_path = f"{self.tmp_dir}/data/{basename}.json"
-        with open(local_path, "w", encoding="utf-8") as f:
-            json.dump(_data, f)
-
-        logger.info("Saved: %r", f"{basename}.json")
-
-    def _generate_template(self, metric_visualizations: Tuple[MetricVisualization]) -> str:
+    def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}
         main_template = Template(main_template_str)
         for vis in metric_visualizations:
             html_snippets.update(vis.get_html_snippets(self))
         return main_template.render(**html_snippets)
 
-    def _save_template(self, metric_visualizations: Tuple[MetricVisualization]):
+    def _save_template(self, metric_visualizations: Tuple[MetricVis]):
         template_content = self._generate_template(metric_visualizations)
         local_path = f"{self.tmp_dir}/template.vue"
         with open(local_path, "w", encoding="utf-8") as f:

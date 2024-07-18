@@ -67,5 +67,98 @@ This chart further analyzes Recall, breaking it down to each class in separate.
 
 Since the overall recall is calculated as an average across all classes, we provide a chart showing the recall for each individual class. This illustrates how much each class contributes to the overall recall.
 
-_Bars in the chart are sorted by <abbr title="{definitions.f1_score}">F1-score</abbr> to keep a unified order of classes between different charts._
+_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+"""
+
+
+markdown_P = """## Precision
+
+This section measures the accuracy of all predictions made by the model. In other words, this answers the question: “Of all predictions made by the model, how many of them are actually correct?”.
+
+To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
+"""
+
+# precision_metric = NotificationBox(
+#     f"Precision = {base_metrics['precision']:.4f}",
+#     f"The model correctly predicted <b>{g.m.TP_count} of {g.m.TP_count + g.m.FP_count}</b> predictions made by the model in total.",
+# )
+
+markdown_P_perclass = """### Per-class Precision
+
+This chart further analyzes Precision, breaking it down to each class in separate.
+
+Since the overall precision is computed as an average across all classes, we provide a chart showing the precision for each class individually. This illustrates how much each class contributes to the overall precision.
+
+_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._"""
+
+
+markdown_PR = """## Recall vs. Precision
+
+This section compares Precision and Recall on a common graph, identifying **disbalance** between these two.
+
+_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+"""
+
+
+markdown_pr_curve = """## Precision-Recall Curve
+
+Precision-Recall curve is an overall performance indicator. It helps to visually assess both precision and recall for all predictions made by the model on the whole dataset. This gives you an understanding of how precision changes as you attempt to increase recall, providing a view of **trade-offs between precision and recall** <abbr title="{}">(?)</abbr>. Ideally, a high-quality model will maintain strong precision as recall increases. This means that as you move from left to right on the curve, there should not be a significant drop in precision. Such a model is capable of finding many relevant instances, maintaining a high level of precision.
+"""
+# collapsables = Collapse(
+#     [
+#         # Collapse.Item(
+#         #     "About Trade-offs between precision and recall",
+#         #     "About Trade-offs between precision and recall",
+#         #     Container(
+#         #         [
+#         #             Markdown(
+#         #                 "A system with high recall but low precision returns many results, but most of its predictions are incorrect or redundant (false positive). A system with high precision but low recall is just the opposite, returning very few results, most of its predictions are correct. An ideal system with high precision and high recall will return many results, with all results predicted correctly.",
+#         #                 show_border=False,
+#         #             ),
+#         #         ]
+#         #     ),
+#         # ),
+#         Collapse.Item(
+#             "What is PR curve?",
+#             "What is PR curve?",
+#             Container(
+#                 [
+#                     Markdown(
+#                         f"""
+# Imagine you sort all the predictions by their <abbr title="{definitions.confidence_score}">confidence scores</abbr> from highest to lowest and write it down in a table. As you iterate over each sorted prediction, you classify it as a <abbr title="{definitions.true_positives}">true positive</abbr> (TP) or a <abbr title="{definitions.false_positives}">false positive</abbr> (FP). For each prediction, you then calculate the cumulative precision and recall so far. Each prediction is plotted as a point on a graph, with recall on the x-axis and precision on the y-axis. Now you have a plot very similar to the PR-curve, but it appears as a zig-zag curve due to variations as you move from one prediction to the next.
+
+# **Forming the Actual PR Curve**: The true PR curve is derived by plotting only the maximum precision value for each recall level across all thresholds.
+# This means you connect only the highest points of precision for each segment of recall, smoothing out the zig-zags and forming a curve that typically slopes downward as recall increases.
+# """,
+#                         show_border=False,
+#                     ),
+#                 ]
+#             ),
+#         ),
+#     ]
+# )
+
+
+# notibox_map = NotificationBox(f"mAP = {g.m.base_metrics()['mAP']:.2f}")
+
+markdown_pr_by_class = """### Precision-Recall Curve by Class
+
+In this plot, you can evaluate PR curve for each class individually.
+"""
+
+markdown_confusion_matrix = """## Confusion Matrix
+
+Confusion matrix helps to find the number of confusions between different classes made by the model.
+Each row of the matrix represents the instances in a ground truth class, while each column represents the instances in a predicted class.
+The diagonal elements represent the number of correct predictions for each class (True Positives), and the off-diagonal elements show misclassifications.
+"""
+
+
+markdown_frequently_confused = """### Frequently Confused Classes
+
+This chart displays the most frequently confused pairs of classes. In general, it finds out which classes visually seem very similar to the model.
+
+The chart calculates the **probability of confusion** between different pairs of classes. For instance, if the probability of confusion for the pair “{} - {}” is {}, this means that when the model predicts either “{}” or “{}”, there is a {}% chance that the model might mistakenly predict one instead of the other.
+
+The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
 """

@@ -1,7 +1,10 @@
+# pylint: disable=no-member
+# pylint: disable=not-an-iterable
+
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple
 
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.metric_loader import MetricLoader
@@ -60,8 +63,8 @@ template_chart_str = """
                   'dataSource': '{{ init_data_source }}',
                 },{% if chart_click_data_source %}
                 'chart-click': {
-                  'dataSource': '{{ chart_click_data_source }}',
-                  'getKey': (payload) => payload.points[0].data.name,
+                  'dataSource': '{{ chart_click_data_source }}',{% if cls_name=='outcome_counts' %}
+                  'getKey': (payload) => payload.points[0].data.name,{% endif %}
                 },{% endif %}
               }"
               :command="{{ command }}"
@@ -73,17 +76,27 @@ template_chart_str = """
 class BaseBidget:
     def __init__(self) -> None:
         self.type = camel_to_snake(self.__class__.__name__)
+        self.id = f"{self.type}_{rand_str(5)}"
         self.name = None
 
 
 class Bidget:
 
     class Markdown(BaseBidget):
-        def __init__(self) -> None:
+
+        def __init__(self, header: Optional[str] = None) -> None:
             self.is_before_chart = None  # see self.template_str
+            self.header = header
             super().__init__()
 
     class Chart(BaseBidget):
+
+        def __init__(self, key: Optional[str] = None) -> None:
+            self.key = key
+            super().__init__()
+
+    class Table(BaseBidget):
+
         def __init__(self) -> None:
             super().__init__()
 
@@ -91,22 +104,23 @@ class Bidget:
 class Schema:
 
     def __init__(self, **kwargs) -> None:
-        for argname, asset in kwargs.items():
-            asset.name = argname
-            setattr(self, argname, asset)
+        for argname, widget in kwargs.items():
+            widget.name = argname
+            setattr(self, argname, widget)
 
-    def __iter__(self):
-        # Iterate over all attributes of the instance
+    def __iter__(self) -> Iterator:
         for attr in vars(self).values():
             yield attr
 
+    def __getitem__(self, key) -> Bidget:
+        return getattr(self, key)
+
     def __repr__(self):
-        # Create a string representation of the schema elements
         elements = ", ".join(f"{attr.name} ({attr.type})" for attr in self)
         return f"Schema({elements})"
 
 
-class MetricVisualization:
+class MetricVis:
 
     cv_tasks: Tuple[CVTask] = tuple(CVTask.values())
     clickable: bool = False
@@ -115,11 +129,21 @@ class MetricVisualization:
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
 
-    schema: Schema = Schema()
+    schema: Schema = None
 
     # pylint: disable=no-self-argument
     @classproperty
-    def template_str(cls) -> str:
+    def template_sidebar_str(cls) -> str:
+        res = ""
+        for item in cls.schema:
+            if isinstance(item, Bidget.Markdown):
+                if item.header is not None:
+                    res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{item.id}'">{item.header}</el-button>\n          </div>"""
+        return res
+
+    # pylint: disable=no-self-argument
+    @classproperty
+    def template_main_str(cls) -> str:
         res = ""
         _is_before_chart = True
         for item in cls.schema:
@@ -151,15 +175,11 @@ class MetricVisualization:
         return camel_to_snake(cls.__name__)
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget) -> Optional[go.Figure]:
         pass
 
     @classmethod
-    def get_switchable_figures(cls, loader: MetricLoader) -> Optional[Tuple[go.Figure]]:
-        pass
-
-    @classmethod
-    def get_click_data(cls, loader: MetricLoader) -> Optional[dict]:
+    def get_click_data(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[dict]:
         pass
 
     @classmethod
@@ -174,7 +194,7 @@ class MetricVisualization:
 
                 res[f"{item.name}_html"] = cls._template_markdown.render(
                     {
-                        "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
+                        "widget_id": item.id,
                         "data_source": f"/data/{item.name}.md",
                         "command": "command",
                         "data": "data",
@@ -186,11 +206,12 @@ class MetricVisualization:
                 chart_click_path = f"/data/{cls.name}_chart_click.json" if cls.clickable else None
                 res[f"{cls.name}_html"] = cls._template_chart.render(
                     {
-                        "widget_id": f"{cls.name}-chart-{rand_str(5)}",
-                        "init_data_source": f"/data/{cls.name}.json",
+                        "widget_id": item.id,
+                        "init_data_source": f"/data/{cls.name}_{item.name}.json",
                         "chart_click_data_source": chart_click_path,
                         "command": "command",
                         "data": "data",
+                        "cls_name": cls.name,
                     }
                 )
                 continue
@@ -198,7 +219,7 @@ class MetricVisualization:
             if isinstance(item, Bidget.Markdown) and not item.is_before_chart:
                 res[f"{item.name}_html"] = cls._template_markdown.render(
                     {
-                        "widget_id": f"{cls.name}-markdown-{rand_str(5)}",
+                        "widget_id": item.id,
                         "data_source": f"/data/{item.name}.md",
                         "command": "command",
                         "data": "data",
@@ -209,25 +230,25 @@ class MetricVisualization:
         return res
 
     @classmethod
-    def _get_md_content(cls, item: Bidget):
-        return getattr(contents, item.name)
+    def _get_md_content(cls, widget: Bidget):
+        return getattr(contents, widget.name)
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Bidget):
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
         # redefinable method
-        return cls._get_md_content(item.name)
+        return cls._get_md_content(widget)
 
 
-class Overview(MetricVisualization):
+class Overview(MetricVis):
 
     schema = Schema(
-        markdown_overview=Bidget.Markdown(),
-        markdown_key_metrics=Bidget.Markdown(),
+        markdown_overview=Bidget.Markdown(header="Overview"),
+        markdown_key_metrics=Bidget.Markdown(header="Key Metrics"),
         chart=Bidget.Chart(),
     )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
         # Overall Metrics
         base_metrics = loader.m.base_metrics()
         r = list(base_metrics.values())
@@ -254,9 +275,9 @@ class Overview(MetricVisualization):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Bidget):
-        res = cls._get_md_content(item)
-        if item.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
             return res.format(
                 definitions.average_precision,
                 definitions.confidence_threshold,
@@ -265,17 +286,17 @@ class Overview(MetricVisualization):
         return res
 
 
-class OutcomeCounts(MetricVisualization):
+class OutcomeCounts(MetricVis):
 
     clickable: bool = True
 
     schema = Schema(
-        markdown_outcome_counts=Bidget.Markdown(),
+        markdown_outcome_counts=Bidget.Markdown(header="Outcome Counts"),
         chart=Bidget.Chart(),
     )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
         # Outcome counts
         fig = go.Figure()
         fig.add_trace(
@@ -316,13 +337,13 @@ class OutcomeCounts(MetricVisualization):
         return fig
 
     @classmethod
-    def get_click_data(cls, loader: MetricLoader) -> Optional[dict]:
+    def get_click_data(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[dict]:
         res = {}
-        for k, v in loader.click_data.outcome_counts.items():
-            res[k] = {}
-            res[k]["projectMeta"] = loader.dt_project_meta.to_json()
-            res[k]["layoutData"] = {}
-            res[k]["layout"] = []
+        for key, v in loader.click_data.outcome_counts.items():
+            res[key] = {}
+            res[key]["projectMeta"] = loader.dt_project_meta.to_json()
+            res[key]["layoutData"] = {}
+            res[key]["layout"] = []
 
             tmp = {0: [], 1: [], 2: [], 3: []}
 
@@ -331,7 +352,7 @@ class OutcomeCounts(MetricVisualization):
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
                 info: ImageInfo = loader.dt_images[img_id]
-                res[k]["layoutData"][ui_id] = {
+                res[key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
                         "imageId": info.id,
@@ -345,14 +366,14 @@ class OutcomeCounts(MetricVisualization):
                 if len(tmp[3]) < 5:
                     tmp[idx % 4].append(ui_id)
 
-            for key, val in tmp.items():
-                res[k]["layout"].append(val)
+            for _, val in tmp.items():
+                res[key]["layout"].append(val)
 
         return res
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Bidget):
-        res = cls._get_md_content(item)
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
         return res.format(
             definitions.true_positives,
             definitions.false_positives,
@@ -360,15 +381,15 @@ class OutcomeCounts(MetricVisualization):
         )
 
 
-class Recall(MetricVisualization):
+class Recall(MetricVis):
     schema = Schema(
-        markdown_R=Bidget.Markdown(),
+        markdown_R=Bidget.Markdown(header="Recall"),
         markdown_R_perclass=Bidget.Markdown(),
         chart=Bidget.Chart(),
     )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")
         fig = px.bar(
@@ -388,22 +409,24 @@ class Recall(MetricVisualization):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, item: Bidget):
-        res = cls._get_md_content(item)
-        return res.format(
-            definitions.f1_score,
-        )
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_R_perclass.name:
+            return res.format(
+                definitions.f1_score,
+            )
+        return res
 
 
-class Precision(MetricVisualization):
+class Precision(MetricVis):
     schema = Schema(
-        markdown_R=Bidget.Markdown(),
-        markdown_R_perclass=Bidget.Markdown(),
+        markdown_P=Bidget.Markdown(header="Precision"),
+        markdown_P_perclass=Bidget.Markdown(),
         chart=Bidget.Chart(),
     )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="precision")
         fig = px.bar(
@@ -423,11 +446,24 @@ class Precision(MetricVisualization):
         fig.update_yaxes(title_text="Precision", range=[0, 1])
         return fig
 
+    @classmethod
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_P_perclass.name:
+            return res.format(
+                definitions.f1_score,
+            )
+        return res
 
-class RecallVsPrecision(MetricVisualization):
+
+class RecallVsPrecision(MetricVis):
+    schema = Schema(
+        markdown_PR=Bidget.Markdown(header="Recall vs Precision"),
+        chart=Bidget.Chart(),
+    )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
         fig = go.Figure()
@@ -456,11 +492,24 @@ class RecallVsPrecision(MetricVisualization):
         # fig.show()
         return fig
 
+    @classmethod
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_PR.name:
+            return res.format(
+                definitions.f1_score,
+            )
+        return res
 
-class PRCurve(MetricVisualization):
+
+class PRCurve(MetricVis):
+    schema = Schema(
+        markdown_pr_curve=Bidget.Markdown(header="Precision-Recall Curve"),
+        chart=Bidget.Chart(),
+    )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
         # Precision-Recall curve
         fig = px.line(
             x=loader.m.recThrs,
@@ -495,11 +544,24 @@ class PRCurve(MetricVisualization):
         # fig.show()
         return fig
 
+    @classmethod
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_pr_curve.name:
+            return res.format(
+                definitions.f1_score,
+            )
+        return res
 
-class PRCurveByClass(MetricVisualization):
+
+class PRCurveByClass(MetricVis):
+    schema = Schema(
+        markdown_pr_by_class=Bidget.Markdown(header="PR Curve by Class"),
+        chart=Bidget.Chart(),
+    )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
 
         # Precision-Recall curve per-class
         df = pd.DataFrame(loader.m.pr_curve(), columns=loader.m.cat_names)
@@ -522,10 +584,17 @@ class PRCurveByClass(MetricVisualization):
         return fig
 
 
-class ConfusionMatrix(MetricVisualization):
+class ConfusionMatrix(MetricVis):
+
+    clickable = True
+
+    schema = Schema(
+        markdown_confusion_matrix=Bidget.Markdown(header="Confusion Matrix"),
+        chart=Bidget.Chart(),
+    )
 
     @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[go.Figure]:
         confusion_matrix = loader.m.confusion_matrix()
         # Confusion Matrix
         # TODO: Green-red
@@ -561,40 +630,99 @@ class ConfusionMatrix(MetricVisualization):
         # fig.show()
         return fig
 
+    @classmethod
+    def get_click_data(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[dict]:
+        res = {}
+        for k, v in loader.click_data.confusion_matrix.items():
+            key = f"{k[0]}-{k[1]}"
+            res[key] = {}
+            res[key]["projectMeta"] = loader.dt_project_meta.to_json()
+            res[key]["layoutData"] = {}
+            res[key]["layout"] = []
 
-class FrequentlyConfused(MetricVisualization):
+            tmp = {0: [], 1: [], 2: [], 3: []}
+            images = set(x["dt_img_id"] for x in v)
+
+            for idx, img_id in enumerate(images):
+                ui_id = f"ann_{img_id}"
+                info: ImageInfo = loader.dt_images[img_id]
+                res[key]["layoutData"][ui_id] = {
+                    "imageUrl": info.preview_url,
+                    "annotation": {
+                        "imageId": info.id,
+                        "imageName": info.name,
+                        "createdAt": info.created_at,
+                        "updatedAt": info.updated_at,
+                        "link": info.link,
+                        "annotation": loader.dt_ann_jsons[img_id],
+                    },
+                }
+                if len(tmp[3]) < 5:
+                    tmp[idx % 4].append(ui_id)
+
+            for _, val in tmp.items():
+                res[key]["layout"].append(val)
+
+        return res
+
+
+class FrequentlyConfused(MetricVis):
 
     clickable: bool = True
     switchable: bool = True
 
+    schema = Schema(
+        markdown_frequently_confused=Bidget.Markdown(header="Frequently Confused Classes"),
+        chart_01=Bidget.Chart(key="probability"),
+        chart_02=Bidget.Chart(key="count"),
+    )
+
     @classmethod
-    def get_switchable_figures(cls, loader: MetricLoader) -> Optional[Tuple[go.Figure]]:
+    def get_figure(cls, loader: MetricLoader, widget: Bidget.Chart) -> Optional[Tuple[go.Figure]]:
 
         confusion_matrix = loader.m.confusion_matrix()
 
         # Frequency of confusion as bar chart
         confused_df = loader.m.frequently_confused(confusion_matrix, topk_pairs=20)
         confused_name_pairs = confused_df["category_pair"]
-        confused_prob = confused_df["probability"]
-        confused_cnt = confused_df["count"]
         x_labels = [f"{pair[0]} - {pair[1]}" for pair in confused_name_pairs]
-        figs = []
-        for y_labels in (confused_prob, confused_cnt):
-            fig = go.Figure()
-            fig.add_trace(
-                go.Bar(x=x_labels, y=y_labels, marker=dict(color=confused_prob, colorscale="Reds"))
+        y_labels = confused_df[widget.key]
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(x=x_labels, y=y_labels, marker=dict(color=y_labels, colorscale="Reds"))
+        )
+        fig.update_layout(
+            # title="Frequently confused class pairs",
+            xaxis_title="Class pair",
+            yaxis_title=y_labels.name.capitalize(),
+        )
+        fig.update_traces(text=y_labels.round(2))
+        return fig
+
+    @classmethod
+    def get_md_content(cls, loader: MetricLoader, widget: Bidget):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_frequently_confused.name:
+            df = loader.m.frequently_confused(loader.m.confusion_matrix(), topk_pairs=20)
+            pair = df["category_pair"][0]
+            prob = df["probability"][0]
+            return res.format(
+                pair[0],
+                pair[1],
+                prob.round(2),
+                pair[0],
+                pair[1],
+                (prob * 100).round(),
+                pair[0],
+                pair[1],
+                pair[1],
+                pair[0],
             )
-            fig.update_layout(
-                # title="Frequently confused class pairs",
-                xaxis_title="Class pair",
-                yaxis_title=y_labels.name.capitalize(),
-            )
-            fig.update_traces(text=y_labels.round(2))
-            figs.append(fig)
-        return tuple(figs)
+        return res
 
 
-class IOUDistribution(MetricVisualization):
+class IOUDistribution(MetricVis):
 
     @classmethod
     def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
@@ -626,7 +754,7 @@ class IOUDistribution(MetricVisualization):
         return fig
 
 
-class ReliabilityDiagram(MetricVisualization):
+class ReliabilityDiagram(MetricVis):
 
     @classmethod
     def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
@@ -669,7 +797,7 @@ class ReliabilityDiagram(MetricVisualization):
         return fig
 
 
-class ConfidenceScore(MetricVisualization):
+class ConfidenceScore(MetricVis):
 
     @classmethod
     def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
@@ -709,7 +837,7 @@ class ConfidenceScore(MetricVisualization):
         return fig
 
 
-class ConfidenceDistribution(MetricVisualization):
+class ConfidenceDistribution(MetricVis):
 
     @classmethod
     def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
@@ -789,7 +917,7 @@ class ConfidenceDistribution(MetricVisualization):
         return fig
 
 
-class F1ScoreAtDifferentIOU(MetricVisualization):
+class F1ScoreAtDifferentIOU(MetricVis):
 
     @classmethod
     def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
@@ -836,7 +964,7 @@ class F1ScoreAtDifferentIOU(MetricVisualization):
         return fig
 
 
-class PerClassAvgPrecision(MetricVisualization):
+class PerClassAvgPrecision(MetricVis):
 
     @classmethod
     def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
@@ -859,7 +987,7 @@ class PerClassAvgPrecision(MetricVisualization):
         return fig
 
 
-class PerClassOutcomeCounts(MetricVisualization):
+class PerClassOutcomeCounts(MetricVis):
 
     clickable: bool = True
 
@@ -932,7 +1060,7 @@ class PerClassOutcomeCounts(MetricVisualization):
         return (fig, fig_)
 
 
-class OverallErrorAnalysis(MetricVisualization):
+class OverallErrorAnalysis(MetricVis):
 
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
@@ -1027,7 +1155,7 @@ class OverallErrorAnalysis(MetricVisualization):
         return fig
 
 
-class ClasswiseErrorAnalysis(MetricVisualization):
+class ClasswiseErrorAnalysis(MetricVis):
 
     cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
 
