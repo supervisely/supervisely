@@ -236,13 +236,17 @@ class BaseBenchmark:
     
     def _fetch_model_info(self, session: SessionJSON):
         deploy_info = session.get_deploy_info()
-        task_info = self.api.task.get_info_by_id(session.task_id)
-        app_info = task_info["meta"]["app"]
-        app_info = {
-            "name": app_info["name"],
-            "version": app_info["version"],
-            "id": app_info["id"],
-        }
+        if session.task_id is not None:
+            task_info = self.api.task.get_info_by_id(session.task_id)
+            app_info = task_info["meta"]["app"]
+            app_info = {
+                "name": app_info["name"],
+                "version": app_info["version"],
+                "id": app_info["id"],
+            }
+        else:
+            sly.logger.warn("session.task_id is not set. App info will not be fetched.")
+            app_info = None
         model_info = {
             **deploy_info,
             "inference_settings": session.inference_settings,
