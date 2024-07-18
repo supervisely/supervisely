@@ -375,6 +375,47 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
+    def create_bulk(
+        self,
+        figures_json: List[dict],
+        entity_id: int = None,
+        dataset_id: int = None,
+        batch_size=200,
+    ) -> List[int]:
+        """
+        Create figures in Supervisely in bulk.
+        To optimize creation of a large number of figures use dataset ID instead of entity ID.
+        In this case figure jsons list can contain figures from different entities for the same dataset.
+        Every figure json must contain corresponding entity ID.
+
+        *NOTE*: Geometries for AlphaMask must be uploaded separately via `upload_geometries_batch` method.
+
+        :param figures_json: List of figures in Supervisely JSON format.
+        :type figures_json: List[dict]
+        :param entity_id: Entity ID.
+        :type entity_id: int
+        :param dataset_id: Dataset ID.
+        :type dataset_id: int
+        :return: List of figure IDs.
+        """
+        figure_ids = []
+        if len(figures_json) == 0:
+            return figure_ids
+
+        if entity_id is None and dataset_id is None:
+            raise ValueError("Either entity_id or dataset_id must be provided")
+        if dataset_id is not None:
+            body = {ApiField.DATASET_ID: dataset_id}
+        else:
+            body = {ApiField.ENTITY_ID: entity_id}
+
+        for batch_jsons in batched(figures_json, batch_size):
+            body[ApiField.FIGURES] = batch_jsons
+            response = self._api.post("figures.bulk.add", body)
+            for resp_obj in response.json():
+                figure_ids.append(resp_obj[ApiField.ID])
+        return figure_ids
+
     def download(
         self,
         dataset_id: int,

@@ -307,6 +307,26 @@ class MaskTracking(Inference):
                 frame_loader=self.cache.download_frame,
                 frames_loader=self.cache.download_frames,
             )
+            range_of_frames = [
+                self.video_interface.frames_indexes[0],
+                self.video_interface.frames_indexes[-1],
+            ]
+            
+            if self.cache.is_persistent:
+                # if cache is persistent, run cache task for whole video
+                self.cache.run_cache_task_manually(
+                    api,
+                    None,
+                    video_id=self.video_interface.video_id,
+                )
+            else:
+                # if cache is not persistent, run cache task for range of frames
+                self.cache.run_cache_task_manually(
+                    api,
+                    [range_of_frames],
+                    video_id=self.video_interface.video_id,
+                )
+
             api.logger.info("Starting tracking process")
             # load frames
             frames = self.video_interface.frames

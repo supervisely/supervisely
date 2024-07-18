@@ -1325,3 +1325,26 @@ def is_archive(file_path: str) -> bool:
     ]
 
     return mimetypes.guess_type(file_path)[0] in archive_mimetypes
+
+
+def str_is_url(string: str) -> bool:
+    """
+    Check if string is a valid URL.
+    :param string: string to check
+    :type string: str
+    :return: True if string is a valid URL, False otherwise
+    :rtype: bool
+    :Usage example:
+     .. code-block:: python
+        import supervisely as sly
+        url = 'https://example.com/image.jpg'
+        is_url = sly.fs.str_is_url(url)
+        print(is_url)  # True
+    """
+    from urllib.parse import urlparse
+
+    try:
+        result = urlparse(string)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
