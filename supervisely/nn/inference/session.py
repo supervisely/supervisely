@@ -652,10 +652,9 @@ class Session(SessionJSON):
         return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
-        if not isinstance(self._model_meta, sly.ProjectMeta):
-            model_meta_json = super().get_model_meta()
-            model_meta = sly.ProjectMeta.from_json(model_meta_json)
-            self._model_meta = model_meta
+        model_meta_json = super().get_model_meta()
+        model_meta = sly.ProjectMeta.from_json(model_meta_json)
+        self._model_meta = model_meta
         return self._model_meta
 
     def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
