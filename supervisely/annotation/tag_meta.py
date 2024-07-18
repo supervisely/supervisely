@@ -609,13 +609,18 @@ class TagMeta(KeyObject, JsonSerializable):
         return not self == other
 
     def is_compatible(self, other: TagMeta) -> bool:
-        """is_compatible"""
-        return (
-            isinstance(other, TagMeta)
-            and self.name == other.name
-            and self.value_type == other.value_type
-            and sorted(self.possible_values) == sorted(other.possible_values)
-        )
+        """Check if the current TagMeta instance is compatible with another TagMeta instance."""
+        if (
+            not isinstance(other, TagMeta)
+            or self.name != other.name
+            or self.value_type != other.value_type
+        ):
+            return False
+
+        if self.value_type == TagValueType.ONEOF_STRING:
+            return sorted(self.possible_values) == sorted(other.possible_values)
+        else:
+            return True
 
     def clone(
         self,
