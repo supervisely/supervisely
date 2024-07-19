@@ -675,7 +675,7 @@ class Inference:
         ) -> Tuple[List[Annotation], dict]:
         t0 = time.time()
         predictions, benchmark = self.predict_benchmark(images_np, settings)
-        total_time = time.time() - t0
+        total_time = (time.time() - t0) * 1000  # ms
         benchmark = {
             "total": total_time,
             "preprocess": benchmark.get("preprocess"),
@@ -723,8 +723,8 @@ class Inference:
         :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
 
-        :return: tuple of annotation and benchmark dict with speedtest results in seconds.
-            The benchmark dict should contain the following keys (all values are in seconds):
+        :return: tuple of annotation and benchmark dict with speedtest results in milliseconds.
+            The benchmark dict should contain the following keys (all values in milliseconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
                 steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to calculate meaningful predictions.
@@ -1326,7 +1326,7 @@ class Inference:
     ):
         """Run benchmark on project images.
         """
-        logger.debug("Inferring project...", extra={"state": state})
+        logger.debug("Running speedtest...", extra={"state": state})
         project_id = state["projectId"]
         batch_size = state["batch_size"]
         num_iterations = state["num_iterations"]
@@ -1377,6 +1377,7 @@ class Inference:
 
         preparing_progress["status"] = "inference"
         preparing_progress["current"] = 0
+        preparing_progress["total"] = num_iterations
 
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
@@ -1411,6 +1412,7 @@ class Inference:
                             upload_f(batch)
                         continue
                     if stop_event.is_set():
+                        self._on_inference_end(None, async_inference_request_uuid)
                         return
                     time.sleep(1)
             except Exception as e:
@@ -1791,12 +1793,8 @@ class Inference:
                 request.state.state,
                 inference_request_uuid,
             )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
             logger.debug(
-                "Inference has scheduled from 'inference_project_id_async' endpoint",
+                "Speedtest has scheduled from 'run_benchmark' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
             )
             return {
@@ -2203,7 +2201,7 @@ class Timer:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end = time.time()
-        self.duration = self.end - self.start
+        self.duration = (self.end - self.start) * 1000  # ms
 
     def get_time(self):
         return self.duration
