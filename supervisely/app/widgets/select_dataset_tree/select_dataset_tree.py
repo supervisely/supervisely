@@ -250,7 +250,6 @@ class SelectDatasetTree(Widget):
         :param id: The ID of the dataset.
         :type id: int
         """
-        self._dataset_id = dataset_id
         self._select_dataset.set_selected_by_id(dataset_id)
 
     def set_dataset_ids(self, dataset_ids: List[int]) -> None:
@@ -262,7 +261,6 @@ class SelectDatasetTree(Widget):
         """
         if not self._multiselect:
             raise ValueError("This method can only be called when multiselect is enabled.")
-        self._dataset_id = dataset_ids
         self._select_dataset.set_selected_by_id(dataset_ids)
 
     def value_changed(self, func: Callable) -> Callable:
