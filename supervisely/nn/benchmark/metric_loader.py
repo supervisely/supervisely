@@ -29,22 +29,22 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
-    # Overview,
+    Overview,
     OutcomeCounts,
-    # Recall,
-    # Precision,
-    # RecallVsPrecision,
-    # PRCurve,
-    # PRCurveByClass,
+    Recall,
+    Precision,
+    RecallVsPrecision,
+    PRCurve,
+    PRCurveByClass,
     ConfusionMatrix,
     FrequentlyConfused,
-    # IOUDistribution,
-    # ReliabilityDiagram,
-    # ConfidenceScore,
-    # ConfidenceDistribution,
-    # F1ScoreAtDifferentIOU,
-    # PerClassAvgPrecision,
-    # PerClassOutcomeCounts,
+    IOUDistribution,
+    ReliabilityDiagram,
+    ConfidenceScore,
+    F1ScoreAtDifferentIOU,
+    ConfidenceDistribution,
+    PerClassAvgPrecision,
+    PerClassOutcomeCounts,
     # segmentation-only
     # # TODO integrate binary files while saving to self.tmp_dir to the current solution
     # OverallErrorAnalysis,
@@ -328,7 +328,7 @@ class MetricLoader:
         res = {}
         for mv in metric_visualizations:
             for widget in mv.schema:
-                if isinstance(widget, Widget.Chart) and mv.clickable:
+                if isinstance(widget, Widget.Chart) and mv.switchable:
                     res[mv.radiogroup_id] = widget.switch_key
                     break
         return res
