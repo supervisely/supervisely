@@ -148,7 +148,7 @@ class TreeSelect(Widget):
         :rtype: Dict[str, List[Dict]]
         """
         return {
-            "items": [item.to_json() for item in self._items],
+            "items": [item.to_json() for item in self._items] if self._items else [],
             "width": self._width,
         }
 

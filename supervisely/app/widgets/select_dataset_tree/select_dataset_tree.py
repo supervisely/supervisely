@@ -225,7 +225,7 @@ class SelectDatasetTree(Widget):
         return self._project_id
 
     @project_id.setter
-    def project_id(self, project_id: int) -> None:
+    def project_id(self, project_id: Optional[int]) -> None:
         """Set the project ID to read datasets from.
 
         :param project_id: The ID of the project.
@@ -449,7 +449,7 @@ class SelectDatasetTree(Widget):
 
         return convert_tree_to_list(dataset_tree)
 
-    def set_project_id(self, project_id: int) -> None:
+    def set_project_id(self, project_id: Optional[int]) -> None:
         """Set the project ID to read datasets from.
 
         :param project_id: The ID of the project.
