@@ -1,4 +1,4 @@
-from typing import NamedTuple, Dict, Any
+from dataclasses import dataclass
 
 
 class TaskType:
@@ -20,22 +20,29 @@ class Runtime:
     TENSORRT = "TensorRT"
 
 
-class ModelInfo(NamedTuple):
-    model_name: str
-    architecture: str
-    task_type: str
-    model_source: str
+class ModelSource:
+    PRETRAINED = "Pretrained models"
+    CUSTOM = "Custom models"
 
 
-class DeployInfo(NamedTuple):
-    model_name: str
+@dataclass
+class ModelInfo:
+    checkpoint: str = None      # e.g. "YOLOv8-L (COCO)"
+    model_variant: str = None   # e.g. "YOLOv8-L"
+    architecture: str = None    # e.g. "YOLOv8"
+
+
+@dataclass
+class DeployInfo:
+    checkpoint: str
+    model_variant: str
     architecture: str
     task_type: str
     model_source: str
     device: str
     runtime: str
     hardware: str
-    deploy_params: Dict[str, Any]
+    deploy_params: dict
 
 
 def get_hardware_info(idx: int = 0) -> str:
