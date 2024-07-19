@@ -433,7 +433,7 @@ class SelectDatasetTree(Widget):
 
             :param node: The current node in the tree (a tuple of DatasetInfo and its children).
             :param parent_id: The ID of the parent dataset, if any.
-            :return: A list of dictionaries representing the dataset hierarchy.
+            :return: A list of SelectDatasetTree.Item objects representing the tree.
             """
             result = []
             for dataset_info, children in node.items():
