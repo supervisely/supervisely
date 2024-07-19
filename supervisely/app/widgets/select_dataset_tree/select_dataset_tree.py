@@ -52,6 +52,7 @@ class SelectDatasetTree(Widget):
     - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
     - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
     - `is_all_selected() -> bool`: Check if all datasets are selected.
+    - `select_all() -> None`: Select all datasets.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -224,7 +225,7 @@ class SelectDatasetTree(Widget):
         return self._project_id
 
     @project_id.setter
-    def project_id(self, project_id: int) -> None:
+    def project_id(self, project_id: Optional[int]) -> None:
         """Set the project ID to read datasets from.
 
         :param project_id: The ID of the project.
@@ -249,7 +250,6 @@ class SelectDatasetTree(Widget):
         :param id: The ID of the dataset.
         :type id: int
         """
-        self._dataset_id = dataset_id
         self._select_dataset.set_selected_by_id(dataset_id)
 
     def set_dataset_ids(self, dataset_ids: List[int]) -> None:
@@ -261,7 +261,6 @@ class SelectDatasetTree(Widget):
         """
         if not self._multiselect:
             raise ValueError("This method can only be called when multiselect is enabled.")
-        self._dataset_id = dataset_ids
         self._select_dataset.set_selected_by_id(dataset_ids)
 
     def value_changed(self, func: Callable) -> Callable:
@@ -434,7 +433,7 @@ class SelectDatasetTree(Widget):
 
             :param node: The current node in the tree (a tuple of DatasetInfo and its children).
             :param parent_id: The ID of the parent dataset, if any.
-            :return: A list of dictionaries representing the dataset hierarchy.
+            :return: A list of SelectDatasetTree.Item objects representing the tree.
             """
             result = []
             for dataset_info, children in node.items():
@@ -450,7 +449,7 @@ class SelectDatasetTree(Widget):
 
         return convert_tree_to_list(dataset_tree)
 
-    def set_project_id(self, project_id: int) -> None:
+    def set_project_id(self, project_id: Optional[int]) -> None:
         """Set the project ID to read datasets from.
 
         :param project_id: The ID of the project.
@@ -502,3 +501,7 @@ class SelectDatasetTree(Widget):
         rtype: bool
         """
         return self._select_dataset.is_all_selected()
+
+    def select_all(self) -> None:
+        """Select all datasets."""
+        self._select_dataset.select_all()

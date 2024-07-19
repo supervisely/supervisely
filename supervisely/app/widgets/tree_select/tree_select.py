@@ -148,7 +148,7 @@ class TreeSelect(Widget):
         :rtype: Dict[str, List[Dict]]
         """
         return {
-            "items": [item.to_json() for item in self._items],
+            "items": [item.to_json() for item in self._items] if self._items else [],
             "width": self._width,
         }
 
@@ -200,7 +200,7 @@ class TreeSelect(Widget):
             return [TreeSelect.Item.from_json(item) for item in res]
         return TreeSelect.Item.from_json(res)
 
-    def _set_value(self, value: Union[List[TreeSelect.Item], TreeSelect.Item]):
+    def _set_value(self, value: Optional[Union[List[TreeSelect.Item], TreeSelect.Item]]):
         """Set the selected item(s) as instances of the Item class.
 
         :param value: The selected item(s).
@@ -212,7 +212,7 @@ class TreeSelect(Widget):
         elif value is not None:
             json_value = value.to_json()
         else:
-            json_value = None
+            json_value = None if not self._multiple else []
         StateJson()[self.widget_id]["value"] = json_value
         StateJson().send_changes()
 
