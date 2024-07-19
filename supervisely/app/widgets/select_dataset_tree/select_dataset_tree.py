@@ -52,6 +52,7 @@ class SelectDatasetTree(Widget):
     - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
     - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
     - `is_all_selected() -> bool`: Check if all datasets are selected.
+    - `select_all() -> None`: Select all datasets.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -502,3 +503,7 @@ class SelectDatasetTree(Widget):
         rtype: bool
         """
         return self._select_dataset.is_all_selected()
+
+    def select_all(self) -> None:
+        """Select all datasets."""
+        self._select_dataset.select_all()
