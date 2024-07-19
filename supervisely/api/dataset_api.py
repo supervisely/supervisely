@@ -918,3 +918,60 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                     yield from yield_tree(children, new_path)
 
         yield from yield_tree(self.get_tree(project_id), [])
+
+    def get_nested(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
+        """Returns a list of all nested datasets in the specified dataset.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :param dataset_id: Dataset ID for which the nested datasets are returned.
+        :type dataset_id: int
+
+        :return: List of nested datasets.
+        :rtype: List[DatasetInfo]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+            dataset_id = 456
+
+            datasets = api.dataset.get_nested(project_id, dataset_id)
+            for dataset in datasets:
+                print(dataset.name, dataset.id) # Output: ds1 123
+
+        """
+        tree = self.get_tree(project_id)
+
+        nested = []
+
+        def recurse(tree: Dict[DatasetInfo, Dict], needed_dataset: bool = False):
+            for dataset_info, children in tree.items():
+                if needed_dataset:
+                    nested.append(dataset_info)
+
+                recurse(children, needed_dataset or dataset_info.id == dataset_id)
+
+        recurse(tree)
+        return nested
+
+    def exists(self, project_id: int, name: str, parent_id: int = None) -> bool:
+        """
+        Checks if the dataset with the given name exists in the project.
+        If parent_id is not None, the search will be performed in the specified Dataset.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :param name: Dataset name.
+        :type name: str
+        :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
+        :type parent_id: Union[int, None]
+        :return: True if the dataset exists, False otherwise.
+        :rtype: bool
+        """
+        return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None
