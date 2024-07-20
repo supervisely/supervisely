@@ -90,44 +90,6 @@ template_gallery_str = """<sly-iw-gallery
             />"""
 
 
-def explorer(api, loader: MetricLoader, grid_gallery, selected_image_name="000000575815.jpg"):
-
-    gt_image_infos = api.image.get_list(dataset_id=loader.gt_dataset_id)[:5]
-    pred_image_infos = api.image.get_list(dataset_id=loader.dt_dataset_id)[:5]
-    diff_image_infos = api.image.get_list(dataset_id=loader.diff_dataset_id)[:5]
-
-    # gt_image_infos = g.api.image.get_list(dataset_id=g.gt_dataset_id)[:5]
-    # pred_image_infos = g.api.image.get_list(dataset_id=g.gt_dataset_id)[:5]
-    # diff_image_infos = g.api.image.get_list(dataset_id=g.gt_dataset_id)[:5]
-
-    project_metas = [
-        ProjectMeta.from_json(data=api.project.get_meta(id=x))
-        for x in [loader.gt_project_id, loader.dt_project_id, loader.diff_project_id]
-    ]
-    # project_metas = [
-    #     sly.ProjectMeta.from_json(data=g.api.project.get_meta(id=x))
-    #     for x in [g.gt_project_id, g.gt_project_id, g.gt_project_id]
-    # ]
-    for gt_image, pred_image, diff_image in zip(gt_image_infos, pred_image_infos, diff_image_infos):
-        image_infos = [gt_image, pred_image, diff_image]
-        ann_infos = [api.annotation.download(x.id) for x in image_infos]
-
-        for idx, (image_info, ann_info, project_meta) in enumerate(
-            zip(image_infos, ann_infos, project_metas)
-        ):
-            image_name = image_info.name
-            image_url = image_info.full_storage_url
-            is_ignore = True if idx == 0 else False
-            grid_gallery.append(
-                title=image_name,
-                image_url=image_url,
-                annotation_info=ann_info,
-                column_index=idx,
-                project_meta=project_meta,
-                ignore_tags_filtering=is_ignore,
-            )
-
-
 class BaseWidget:
     def __init__(self) -> None:
         self.type = camel_to_snake(self.__class__.__name__)
@@ -197,7 +159,7 @@ class MetricVis:
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
     _template_radiogroup = Template(template_radiogroup_str)
-    _template_gallery_str = Template(template_gallery_str)
+    _template_gallery = Template(template_gallery_str)
     _keypair_sep = "-"
 
     schema: Schema = None
@@ -241,7 +203,7 @@ class MetricVis:
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
-            if isinstance(widget, Widget.Chart):
+            if isinstance(widget, (Widget.Chart, Widget.Gallery, Widget.Table)):
                 basename = f"{widget.name}_{cls.name}"
                 if cls.switchable and not is_radiobuttons_added:
                     res += _add_radio_buttons(res)
@@ -250,9 +212,6 @@ class MetricVis:
                 if cls.clickable:
                     res += "\n            {{ " + f"{basename}_clickdata_html" + " }}"
                 continue
-
-            if isinstance(widget, Widget.Gallery):
-                basename = f"{widget.name}_{cls.name}"
 
             if isinstance(widget, Widget.Markdown) and not _is_before_chart:
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
@@ -296,6 +255,16 @@ class MetricVis:
                         "switchable": cls.switchable,
                         "radio_group": cls.radiogroup_id,
                         "switch_key": widget.switch_key,
+                    }
+                )
+            if isinstance(widget, Widget.Gallery):
+                basename = f"{widget.name}_{cls.name}"
+                res[f"{basename}_html"] = cls._template_gallery.render(
+                    {
+                        "widget_id": widget.id,
+                        "init_data_source": f"/data/{basename}.json",
+                        "command": "command",
+                        "data": "data",
                     }
                 )
 
@@ -389,7 +358,34 @@ class ExplorerGrid(MetricVis):
     @classmethod
     def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery):
         res = {}
-        explorer(loader._api, loader, widget.gallery)
+        api = loader._api
+        gt_image_infos = api.image.get_list(dataset_id=loader.gt_dataset_id)[:5]
+        pred_image_infos = api.image.get_list(dataset_id=loader.dt_dataset_id)[:5]
+        diff_image_infos = api.image.get_list(dataset_id=loader.diff_dataset_id)[:5]
+        project_metas = [
+            ProjectMeta.from_json(data=api.project.get_meta(id=x))
+            for x in [loader.gt_project_id, loader.dt_project_id, loader.diff_project_id]
+        ]
+        for gt_image, pred_image, diff_image in zip(
+            gt_image_infos, pred_image_infos, diff_image_infos
+        ):
+            image_infos = [gt_image, pred_image, diff_image]
+            ann_infos = [api.annotation.download(x.id) for x in image_infos]
+
+            for idx, (image_info, ann_info, project_meta) in enumerate(
+                zip(image_infos, ann_infos, project_metas)
+            ):
+                image_name = image_info.name
+                image_url = image_info.full_storage_url
+                is_ignore = True if idx == 0 else False
+                widget.gallery.append(
+                    title=image_name,
+                    image_url=image_url,
+                    annotation_info=ann_info,
+                    column_index=idx,
+                    project_meta=project_meta,
+                    ignore_tags_filtering=is_ignore,
+                )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
         res["layoutData"] = res.pop("annotations")
