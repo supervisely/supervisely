@@ -30,7 +30,8 @@ from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
     # Overview,
-    ExplorerGrid,
+    # ExplorerGrid,
+    ModelPredictions,
     # WhatIs,
     # OutcomeCounts,
     # Recall,
@@ -246,11 +247,13 @@ class MetricLoader:
 
         tmp = {}
         self.dt_images = {}
+        self.dt_images_by_name = {}
         for d in datasets:
             images = self._api.image.get_list(d.id)
             tmp[d.id] = [x.id for x in images]
-            for image in images:
-                self.dt_images[image.id] = image
+            for info in images:
+                self.dt_images[info.id] = info
+                self.dt_images_by_name[info.name] = info
 
         self.dt_ann_jsons = {
             ann.image_id: ann.annotation
@@ -287,9 +290,6 @@ class MetricLoader:
 
         logger.info(f"Uploaded to: {dest_dir!r}")
 
-    def _process_prediction_table(self):
-        self._write_json_data("prediction_table", self.m.prediction_table())
-
     def _write_markdown_data(self, metric_visualization: MetricVis):
         for item in metric_visualization.schema:
             if isinstance(item, Widget.Markdown):
@@ -325,8 +325,18 @@ class MetricLoader:
                         with open(local_path, "w", encoding="utf-8") as f:
                             f.write(ujson.dumps(click_data))
                         logger.info("Saved: %r", basename)
+
             if isinstance(widget, Widget.Gallery):
                 content = mv.get_gallery(self, widget)
+                if content is not None:
+                    basename = f"{widget.name}_{mv.name}.json"
+                    local_path = f"{self.tmp_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(ujson.dumps(content))
+                    logger.info("Saved: %r", basename)
+
+            if isinstance(widget, Widget.Table):
+                content = mv.get_table(self, widget)
                 if content is not None:
                     basename = f"{widget.name}_{mv.name}.json"
                     local_path = f"{self.tmp_dir}/data/{basename}"

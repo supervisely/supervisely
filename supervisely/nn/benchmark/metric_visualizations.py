@@ -89,6 +89,17 @@ template_gallery_str = """<sly-iw-gallery
               :data="{{ data }}"
             />"""
 
+template_table_str = """<sly-iw-table
+                iw-widget-id="{{ widget_id }}"
+                :actions="{
+                  'init': {
+                    'dataSource': '{{ init_data_source }}',
+                  },
+                }"
+              :command="{{ command }}"
+              :data="{{ data }}"
+              >"""
+
 
 class BaseWidget:
     def __init__(self) -> None:
@@ -115,6 +126,9 @@ class Widget:
     class Table(BaseWidget):
 
         def __init__(self) -> None:
+            from supervisely.app.widgets.fast_table.fast_table import FastTable
+
+            self.table = FastTable
             super().__init__()
 
     class Gallery(BaseWidget):
@@ -160,6 +174,7 @@ class MetricVis:
     _template_chart = Template(template_chart_str)
     _template_radiogroup = Template(template_radiogroup_str)
     _template_gallery = Template(template_gallery_str)
+    _template_table = Template(template_table_str)
     _keypair_sep = "-"
 
     schema: Schema = None
@@ -268,6 +283,17 @@ class MetricVis:
                     }
                 )
 
+            if isinstance(widget, Widget.Table):
+                basename = f"{widget.name}_{cls.name}"
+                res[f"{basename}_html"] = cls._template_table.render(
+                    {
+                        "widget_id": widget.id,
+                        "init_data_source": f"/data/{basename}.json",
+                        "command": "command",
+                        "data": "data",
+                    }
+                )
+
         return res
 
     # pylint: disable=no-self-argument
@@ -352,6 +378,7 @@ class Overview(MetricVis):
 class ExplorerGrid(MetricVis):
 
     schema = Schema(
+        markdown_explorer=Widget.Markdown(header="Explore Predictions"),
         gallery=Widget.Gallery(),
     )
 
@@ -389,6 +416,91 @@ class ExplorerGrid(MetricVis):
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
         res["layoutData"] = res.pop("annotations")
+
+        return res
+
+
+class ModelPredictions(MetricVis):
+
+    schema = Schema(
+        markdown_predictions_gallery=Widget.Markdown(header="Model Predictions"),
+        gallery=Widget.Gallery(),
+        markdown_predictions_table=Widget.Markdown(header="Prediction Table"),
+        table=Widget.Table(),
+    )
+
+    @classmethod
+    def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery):
+        res = {}
+        api = loader._api
+        selected_image_name = "000000575815.jpg"
+        gt_image_info = api.image.get_info_by_name(loader.gt_dataset_id, selected_image_name)
+        pred_image_info = api.image.get_info_by_name(loader.dt_dataset_id, selected_image_name)
+        diff_image_info = api.image.get_info_by_name(loader.diff_dataset_id, selected_image_name)
+
+        images_infos = [gt_image_info, pred_image_info, diff_image_info]
+        anns_infos = [api.annotation.download(x.id) for x in images_infos]
+        project_metas = [
+            ProjectMeta.from_json(data=api.project.get_meta(id=x))
+            for x in [loader.gt_project_id, loader.dt_project_id, loader.diff_project_id]
+        ]
+
+        for idx, (image_info, ann_info, project_meta) in enumerate(
+            zip(images_infos, anns_infos, project_metas)
+        ):
+            image_name = image_info.name
+            image_url = image_info.full_storage_url
+            widget.gallery.append(
+                title=image_name,
+                image_url=image_url,
+                annotation_info=ann_info,
+                column_index=idx,
+                project_meta=project_meta,
+            )
+        res.update(widget.gallery.get_json_state())
+        res.update(widget.gallery.get_json_data()["content"])
+        res["layoutData"] = res.pop("annotations")
+
+        return res
+
+    @classmethod
+    def get_table(cls, loader: MetricLoader, widget: Widget.Table) -> dict | None:
+        res = {}
+        tmp = loader._api.image.get_list(dataset_id=loader.dt_dataset_id)
+        df = loader.m.prediction_table()
+        df = df[df["image_name"].isin([x.name for x in tmp])]
+        columns_options = [{}] * len(df.columns)
+        for idx, col in enumerate(columns_options):
+            if idx == 0:
+                continue
+            columns_options[idx] = {"maxValue": df.iloc[:, idx].max()}
+        table_model_preds = widget.table(df, columns_options=columns_options)
+        tbl = table_model_preds.to_json()
+
+        res["columns"] = tbl["columns"]
+        res["columnsOptions"] = columns_options
+        res["content"] = []
+
+        from supervisely.api.image_api import ImageInfo
+
+        key_mapping = {}
+        for old, new in zip(
+            ImageInfo._fields,
+            loader._api.image.info_sequence(),
+        ):
+            key_mapping[old] = new
+
+        for row in tbl["data"]["data"]:
+            name = row["items"][0]
+            info = loader.dt_images_by_name[name]
+
+            dct = {
+                "row": {key_mapping[k]: v for k, v in info._asdict().items()},
+                "id": info.id,
+                "items": row["items"],
+            }
+
+            res["content"].append(dct)
 
         return res
 

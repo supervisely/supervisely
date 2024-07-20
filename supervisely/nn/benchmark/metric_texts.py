@@ -44,6 +44,27 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Inference Speed**: The number of frames per second (FPS) the model can process, measured with a batch size of 1. The inference speed is important in applications, where real-time object detection is required. Additionally, slower models pour more GPU resources, so their inference cost is higher.
 """
 
+markdown_explorer = """## Explore Predictions"""
+
+
+markdown_predictions_gallery = """## Model Predictions
+
+In this section you can visually assess the model performance through examples. This helps users better understand model capabilities and limitations, giving an intuitive grasp of prediction quality in different scenarios.
+
+You can choose one of the sorting method:
+
+- **Auto**: The algorithm is trying to gather a diverse set of images that illustrate the model's performance across various scenarios.
+- **Least accurate**: Displays images where the model made more errors.
+- **Most accurate**: Displays images where the model made fewer or no errors.
+- **Dataset order**: Displays images in the original order of the dataset.
+"""
+
+markdown_predictions_table = """### Prediction Table
+
+The table helps you in finding samples with specific cases of interest. You can sort by parameters such as the number of predictions, or specific a metric, e.g, recall, then click on a row to view this image and predictions.
+
+**Example**: you can sort by **FN** (False Negatives) in descending order to identify samples where the model failed to detect many objects.
+"""
 
 markdown_what_is = """## What is YOLOv8 model? (collapse)
 
