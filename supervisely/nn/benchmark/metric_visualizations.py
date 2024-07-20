@@ -25,6 +25,7 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark import metric_provider
 from supervisely.nn.benchmark.metric_texts import definitions
+from supervisely.project.project_meta import ProjectMeta
 
 
 class classproperty:
@@ -77,8 +78,57 @@ template_chart_str = """
 
 template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
 
+template_gallery_str = """<sly-iw-gallery
+              iw-widget-id="{{ widget_id }}"
+              :actions="{
+                'init': {
+                  'dataSource': '{{ init_data_source }}',
+                },
+              }"
+              :command="{{ command }}"
+              :data="{{ data }}"
+            />"""
 
-class BaseBidget:
+
+def explorer(api, loader: MetricLoader, grid_gallery, selected_image_name="000000575815.jpg"):
+
+    gt_image_infos = api.image.get_list(dataset_id=loader.gt_dataset_id)[:5]
+    pred_image_infos = api.image.get_list(dataset_id=loader.dt_dataset_id)[:5]
+    diff_image_infos = api.image.get_list(dataset_id=loader.diff_dataset_id)[:5]
+
+    # gt_image_infos = g.api.image.get_list(dataset_id=g.gt_dataset_id)[:5]
+    # pred_image_infos = g.api.image.get_list(dataset_id=g.gt_dataset_id)[:5]
+    # diff_image_infos = g.api.image.get_list(dataset_id=g.gt_dataset_id)[:5]
+
+    project_metas = [
+        ProjectMeta.from_json(data=api.project.get_meta(id=x))
+        for x in [loader.gt_project_id, loader.dt_project_id, loader.diff_project_id]
+    ]
+    # project_metas = [
+    #     sly.ProjectMeta.from_json(data=g.api.project.get_meta(id=x))
+    #     for x in [g.gt_project_id, g.gt_project_id, g.gt_project_id]
+    # ]
+    for gt_image, pred_image, diff_image in zip(gt_image_infos, pred_image_infos, diff_image_infos):
+        image_infos = [gt_image, pred_image, diff_image]
+        ann_infos = [api.annotation.download(x.id) for x in image_infos]
+
+        for idx, (image_info, ann_info, project_meta) in enumerate(
+            zip(image_infos, ann_infos, project_metas)
+        ):
+            image_name = image_info.name
+            image_url = image_info.full_storage_url
+            is_ignore = True if idx == 0 else False
+            grid_gallery.append(
+                title=image_name,
+                image_url=image_url,
+                annotation_info=ann_info,
+                column_index=idx,
+                project_meta=project_meta,
+                ignore_tags_filtering=is_ignore,
+            )
+
+
+class BaseWidget:
     def __init__(self) -> None:
         self.type = camel_to_snake(self.__class__.__name__)
         self.id = f"{self.type}_{rand_str(5)}"
@@ -87,22 +137,35 @@ class BaseBidget:
 
 class Widget:
 
-    class Markdown(BaseBidget):
+    class Markdown(BaseWidget):
 
         def __init__(self, header: Optional[str] = None) -> None:
             # self.is_before_chart = None  # see self.template_str
             self.header = header
             super().__init__()
 
-    class Chart(BaseBidget):
+    class Chart(BaseWidget):
 
         def __init__(self, switch_key: Optional[str] = None) -> None:
             self.switch_key = switch_key
             super().__init__()
 
-    class Table(BaseBidget):
+    class Table(BaseWidget):
 
         def __init__(self) -> None:
+            super().__init__()
+
+    class Gallery(BaseWidget):
+
+        def __init__(self) -> None:
+            from supervisely.app.widgets import GridGalleryV2
+
+            self.gallery = GridGalleryV2(
+                columns_number=3,
+                enable_zoom=False,
+                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+            )
+
             super().__init__()
 
 
@@ -134,6 +197,7 @@ class MetricVis:
     _template_markdown = Template(template_markdown_str)
     _template_chart = Template(template_chart_str)
     _template_radiogroup = Template(template_radiogroup_str)
+    _template_gallery_str = Template(template_gallery_str)
     _keypair_sep = "-"
 
     schema: Schema = None
@@ -186,6 +250,9 @@ class MetricVis:
                 if cls.clickable:
                     res += "\n            {{ " + f"{basename}_clickdata_html" + " }}"
                 continue
+
+            if isinstance(widget, Widget.Gallery):
+                basename = f"{widget.name}_{cls.name}"
 
             if isinstance(widget, Widget.Markdown) and not _is_before_chart:
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
@@ -253,6 +320,10 @@ class MetricVis:
         pass
 
     @classmethod
+    def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery) -> Optional[dict]:
+        pass
+
+    @classmethod
     def _get_md_content(cls, widget: Widget.Markdown):
         return getattr(contents, widget.name)
 
@@ -306,6 +377,45 @@ class Overview(MetricVis):
                 definitions.confidence_threshold,
                 definitions.confidence_score,
             )
+        return res
+
+
+class ExplorerGrid(MetricVis):
+
+    schema = Schema(
+        gallery=Widget.Gallery(),
+    )
+
+    @classmethod
+    def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery):
+        res = {}
+        explorer(loader._api, loader, widget.gallery)
+        res.update(widget.gallery.get_json_state())
+        res.update(widget.gallery.get_json_data()["content"])
+        res["layoutData"] = res.pop("annotations")
+
+        return res
+
+
+class WhatIs(MetricVis):
+
+    schema = Schema(
+        markdown_what_is=Widget.Markdown(header="What is YOLOv8 model"),
+        markdown_experts=Widget.Markdown(header="Expert Insights"),
+        markdown_how_to_use=Widget.Markdown(
+            header="How To Use: Training, Inference, Evaluation Loop"
+        ),
+    )
+
+    @classmethod
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+        res = cls._get_md_content(widget)
+        # if widget.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
+        #     return res.format(
+        #         definitions.average_precision,
+        #         definitions.confidence_threshold,
+        #         definitions.confidence_score,
+        #     )
         return res
 
 

@@ -44,6 +44,34 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Inference Speed**: The number of frames per second (FPS) the model can process, measured with a batch size of 1. The inference speed is important in applications, where real-time object detection is required. Additionally, slower models pour more GPU resources, so their inference cost is higher.
 """
 
+
+markdown_what_is = """## What is YOLOv8 model? (collapse)
+
+Можно также добавить ссылку на наш блог пост, если есть
+
+![blog post link]
+
+**О чем еще здесь можно рассказать:**
+
+- Ключевая инфа о модели текстом: год, конференция, paper, гитхаб, какой скор на лидерборде от авторов, в каком сценарии эта модель была или есть SOTA и в каком году. Что-то ещё из того что писали про свою модель сами авторы, взять из ридми на гитхабе.
+- Особенности модели, чем отличается от остальных, какую проблему решали авторы этой моделью.
+- Для чего эта модель идеально подходит, какие сценарии использования? Возможно авторы проектировали модель под специальный use case, описать это. Например, YOLO подходит для real-time object detection, для real-time detection на видео.
+- Историческая справка, как развивалась модель, прошлые версии.
+- Краткий анализ метрик. На чем модель фейлит, а в чем хорошо предсказывает.
+"""
+
+markdown_experts = """## Expert insights?
+
+linkedin - ответ на вопрос когда применять когда нет, что лучше или хуже, что нужно учитывать. текст в свободной форме
+"""
+
+markdown_how_to_use = """## How To Use: Training, inference, evaluation loop (collapse)
+
+Однотипная диаграмка, и небольшой текст со ссылками - Sly apps, inference notebooks, docker images, … небольшой раздел со ссылками на документацию (embeddings sampling, improvement loop, active learning, labeling jobs, model comparison, .… – стандартизован для всех моделей). какие-то модели будут частично интегрированы
+
+Jupyter notebooks + python scripts + apps + videos + guides + …
+"""
+
 markdown_outcome_counts = """## Outcome Counts
 
 This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.

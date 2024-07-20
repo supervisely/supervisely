@@ -29,22 +29,24 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
-    Overview,
-    OutcomeCounts,
-    Recall,
-    Precision,
-    RecallVsPrecision,
-    PRCurve,
-    PRCurveByClass,
-    ConfusionMatrix,
-    FrequentlyConfused,
-    IOUDistribution,
-    ReliabilityDiagram,
-    ConfidenceScore,
-    F1ScoreAtDifferentIOU,
-    ConfidenceDistribution,
-    PerClassAvgPrecision,
-    PerClassOutcomeCounts,
+    # Overview,
+    ExplorerGrid,
+    # WhatIs,
+    # OutcomeCounts,
+    # Recall,
+    # Precision,
+    # RecallVsPrecision,
+    # PRCurve,
+    # PRCurveByClass,
+    # ConfusionMatrix,
+    # FrequentlyConfused,
+    # IOUDistribution,
+    # ReliabilityDiagram,
+    # ConfidenceScore,
+    # F1ScoreAtDifferentIOU,
+    # ConfidenceDistribution,
+    # PerClassAvgPrecision,
+    # PerClassOutcomeCounts,
     # segmentation-only
     # # TODO integrate binary files while saving to self.tmp_dir to the current solution
     # OverallErrorAnalysis,
@@ -159,9 +161,7 @@ class ClickData:
 
 class MetricLoader:
 
-    def __init__(
-        self, dt_project_id: int, cocoGt_path: str, cocoDt_path: str, eval_data_path: str
-    ) -> None:
+    def __init__(self, cocoGt_path: str, cocoDt_path: str, eval_data_path: str) -> None:
 
         with open(cocoGt_path, "r") as f:
             cocoGt_dataset = json.load(f)
@@ -228,12 +228,21 @@ class MetricLoader:
         self.tmp_dir = None
 
         self._api = Api.from_env()
-        self.dt_project_info = self._api.project.get_info_by_id(dt_project_id, raise_error=True)
+        self.gt_project_id = 39099
+        self.gt_dataset_id = 92810
+        self.dt_project_id = 39141
+        self.dt_dataset_id = 92872
+        self.diff_project_id = 39249
+        self.diff_dataset_id = 93099
+
+        self.dt_project_info = self._api.project.get_info_by_id(
+            self.dt_project_id, raise_error=True
+        )
         self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=dt_project_id)
+            data=self._api.project.get_meta(id=self.dt_project_id)
         )
 
-        datasets = self._api.dataset.get_list(dt_project_id)
+        datasets = self._api.dataset.get_list(self.dt_project_id)
 
         tmp = {}
         self.dt_images = {}
@@ -316,6 +325,14 @@ class MetricLoader:
                         with open(local_path, "w", encoding="utf-8") as f:
                             f.write(ujson.dumps(click_data))
                         logger.info("Saved: %r", basename)
+            if isinstance(widget, Widget.Gallery):
+                content = mv.get_gallery(self, widget)
+                if content is not None:
+                    basename = f"{widget.name}_{mv.name}.json"
+                    local_path = f"{self.tmp_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(ujson.dumps(content))
+                    logger.info("Saved: %r", basename)
 
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}

@@ -77,6 +77,9 @@ class GridGalleryV2(Widget):
 
         #############################
 
+        self._filters = []
+        self._object_bindings = []
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     # def _generate_project_meta(self):
@@ -133,6 +136,8 @@ class GridGalleryV2(Widget):
 
     def get_json_state(self):
         return {
+            "filters": self._filters,
+            "object_bindings": self._object_bindings,
             "options": {
                 "fitOnResize": self._fit_on_resize,
                 "enableZoom": self._enable_zoom,
@@ -142,7 +147,7 @@ class GridGalleryV2(Widget):
                 "enableObjectsPointerEvents": self._enable_pointer_events,
                 "showTransparentBackground": self._transparent_background,
                 "showFilter": self._show_filter,
-            }
+            },
         }
 
     # return {
@@ -294,6 +299,8 @@ class GridGalleryV2(Widget):
 
         for class_name, bindings in self._bindings_dict.items():
             object_bindings.append(filter_unique_ids(bindings))
+
+        self._object_bindings = object_bindings
         DataJson()[self.widget_id]["content"]["objectsBindings"] = object_bindings
 
     def _update_project_meta(self):
@@ -305,6 +312,7 @@ class GridGalleryV2(Widget):
             for filters_tag in self._filters_tags:
                 tmp = list(filters_tag.items())[0]
                 filters.append({"type": "tag", "tagId": tmp[0], "value": tmp[1]})
+        self._filters = filters
         StateJson()[self.widget_id]["filters"] = filters
 
     def _update(self):
