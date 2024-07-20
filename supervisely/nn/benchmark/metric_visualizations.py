@@ -78,6 +78,9 @@ template_chart_str = """
 
 template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
 
+
+"""<el-collapse v-model="activeNames" @change="handleChange">"""
+
 template_gallery_str = """<sly-iw-gallery
               iw-widget-id="{{ widget_id }}"
               :actions="{
@@ -126,12 +129,16 @@ class Widget:
 
     class Collapse(BaseWidget):
 
-        def __init__(self, **kwargs) -> None:
-            for argname, widget in kwargs.items():
-                if isinstance(widget, Widget.Markdown):
-                    widget.name = argname
-                    setattr(self, argname, widget)
+        def __init__(self, schema: Schema) -> None:
             super().__init__()
+            self.schema = schema
+            res = "<el-collapse>"
+            for subwidget in schema:
+                res += f"""\n                <el-collapse-item title="{subwidget.title}">"""
+                res += "\n            {{ " + f"{subwidget.name}_html" + " }}"
+                res += "\n                </el-collapse-item>"
+            res += "\n            </el-collapse>"
+            self.template_schema = Template(res)
 
     class Markdown(BaseWidget):
 
@@ -255,6 +262,10 @@ class MetricVis:
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
+            if isinstance(widget, Widget.Collapse) and _is_before_chart:
+                res += "\n            {{ " + f"{widget.name}_html" + " }}"
+                continue
+
             if isinstance(widget, (Widget.Chart, Widget.Gallery, Widget.Table)):
                 basename = f"{widget.name}_{cls.name}"
                 if cls.switchable and not is_radiobuttons_added:
@@ -284,6 +295,22 @@ class MetricVis:
                         "data": "data",
                     }
                 )
+
+            if isinstance(widget, Widget.Collapse):
+                subres = {}
+                for subwidget in widget.schema:
+
+                    if isinstance(subwidget, Widget.Markdown):
+                        subres[f"{subwidget.name}_html"] = cls._template_markdown.render(
+                            {
+                                "widget_id": subwidget.id,
+                                "data_source": f"/data/{subwidget.name}.md",
+                                "command": "command",
+                                "data": "data",
+                            }
+                        )
+                res[f"{widget.name}_html"] = widget.template_schema.render(**subres)
+                continue
 
             if isinstance(widget, Widget.Notification):
                 res[f"{widget.name}_html"] = cls._template_notification.render(
@@ -804,11 +831,18 @@ class RecallVsPrecision(MetricVis):
 
 
 class PRCurve(MetricVis):
+
     schema = Schema(
         markdown_pr_curve=Widget.Markdown(title="Precision-Recall Curve", is_header=True),
         collapse=Widget.Collapse(
-            markdown_trade_offs=Widget.Markdown(),
-            markdown_what_is_pr_curve=Widget.Markdown(),
+            schema=Schema(
+                markdown_trade_offs=Widget.Markdown(
+                    title="About Trade-offs between precision and recall"
+                ),
+                markdown_what_is_pr_curve=Widget.Markdown(
+                    title="What is PR curve?",
+                ),
+            )
         ),
         chart=Widget.Chart(),
     )
@@ -850,11 +884,17 @@ class PRCurve(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_pr_curve.name:
             return res.format(
                 definitions.f1_score,
+            )
+        if widget.name == cls.schema.collapse.schema.markdown_what_is_pr_curve.name:
+            return res.format(
+                definitions.confidence_score,
+                definitions.true_positives,
+                definitions.false_positives,
             )
         return res
 

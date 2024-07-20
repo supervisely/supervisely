@@ -34,10 +34,10 @@ _METRIC_VISUALIZATIONS = (
     # ModelPredictions,
     # WhatIs,
     # OutcomeCounts,
-    Recall,
+    # Recall,
     # Precision,
     # RecallVsPrecision,
-    # PRCurve,
+    PRCurve,
     # PRCurveByClass,
     # ConfusionMatrix,
     # FrequentlyConfused,
@@ -268,7 +268,7 @@ class MetricLoader:
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
         for mv in _METRIC_VISUALIZATIONS:
-            self._write_text_data(mv)
+            self._write_markdown_files(mv)
             self._write_json_data(mv)
         self._save_template(_METRIC_VISUALIZATIONS)
 
@@ -292,16 +292,26 @@ class MetricLoader:
 
         logger.info(f"Uploaded to: {dest_dir!r}")
 
-    def _write_text_data(self, metric_visualization: MetricVis):
-        for item in metric_visualization.schema:
-            if isinstance(item, Widget.Markdown):
+    def _write_markdown_files(self, metric_visualization: MetricVis):
+        for widget in metric_visualization.schema:
+            if isinstance(widget, Widget.Markdown):
 
-                content = metric_visualization.get_md_content(self, item)
-                local_path = f"{self.tmp_dir}/data/{item.name}.md"
+                content = metric_visualization.get_md_content(self, widget)
+                local_path = f"{self.tmp_dir}/data/{widget.name}.md"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
 
-                logger.info("Saved: %r", f"{item.name}.md")
+                logger.info("Saved: %r", f"{widget.name}.md")
+
+            if isinstance(widget, Widget.Collapse):
+
+                for subwidget in widget.schema:
+                    content = metric_visualization.get_md_content(self, subwidget)
+                    local_path = f"{self.tmp_dir}/data/{subwidget.name}.md"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+
+                    logger.info("Saved: %r", f"{subwidget.name}.md")
 
     def _write_json_data(self, mv: MetricVis):
         for widget in mv.schema:
