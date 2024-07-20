@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.metric_loader import MetricLoader
@@ -100,6 +100,20 @@ template_table_str = """<sly-iw-table
               :data="{{ data }}"
               >"""
 
+template_notification_str = """
+            <sly-iw-notification              
+              iw-widget-id="{{ widget_id }}"
+              :data="{{ data }}"
+            >
+              <span slot="title">
+                {{ title }}
+              </span>
+
+              <span slot="description">
+                {{ description }}
+              </span>
+            </sly-iw-notification>"""
+
 
 class BaseWidget:
     def __init__(self) -> None:
@@ -110,11 +124,27 @@ class BaseWidget:
 
 class Widget:
 
+    class Collapse(BaseWidget):
+
+        def __init__(self, **kwargs) -> None:
+            for argname, widget in kwargs.items():
+                if isinstance(widget, Widget.Markdown):
+                    widget.name = argname
+                    setattr(self, argname, widget)
+            super().__init__()
+
     class Markdown(BaseWidget):
 
-        def __init__(self, header: Optional[str] = None) -> None:
-            # self.is_before_chart = None  # see self.template_str
-            self.header = header
+        def __init__(self, title: Optional[str] = None, is_header: bool = False) -> None:
+            self.title = title
+            self.is_header = is_header
+            super().__init__()
+
+    class Notification(BaseWidget):
+
+        def __init__(self) -> None:
+            self.title = None
+            self.description = None
             super().__init__()
 
     class Chart(BaseWidget):
@@ -150,6 +180,9 @@ class Schema:
     def __init__(self, **kwargs) -> None:
         for argname, widget in kwargs.items():
             widget.name = argname
+            if isinstance(widget, Widget.Notification):
+                widget.title = getattr(contents, argname)["title"]
+                widget.description = getattr(contents, argname)["description"]
             setattr(self, argname, widget)
 
     def __iter__(self) -> Iterator:
@@ -175,6 +208,7 @@ class MetricVis:
     _template_radiogroup = Template(template_radiogroup_str)
     _template_gallery = Template(template_gallery_str)
     _template_table = Template(template_table_str)
+    _template_notification = Template(template_notification_str)
     _keypair_sep = "-"
 
     schema: Schema = None
@@ -189,10 +223,10 @@ class MetricVis:
     @classproperty
     def template_sidebar_str(cls) -> str:
         res = ""
-        for item in cls.schema:
-            if isinstance(item, Widget.Markdown):
-                if item.header is not None:
-                    res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{item.id}'">{item.header}</el-button>\n          </div>"""
+        for widget in cls.schema:
+            if isinstance(widget, Widget.Markdown):
+                if widget.title is not None and widget.is_header:
+                    res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{widget.id}'">{widget.title}</el-button>\n          </div>"""
         return res
 
     # pylint: disable=no-self-argument
@@ -215,6 +249,9 @@ class MetricVis:
                 _is_before_chart = False
 
             if isinstance(widget, Widget.Markdown) and _is_before_chart:
+                res += "\n            {{ " + f"{widget.name}_html" + " }}"
+                continue
+            if isinstance(widget, Widget.Notification) and _is_before_chart:
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
@@ -245,6 +282,18 @@ class MetricVis:
                         "data_source": f"/data/{widget.name}.md",
                         "command": "command",
                         "data": "data",
+                    }
+                )
+
+            if isinstance(widget, Widget.Notification):
+                res[f"{widget.name}_html"] = cls._template_notification.render(
+                    {
+                        "widget_id": widget.id,
+                        "data": "data",
+                        "title": widget.title.format(loader.base_metrics["recall"].round(2)),
+                        "description": widget.description.format(
+                            loader.m.TP_count, (loader.m.TP_count + loader.m.FN_count)
+                        ),
                     }
                 )
 
@@ -331,8 +380,8 @@ class MetricVis:
 class Overview(MetricVis):
 
     schema = Schema(
-        markdown_overview=Widget.Markdown(header="Overview"),
-        markdown_key_metrics=Widget.Markdown(header="Key Metrics"),
+        markdown_overview=Widget.Markdown(title="Overview"),
+        markdown_key_metrics=Widget.Markdown(title="Key Metrics"),
         chart=Widget.Chart(),
     )
 
@@ -378,7 +427,7 @@ class Overview(MetricVis):
 class ExplorerGrid(MetricVis):
 
     schema = Schema(
-        markdown_explorer=Widget.Markdown(header="Explore Predictions"),
+        markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
         gallery=Widget.Gallery(),
     )
 
@@ -423,9 +472,9 @@ class ExplorerGrid(MetricVis):
 class ModelPredictions(MetricVis):
 
     schema = Schema(
-        markdown_predictions_gallery=Widget.Markdown(header="Model Predictions"),
+        markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
         gallery=Widget.Gallery(),
-        markdown_predictions_table=Widget.Markdown(header="Prediction Table"),
+        markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
         table=Widget.Table(),
     )
 
@@ -508,10 +557,10 @@ class ModelPredictions(MetricVis):
 class WhatIs(MetricVis):
 
     schema = Schema(
-        markdown_what_is=Widget.Markdown(header="What is YOLOv8 model"),
-        markdown_experts=Widget.Markdown(header="Expert Insights"),
+        markdown_what_is=Widget.Markdown(title="What is YOLOv8 model", is_header=True),
+        markdown_experts=Widget.Markdown(title="Expert Insights", is_header=True),
         markdown_how_to_use=Widget.Markdown(
-            header="How To Use: Training, Inference, Evaluation Loop"
+            title="How To Use: Training, Inference, Evaluation Loop", is_header=True
         ),
     )
 
@@ -532,7 +581,7 @@ class OutcomeCounts(MetricVis):
     clickable: bool = True
 
     schema = Schema(
-        markdown_outcome_counts=Widget.Markdown(header="Outcome Counts"),
+        markdown_outcome_counts=Widget.Markdown(title="Outcome Counts", is_header=True),
         chart=Widget.Chart(),
     )
 
@@ -625,7 +674,8 @@ class OutcomeCounts(MetricVis):
 
 class Recall(MetricVis):
     schema = Schema(
-        markdown_R=Widget.Markdown(header="Recall"),
+        markdown_R=Widget.Markdown(title="Recall", is_header=True),
+        notification_recall=Widget.Notification(),
         markdown_R_perclass=Widget.Markdown(),
         chart=Widget.Chart(),
     )
@@ -651,7 +701,16 @@ class Recall(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget.Markdown):
+        res = cls._get_md_content(widget)
+        if widget.name == cls.schema.markdown_R_perclass.name:
+            return res.format(
+                definitions.f1_score,
+            )
+        return res
+
+    @classmethod
+    def get_text_widgets(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_R_perclass.name:
             return res.format(
@@ -662,7 +721,7 @@ class Recall(MetricVis):
 
 class Precision(MetricVis):
     schema = Schema(
-        markdown_P=Widget.Markdown(header="Precision"),
+        markdown_P=Widget.Markdown(title="Precision", is_header=True),
         markdown_P_perclass=Widget.Markdown(),
         chart=Widget.Chart(),
     )
@@ -689,7 +748,7 @@ class Precision(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_P_perclass.name:
             return res.format(
@@ -700,7 +759,7 @@ class Precision(MetricVis):
 
 class RecallVsPrecision(MetricVis):
     schema = Schema(
-        markdown_PR=Widget.Markdown(header="Recall vs Precision"),
+        markdown_PR=Widget.Markdown(title="Recall vs Precision", is_header=True),
         chart=Widget.Chart(),
     )
 
@@ -735,7 +794,7 @@ class RecallVsPrecision(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_PR.name:
             return res.format(
@@ -746,7 +805,11 @@ class RecallVsPrecision(MetricVis):
 
 class PRCurve(MetricVis):
     schema = Schema(
-        markdown_pr_curve=Widget.Markdown(header="Precision-Recall Curve"),
+        markdown_pr_curve=Widget.Markdown(title="Precision-Recall Curve", is_header=True),
+        collapse=Widget.Collapse(
+            markdown_trade_offs=Widget.Markdown(),
+            markdown_what_is_pr_curve=Widget.Markdown(),
+        ),
         chart=Widget.Chart(),
     )
 
@@ -787,7 +850,7 @@ class PRCurve(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_pr_curve.name:
             return res.format(
@@ -798,7 +861,7 @@ class PRCurve(MetricVis):
 
 class PRCurveByClass(MetricVis):
     schema = Schema(
-        markdown_pr_by_class=Widget.Markdown(header="PR Curve by Class"),
+        markdown_pr_by_class=Widget.Markdown(title="PR Curve by Class"),
         chart=Widget.Chart(),
     )
 
@@ -831,7 +894,7 @@ class ConfusionMatrix(MetricVis):
     clickable = True
 
     schema = Schema(
-        markdown_confusion_matrix=Widget.Markdown(header="Confusion Matrix"),
+        markdown_confusion_matrix=Widget.Markdown(title="Confusion Matrix"),
         chart=Widget.Chart(),
     )
 
@@ -925,7 +988,7 @@ class FrequentlyConfused(MetricVis):
     _keypair_sep: str = " - "
 
     schema = Schema(
-        markdown_frequently_confused=Widget.Markdown(header="Frequently Confused Classes"),
+        markdown_frequently_confused=Widget.Markdown(title="Frequently Confused Classes"),
         chart_01=Widget.Chart(switch_key="probability"),
         chart_02=Widget.Chart(switch_key="count"),
     )
@@ -954,7 +1017,7 @@ class FrequentlyConfused(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_frequently_confused.name:
             df = loader.m.frequently_confused(loader.m.confusion_matrix(), topk_pairs=20)
@@ -1018,8 +1081,8 @@ class FrequentlyConfused(MetricVis):
 class IOUDistribution(MetricVis):
 
     schema = Schema(
-        markdown_localization_accuracy=Widget.Markdown(header="Localization Accuracy (IoU)"),
-        markdown_iou_distribution=Widget.Markdown(header="IoU Distribution"),
+        markdown_localization_accuracy=Widget.Markdown(title="Localization Accuracy (IoU)"),
+        markdown_iou_distribution=Widget.Markdown(title="IoU Distribution"),
         chart=Widget.Chart(),
     )
 
@@ -1053,7 +1116,7 @@ class IOUDistribution(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_iou_distribution.name:
             return res.format(definitions.iou_score)
@@ -1063,9 +1126,9 @@ class IOUDistribution(MetricVis):
 class ReliabilityDiagram(MetricVis):
 
     schema = Schema(
-        markdown_calibration_score_1=Widget.Markdown(header="Calibration Score"),
+        markdown_calibration_score_1=Widget.Markdown(title="Calibration Score"),
         markdown_calibration_score_2=Widget.Markdown(),
-        markdown_reliability_diagram=Widget.Markdown(header="Reliability Diagram"),
+        markdown_reliability_diagram=Widget.Markdown(title="Reliability Diagram"),
         chart=Widget.Chart(),
     )
 
@@ -1110,7 +1173,7 @@ class ReliabilityDiagram(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_calibration_score_1.name:
             return res.format(definitions.confidence_score)
@@ -1120,7 +1183,7 @@ class ReliabilityDiagram(MetricVis):
 class ConfidenceScore(MetricVis):
 
     schema = Schema(
-        markdown_confidence_score_1=Widget.Markdown(header="Confidence Score Profile"),
+        markdown_confidence_score_1=Widget.Markdown(title="Confidence Score Profile"),
         chart=Widget.Chart(),
         markdown_confidence_score_2=Widget.Markdown(),
         markdown_calibration_score_3=Widget.Markdown(),
@@ -1164,7 +1227,7 @@ class ConfidenceScore(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_confidence_score_1.name:
             return res.format(definitions.confidence_threshold)
@@ -1174,7 +1237,7 @@ class ConfidenceScore(MetricVis):
 class ConfidenceDistribution(MetricVis):
 
     schema = Schema(
-        markdown_confidence_distribution=Widget.Markdown(header="Confidence Distribution"),
+        markdown_confidence_distribution=Widget.Markdown(title="Confidence Distribution"),
         chart=Widget.Chart(),
     )
 
@@ -1256,7 +1319,7 @@ class ConfidenceDistribution(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_confidence_distribution.name:
             return res.format(
@@ -1269,9 +1332,7 @@ class ConfidenceDistribution(MetricVis):
 class F1ScoreAtDifferentIOU(MetricVis):
 
     schema = Schema(
-        markdown_f1_at_ious=Widget.Markdown(
-            header="Confidence Profile at Different IoU thresholds"
-        ),
+        markdown_f1_at_ious=Widget.Markdown(title="Confidence Profile at Different IoU thresholds"),
         chart=Widget.Chart(),
     )
 
@@ -1320,7 +1381,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_f1_at_ious.name:
             return res.format(definitions.iou_threshold)
@@ -1330,7 +1391,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
 class PerClassAvgPrecision(MetricVis):
 
     schema = Schema(
-        markdown_class_ap=Widget.Markdown(header="Average Precision by Class"),
+        markdown_class_ap=Widget.Markdown(title="Average Precision by Class"),
         chart=Widget.Chart(),
     )
 
@@ -1355,7 +1416,7 @@ class PerClassAvgPrecision(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_class_ap.name:
             return res.format(definitions.average_precision)
@@ -1368,7 +1429,7 @@ class PerClassOutcomeCounts(MetricVis):
     switchable: bool = True
 
     schema = Schema(
-        markdown_class_outcome_counts_1=Widget.Markdown(header="Outcome Counts by Class"),
+        markdown_class_outcome_counts_1=Widget.Markdown(title="Outcome Counts by Class"),
         markdown_class_outcome_counts_2=Widget.Markdown(),
         chart_01=Widget.Chart(switch_key="relative"),
         chart_02=Widget.Chart(switch_key="absolute"),
@@ -1428,7 +1489,7 @@ class PerClassOutcomeCounts(MetricVis):
         return fig
 
     @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
+    def get_text_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_class_outcome_counts_1.name:
             return res.format(

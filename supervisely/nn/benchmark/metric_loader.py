@@ -31,10 +31,10 @@ from supervisely.task.progress import tqdm_sly
 _METRIC_VISUALIZATIONS = (
     # Overview,
     # ExplorerGrid,
-    ModelPredictions,
+    # ModelPredictions,
     # WhatIs,
     # OutcomeCounts,
-    # Recall,
+    Recall,
     # Precision,
     # RecallVsPrecision,
     # PRCurve,
@@ -226,6 +226,8 @@ class MetricLoader:
 
         self.click_data = ClickData(self.m, gt_id_mapper, dt_id_mapper)
 
+        self.base_metrics = self.m.base_metrics()
+
         self.tmp_dir = None
 
         self._api = Api.from_env()
@@ -266,7 +268,7 @@ class MetricLoader:
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
         for mv in _METRIC_VISUALIZATIONS:
-            self._write_markdown_data(mv)
+            self._write_text_data(mv)
             self._write_json_data(mv)
         self._save_template(_METRIC_VISUALIZATIONS)
 
@@ -290,7 +292,7 @@ class MetricLoader:
 
         logger.info(f"Uploaded to: {dest_dir!r}")
 
-    def _write_markdown_data(self, metric_visualization: MetricVis):
+    def _write_text_data(self, metric_visualization: MetricVis):
         for item in metric_visualization.schema:
             if isinstance(item, Widget.Markdown):
 

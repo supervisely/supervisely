@@ -105,10 +105,10 @@ This section measures the ability of the model to detect **all relevant instance
 To measure this, we calculate **Recall**. Recall counts errors, when the model does not detect an object that actually is present in a dataset and should be detected. Recall is calculated as the portion of correct predictions (true positives) over all instances in the dataset (true positives + false negatives).
 """
 
-# recall_metric = NotificationBox(
-#     f"Recall = {base_metrics['recall']:.4f}",
-#     f"The model correctly found <b>{g.m.TP_count} of {g.m.TP_count + g.m.FN_count}</b> total instances in the dataset.",
-# )
+notification_recall = {
+    "title": "Recall = {}",
+    "description": "The model correctly found <b>{} of {}</b> total instances in the dataset.",
+}
 
 markdown_R_perclass = """### Per-class Recall
 
@@ -152,6 +152,16 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 markdown_pr_curve = """## Precision-Recall Curve
 
 Precision-Recall curve is an overall performance indicator. It helps to visually assess both precision and recall for all predictions made by the model on the whole dataset. This gives you an understanding of how precision changes as you attempt to increase recall, providing a view of **trade-offs between precision and recall** <abbr title="{}">(?)</abbr>. Ideally, a high-quality model will maintain strong precision as recall increases. This means that as you move from left to right on the curve, there should not be a significant drop in precision. Such a model is capable of finding many relevant instances, maintaining a high level of precision.
+"""
+
+markdown_trade_offs = """A system with high recall but low precision returns many results, but most of its predictions are incorrect or redundant (false positive). A system with high precision but low recall is just the opposite, returning very few results, most of its predictions are correct. An ideal system with high precision and high recall will return many results, with all results predicted correctly."""
+
+markdown_what_is_pr_curve = """Imagine you sort all the predictions by their <abbr title="{definitions.confidence_score}">confidence scores</abbr> from highest to lowest and write it down in a table. As you iterate over each sorted prediction, you classify it as a <abbr title="{definitions.true_positives}">true positive</abbr> (TP) or a <abbr title="{definitions.false_positives}">false positive</abbr> (FP). For each prediction, you then calculate the cumulative precision and recall so far. Each prediction is plotted as a point on a graph, with recall on the x-axis and precision on the y-axis. Now you have a plot very similar to the PR-curve, but it appears as a zig-zag curve due to variations as you move from one prediction to the next.
+
+ **Forming the Actual PR Curve**: The true PR curve is derived by plotting only the maximum precision value for each recall level across all thresholds.
+ This means you connect only the highest points of precision for each segment of recall, smoothing out the zig-zags and forming a curve that typically slopes downward as recall increases.
+"""
+
 """
 # collapsables = Collapse(
 #     [
