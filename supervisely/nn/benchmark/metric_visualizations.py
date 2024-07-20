@@ -79,8 +79,6 @@ template_chart_str = """
 template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
 
 
-"""<el-collapse v-model="activeNames" @change="handleChange">"""
-
 template_gallery_str = """<sly-iw-gallery
               iw-widget-id="{{ widget_id }}"
               :actions="{
@@ -150,8 +148,10 @@ class Widget:
     class Notification(BaseWidget):
 
         def __init__(self) -> None:
-            self.title = None
-            self.description = None
+            self.title: str = None
+            self.description: str = None
+            self.format_title: list = None
+            self.format_desc: list = None
             super().__init__()
 
     class Chart(BaseWidget):
@@ -313,14 +313,15 @@ class MetricVis:
                 continue
 
             if isinstance(widget, Widget.Notification):
+                assert widget.format_desc is not None, AssertionError(
+                    "The 'Widget.Notification.format_tpl' field must not be empty. Please specify the inherited and redefined method MetricVis.<your_vis>.get_html_snippets()"
+                )
                 res[f"{widget.name}_html"] = cls._template_notification.render(
                     {
                         "widget_id": widget.id,
                         "data": "data",
-                        "title": widget.title.format(loader.base_metrics["recall"].round(2)),
-                        "description": widget.description.format(
-                            loader.m.TP_count, (loader.m.TP_count + loader.m.FN_count)
-                        ),
+                        "title": widget.title.format(*widget.format_title),
+                        "description": widget.description.format(*widget.format_desc),
                     }
                 )
 
@@ -700,6 +701,7 @@ class OutcomeCounts(MetricVis):
 
 
 class Recall(MetricVis):
+
     schema = Schema(
         markdown_R=Widget.Markdown(title="Recall", is_header=True),
         notification_recall=Widget.Notification(),
@@ -737,18 +739,22 @@ class Recall(MetricVis):
         return res
 
     @classmethod
-    def get_text_widgets(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_R_perclass.name:
-            return res.format(
-                definitions.f1_score,
-            )
-        return res
+    def get_html_snippets(cls, loader: MetricLoader) -> dict:
+        for widget in cls.schema:
+            if isinstance(widget, Widget.Notification):
+                widget.format_title = [loader.base_metrics["recall"].round(2)]
+                widget.format_desc = [
+                    loader.m.TP_count,
+                    (loader.m.TP_count + loader.m.FN_count),
+                ]
+        return super().get_html_snippets(loader)
 
 
 class Precision(MetricVis):
+
     schema = Schema(
         markdown_P=Widget.Markdown(title="Precision", is_header=True),
+        notification_precision=Widget.Notification(),
         markdown_P_perclass=Widget.Markdown(),
         chart=Widget.Chart(),
     )
@@ -775,13 +781,23 @@ class Precision(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_P_perclass.name:
             return res.format(
                 definitions.f1_score,
             )
         return res
+
+    @classmethod
+    def get_html_snippets(cls, loader: MetricLoader) -> dict:
+        for widget in cls.schema:
+            if isinstance(widget, Widget.Notification):
+                widget.format_title =[ loader.base_metrics["precision"].round(2)]
+                widget.format_desc = [
+                    loader.m.TP_count, (loader.m.TP_count + loader.m.FP_count)
+                ]
+        return super().get_html_snippets(loader)
 
 
 class RecallVsPrecision(MetricVis):
@@ -821,7 +837,7 @@ class RecallVsPrecision(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_PR.name:
             return res.format(
@@ -1057,7 +1073,7 @@ class FrequentlyConfused(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_frequently_confused.name:
             df = loader.m.frequently_confused(loader.m.confusion_matrix(), topk_pairs=20)
@@ -1156,7 +1172,7 @@ class IOUDistribution(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_iou_distribution.name:
             return res.format(definitions.iou_score)
@@ -1213,7 +1229,7 @@ class ReliabilityDiagram(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_calibration_score_1.name:
             return res.format(definitions.confidence_score)
@@ -1267,7 +1283,7 @@ class ConfidenceScore(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_confidence_score_1.name:
             return res.format(definitions.confidence_threshold)
@@ -1359,7 +1375,7 @@ class ConfidenceDistribution(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_confidence_distribution.name:
             return res.format(
@@ -1421,7 +1437,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_f1_at_ious.name:
             return res.format(definitions.iou_threshold)
@@ -1456,7 +1472,7 @@ class PerClassAvgPrecision(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_class_ap.name:
             return res.format(definitions.average_precision)
@@ -1529,7 +1545,7 @@ class PerClassOutcomeCounts(MetricVis):
         return fig
 
     @classmethod
-    def get_text_content(cls, loader: MetricLoader, widget: Widget):
+    def get_md_content(cls, loader: MetricLoader, widget: Widget):
         res = cls._get_md_content(widget)
         if widget.name == cls.schema.markdown_class_outcome_counts_1.name:
             return res.format(

@@ -34,10 +34,10 @@ _METRIC_VISUALIZATIONS = (
     # ModelPredictions,
     # WhatIs,
     # OutcomeCounts,
-    # Recall,
-    # Precision,
+    Recall,
+    Precision,
     # RecallVsPrecision,
-    PRCurve,
+    # PRCurve,
     # PRCurveByClass,
     # ConfusionMatrix,
     # FrequentlyConfused,
@@ -359,8 +359,13 @@ class MetricLoader:
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}
         main_template = Template(main_template_str)
-        for vis in metric_visualizations:
-            html_snippets.update(vis.get_html_snippets(self))
+        for mv in metric_visualizations:
+            for widget in mv.schema:
+                if isinstance(widget, Widget.Notification):
+                    html_snippets.update(mv.get_html_snippets(self))
+
+            html_snippets.update(mv.get_html_snippets(self))
+
         return main_template.render(**html_snippets)
 
     def _generate_state(self, metric_visualizations: Tuple[MetricVis]) -> dict:

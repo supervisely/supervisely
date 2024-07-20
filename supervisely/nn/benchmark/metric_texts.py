@@ -127,10 +127,10 @@ This section measures the accuracy of all predictions made by the model. In othe
 To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
 """
 
-# precision_metric = NotificationBox(
-#     f"Precision = {base_metrics['precision']:.4f}",
-#     f"The model correctly predicted <b>{g.m.TP_count} of {g.m.TP_count + g.m.FP_count}</b> predictions made by the model in total.",
-# )
+notification_precision = {
+    "title": "Precision = {}",
+    "description": "The model correctly predicted <b>{} of {}</b> predictions made by the model in total.",
+}
 
 markdown_P_perclass = """### Per-class Precision
 
