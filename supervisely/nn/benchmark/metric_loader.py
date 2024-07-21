@@ -75,9 +75,6 @@ def generate_main_template(metric_visualizations: List[MetricVis]):
     return template_str
 
 
-main_template_str = generate_main_template(_METRIC_VISUALIZATIONS)
-
-
 class IdMapper:
     def __init__(self, coco_dataset: dict):
         self.map_img = {x["id"]: x["sly_id"] for x in coco_dataset["images"]}
@@ -267,10 +264,12 @@ class MetricLoader:
         self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
         mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
 
-        for mv in _METRIC_VISUALIZATIONS:
-            self._write_markdown_files(mv)
-            self._write_json_data(mv)
-        self._save_template(_METRIC_VISUALIZATIONS)
+        initialized = [mv(self) for mv in _METRIC_VISUALIZATIONS]
+        for new_mv in initialized:
+            for widget in new_mv.schema:
+                self._write_markdown_files(new_mv, widget)
+                self._write_json_files(new_mv, widget)
+        self._save_template(initialized)
 
         with tqdm_sly(
             desc="Uploading .json to teamfiles",
@@ -292,73 +291,71 @@ class MetricLoader:
 
         logger.info(f"Uploaded to: {dest_dir!r}")
 
-    def _write_markdown_files(self, metric_visualization: MetricVis):
-        for widget in metric_visualization.schema:
-            if isinstance(widget, Widget.Markdown):
+    def _write_markdown_files(self, metric_visualization: MetricVis, widget: Widget):
 
-                content = metric_visualization.get_md_content(self, widget)
-                local_path = f"{self.tmp_dir}/data/{widget.name}.md"
+        if isinstance(widget, Widget.Markdown):
+            content = metric_visualization.get_md_content(self, widget)
+            local_path = f"{self.tmp_dir}/data/{widget.name}.md"
+            with open(local_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            logger.info("Saved: %r", f"{widget.name}.md")
+
+        if isinstance(widget, Widget.Collapse):
+            for subwidget in widget.schema:
+                content = metric_visualization.get_md_content(self, subwidget)
+                local_path = f"{self.tmp_dir}/data/{subwidget.name}.md"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
 
-                logger.info("Saved: %r", f"{widget.name}.md")
+                logger.info("Saved: %r", f"{subwidget.name}.md")
 
-            if isinstance(widget, Widget.Collapse):
+    def _write_json_files(self, mv: MetricVis, widget: Widget):
 
-                for subwidget in widget.schema:
-                    content = metric_visualization.get_md_content(self, subwidget)
-                    local_path = f"{self.tmp_dir}/data/{subwidget.name}.md"
-                    with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(content)
+        if isinstance(widget, Widget.Chart):
+            fig = mv.get_figure(self, widget)
+            if fig is not None:
+                fig_data = {
+                    "selected": None,
+                    "galleryContent": "",
+                    "dialogVisible": False,
+                    "chartContent": json.loads(fig.to_json()),
+                }
+                basename = f"{widget.name}_{mv.name}.json"
+                local_path = f"{self.tmp_dir}/data/{basename}"
+                with open(local_path, "w", encoding="utf-8") as f:
+                    json.dump(fig_data, f)
+                logger.info("Saved: %r", basename)
 
-                    logger.info("Saved: %r", f"{subwidget.name}.md")
-
-    def _write_json_data(self, mv: MetricVis):
-        for widget in mv.schema:
-            if isinstance(widget, Widget.Chart):
-                fig = mv.get_figure(self, widget)
-                if fig is not None:
-                    fig_data = {
-                        "selected": None,
-                        "galleryContent": "",
-                        "dialogVisible": False,
-                        "chartContent": json.loads(fig.to_json()),
-                    }
-                    basename = f"{widget.name}_{mv.name}.json"
+                click_data = mv.get_click_data(self, widget)
+                if click_data is not None:
+                    basename = f"{widget.name}_{mv.name}_clickdata.json"
                     local_path = f"{self.tmp_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
-                        json.dump(fig_data, f)
+                        f.write(ujson.dumps(click_data))
                     logger.info("Saved: %r", basename)
 
-                    click_data = mv.get_click_data(self, widget)
-                    if click_data is not None:
-                        basename = f"{widget.name}_{mv.name}_clickdata.json"
-                        local_path = f"{self.tmp_dir}/data/{basename}"
-                        with open(local_path, "w", encoding="utf-8") as f:
-                            f.write(ujson.dumps(click_data))
-                        logger.info("Saved: %r", basename)
+        if isinstance(widget, Widget.Gallery):
+            content = mv.get_gallery(self, widget)
+            if content is not None:
+                basename = f"{widget.name}_{mv.name}.json"
+                local_path = f"{self.tmp_dir}/data/{basename}"
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(ujson.dumps(content))
+                logger.info("Saved: %r", basename)
 
-            if isinstance(widget, Widget.Gallery):
-                content = mv.get_gallery(self, widget)
-                if content is not None:
-                    basename = f"{widget.name}_{mv.name}.json"
-                    local_path = f"{self.tmp_dir}/data/{basename}"
-                    with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(content))
-                    logger.info("Saved: %r", basename)
-
-            if isinstance(widget, Widget.Table):
-                content = mv.get_table(self, widget)
-                if content is not None:
-                    basename = f"{widget.name}_{mv.name}.json"
-                    local_path = f"{self.tmp_dir}/data/{basename}"
-                    with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(content))
-                    logger.info("Saved: %r", basename)
+        if isinstance(widget, Widget.Table):
+            content = mv.get_table(self, widget)
+            if content is not None:
+                basename = f"{widget.name}_{mv.name}.json"
+                local_path = f"{self.tmp_dir}/data/{basename}"
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(ujson.dumps(content))
+                logger.info("Saved: %r", basename)
 
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}
-        main_template = Template(main_template_str)
+        main_template = Template(generate_main_template(metric_visualizations))
         for mv in metric_visualizations:
             for widget in mv.schema:
                 if isinstance(widget, Widget.Notification):

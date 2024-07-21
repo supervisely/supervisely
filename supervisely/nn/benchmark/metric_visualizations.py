@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import inspect
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
 
@@ -140,18 +141,21 @@ class Widget:
 
     class Markdown(BaseWidget):
 
-        def __init__(self, title: Optional[str] = None, is_header: bool = False) -> None:
+        def __init__(
+            self, title: Optional[str] = None, is_header: bool = False, formats: list = []
+        ) -> None:
             self.title = title
             self.is_header = is_header
+            self.formats = formats
             super().__init__()
 
     class Notification(BaseWidget):
 
-        def __init__(self) -> None:
+        def __init__(self, formats_title=None, formats_desc=None) -> None:
             self.title: str = None
             self.description: str = None
-            self.format_title: list = None
-            self.format_desc: list = None
+            self.formats_title: list = formats_title
+            self.formats_desc: list = formats_desc
             super().__init__()
 
     class Chart(BaseWidget):
@@ -184,8 +188,8 @@ class Widget:
 
 class Schema:
 
-    def __init__(self, **kwargs) -> None:
-        for argname, widget in kwargs.items():
+    def __init__(self, **kw_widgets: Widget) -> None:
+        for argname, widget in kw_widgets.items():
             widget.name = argname
             if isinstance(widget, Widget.Notification):
                 widget.title = getattr(contents, argname)["title"]
@@ -206,52 +210,50 @@ class Schema:
 
 class MetricVis:
 
-    cv_tasks: Tuple[CVTask] = tuple(CVTask.values())
-    clickable: bool = False
-    switchable: bool = False
+    def __init__(self) -> None:
 
-    _template_markdown = Template(template_markdown_str)
-    _template_chart = Template(template_chart_str)
-    _template_radiogroup = Template(template_radiogroup_str)
-    _template_gallery = Template(template_gallery_str)
-    _template_table = Template(template_table_str)
-    _template_notification = Template(template_notification_str)
-    _keypair_sep = "-"
+        self.cv_tasks: List[CVTask] = CVTask.values()
+        self.clickable: bool = False
+        self.switchable: bool = False
+        self.schema: Schema = None
 
-    schema: Schema = None
+        self._template_markdown = Template(template_markdown_str)
+        self._template_chart = Template(template_chart_str)
+        self._template_radiogroup = Template(template_radiogroup_str)
+        self._template_gallery = Template(template_gallery_str)
+        self._template_table = Template(template_table_str)
+        self._template_notification = Template(template_notification_str)
+        self._keypair_sep = "-"
 
-    # pylint: disable=no-self-argument
-    @classproperty
-    def radiogroup_id(cls) -> Optional[str]:
-        if cls.switchable:
-            return f"radiogroup_" + cls.name
+    @property
+    def radiogroup_id(self) -> Optional[str]:
+        if self.switchable:
+            return f"radiogroup_" + self.name
 
-    # pylint: disable=no-self-argument
-    @classproperty
-    def template_sidebar_str(cls) -> str:
+    @property
+    def template_sidebar_str(self) -> str:
         res = ""
-        for widget in cls.schema:
+        for widget in self.schema:
             if isinstance(widget, Widget.Markdown):
                 if widget.title is not None and widget.is_header:
                     res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{widget.id}'">{widget.title}</el-button>\n          </div>"""
         return res
 
-    # pylint: disable=no-self-argument
-    @classproperty
-    def template_main_str(cls) -> str:
+    @property
+    def template_main_str(self) -> str:
         res = ""
         _is_before_chart = True
 
         def _add_radio_buttons(res: str):
-            for widget in cls.schema:
+            for widget in self.schema:
                 if isinstance(widget, Widget.Chart):
-                    basename = f"{widget.name}_{cls.name}"
+                    basename = f"{widget.name}_{self.name}"
                     res += "\n            {{ " + f"el_radio_{basename}_html" + " }}"
             return res
 
         is_radiobuttons_added = False
 
-        for widget in cls.schema:
+        for widget in self.schema:
             if isinstance(widget, Widget.Chart):
                 _is_before_chart = False
 
@@ -267,12 +269,12 @@ class MetricVis:
                 continue
 
             if isinstance(widget, (Widget.Chart, Widget.Gallery, Widget.Table)):
-                basename = f"{widget.name}_{cls.name}"
-                if cls.switchable and not is_radiobuttons_added:
+                basename = f"{widget.name}_{self.name}"
+                if self.switchable and not is_radiobuttons_added:
                     res += _add_radio_buttons(res)
                     is_radiobuttons_added = True
                 res += "\n            {{ " + f"{basename}_html" + " }}"
-                if cls.clickable:
+                if self.clickable:
                     res += "\n            {{ " + f"{basename}_clickdata_html" + " }}"
                 continue
 
@@ -282,12 +284,11 @@ class MetricVis:
 
         return res
 
-    @classmethod
-    def get_html_snippets(cls, loader: MetricLoader) -> dict:
+    def get_html_snippets(self, loader: MetricLoader) -> dict:
         res = {}
-        for widget in cls.schema:
+        for widget in self.schema:
             if isinstance(widget, Widget.Markdown):
-                res[f"{widget.name}_html"] = cls._template_markdown.render(
+                res[f"{widget.name}_html"] = self._template_markdown.render(
                     {
                         "widget_id": widget.id,
                         "data_source": f"/data/{widget.name}.md",
@@ -299,9 +300,8 @@ class MetricVis:
             if isinstance(widget, Widget.Collapse):
                 subres = {}
                 for subwidget in widget.schema:
-
                     if isinstance(subwidget, Widget.Markdown):
-                        subres[f"{subwidget.name}_html"] = cls._template_markdown.render(
+                        subres[f"{subwidget.name}_html"] = self._template_markdown.render(
                             {
                                 "widget_id": subwidget.id,
                                 "data_source": f"/data/{subwidget.name}.md",
@@ -313,45 +313,45 @@ class MetricVis:
                 continue
 
             if isinstance(widget, Widget.Notification):
-                assert widget.format_desc is not None, AssertionError(
+                assert widget.formats_desc is not None, AssertionError(
                     "The 'Widget.Notification.format_tpl' field must not be empty. Please specify the inherited and redefined method MetricVis.<your_vis>.get_html_snippets()"
                 )
-                res[f"{widget.name}_html"] = cls._template_notification.render(
+                res[f"{widget.name}_html"] = self._template_notification.render(
                     {
                         "widget_id": widget.id,
                         "data": "data",
-                        "title": widget.title.format(*widget.format_title),
-                        "description": widget.description.format(*widget.format_desc),
+                        "title": widget.title.format(*widget.formats_title),
+                        "description": widget.description.format(*widget.formats_desc),
                     }
                 )
 
             if isinstance(widget, Widget.Chart):
-                basename = f"{widget.name}_{cls.name}"
-                if cls.switchable:
-                    res[f"el_radio_{basename}_html"] = cls._template_radiogroup.render(
+                basename = f"{widget.name}_{self.name}"
+                if self.switchable:
+                    res[f"el_radio_{basename}_html"] = self._template_radiogroup.render(
                         {
-                            "radio_group": cls.radiogroup_id,
+                            "radio_group": self.radiogroup_id,
                             "switch_key": widget.switch_key,
                         }
                     )
-                chart_click_path = f"/data/{basename}_clickdata.json" if cls.clickable else None
-                res[f"{basename}_html"] = cls._template_chart.render(
+                chart_click_path = f"/data/{basename}_clickdata.json" if self.clickable else None
+                res[f"{basename}_html"] = self._template_chart.render(
                     {
                         "widget_id": widget.id,
                         "init_data_source": f"/data/{basename}.json",
                         "chart_click_data_source": chart_click_path,
                         "command": "command",
                         "data": "data",
-                        "cls_name": cls.name,
-                        "key_separator": cls._keypair_sep,
-                        "switchable": cls.switchable,
-                        "radio_group": cls.radiogroup_id,
+                        "cls_name": self.name,
+                        "key_separator": self._keypair_sep,
+                        "switchable": self.switchable,
+                        "radio_group": self.radiogroup_id,
                         "switch_key": widget.switch_key,
                     }
                 )
             if isinstance(widget, Widget.Gallery):
-                basename = f"{widget.name}_{cls.name}"
-                res[f"{basename}_html"] = cls._template_gallery.render(
+                basename = f"{widget.name}_{self.name}"
+                res[f"{basename}_html"] = self._template_gallery.render(
                     {
                         "widget_id": widget.id,
                         "init_data_source": f"/data/{basename}.json",
@@ -361,8 +361,8 @@ class MetricVis:
                 )
 
             if isinstance(widget, Widget.Table):
-                basename = f"{widget.name}_{cls.name}"
-                res[f"{basename}_html"] = cls._template_table.render(
+                basename = f"{widget.name}_{self.name}"
+                res[f"{basename}_html"] = self._template_table.render(
                     {
                         "widget_id": widget.id,
                         "init_data_source": f"/data/{basename}.json",
@@ -373,36 +373,27 @@ class MetricVis:
 
         return res
 
-    # pylint: disable=no-self-argument
-    @classproperty
-    def name(cls) -> str:
-        # pylint: disable=no-member
-        return camel_to_snake(cls.__name__)
+    @property
+    def name(self) -> str:
+        return camel_to_snake(self.__class__.__name__)
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         pass
 
-    @classmethod
-    def get_click_data(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
         pass
 
-    @classmethod
-    def get_table(cls, loader: MetricLoader, widget: Widget.Table) -> Optional[dict]:
+    def get_table(self, loader: MetricLoader, widget: Widget.Table) -> Optional[dict]:
         pass
 
-    @classmethod
-    def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery) -> Optional[dict]:
+    def get_gallery(self, loader: MetricLoader, widget: Widget.Gallery) -> Optional[dict]:
         pass
 
-    @classmethod
-    def _get_md_content(cls, widget: Widget.Markdown):
-        return getattr(contents, widget.name)
+    def get_md_content(self, loader: MetricLoader, widget: Widget.Markdown):
+        return getattr(contents, widget.name).format(*widget.formats)
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget.Markdown):
-        # redefinable method
-        return cls._get_md_content(widget)
+    def initialize_formats(self, loader: MetricLoader, widget: Widget):
+        pass
 
 
 class Overview(MetricVis):
@@ -702,12 +693,19 @@ class OutcomeCounts(MetricVis):
 
 class Recall(MetricVis):
 
-    schema = Schema(
-        markdown_R=Widget.Markdown(title="Recall", is_header=True),
-        notification_recall=Widget.Notification(),
-        markdown_R_perclass=Widget.Markdown(),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader):
+        super().__init__()
+        self._loader = loader
+        tp_plus_fn = loader.m.TP_count + loader.m.FN_count
+        self.schema = Schema(
+            markdown_R=Widget.Markdown(title="Recall", is_header=True),
+            notification_recall=Widget.Notification(
+                formats_title=[loader.base_metrics["recall"].round(2)],
+                formats_desc=[loader.m.TP_count, tp_plus_fn],
+            ),
+            markdown_R_perclass=Widget.Markdown(formats=[definitions.f1_score]),
+            chart=Widget.Chart(),
+        )
 
     @classmethod
     def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
@@ -729,35 +727,21 @@ class Recall(MetricVis):
         fig.update_yaxes(title_text="Recall", range=[0, 1])
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget.Markdown):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_R_perclass.name:
-            return res.format(
-                definitions.f1_score,
-            )
-        return res
-
-    @classmethod
-    def get_html_snippets(cls, loader: MetricLoader) -> dict:
-        for widget in cls.schema:
-            if isinstance(widget, Widget.Notification):
-                widget.format_title = [loader.base_metrics["recall"].round(2)]
-                widget.format_desc = [
-                    loader.m.TP_count,
-                    (loader.m.TP_count + loader.m.FN_count),
-                ]
-        return super().get_html_snippets(loader)
-
 
 class Precision(MetricVis):
 
-    schema = Schema(
-        markdown_P=Widget.Markdown(title="Precision", is_header=True),
-        notification_precision=Widget.Notification(),
-        markdown_P_perclass=Widget.Markdown(),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader):
+        super().__init__()
+        self._loader = loader
+        self.schema = Schema(
+            markdown_P=Widget.Markdown(title="Precision", is_header=True),
+            notification_precision=Widget.Notification(
+                formats_title=[loader.base_metrics["precision"].round(2)],
+                formats_desc=[loader.m.TP_count, (loader.m.TP_count + loader.m.FP_count)],
+            ),
+            markdown_P_perclass=Widget.Markdown(formats=[definitions.f1_score]),
+            chart=Widget.Chart(),
+        )
 
     @classmethod
     def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
@@ -779,25 +763,6 @@ class Precision(MetricVis):
         fig.update_xaxes(title_text="Category")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
         return fig
-
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_P_perclass.name:
-            return res.format(
-                definitions.f1_score,
-            )
-        return res
-
-    @classmethod
-    def get_html_snippets(cls, loader: MetricLoader) -> dict:
-        for widget in cls.schema:
-            if isinstance(widget, Widget.Notification):
-                widget.format_title =[ loader.base_metrics["precision"].round(2)]
-                widget.format_desc = [
-                    loader.m.TP_count, (loader.m.TP_count + loader.m.FP_count)
-                ]
-        return super().get_html_snippets(loader)
 
 
 class RecallVsPrecision(MetricVis):
