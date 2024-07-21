@@ -245,7 +245,7 @@ class MetricVis:
         res = ""
         _is_before_chart = True
 
-        def _add_radio_buttons(res: str):
+        def _add_radio_buttons():
             res = ""
             for widget in self.schema:
                 if isinstance(widget, Widget.Chart):
@@ -259,21 +259,17 @@ class MetricVis:
             if isinstance(widget, Widget.Chart):
                 _is_before_chart = False
 
-            if isinstance(widget, Widget.Markdown) and _is_before_chart:
-                res += "\n            {{ " + f"{widget.name}_html" + " }}"
-                continue
-            if isinstance(widget, Widget.Notification) and _is_before_chart:
-                res += "\n            {{ " + f"{widget.name}_html" + " }}"
-                continue
-
-            if isinstance(widget, Widget.Collapse) and _is_before_chart:
+            if (
+                isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse))
+                and _is_before_chart
+            ):
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
             if isinstance(widget, (Widget.Chart, Widget.Gallery, Widget.Table)):
                 basename = f"{widget.name}_{self.name}"
                 if self.switchable and not is_radiobuttons_added:
-                    res += _add_radio_buttons(res)
+                    res += _add_radio_buttons()
                     is_radiobuttons_added = True
                 res += "\n            {{ " + f"{basename}_html" + " }}"
                 if self.clickable:
@@ -286,7 +282,7 @@ class MetricVis:
 
         return res
 
-    def get_html_snippets(self, loader: MetricLoader) -> dict:
+    def get_html_snippets(self) -> dict:
         res = {}
         for widget in self.schema:
             if isinstance(widget, Widget.Markdown):
@@ -379,19 +375,19 @@ class MetricVis:
     def name(self) -> str:
         return camel_to_snake(self.__class__.__name__)
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         pass
 
-    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         pass
 
-    def get_table(self, loader: MetricLoader, widget: Widget.Table) -> Optional[dict]:
+    def get_table(self, widget: Widget.Table) -> Optional[dict]:
         pass
 
-    def get_gallery(self, loader: MetricLoader, widget: Widget.Gallery) -> Optional[dict]:
+    def get_gallery(self, widget: Widget.Gallery) -> Optional[dict]:
         pass
 
-    def get_md_content(self, loader: MetricLoader, widget: Widget.Markdown):
+    def get_md_content(self, widget: Widget.Markdown):
         return getattr(contents, widget.name).format(*widget.formats)
 
     def initialize_formats(self, loader: MetricLoader, widget: Widget):
@@ -416,9 +412,9 @@ class Overview(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Overall Metrics
-        base_metrics = loader.m.base_metrics()
+        base_metrics = self._loader.m.base_metrics()
         r = list(base_metrics.values())
         theta = [metric_provider.METRIC_NAMES[k] for k in base_metrics.keys()]
         fig = go.Figure()
@@ -452,15 +448,19 @@ class ExplorerGrid(MetricVis):
             gallery=Widget.Gallery(),
         )
 
-    def get_gallery(self, loader: MetricLoader, widget: Widget.Gallery):
+    def get_gallery(self, widget: Widget.Gallery):
         res = {}
-        api = loader._api
-        gt_image_infos = api.image.get_list(dataset_id=loader.gt_dataset_id)[:5]
-        pred_image_infos = api.image.get_list(dataset_id=loader.dt_dataset_id)[:5]
-        diff_image_infos = api.image.get_list(dataset_id=loader.diff_dataset_id)[:5]
+        api = self._loader._api
+        gt_image_infos = api.image.get_list(dataset_id=self._loader.gt_dataset_id)[:5]
+        pred_image_infos = api.image.get_list(dataset_id=self._loader.dt_dataset_id)[:5]
+        diff_image_infos = api.image.get_list(dataset_id=self._loader.diff_dataset_id)[:5]
         project_metas = [
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [loader.gt_project_id, loader.dt_project_id, loader.diff_project_id]
+            for x in [
+                self._loader.gt_project_id,
+                self._loader.dt_project_id,
+                self._loader.diff_project_id,
+            ]
         ]
         for gt_image, pred_image, diff_image in zip(
             gt_image_infos, pred_image_infos, diff_image_infos
@@ -500,19 +500,27 @@ class ModelPredictions(MetricVis):
             table=Widget.Table(),
         )
 
-    def get_gallery(self, loader: MetricLoader, widget: Widget.Gallery) -> dict:
+    def get_gallery(self, widget: Widget.Gallery) -> dict:
         res = {}
-        api = loader._api
+        api = self._loader._api
         selected_image_name = "000000575815.jpg"
-        gt_image_info = api.image.get_info_by_name(loader.gt_dataset_id, selected_image_name)
-        pred_image_info = api.image.get_info_by_name(loader.dt_dataset_id, selected_image_name)
-        diff_image_info = api.image.get_info_by_name(loader.diff_dataset_id, selected_image_name)
+        gt_image_info = api.image.get_info_by_name(self._loader.gt_dataset_id, selected_image_name)
+        pred_image_info = api.image.get_info_by_name(
+            self._loader.dt_dataset_id, selected_image_name
+        )
+        diff_image_info = api.image.get_info_by_name(
+            self._loader.diff_dataset_id, selected_image_name
+        )
 
         images_infos = [gt_image_info, pred_image_info, diff_image_info]
         anns_infos = [api.annotation.download(x.id) for x in images_infos]
         project_metas = [
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [loader.gt_project_id, loader.dt_project_id, loader.diff_project_id]
+            for x in [
+                self._loader.gt_project_id,
+                self._loader.dt_project_id,
+                self._loader.diff_project_id,
+            ]
         ]
 
         for idx, (image_info, ann_info, project_meta) in enumerate(
@@ -533,10 +541,10 @@ class ModelPredictions(MetricVis):
 
         return res
 
-    def get_table(self, loader: MetricLoader, widget: Widget.Table) -> dict:
+    def get_table(self, widget: Widget.Table) -> dict:
         res = {}
-        tmp = loader._api.image.get_list(dataset_id=loader.dt_dataset_id)
-        df = loader.m.prediction_table()
+        tmp = self._loader._api.image.get_list(dataset_id=self._loader.dt_dataset_id)
+        df = self._loader.m.prediction_table()
         df = df[df["image_name"].isin([x.name for x in tmp])]
         columns_options = [{}] * len(df.columns)
         for idx, col in enumerate(columns_options):
@@ -555,13 +563,13 @@ class ModelPredictions(MetricVis):
         key_mapping = {}
         for old, new in zip(
             ImageInfo._fields,
-            loader._api.image.info_sequence(),
+            self._loader._api.image.info_sequence(),
         ):
             key_mapping[old] = new
 
         for row in tbl["data"]["data"]:
             name = row["items"][0]
-            info = loader.dt_images_by_name[name]
+            info = self._loader.dt_images_by_name[name]
 
             dct = {
                 "row": {key_mapping[k]: v for k, v in info._asdict().items()},
@@ -606,12 +614,12 @@ class OutcomeCounts(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Outcome counts
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                x=[loader.m.TP_count],
+                x=[self._loader.m.TP_count],
                 y=["Outcome"],
                 name="TP",
                 orientation="h",
@@ -620,7 +628,7 @@ class OutcomeCounts(MetricVis):
         )
         fig.add_trace(
             go.Bar(
-                x=[loader.m.FN_count],
+                x=[self._loader.m.FN_count],
                 y=["Outcome"],
                 name="FN",
                 orientation="h",
@@ -629,7 +637,7 @@ class OutcomeCounts(MetricVis):
         )
         fig.add_trace(
             go.Bar(
-                x=[loader.m.FP_count],
+                x=[self._loader.m.FP_count],
                 y=["Outcome"],
                 name="FP",
                 orientation="h",
@@ -646,11 +654,11 @@ class OutcomeCounts(MetricVis):
 
         return fig
 
-    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         res = {}
-        res["projectMeta"] = loader.dt_project_meta.to_json()
+        res["projectMeta"] = self._loader.dt_project_meta.to_json()
         res["clickData"] = {}
-        for key, v in loader.click_data.outcome_counts.items():
+        for key, v in self._loader.click_data.outcome_counts.items():
             res["clickData"][key] = {}
             res["clickData"][key]["layoutData"] = {}
             res["clickData"][key]["layout"] = []
@@ -661,7 +669,7 @@ class OutcomeCounts(MetricVis):
 
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
-                info: ImageInfo = loader.dt_images[img_id]
+                info: ImageInfo = self._loader.dt_images[img_id]
                 res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
@@ -670,7 +678,7 @@ class OutcomeCounts(MetricVis):
                         "createdAt": info.created_at,
                         "updatedAt": info.updated_at,
                         "link": info.link,
-                        "annotation": loader.dt_ann_jsons[img_id],
+                        "annotation": self._loader.dt_ann_jsons[img_id],
                     },
                 }
                 if len(tmp[3]) < 5:
@@ -686,32 +694,32 @@ class Recall(MetricVis):
 
     def __init__(self, loader: MetricLoader) -> None:
         super().__init__(loader)
-        tp_plus_fn = loader.m.TP_count + loader.m.FN_count
+        tp_plus_fn = self._loader.m.TP_count + self._loader.m.FN_count
         self.schema = Schema(
             markdown_R=Widget.Markdown(title="Recall", is_header=True),
             notification_recall=Widget.Notification(
-                formats_title=[loader.base_metrics["recall"].round(2)],
-                formats_desc=[loader.m.TP_count, tp_plus_fn],
+                formats_title=[self._loader.base_metrics["recall"].round(2)],
+                formats_desc=[self._loader.m.TP_count, tp_plus_fn],
             ),
             markdown_R_perclass=Widget.Markdown(formats=[definitions.f1_score]),
             chart=Widget.Chart(),
         )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")
         fig = px.bar(
-            loader.per_class_metrics_sorted,
+            self._loader.per_class_metrics_sorted,
             x="category",
             y="recall",
             title="Per-class Recall (Sorted by F1)",
             color="recall",
             color_continuous_scale="Plasma",
         )
-        if len(loader.per_class_metrics_sorted) <= 20:
+        if len(self._loader.per_class_metrics_sorted) <= 20:
             fig.update_traces(
-                text=loader.per_class_metrics_sorted["recall"].round(2), textposition="outside"
+                text=self._loader.per_class_metrics_sorted["recall"].round(2),
+                textposition="outside",
             )
         fig.update_xaxes(title_text="Category")
         fig.update_yaxes(title_text="Recall", range=[0, 1])
@@ -725,28 +733,30 @@ class Precision(MetricVis):
         self.schema = Schema(
             markdown_P=Widget.Markdown(title="Precision", is_header=True),
             notification_precision=Widget.Notification(
-                formats_title=[loader.base_metrics["precision"].round(2)],
-                formats_desc=[loader.m.TP_count, (loader.m.TP_count + loader.m.FP_count)],
+                formats_title=[self._loader.base_metrics["precision"].round(2)],
+                formats_desc=[
+                    self._loader.m.TP_count,
+                    (self._loader.m.TP_count + self._loader.m.FP_count),
+                ],
             ),
             markdown_P_perclass=Widget.Markdown(formats=[definitions.f1_score]),
             chart=Widget.Chart(),
         )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="precision")
         fig = px.bar(
-            loader.per_class_metrics_sorted,
+            self._loader.per_class_metrics_sorted,
             x="category",
             y="precision",
             title="Per-class Precision (Sorted by F1)",
             color="precision",
             color_continuous_scale="Plasma",
         )
-        if len(loader.per_class_metrics_sorted) <= 20:
+        if len(self._loader.per_class_metrics_sorted) <= 20:
             fig.update_traces(
-                text=loader.per_class_metrics_sorted["precision"].round(2),
+                text=self._loader.per_class_metrics_sorted["precision"].round(2),
                 textposition="outside",
             )
         fig.update_xaxes(title_text="Category")
@@ -765,22 +775,22 @@ class RecallVsPrecision(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                y=loader.per_class_metrics_sorted["precision"],
-                x=loader.per_class_metrics_sorted["category"],
+                y=self._loader.per_class_metrics_sorted["precision"],
+                x=self._loader.per_class_metrics_sorted["category"],
                 name="Precision",
                 marker=dict(color=blue_color),
             )
         )
         fig.add_trace(
             go.Bar(
-                y=loader.per_class_metrics_sorted["recall"],
-                x=loader.per_class_metrics_sorted["category"],
+                y=self._loader.per_class_metrics_sorted["recall"],
+                x=self._loader.per_class_metrics_sorted["category"],
                 name="Recall",
                 marker=dict(color=orange_color),
             )
@@ -821,11 +831,11 @@ class PRCurve(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Precision-Recall curve
         fig = px.line(
-            x=loader.m.recThrs,
-            y=loader.m.pr_curve().mean(-1),
+            x=self._loader.m.recThrs,
+            y=self._loader.m.pr_curve().mean(-1),
             # title="Precision-Recall Curve",
             labels={"x": "Recall", "y": "Precision"},
             width=600,
@@ -836,15 +846,15 @@ class PRCurve(MetricVis):
         fig.update_traces(fill="tozeroy", line=dict(color="#1f77b4"))
         fig.add_trace(
             go.Scatter(
-                x=loader.m.recThrs,
-                y=[1] * len(loader.m.recThrs),
+                x=self._loader.m.recThrs,
+                y=[1] * len(self._loader.m.recThrs),
                 name="Perfect",
                 line=dict(color="orange", dash="dash"),
                 showlegend=True,
             )
         )
         fig.add_annotation(
-            text=f"mAP = {loader.m.base_metrics()['mAP']:.2f}",
+            text=f"mAP = {self._loader.m.base_metrics()['mAP']:.2f}",
             xref="paper",
             yref="paper",
             x=0.98,
@@ -866,14 +876,14 @@ class PRCurveByClass(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
 
         # Precision-Recall curve per-class
-        df = pd.DataFrame(loader.m.pr_curve(), columns=loader.m.cat_names)
+        df = pd.DataFrame(self._loader.m.pr_curve(), columns=self._loader.m.cat_names)
 
         fig = px.line(
             df,
-            x=loader.m.recThrs,
+            x=self._loader.m.recThrs,
             y=df.columns,
             # title="Precision-Recall Curve per Class",
             labels={"x": "Recall", "value": "Precision", "variable": "Category"},
@@ -900,11 +910,11 @@ class ConfusionMatrix(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
-        confusion_matrix = loader.m.confusion_matrix()
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
+        confusion_matrix = self._loader.m.confusion_matrix()
         # Confusion Matrix
         # TODO: Green-red
-        cat_names = loader.m.cat_names
+        cat_names = self._loader.m.cat_names
         none_name = "(None)"
 
         with np.errstate(divide="ignore"):
@@ -936,13 +946,13 @@ class ConfusionMatrix(MetricVis):
         # fig.show()
         return fig
 
-    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
-        res = dict(projectMeta=loader.dt_project_meta.to_json())
+    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
+        res = dict(projectMeta=self._loader.dt_project_meta.to_json())
         res["clickData"] = {}
 
         unique_pairs = set()
         filtered_pairs = []
-        for k, v in loader.click_data.confusion_matrix.items():
+        for k, v in self._loader.click_data.confusion_matrix.items():
             ordered_pair = tuple(sorted(k))
             if ordered_pair not in unique_pairs:
                 unique_pairs.add(ordered_pair)
@@ -960,7 +970,7 @@ class ConfusionMatrix(MetricVis):
 
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
-                info: ImageInfo = loader.dt_images[img_id]
+                info: ImageInfo = self._loader.dt_images[img_id]
                 res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
@@ -969,7 +979,7 @@ class ConfusionMatrix(MetricVis):
                         "createdAt": info.created_at,
                         "updatedAt": info.updated_at,
                         "link": info.link,
-                        "annotation": loader.dt_ann_jsons[img_id],
+                        "annotation": self._loader.dt_ann_jsons[img_id],
                     },
                 }
                 if len(tmp[3]) < 5:
@@ -989,7 +999,7 @@ class FrequentlyConfused(MetricVis):
         self.clickable: bool = True
         self.switchable: bool = True
         self._keypair_sep: str = " - "
-        df = loader.m.frequently_confused(loader.m.confusion_matrix(), topk_pairs=20)
+        df = self._loader.m.frequently_confused(self._loader.m.confusion_matrix(), topk_pairs=20)
         pair = df["category_pair"][0]
         prob = df["probability"][0]
         self.schema = Schema(
@@ -1013,12 +1023,12 @@ class FrequentlyConfused(MetricVis):
             chart_02=Widget.Chart(switch_key="count"),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[Tuple[go.Figure]]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[Tuple[go.Figure]]:
 
-        confusion_matrix = loader.m.confusion_matrix()
+        confusion_matrix = self._loader.m.confusion_matrix()
 
         # Frequency of confusion as bar chart
-        confused_df = loader.m.frequently_confused(confusion_matrix, topk_pairs=20)
+        confused_df = self._loader.m.frequently_confused(confusion_matrix, topk_pairs=20)
         confused_name_pairs = confused_df["category_pair"]
         x_labels = [f"{pair[0]} - {pair[1]}" for pair in confused_name_pairs]
         y_labels = confused_df[widget.switch_key]
@@ -1035,13 +1045,13 @@ class FrequentlyConfused(MetricVis):
         fig.update_traces(text=y_labels.round(2))
         return fig
 
-    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         if not self.clickable:
             return
-        res = dict(projectMeta=loader.dt_project_meta.to_json())
+        res = dict(projectMeta=self._loader.dt_project_meta.to_json())
         res["clickData"] = {}
 
-        for keypair, v in loader.click_data.frequently_confused.items():
+        for keypair, v in self._loader.click_data.frequently_confused.items():
 
             subkey1, subkey2 = keypair
             key = subkey1 + self._keypair_sep + subkey2
@@ -1054,7 +1064,7 @@ class FrequentlyConfused(MetricVis):
 
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
-                info: ImageInfo = loader.dt_images[img_id]
+                info: ImageInfo = self._loader.dt_images[img_id]
                 res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
@@ -1063,7 +1073,7 @@ class FrequentlyConfused(MetricVis):
                         "createdAt": info.created_at,
                         "updatedAt": info.updated_at,
                         "link": info.link,
-                        "annotation": loader.dt_ann_jsons[img_id],
+                        "annotation": self._loader.dt_ann_jsons[img_id],
                     },
                 }
                 if len(tmp[3]) < 5:
@@ -1089,11 +1099,11 @@ class IOUDistribution(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
 
         fig = go.Figure()
         nbins = 40
-        fig.add_trace(go.Histogram(x=loader.m.ious, nbinsx=nbins))
+        fig.add_trace(go.Histogram(x=self._loader.m.ious, nbinsx=nbins))
         fig.update_layout(
             # title="IoU Distribution",
             xaxis_title="IoU",
@@ -1103,8 +1113,8 @@ class IOUDistribution(MetricVis):
         )
 
         # Add annotation for mean IoU as vertical line
-        mean_iou = loader.m.ious.mean()
-        y1 = len(loader.m.ious) // nbins
+        mean_iou = self._loader.m.ious.mean()
+        y1 = len(self._loader.m.ious) // nbins
         fig.add_shape(
             type="line",
             x0=mean_iou,
@@ -1133,9 +1143,9 @@ class ReliabilityDiagram(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
         # Calibration curve (only positive predictions)
-        true_probs, pred_probs = loader.m_full.calibration_metrics.calibration_curve()
+        true_probs, pred_probs = self._loader.m_full.calibration_metrics.calibration_curve()
 
         fig = go.Figure()
         fig.add_trace(
@@ -1189,14 +1199,14 @@ class ConfidenceScore(MetricVis):
             markdown_calibration_score_3=Widget.Markdown(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
 
         color_map = {
             "Precision": "#1f77b4",
             "Recall": "orange",
         }
         fig = px.line(
-            loader.dfsp_down,
+            self._loader.dfsp_down,
             x="scores",
             y=["Precision", "Recall", "F1"],
             # title="Confidence Score Profile",
@@ -1210,16 +1220,16 @@ class ConfidenceScore(MetricVis):
         # Add vertical line for the best threshold
         fig.add_shape(
             type="line",
-            x0=loader.f1_optimal_conf,
-            x1=loader.f1_optimal_conf,
+            x0=self._loader.f1_optimal_conf,
+            x1=self._loader.f1_optimal_conf,
             y0=0,
-            y1=loader.best_f1,
+            y1=self._loader.best_f1,
             line=dict(color="gray", width=2, dash="dash"),
         )
         fig.add_annotation(
-            x=loader.f1_optimal_conf,
-            y=loader.best_f1 + 0.04,
-            text=f"F1-optimal threshold: {loader.f1_optimal_conf:.2f}",
+            x=self._loader.f1_optimal_conf,
+            y=self._loader.best_f1 + 0.04,
+            text=f"F1-optimal threshold: {self._loader.f1_optimal_conf:.2f}",
             showarrow=False,
         )
         # fig.show()
@@ -1242,12 +1252,12 @@ class ConfidenceDistribution(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
 
-        f1_optimal_conf, best_f1 = loader.m_full.get_f1_optimal_conf()
+        f1_optimal_conf, best_f1 = self._loader.m_full.get_f1_optimal_conf()
 
         # Histogram of confidence scores (TP vs FP)
-        scores_tp, scores_fp = loader.m_full.calibration_metrics.scores_tp_and_fp(iou_idx=0)
+        scores_tp, scores_fp = self._loader.m_full.calibration_metrics.scores_tp_and_fp(iou_idx=0)
 
         tp_y, tp_x = np.histogram(scores_tp, bins=40, range=[0, 1])
         fp_y, fp_x = np.histogram(scores_fp, bins=40, range=[0, 1])
@@ -1332,15 +1342,15 @@ class F1ScoreAtDifferentIOU(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
-        # score_profile = loader.m_full.confidence_score_profile()
-        f1s = loader.m_full.score_profile_f1s
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
+        # score_profile = self._loader.m_full.confidence_score_profile()
+        f1s = self._loader.m_full.score_profile_f1s
 
         # downsample
         f1s_down = f1s[:, :: f1s.shape[1] // 1000]
-        iou_names = list(map(lambda x: str(round(x, 2)), loader.m.iouThrs.tolist()))
+        iou_names = list(map(lambda x: str(round(x, 2)), self._loader.m.iouThrs.tolist()))
         df = pd.DataFrame(
-            np.concatenate([loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
+            np.concatenate([self._loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
             columns=["scores"] + iou_names,
         )
 
@@ -1360,7 +1370,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
         for i, iou in enumerate(iou_names):
             argmax_f1 = f1s[i].argmax()
             max_f1 = f1s[i][argmax_f1]
-            score = loader.score_profile["scores"][argmax_f1]
+            score = self._loader.score_profile["scores"][argmax_f1]
             fig.add_annotation(
                 x=score,
                 y=max_f1,
@@ -1389,14 +1399,14 @@ class PerClassAvgPrecision(MetricVis):
             chart=Widget.Chart(),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
 
         # AP per-class
-        ap_per_class = loader.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
+        ap_per_class = self._loader.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
         # Per-class Average Precision (AP)
         fig = px.scatter_polar(
             r=ap_per_class,
-            theta=loader.m.cat_names,
+            theta=self._loader.m.cat_names,
             title="Per-class Average Precision (AP)",
             labels=dict(r="Average Precision", theta="Category"),
             width=800,
@@ -1430,13 +1440,13 @@ class PerClassOutcomeCounts(MetricVis):
             chart_02=Widget.Chart(switch_key="absolute"),
         )
 
-    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Per-class Counts
         iou_thres = 0
 
-        tp = loader.m.true_positives[:, iou_thres]
-        fp = loader.m.false_positives[:, iou_thres]
-        fn = loader.m.false_negatives[:, iou_thres]
+        tp = self._loader.m.true_positives[:, iou_thres]
+        fp = self._loader.m.false_positives[:, iou_thres]
+        fn = self._loader.m.false_negatives[:, iou_thres]
 
         # normalize
         support = tp + fn
@@ -1448,9 +1458,9 @@ class PerClassOutcomeCounts(MetricVis):
             # sort by f1
             sort_scores = 2 * tp / (2 * tp + fp + fn)
 
-        K = len(loader.m.cat_names)
+        K = len(self._loader.m.cat_names)
         sort_indices = np.argsort(sort_scores)
-        cat_names_sorted = [loader.m.cat_names[i] for i in sort_indices]
+        cat_names_sorted = [self._loader.m.cat_names[i] for i in sort_indices]
         tp_rel, fn_rel, fp_rel = tp_rel[sort_indices], fn_rel[sort_indices], fp_rel[sort_indices]
 
         if widget.switch_key == "relative":
@@ -1489,7 +1499,7 @@ class OverallErrorAnalysis(MetricVis):
         super().__init__(loader)
         self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 
-    def get_figure(self, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         fig = make_subplots(
             rows=1,
             cols=3,
@@ -1585,10 +1595,10 @@ class ClasswiseErrorAnalysis(MetricVis):
         super().__init__(loader)
         self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 
-    def get_figure(self, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         pd.options.mode.chained_assignment = None  # TODO rm later
 
-        df = loader.result_df
+        df = self._loader.result_df
         df.drop(["mean"], inplace=True)
         df = df[["IoU", "E_extent_oU", "E_boundary_oU", "E_segment_oU"]]
         df.sort_values(by="IoU", ascending=False, inplace=True)

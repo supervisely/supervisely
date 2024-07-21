@@ -29,20 +29,20 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
-    # Overview,
-    # ExplorerGrid,
-    # ModelPredictions,
-    # WhatIs,
-    # OutcomeCounts,
-    # Recall,
-    # Precision,
-    # RecallVsPrecision,
-    # PRCurve,
-    # PRCurveByClass,
-    # ConfusionMatrix,
-    # FrequentlyConfused,
-    # IOUDistribution,
-    # ReliabilityDiagram,
+    Overview,
+    ExplorerGrid,
+    ModelPredictions,
+    WhatIs,
+    OutcomeCounts,
+    Recall,
+    Precision,
+    RecallVsPrecision,
+    PRCurve,
+    PRCurveByClass,
+    ConfusionMatrix,
+    FrequentlyConfused,
+    IOUDistribution,
+    ReliabilityDiagram,
     ConfidenceScore,
     F1ScoreAtDifferentIOU,
     ConfidenceDistribution,
@@ -294,7 +294,7 @@ class MetricLoader:
     def _write_markdown_files(self, metric_visualization: MetricVis, widget: Widget):
 
         if isinstance(widget, Widget.Markdown):
-            content = metric_visualization.get_md_content(self, widget)
+            content = metric_visualization.get_md_content(widget)
             local_path = f"{self.tmp_dir}/data/{widget.name}.md"
             with open(local_path, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -303,7 +303,7 @@ class MetricLoader:
 
         if isinstance(widget, Widget.Collapse):
             for subwidget in widget.schema:
-                content = metric_visualization.get_md_content(self, subwidget)
+                content = metric_visualization.get_md_content(subwidget)
                 local_path = f"{self.tmp_dir}/data/{subwidget.name}.md"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
@@ -313,7 +313,7 @@ class MetricLoader:
     def _write_json_files(self, mv: MetricVis, widget: Widget):
 
         if isinstance(widget, Widget.Chart):
-            fig = mv.get_figure(self, widget)
+            fig = mv.get_figure(widget)
             if fig is not None:
                 fig_data = {
                     "selected": None,
@@ -327,7 +327,7 @@ class MetricLoader:
                     json.dump(fig_data, f)
                 logger.info("Saved: %r", basename)
 
-                click_data = mv.get_click_data(self, widget)
+                click_data = mv.get_click_data(widget)
                 if click_data is not None:
                     basename = f"{widget.name}_{mv.name}_clickdata.json"
                     local_path = f"{self.tmp_dir}/data/{basename}"
@@ -336,7 +336,7 @@ class MetricLoader:
                     logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Gallery):
-            content = mv.get_gallery(self, widget)
+            content = mv.get_gallery(widget)
             if content is not None:
                 basename = f"{widget.name}_{mv.name}.json"
                 local_path = f"{self.tmp_dir}/data/{basename}"
@@ -345,7 +345,7 @@ class MetricLoader:
                 logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Table):
-            content = mv.get_table(self, widget)
+            content = mv.get_table(widget)
             if content is not None:
                 basename = f"{widget.name}_{mv.name}.json"
                 local_path = f"{self.tmp_dir}/data/{basename}"
@@ -359,9 +359,9 @@ class MetricLoader:
         for mv in metric_visualizations:
             for widget in mv.schema:
                 if isinstance(widget, Widget.Notification):
-                    html_snippets.update(mv.get_html_snippets(self))
+                    html_snippets.update(mv.get_html_snippets())
 
-            html_snippets.update(mv.get_html_snippets(self))
+            html_snippets.update(mv.get_html_snippets())
 
         return main_template.render(**html_snippets)
 
