@@ -46,6 +46,7 @@ class CVTask(StrEnum):
 template_markdown_str = """
             <sly-iw-markdown
               id="{{ widget_id }}"
+              class="markdown-no-border"
               iw-widget-id="{{ widget_id }}"
               :actions="{
                 'init': {
@@ -69,7 +70,8 @@ template_chart_str = """
                   'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
                   'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused'] %}
                   'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['confusion_matrix'] %}
-                  'keySeparator': '{{ key_separator }}',{% endif %}
+                  'keySeparator': '{{ key_separator }}',{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
+                  'getKey': (payload) => payload.points[0].data.x,{% endif %}
                 },{% endif %}
               }"
               :command="{{ command }}"
@@ -1456,7 +1458,7 @@ class PerClassOutcomeCounts(MetricVis):
 
     def __init__(self, loader: MetricLoader) -> None:
         super().__init__(loader)
-        # clickable: bool = True
+        self.clickable: bool = True
         self.switchable: bool = True
         self.schema = Schema(
             markdown_class_outcome_counts_1=Widget.Markdown(
@@ -1527,6 +1529,45 @@ class PerClassOutcomeCounts(MetricVis):
             color_discrete_map=color_map,
         )
         return fig
+
+    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
+        if not self.clickable:
+            return
+        res = {}
+        res["projectMeta"] = self._loader.dt_project_meta.to_json()
+        res["clickData"] = {}
+        for key1, v1 in self._loader.click_data.outcome_counts_by_class.items():
+            for key2, v2 in v1.items():
+                key = key1 + self._keypair_sep + key2
+                res["clickData"][key] = {}
+                res["clickData"][key]["layoutData"] = {}
+                res["clickData"][key]["layout"] = []
+
+                tmp = {0: [], 1: [], 2: [], 3: []}
+
+                images = set(x["dt_img_id"] for x in v2)
+
+                for idx, img_id in enumerate(images):
+                    ui_id = f"ann_{img_id}"
+                    info: ImageInfo = self._loader.dt_images[img_id]
+                    res["clickData"][key]["layoutData"][ui_id] = {
+                        "imageUrl": info.preview_url,
+                        "annotation": {
+                            "imageId": info.id,
+                            "imageName": info.name,
+                            "createdAt": info.created_at,
+                            "updatedAt": info.updated_at,
+                            "link": info.link,
+                            "annotation": self._loader.dt_ann_jsons[img_id],
+                        },
+                    }
+                    if len(tmp[3]) < 5:
+                        tmp[idx % 4].append(ui_id)
+
+                for _, val in tmp.items():
+                    res["clickData"][key]["layout"].append(val)
+
+        return res
 
 
 class OverallErrorAnalysis(MetricVis):
