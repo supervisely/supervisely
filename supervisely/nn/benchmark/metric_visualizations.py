@@ -100,7 +100,7 @@ template_table_str = """<sly-iw-table
                 }"
               :command="{{ command }}"
               :data="{{ data }}"
-              >"""
+            />"""
 
 template_notification_str = """
             <sly-iw-notification              
@@ -210,13 +210,14 @@ class Schema:
 
 class MetricVis:
 
-    def __init__(self) -> None:
+    def __init__(self, loader: MetricLoader) -> None:
 
         self.cv_tasks: List[CVTask] = CVTask.values()
         self.clickable: bool = False
         self.switchable: bool = False
         self.schema: Schema = None
 
+        self._loader = loader
         self._template_markdown = Template(template_markdown_str)
         self._template_chart = Template(template_chart_str)
         self._template_radiogroup = Template(template_radiogroup_str)
@@ -245,6 +246,7 @@ class MetricVis:
         _is_before_chart = True
 
         def _add_radio_buttons(res: str):
+            res = ""
             for widget in self.schema:
                 if isinstance(widget, Widget.Chart):
                     basename = f"{widget.name}_{self.name}"
@@ -398,14 +400,23 @@ class MetricVis:
 
 class Overview(MetricVis):
 
-    schema = Schema(
-        markdown_overview=Widget.Markdown(title="Overview"),
-        markdown_key_metrics=Widget.Markdown(title="Key Metrics"),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_overview=Widget.Markdown(title="Overview", is_header=True),
+            markdown_key_metrics=Widget.Markdown(
+                title="Key Metrics",
+                is_header=True,
+                formats=[
+                    definitions.average_precision,
+                    definitions.confidence_threshold,
+                    definitions.confidence_score,
+                ],
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         # Overall Metrics
         base_metrics = loader.m.base_metrics()
         r = list(base_metrics.values())
@@ -431,27 +442,17 @@ class Overview(MetricVis):
         )
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
-            return res.format(
-                definitions.average_precision,
-                definitions.confidence_threshold,
-                definitions.confidence_score,
-            )
-        return res
-
 
 class ExplorerGrid(MetricVis):
 
-    schema = Schema(
-        markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
-        gallery=Widget.Gallery(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
+            gallery=Widget.Gallery(),
+        )
 
-    @classmethod
-    def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery):
+    def get_gallery(self, loader: MetricLoader, widget: Widget.Gallery):
         res = {}
         api = loader._api
         gt_image_infos = api.image.get_list(dataset_id=loader.gt_dataset_id)[:5]
@@ -490,15 +491,16 @@ class ExplorerGrid(MetricVis):
 
 class ModelPredictions(MetricVis):
 
-    schema = Schema(
-        markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
-        gallery=Widget.Gallery(),
-        markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
-        table=Widget.Table(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
+            gallery=Widget.Gallery(),
+            markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
+            table=Widget.Table(),
+        )
 
-    @classmethod
-    def get_gallery(cls, loader: MetricLoader, widget: Widget.Gallery):
+    def get_gallery(self, loader: MetricLoader, widget: Widget.Gallery) -> dict:
         res = {}
         api = loader._api
         selected_image_name = "000000575815.jpg"
@@ -531,8 +533,7 @@ class ModelPredictions(MetricVis):
 
         return res
 
-    @classmethod
-    def get_table(cls, loader: MetricLoader, widget: Widget.Table) -> dict | None:
+    def get_table(self, loader: MetricLoader, widget: Widget.Table) -> dict:
         res = {}
         tmp = loader._api.image.get_list(dataset_id=loader.dt_dataset_id)
         df = loader.m.prediction_table()
@@ -575,37 +576,37 @@ class ModelPredictions(MetricVis):
 
 class WhatIs(MetricVis):
 
-    schema = Schema(
-        markdown_what_is=Widget.Markdown(title="What is YOLOv8 model", is_header=True),
-        markdown_experts=Widget.Markdown(title="Expert Insights", is_header=True),
-        markdown_how_to_use=Widget.Markdown(
-            title="How To Use: Training, Inference, Evaluation Loop", is_header=True
-        ),
-    )
-
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        # if widget.name == cls.schema.markdown_key_metrics.name:  # pylint: disable=E1101
-        #     return res.format(
-        #         definitions.average_precision,
-        #         definitions.confidence_threshold,
-        #         definitions.confidence_score,
-        #     )
-        return res
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_what_is=Widget.Markdown(title="What is YOLOv8 model", is_header=True),
+            markdown_experts=Widget.Markdown(title="Expert Insights", is_header=True),
+            markdown_how_to_use=Widget.Markdown(
+                title="How To Use: Training, Inference, Evaluation Loop", is_header=True
+            ),
+        )
 
 
 class OutcomeCounts(MetricVis):
 
-    clickable: bool = True
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
 
-    schema = Schema(
-        markdown_outcome_counts=Widget.Markdown(title="Outcome Counts", is_header=True),
-        chart=Widget.Chart(),
-    )
+        self.clickable: bool = True
+        self.schema = Schema(
+            markdown_outcome_counts=Widget.Markdown(
+                title="Outcome Counts",
+                is_header=True,
+                formats=[
+                    definitions.true_positives,
+                    definitions.false_positives,
+                    definitions.false_negatives,
+                ],
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         # Outcome counts
         fig = go.Figure()
         fig.add_trace(
@@ -645,8 +646,7 @@ class OutcomeCounts(MetricVis):
 
         return fig
 
-    @classmethod
-    def get_click_data(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
         res = {}
         res["projectMeta"] = loader.dt_project_meta.to_json()
         res["clickData"] = {}
@@ -681,21 +681,11 @@ class OutcomeCounts(MetricVis):
 
         return res
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        return res.format(
-            definitions.true_positives,
-            definitions.false_positives,
-            definitions.false_negatives,
-        )
-
 
 class Recall(MetricVis):
 
-    def __init__(self, loader: MetricLoader):
-        super().__init__()
-        self._loader = loader
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
         tp_plus_fn = loader.m.TP_count + loader.m.FN_count
         self.schema = Schema(
             markdown_R=Widget.Markdown(title="Recall", is_header=True),
@@ -730,9 +720,8 @@ class Recall(MetricVis):
 
 class Precision(MetricVis):
 
-    def __init__(self, loader: MetricLoader):
-        super().__init__()
-        self._loader = loader
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
         self.schema = Schema(
             markdown_P=Widget.Markdown(title="Precision", is_header=True),
             notification_precision=Widget.Notification(
@@ -766,13 +755,17 @@ class Precision(MetricVis):
 
 
 class RecallVsPrecision(MetricVis):
-    schema = Schema(
-        markdown_PR=Widget.Markdown(title="Recall vs Precision", is_header=True),
-        chart=Widget.Chart(),
-    )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_PR=Widget.Markdown(
+                title="Recall vs Precision", is_header=True, formats=[definitions.f1_score]
+            ),
+            chart=Widget.Chart(),
+        )
+
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
         fig = go.Figure()
@@ -801,35 +794,34 @@ class RecallVsPrecision(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_PR.name:
-            return res.format(
-                definitions.f1_score,
-            )
-        return res
-
 
 class PRCurve(MetricVis):
 
-    schema = Schema(
-        markdown_pr_curve=Widget.Markdown(title="Precision-Recall Curve", is_header=True),
-        collapse=Widget.Collapse(
-            schema=Schema(
-                markdown_trade_offs=Widget.Markdown(
-                    title="About Trade-offs between precision and recall"
-                ),
-                markdown_what_is_pr_curve=Widget.Markdown(
-                    title="What is PR curve?",
-                ),
-            )
-        ),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_pr_curve=Widget.Markdown(
+                title="Precision-Recall Curve", is_header=True, formats=[definitions.f1_score]
+            ),
+            collapse=Widget.Collapse(
+                schema=Schema(
+                    markdown_trade_offs=Widget.Markdown(
+                        title="About Trade-offs between precision and recall"
+                    ),
+                    markdown_what_is_pr_curve=Widget.Markdown(
+                        title="What is PR curve?",
+                        formats=[
+                            definitions.confidence_score,
+                            definitions.true_positives,
+                            definitions.false_positives,
+                        ],
+                    ),
+                )
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         # Precision-Recall curve
         fig = px.line(
             x=loader.m.recThrs,
@@ -864,30 +856,17 @@ class PRCurve(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_pr_curve.name:
-            return res.format(
-                definitions.f1_score,
-            )
-        if widget.name == cls.schema.collapse.schema.markdown_what_is_pr_curve.name:
-            return res.format(
-                definitions.confidence_score,
-                definitions.true_positives,
-                definitions.false_positives,
-            )
-        return res
-
 
 class PRCurveByClass(MetricVis):
-    schema = Schema(
-        markdown_pr_by_class=Widget.Markdown(title="PR Curve by Class"),
-        chart=Widget.Chart(),
-    )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_pr_by_class=Widget.Markdown(title="PR Curve by Class"),
+            chart=Widget.Chart(),
+        )
+
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
 
         # Precision-Recall curve per-class
         df = pd.DataFrame(loader.m.pr_curve(), columns=loader.m.cat_names)
@@ -912,15 +891,16 @@ class PRCurveByClass(MetricVis):
 
 class ConfusionMatrix(MetricVis):
 
-    clickable = True
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
 
-    schema = Schema(
-        markdown_confusion_matrix=Widget.Markdown(title="Confusion Matrix"),
-        chart=Widget.Chart(),
-    )
+        self.clickable = True
+        self.schema = Schema(
+            markdown_confusion_matrix=Widget.Markdown(title="Confusion Matrix", is_header=True),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         confusion_matrix = loader.m.confusion_matrix()
         # Confusion Matrix
         # TODO: Green-red
@@ -956,8 +936,7 @@ class ConfusionMatrix(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_click_data(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
         res = dict(projectMeta=loader.dt_project_meta.to_json())
         res["clickData"] = {}
 
@@ -971,7 +950,7 @@ class ConfusionMatrix(MetricVis):
                 continue
 
             subkey1, subkey2 = ordered_pair
-            key = subkey1 + cls._keypair_sep + subkey2
+            key = subkey1 + self._keypair_sep + subkey2
             res["clickData"][key] = {}
             res["clickData"][key]["layoutData"] = {}
             res["clickData"][key]["layout"] = []
@@ -1004,18 +983,37 @@ class ConfusionMatrix(MetricVis):
 
 class FrequentlyConfused(MetricVis):
 
-    clickable: bool = True
-    switchable: bool = True
-    _keypair_sep: str = " - "
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
 
-    schema = Schema(
-        markdown_frequently_confused=Widget.Markdown(title="Frequently Confused Classes"),
-        chart_01=Widget.Chart(switch_key="probability"),
-        chart_02=Widget.Chart(switch_key="count"),
-    )
+        self.clickable: bool = True
+        self.switchable: bool = True
+        self._keypair_sep: str = " - "
+        df = loader.m.frequently_confused(loader.m.confusion_matrix(), topk_pairs=20)
+        pair = df["category_pair"][0]
+        prob = df["probability"][0]
+        self.schema = Schema(
+            markdown_frequently_confused=Widget.Markdown(
+                title="Frequently Confused Classes",
+                is_header=True,
+                formats=[
+                    pair[0],
+                    pair[1],
+                    prob.round(2),
+                    pair[0],
+                    pair[1],
+                    (prob * 100).round(),
+                    pair[0],
+                    pair[1],
+                    pair[1],
+                    pair[0],
+                ],
+            ),
+            chart_01=Widget.Chart(switch_key="probability"),
+            chart_02=Widget.Chart(switch_key="count"),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[Tuple[go.Figure]]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[Tuple[go.Figure]]:
 
         confusion_matrix = loader.m.confusion_matrix()
 
@@ -1037,30 +1035,8 @@ class FrequentlyConfused(MetricVis):
         fig.update_traces(text=y_labels.round(2))
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_frequently_confused.name:
-            df = loader.m.frequently_confused(loader.m.confusion_matrix(), topk_pairs=20)
-            pair = df["category_pair"][0]
-            prob = df["probability"][0]
-            return res.format(
-                pair[0],
-                pair[1],
-                prob.round(2),
-                pair[0],
-                pair[1],
-                (prob * 100).round(),
-                pair[0],
-                pair[1],
-                pair[1],
-                pair[0],
-            )
-        return res
-
-    @classmethod
-    def get_click_data(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
-        if not cls.clickable:
+    def get_click_data(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[dict]:
+        if not self.clickable:
             return
         res = dict(projectMeta=loader.dt_project_meta.to_json())
         res["clickData"] = {}
@@ -1068,7 +1044,7 @@ class FrequentlyConfused(MetricVis):
         for keypair, v in loader.click_data.frequently_confused.items():
 
             subkey1, subkey2 = keypair
-            key = subkey1 + cls._keypair_sep + subkey2
+            key = subkey1 + self._keypair_sep + subkey2
             res["clickData"][key] = {}
             res["clickData"][key]["layoutData"] = {}
             res["clickData"][key]["layout"] = []
@@ -1101,14 +1077,19 @@ class FrequentlyConfused(MetricVis):
 
 class IOUDistribution(MetricVis):
 
-    schema = Schema(
-        markdown_localization_accuracy=Widget.Markdown(title="Localization Accuracy (IoU)"),
-        markdown_iou_distribution=Widget.Markdown(title="IoU Distribution"),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_localization_accuracy=Widget.Markdown(
+                title="Localization Accuracy (IoU)", is_header=True
+            ),
+            markdown_iou_distribution=Widget.Markdown(
+                title="IoU Distribution", is_header=True, formats=[definitions.iou_score]
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
 
         fig = go.Figure()
         nbins = 40
@@ -1136,25 +1117,23 @@ class IOUDistribution(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_iou_distribution.name:
-            return res.format(definitions.iou_score)
-        return res
-
 
 class ReliabilityDiagram(MetricVis):
 
-    schema = Schema(
-        markdown_calibration_score_1=Widget.Markdown(title="Calibration Score"),
-        markdown_calibration_score_2=Widget.Markdown(),
-        markdown_reliability_diagram=Widget.Markdown(title="Reliability Diagram"),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_calibration_score_1=Widget.Markdown(
+                title="Calibration Score", is_header=True, formats=[definitions.confidence_score]
+            ),
+            markdown_calibration_score_2=Widget.Markdown(),
+            markdown_reliability_diagram=Widget.Markdown(
+                title="Reliability Diagram", is_header=True
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
         # Calibration curve (only positive predictions)
         true_probs, pred_probs = loader.m_full.calibration_metrics.calibration_curve()
 
@@ -1193,25 +1172,24 @@ class ReliabilityDiagram(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_calibration_score_1.name:
-            return res.format(definitions.confidence_score)
-        return res
-
 
 class ConfidenceScore(MetricVis):
 
-    schema = Schema(
-        markdown_confidence_score_1=Widget.Markdown(title="Confidence Score Profile"),
-        chart=Widget.Chart(),
-        markdown_confidence_score_2=Widget.Markdown(),
-        markdown_calibration_score_3=Widget.Markdown(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+        self.schema = Schema(
+            markdown_confidence_score_1=Widget.Markdown(
+                title="Confidence Score Profile",
+                is_header=True,
+                formats=[definitions.confidence_threshold],
+            ),
+            chart=Widget.Chart(),
+            markdown_confidence_score_2=Widget.Markdown(),
+            markdown_calibration_score_3=Widget.Markdown(),
+        )
+
+    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
 
         color_map = {
             "Precision": "#1f77b4",
@@ -1247,23 +1225,24 @@ class ConfidenceScore(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_confidence_score_1.name:
-            return res.format(definitions.confidence_threshold)
-        return res
-
 
 class ConfidenceDistribution(MetricVis):
 
-    schema = Schema(
-        markdown_confidence_distribution=Widget.Markdown(title="Confidence Distribution"),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_confidence_distribution=Widget.Markdown(
+                title="Confidence Distribution",
+                is_header=True,
+                formats=[
+                    definitions.true_positives,
+                    definitions.false_positives,
+                ],
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
 
         f1_optimal_conf, best_f1 = loader.m_full.get_f1_optimal_conf()
 
@@ -1339,26 +1318,21 @@ class ConfidenceDistribution(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_confidence_distribution.name:
-            return res.format(
-                definitions.true_positives,
-                definitions.false_positives,
-            )
-        return res
-
 
 class F1ScoreAtDifferentIOU(MetricVis):
 
-    schema = Schema(
-        markdown_f1_at_ious=Widget.Markdown(title="Confidence Profile at Different IoU thresholds"),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_f1_at_ious=Widget.Markdown(
+                title="Confidence Profile at Different IoU thresholds",
+                is_header=True,
+                formats=[definitions.iou_threshold],
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
         # score_profile = loader.m_full.confidence_score_profile()
         f1s = loader.m_full.score_profile_f1s
 
@@ -1401,23 +1375,21 @@ class F1ScoreAtDifferentIOU(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_f1_at_ious.name:
-            return res.format(definitions.iou_threshold)
-        return res
-
 
 class PerClassAvgPrecision(MetricVis):
 
-    schema = Schema(
-        markdown_class_ap=Widget.Markdown(title="Average Precision by Class"),
-        chart=Widget.Chart(),
-    )
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_class_ap=Widget.Markdown(
+                title="Average Precision by Class",
+                is_header=True,
+                formats=[definitions.average_precision],
+            ),
+            chart=Widget.Chart(),
+        )
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget) -> Optional[go.Figure]:
 
         # AP per-class
         ap_per_class = loader.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
@@ -1436,28 +1408,29 @@ class PerClassAvgPrecision(MetricVis):
         # fig.show()
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_class_ap.name:
-            return res.format(definitions.average_precision)
-        return res
-
 
 class PerClassOutcomeCounts(MetricVis):
 
-    # clickable: bool = True
-    switchable: bool = True
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        # clickable: bool = True
+        self.switchable: bool = True
+        self.schema = Schema(
+            markdown_class_outcome_counts_1=Widget.Markdown(
+                title="Outcome Counts by Class",
+                is_header=True,
+                formats=[
+                    definitions.true_positives,
+                    definitions.false_positives,
+                    definitions.false_negatives,
+                ],
+            ),
+            markdown_class_outcome_counts_2=Widget.Markdown(formats=[definitions.f1_score]),
+            chart_01=Widget.Chart(switch_key="relative"),
+            chart_02=Widget.Chart(switch_key="absolute"),
+        )
 
-    schema = Schema(
-        markdown_class_outcome_counts_1=Widget.Markdown(title="Outcome Counts by Class"),
-        markdown_class_outcome_counts_2=Widget.Markdown(),
-        chart_01=Widget.Chart(switch_key="relative"),
-        chart_02=Widget.Chart(switch_key="absolute"),
-    )
-
-    @classmethod
-    def get_figure(cls, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader, widget: Widget.Chart) -> Optional[go.Figure]:
         # Per-class Counts
         iou_thres = 0
 
@@ -1509,24 +1482,14 @@ class PerClassOutcomeCounts(MetricVis):
         )
         return fig
 
-    @classmethod
-    def get_md_content(cls, loader: MetricLoader, widget: Widget):
-        res = cls._get_md_content(widget)
-        if widget.name == cls.schema.markdown_class_outcome_counts_1.name:
-            return res.format(
-                definitions.true_positives, definitions.false_positives, definitions.false_negatives
-            )
-        if widget.name == cls.schema.markdown_class_outcome_counts_2.name:
-            return res.format(definitions.f1_score)
-        return res
-
 
 class OverallErrorAnalysis(MetricVis):
 
-    cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader) -> Optional[go.Figure]:
         fig = make_subplots(
             rows=1,
             cols=3,
@@ -1618,10 +1581,11 @@ class OverallErrorAnalysis(MetricVis):
 
 class ClasswiseErrorAnalysis(MetricVis):
 
-    cv_tasks: Tuple[CVTask] = (CVTask.SEGMENTATION.value,)
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 
-    @classmethod
-    def get_figure(cls, loader: MetricLoader) -> Optional[go.Figure]:
+    def get_figure(self, loader: MetricLoader) -> Optional[go.Figure]:
         pd.options.mode.chained_assignment = None  # TODO rm later
 
         df = loader.result_df
