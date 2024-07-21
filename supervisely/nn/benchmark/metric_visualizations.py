@@ -658,6 +658,31 @@ class OutcomeCounts(MetricVis):
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         res = {}
+        res["filters"] = [
+            {
+                "type": "tag",
+                "tagId": "confidence",
+                "value": [
+                    0.6,
+                    1
+                ]
+            },
+            {
+                "type": "tag",
+                "tagId": "outcome",
+                "value": "TP"
+            }
+        ]    
+        res["options"] ={
+            "fitOnResize": True,
+            "enableZoom": False,
+            "showOpacityInHeader": True,
+            "showZoomInHeader": True,
+            "opacity": 0.8,
+            "enableObjectsPointerEvents": True,
+            "showTransparentBackground": True,
+            "showFilter": True
+        }        
         res["projectMeta"] = self._loader.dt_project_meta.to_json()
         res["clickData"] = {}
         for key, v in self._loader.click_data.outcome_counts.items():
