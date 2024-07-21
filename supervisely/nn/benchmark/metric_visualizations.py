@@ -151,7 +151,7 @@ class Widget:
 
     class Notification(BaseWidget):
 
-        def __init__(self, formats_title=None, formats_desc=None) -> None:
+        def __init__(self, formats_title: list = [], formats_desc: list = []) -> None:
             self.title: str = None
             self.description: str = None
             self.formats_title: list = formats_title
@@ -276,7 +276,10 @@ class MetricVis:
                     res += "\n            {{ " + f"{basename}_clickdata_html" + " }}"
                 continue
 
-            if isinstance(widget, Widget.Markdown) and not _is_before_chart:
+            if (
+                isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse))
+                and not _is_before_chart
+            ):
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
@@ -311,9 +314,6 @@ class MetricVis:
                 continue
 
             if isinstance(widget, Widget.Notification):
-                assert widget.formats_desc is not None, AssertionError(
-                    "The 'Widget.Notification.format_tpl' field must not be empty. Please specify the inherited and redefined method MetricVis.<your_vis>.get_html_snippets()"
-                )
                 res[f"{widget.name}_html"] = self._template_notification.render(
                     {
                         "widget_id": widget.id,
@@ -828,6 +828,9 @@ class PRCurve(MetricVis):
                     ),
                 )
             ),
+            notification_ap=Widget.Notification(
+                formats_title=[loader.base_metrics["mAP"].round(2)]
+            ),
             chart=Widget.Chart(),
         )
 
@@ -1093,10 +1096,16 @@ class IOUDistribution(MetricVis):
             markdown_localization_accuracy=Widget.Markdown(
                 title="Localization Accuracy (IoU)", is_header=True
             ),
+            collapse=Widget.Collapse(
+                Schema(markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"))
+            ),
             markdown_iou_distribution=Widget.Markdown(
                 title="IoU Distribution", is_header=True, formats=[definitions.iou_score]
             ),
             chart=Widget.Chart(),
+            notification_avg_iou=Widget.Notification(
+                formats_title=[self._loader.base_metrics["iou"].round(2)]
+            ),
         )
 
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
@@ -1136,11 +1145,26 @@ class ReliabilityDiagram(MetricVis):
             markdown_calibration_score_1=Widget.Markdown(
                 title="Calibration Score", is_header=True, formats=[definitions.confidence_score]
             ),
+            collapse_what_is=Widget.Collapse(
+                Schema(markdown_what_is_calibration=Widget.Markdown(title="What is calibration?"))
+            ),
             markdown_calibration_score_2=Widget.Markdown(),
             markdown_reliability_diagram=Widget.Markdown(
                 title="Reliability Diagram", is_header=True
             ),
             chart=Widget.Chart(),
+            collapse_ece=Widget.Collapse(
+                Schema(
+                    markdown_calibration_curve_interpretation=Widget.Markdown(
+                        title="How to interpret the Calibration curve"
+                    )
+                )
+            ),
+            notification_ece=Widget.Notification(
+                formats_title=[
+                    self._loader.m_full.calibration_metrics.expected_calibration_error().round(4)
+                ]
+            ),
         )
 
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
@@ -1187,7 +1211,6 @@ class ConfidenceScore(MetricVis):
 
     def __init__(self, loader: MetricLoader) -> None:
         super().__init__(loader)
-
         self.schema = Schema(
             markdown_confidence_score_1=Widget.Markdown(
                 title="Confidence Score Profile",
@@ -1196,6 +1219,13 @@ class ConfidenceScore(MetricVis):
             ),
             chart=Widget.Chart(),
             markdown_confidence_score_2=Widget.Markdown(),
+            collapse=Widget.Collapse(
+                Schema(
+                    markdown_plot_confidence_profile=Widget.Markdown(
+                        title="How to plot Confidence Profile?"
+                    )
+                )
+            ),
             markdown_calibration_score_3=Widget.Markdown(),
         )
 
@@ -1232,6 +1262,66 @@ class ConfidenceScore(MetricVis):
             text=f"F1-optimal threshold: {self._loader.f1_optimal_conf:.2f}",
             showarrow=False,
         )
+        # fig.show()
+        return fig
+
+
+class F1ScoreAtDifferentIOU(MetricVis):
+
+    def __init__(self, loader: MetricLoader) -> None:
+        super().__init__(loader)
+        self.schema = Schema(
+            markdown_f1_at_ious=Widget.Markdown(
+                title="Confidence Profile at Different IoU thresholds",
+                is_header=True,
+                formats=[definitions.iou_threshold],
+            ),
+            notification_f1=Widget.Notification(
+                formats_title=[self._loader.m_full.get_f1_optimal_conf()[0].round(4)]
+            ),
+            chart=Widget.Chart(),
+        )
+
+    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
+        # score_profile = self._loader.m_full.confidence_score_profile()
+        f1s = self._loader.m_full.score_profile_f1s
+
+        # downsample
+        f1s_down = f1s[:, :: f1s.shape[1] // 1000]
+        iou_names = list(map(lambda x: str(round(x, 2)), self._loader.m.iouThrs.tolist()))
+        df = pd.DataFrame(
+            np.concatenate([self._loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
+            columns=["scores"] + iou_names,
+        )
+
+        fig = px.line(
+            df,
+            x="scores",
+            y=iou_names,
+            # title="F1-Score at different IoU Thresholds",
+            labels={"value": "Value", "variable": "IoU threshold", "scores": "Confidence Score"},
+            color_discrete_sequence=px.colors.sequential.Viridis,
+            width=None,
+            height=500,
+        )
+        fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
+
+        # add annotations for maximum F1-Score for each IoU threshold
+        for i, iou in enumerate(iou_names):
+            argmax_f1 = f1s[i].argmax()
+            max_f1 = f1s[i][argmax_f1]
+            score = self._loader.score_profile["scores"][argmax_f1]
+            fig.add_annotation(
+                x=score,
+                y=max_f1,
+                text=f"Best score: {score:.2f}",
+                showarrow=True,
+                arrowhead=1,
+                arrowcolor="black",
+                ax=0,
+                ay=-30,
+            )
+
         # fig.show()
         return fig
 
@@ -1329,63 +1419,6 @@ class ConfidenceDistribution(MetricVis):
         return fig
 
 
-class F1ScoreAtDifferentIOU(MetricVis):
-
-    def __init__(self, loader: MetricLoader) -> None:
-        super().__init__(loader)
-        self.schema = Schema(
-            markdown_f1_at_ious=Widget.Markdown(
-                title="Confidence Profile at Different IoU thresholds",
-                is_header=True,
-                formats=[definitions.iou_threshold],
-            ),
-            chart=Widget.Chart(),
-        )
-
-    def get_figure(self, widget: Widget) -> Optional[go.Figure]:
-        # score_profile = self._loader.m_full.confidence_score_profile()
-        f1s = self._loader.m_full.score_profile_f1s
-
-        # downsample
-        f1s_down = f1s[:, :: f1s.shape[1] // 1000]
-        iou_names = list(map(lambda x: str(round(x, 2)), self._loader.m.iouThrs.tolist()))
-        df = pd.DataFrame(
-            np.concatenate([self._loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
-            columns=["scores"] + iou_names,
-        )
-
-        fig = px.line(
-            df,
-            x="scores",
-            y=iou_names,
-            # title="F1-Score at different IoU Thresholds",
-            labels={"value": "Value", "variable": "IoU threshold", "scores": "Confidence Score"},
-            color_discrete_sequence=px.colors.sequential.Viridis,
-            width=None,
-            height=500,
-        )
-        fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
-
-        # add annotations for maximum F1-Score for each IoU threshold
-        for i, iou in enumerate(iou_names):
-            argmax_f1 = f1s[i].argmax()
-            max_f1 = f1s[i][argmax_f1]
-            score = self._loader.score_profile["scores"][argmax_f1]
-            fig.add_annotation(
-                x=score,
-                y=max_f1,
-                text=f"Best score: {score:.2f}",
-                showarrow=True,
-                arrowhead=1,
-                arrowcolor="black",
-                ax=0,
-                ay=-30,
-            )
-
-        # fig.show()
-        return fig
-
-
 class PerClassAvgPrecision(MetricVis):
 
     def __init__(self, loader: MetricLoader) -> None:
@@ -1436,6 +1469,9 @@ class PerClassOutcomeCounts(MetricVis):
                 ],
             ),
             markdown_class_outcome_counts_2=Widget.Markdown(formats=[definitions.f1_score]),
+            collapse=Widget.Collapse(
+                Schema(markdown_normalization=Widget.Markdown(title="Normalization"))
+            ),
             chart_01=Widget.Chart(switch_key="relative"),
             chart_02=Widget.Chart(switch_key="absolute"),
         )
