@@ -378,45 +378,49 @@ class AppApi(TaskApi):
             :return: Response from the API.
             :rtype: dict
             """
-            if task_id is None:
-                node_id = self._api.task_id
-            else:
-                node_id = task_id
-
-            if node_id is None:
-                raise ValueError(
-                    "Task ID cannot be automatically determined. Please specify it manually."
-                )
-
-            node_type = "task"
-            if not getattr(self, "team_id", None) and node_id:
-                self.team_id = self._api.task.get_info_by_id(node_id).get(ApiField.TEAM_ID)
-
-            if not self.team_id:
-                raise ValueError("Failed to get Team ID")
-
-            api_endpoint = f"workflow.node.add-{transaction_type}"
-
-            data_type = data.get("data_type")
-            data_id = data.get("data_id") if data_type != "app_session" else node_id
-            data_meta = data.get("meta", {})
-            if meta is not None:
-                if validate_json(meta, self.__custom_meta_schema):
-                    data_meta.update(meta)
+            try:
+                if task_id is None:
+                    node_id = self._api.task_id
                 else:
-                    logger.warn("Invalid customization meta, will not be added to the node.")
+                    node_id = task_id
 
-            payload = {
-                ApiField.TEAM_ID: self.team_id,
-                ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},
-                ApiField.TYPE: data_type,
-            }
-            if data_id:
-                payload[ApiField.ID] = data_id
-            if data_meta:
-                payload[ApiField.META] = data_meta
-            response = self._api.post(api_endpoint, payload)
-            return response.json()
+                if node_id is None:
+                    raise ValueError(
+                        "Task ID cannot be automatically determined. Please specify it manually."
+                    )
+
+                node_type = "task"
+                if not getattr(self, "team_id", None) and node_id:
+                    self.team_id = self._api.task.get_info_by_id(node_id).get(ApiField.TEAM_ID)
+
+                if not self.team_id:
+                    raise ValueError("Failed to get Team ID")
+
+                api_endpoint = f"workflow.node.add-{transaction_type}"
+
+                data_type = data.get("data_type")
+                data_id = data.get("data_id") if data_type != "app_session" else node_id
+                data_meta = data.get("meta", {})
+                if meta is not None:
+                    if validate_json(meta, self.__custom_meta_schema):
+                        data_meta.update(meta)
+                    else:
+                        logger.warn("Invalid customization meta, will not be added to the node.")
+
+                payload = {
+                    ApiField.TEAM_ID: self.team_id,
+                    ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},
+                    ApiField.TYPE: data_type,
+                }
+                if data_id:
+                    payload[ApiField.ID] = data_id
+                if data_meta:
+                    payload[ApiField.META] = data_meta
+                response = self._api.post(api_endpoint, payload)
+                return response.json()
+            except Exception as e:
+                logger.error(f"Failed to add {transaction_type} to the workflow node: {repr(e)}")
+                return {}
 
         def add_input_project(
             self,
