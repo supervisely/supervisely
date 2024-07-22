@@ -418,8 +418,11 @@ class AppApi(TaskApi):
                     payload[ApiField.META] = data_meta
                 response = self._api.post(api_endpoint, payload)
                 return response.json()
-            except Exception as e:
-                logger.error(f"Failed to add {transaction_type} to the workflow node: {repr(e)}")
+            except Exception:
+                logger.error(
+                    f"Failed to add {transaction_type} node to the workflow "
+                    f"(this error will not affect the application execution)."
+                )
                 return {}
 
         def add_input_project(
