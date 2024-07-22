@@ -11,20 +11,85 @@ FROM supervisely/nvidia-cuda:11.1-cudnn8-runtime-ubuntu20.04
 ##############################################################################
 RUN echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
 
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        build-essential \
-        cmake \
-        git \
-        curl \
-        nano \
-        ca-certificates\
-        libjpeg-dev \
-        libpng-dev \
-        software-properties-common \
-    && apt-get -qq -y autoremove \
-    && apt-get autoclean \
-    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+# RUN apt-get update \
+#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+#         build-essential \
+#         cmake \
+#         git \
+#         curl \
+#         nano \
+#         ca-certificates\
+#         libjpeg-dev \
+#         libpng-dev \
+#         software-properties-common \
+#     && apt-get -qq -y autoremove \
+#     && apt-get autoclean \
+#     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        cmake && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        git && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        curl && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        nano && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libjpeg-dev && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libpng-dev && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        software-properties-common && \
+    apt-get -qq -y autoremove && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
 
 
