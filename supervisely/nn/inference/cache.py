@@ -69,7 +69,7 @@ class PersistentImageTTLCache(TTLCache):
         try:
             super().pop(*args, **kwargs)
         except KeyError:
-            sly.logger.warning(
+            sly.logger.debug(
                 "Key not found in cache",
                 exc_info=True,
                 extra={"links": self._TTLCache__links.keys(), "data": self._Cache__data.keys()},
