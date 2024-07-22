@@ -27,6 +27,8 @@ RUN echo "deb http://developer.download.nvidia.com/compute/machine-learning/repo
 #     && apt-get autoclean \
 #     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
+RUN apt-get update
+RUN apt-get install
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
