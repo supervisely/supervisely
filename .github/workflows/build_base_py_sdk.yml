@@ -14,6 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
       - uses: actions/checkout@v4
       - name: Write Tag to ENV variable
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
