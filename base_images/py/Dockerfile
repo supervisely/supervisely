@@ -10,7 +10,8 @@ FROM supervisely/nvidia-cuda:11.1-cudnn8-runtime-ubuntu20.04
 # common
 ##############################################################################
 # RUN echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
-
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
 
 # RUN apt-get update \
 #     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
