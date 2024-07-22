@@ -1,3 +1,5 @@
+# https://hub.docker.com/r/supervisely/base-py
+
 #FROM supervisely/base-py:6.0.17
 #FROM nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
 
@@ -132,6 +134,7 @@ RUN pip install protobuf==3.14.0
 RUN pip install Werkzeug==1.0.1
 RUN pip install sk-video==1.1.10
 
+RUN pip install --upgrade setuptools==70.3.0
 RUN /usr/bin/python3 -m pip install --upgrade pip
 ##############################################################################
 # Encoding for python SDK

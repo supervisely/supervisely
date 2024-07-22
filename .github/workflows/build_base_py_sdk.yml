@@ -1,6 +1,13 @@
+# https://hub.docker.com/r/supervisely/base-py-sdk
 name: Manual Build base-py-sdk Docker
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        default: ""
 
 jobs:
   deploy:
@@ -15,11 +22,11 @@ jobs:
         uses: mr-smithers-excellent/docker-build-push@v5
         with:
           image: supervisely/base-py-sdk
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
+          tags: ${{ github.event.inputs.tag_version }}
+          addLatest: false
           dockerfile: "base_images/py_sdk/Dockerfile"
           registry: docker.io
           buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
+            tag_ref_name=${{ github.event.inputs.tag_version }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
