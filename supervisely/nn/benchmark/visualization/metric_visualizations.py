@@ -413,7 +413,7 @@ class Overview(MetricVis):
 
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Overall Metrics
-        base_metrics = self._loader.m.base_metrics()
+        base_metrics = self._loader.mp.base_metrics()
         r = list(base_metrics.values())
         theta = [self._loader.mp.metric_names[k] for k in base_metrics.keys()]
         fig = go.Figure()
@@ -543,7 +543,7 @@ class ModelPredictions(MetricVis):
     def get_table(self, widget: Widget.Table) -> dict:
         res = {}
         tmp = self._loader._api.image.get_list(dataset_id=self._loader.dt_dataset_id)
-        df = self._loader.m.prediction_table()
+        df = self._loader.mp.prediction_table()
         df = df[df["image_name"].isin([x.name for x in tmp])]
         columns_options = [{}] * len(df.columns)
         for idx, col in enumerate(columns_options):
@@ -568,7 +568,7 @@ class ModelPredictions(MetricVis):
 
         for row in tbl["data"]["data"]:
             name = row["items"][0]
-            info = self._loader.dt_images_by_name[name]
+            info = self._loader.dt_images_dct_by_name[name]
 
             dct = {
                 "row": {key_mapping[k]: v for k, v in info._asdict().items()},
@@ -618,7 +618,7 @@ class OutcomeCounts(MetricVis):
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                x=[self._loader.m.TP_count],
+                x=[self._loader.mp.TP_count],
                 y=["Outcome"],
                 name="TP",
                 orientation="h",
@@ -627,7 +627,7 @@ class OutcomeCounts(MetricVis):
         )
         fig.add_trace(
             go.Bar(
-                x=[self._loader.m.FN_count],
+                x=[self._loader.mp.FN_count],
                 y=["Outcome"],
                 name="FN",
                 orientation="h",
@@ -636,7 +636,7 @@ class OutcomeCounts(MetricVis):
         )
         fig.add_trace(
             go.Bar(
-                x=[self._loader.m.FP_count],
+                x=[self._loader.mp.FP_count],
                 y=["Outcome"],
                 name="FP",
                 orientation="h",
@@ -682,7 +682,7 @@ class OutcomeCounts(MetricVis):
 
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
-                info: ImageInfo = self._loader.dt_images[img_id]
+                info: ImageInfo = self._loader.dt_images_dct[img_id]
                 res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
@@ -989,7 +989,7 @@ class ConfusionMatrix(MetricVis):
 
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
-                info: ImageInfo = self._loader.dt_images[img_id]
+                info: ImageInfo = self._loader.dt_images_dct[img_id]
                 res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
@@ -1018,7 +1018,7 @@ class FrequentlyConfused(MetricVis):
         self.clickable: bool = True
         self.switchable: bool = True
         self._keypair_sep: str = " - "
-        df = self._loader.m.frequently_confused(self._loader.m.confusion_matrix(), topk_pairs=20)
+        df = self._loader.mp.frequently_confused()
         pair = df["category_pair"][0]
         prob = df["probability"][0]
         self.schema = Schema(
@@ -1044,10 +1044,8 @@ class FrequentlyConfused(MetricVis):
 
     def get_figure(self, widget: Widget.Chart) -> Optional[Tuple[go.Figure]]:
 
-        confusion_matrix = self._loader.m.confusion_matrix()
-
         # Frequency of confusion as bar chart
-        confused_df = self._loader.m.frequently_confused(confusion_matrix, topk_pairs=20)
+        confused_df = self._loader.mp.frequently_confused()
         confused_name_pairs = confused_df["category_pair"]
         x_labels = [f"{pair[0]} - {pair[1]}" for pair in confused_name_pairs]
         y_labels = confused_df[widget.switch_key]
@@ -1083,7 +1081,7 @@ class FrequentlyConfused(MetricVis):
 
             for idx, img_id in enumerate(images):
                 ui_id = f"ann_{img_id}"
-                info: ImageInfo = self._loader.dt_images[img_id]
+                info: ImageInfo = self._loader.dt_images_dct[img_id]
                 res["clickData"][key]["layoutData"][ui_id] = {
                     "imageUrl": info.preview_url,
                     "annotation": {
@@ -1128,7 +1126,7 @@ class IOUDistribution(MetricVis):
 
         fig = go.Figure()
         nbins = 40
-        fig.add_trace(go.Histogram(x=self._loader.m.ious, nbinsx=nbins))
+        fig.add_trace(go.Histogram(x=self._loader.mp.ious, nbinsx=nbins))
         fig.update_layout(
             # title="IoU Distribution",
             xaxis_title="IoU",
@@ -1138,8 +1136,8 @@ class IOUDistribution(MetricVis):
         )
 
         # Add annotation for mean IoU as vertical line
-        mean_iou = self._loader.m.ious.mean()
-        y1 = len(self._loader.m.ious) // nbins
+        mean_iou = self._loader.mp.ious.mean()
+        y1 = len(self._loader.mp.ious) // nbins
         fig.add_shape(
             type="line",
             x0=mean_iou,
@@ -1303,7 +1301,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
 
         # downsample
         f1s_down = f1s[:, :: f1s.shape[1] // 1000]
-        iou_names = list(map(lambda x: str(round(x, 2)), self._loader.m.iouThrs.tolist()))
+        iou_names = list(map(lambda x: str(round(x, 2)), self._loader.mp.iouThrs.tolist()))
         df = pd.DataFrame(
             np.concatenate([self._loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
             columns=["scores"] + iou_names,
@@ -1450,11 +1448,11 @@ class PerClassAvgPrecision(MetricVis):
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
 
         # AP per-class
-        ap_per_class = self._loader.m.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
+        ap_per_class = self._loader.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
         # Per-class Average Precision (AP)
         fig = px.scatter_polar(
             r=ap_per_class,
-            theta=self._loader.m.cat_names,
+            theta=self._loader.mp.cat_names,
             title="Per-class Average Precision (AP)",
             labels=dict(r="Average Precision", theta="Category"),
             width=800,
@@ -1495,9 +1493,9 @@ class PerClassOutcomeCounts(MetricVis):
         # Per-class Counts
         iou_thres = 0
 
-        tp = self._loader.m.true_positives[:, iou_thres]
-        fp = self._loader.m.false_positives[:, iou_thres]
-        fn = self._loader.m.false_negatives[:, iou_thres]
+        tp = self._loader.mp.true_positives[:, iou_thres]
+        fp = self._loader.mp.false_positives[:, iou_thres]
+        fn = self._loader.mp.false_negatives[:, iou_thres]
 
         # normalize
         support = tp + fn
@@ -1509,9 +1507,9 @@ class PerClassOutcomeCounts(MetricVis):
             # sort by f1
             sort_scores = 2 * tp / (2 * tp + fp + fn)
 
-        K = len(self._loader.m.cat_names)
+        K = len(self._loader.mp.cat_names)
         sort_indices = np.argsort(sort_scores)
-        cat_names_sorted = [self._loader.m.cat_names[i] for i in sort_indices]
+        cat_names_sorted = [self._loader.mp.cat_names[i] for i in sort_indices]
         tp_rel, fn_rel, fp_rel = tp_rel[sort_indices], fn_rel[sort_indices], fp_rel[sort_indices]
 
         if widget.switch_key == "relative":
@@ -1562,7 +1560,7 @@ class PerClassOutcomeCounts(MetricVis):
 
                 for idx, img_id in enumerate(images):
                     ui_id = f"ann_{img_id}"
-                    info: ImageInfo = self._loader.dt_images[img_id]
+                    info: ImageInfo = self._loader.dt_images_dct[img_id]
                     res["clickData"][key]["layoutData"][ui_id] = {
                         "imageUrl": info.preview_url,
                         "annotation": {

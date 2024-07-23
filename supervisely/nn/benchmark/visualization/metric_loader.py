@@ -433,7 +433,7 @@ class Visualizer:
         self._api.project.update_meta(self.diff_project_info.id, diff_meta.to_json())
         self._api.project.update_meta(self.dt_project_info.id, diff_meta.to_json())
 
-        with tqdm(
+        with tqdm_sly(
             desc="Creating diff_project", total=sum([len(x) for x in gt_anns_dct.values()])
         ) as pbar:
 
@@ -472,9 +472,11 @@ class Visualizer:
                 dt_image_ids = [x.id for x in dt_images_dct[dataset.name]]
                 self._api.annotation.upload_anns(dt_image_ids, dt_anns_new)
 
-                diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
+                try:
+                    diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
+                except ValueError:
+                    diff_images = self._api.image.get_list(dataset.id)
                 diff_image_ids = [image.id for image in diff_images]
                 self._api.annotation.upload_anns(diff_image_ids, diff_anns_new, progress_cb=pbar)
 
-                pbar.update(len)
         pass

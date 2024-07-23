@@ -353,9 +353,10 @@ class BaseBenchmark:
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
-        self.diff_project_info = self._get_or_create_diff_project()
+
         vis = Visualizer(self)
-        vis.process_diff_project()
+        if self._get_or_create_diff_project() is not None:
+            vis.process_diff_project()
         vis.visualize()
 
     def _get_or_create_diff_project(self) -> sly.ProjectInfo:
@@ -368,7 +369,8 @@ class BaseBenchmark:
             )
             for dataset in self.api.dataset.get_list(self.dt_project_info.id):
                 self.api.dataset.create(diff_project_info.id, dataset.name)
-        return diff_project_info
+            return diff_project_info
+        return None
 
     def upload_visualizations(self, dest_dir: str):
         layout_dir = self.get_layout_results_dir()
