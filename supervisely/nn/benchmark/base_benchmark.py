@@ -1,21 +1,23 @@
 import os
-from typing import Union, List
+from typing import List, Union
+
 import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
-from supervisely.nn.inference import SessionJSON
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
+from supervisely.nn.benchmark.layout.metric_loader import MetricLoader
+from supervisely.nn.inference import SessionJSON
 
 
 class BaseBenchmark:
     def __init__(
-            self,
-            api: sly.Api,
-            gt_project_id: int,
-            gt_dataset_ids: List[int] = None,
-            output_dir: str = "./benchmark",
-        ):
+        self,
+        api: sly.Api,
+        gt_project_id: int,
+        gt_dataset_ids: List[int] = None,
+        output_dir: str = "./benchmark",
+    ):
         self.api = api
         self.session: SessionJSON = None
         self.gt_project_info = api.project.get_info_by_id(gt_project_id)
@@ -31,35 +33,39 @@ class BaseBenchmark:
         raise NotImplementedError()
 
     def run_evaluation(
-            self,
-            model_session: Union[int, str, SessionJSON],
-            inference_settings = None,
-            output_project_id = None,
-            batch_size: int = 8,
-            cache_project_on_agent: bool = False
-            ):
+        self,
+        model_session: Union[int, str, SessionJSON],
+        inference_settings=None,
+        output_project_id=None,
+        batch_size: int = 8,
+        cache_project_on_agent: bool = False,
+    ):
         self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(output_project_id, batch_size, cache_project_on_agent)
+        self._eval_inference_info = self._run_inference(
+            output_project_id, batch_size, cache_project_on_agent
+        )
         self.evaluate(self.dt_project_info.id)
         self._dump_eval_inference_info(self._eval_inference_info)
-    
+
     def run_inference(
-            self,
-            model_session: Union[int, str, SessionJSON],
-            inference_settings = None,
-            output_project_id = None,
-            batch_size: int = 8,
-            cache_project_on_agent: bool = False
-            ):
+        self,
+        model_session: Union[int, str, SessionJSON],
+        inference_settings=None,
+        output_project_id=None,
+        batch_size: int = 8,
+        cache_project_on_agent: bool = False,
+    ):
         self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(output_project_id, batch_size, cache_project_on_agent)
+        self._eval_inference_info = self._run_inference(
+            output_project_id, batch_size, cache_project_on_agent
+        )
 
     def _run_inference(
-            self,
-            output_project_id = None,
-            batch_size: int = 8,
-            cache_project_on_agent: bool = False,
-            ):
+        self,
+        output_project_id=None,
+        batch_size: int = 8,
+        cache_project_on_agent: bool = False,
+    ):
         model_info = self._fetch_model_info(self.session)
         self.dt_project_info = self._get_or_create_dt_project(output_project_id, model_info)
         iterator = self.session.inference_project_id_async(
@@ -77,9 +83,9 @@ class BaseBenchmark:
             "dt_project_id": output_project_id,
             "batch_size": batch_size,
             **model_info,
-        }        
+        }
         return inference_info
-    
+
     def evaluate(self, dt_project_id):
         self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
         gt_project_path, dt_project_path = self._download_projects()
@@ -90,20 +96,20 @@ class BaseBenchmark:
         self.evaluator = self._get_evaluator_class()(
             gt_project_path=gt_project_path,
             dt_project_path=dt_project_path,
-            result_dir=eval_results_dir
+            result_dir=eval_results_dir,
         )
         self.evaluator.evaluate()
 
     def run_speedtest(
-            self,
-            model_session: Union[int, str, SessionJSON],
-            project_id: int,
-            batch_sizes: list = (1, 8, 16),
-            inference_settings: dict = None,
-            num_iterations: int = 100,
-            num_warmup: int = 3,
-            cache_project_on_agent=False,
-            ):
+        self,
+        model_session: Union[int, str, SessionJSON],
+        project_id: int,
+        batch_sizes: list = (1, 8, 16),
+        inference_settings: dict = None,
+        num_iterations: int = 100,
+        num_warmup: int = 3,
+        cache_project_on_agent=False,
+    ):
         self.session = self._init_model_session(model_session, inference_settings)
         self._speedtest = self._run_speedtest(
             project_id,
@@ -115,13 +121,13 @@ class BaseBenchmark:
         self._dump_speedtest(self._speedtest)
 
     def _run_speedtest(
-            self,
-            project_id: int,
-            batch_sizes: list = (1, 8, 16),
-            num_iterations: int = 100,
-            num_warmup: int = 3,
-            cache_project_on_agent=False,
-            ):
+        self,
+        project_id: int,
+        batch_sizes: list = (1, 8, 16),
+        num_iterations: int = 100,
+        num_warmup: int = 3,
+        cache_project_on_agent=False,
+    ):
         model_info = self._fetch_model_info(self.session)
         speedtest_info = {
             "device": model_info["device"],
@@ -139,10 +145,12 @@ class BaseBenchmark:
                 num_iterations=num_iterations,
                 num_warmup=num_warmup,
                 cache_project_on_model=cache_project_on_agent,
-                )
+            )
             for speedtest in tqdm(iterator):
                 speedtest_results.append(speedtest)
-            assert len(speedtest_results) == num_iterations, "Speedtest failed to run all iterations."
+            assert (
+                len(speedtest_results) == num_iterations
+            ), "Speedtest failed to run all iterations."
             avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(speedtest_results)
             benchmark = {
                 "benchmark": avg_speedtest,
@@ -156,7 +164,7 @@ class BaseBenchmark:
             "speedtest": benchmarks,
         }
         return speedtest
-        
+
     def get_base_dir(self):
         return os.path.join(self.output_dir, self.dt_project_info.name)
 
@@ -165,26 +173,32 @@ class BaseBenchmark:
         gt_path = os.path.join(base_dir, "gt_project")
         dt_path = os.path.join(base_dir, "dt_project")
         return gt_path, dt_path
-    
+
     def get_eval_results_dir(self) -> str:
         dir = os.path.join(self.get_base_dir(), "evaluation")
         os.makedirs(dir, exist_ok=True)
         return dir
-    
+
     def get_speedtest_results_dir(self) -> str:
         checkpoint_name = self._speedtest["model_info"]["model_name"]
-        dir = os.path.join(self.output_dir, "speedtest", checkpoint_name)  # TODO: use checkpoint_name instead of model_name
+        dir = os.path.join(
+            self.output_dir, "speedtest", checkpoint_name
+        )  # TODO: use checkpoint_name instead of model_name
         os.makedirs(dir, exist_ok=True)
         return dir
-    
+
     def upload_eval_results(self, remote_dir: str):
         eval_dir = self.get_eval_results_dir()
-        assert not sly.fs.dir_empty(eval_dir), f"The result dir ({eval_dir}) is empty. You should run evaluation before uploading results."
+        assert not sly.fs.dir_empty(
+            eval_dir
+        ), f"The result dir ({eval_dir}) is empty. You should run evaluation before uploading results."
         self.api.file.upload_directory(self.team_id, eval_dir, remote_dir)
 
     def upload_speedtest_results(self, remote_dir: str):
         speedtest_dir = self.get_speedtest_results_dir()
-        assert not sly.fs.dir_empty(speedtest_dir), f"Speedtest dir ({speedtest_dir}) is empty. You should run speedtest before uploading results."
+        assert not sly.fs.dir_empty(
+            speedtest_dir
+        ), f"Speedtest dir ({speedtest_dir}) is empty. You should run speedtest before uploading results."
         self.api.file.upload_directory(self.team_id, speedtest_dir, remote_dir)
 
     def _generate_dt_project_name(self, gt_project_name, model_info):
@@ -193,12 +207,14 @@ class BaseBenchmark:
             # add checkpoint_id
             dt_project_name += f' ({model_info["checkpoint_name"]})'
         return dt_project_name
-    
+
     def _get_or_create_dt_project(self, output_project_id, model_info) -> sly.ProjectInfo:
         if output_project_id is None:
             dt_project_name = self._generate_dt_project_name(self.gt_project_info.name, model_info)
             dt_wrokspace_id = self.gt_project_info.workspace_id
-            dt_project_info = self.api.project.create(dt_wrokspace_id, dt_project_name, change_name_if_conflict=True)
+            dt_project_info = self.api.project.create(
+                dt_wrokspace_id, dt_project_name, change_name_if_conflict=True
+            )
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
@@ -215,25 +231,26 @@ class BaseBenchmark:
                 dataset_ids=self.gt_dataset_ids,
                 log_progress=True,
                 save_images=False,
-                save_image_info=True
-                )
+                save_image_info=True,
+            )
         else:
             print(f"GT annotations already exist: {gt_path}")
         if not os.path.exists(dt_path):
             print(f"DT annotations will be downloaded to: {dt_path}")
-            sly.download_project(self.api,
-            self.dt_project_info.id,
-            dt_path,
-            log_progress=True,
-            save_images=False,
-            save_image_info=True
+            sly.download_project(
+                self.api,
+                self.dt_project_info.id,
+                dt_path,
+                log_progress=True,
+                save_images=False,
+                save_image_info=True,
             )
         else:
             print(f"DT annotations already exist: {dt_path}")
         self._dump_project_info(self.gt_project_info, gt_path)
         self._dump_project_info(self.dt_project_info, dt_path)
         return gt_path, dt_path
-    
+
     def _fetch_model_info(self, session: SessionJSON):
         deploy_info = session.get_deploy_info()
         if session.task_id is not None:
@@ -255,10 +272,8 @@ class BaseBenchmark:
         return model_info
 
     def _init_model_session(
-            self,
-            model_session: Union[int, str, SessionJSON],
-            inference_settings: dict = None
-            ):
+        self, model_session: Union[int, str, SessionJSON], inference_settings: dict = None
+    ):
         if isinstance(model_session, int):
             session = SessionJSON(self.api, model_session)
         elif isinstance(model_session, str):
@@ -267,7 +282,7 @@ class BaseBenchmark:
             session = model_session
         else:
             raise ValueError(f"Unsupported type of 'model_session' argument: {type(model_session)}")
-        
+
         if inference_settings is not None:
             session.set_inference_settings(inference_settings)
         return session
@@ -281,21 +296,27 @@ class BaseBenchmark:
         info_path = os.path.join(self.get_eval_results_dir(), "inference_info.json")
         sly.json.dump_json_file(eval_inference_info, info_path)
         return info_path
-    
+
     def _dump_speedtest(self, speedtest):
         path = os.path.join(self.get_speedtest_results_dir(), "speedtest.json")
         sly.json.dump_json_file(speedtest, path, indent=2)
         return path
-    
+
     def _calculate_speedtest_statistics(self, speedtest_results: list):
         x = [[s[k] for s in speedtest_results] for k in speedtest_results[0].keys()]
         x = np.array(x, dtype=float)
         avg = x.mean(1)
         std = x.std(1)
-        avg_speedtest = {k: float(avg[i]) if not np.isnan(avg[i]).any() else None for i, k in enumerate(speedtest_results[0].keys())}
-        std_speedtest = {k: float(std[i]) if not np.isnan(std[i]).any() else None for i, k in enumerate(speedtest_results[0].keys())}
+        avg_speedtest = {
+            k: float(avg[i]) if not np.isnan(avg[i]).any() else None
+            for i, k in enumerate(speedtest_results[0].keys())
+        }
+        std_speedtest = {
+            k: float(std[i]) if not np.isnan(std[i]).any() else None
+            for i, k in enumerate(speedtest_results[0].keys())
+        }
         return avg_speedtest, std_speedtest
-    
+
     def _format_speedtest_as_table(self, speedtest: dict):
         benchmarks = speedtest["speedtest"]
         rows = []
@@ -304,7 +325,21 @@ class BaseBenchmark:
             avg = row.pop("benchmark")
             std = row.pop("benchmark_std")
             for key in avg.keys():
-                row[key+"_avg"] = avg[key]
-                row[key+"_std"] = std[key]
+                row[key + "_avg"] = avg[key]
+                row[key + "_std"] = std[key]
             rows.append(row)
         return rows
+
+    def generate_visualizations(self):
+        eval_dir = self.get_eval_results_dir()
+        assert not sly.fs.dir_empty(
+            eval_dir
+        ), f"The result dir ({eval_dir}) is empty. You should run evaluation before uploading results."
+
+        loader = MetricLoader(
+            eval_dir + "/cocoGt.json", eval_dir + "/cocoDt.json", eval_dir + "/eval_data.pkl"
+        )
+
+        loader.upload_layout(
+            self.team_id,
+        )
