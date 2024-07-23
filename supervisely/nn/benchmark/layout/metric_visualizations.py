@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from supervisely.nn.benchmark.layout.metric_loader import MetricLoader
+    from supervisely.nn.benchmark.layout.metric_loader import Visualizer
 
 import numpy as np
 import pandas as pd
@@ -209,7 +209,7 @@ class Schema:
 
 class MetricVis:
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
 
         self.cv_tasks: List[CVTask] = CVTask.values()
         self.clickable: bool = False
@@ -389,13 +389,13 @@ class MetricVis:
     def get_md_content(self, widget: Widget.Markdown):
         return getattr(contents, widget.name).format(*widget.formats)
 
-    def initialize_formats(self, loader: MetricLoader, widget: Widget):
+    def initialize_formats(self, loader: Visualizer, widget: Widget):
         pass
 
 
 class Overview(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_overview=Widget.Markdown(title="Overview", is_header=True),
@@ -415,7 +415,7 @@ class Overview(MetricVis):
         # Overall Metrics
         base_metrics = self._loader.m.base_metrics()
         r = list(base_metrics.values())
-        theta = [base_metrics.METRIC_NAMES[k] for k in base_metrics.keys()]
+        theta = [self._loader.mp.metric_names[k] for k in base_metrics.keys()]
         fig = go.Figure()
         fig.add_trace(
             go.Scatterpolar(
@@ -440,7 +440,7 @@ class Overview(MetricVis):
 
 class ExplorerGrid(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
@@ -490,7 +490,7 @@ class ExplorerGrid(MetricVis):
 
 class ModelPredictions(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
@@ -583,7 +583,7 @@ class ModelPredictions(MetricVis):
 
 class WhatIs(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_what_is=Widget.Markdown(title="What is YOLOv8 model", is_header=True),
@@ -596,7 +596,7 @@ class WhatIs(MetricVis):
 
 class OutcomeCounts(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
 
         self.clickable: bool = True
@@ -705,13 +705,13 @@ class OutcomeCounts(MetricVis):
 
 class Recall(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         tp_plus_fn = self._loader.m.TP_count + self._loader.m.FN_count
         self.schema = Schema(
             markdown_R=Widget.Markdown(title="Recall", is_header=True),
             notification_recall=Widget.Notification(
-                formats_title=[self._loader.base_metrics["recall"].round(2)],
+                formats_title=[self._loader.base_metrics()["recall"].round(2)],
                 formats_desc=[self._loader.m.TP_count, tp_plus_fn],
             ),
             markdown_R_perclass=Widget.Markdown(formats=[definitions.f1_score]),
@@ -721,17 +721,18 @@ class Recall(MetricVis):
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")
+        sorted_by_f1 = self._loader.m.per_class_metrics().sort_values(by="f1")
         fig = px.bar(
-            self._loader.per_class_metrics_sorted,
+            sorted_by_f1,
             x="category",
             y="recall",
             title="Per-class Recall (Sorted by F1)",
             color="recall",
             color_continuous_scale="Plasma",
         )
-        if len(self._loader.per_class_metrics_sorted) <= 20:
+        if len(sorted_by_f1) <= 20:
             fig.update_traces(
-                text=self._loader.per_class_metrics_sorted["recall"].round(2),
+                text=sorted_by_f1["recall"].round(2),
                 textposition="outside",
             )
         fig.update_xaxes(title_text="Category")
@@ -741,12 +742,12 @@ class Recall(MetricVis):
 
 class Precision(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_P=Widget.Markdown(title="Precision", is_header=True),
             notification_precision=Widget.Notification(
-                formats_title=[self._loader.base_metrics["precision"].round(2)],
+                formats_title=[self._loader.base_metrics()["precision"].round(2)],
                 formats_desc=[
                     self._loader.m.TP_count,
                     (self._loader.m.TP_count + self._loader.m.FP_count),
@@ -759,17 +760,18 @@ class Precision(MetricVis):
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="precision")
+        sorted_by_precision = self._loader.m.per_class_metrics().sort_values(by="precision")
         fig = px.bar(
-            self._loader.per_class_metrics_sorted,
+            sorted_by_precision,
             x="category",
             y="precision",
             title="Per-class Precision (Sorted by F1)",
             color="precision",
             color_continuous_scale="Plasma",
         )
-        if len(self._loader.per_class_metrics_sorted) <= 20:
+        if len(sorted_by_precision) <= 20:
             fig.update_traces(
-                text=self._loader.per_class_metrics_sorted["precision"].round(2),
+                text=sorted_by_precision.round(2),
                 textposition="outside",
             )
         fig.update_xaxes(title_text="Category")
@@ -779,7 +781,7 @@ class Precision(MetricVis):
 
 class RecallVsPrecision(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_PR=Widget.Markdown(
@@ -791,19 +793,20 @@ class RecallVsPrecision(MetricVis):
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
+        sorted_by_f1 = self._loader.m.per_class_metrics().sort_values(by="f1")
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                y=self._loader.per_class_metrics_sorted["precision"],
-                x=self._loader.per_class_metrics_sorted["category"],
+                y=sorted_by_f1["precision"],
+                x=sorted_by_f1["category"],
                 name="Precision",
                 marker=dict(color=blue_color),
             )
         )
         fig.add_trace(
             go.Bar(
-                y=self._loader.per_class_metrics_sorted["recall"],
-                x=self._loader.per_class_metrics_sorted["category"],
+                y=sorted_by_f1["recall"],
+                x=sorted_by_f1["category"],
                 name="Recall",
                 marker=dict(color=orange_color),
             )
@@ -820,7 +823,7 @@ class RecallVsPrecision(MetricVis):
 
 class PRCurve(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_pr_curve=Widget.Markdown(
@@ -842,7 +845,7 @@ class PRCurve(MetricVis):
                 )
             ),
             notification_ap=Widget.Notification(
-                formats_title=[loader.base_metrics["mAP"].round(2)]
+                formats_title=[loader.base_metrics()["mAP"].round(2)]
             ),
             chart=Widget.Chart(),
         )
@@ -885,7 +888,7 @@ class PRCurve(MetricVis):
 
 class PRCurveByClass(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_pr_by_class=Widget.Markdown(title="PR Curve by Class"),
@@ -917,7 +920,7 @@ class PRCurveByClass(MetricVis):
 
 class ConfusionMatrix(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
 
         self.clickable = True
@@ -1009,7 +1012,7 @@ class ConfusionMatrix(MetricVis):
 
 class FrequentlyConfused(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
 
         self.clickable: bool = True
@@ -1103,7 +1106,7 @@ class FrequentlyConfused(MetricVis):
 
 class IOUDistribution(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_localization_accuracy=Widget.Markdown(
@@ -1117,7 +1120,7 @@ class IOUDistribution(MetricVis):
             ),
             chart=Widget.Chart(),
             notification_avg_iou=Widget.Notification(
-                formats_title=[self._loader.base_metrics["iou"].round(2)]
+                formats_title=[self._loader.base_metrics()["iou"].round(2)]
             ),
         )
 
@@ -1152,7 +1155,7 @@ class IOUDistribution(MetricVis):
 
 class ReliabilityDiagram(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_calibration_score_1=Widget.Markdown(
@@ -1174,15 +1177,13 @@ class ReliabilityDiagram(MetricVis):
                 )
             ),
             notification_ece=Widget.Notification(
-                formats_title=[
-                    self._loader.m_full.calibration_metrics.expected_calibration_error().round(4)
-                ]
+                formats_title=[self._loader.mp.m_full.expected_calibration_error().round(4)]
             ),
         )
 
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
         # Calibration curve (only positive predictions)
-        true_probs, pred_probs = self._loader.m_full.calibration_metrics.calibration_curve()
+        true_probs, pred_probs = self._loader.mp.m_full.calibration_curve()
 
         fig = go.Figure()
         fig.add_trace(
@@ -1222,7 +1223,7 @@ class ReliabilityDiagram(MetricVis):
 
 class ConfidenceScore(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_confidence_score_1=Widget.Markdown(
@@ -1248,6 +1249,7 @@ class ConfidenceScore(MetricVis):
             "Precision": "#1f77b4",
             "Recall": "orange",
         }
+
         fig = px.line(
             self._loader.dfsp_down,
             x="scores",
@@ -1263,16 +1265,16 @@ class ConfidenceScore(MetricVis):
         # Add vertical line for the best threshold
         fig.add_shape(
             type="line",
-            x0=self._loader.f1_optimal_conf,
-            x1=self._loader.f1_optimal_conf,
+            x0=self._loader.mp.f1_optimal_conf,
+            x1=self._loader.mp.f1_optimal_conf,
             y0=0,
-            y1=self._loader.best_f1,
+            y1=self._loader.mp.best_f1,
             line=dict(color="gray", width=2, dash="dash"),
         )
         fig.add_annotation(
-            x=self._loader.f1_optimal_conf,
-            y=self._loader.best_f1 + 0.04,
-            text=f"F1-optimal threshold: {self._loader.f1_optimal_conf:.2f}",
+            x=self._loader.mp.f1_optimal_conf,
+            y=self._loader.mp.best_f1 + 0.04,
+            text=f"F1-optimal threshold: {self._loader.mp.f1_optimal_conf:.2f}",
             showarrow=False,
         )
         # fig.show()
@@ -1281,7 +1283,7 @@ class ConfidenceScore(MetricVis):
 
 class F1ScoreAtDifferentIOU(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_f1_at_ious=Widget.Markdown(
@@ -1290,14 +1292,14 @@ class F1ScoreAtDifferentIOU(MetricVis):
                 formats=[definitions.iou_threshold],
             ),
             notification_f1=Widget.Notification(
-                formats_title=[self._loader.m_full.get_f1_optimal_conf()[0].round(4)]
+                formats_title=[self._loader.mp.m_full.get_f1_optimal_conf()[0].round(4)]
             ),
             chart=Widget.Chart(),
         )
 
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
         # score_profile = self._loader.m_full.confidence_score_profile()
-        f1s = self._loader.m_full.score_profile_f1s
+        f1s = self._loader.mp.m_full.score_profile_f1s
 
         # downsample
         f1s_down = f1s[:, :: f1s.shape[1] // 1000]
@@ -1323,7 +1325,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
         for i, iou in enumerate(iou_names):
             argmax_f1 = f1s[i].argmax()
             max_f1 = f1s[i][argmax_f1]
-            score = self._loader.score_profile["scores"][argmax_f1]
+            score = self._loader.mp.m_full.score_profile["scores"][argmax_f1]
             fig.add_annotation(
                 x=score,
                 y=max_f1,
@@ -1341,7 +1343,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
 
 class ConfidenceDistribution(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_confidence_distribution=Widget.Markdown(
@@ -1357,10 +1359,10 @@ class ConfidenceDistribution(MetricVis):
 
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
 
-        f1_optimal_conf, best_f1 = self._loader.m_full.get_f1_optimal_conf()
+        f1_optimal_conf, best_f1 = self._loader.mp.m_full.get_f1_optimal_conf()
 
         # Histogram of confidence scores (TP vs FP)
-        scores_tp, scores_fp = self._loader.m_full.calibration_metrics.scores_tp_and_fp(iou_idx=0)
+        scores_tp, scores_fp = self._loader.mp.m_full.scores_tp_and_fp()
 
         tp_y, tp_x = np.histogram(scores_tp, bins=40, range=[0, 1])
         fp_y, fp_x = np.histogram(scores_fp, bins=40, range=[0, 1])
@@ -1434,7 +1436,7 @@ class ConfidenceDistribution(MetricVis):
 
 class PerClassAvgPrecision(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
             markdown_class_ap=Widget.Markdown(
@@ -1467,7 +1469,7 @@ class PerClassAvgPrecision(MetricVis):
 
 class PerClassOutcomeCounts(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.clickable: bool = True
         self.switchable: bool = True
@@ -1583,7 +1585,7 @@ class PerClassOutcomeCounts(MetricVis):
 
 class OverallErrorAnalysis(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 
@@ -1679,7 +1681,7 @@ class OverallErrorAnalysis(MetricVis):
 
 class ClasswiseErrorAnalysis(MetricVis):
 
-    def __init__(self, loader: MetricLoader) -> None:
+    def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 

@@ -49,7 +49,7 @@ _METRIC_VISUALIZATIONS = (
     PerClassAvgPrecision,
     PerClassOutcomeCounts,
     # segmentation-only
-    # # TODO integrate binary files while saving to self.tmp_dir to the current solution
+    # # TODO integrate binary files while saving to self.layout_dir to the current solution
     # OverallErrorAnalysis,
     # ClasswiseErrorAnalysis,
 )
@@ -207,7 +207,7 @@ class Visualizer:
 
         self.mp = mp
 
-        # self.m = mp.m
+        self.m = mp.m
 
         # self.m_full = MetricProvider(
         #     eval_data["matches"],
@@ -226,18 +226,18 @@ class Visualizer:
         # self.m = MetricProvider(
         #     matches_thresholded, eval_data["coco_metrics"], eval_data["params"], cocoGt, cocoDt
         # )
-        # self.df_score_profile = pd.DataFrame(
-        #     self.score_profile, columns=["scores", "Precision", "Recall", "F1"]
-        # )
+        self.df_score_profile = pd.DataFrame(
+            self.mp.m_full.score_profile, columns=["scores", "Precision", "Recall", "F1"]
+        )
 
         # self.per_class_metrics: pd.DataFrame = self.m.per_class_metrics()
         # self.per_class_metrics_sorted: pd.DataFrame = self.per_class_metrics.sort_values(by="f1")
 
-        # # downsample
-        # if len(self.df_score_profile) > 5000:
-        #     self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
-        # else:
-        #     self.dfsp_down = self.df_score_profile
+        # downsample
+        if len(self.df_score_profile) > 5000:
+            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        else:
+            self.dfsp_down = self.df_score_profile
 
         # Click data
         gt_id_mapper = IdMapper(cocoGt_dataset)
@@ -246,8 +246,6 @@ class Visualizer:
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
 
         self.base_metrics = self.mp.base_metrics
-
-        self.tmp_dir = None
 
         self.gt_project_id = 39099
         self.gt_dataset_id = 92810
@@ -284,7 +282,7 @@ class Visualizer:
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
 
         initialized = [mv(self) for mv in _METRIC_VISUALIZATIONS]
-        initialized = [mv for mv in initialized if self.cv_task in mv.cv_tasks]
+        initialized = [mv for mv in initialized if self.cv_task.value in mv.cv_tasks]
         for mv in initialized:
             for widget in mv.schema:
                 self._write_markdown_files(mv, widget)
@@ -295,7 +293,7 @@ class Visualizer:
 
         if isinstance(widget, Widget.Markdown):
             content = metric_visualization.get_md_content(widget)
-            local_path = f"{self.tmp_dir}/data/{widget.name}.md"
+            local_path = f"{self.layout_dir}/data/{widget.name}.md"
             with open(local_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
@@ -304,7 +302,7 @@ class Visualizer:
         if isinstance(widget, Widget.Collapse):
             for subwidget in widget.schema:
                 content = metric_visualization.get_md_content(subwidget)
-                local_path = f"{self.tmp_dir}/data/{subwidget.name}.md"
+                local_path = f"{self.layout_dir}/data/{subwidget.name}.md"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
 
@@ -322,7 +320,7 @@ class Visualizer:
                     "chartContent": json.loads(fig.to_json()),
                 }
                 basename = f"{widget.name}_{mv.name}.json"
-                local_path = f"{self.tmp_dir}/data/{basename}"
+                local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
                     json.dump(fig_data, f)
                 logger.info("Saved: %r", basename)
@@ -330,7 +328,7 @@ class Visualizer:
                 click_data = mv.get_click_data(widget)
                 if click_data is not None:
                     basename = f"{widget.name}_{mv.name}_clickdata.json"
-                    local_path = f"{self.tmp_dir}/data/{basename}"
+                    local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
                         f.write(ujson.dumps(click_data))
                     logger.info("Saved: %r", basename)
@@ -339,7 +337,7 @@ class Visualizer:
             content = mv.get_gallery(widget)
             if content is not None:
                 basename = f"{widget.name}_{mv.name}.json"
-                local_path = f"{self.tmp_dir}/data/{basename}"
+                local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(ujson.dumps(content))
                 logger.info("Saved: %r", basename)
@@ -348,7 +346,7 @@ class Visualizer:
             content = mv.get_table(widget)
             if content is not None:
                 basename = f"{widget.name}_{mv.name}.json"
-                local_path = f"{self.tmp_dir}/data/{basename}"
+                local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(ujson.dumps(content))
                 logger.info("Saved: %r", basename)
@@ -375,11 +373,11 @@ class Visualizer:
         return res
 
     def _save_template(self, metric_visualizations: Tuple[MetricVis]):
-        local_path = f"{self.tmp_dir}/template.vue"
+        local_path = f"{self.layout_dir}/template.vue"
         with open(local_path, "w", encoding="utf-8") as f:
             f.write(self._generate_template(metric_visualizations))
         logger.info("Saved: %r", "template.vue")
-        local_path = f"{self.tmp_dir}/state.json"
+        local_path = f"{self.layout_dir}/state.json"
         with open(local_path, "w", encoding="utf-8") as f:
             json.dump(self._generate_state(metric_visualizations), f)
         logger.info("Saved: %r", "state.json")
