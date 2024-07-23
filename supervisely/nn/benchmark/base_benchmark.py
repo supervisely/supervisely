@@ -1,10 +1,11 @@
 import os
-from typing import List, Union
+from typing import List, Optional, Union
 
 import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
+from supervisely.api.project_api import ProjectInfo
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.visualization.metric_loader import Visualizer
@@ -25,6 +26,7 @@ class BaseBenchmark:
         self.session: SessionJSON = None
         self.gt_project_info = api.project.get_info_by_id(gt_project_id)
         self.dt_project_info = None
+        self.diff_project_info = None
         self.gt_dataset_ids = gt_dataset_ids
         self.output_dir = output_dir
         self.team_id = sly.env.team_id()
@@ -220,6 +222,9 @@ class BaseBenchmark:
             dt_project_name += f' ({model_info["checkpoint_name"]})'
         return dt_project_name
 
+    def _generate_diff_project_name(self, dt_project_name):
+        return "[diff]: " + dt_project_name
+
     def _get_or_create_dt_project(self, output_project_id, model_info) -> sly.ProjectInfo:
         if output_project_id is None:
             dt_project_name = self._generate_dt_project_name(self.gt_project_info.name, model_info)
@@ -348,14 +353,22 @@ class BaseBenchmark:
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
-        # self.diff_project_info = self._get_or_create_diff_project()  # TODO handle get
+        self.diff_project_info = self._get_or_create_diff_project()
         vis = Visualizer(self)
         vis.process_diff_project()
         vis.visualize()
 
-    def _get_or_create_diff_project(self, output_project_id=None) -> sly.ProjectInfo:
-        model_info = self._fetch_model_info(self.session)
-        return self._get_or_create_dt_project(output_project_id, model_info)
+    def _get_or_create_diff_project(self) -> sly.ProjectInfo:
+        diff_project_name = self._generate_diff_project_name(self.dt_project_info.name)
+        diff_workspace_id = self.dt_project_info.workspace_id
+        diff_project_info = self.api.project.get_info_by_name(diff_workspace_id, diff_project_name)
+        if diff_project_info is None:
+            diff_project_info = self.api.project.create(
+                diff_workspace_id, diff_project_name, change_name_if_conflict=True
+            )
+            for dataset in self.api.dataset.get_list(self.dt_project_info.id):
+                self.api.dataset.create(diff_project_info.id, dataset.name)
+        return diff_project_info
 
     def upload_visualizations(self, dest_dir: str):
         layout_dir = self.get_layout_results_dir()

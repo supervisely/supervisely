@@ -707,12 +707,12 @@ class Recall(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
-        tp_plus_fn = self._loader.m.TP_count + self._loader.m.FN_count
+        tp_plus_fn = self._loader.mp.TP_count + self._loader.mp.FN_count
         self.schema = Schema(
             markdown_R=Widget.Markdown(title="Recall", is_header=True),
             notification_recall=Widget.Notification(
                 formats_title=[self._loader.base_metrics()["recall"].round(2)],
-                formats_desc=[self._loader.m.TP_count, tp_plus_fn],
+                formats_desc=[self._loader.mp.TP_count, tp_plus_fn],
             ),
             markdown_R_perclass=Widget.Markdown(formats=[definitions.f1_score]),
             chart=Widget.Chart(),
@@ -721,7 +721,7 @@ class Recall(MetricVis):
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")
-        sorted_by_f1 = self._loader.m.per_class_metrics().sort_values(by="f1")
+        sorted_by_f1 = self._loader.mp.per_class_metrics().sort_values(by="f1")
         fig = px.bar(
             sorted_by_f1,
             x="category",
@@ -749,8 +749,8 @@ class Precision(MetricVis):
             notification_precision=Widget.Notification(
                 formats_title=[self._loader.base_metrics()["precision"].round(2)],
                 formats_desc=[
-                    self._loader.m.TP_count,
-                    (self._loader.m.TP_count + self._loader.m.FP_count),
+                    self._loader.mp.TP_count,
+                    (self._loader.mp.TP_count + self._loader.mp.FP_count),
                 ],
             ),
             markdown_P_perclass=Widget.Markdown(formats=[definitions.f1_score]),
@@ -760,7 +760,7 @@ class Precision(MetricVis):
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="precision")
-        sorted_by_precision = self._loader.m.per_class_metrics().sort_values(by="precision")
+        sorted_by_precision = self._loader.mp.per_class_metrics().sort_values(by="precision")
         fig = px.bar(
             sorted_by_precision,
             x="category",
@@ -793,7 +793,7 @@ class RecallVsPrecision(MetricVis):
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
-        sorted_by_f1 = self._loader.m.per_class_metrics().sort_values(by="f1")
+        sorted_by_f1 = self._loader.mp.per_class_metrics().sort_values(by="f1")
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
@@ -853,8 +853,8 @@ class PRCurve(MetricVis):
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
         # Precision-Recall curve
         fig = px.line(
-            x=self._loader.m.recThrs,
-            y=self._loader.m.pr_curve().mean(-1),
+            x=self._loader.mp.recThrs,
+            y=self._loader.mp.pr_curve().mean(-1),
             # title="Precision-Recall Curve",
             labels={"x": "Recall", "y": "Precision"},
             width=600,
@@ -865,15 +865,15 @@ class PRCurve(MetricVis):
         fig.update_traces(fill="tozeroy", line=dict(color="#1f77b4"))
         fig.add_trace(
             go.Scatter(
-                x=self._loader.m.recThrs,
-                y=[1] * len(self._loader.m.recThrs),
+                x=self._loader.mp.recThrs,
+                y=[1] * len(self._loader.mp.recThrs),
                 name="Perfect",
                 line=dict(color="orange", dash="dash"),
                 showlegend=True,
             )
         )
         fig.add_annotation(
-            text=f"mAP = {self._loader.m.base_metrics()['mAP']:.2f}",
+            text=f"mAP = {self._loader.mp.base_metrics()['mAP']:.2f}",
             xref="paper",
             yref="paper",
             x=0.98,
@@ -898,11 +898,11 @@ class PRCurveByClass(MetricVis):
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
 
         # Precision-Recall curve per-class
-        df = pd.DataFrame(self._loader.m.pr_curve(), columns=self._loader.m.cat_names)
+        df = pd.DataFrame(self._loader.mp.pr_curve(), columns=self._loader.mp.cat_names)
 
         fig = px.line(
             df,
-            x=self._loader.m.recThrs,
+            x=self._loader.mp.recThrs,
             y=df.columns,
             # title="Precision-Recall Curve per Class",
             labels={"x": "Recall", "value": "Precision", "variable": "Category"},
@@ -930,10 +930,10 @@ class ConfusionMatrix(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
-        confusion_matrix = self._loader.m.confusion_matrix()
+        confusion_matrix = self._loader.mp.confusion_matrix()
         # Confusion Matrix
         # TODO: Green-red
-        cat_names = self._loader.m.cat_names
+        cat_names = self._loader.mp.cat_names
         none_name = "(None)"
 
         with np.errstate(divide="ignore"):
