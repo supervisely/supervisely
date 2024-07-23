@@ -137,7 +137,7 @@ class PointLocation(JsonSerializable):
             exterior = [[self.col, self.row]]
         else:
             exterior = [[self.rounded_col, self.rounded_row]]
-        packed_obj = {POINTS: {EXTERIOR: [exterior], INTERIOR: []}}
+        packed_obj = {POINTS: {EXTERIOR: exterior, INTERIOR: []}}
         return packed_obj
 
     @classmethod

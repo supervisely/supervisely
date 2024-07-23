@@ -1,3 +1,4 @@
+import math
 import random
 from typing import Tuple, Union
 
@@ -78,7 +79,8 @@ def test_to_json(random_point_location_int, random_point_location_float, random_
     for point_location in [random_point_location_int, random_point_location_float]:
         loc, row, col = get_loc_row_col(point_location)
         expected_json = {"points": {"exterior": [[col, row]], "interior": []}}
-        assert loc.to_json() == expected_json
+        loc_json = loc.to_json()
+        assert loc_json == expected_json
 
 
 def test_from_json(random_point_location_int, random_point_location_float, random_image):
@@ -123,8 +125,14 @@ def test_resize(random_point_location_int, random_point_location_float, random_i
         out_size = (random.randint(1000, 1200), random.randint(1000, 1200))
         resize_loc = loc.resize(in_size, out_size)
         assert isinstance(resize_loc, PointLocation)
-        assert resize_loc.row == round(loc.row * out_size[0] / in_size[0])
-        assert resize_loc.col == round(loc.col * out_size[1] / in_size[1])
+        if loc._integer_coords:
+            expected_row = round(row * out_size[0] / in_size[0])
+            expected_col = round(col * out_size[1] / in_size[1])
+        else:
+            expected_row = row * out_size[0] / in_size[0]
+            expected_col = col * out_size[1] / in_size[1]
+        assert math.isclose(resize_loc.row, expected_row, rel_tol=1e-9)
+        assert math.isclose(resize_loc.col, expected_col, rel_tol=1e-9)
 
 
 def test_scale(random_point_location_int, random_point_location_float, random_image):
@@ -133,8 +141,12 @@ def test_scale(random_point_location_int, random_point_location_float, random_im
         factor = round(random.uniform(0, 1), 3)
         scale_loc = loc.scale(factor)
         assert isinstance(scale_loc, PointLocation)
-        assert scale_loc.row == round(row * factor)
-        assert scale_loc.col == round(col * factor)
+        if loc._integer_coords:
+            assert scale_loc.row == round(row * factor)
+            assert scale_loc.col == round(col * factor)
+        else:
+            assert scale_loc.row == row * factor
+            assert scale_loc.col == col * factor
 
 
 def test_scale_frow_fcol(random_point_location_int, random_point_location_float, random_image):
@@ -143,8 +155,12 @@ def test_scale_frow_fcol(random_point_location_int, random_point_location_float,
         frow, fcol = round(random.uniform(0, 1), 3), round(random.uniform(2, 3), 3)
         loc_scale_rc = loc.scale_frow_fcol(frow, fcol)
         assert isinstance(loc_scale_rc, PointLocation)
-        assert loc_scale_rc.row == round(row * frow)
-        assert loc_scale_rc.col == round(col * fcol)
+        if loc._integer_coords:
+            assert loc_scale_rc.row == round(row * frow)
+            assert loc_scale_rc.col == round(col * fcol)
+        else:
+            assert loc_scale_rc.row == row * frow
+            assert loc_scale_rc.col == col * fcol
 
 
 def test_translate(random_point_location_int, random_point_location_float, random_image):
