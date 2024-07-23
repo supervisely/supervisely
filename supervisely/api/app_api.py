@@ -496,7 +496,7 @@ class AppApi(TaskApi):
                     "Failed to add input project node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_input_dataset(
             self,
@@ -545,7 +545,7 @@ class AppApi(TaskApi):
                     "Failed to add input dataset node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_input_file(
             self,
@@ -609,7 +609,7 @@ class AppApi(TaskApi):
                     "Failed to add input file node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_input_folder(
             self,
@@ -665,7 +665,7 @@ class AppApi(TaskApi):
                     "Failed to add input folder node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_input_task(
             self,
@@ -712,7 +712,7 @@ class AppApi(TaskApi):
                     "Failed to add input task node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_project(
             self,
@@ -776,7 +776,7 @@ class AppApi(TaskApi):
                     "Failed to add output project node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_dataset(
             self,
@@ -825,7 +825,7 @@ class AppApi(TaskApi):
                     "Failed to add output dataset node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_file(
             self,
@@ -879,7 +879,7 @@ class AppApi(TaskApi):
                     "Failed to add output file node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_folder(
             self,
@@ -935,7 +935,7 @@ class AppApi(TaskApi):
                     "Failed to add output folder node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_app(
             self,
@@ -979,7 +979,7 @@ class AppApi(TaskApi):
                     "Failed to add output app node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_task(
             self,
@@ -1026,7 +1026,7 @@ class AppApi(TaskApi):
                     "Failed to add output task node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
         def add_output_job(
             self,
@@ -1073,7 +1073,7 @@ class AppApi(TaskApi):
                     "Failed to add output job node to the workflow "
                     "(this error will not interrupt other code execution)."
                 )
-                return
+                return {}
 
     def __init__(self, api):
         super().__init__(api)
