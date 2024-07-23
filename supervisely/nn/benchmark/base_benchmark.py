@@ -7,7 +7,7 @@ from tqdm import tqdm
 import supervisely as sly
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.layout.metric_loader import Visualizer
+from supervisely.nn.benchmark.visualization.metric_loader import Visualizer
 from supervisely.nn.inference import SessionJSON
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -342,14 +342,22 @@ class BaseBenchmark:
             rows.append(row)
         return rows
 
-    def visualize(self):
+    def visualize(self, dt_project_id: int):
         eval_dir = self.get_eval_results_dir()
         assert not sly.fs.dir_empty(
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
-        Visualizer(self).visualize()
+        self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
+        # self.diff_project_info = self._get_or_create_diff_project()  # TODO handle get
+        vis = Visualizer(self)
+        vis.process_diff_project()
+        vis.visualize()
 
-    def upload_layout(self, dest_dir: str):
+    def _get_or_create_diff_project(self, output_project_id=None) -> sly.ProjectInfo:
+        model_info = self._fetch_model_info(self.session)
+        return self._get_or_create_dt_project(output_project_id, model_info)
+
+    def upload_visualizations(self, dest_dir: str):
         layout_dir = self.get_layout_results_dir()
         assert not sly.fs.dir_empty(
             layout_dir

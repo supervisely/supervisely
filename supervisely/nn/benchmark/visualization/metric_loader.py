@@ -12,9 +12,15 @@ from jinja2 import Template
 from pycocotools.coco import COCO
 
 from supervisely._utils import *
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.api import Api
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import *
+from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project_meta import ProjectMeta
 
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
@@ -22,16 +28,16 @@ if TYPE_CHECKING:
 from supervisely.nn.benchmark.evaluation.object_detection.metric_provider import (
     MetricProvider,
 )
-from supervisely.nn.benchmark.layout.metric_visualizations import *
-from supervisely.nn.benchmark.layout.metric_visualizations import MetricVis
+from supervisely.nn.benchmark.visualization.metric_visualizations import *
+from supervisely.nn.benchmark.visualization.metric_visualizations import MetricVis
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
     Overview,
-    ExplorerGrid,
-    ModelPredictions,
+    # ExplorerGrid,
+    # ModelPredictions,
     WhatIs,
     OutcomeCounts,
     Recall,
@@ -161,7 +167,7 @@ class Visualizer:
 
     def __init__(self, benchmark: BaseBenchmark) -> None:
 
-        # self._benchmark = benchmark
+        self._benchmark = benchmark
         self._api = benchmark.api
         self.cv_task = benchmark.cv_task
 
@@ -204,34 +210,11 @@ class Visualizer:
             cocoDt,
         )
         mp.calculate()
-
         self.mp = mp
 
-        self.m = mp.m
-
-        # self.m_full = MetricProvider(
-        #     eval_data["matches"],
-        #     eval_data["coco_metrics"],
-        #     eval_data["params"],
-        #     cocoGt,
-        #     cocoDt,
-        # )
-        # self.score_profile = self.m_full.confidence_score_profile()
-        # self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
-        # # print(f"F1-Optimal confidence: {self.f1_optimal_conf:.4f} with f1: {self.best_f1:.4f}")
-
-        # matches_thresholded = metric_provider.filter_by_conf(
-        #     eval_data["matches"], self.f1_optimal_conf
-        # )
-        # self.m = MetricProvider(
-        #     matches_thresholded, eval_data["coco_metrics"], eval_data["params"], cocoGt, cocoDt
-        # )
         self.df_score_profile = pd.DataFrame(
-            self.mp.m_full.score_profile, columns=["scores", "Precision", "Recall", "F1"]
+            self.mp.confidence_score_profile(), columns=["scores", "Precision", "Recall", "F1"]
         )
-
-        # self.per_class_metrics: pd.DataFrame = self.m.per_class_metrics()
-        # self.per_class_metrics_sorted: pd.DataFrame = self.per_class_metrics.sort_values(by="f1")
 
         # downsample
         if len(self.df_score_profile) > 5000:
@@ -247,20 +230,24 @@ class Visualizer:
 
         self.base_metrics = self.mp.base_metrics
 
-        self.gt_project_id = 39099
-        self.gt_dataset_id = 92810
-        self.dt_project_id = 39141
-        self.dt_dataset_id = 92872
-        self.diff_project_id = 39249
-        self.diff_dataset_id = 93099
+        self.dt_project_info = self._benchmark.dt_project_info
+        self.gt_project_info = self._benchmark.gt_project_info
+        # self.diff_project_info = self._benchmark.diff_project_info
 
-        self.dt_project_info = self._api.project.get_info_by_id(
-            self.dt_project_id, raise_error=True
-        )
+        # self.gt_project_id = 39099
+        # # self.gt_dataset_id = 92810
+        # self.dt_project_id = 39141
+        # # self.dt_dataset_id = 92872
+        # self.diff_project_id = 39249
+        # self.diff_dataset_id = 93099
+
+        # self.dt_project_info = self._api.project.get_info_by_id(
+        #     self.dt_project_id, raise_error=True
+        # )
         self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_id)
+            data=self._api.project.get_meta(id=self.dt_project_info.id)
         )
-        datasets = self._api.dataset.get_list(self.dt_project_id)
+        datasets = self._api.dataset.get_list(self.dt_project_info.id)
 
         tmp = {}
         self.dt_images = {}
@@ -381,3 +368,108 @@ class Visualizer:
         with open(local_path, "w", encoding="utf-8") as f:
             json.dump(self._generate_state(metric_visualizations), f)
         logger.info("Saved: %r", "state.json")
+
+    def process_diff_project(self):
+        gt_project_path, dt_project_path = self._benchmark._download_projects()
+
+        gt_project = Project(gt_project_path, OpenMode.READ)
+        dt_project = Project(dt_project_path, OpenMode.READ)
+
+        # gt_image_infos = [
+        #     ImageInfo(**json.load(path)) for path in list_files(gt_project_path + "/img_info")
+        # ]
+
+        dt_images = {}
+        dt_anns = []
+        names_dct = {}
+        for dataset in dt_project.datasets:
+            dataset: Dataset
+            paths = list_files(dt_project_path + f"/{dataset.name}/img_info")
+            image_names = [os.path.basename(x) for x in paths]
+            image_names = [".".join(x.split(".")[:-1]) for x in image_names]
+
+            dt_anns += [dataset.get_ann(name, dt_project.meta) for name in image_names]
+            dt_images[dataset.name] = [dataset.get_image_info(name) for name in image_names]
+            names_dct[dataset.name] = image_names
+
+        gt_anns = []
+        for dataset in gt_project.datasets:
+            gt_anns += [dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]]
+
+        matched_ids = []
+        for dt_ann in dt_anns:
+            for label in dt_ann.labels:
+                matched_gt_id = label.tags.get("matched_gt_id")
+                if matched_gt_id is not None:
+                    matched_ids.append(matched_gt_id.value)
+
+        project_name = "COCO-100 (DIFF)"
+
+        new_tag = TagMeta(
+            "outcome",
+            value_type=TagValueType.ONEOF_STRING,
+            possible_values=["TP", "FP", "FN"],
+            applicable_to=TagApplicableTo.OBJECTS_ONLY,
+        )
+        tag_metas = dt_project.meta.tag_metas
+        if dt_project.meta.get_tag_meta(new_tag.name) is None:
+            tag_metas = dt_project.meta.tag_metas.add(new_tag)
+
+        diff_meta = ProjectMeta(
+            obj_classes=gt_project.meta.obj_classes,
+            tag_metas=tag_metas,
+        )
+
+        diff_project_path = os.path.dirname(gt_project_path) + "/diff_project"
+        remove_dir(diff_project_path)
+        if not dir_exists(diff_project_path):
+            diff_project = Project(diff_project_path, OpenMode.CREATE)
+            for gt_dataset in gt_project.datasets:
+                diff_dataset = diff_project.create_dataset(gt_dataset.name)
+        else:
+            diff_project = Project(diff_project_path, OpenMode.READ)
+
+        with tqdm(desc="Creating diff_project", total=len(gt_anns)) as pbar:
+            diff_anns_new, dt_anns_new = [], []
+            for gt_ann, dt_ann in zip(gt_anns, dt_anns):
+                labels = []
+                for label in dt_ann.labels:
+                    match_tag_id = label.tags.get("matched_gt_id")
+                    if match_tag_id is not None:
+                        new = label.clone(tags=label.tags.add(Tag(new_tag, "TP")))
+                    else:
+                        new = label.clone(tags=label.tags.add(Tag(new_tag, "FP")))
+
+                    labels.append(new)
+
+                dt_anns_new.append(Annotation(gt_ann.img_size, labels))
+
+                for label in gt_ann.labels:
+                    if label.geometry.sly_id not in matched_ids and isinstance(
+                        label.geometry, Rectangle
+                    ):
+                        conf_meta = dt_project.meta.get_tag_meta("confidence")
+                        labels.append(
+                            label.clone(
+                                tags=label.tags.add_items([Tag(new_tag, "FN"), Tag(conf_meta, 1)])
+                            )
+                        )
+
+                diff_anns_new.append(Annotation(gt_ann.img_size, labels))
+
+                pbar.update(1)
+
+        self._api.project.update_meta(self.diff_project_info.id, diff_meta.to_json())
+        self._api.project.update_meta(self.dt_project_info.id, diff_meta.to_json())
+
+        for diff_dataset in self._api.dataset.get_list(self.diff_project_info.id):
+
+            # api.annotation.upload_anns(image_ids_pred, anns_pred_batch)
+
+            # images_ids = [x.id for x in images_batch]
+            dt_image_ids = [x.id for x in dt_images[dataset.name]]
+            diff_images = self._api.image.copy_batch(diff_dataset.id, dt_image_ids)
+            diff_image_ids = [image.id for image in diff_images]
+
+        # api.annotation.upload_anns(img_ids, anns_diff_batch)
+        pass

@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from supervisely.nn.benchmark.layout.metric_loader import Visualizer
+    from supervisely.nn.benchmark.visualization.metric_loader import Visualizer
 
 import numpy as np
 import pandas as pd
@@ -15,12 +15,12 @@ import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
 
-import supervisely.nn.benchmark.layout.metric_texts as contents
+import supervisely.nn.benchmark.visualization.metric_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark.cv_tasks import CVTask
-from supervisely.nn.benchmark.layout.metric_texts import definitions
+from supervisely.nn.benchmark.visualization.metric_texts import definitions
 from supervisely.project.project_meta import ProjectMeta
 
 
