@@ -383,21 +383,16 @@ class AppApi(TaskApi):
                     node_id = self._api.task_id
                 else:
                     node_id = task_id
-
                 if node_id is None:
                     raise ValueError(
                         "Task ID cannot be automatically determined. Please specify it manually."
                     )
-
                 node_type = "task"
                 if not getattr(self, "team_id", None) and node_id:
                     self.team_id = self._api.task.get_info_by_id(node_id).get(ApiField.TEAM_ID)
-
                 if not self.team_id:
                     raise ValueError("Failed to get Team ID")
-
                 api_endpoint = f"workflow.node.add-{transaction_type}"
-
                 data_type = data.get("data_type")
                 data_id = data.get("data_id") if data_type != "app_session" else node_id
                 data_meta = data.get("meta", {})
@@ -406,7 +401,6 @@ class AppApi(TaskApi):
                         data_meta.update(meta)
                     else:
                         logger.warn("Invalid customization meta, will not be added to the node.")
-
                 payload = {
                     ApiField.TEAM_ID: self.team_id,
                     ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},
@@ -421,7 +415,7 @@ class AppApi(TaskApi):
             except Exception:
                 logger.error(
                     f"Failed to add {transaction_type} node to the workflow "
-                    f"(this error will not affect the application execution)."
+                    "(this error will not interrupt other code execution)."
                 )
                 return {}
 
@@ -451,10 +445,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -470,41 +464,39 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            if project is None and version_id is None and version_num is None:
-                raise ValueError(
-                    "At least one of project, version_id or version_num must be specified"
+            try:
+                if project is None and version_id is None and version_num is None:
+                    raise ValueError(
+                        "At least one of project, version_id or version_num must be specified"
+                    )
+                if version_id is not None and version_num is not None:
+                    raise ValueError("Only one of version_id or version_num can be specified")
+                if project is None and version_num is not None:
+                    raise ValueError(
+                        "Argument version_num cannot be used without specifying a project argument"
+                    )
+                data_type = "project"
+                data_id = None
+                if isinstance(project, ProjectInfo):
+                    data_id = project.id
+                elif isinstance(project, int):
+                    data_id = project
+                if version_num:
+                    version_id = self._api.project.version.get_id_by_number(data_id, version_num)
+                if version_id:
+                    data_id = version_id
+                    data_type = "project_version"
+                data = {
+                    "data_type": data_type,
+                    "data_id": data_id,
+                }
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input project node to the workflow "
+                    "(this error will not interrupt other code execution)."
                 )
-
-            if version_id is not None and version_num is not None:
-                raise ValueError("Only one of version_id or version_num can be specified")
-
-            if project is None and version_num is not None:
-                raise ValueError(
-                    "Argument version_num cannot be used without specifying a project argument"
-                )
-
-            data_type = "project"
-            data_id = None
-
-            if isinstance(project, ProjectInfo):
-                data_id = project.id
-            elif isinstance(project, int):
-                data_id = project
-
-            if version_num:
-                version_id = self._api.project.version.get_id_by_number(data_id, version_num)
-
-            if version_id:
-                data_id = version_id
-                data_type = "project_version"
-
-            data = {
-                "data_type": data_type,
-                "data_id": data_id,
-            }
-
-            return self._add_edge(data, "input", task_id, meta)
+                return {}
 
         def add_input_dataset(
             self,
@@ -523,10 +515,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -542,15 +534,18 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "dataset"
-
-            if isinstance(dataset, DatasetInfo):
-                dataset = dataset.id
-
-            data = {"data_type": data_type, "data_id": dataset}
-
-            return self._add_edge(data, "input", task_id, meta)
+            try:
+                data_type = "dataset"
+                if isinstance(dataset, DatasetInfo):
+                    dataset = dataset.id
+                data = {"data_type": data_type, "data_id": dataset}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input dataset node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_input_file(
             self,
@@ -572,10 +567,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -591,28 +586,30 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data = {}
-            data_type = "file"
-
-            if isinstance(file, FileInfo):
-                file_id = file.id
-            elif isinstance(file, int):
-                file_id = file
-            elif isinstance(file, str):
-                if str_is_url(file):
-                    raise NotImplementedError("URLs are not supported yet")
-                file_id = self._api.file.get_info_by_path(env.team_id(), file).id
-            else:
-                raise ValueError(f"Invalid file type: {type(file)}")
-
-            if model_weight:
-                data_type = "model_weight"
-
-            data["data_type"] = data_type
-            data["data_id"] = file_id
-
-            return self._add_edge(data, "input", task_id, meta)
+            try:
+                data = {}
+                data_type = "file"
+                if isinstance(file, FileInfo):
+                    file_id = file.id
+                elif isinstance(file, int):
+                    file_id = file
+                elif isinstance(file, str):
+                    if str_is_url(file):
+                        raise NotImplementedError("URLs are not supported yet")
+                    file_id = self._api.file.get_info_by_path(env.team_id(), file).id
+                else:
+                    raise ValueError(f"Invalid file type: {type(file)}")
+                if model_weight:
+                    data_type = "model_weight"
+                data["data_type"] = data_type
+                data["data_id"] = file_id
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input file node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_input_folder(
             self,
@@ -632,10 +629,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -651,21 +648,24 @@ class AppApi(TaskApi):
                     }
                 }
             """
-            from pathlib import Path
-
-            if not path.startswith("/"):
-                path = "/" + path
-
             try:
-                Path(path)
-            except Exception as e:
-                raise ValueError(f"The provided string '{path}' is not a valid path: {str(e)}")
+                from pathlib import Path
 
-            data_type = "folder"
-
-            data = {"data_type": data_type, "data_id": path}
-
-            return self._add_edge(data, "input", task_id, meta)
+                if not path.startswith("/"):
+                    path = "/" + path
+                try:
+                    Path(path)
+                except Exception as e:
+                    raise ValueError(f"The provided string '{path}' is not a valid path: {str(e)}")
+                data_type = "folder"
+                data = {"data_type": data_type, "data_id": path}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input folder node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_input_task(
             self,
@@ -684,10 +684,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -703,12 +703,16 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "task"
-
-            data = {"data_type": data_type, "data_id": input_task_id}
-
-            return self._add_edge(data, "input", task_id, meta)
+            try:
+                data_type = "task"
+                data = {"data_type": data_type, "data_id": input_task_id}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input task node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_project(
             self,
@@ -731,10 +735,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -750,28 +754,29 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            if project is None and version_id is None:
-                raise ValueError("Project or version must be specified")
-
-            data_type = "project"
-            data_id = None
-
-            if isinstance(project, ProjectInfo):
-                data_id = project.id
-            elif isinstance(project, int):
-                data_id = project
-
-            if version_id:
-                data_id = version_id
-                data_type = "project_version"
-
-            data = {
-                "data_type": data_type,
-                "data_id": data_id,
-            }
-
-            return self._add_edge(data, "output", task_id, meta)
+            try:
+                if project is None and version_id is None:
+                    raise ValueError("Project or version must be specified")
+                data_type = "project"
+                data_id = None
+                if isinstance(project, ProjectInfo):
+                    data_id = project.id
+                elif isinstance(project, int):
+                    data_id = project
+                if version_id:
+                    data_id = version_id
+                    data_type = "project_version"
+                data = {
+                    "data_type": data_type,
+                    "data_id": data_id,
+                }
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output project node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_dataset(
             self,
@@ -790,10 +795,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -809,15 +814,18 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "dataset"
-
-            if isinstance(dataset, DatasetInfo):
-                dataset = dataset.id
-
-            data = {"data_type": data_type, "data_id": dataset}
-
-            return self._add_edge(data, "output", task_id, meta)
+            try:
+                data_type = "dataset"
+                if isinstance(dataset, DatasetInfo):
+                    dataset = dataset.id
+                data = {"data_type": data_type, "data_id": dataset}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output dataset node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_file(
             self,
@@ -839,10 +847,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -858,18 +866,20 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "file"
-
-            if isinstance(file, FileInfo):
-                file = file.id
-
-            if model_weight:
-                data_type = "model_weight"
-
-            data = {"data_type": data_type, "data_id": file}
-
-            return self._add_edge(data, "output", task_id, meta)
+            try:
+                data_type = "file"
+                if isinstance(file, FileInfo):
+                    file = file.id
+                if model_weight:
+                    data_type = "model_weight"
+                data = {"data_type": data_type, "data_id": file}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output file node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_folder(
             self,
@@ -889,10 +899,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -908,21 +918,24 @@ class AppApi(TaskApi):
                     }
                 }
             """
-            from pathlib import Path
-
-            if not path.startswith("/"):
-                path = "/" + path
-
             try:
-                Path(path)
-            except Exception as e:
-                raise ValueError(f"The provided string '{path}' is not a valid path: {str(e)}")
+                from pathlib import Path
 
-            data_type = "folder"
-
-            data = {"data_type": data_type, "data_id": path}
-
-            return self._add_edge(data, "output", task_id, meta)
+                if not path.startswith("/"):
+                    path = "/" + path
+                try:
+                    Path(path)
+                except Exception as e:
+                    raise ValueError(f"The provided string '{path}' is not a valid path: {str(e)}")
+                data_type = "folder"
+                data = {"data_type": data_type, "data_id": path}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output folder node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_app(
             self,
@@ -938,10 +951,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -957,12 +970,16 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "app_session"
-
-            data = {"data_type": data_type}
-
-            return self._add_edge(data, "output", task_id, meta)
+            try:
+                data_type = "app_session"
+                data = {"data_type": data_type}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output app node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_task(
             self,
@@ -981,10 +998,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -1000,12 +1017,16 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "task"
-
-            data = {"data_type": data_type, "data_id": output_task_id}
-
-            return self._add_edge(data, "output", task_id, meta)
+            try:
+                data_type = "task"
+                data = {"data_type": data_type, "data_id": output_task_id}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output task node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
         def add_output_job(
             self,
@@ -1024,10 +1045,10 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[dict]
             :return: Response from the API.
-            :rtype: dict
+            :rtype: :class:`dict`
+            :meta example:
 
-            meta example:
-            .. code-block:: json
+             .. code-block:: json
                 {
                     "customRelationSettings": {
                         "icon": {
@@ -1043,12 +1064,16 @@ class AppApi(TaskApi):
                     }
                 }
             """
-
-            data_type = "job"
-
-            data = {"data_type": data_type, "data_id": id}
-
-            return self._add_edge(data, "output", task_id, meta)
+            try:
+                data_type = "job"
+                data = {"data_type": data_type, "data_id": id}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output job node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
 
     def __init__(self, api):
         super().__init__(api)
