@@ -4,7 +4,7 @@ import json
 import os
 import pickle
 from collections import defaultdict
-from typing import List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import pandas as pd
 import ujson
@@ -15,7 +15,10 @@ from supervisely._utils import *
 from supervisely.api.api import Api
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
 from supervisely.io.fs import *
-from supervisely.nn.benchmark import metric_provider
+
+if TYPE_CHECKING:
+    from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
+
 from supervisely.nn.benchmark.evaluation.object_detection.metric_provider import (
     MetricProvider,
 )
@@ -154,9 +157,29 @@ class ClickData:
         return [self._gather(d) for d in matches]
 
 
-class MetricLoader:
+class Visualizer:
 
-    def __init__(self, cocoGt_path: str, cocoDt_path: str, eval_data_path: str) -> None:
+    def __init__(self, benchmark: BaseBenchmark) -> None:
+
+        # self._benchmark = benchmark
+        self._api = benchmark.api
+        self.cv_task = benchmark.cv_task
+
+        self.eval_dir = benchmark.get_eval_results_dir()
+        self.layout_dir = benchmark.get_layout_results_dir()
+
+        if benchmark.cv_task == CVTask.OBJECT_DETECTION:
+            self._initialize_object_detection_loader()
+        else:
+            raise NotImplementedError("Please specify a new CVTask")
+
+    def _initialize_object_detection_loader(self):
+
+        cocoGt_path, cocoDt_path, eval_data_path = (
+            self.eval_dir + "/cocoGt.json",
+            self.eval_dir + "/cocoDt.json",
+            self.eval_dir + "/eval_data.pkl",
+        )
 
         with open(cocoGt_path, "r") as f:
             cocoGt_dataset = json.load(f)
@@ -173,58 +196,59 @@ class MetricLoader:
         with open(eval_data_path, "rb") as f:
             eval_data = pickle.load(f)
 
-        # mp = MetricProvider(
-        #     matches,
-        #     eval_data["coco_metrics"],
-        #     eval_data["params"],
-        #     cocoGt,
-        #     cocoDt,
-        # )
-        # mp.calculate()
-
-        # self.m = mp.m
-
-        self.m_full = MetricProvider(
+        mp = MetricProvider(
             eval_data["matches"],
             eval_data["coco_metrics"],
             eval_data["params"],
             cocoGt,
             cocoDt,
         )
-        self.score_profile = self.m_full.confidence_score_profile()
-        self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
-        # print(f"F1-Optimal confidence: {self.f1_optimal_conf:.4f} with f1: {self.best_f1:.4f}")
+        mp.calculate()
 
-        matches_thresholded = metric_provider.filter_by_conf(
-            eval_data["matches"], self.f1_optimal_conf
-        )
-        self.m = MetricProvider(
-            matches_thresholded, eval_data["coco_metrics"], eval_data["params"], cocoGt, cocoDt
-        )
-        self.df_score_profile = pd.DataFrame(
-            self.score_profile, columns=["scores", "Precision", "Recall", "F1"]
-        )
+        self.mp = mp
 
-        self.per_class_metrics: pd.DataFrame = self.m.per_class_metrics()
-        self.per_class_metrics_sorted: pd.DataFrame = self.per_class_metrics.sort_values(by="f1")
+        # self.m = mp.m
 
-        # downsample
-        if len(self.df_score_profile) > 5000:
-            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
-        else:
-            self.dfsp_down = self.df_score_profile
+        # self.m_full = MetricProvider(
+        #     eval_data["matches"],
+        #     eval_data["coco_metrics"],
+        #     eval_data["params"],
+        #     cocoGt,
+        #     cocoDt,
+        # )
+        # self.score_profile = self.m_full.confidence_score_profile()
+        # self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
+        # # print(f"F1-Optimal confidence: {self.f1_optimal_conf:.4f} with f1: {self.best_f1:.4f}")
+
+        # matches_thresholded = metric_provider.filter_by_conf(
+        #     eval_data["matches"], self.f1_optimal_conf
+        # )
+        # self.m = MetricProvider(
+        #     matches_thresholded, eval_data["coco_metrics"], eval_data["params"], cocoGt, cocoDt
+        # )
+        # self.df_score_profile = pd.DataFrame(
+        #     self.score_profile, columns=["scores", "Precision", "Recall", "F1"]
+        # )
+
+        # self.per_class_metrics: pd.DataFrame = self.m.per_class_metrics()
+        # self.per_class_metrics_sorted: pd.DataFrame = self.per_class_metrics.sort_values(by="f1")
+
+        # # downsample
+        # if len(self.df_score_profile) > 5000:
+        #     self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        # else:
+        #     self.dfsp_down = self.df_score_profile
 
         # Click data
         gt_id_mapper = IdMapper(cocoGt_dataset)
         dt_id_mapper = IdMapper(cocoDt_dataset)
 
-        self.click_data = ClickData(self.m, gt_id_mapper, dt_id_mapper)
+        self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
 
-        self.base_metrics = self.m.base_metrics()
+        self.base_metrics = self.mp.base_metrics
 
         self.tmp_dir = None
 
-        self._api = Api.from_env()
         self.gt_project_id = 39099
         self.gt_dataset_id = 92810
         self.dt_project_id = 39141
@@ -256,36 +280,16 @@ class MetricLoader:
             for ann in self._api.annotation.download_batch(d.id, tmp[d.id])
         }
 
-    def upload_layout(self, team_id: str, dest_dir: str):
-        self.tmp_dir = f"/tmp/tmp{rand_str(10)}"
-        mkdir(f"{self.tmp_dir}/data", remove_content_if_exists=True)
+    def visualize(self):
+        mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
 
         initialized = [mv(self) for mv in _METRIC_VISUALIZATIONS]
-        for new_mv in initialized:
-            for widget in new_mv.schema:
-                self._write_markdown_files(new_mv, widget)
-                self._write_json_files(new_mv, widget)
+        initialized = [mv for mv in initialized if self.cv_task in mv.cv_tasks]
+        for mv in initialized:
+            for widget in mv.schema:
+                self._write_markdown_files(mv, widget)
+                self._write_json_files(mv, widget)
         self._save_template(initialized)
-
-        with tqdm_sly(
-            desc="Uploading .json to teamfiles",
-            total=get_directory_size(self.tmp_dir),
-            unit="B",
-            unit_scale=True,
-        ) as pbar:
-            self._api.file.upload_directory(
-                team_id,
-                self.tmp_dir,
-                dest_dir,
-                replace_if_conflict=True,
-                change_name_if_conflict=False,
-                progress_size_cb=pbar,
-            )
-
-        if dir_exists(self.tmp_dir):
-            remove_dir(self.tmp_dir)
-
-        logger.info(f"Uploaded to: {dest_dir!r}")
 
     def _write_markdown_files(self, metric_visualization: MetricVis, widget: Widget):
 

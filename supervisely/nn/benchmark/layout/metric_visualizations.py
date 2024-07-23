@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from supervisely.nn.benchmark.metric_loader import MetricLoader
+    from supervisely.nn.benchmark.layout.metric_loader import MetricLoader
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ import supervisely.nn.benchmark.layout.metric_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.str_enum import StrEnum
-from supervisely.nn.benchmark import metric_provider
+from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.layout.metric_texts import definitions
 from supervisely.project.project_meta import ProjectMeta
 
@@ -32,10 +32,10 @@ class classproperty:
         return self.func(owner)
 
 
-class CVTask(StrEnum):
+# class CVTask(StrEnum):
 
-    OBJECT_DETECTION: str = "object_detection"
-    SEGMENTATION: str = "segmentation"
+#     OBJECT_DETECTION: str = "object_detection"
+#     SEGMENTATION: str = "segmentation"
 
 
 template_markdown_str = """
@@ -413,7 +413,7 @@ class Overview(MetricVis):
         # Overall Metrics
         base_metrics = self._loader.m.base_metrics()
         r = list(base_metrics.values())
-        theta = [metric_provider.METRIC_NAMES[k] for k in base_metrics.keys()]
+        theta = [base_metrics.METRIC_NAMES[k] for k in base_metrics.keys()]
         fig = go.Figure()
         fig.add_trace(
             go.Scatterpolar(

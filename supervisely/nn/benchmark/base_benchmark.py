@@ -5,9 +5,12 @@ import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
+from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.layout.metric_loader import MetricLoader
+from supervisely.nn.benchmark.layout.metric_loader import Visualizer
 from supervisely.nn.inference import SessionJSON
+from supervisely.sly_logger import logger
+from supervisely.task.progress import tqdm_sly
 
 
 class BaseBenchmark:
@@ -30,6 +33,10 @@ class BaseBenchmark:
         self._speedtest = None
 
     def _get_evaluator_class(self) -> type:
+        raise NotImplementedError()
+
+    @property
+    def cv_task(self) -> str:
         raise NotImplementedError()
 
     def run_evaluation(
@@ -191,14 +198,19 @@ class BaseBenchmark:
         eval_dir = self.get_eval_results_dir()
         assert not sly.fs.dir_empty(
             eval_dir
-        ), f"The result dir ({eval_dir}) is empty. You should run evaluation before uploading results."
+        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         self.api.file.upload_directory(self.team_id, eval_dir, remote_dir)
+
+    def get_layout_results_dir(self) -> str:
+        dir = os.path.join(self.get_base_dir(), "layout")
+        os.makedirs(dir, exist_ok=True)
+        return dir
 
     def upload_speedtest_results(self, remote_dir: str):
         speedtest_dir = self.get_speedtest_results_dir()
         assert not sly.fs.dir_empty(
             speedtest_dir
-        ), f"Speedtest dir ({speedtest_dir}) is empty. You should run speedtest before uploading results."
+        ), f"Speedtest dir {speedtest_dir!r} is empty. You should run speedtest before uploading results."
         self.api.file.upload_directory(self.team_id, speedtest_dir, remote_dir)
 
     def _generate_dt_project_name(self, gt_project_name, model_info):
@@ -330,16 +342,32 @@ class BaseBenchmark:
             rows.append(row)
         return rows
 
-    def generate_visualizations(self):
+    def visualize(self):
         eval_dir = self.get_eval_results_dir()
         assert not sly.fs.dir_empty(
             eval_dir
-        ), f"The result dir ({eval_dir}) is empty. You should run evaluation before uploading results."
+        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
+        Visualizer(self).visualize()
 
-        loader = MetricLoader(
-            eval_dir + "/cocoGt.json", eval_dir + "/cocoDt.json", eval_dir + "/eval_data.pkl"
-        )
+    def upload_layout(self, dest_dir: str):
+        layout_dir = self.get_layout_results_dir()
+        assert not sly.fs.dir_empty(
+            layout_dir
+        ), f"The layout dir {layout_dir!r} is empty. You should run evaluation before uploading results."
 
-        loader.upload_layout(
-            self.team_id,
-        )
+        with tqdm_sly(
+            desc="Uploading layout",
+            total=get_directory_size(layout_dir),
+            unit="B",
+            unit_scale=True,
+        ) as pbar:
+            self.api.file.upload_directory(
+                self.team_id,
+                layout_dir,
+                dest_dir,
+                replace_if_conflict=True,
+                change_name_if_conflict=False,
+                progress_size_cb=pbar,
+            )
+
+        logger.info(f"Uploaded to: {dest_dir!r}")
