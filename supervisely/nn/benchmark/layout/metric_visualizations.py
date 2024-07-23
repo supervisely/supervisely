@@ -172,7 +172,9 @@ class Widget:
     class Gallery(BaseWidget):
 
         def __init__(self) -> None:
-            from supervisely.app.widgets import GridGalleryV2
+            from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
+                GridGalleryV2,
+            )
 
             self.gallery = GridGalleryV2(
                 columns_number=3,
