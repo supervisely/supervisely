@@ -356,7 +356,7 @@ class BaseBenchmark:
         self.diff_project_info, was_before = self._get_or_create_diff_project()
         vis = Visualizer(self)
         if not was_before:
-            vis.update_annotations()
+            vis.update_diff_annotations()
         vis.visualize()
 
     def _get_or_create_diff_project(self) -> Tuple[sly.ProjectInfo, bool]:

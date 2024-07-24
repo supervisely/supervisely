@@ -536,12 +536,14 @@ class ModelPredictions(MetricVis):
         ):
             image_name = image_info.name
             image_url = image_info.full_storage_url
+            is_ignore = True if idx == 0 else False
             widget.gallery.append(
                 title=image_name,
                 image_url=image_url,
                 annotation_info=ann_info,
                 column_index=idx,
                 project_meta=project_meta,
+                ignore_tags_filtering=is_ignore,
             )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])

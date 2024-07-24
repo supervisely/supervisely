@@ -359,7 +359,7 @@ class Visualizer:
             json.dump(self._generate_state(metric_visualizations), f)
         logger.info("Saved: %r", "state.json")
 
-    def update_annotations(self):
+    def update_diff_annotations(self):
         gt_project_path, dt_project_path = self._benchmark._download_projects()
 
         gt_project = Project(gt_project_path, OpenMode.READ)
@@ -368,11 +368,12 @@ class Visualizer:
         dt_images_dct = {}
         dt_anns_dct = {}
         names_dct = {}
+
         for dataset in dt_project.datasets:
             dataset: Dataset
             paths = list_files(dt_project_path + f"/{dataset.name}/img_info")
-            image_names = [os.path.basename(x) for x in paths]
-            image_names = [".".join(x.split(".")[:-1]) for x in image_names]
+            infos = [ImageInfo(**json.load(open(path, "r"))) for path in paths]
+            image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
 
             dt_anns_dct[dataset.name] = [
                 dataset.get_ann(name, dt_project.meta) for name in image_names
@@ -453,10 +454,8 @@ class Visualizer:
                     dt_image_ids = [x.id for x in dt_images_dct[dataset.name]]
                     self._api.annotation.upload_anns(dt_image_ids, dt_anns_new, progress_cb=pbar2)
 
-                    try:
-                        diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
-                    except ValueError:
-                        diff_images = self._api.image.get_list(dataset.id)
+                    diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
+
                     diff_image_ids = [image.id for image in diff_images]
                     self._api.annotation.upload_anns(
                         diff_image_ids, diff_anns_new, progress_cb=pbar1
