@@ -153,6 +153,7 @@ class TreeSelect(Widget):
         return {
             "items": [item.to_json() for item in self._items] if self._items else [],
             "width": self._width,
+            "disabled": self._disabled,
         }
 
     def get_json_state(self) -> Dict[str, Union[Dict, List[Dict]]]:
@@ -163,7 +164,6 @@ class TreeSelect(Widget):
         """
         return {
             "value": self.value,
-            "disabled": self._disabled,
             "options": {
                 "multiple": self._multiple,
                 "flat": self._flat,
@@ -172,18 +172,6 @@ class TreeSelect(Widget):
                 "appendToBody": self._append_to_body,
             },
         }
-
-    def disable(self) -> None:
-        """Disable the widget."""
-        self._disabled = True
-        StateJson()[self.widget_id]["disabled"] = self._disabled
-        StateJson().send_changes()
-
-    def enable(self) -> None:
-        """Enable the widget."""
-        self._disabled = False
-        StateJson()[self.widget_id]["disabled"] = self._disabled
-        StateJson().send_changes()
 
     @property
     def value(self) -> Union[List[TreeSelect.Item], TreeSelect.Item]:
