@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from supervisely.nn.benchmark.visualization.metric_loader import Visualizer
+    from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 
 import numpy as np
 import pandas as pd
@@ -15,12 +15,12 @@ import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
 
-import supervisely.nn.benchmark.visualization.metric_texts as contents
+import supervisely.nn.benchmark.visualization.vis_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark.cv_tasks import CVTask
-from supervisely.nn.benchmark.visualization.metric_texts import definitions
+from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -450,16 +450,18 @@ class ExplorerGrid(MetricVis):
     def get_gallery(self, widget: Widget.Gallery):
         res = {}
         api = self._loader._api
-        gt_image_infos = api.image.get_list(dataset_id=self._loader.gt_dataset_id)[:5]
-        pred_image_infos = api.image.get_list(dataset_id=self._loader.dt_dataset_id)[:5]
-        diff_image_infos = api.image.get_list(dataset_id=self._loader.diff_dataset_id)[:5]
+        gt_project_id = self._loader.gt_project_info.id
+        dt_project_id = self._loader.dt_project_info.id
+        diff_project_id = self._loader.diff_project_info.id
+        gt_dataset = api.dataset.get_list(gt_project_id)[0]
+        dt_dataset = api.dataset.get_list(dt_project_id)[0]
+        diff_dataset = api.dataset.get_list(diff_project_id)[0]
+        gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id)[:5]
+        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id)[:5]
+        diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id)[:5]
         project_metas = [
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [
-                self._loader.gt_project_id,
-                self._loader.dt_project_id,
-                self._loader.diff_project_id,
-            ]
+            for x in [gt_project_id, dt_project_id, diff_project_id]
         ]
         for gt_image, pred_image, diff_image in zip(
             gt_image_infos, pred_image_infos, diff_image_infos
@@ -502,24 +504,31 @@ class ModelPredictions(MetricVis):
     def get_gallery(self, widget: Widget.Gallery) -> dict:
         res = {}
         api = self._loader._api
-        selected_image_name = "000000575815.jpg"
-        gt_image_info = api.image.get_info_by_name(self._loader.gt_dataset_id, selected_image_name)
-        pred_image_info = api.image.get_info_by_name(
-            self._loader.dt_dataset_id, selected_image_name
-        )
-        diff_image_info = api.image.get_info_by_name(
-            self._loader.diff_dataset_id, selected_image_name
-        )
+        df = self._loader.mp.prediction_table().round(2)
+        gt_project_id = self._loader.gt_project_info.id
+        dt_project_id = self._loader.dt_project_info.id
+        diff_project_id = self._loader.diff_project_info.id
+
+        def _get_image(name: str, project_id):
+            for dataset in api.dataset.get_list(project_id):
+                info = api.image.get_info_by_name(dataset.id, name)
+                if info is None:
+                    continue
+                else:
+                    return info
+
+        infos = [None] * 3
+        selected_image_name = str(df.iloc[0, 0])
+        for idx, project_id in enumerate([gt_project_id, dt_project_id, diff_project_id]):
+            infos[idx] = _get_image(selected_image_name, project_id)
+
+        gt_image_info, pred_image_info, diff_image_info = infos
 
         images_infos = [gt_image_info, pred_image_info, diff_image_info]
         anns_infos = [api.annotation.download(x.id) for x in images_infos]
         project_metas = [
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [
-                self._loader.gt_project_id,
-                self._loader.dt_project_id,
-                self._loader.diff_project_id,
-            ]
+            for x in [gt_project_id, dt_project_id, diff_project_id]
         ]
 
         for idx, (image_info, ann_info, project_meta) in enumerate(
@@ -542,8 +551,16 @@ class ModelPredictions(MetricVis):
 
     def get_table(self, widget: Widget.Table) -> dict:
         res = {}
-        tmp = self._loader._api.image.get_list(dataset_id=self._loader.dt_dataset_id)
-        df = self._loader.mp.prediction_table()
+        api = self._loader._api
+        gt_project_id = self._loader.gt_project_info.id
+        dt_project_id = self._loader.dt_project_info.id
+        diff_project_id = self._loader.diff_project_info.id
+        gt_dataset = api.dataset.get_list(gt_project_id)[0]
+        dt_dataset = api.dataset.get_list(dt_project_id)[0]
+        diff_dataset = api.dataset.get_list(diff_project_id)[0]
+
+        tmp = api.image.get_list(dataset_id=dt_dataset.id)
+        df = self._loader.mp.prediction_table().round(2)
         df = df[df["image_name"].isin([x.name for x in tmp])]
         columns_options = [{}] * len(df.columns)
         for idx, col in enumerate(columns_options):
@@ -557,13 +574,8 @@ class ModelPredictions(MetricVis):
         res["columnsOptions"] = columns_options
         res["content"] = []
 
-        from supervisely.api.image_api import ImageInfo
-
         key_mapping = {}
-        for old, new in zip(
-            ImageInfo._fields,
-            self._loader._api.image.info_sequence(),
-        ):
+        for old, new in zip(ImageInfo._fields, api.image.info_sequence()):
             key_mapping[old] = new
 
         for row in tbl["data"]["data"]:

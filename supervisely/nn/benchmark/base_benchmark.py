@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -8,7 +8,7 @@ import supervisely as sly
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.visualization.metric_loader import Visualizer
+from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 from supervisely.nn.inference import SessionJSON
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -353,24 +353,25 @@ class BaseBenchmark:
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
-
+        self.diff_project_info, was_before = self._get_or_create_diff_project()
         vis = Visualizer(self)
-        if self._get_or_create_diff_project() is not None:
-            vis.process_diff_project()
+        if not was_before:
+            vis.update_annotations()
         vis.visualize()
 
-    def _get_or_create_diff_project(self) -> sly.ProjectInfo:
+    def _get_or_create_diff_project(self) -> Tuple[sly.ProjectInfo, bool]:
         diff_project_name = self._generate_diff_project_name(self.dt_project_info.name)
         diff_workspace_id = self.dt_project_info.workspace_id
         diff_project_info = self.api.project.get_info_by_name(diff_workspace_id, diff_project_name)
+        is_existed = True
         if diff_project_info is None:
+            is_existed = False
             diff_project_info = self.api.project.create(
                 diff_workspace_id, diff_project_name, change_name_if_conflict=True
             )
             for dataset in self.api.dataset.get_list(self.dt_project_info.id):
                 self.api.dataset.create(diff_project_info.id, dataset.name)
-            return diff_project_info
-        return None
+        return diff_project_info, is_existed
 
     def upload_visualizations(self, dest_dir: str):
         layout_dir = self.get_layout_results_dir()
