@@ -43,8 +43,6 @@ class TreeSelect(Widget):
     - `get_all_items() -> List[TreeSelect.Item]`: Get all items in the tree.
     - `select_all()`: Select all items, including children.
     - `is_all_selected() -> bool`: Check if all items are selected.
-    - `enable()`: Enable the widget.
-    - `disable()`: Disable the widget.
 
     :Usage example:
 
