@@ -43,6 +43,8 @@ class TreeSelect(Widget):
     - `get_all_items() -> List[TreeSelect.Item]`: Get all items in the tree.
     - `select_all()`: Select all items, including children.
     - `is_all_selected() -> bool`: Check if all items are selected.
+    - `enable()`: Enable the widget.
+    - `disable()`: Disable the widget.
 
     :Usage example:
 
@@ -138,6 +140,7 @@ class TreeSelect(Widget):
         self._value = [] if multiple_select else None
         self._width = width
         self._append_to_body = append_to_body
+        self._disabled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -160,6 +163,7 @@ class TreeSelect(Widget):
         """
         return {
             "value": self.value,
+            "disabled": self._disabled,
             "options": {
                 "multiple": self._multiple,
                 "flat": self._flat,
@@ -168,6 +172,18 @@ class TreeSelect(Widget):
                 "appendToBody": self._append_to_body,
             },
         }
+
+    def disable(self) -> None:
+        """Disable the widget."""
+        self._disabled = True
+        StateJson()[self.widget_id]["disabled"] = self._disabled
+        StateJson().send_changes()
+
+    def enable(self) -> None:
+        """Enable the widget."""
+        self._disabled = False
+        StateJson()[self.widget_id]["disabled"] = self._disabled
+        StateJson().send_changes()
 
     @property
     def value(self) -> Union[List[TreeSelect.Item], TreeSelect.Item]:

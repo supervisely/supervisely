@@ -11,6 +11,7 @@
     {% if widget._width is not none %}
     :style="{ width: `${data.{{{widget.widget_id}}}.width}px` }"
     {% endif %}
+    :disabled="state.{{{widget.widget_id}}}.disabled"
   >
   </sly-tree-select>
 </div>

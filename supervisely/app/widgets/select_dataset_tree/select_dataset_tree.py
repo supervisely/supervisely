@@ -53,6 +53,8 @@ class SelectDatasetTree(Widget):
     - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
     - `is_all_selected() -> bool`: Check if all datasets are selected.
     - `select_all() -> None`: Select all datasets.
+    - `enable() -> None`: Enable the widget in the UI.
+    - `disable() -> None`: Disable the widget in the UI.
 
     :Properties:
     - `team_id`: The ID of the team selected in the widget.
@@ -140,6 +142,16 @@ class SelectDatasetTree(Widget):
         # Group the selectors and the dataset selector into a container.
         self._content = Container(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    def disable(self):
+        """Disable the widget in the UI."""
+        for widget in self._widgets:
+            widget.disable()
+
+    def enable(self) -> None:
+        """Enable the widget in the UI."""
+        for widget in self._widgets:
+            widget.enable()
 
     @property
     def team_id(self) -> int:
