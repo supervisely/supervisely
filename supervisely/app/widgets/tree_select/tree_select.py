@@ -140,7 +140,6 @@ class TreeSelect(Widget):
         self._value = [] if multiple_select else None
         self._width = width
         self._append_to_body = append_to_body
-        self._disabled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -153,7 +152,6 @@ class TreeSelect(Widget):
         return {
             "items": [item.to_json() for item in self._items] if self._items else [],
             "width": self._width,
-            "disabled": self._disabled,
         }
 
     def get_json_state(self) -> Dict[str, Union[Dict, List[Dict]]]:
