@@ -213,12 +213,15 @@ class Rectangle(Geometry):
         """ """
         transformed_corners = [transform_fn(p) for p in self.corners]
         rows, cols = zip(*points_to_row_col_list(transformed_corners))
-        return Rectangle(
-            top=round(min(rows)),
-            left=round(min(cols)),
-            bottom=round(max(rows)),
-            right=round(max(cols)),
-        )
+
+        if self._integer_coords:
+            top, left = round(min(rows)), round(min(cols))
+            bottom, right = round(max(rows)), round(max(cols))
+        else:
+            top, left = min(rows), min(cols)
+            bottom, right = max(rows), max(cols)
+
+        return Rectangle(top=top, left=left, bottom=bottom, right=right)
 
     @property
     def corners(self) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
@@ -518,6 +521,7 @@ class Rectangle(Geometry):
             print(figure.left)
             # Output: 100
         """
+        # Always return self._points[0].col ?
         if not self._integer_coords:
             return self._points[0].col
         else:
@@ -538,6 +542,7 @@ class Rectangle(Geometry):
             print(figure.right)
             # Output: 900
         """
+        # Always return self._points[1].col ?
         if not self._integer_coords:
             return self._points[1].col
         else:
@@ -558,6 +563,7 @@ class Rectangle(Geometry):
             print(rectangle.top)
             # Output: 100
         """
+        # Always return self._points[0].row ?
         if not self._integer_coords:
             return self._points[0].row
         else:
@@ -578,6 +584,7 @@ class Rectangle(Geometry):
             print(figure.bottom)
             # Output: 700
         """
+        # Always return self._points[1].row ?
         if not self._integer_coords:
             return self._points[1].row
         else:
@@ -715,7 +722,16 @@ class Rectangle(Geometry):
             print(mask_slice.shape)
             # Output: (199, 499)
         """
-        return data[self.top : (self.bottom + 1), self.left : (self.right + 1), ...]
+        # float values cannot be used for python array slicing
+        if self._integer_coords:
+            cropped_data = data[self.top : (self.bottom + 1), self.left : (self.right + 1), ...]
+        else:
+            cropped_data = data[
+                round(self.top) : (round(self.bottom) + 1),
+                round(self.left) : (round(self.right) + 1),
+                ...,
+            ]
+        return cropped_data
 
     def intersects_with(self, rect: Rectangle) -> bool:
         """

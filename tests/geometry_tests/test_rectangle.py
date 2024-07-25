@@ -139,10 +139,22 @@ def test_crop(random_rect_int, random_rect_float):
         else:
             assert len(cropped_rectangles) == 1
             cropped_rectangle = cropped_rectangles[0]
-            assert cropped_rectangle.top == max(rect.top, cropper.top)
-            assert cropped_rectangle.left == max(rect.left, cropper.left)
-            assert cropped_rectangle.bottom == min(rect.bottom, cropper.bottom)
-            assert cropped_rectangle.right == min(rect.right, cropper.right)
+
+            if rect._integer_coords:
+                expected_top = round(max(rect.top, cropper.top))
+                expected_left = round(max(rect.left, cropper.left))
+                expected_bottom = round(min(rect.bottom, cropper.bottom))
+                expected_right = round(min(rect.right, cropper.right))
+            else:
+                expected_top = max(rect.top, cropper.top)
+                expected_left = max(rect.left, cropper.left)
+                expected_bottom = min(rect.bottom, cropper.bottom)
+                expected_right = min(rect.right, cropper.right)
+
+            assert cropped_rectangle.top == expected_top
+            assert cropped_rectangle.left == expected_left
+            assert cropped_rectangle.bottom == expected_bottom
+            assert cropped_rectangle.right == expected_right
 
         for cidx, cropped_rectangle in enumerate(cropped_rectangles, 1):
             random_image = get_random_image()
@@ -167,10 +179,22 @@ def test_relative_crop(random_rect_int, random_rect_float):
         else:
             assert len(cropped_rectangles) == 1
             cropped_rectangle = cropped_rectangles[0]
-            assert cropped_rectangle.top == max(rect.top, cropper.top) - cropper.top
-            assert cropped_rectangle.left == max(rect.left, cropper.left) - cropper.left
-            assert cropped_rectangle.bottom == min(rect.bottom, cropper.bottom) - cropper.top
-            assert cropped_rectangle.right == min(rect.right, cropper.right) - cropper.left
+
+            if rect._integer_coords:
+                expected_top = round(max(rect.top, cropper.top) - cropper.top)
+                expected_left = round(max(rect.left, cropper.left) - cropper.left)
+                expected_bottom = round(min(rect.bottom, cropper.bottom) - cropper.top)
+                expected_right = round(min(rect.right, cropper.right) - cropper.left)
+            else:
+                expected_top = max(rect.top, cropper.top) - cropper.top
+                expected_left = max(rect.left, cropper.left) - cropper.left
+                expected_bottom = min(rect.bottom, cropper.bottom) - cropper.top
+                expected_right = min(rect.right, cropper.right) - cropper.left
+
+            assert cropped_rectangle.top == expected_top
+            assert cropped_rectangle.left == expected_left
+            assert cropped_rectangle.bottom == expected_bottom
+            assert cropped_rectangle.right == expected_right
 
         for cidx, cropped_rectangle in enumerate(cropped_rectangles, 1):
             random_image = get_random_image()
@@ -188,8 +212,12 @@ def test_rotate(random_rect_int, random_rect_float):
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_rect = rect.rotate(rotator)
+
         expected_corners = [rotator.transform_point(p) for p in rect.corners]
-        rows, cols = zip(*[(p.row, p.col) for p in expected_corners])
+        if rect._integer_coords:
+            rows, cols = zip(*[(round(p.row), round(p.col)) for p in expected_corners])
+        else:
+            rows, cols = zip(*[(p.row, p.col) for p in expected_corners])
         assert rotated_rect.top == min(rows)
         assert rotated_rect.left == min(cols)
         assert rotated_rect.bottom == max(rows)
@@ -240,10 +268,22 @@ def test_translate(random_rect_int, random_rect_float):
         rect, _ = get_rect_and_coords(rectangle)
         drow, dcol = random.randint(10, 150), random.randint(10, 350)
         translated_rect = rect.translate(drow, dcol)
-        assert translated_rect.top == rect.top + drow
-        assert translated_rect.left == rect.left + dcol
-        assert translated_rect.bottom == rect.bottom + drow
-        assert translated_rect.right == rect.right + dcol
+
+        if rect._integer_coords:
+            expected_top = round(rect.top + drow)
+            expected_left = round(rect.left + dcol)
+            expected_bottom = round(rect.bottom + drow)
+            expected_right = round(rect.right + dcol)
+        else:
+            expected_top = rect.top + drow
+            expected_left = rect.left + dcol
+            expected_bottom = rect.bottom + drow
+            expected_right = rect.right + dcol
+
+        assert translated_rect.top == expected_top
+        assert translated_rect.left == expected_left
+        assert translated_rect.bottom == expected_bottom
+        assert translated_rect.right == expected_right
 
         random_image = get_random_image()
         function_name = inspect.currentframe().f_code.co_name

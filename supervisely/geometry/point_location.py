@@ -133,10 +133,10 @@ class PointLocation(JsonSerializable):
             #    }
             # }
         """
-        if not self._integer_coords:
-            exterior = [[self.col, self.row]]
-        else:
+        if self._integer_coords:
             exterior = [[self.rounded_col, self.rounded_row]]
+        else:
+            exterior = [[self.col, self.row]]
         packed_obj = {POINTS: {EXTERIOR: exterior, INTERIOR: []}}
         return packed_obj
 
@@ -212,10 +212,10 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             loc_scale_rc = loc.scale_frow_fcol(0.1, 2.7)
         """
-        if not self._integer_coords:
-            row, col = self.row * frow, self.col * fcol
-        else:
+        if self._integer_coords:
             row, col = round(self.row * frow), round(self.col * fcol)
+        else:
+            row, col = self.row * frow, self.col * fcol
         return PointLocation(row=row, col=col)
 
     def translate(self, drow: int, dcol: int) -> PointLocation:
@@ -236,10 +236,10 @@ class PointLocation(JsonSerializable):
             # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
             translate_loc = loc.translate(150, 350)
         """
-        if not self._integer_coords:
-            row, col = self.row + drow, self.col + dcol
-        else:
+        if self._integer_coords:
             row, col = round(self.row + drow), round(self.col + dcol)
+        else:
+            row, col = self.row + drow, self.col + dcol
         return PointLocation(row=row, col=col)
 
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> PointLocation:
@@ -306,10 +306,10 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             fliplr_loc = loc.fliplr((height, width))
         """
-        if not self._integer_coords:
-            row, col = self.row, img_size[1] - self.col
-        else:
+        if self._integer_coords:
             row, col = self.rounded_row, img_size[1] - self.rounded_col
+        else:
+            row, col = self.row, img_size[1] - self.col
         return PointLocation(row=row, col=col)
 
     def flipud(self, img_size: Tuple[int, int]) -> PointLocation:
@@ -329,10 +329,10 @@ class PointLocation(JsonSerializable):
             height, width = 300, 400
             flipud_loc = loc.flipud((height, width))
         """
-        if not self._integer_coords:
-            row, col = img_size[0] - self.row, self.col
-        else:
+        if self._integer_coords:
             row, col = img_size[0] - self.rounded_row, self.rounded_col
+        else:
+            row, col = img_size[0] - self.row, self.col
 
         return PointLocation(row=row, col=col)
 
