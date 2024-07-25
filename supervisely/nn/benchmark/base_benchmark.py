@@ -2,7 +2,6 @@ import os
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
-from tqdm import tqdm
 
 import supervisely as sly
 from supervisely.api.project_api import ProjectInfo
@@ -84,7 +83,7 @@ class BaseBenchmark:
             cache_project_on_model=cache_project_on_agent,
             batch_size=batch_size,
         )
-        for _ in tqdm(iterator):
+        for _ in tqdm_sly(iterator):
             pass
         inference_info = {
             "gt_project_id": self.gt_project_info.id,
@@ -155,7 +154,7 @@ class BaseBenchmark:
                 num_warmup=num_warmup,
                 cache_project_on_model=cache_project_on_agent,
             )
-            for speedtest in tqdm(iterator):
+            for speedtest in tqdm_sly(iterator):
                 speedtest_results.append(speedtest)
             assert (
                 len(speedtest_results) == num_iterations
@@ -201,7 +200,13 @@ class BaseBenchmark:
         assert not sly.fs.dir_empty(
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
-        self.api.file.upload_directory(self.team_id, eval_dir, remote_dir)
+        self.api.file.upload_directory(
+            self.team_id,
+            eval_dir,
+            remote_dir,
+            replace_if_conflict=True,
+            change_name_if_conflict=False,
+        )
 
     def get_layout_results_dir(self) -> str:
         dir = os.path.join(self.get_base_dir(), "layout")
