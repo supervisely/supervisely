@@ -1,4 +1,5 @@
 import inspect
+import math
 import os
 import random
 from typing import Tuple, Union
@@ -145,8 +146,14 @@ def test_rotate(random_point_int, random_point_float):
         assert isinstance(rotated_point, Point)
         point_np_uniform = np.array([row, col, 1])
         transformed_np = rotator.affine_matrix.dot(point_np_uniform)
-        expected_row = round(transformed_np[0].item())
-        expected_col = round(transformed_np[1].item())
+
+        if pt._integer_coords:
+            expected_row = round(transformed_np[0].item())
+            expected_col = round(transformed_np[1].item())
+        else:
+            expected_row = transformed_np[0].item()
+            expected_col = transformed_np[1].item()
+
         assert rotated_point.row == expected_row
         assert rotated_point.col == expected_col
 
@@ -162,8 +169,16 @@ def test_resize(random_point_int, random_point_float):
         out_size = (random.randint(1000, 1200), random.randint(1000, 1200))
         resized_pt = pt.resize(in_size, out_size)
         assert isinstance(resized_pt, Point)
-        assert resized_pt.row == round(pt.row * out_size[0] / in_size[0])
-        assert resized_pt.col == round(pt.col * out_size[1] / in_size[1])
+
+        if pt._integer_coords:
+            expected_row = round(pt.row * out_size[0] / in_size[0])
+            expected_col = round(pt.col * out_size[1] / in_size[1])
+        else:
+            expected_row = pt.row * out_size[0] / in_size[0]
+            expected_col = pt.col * out_size[1] / in_size[1]
+
+        assert math.isclose(resized_pt.row, expected_row, rel_tol=1e-9)
+        assert math.isclose(resized_pt.col, expected_col, rel_tol=1e-9)
 
         function_name = inspect.currentframe().f_code.co_name
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, resized_pt)
@@ -175,8 +190,15 @@ def test_scale(random_point_int, random_point_float):
         factor = round(random.uniform(0, 1), 3)
         scaled_pt = pt.scale(factor)
         assert isinstance(scaled_pt, Point)
-        assert scaled_pt.row == round(row * factor)
-        assert scaled_pt.col == round(col * factor)
+        if pt._integer_coords:
+            expected_row = round(row * factor)
+            expected_col = round(col * factor)
+        else:
+            expected_row = row * factor
+            expected_col = col * factor
+
+        assert scaled_pt.row == expected_row
+        assert scaled_pt.col == expected_col
 
         random_image = get_random_image()
         function_name = inspect.currentframe().f_code.co_name

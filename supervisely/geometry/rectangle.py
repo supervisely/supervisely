@@ -386,10 +386,17 @@ class Rectangle(Geometry):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
+        # cv2.rectangle function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # add debug logger why coords changed ?
+        rounded_pt1 = (round(self.left), round(self.top))
+        rounded_pt2 = (round(self.right), round(self.bottom))
+
         cv2.rectangle(
             bitmap,
-            pt1=(self.left, self.top),
-            pt2=(self.right, self.bottom),
+            pt1=rounded_pt1,
+            pt2=rounded_pt2,
             color=color,
             thickness=thickness,
         )

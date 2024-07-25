@@ -1,4 +1,5 @@
 import inspect
+import math
 import os
 import random
 from typing import List, Tuple, Union
@@ -69,8 +70,8 @@ def check_points_equal(polygon_exterior: List[PointLocation], coords: List[Tuple
     assert len(polygon_exterior) == len(coords)
     for i, point in enumerate(polygon_exterior):
         assert isinstance(point, PointLocation)
-        assert point.row == coords[i][0]
-        assert point.col == coords[i][1]
+        assert math.isclose(point.row, coords[i][0], rel_tol=1e-9)
+        assert math.isclose(point.col, coords[i][1], rel_tol=1e-9)
 
 
 def test_geometry_name(random_polygon_int, random_polygon_float):
@@ -159,9 +160,13 @@ def test_rotate(random_polygon_int, random_polygon_float):
         for x, y in exterior:
             point_np_uniform = np.array([x, y, 1])
             transformed_np = rotator.affine_matrix.dot(point_np_uniform)
-            expected_points.append(
-                (round(transformed_np[0].item()), round(transformed_np[1].item()))
-            )
+            if poly._integer_coords:
+                expected_points.append(
+                    (round(transformed_np[0].item()), round(transformed_np[1].item()))
+                )
+            else:
+                expected_points.append((transformed_np[0].item(), transformed_np[1].item()))
+
         check_points_equal(rotated_poly.exterior, expected_points)
 
         function_name = inspect.currentframe().f_code.co_name
@@ -176,16 +181,15 @@ def test_resize(random_polygon_int, random_polygon_float):
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         resized_poly = poly.resize(in_size, out_size)
         assert isinstance(resized_poly, Polygon)
-        check_points_equal(
-            resized_poly.exterior,
-            [
-                (
-                    round(x * out_size[0] / in_size[0]),
-                    round(y * out_size[1] / in_size[1]),
+        expected_points = []
+        for x, y in exterior:
+            if poly._integer_coords:
+                expected_points.append(
+                    (round(x * out_size[0] / in_size[0]), round(y * out_size[1] / in_size[1]))
                 )
-                for x, y in exterior
-            ],
-        )
+            else:
+                expected_points.append((x * out_size[0] / in_size[0], y * out_size[1] / in_size[1]))
+        check_points_equal(resized_poly.exterior, expected_points)
 
         function_name = inspect.currentframe().f_code.co_name
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, resized_poly)
@@ -197,9 +201,16 @@ def test_scale(random_polygon_int, random_polygon_float):
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
         scaled_poly = poly.scale(factor)
         assert isinstance(scaled_poly, Polygon)
+        expected_points = []
+        for x, y in exterior:
+            if poly._integer_coords:
+                expected_points.append((round(x * factor), round(y * factor)))
+            else:
+                expected_points.append((x * factor, y * factor))
+
         check_points_equal(
             scaled_poly.exterior,
-            [(round(x * factor), round(y * factor)) for x, y in exterior],
+            expected_points,
         )
 
         random_image = get_random_image()

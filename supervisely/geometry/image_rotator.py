@@ -149,9 +149,13 @@ class ImageRotator:
 
         transformed_np = self.affine_matrix.dot(point_np_uniform)
         # Unwrap numpy types so that round() produces integer results.
-        return PointLocation(
-            row=round(transformed_np[0].item()), col=round(transformed_np[1].item())
-        )
+        if not point._integer_coords:
+            transformed_row = transformed_np[0].item()
+            transformed_col = transformed_np[1].item()
+        else:
+            transformed_row = round(transformed_np[0].item())
+            transformed_col = round(transformed_np[1].item())
+        return PointLocation(row=transformed_row, col=transformed_col)
 
     def rotate_img(self, img: np.ndarray, use_inter_nearest: bool) -> np.ndarray:
         """

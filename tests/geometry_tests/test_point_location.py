@@ -108,11 +108,15 @@ def test_rotate(random_point_location_int, random_point_location_float, random_i
         rotator = ImageRotator(img_size, angle)
         rotate_loc = loc.rotate(rotator)
         assert isinstance(rotate_loc, PointLocation)
-
         point_np_uniform = np.array([row, col, 1])
         transformed_np = rotator.affine_matrix.dot(point_np_uniform)
-        expected_row = round(transformed_np[0].item())
-        expected_col = round(transformed_np[1].item())
+
+        if loc._integer_coords:
+            expected_row = round(transformed_np[0].item())
+            expected_col = round(transformed_np[1].item())
+        else:
+            expected_row = transformed_np[0].item()
+            expected_col = transformed_np[1].item()
 
         assert rotate_loc.row == expected_row
         assert rotate_loc.col == expected_col

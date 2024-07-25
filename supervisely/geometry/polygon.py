@@ -228,7 +228,16 @@ class Polygon(VectorGeometry):
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        exterior = self.exterior_np[:, ::-1]
+        # OpenCV cv2.fillPoly() function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # add debug logger why coords changed ?
+
+        if self._integer_coords:
+            exterior = self.exterior_np[:, ::-1]
+        else:
+            exterior = self.exterior_np[:, ::-1].astype(np.int64)
+
         interior = [x[:, ::-1] for x in self.interior_np]
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
         cv2.fillPoly(bmp_to_draw, pts=[exterior], color=1)
@@ -238,7 +247,16 @@ class Polygon(VectorGeometry):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        exterior = self.exterior_np[:, ::-1]
+        # OpenCV cv2.polylines() function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # add debug logger why coords changed ?
+
+        if self._integer_coords:
+            exterior = self.exterior_np[:, ::-1]
+        else:
+            exterior = self.exterior_np[:, ::-1].astype(np.int64)
+
         interior = [x[:, ::-1] for x in self.interior_np]
 
         poly_lines = [exterior] + interior
