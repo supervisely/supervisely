@@ -76,7 +76,7 @@ class Track:
         self.age = 1
         self.time_since_update = 0
 
-        self.state = TrackState.Tentative
+        self.state = TrackState.Confirmed
         self.features = []
         if feature is not None:
             self.features.append(feature)
