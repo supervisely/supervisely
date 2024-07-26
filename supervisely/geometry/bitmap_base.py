@@ -130,7 +130,11 @@ class BitmapBase(Geometry):
         self._data = data.copy()
         self._integer_coords = self._origin._integer_coords
         if self._integer_coords is False:
-            raise ValueError("BitmapBase origin must have integer coordinates")
+            # BitmapBase origin must have integer coordinates
+            # During convertion from a vector geometry to a bitmap, the origin coordinates may be float
+            # add debug logger why origin changed?
+            self._origin = PointLocation(row=round(self._origin.row), col=round(self._origin.col))
+            self._integer_coords = True
 
     @classmethod
     def _impl_json_class_name(cls):

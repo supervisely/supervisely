@@ -5,16 +5,15 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
-from test_geometry import draw_test
+from test_geometry import draw_test, get_random_image
 
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap, SkeletonizeMethod
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point import Point
-from supervisely.geometry.point_location import PointLocation, _flip_row_col_order
+from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import get_file_name
 
@@ -24,15 +23,8 @@ color = [255, 255, 255]
 thickness = 1
 
 
-def get_random_image(fill_color=[0, 0, 0]) -> np.ndarray:
-    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    image_shape = (1920, 1080, 3)
-    bitmap = np.full(image_shape, fill_color, dtype=np.uint8)
-    return bitmap
-
-
 @pytest.fixture
-def random_mask_int() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
+def random_mask_int_1() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
     height = random.randint(200, 400)
     width = random.randint(200, 400)
     data_shape = (height, width)
@@ -52,25 +44,7 @@ def random_mask_int() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Unio
 
 
 @pytest.fixture
-def random_mask_float() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
-    # height = random.randint(200, 400)
-    # width = random.randint(200, 400)
-    # data_shape = (height, width)
-    # data = np.zeros(data_shape, dtype=np.bool_)
-
-    # origin_coords = [round(random.uniform(0, 10), 6), round(random.uniform(0, 10), 6)]
-    # origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
-
-    # start_row, start_col = round(origin.row), round(origin.col)
-    # end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
-    # data[start_row:end_row, start_col:end_col] = True
-
-    # bitmap = Bitmap(data=data, origin=origin)
-    # data = bitmap.data
-    # origin_coords = [bitmap.origin.row, bitmap.origin.col]
-    # return bitmap, data, origin_coords
-
-    # Use another another integer mask
+def random_mask_int_2() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
     height = random.randint(200, 400)
     width = random.randint(200, 400)
     data_shape = (height, width)
@@ -80,11 +54,29 @@ def random_mask_float() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Un
         random.randint(height // 2 - 50, height // 2 + 50),
         random.randint(width // 2 - 50, width // 2 + 50),
     ]
-
-    # origin_coords = [random.randint(0, 10), random.randint(0, 10)]
     origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
 
     start_row, start_col = origin.row, origin.col
+    end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
+    data[start_row:end_row, start_col:end_col] = True
+
+    bitmap = Bitmap(data=data, origin=origin)
+    data = bitmap.data
+    origin_coords = [bitmap.origin.row, bitmap.origin.col]
+    return bitmap, data, origin_coords
+
+
+@pytest.fixture
+def random_mask_float() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
+    height = random.randint(200, 400)
+    width = random.randint(200, 400)
+    data_shape = (height, width)
+    data = np.zeros(data_shape, dtype=np.bool_)
+
+    origin_coords = [round(random.uniform(0, 10), 6), round(random.uniform(0, 10), 6)]
+    origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
+
+    start_row, start_col = round(origin.row), round(origin.col)
     end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
     data[start_row:end_row, start_col:end_col] = True
 
@@ -104,20 +96,20 @@ def check_origin_equal(bitmap: Bitmap, origin: List[Union[int, float]]):
     assert [bitmap.origin.row, bitmap.origin.col] == origin
 
 
-def test_geometry_name(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_geometry_name(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.geometry_name() == "bitmap"
 
 
-def test_name(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_name(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.name() == "bitmap"
 
 
-def test_to_json(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_to_json(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         base_64_data = bitmap.data_2_base64(data)
         expected_json = {
@@ -128,8 +120,8 @@ def test_to_json(random_mask_int, random_mask_float):
         assert bitmap.to_json() == expected_json
 
 
-def test_from_json(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_from_json(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         base_64_data = bitmap.data_2_base64(data)
         bitmap_json = {
@@ -142,8 +134,8 @@ def test_from_json(random_mask_int, random_mask_float):
         check_origin_equal(bitmap, origin)
 
 
-def test_crop(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_crop(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         rect = Rectangle(top=10, left=10, bottom=20, right=20)
         cropped_bitmaps = bitmap.crop(rect)
@@ -171,8 +163,8 @@ def test_crop(random_mask_int, random_mask_float):
             )
 
 
-def test_relative_crop(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_relative_crop(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         cropper = Rectangle(top=10, left=10, bottom=20, right=20)
         cropped_bitmaps = bitmap.relative_crop(cropper)
@@ -190,8 +182,8 @@ def test_relative_crop(random_mask_int, random_mask_float):
             )
 
 
-def test_rotate(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_rotate(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image([255, 255, 255])
 
@@ -217,8 +209,8 @@ def test_rotate(random_mask_int, random_mask_float):
         )
 
 
-def test_resize(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_resize(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         in_size = data.shape[:2]
         out_size = (in_size[0] // 2, in_size[1] // 2)
@@ -230,8 +222,8 @@ def test_resize(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, resized_bitmap)
 
 
-def test_scale(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_scale(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         factor = round(random.uniform(0, 1), 3)
         bitmap, data, origin = get_bitmap_data_origin(mask)
         scaled_bitmap = bitmap.scale(factor)
@@ -245,8 +237,8 @@ def test_scale(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, scaled_bitmap)
 
 
-def test_translate(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_translate(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         drow, dcol = random.randint(10, 150), random.randint(10, 350)
         translated_bitmap = bitmap.translate(drow, dcol)
@@ -258,8 +250,8 @@ def test_translate(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, translated_bitmap)
 
 
-def test_fliplr(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_fliplr(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         img_size = random_image.shape[:2]
@@ -270,8 +262,8 @@ def test_fliplr(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, flipped_bitmap)
 
 
-def test_flipud(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_flipud(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         img_size = random_image.shape[:2]
@@ -282,8 +274,8 @@ def test_flipud(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, flipped_bitmap)
 
 
-def test_draw_bool_compatible(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_draw_bool_compatible(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
 
@@ -294,8 +286,8 @@ def test_draw_bool_compatible(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
 
-def test_draw(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_draw(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         bitmap.draw(random_image, color, thickness)
@@ -305,8 +297,8 @@ def test_draw(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
 
-def test_get_mask(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_get_mask(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         bmask = bitmap.get_mask(random_image.shape[:2])
@@ -319,8 +311,8 @@ def test_get_mask(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, new_bitmap)
 
 
-def test_draw_impl(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_draw_impl(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         bitmap._draw_impl(random_image, color, thickness)
@@ -330,8 +322,8 @@ def test_draw_impl(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
 
-def test_draw_contour(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_draw_contour(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         bitmap.draw_contour(random_image, color, thickness)
@@ -341,8 +333,8 @@ def test_draw_contour(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
 
-def test__draw_contour_impl(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test__draw_contour_impl(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
         bitmap._draw_contour_impl(random_image, color, thickness)
@@ -352,14 +344,14 @@ def test__draw_contour_impl(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image)
 
 
-def test_area(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_area(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.area == np.sum(data)
 
 
-def test_to_bbox(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_to_bbox(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         bitmap_bbox = bitmap.to_bbox()
         assert isinstance(bitmap_bbox, Rectangle)
@@ -371,16 +363,16 @@ def test_to_bbox(random_mask_int, random_mask_float):
         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, bitmap_bbox)
 
 
-def test_clone(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_clone(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         cloned_bitmap = bitmap.clone()
         assert isinstance(cloned_bitmap, Bitmap)
         check_origin_equal(cloned_bitmap, origin)
 
 
-def test_validate(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_validate(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.validate(bitmap.geometry_name(), settings=None) is None
         with pytest.raises(
@@ -389,31 +381,31 @@ def test_validate(random_mask_int, random_mask_float):
             bitmap.validate("different_shape_name", settings=None)
 
 
-def test_config_from_json(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_config_from_json(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         config = {"key": "value"}
         returned_config = bitmap.config_from_json(config)
         assert returned_config == config
 
 
-def test_config_to_json(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_config_to_json(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         config = {"key": "value"}
         returned_config = bitmap.config_to_json(config)
         assert returned_config == config
 
 
-def test_allowed_transforms(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_allowed_transforms(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         allowed_transforms = bitmap.allowed_transforms()
         assert set(allowed_transforms) == set([AlphaMask, AnyGeometry, Polygon, Rectangle])
 
 
-def test_convert(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_convert(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert bitmap.convert(type(bitmap)) == [bitmap]
         assert bitmap.convert(AnyGeometry) == [bitmap]
@@ -442,36 +434,36 @@ def test_convert(random_mask_int, random_mask_float):
 # ------------------------
 
 
-def test_data(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_data(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         assert np.array_equal(bitmap.data, data)
 
 
-def test_origin(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_origin(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         check_origin_equal(bitmap, origin)
 
 
-def test_base64_2_data(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_base64_2_data(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         encoded = bitmap.data_2_base64(data)
         decoded = Bitmap.base64_2_data(encoded)
         assert np.array_equal(decoded, data)
 
 
-def test_data_2_base64(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_data_2_base64(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         encoded = bitmap.data_2_base64(data)
         decoded = Bitmap.base64_2_data(encoded)
         assert np.array_equal(decoded, data)
 
 
-def test_skeletonize(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_skeletonize(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         for method in SkeletonizeMethod:
             skeleton = bitmap.skeletonize(method)
@@ -484,8 +476,8 @@ def test_skeletonize(random_mask_int, random_mask_float):
             )
 
 
-def test_to_contours(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_to_contours(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         contours = bitmap.to_contours()
         assert isinstance(contours, list), "Output should be a list"
@@ -498,8 +490,8 @@ def test_to_contours(random_mask_int, random_mask_float):
             draw_test(dir_name, f"{function_name}_{cidx}_geometry_{idx}", random_image, contour)
 
 
-def test_bitwise_mask(random_mask_int, random_mask_float):
-    for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+def test_bitwise_mask(random_mask_int_1, random_mask_int_2):
+    for idx, mask in enumerate([random_mask_int_1, random_mask_int_2], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         return
         # @TODO: Fix this test
@@ -520,7 +512,7 @@ def test_bitwise_mask(random_mask_int, random_mask_float):
         ), f"Result shape {result.data.shape} does not match expected shape {expected_shape}."
 
 
-def test_from_path(random_mask_int, random_mask_float):
+def test_from_path(random_mask_int_1, random_mask_int_2):
     pass
 
 

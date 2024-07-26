@@ -1,4 +1,5 @@
 import os
+import random
 from typing import List
 
 import numpy as np
@@ -10,6 +11,12 @@ from supervisely.geometry.geometry import Geometry
 # Draw Settings
 default_color = [255, 255, 255]
 thickness = 1
+
+
+def get_random_image(fill_color=[0, 0, 0]) -> np.ndarray:
+    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
+    image = np.full(image_shape, fill_color, dtype=np.uint8)
+    return image
 
 
 def draw_test(

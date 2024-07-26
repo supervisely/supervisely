@@ -6,16 +6,13 @@ from typing import Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
-from test_geometry import draw_test
+from test_geometry import draw_test, get_random_image
 
-from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation, _flip_row_col_order
-from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import get_file_name
 
@@ -23,13 +20,6 @@ dir_name = get_file_name(os.path.abspath(__file__))
 # Draw Settings
 color = [255, 255, 255]
 thickness = 1
-
-
-def get_random_image() -> np.ndarray:
-    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
-    bitmap = np.full(image_shape, background_color, dtype=np.uint8)
-    return bitmap
 
 
 @pytest.fixture
@@ -139,10 +129,17 @@ def test_relative_crop(random_point_int, random_point_float):
 def test_rotate(random_point_int, random_point_float):
     for idx, point in enumerate([random_point_int, random_point_float], 1):
         pt, row, col = get_point_row_col(point)
-        random_image = get_random_image()
+        random_image = get_random_image([255, 255, 255])
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}_original", random_image, pt, [255, 0, 0]
+        )
+
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_point = pt.rotate(rotator)
+        rotated_image = rotator.rotate_img(random_image, True)
         assert isinstance(rotated_point, Point)
         point_np_uniform = np.array([row, col, 1])
         transformed_np = rotator.affine_matrix.dot(point_np_uniform)
@@ -158,7 +155,9 @@ def test_rotate(random_point_int, random_point_float):
         assert rotated_point.col == expected_col
 
         function_name = inspect.currentframe().f_code.co_name
-        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_point)
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}", rotated_image, rotated_point, [0, 0, 255]
+        )
 
 
 def test_resize(random_point_int, random_point_float):

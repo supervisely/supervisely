@@ -5,9 +5,8 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
-from test_geometry import draw_test
+from test_geometry import draw_test, get_random_image
 
-import supervisely.imaging.image as sly_image
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.any_geometry import AnyGeometry
@@ -18,7 +17,6 @@ from supervisely.geometry.cuboid_2d import (
     Cuboid2d,
     Cuboid2dTemplate,
 )
-from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import EDGES, GraphNodes, Node
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point import Point
@@ -31,13 +29,6 @@ dir_name = get_file_name(os.path.abspath(__file__))
 color = [255, 255, 255]
 default_color = [255, 255, 255]
 thickness = 1
-
-
-def get_random_image() -> np.ndarray:
-    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
-    bitmap = np.full(image_shape, background_color, dtype=np.uint8)
-    return bitmap
 
 
 def get_cuboid_points() -> List[Node]:
@@ -203,17 +194,35 @@ def test_relative_crop(random_cuboid2d_int, random_cuboid2d_float):
 def test_rotate(random_cuboid2d_int, random_cuboid2d_float):
     for idx, cuboid_data in enumerate([random_cuboid2d_int, random_cuboid2d_float], 1):
         cuboid_2d, nodes, coords = cuboid_data
-        random_image = get_random_image()
+        random_image = get_random_image([255, 255, 255])
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name,
+            f"{function_name}_geometry_{idx}_original",
+            random_image,
+            cuboid_2d,
+            [255, 0, 0],
+        )
+
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_cuboid_2d = cuboid_2d.rotate(rotator)
+        rotated_image = rotator.rotate_img(random_image, True)
+
         for node, cuboid_2d_node in zip(nodes.values(), rotated_cuboid_2d.nodes.values()):
             rotated_pt = node.location.rotate(rotator)
             assert cuboid_2d_node.location.row == rotated_pt.row
             assert cuboid_2d_node.location.col == rotated_pt.col
 
         function_name = inspect.currentframe().f_code.co_name
-        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_cuboid_2d)
+        draw_test(
+            dir_name,
+            f"{function_name}_geometry_{idx}",
+            rotated_image,
+            rotated_cuboid_2d,
+            [0, 0, 255],
+        )
 
 
 def test_resize(random_cuboid2d_int, random_cuboid2d_float):

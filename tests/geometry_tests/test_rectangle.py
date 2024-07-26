@@ -5,7 +5,7 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
-from test_geometry import draw_test
+from test_geometry import draw_test, get_random_image
 
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
@@ -22,13 +22,6 @@ dir_name = get_file_name(os.path.abspath(__file__))
 # Draw Settings
 color = [255, 255, 255]
 thickness = 1
-
-
-def get_random_image() -> np.ndarray:
-    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
-    bitmap = np.full(image_shape, background_color, dtype=np.uint8)
-    return bitmap
 
 
 @pytest.fixture
@@ -207,11 +200,17 @@ def test_relative_crop(random_rect_int, random_rect_float):
 def test_rotate(random_rect_int, random_rect_float):
     for idx, rectangle in enumerate([random_rect_int, random_rect_float], 1):
         rect, _ = get_rect_and_coords(rectangle)
-        random_image = get_random_image()
+        random_image = get_random_image([255, 255, 255])
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}_original", random_image, rect, [255, 0, 0]
+        )
 
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_rect = rect.rotate(rotator)
+        rotated_image = rotator.rotate_img(random_image, True)
 
         expected_corners = [rotator.transform_point(p) for p in rect.corners]
         if rect._integer_coords:
@@ -224,7 +223,9 @@ def test_rotate(random_rect_int, random_rect_float):
         assert rotated_rect.right == max(cols)
 
         function_name = inspect.currentframe().f_code.co_name
-        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_rect)
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}", rotated_image, rotated_rect, [0, 0, 255]
+        )
 
 
 def test_resize(random_rect_int, random_rect_float):

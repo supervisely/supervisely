@@ -5,17 +5,14 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
-from test_geometry import draw_test
+from test_geometry import draw_test, get_random_image
 
-from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.bitmap import Bitmap, SkeletonizeMethod
+from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point import Point
-from supervisely.geometry.point_location import PointLocation, _flip_row_col_order
-from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import get_file_name
 
@@ -23,13 +20,6 @@ dir_name = get_file_name(os.path.abspath(__file__))
 # Draw Settings
 color = [255, 255, 255]
 thickness = 1
-
-
-def get_random_image() -> np.ndarray:
-    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
-    bitmap = np.full(image_shape, background_color, dtype=np.uint8)
-    return bitmap
 
 
 @pytest.fixture
@@ -182,7 +172,13 @@ def test_relative_crop(random_kp_int, random_kp_float):
 def test_rotate(random_kp_int, random_kp_float):
     for idx, graph_nodes in enumerate([random_kp_int, random_kp_float], 1):
         graph, nodes, coords = get_graph_nodes_coords(graph_nodes)
-        random_image = get_random_image()
+        random_image = get_random_image([255, 255, 255])
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}_original", random_image, graph, [255, 0, 0]
+        )
+
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_graph = graph.rotate(rotator)
@@ -192,7 +188,9 @@ def test_rotate(random_kp_int, random_kp_float):
             assert graph_node.location.col == rotated_pt.col
 
         function_name = inspect.currentframe().f_code.co_name
-        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_graph)
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_graph, [0, 0, 255]
+        )
 
 
 def test_resize(random_kp_int, random_kp_float):

@@ -223,6 +223,12 @@ class GraphNodes(Geometry):
                 else:
                     self._nodes[str(i)] = Node(node._location, node._disabled)
 
+        self._integer_coords = all(
+            isinstance(coord, int)
+            for node in self._nodes.values()
+            for coord in (node.location.row, node.location.col)
+        )
+
     @property
     def nodes(self) -> Dict[str, Dict]:
         """
@@ -262,7 +268,10 @@ class GraphNodes(Geometry):
             from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
-        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data[cls.items_json_field].items()}
+        nodes = {
+            node_id: Node.from_json(node_json)
+            for node_id, node_json in data[cls.items_json_field].items()
+        }
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
@@ -312,7 +321,11 @@ class GraphNodes(Geometry):
             #    }
             # }
         """
-        res = {self.items_json_field: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        res = {
+            self.items_json_field: {
+                node_id: node.to_json() for node_id, node in self._nodes.items()
+            }
+        }
         self._add_creation_info(res)
         return res
 
@@ -536,10 +549,25 @@ class GraphNodes(Geometry):
                 and (not dst.disabled)
             ):
                 edge_color = edge.get(COLOR, color)
+
+                # OpenCV cv2.line() function requires integer values
+                # because it directly manipulates pixel values
+                # in an image that can only be referenced by integer indices
+                # add debug logger why coords changed ?
+                if self._integer_coords:
+                    src_loc_col = src.location.col
+                    src_loc_row = src.location.row
+                    dst_loc_col = dst.location.col
+                    dst_loc_row = dst.location.row
+                else:
+                    src_loc_col = round(src.location.col)
+                    src_loc_row = round(src.location.row)
+                    dst_loc_col = round(dst.location.col)
+                    dst_loc_row = round(dst.location.row)
                 cv2.line(
                     bitmap,
-                    (src.location.col, src.location.row),
-                    (dst.location.col, dst.location.row),
+                    (src_loc_col, src_loc_row),
+                    (dst_loc_col, dst_loc_row),
                     tuple(edge_color),
                     thickness,
                 )
@@ -609,7 +637,9 @@ class GraphNodes(Geometry):
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
-        nodes_not_in_template = set(self._nodes.keys()) - set(settings[self.items_json_field].keys())
+        nodes_not_in_template = set(self._nodes.keys()) - set(
+            settings[self.items_json_field].keys()
+        )
         if len(nodes_not_in_template) > 0:
             raise ValueError(
                 "Graph contains nodes not declared in the template: {!r}.".format(

@@ -6,7 +6,7 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
-from test_geometry import draw_test
+from test_geometry import draw_test, get_random_image
 
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
@@ -15,7 +15,6 @@ from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation, _flip_row_col_order
 from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import get_file_name
 
@@ -23,13 +22,6 @@ dir_name = get_file_name(os.path.abspath(__file__))
 # Draw Settings
 color = [255, 255, 255]
 thickness = 1
-
-
-def get_random_image() -> np.ndarray:
-    image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
-    bitmap = np.full(image_shape, background_color, dtype=np.uint8)
-    return bitmap
 
 
 @pytest.fixture
@@ -150,10 +142,17 @@ def test_relative_crop(random_polygon_int, random_polygon_float):
 def test_rotate(random_polygon_int, random_polygon_float):
     for idx, polygon in enumerate([random_polygon_int, random_polygon_float], 1):
         poly, exterior, interior = get_polygon_exterior_interior(polygon)
-        random_image = get_random_image()
+        random_image = get_random_image([255, 255, 255])
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}_original", random_image, poly, [255, 0, 0]
+        )
+
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_poly = poly.rotate(rotator)
+        rotated_image = rotator.rotate_img(random_image, True)
         assert isinstance(rotated_poly, Polygon)
 
         expected_points = []
@@ -170,7 +169,9 @@ def test_rotate(random_polygon_int, random_polygon_float):
         check_points_equal(rotated_poly.exterior, expected_points)
 
         function_name = inspect.currentframe().f_code.co_name
-        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_poly)
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}", rotated_image, rotated_poly, [0, 0, 255]
+        )
 
 
 def test_resize(random_polygon_int, random_polygon_float):
