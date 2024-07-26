@@ -23,6 +23,8 @@ if is_branch_install:
     branch_name = git_arg.split("@")[-1].split("#")[0]
     version = version + "-" + branch_name
 
+with open("setup_debug.txt", "+a") as f:
+    f.write(f"version: {version}\n")
 
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <5.0.0",
