@@ -959,3 +959,19 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         recurse(tree)
         return nested
+
+    def exists(self, project_id: int, name: str, parent_id: int = None) -> bool:
+        """
+        Checks if the dataset with the given name exists in the project.
+        If parent_id is not None, the search will be performed in the specified Dataset.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :param name: Dataset name.
+        :type name: str
+        :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
+        :type parent_id: Union[int, None]
+        :return: True if the dataset exists, False otherwise.
+        :rtype: bool
+        """
+        return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None
