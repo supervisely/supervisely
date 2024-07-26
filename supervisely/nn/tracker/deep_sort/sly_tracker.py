@@ -234,7 +234,7 @@ class DeepSortTracker(BaseTracker):
             tracks=[
                 track
                 for track in self.tracker.tracks
-                if track.is_confirmed() or track.time_since_update <= 1
+                if track.is_confirmed() and track.time_since_update <= 1
             ],
             frame_index=frame_index,
         )
