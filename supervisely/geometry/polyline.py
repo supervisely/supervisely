@@ -189,7 +189,7 @@ class Polyline(VectorGeometry):
         # OpenCV cv2.polylines() function requires integer values
         # because it directly manipulates pixel values
         # in an image that can only be referenced by integer indices
-        # add debug logger why coords changed ?
+        # Add debug logger why coords changed ?
 
         if self._integer_coords:
             exterior = self.exterior_np[:, ::-1]
@@ -199,6 +199,7 @@ class Polyline(VectorGeometry):
         # OpenCV cv2.polylines() thickness value must be a non-negative integer
         # Value of -1 represents a filled polygon (cv2.FILLED) and works in certain functions like cv2.fillPoly() or cv2.rectangle()
         # but this does not apply to cv2.polylines()
+        # Add debug logger why thickness changed ?
         if thickness == -1:
             thickness = 0
 

@@ -14,7 +14,6 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
-from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.constants import GEOMETRY_SHAPE, GEOMETRY_TYPE
 from supervisely.geometry.geometry import Geometry
@@ -352,7 +351,6 @@ class LabelBase:
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
         )
-        return label
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """

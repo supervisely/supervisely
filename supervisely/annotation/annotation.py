@@ -21,7 +21,6 @@ from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
-from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.image_rotator import ImageRotator
@@ -388,15 +387,10 @@ class Annotation:
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
         img_size = (img_height, img_width)
         try:
-            labels = []
-            for label_json in data[AnnotationJsonFields.LABELS]:
-                try:
-                    label = Label.from_json(label_json, project_meta)
-                    labels.append(label)
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
-                    )
+            labels = [
+                Label.from_json(label_json, project_meta)
+                for label_json in data[AnnotationJsonFields.LABELS]
+            ]
         except Exception as e:
             raise RuntimeError(
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
@@ -414,17 +408,17 @@ class Annotation:
 
             # @TODO: tony, maybe link with project meta (add probability classes???)
             prob_project_meta = ProjectMeta(obj_classes=prob_classes)
-            prob_labels = []
-            for label_json in custom_data[AnnotationJsonFields.PROBABILITY_LABELS]:
-                label = Label.from_json(label_json, prob_project_meta)
-                prob_labels.append(label)
+            prob_labels = [
+                Label.from_json(label_json, prob_project_meta)
+                for label_json in custom_data[AnnotationJsonFields.PROBABILITY_LABELS]
+            ]
 
             custom_data.pop(AnnotationJsonFields.PROBABILITY_CLASSES)
             custom_data.pop(AnnotationJsonFields.PROBABILITY_LABELS)
 
         image_id = data.get(AnnotationJsonFields.IMAGE_ID, None)
 
-        ann = cls(
+        return cls(
             img_size=img_size,
             labels=labels,
             img_tags=TagCollection.from_json(
@@ -435,7 +429,6 @@ class Annotation:
             custom_data=custom_data,
             image_id=image_id,
         )
-        return ann
 
     @classmethod
     def load_json_file(cls, path: str, project_meta: ProjectMeta) -> Annotation:

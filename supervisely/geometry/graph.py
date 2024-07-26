@@ -538,6 +538,14 @@ class GraphNodes(Geometry):
             # consistent with the our set of points.
             self.validate(self.geometry_name(), config)
 
+        # OpenCV cv2.line() thickness value must be a non-negative integer greater than 0
+        # Value of 1 is a single pixel wide, which is the thinnest line you can draw
+        # Value of -1 represents a filled polygon (cv2.FILLED) and works in certain functions like cv2.fillPoly() or cv2.rectangle()
+        # Value of 0 is not valid
+        # Add debug logger why thickness changed ?
+        if thickness < 0:
+            thickness = 1
+
         # Draw edges first so that nodeas are then drawn on top.
         for edge in self._get_nested_or_default(config, [EDGES], []):
             src = self._nodes.get(edge[SRC], None)
