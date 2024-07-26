@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 from time import sleep
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
@@ -15,9 +15,12 @@ STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
 
-from supervisely import logger
-from supervisely._utils import sizeof_fmt
-from supervisely.io.fs import ensure_base_path
+from supervisely import env, logger
+from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.file_api import FileInfo
+from supervisely.api.project_api import ProjectInfo
+from supervisely.io.fs import ensure_base_path, str_is_url
+from supervisely.io.json import validate_json
 from supervisely.task.progress import Progress
 
 _context_menu_targets = {
@@ -302,6 +305,779 @@ class SessionInfo(NamedTuple):
 
 class AppApi(TaskApi):
     """AppApi"""
+
+    class Workflow:
+        """The workflow functionality is used to create connections between the states of projects and tasks (application sessions) that interact with them in some way.
+        By assigning connections to various entities, the workflow tab allows tracking the history of project changes.
+        The active task always acts as a node, for which input and output elements are defined.
+        There can be multiple input and output elements.
+        A task can also be used as an input or output element.
+        For example, an inference task takes a deployed model and a project as inputs, and the output is a new state of the project.
+        This functionality uses versioning optionally.
+        """
+
+        def __init__(self, api):
+            self._api = api
+
+        __custom_meta_schema = {
+            "type": "object",
+            "definitions": {
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "icon": {
+                            "type": "object",
+                            "properties": {
+                                "icon": {"type": "string"},
+                                "color": {"type": "string"},
+                                "backgroundColor": {"type": "string"},
+                            },
+                            "required": ["icon", "color", "backgroundColor"],
+                            "additionalProperties": False,
+                        },
+                        "title": {"type": "string"},  # html
+                        "mainLink": {
+                            "type": "object",
+                            "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
+                            "required": ["url", "title"],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "additionalProperties": False,
+                }
+            },
+            "properties": {
+                "customRelationSettings": {"$ref": "#/definitions/settings"},
+                "customNodeSettings": {"$ref": "#/definitions/settings"},
+            },
+            "additionalProperties": False,
+            "anyOf": [
+                {"required": ["customRelationSettings"]},
+                {"required": ["customNodeSettings"]},
+            ],
+        }
+
+        def _add_edge(
+            self,
+            data: dict,
+            transaction_type: str,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add input or output to a workflow node.
+
+            :param data: Data to be added to the workflow node.
+            :type data: dict
+            :param transaction_type: Type of transaction "input" or "output".
+            :type transaction_type: str
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: dict
+            """
+            try:
+                if task_id is None:
+                    node_id = self._api.task_id
+                else:
+                    node_id = task_id
+                if node_id is None:
+                    raise ValueError(
+                        "Task ID cannot be automatically determined. Please specify it manually."
+                    )
+                node_type = "task"
+                if not getattr(self, "team_id", None) and node_id:
+                    self.team_id = self._api.task.get_info_by_id(node_id).get(ApiField.TEAM_ID)
+                if not self.team_id:
+                    raise ValueError("Failed to get Team ID")
+                api_endpoint = f"workflow.node.add-{transaction_type}"
+                data_type = data.get("data_type")
+                data_id = data.get("data_id") if data_type != "app_session" else node_id
+                data_meta = data.get("meta", {})
+                if meta is not None:
+                    if validate_json(meta, self.__custom_meta_schema):
+                        data_meta.update(meta)
+                    else:
+                        logger.warn("Invalid customization meta, will not be added to the node.")
+                payload = {
+                    ApiField.TEAM_ID: self.team_id,
+                    ApiField.NODE: {ApiField.TYPE: node_type, ApiField.ID: node_id},
+                    ApiField.TYPE: data_type,
+                }
+                if data_id:
+                    payload[ApiField.ID] = data_id
+                if data_meta:
+                    payload[ApiField.META] = data_meta
+                response = self._api.post(api_endpoint, payload)
+                return response.json()
+            except Exception:
+                logger.error(
+                    f"Failed to add {transaction_type} node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_input_project(
+            self,
+            project: Optional[Union[int, ProjectInfo]] = None,
+            version_id: Optional[int] = None,
+            version_num: Optional[int] = None,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add input type "project" to the workflow node.
+            The project version can be specified to indicate that the project version was used especially for this task.
+            Arguments project and version_id are mutually exclusive. If both are specified, version_id will be used.
+            Argument version_num can be used only with project.
+            This type is used to show that the application has used the specified project.
+
+            :param project: Project ID or ProjectInfo object.
+            :type project: Optional[Union[int, ProjectInfo]]
+            :param version_id: Version ID of the project.
+            :type version_id: Optional[int]
+            :param version_num: Version number of the project. Can be used only with project.
+            :type version_num: Optional[int]
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                if project is None and version_id is None and version_num is None:
+                    raise ValueError(
+                        "At least one of project, version_id or version_num must be specified"
+                    )
+                if version_id is not None and version_num is not None:
+                    raise ValueError("Only one of version_id or version_num can be specified")
+                if project is None and version_num is not None:
+                    raise ValueError(
+                        "Argument version_num cannot be used without specifying a project argument"
+                    )
+                data_type = "project"
+                data_id = None
+                if isinstance(project, ProjectInfo):
+                    data_id = project.id
+                elif isinstance(project, int):
+                    data_id = project
+                if version_num:
+                    version_id = self._api.project.version.get_id_by_number(data_id, version_num)
+                if version_id:
+                    data_id = version_id
+                    data_type = "project_version"
+                data = {
+                    "data_type": data_type,
+                    "data_id": data_id,
+                }
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input project node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_input_dataset(
+            self,
+            dataset: Union[int, DatasetInfo],
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add input type "dataset" to the workflow node.
+            This type is used to show that the application has used the specified dataset.
+
+            :param dataset: Dataset ID or DatasetInfo object.
+            :type dataset: Union[int, DatasetInfo]
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "dataset"
+                if isinstance(dataset, DatasetInfo):
+                    dataset = dataset.id
+                data = {"data_type": data_type, "data_id": dataset}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input dataset node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_input_file(
+            self,
+            file: Union[int, FileInfo, str],
+            model_weight=False,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add input type "file" to the workflow node.
+            This type is used to show that the application has used the specified file.
+
+            :param file: File ID, FileInfo object or file path int Team Files.
+            :type file: Union[int, FileInfo, str]
+            :param model_weight: Flag to indicate if the file is a model weight.
+            :type model_weight: bool
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data = {}
+                data_type = "file"
+                if isinstance(file, FileInfo):
+                    file_id = file.id
+                elif isinstance(file, int):
+                    file_id = file
+                elif isinstance(file, str):
+                    if str_is_url(file):
+                        raise NotImplementedError("URLs are not supported yet")
+                    file_id = self._api.file.get_info_by_path(env.team_id(), file).id
+                else:
+                    raise ValueError(f"Invalid file type: {type(file)}")
+                if model_weight:
+                    data_type = "model_weight"
+                data["data_type"] = data_type
+                data["data_id"] = file_id
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input file node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_input_folder(
+            self,
+            path: str,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add input type "folder" to the workflow node.
+            Path to the folder is a path in Team Files.
+            This type is used to show that the application has used files from the specified folder.
+
+            :param path: Path to the folder in Team Files.
+            :type path: str
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                from pathlib import Path
+
+                if not path.startswith("/"):
+                    path = "/" + path
+                try:
+                    Path(path)
+                except Exception as e:
+                    raise ValueError(f"The provided string '{path}' is not a valid path: {str(e)}")
+                data_type = "folder"
+                data = {"data_type": data_type, "data_id": path}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input folder node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_input_task(
+            self,
+            input_task_id: int,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add input type "task" to the workflow node.
+            This type usually indicates that the one application has used another application for its work.
+
+            :param input_task_id: Task ID that is used as input.
+            :type input_task_id: int
+            :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "task"
+                data = {"data_type": data_type, "data_id": input_task_id}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input task node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_project(
+            self,
+            project: Union[int, ProjectInfo],
+            version_id: Optional[int] = None,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "project" to the workflow node.
+            The project version can be specified with "version" argument to indicate that the project version was created especially as result of this task.
+            This type is used to show that the application has created a project with the result of its work.
+
+            :param project: Project ID or ProjectInfo object.
+            :type project: Union[int, ProjectInfo]
+            :param version_id: Version ID of the project.
+            :type version_id: Optional[int]
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                if project is None and version_id is None:
+                    raise ValueError("Project or version must be specified")
+                data_type = "project"
+                data_id = None
+                if isinstance(project, ProjectInfo):
+                    data_id = project.id
+                elif isinstance(project, int):
+                    data_id = project
+                if version_id:
+                    data_id = version_id
+                    data_type = "project_version"
+                data = {
+                    "data_type": data_type,
+                    "data_id": data_id,
+                }
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output project node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_dataset(
+            self,
+            dataset: Union[int, DatasetInfo],
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "dataset" to the workflow node.
+            This type is used to show that the application has created a dataset with the result of its work.
+
+            :param dataset: Dataset ID or DatasetInfo object.
+            :type dataset: Union[int, DatasetInfo]
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "dataset"
+                if isinstance(dataset, DatasetInfo):
+                    dataset = dataset.id
+                data = {"data_type": data_type, "data_id": dataset}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output dataset node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_file(
+            self,
+            file: Union[int, FileInfo],
+            model_weight=False,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "file" to the workflow node.
+            This type is used to show that the application has created a file with the result of its work.
+
+            :param file: File ID or FileInfo object.
+            :type file: Union[int, FileInfo]
+            :param model_weight: Flag to indicate if the file is a model weight.
+            :type model_weight: bool
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "file"
+                if isinstance(file, FileInfo):
+                    file = file.id
+                if model_weight:
+                    data_type = "model_weight"
+                data = {"data_type": data_type, "data_id": file}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output file node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_folder(
+            self,
+            path: str,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "folder" to the workflow node.
+            Path to the folder is a path in Team Files.
+            This type is used to show that the application has created a folder with the result files of its work.
+
+            :param path: Path to the folder.
+            :type path: str
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                from pathlib import Path
+
+                if not path.startswith("/"):
+                    path = "/" + path
+                try:
+                    Path(path)
+                except Exception as e:
+                    raise ValueError(f"The provided string '{path}' is not a valid path: {str(e)}")
+                data_type = "folder"
+                data = {"data_type": data_type, "data_id": path}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output folder node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_app(
+            self,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "app_session" to the workflow node.
+            This type is used to show that the application has an offline session in which you can find the result of its work.
+
+            :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "app_session"
+                data = {"data_type": data_type}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output app node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_task(
+            self,
+            output_task_id: int,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "task" to the workflow node.
+            This type is used to show that the application has created a task with the result of its work.
+
+            :param output_task_id: Created task ID.
+            :type output_task_id: int
+            :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "task"
+                data = {"data_type": data_type, "data_id": output_task_id}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output task node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        def add_output_job(
+            self,
+            id: int,
+            task_id: Optional[int] = None,
+            meta: Optional[dict] = None,
+        ) -> dict:
+            """
+            Add output type "job" to the workflow node. Job is a Labeling Job.
+            This type is used to show that the application has created a labeling job with the result of its work.
+
+            :param id: Labeling Job ID.
+            :type id: int
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[dict]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            :meta example:
+
+             .. code-block:: json
+                {
+                    "customRelationSettings": {
+                        "icon": {
+                            "icon": "icon-name",
+                            "color": "#000000",
+                            "backgroundColor": "#FFFFFF"
+                        },
+                        "title": "Custom title",
+                        "mainLink": {
+                            "url": "/ecosystem",
+                            "title": "Link title"
+                        }
+                    }
+                }
+            """
+            try:
+                data_type = "job"
+                data = {"data_type": data_type, "data_id": id}
+                return self._add_edge(data, "output", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add output job node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+    def __init__(self, api):
+        super().__init__(api)
+        self.workflow = self.Workflow(api)
 
     @staticmethod
     def info_sequence():

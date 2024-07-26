@@ -82,6 +82,7 @@ class ProjectInfo(NamedTuple):
     team_id: int
     settings: dict
     import_settings: dict
+    version: dict
 
     @property
     def image_preview_url(self):
@@ -177,6 +178,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.TEAM_ID,
             ApiField.SETTINGS,
             ApiField.IMPORT_SETTINGS,
+            ApiField.VERSION,
         ]
 
     @staticmethod
@@ -187,8 +189,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return "ProjectInfo"
 
     def __init__(self, api):
+        from supervisely.project.data_version import DataVersion
+
         CloneableModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
+        self.version = DataVersion(api)
 
     def get_list(
         self,
@@ -198,6 +203,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
+
+        *NOTE*: Version information is not available while getting list of projects.
+        If you need version information, use :func:`get_info_by_id`.
 
         :param workspace_id: Workspace ID in which the Projects are located.
         :type workspace_id: int
@@ -282,6 +290,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+        if ApiField.VERSION in fields:
+            fields.remove(ApiField.VERSION)
+            logger.debug(
+                "Project version information is not available while getting list of projects"
+            )
         return self.get_list_all_pages(
             "projects.list",
             {
@@ -356,6 +369,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     ) -> ProjectInfo:
         """
         Get Project information by name.
+
+        Version information is not available while getting project by name.
+        If you need version information, use :func:`get_info_by_id`.
 
         :param parent_id: Workspace ID.
         :type parent_id: int
@@ -770,7 +786,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_imgs_count)
             # Output: 24
         """
-        datasets = self._api.dataset.get_list(id)
+        datasets = self._api.dataset.get_list(id, recursive=True)
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):

@@ -1,0 +1,38 @@
+# https://hub.docker.com/r/supervisely/base-py-sdk
+name: Manual Build base-py-sdk Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+      - name: Build and Push Docker Image
+        uses: mr-smithers-excellent/docker-build-push@v5
+        with:
+          image: supervisely/base-py-sdk
+          tags: ${{ github.event.inputs.tag_version }}
+          addLatest: false
+          dockerfile: "base_images/py_sdk/Dockerfile"
+          registry: docker.io
+          buildArgs: |
+            tag_ref_name=${{ github.event.inputs.tag_version }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}

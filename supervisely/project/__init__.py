@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 from supervisely.io.fs import get_file_name_with_ext, list_files
 from supervisely.io.json import load_json_file
+from supervisely.project.data_version import DataVersion
 from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
 from supervisely.project.pointcloud_project import PointcloudProject
 from supervisely.project.project import Project, read_single_project
@@ -57,6 +58,8 @@ def read_project(
         if get_file_name_with_ext(path) == "meta.json":
             meta = ProjectMeta.from_json(load_json_file(path))
     if meta is None:
-        raise FileNotFoundError(f"The file 'meta.json' with the list of annotation classes and tags was not found in the directory: '{dir}'. Learn more about Supervisely annotation JSON format here: https://developer.supervisely.com/api-references/supervisely-annotation-json-format")
+        raise FileNotFoundError(
+            f"The file 'meta.json' with the list of annotation classes and tags was not found in the directory: '{dir}'. Learn more about Supervisely annotation JSON format here: https://developer.supervisely.com/api-references/supervisely-annotation-json-format"
+        )
 
     return read_single_project(dir, get_project_class(meta.project_type))

@@ -8,10 +8,12 @@ import os
 import re
 import shutil
 import tarfile
+import tempfile
 import urllib
 from pathlib import Path
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
+import requests
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from typing_extensions import Literal
@@ -32,6 +34,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 from supervisely.io.fs_cache import FileCache
+from supervisely.io.json import load_json_file
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm, tqdm_sly
 
@@ -1039,7 +1042,7 @@ class FileApi(ModuleApiBase):
             if progress_cb is not None:
                 progress_cb(len(paths_batch))
 
-    def exists(self, team_id: int, remote_path: str) -> bool:
+    def exists(self, team_id: int, remote_path: str, recursive: bool = True) -> bool:
         """
         Checks if file exists in Team Files.
 
@@ -1047,6 +1050,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to File in Team Files.
         :type remote_path: str
+        :param recursive: If True makes more checks and slower, if False makes less checks and faster.
+        :type recursive: bool
         :return: True if file exists, otherwise False
         :rtype: :class:`bool`
         :Usage example:
@@ -1062,13 +1067,13 @@ class FileApi(ModuleApiBase):
            file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
            file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
         """
-        path_infos = self.list(team_id, remote_path)
+        path_infos = self.list(team_id, remote_path, recursive)
         for info in path_infos:
             if info["path"] == remote_path:
                 return True
         return False
 
-    def dir_exists(self, team_id: int, remote_directory: str) -> bool:
+    def dir_exists(self, team_id: int, remote_directory: str, recursive: bool = True) -> bool:
         """
         Checks if directory exists in Team Files.
 
@@ -1076,6 +1081,8 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to directory in Team Files.
         :type remote_path: str
+        :param recursive: If True makes more checks and slower, if False makes less checks and faster.
+        :type recursive: bool
         :return: True if directory exists, otherwise False
         :rtype: :class:`bool`
         :Usage example:
@@ -1091,7 +1098,7 @@ class FileApi(ModuleApiBase):
            file = api.file.dir_exists(8, "/999_App_Test/")   # True
            file = api.file.dir_exists(8, "/10000_App_Test/") # False
         """
-        files_infos = self.list(team_id, remote_directory)
+        files_infos = self.list(team_id, remote_directory, recursive)
         if len(files_infos) > 0:
             return True
         return False
@@ -1356,3 +1363,50 @@ class FileApi(ModuleApiBase):
         ):
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
+
+    def get_json_file_content(self, team_id: int, remote_path: str, download: bool = False) -> dict:
+        """
+        Get JSON file content.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Path to JSON file in Team Files.
+        :type remote_path: str
+        :param download: If True, download file in temp dir to get content.
+        :type download: bool, optional
+        :return: JSON file content
+        :rtype: :class:`dict` or :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api("https://app.supervisely.com", "YourAccessToken")
+
+            file_content = api.file.get_json_file_content()
+            print(file_content)
+        """
+
+        MB = 1024 * 1024
+        max_readable_size = 100 * MB
+
+        file_info = self._api.file.get_info_by_path(team_id, remote_path)
+        if file_info:
+            if file_info.mime != "application/json":
+                raise ValueError(f"File is not JSON: {remote_path}")
+            content = None
+            if file_info.sizeb <= max_readable_size or not download:
+                response = requests.get(file_info.full_storage_url)
+                if response.status_code != 200:
+                    download = True
+                else:
+                    content = response.json()
+            if file_info.sizeb > max_readable_size or download:
+                temp_path = os.path.join(tempfile.mkdtemp(), "temp.json")
+                self._download(team_id, remote_path, temp_path)
+                content = load_json_file(temp_path)
+                sly_fs.remove_dir(temp_path)
+            return content
+        else:
+            raise FileNotFoundError(f"File not found: {remote_path}")

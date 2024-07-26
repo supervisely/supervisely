@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 import requests
 
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.api.entity_annotation.figure_api import FigureInfo
@@ -42,6 +43,7 @@ from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -1196,21 +1198,11 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """
 
         def _get_geometry(type: str, data: dict):
-            if type == "bitmap":
-                geometry = Bitmap.from_json(data)
-            elif type == "point":
-                geometry = Point.from_json(data)
-            elif type == "rectangle":
-                geometry = Rectangle.from_json(data)
-            elif type == "polygon":
-                geometry = Polygon.from_json(data)
-            elif type == "line":
-                geometry = Polyline.from_json(data)
-            elif type == "graph":
-                geometry = GraphNodes.from_json(data)
-            elif type == "alpha_mask":
-                geometry = AlphaMask.from_json(data)
-            else:
+            try:
+                geometry_type = GET_GEOMETRY_FROM_STR(type)
+                geometry = geometry_type.from_json(data)
+            except Exception as e:
+                logger.error(f"Can't parse geometry: {repr(e)}")
                 geometry = None
             return geometry
 
