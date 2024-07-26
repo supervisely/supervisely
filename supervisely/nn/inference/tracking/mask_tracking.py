@@ -311,7 +311,7 @@ class MaskTracking(Inference):
                 self.video_interface.frames_indexes[0],
                 self.video_interface.frames_indexes[-1],
             ]
-            
+
             if self.cache.is_persistent:
                 # if cache is persistent, run cache task for whole video
                 self.cache.run_cache_task_manually(
@@ -342,6 +342,7 @@ class MaskTracking(Inference):
                             items.append(q.get_nowait())
                         if len(items) > 0:
                             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                            continue
                         if stop_event.is_set():
                             video_interface._notify(True, task="stop tracking")
                             return
