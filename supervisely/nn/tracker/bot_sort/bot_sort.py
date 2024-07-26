@@ -313,6 +313,9 @@ class BoTSORT(object):
         else:
             detections = []
 
+        for det in detections:
+            det.activate(self.kalman_filter, self.frame_id)
+
         """ Add newly detected tracklets to tracked_stracks"""
         unconfirmed = []
         tracked_stracks = []  # type: list[STrack]
