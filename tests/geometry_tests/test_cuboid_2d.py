@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pytest  # pylint: disable=import-error
+from test_geometry import draw_test
 
 import supervisely.imaging.image as sly_image
 from supervisely.annotation.label import Label
@@ -37,22 +38,6 @@ def get_random_image() -> np.ndarray:
     background_color = [0, 0, 0]
     bitmap = np.full(image_shape, background_color, dtype=np.uint8)
     return bitmap
-
-
-def draw_test(
-    dir_name: str,
-    test_name: str,
-    image: np.ndarray,
-    geometry: Geometry = None,
-    color: List[int] = default_color,
-):
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = f"{test_dir}/test_results/{dir_name}/{test_name}.png"
-    if geometry is not None:
-        geometry.draw(image, color)
-        image_path = f"{test_dir}/test_results/{dir_name}/{test_name}.png"
-
-    sly_image.write(image_path, image)
 
 
 def get_cuboid_points() -> List[Node]:

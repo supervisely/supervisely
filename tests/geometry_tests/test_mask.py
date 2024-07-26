@@ -200,7 +200,7 @@ def test_rotate(random_mask_int, random_mask_float):
             dir_name, f"{function_name}_geometry_{idx}_original", random_image, bitmap, [255, 0, 0]
         )
 
-        img_size, angle = random_image.shape[:2], 45
+        img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_bitmap = bitmap.rotate(rotator)
         rotated_image = rotator.rotate_img(random_image, True)

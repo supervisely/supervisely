@@ -24,10 +24,9 @@ color = [255, 255, 255]
 thickness = 1
 
 
-def get_random_image() -> np.ndarray:
+def get_random_image(fill_color=[0, 0, 0]) -> np.ndarray:
     image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
-    image = np.full(image_shape, background_color, dtype=np.uint8)
+    image = np.full(image_shape, fill_color, dtype=np.uint8)
     return image
 
 
@@ -66,7 +65,10 @@ def random_alpha_mask_float() -> (
     width = random.randint(200, 400)
     data_shape = (height, width)
     data = np.ones(data_shape, dtype=np.uint8) * 255
-    origin_coords = [random.randint(0, 10), random.randint(0, 10)]
+    origin_coords = [
+        random.randint(height // 2 - 50, height // 2 + 50),
+        random.randint(width // 2 - 50, width // 2 + 50),
+    ]
     origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
     alpha_mask = AlphaMask(data=data, origin=origin)
     data = alpha_mask.data
@@ -172,17 +174,32 @@ def test_relative_crop(random_alpha_mask_int, random_alpha_mask_float):
 def test_rotate(random_alpha_mask_int, random_alpha_mask_float):
     for idx, a_mask in enumerate([random_alpha_mask_int, random_alpha_mask_float], 1):
         alpha_mask, data, origin = get_mask_data_origin(a_mask)
-        random_image = get_random_image()
+        random_image = get_random_image([255, 255, 255])
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name,
+            f"{function_name}_geometry_{idx}_original",
+            random_image,
+            alpha_mask,
+            [255, 0, 0],
+        )
+
         img_size, angle = random_image.shape[:2], random.randint(0, 360)
         rotator = ImageRotator(img_size, angle)
         rotated_alpha_mask = alpha_mask.rotate(rotator)
+        rotated_image = rotator.rotate_img(random_image, True)
 
         assert isinstance(rotated_alpha_mask, AlphaMask)
         assert rotated_alpha_mask.data.shape != data.shape
 
         function_name = inspect.currentframe().f_code.co_name
         draw_test(
-            dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_alpha_mask, 255
+            dir_name,
+            f"{function_name}_geometry_{idx}",
+            rotated_image,
+            rotated_alpha_mask,
+            [0, 0, 255],
         )
 
 
