@@ -129,6 +129,8 @@ class BitmapBase(Geometry):
         self._origin = origin.clone()
         self._data = data.copy()
         self._integer_coords = self._origin._integer_coords
+        if self._integer_coords is False:
+            raise ValueError("BitmapBase origin must have integer coordinates")
 
     @classmethod
     def _impl_json_class_name(cls):

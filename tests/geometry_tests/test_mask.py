@@ -26,23 +26,32 @@ thickness = 1
 
 def get_random_image() -> np.ndarray:
     image_shape = (random.randint(801, 2000), random.randint(801, 2000), 3)
-    background_color = [0, 0, 0]
+    image_shape = (1920, 1080, 3)
+
+    # background_color = [0, 0, 0]
+    background_color = [255, 255, 255]
     bitmap = np.full(image_shape, background_color, dtype=np.uint8)
     return bitmap
 
 
 @pytest.fixture
 def random_mask_int() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
-    height = random.randint(200, 400)
-    width = random.randint(200, 400)
+    height = 400  # random.randint(200, 400)
+    width = 400  # random.randint(200, 400)
     data_shape = (height, width)
-    data = np.zeros(data_shape, dtype=np.bool_)
-    origin_coords = [random.randint(0, 10), random.randint(0, 10)]
+    data = np.ones(data_shape, dtype=np.bool_)
+
+    # origin_coords = [random.randint(0, 10), random.randint(0, 10)]
+    origin_coords = [0, 0]
+    # random.randint(height // 2 - 50, height // 2 + 50),
+    # random.randint(width // 2 - 50, width // 2 + 50),
+    # ]
+
     origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
 
-    start_row, start_col = origin.row, origin.col
-    end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
-    data[start_row:end_row, start_col:end_col] = True
+    # start_row, start_col = origin.row, origin.col
+    # end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
+    # data[start_row:end_row, start_col:end_col] = True
 
     bitmap = Bitmap(data=data, origin=origin)
     data = bitmap.data
@@ -52,15 +61,38 @@ def random_mask_int() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Unio
 
 @pytest.fixture
 def random_mask_float() -> Tuple[Bitmap, np.ndarray, Tuple[Union[int, float], Union[int, float]]]:
+    # height = random.randint(200, 400)
+    # width = random.randint(200, 400)
+    # data_shape = (height, width)
+    # data = np.zeros(data_shape, dtype=np.bool_)
+
+    # origin_coords = [round(random.uniform(0, 10), 6), round(random.uniform(0, 10), 6)]
+    # origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
+
+    # start_row, start_col = round(origin.row), round(origin.col)
+    # end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
+    # data[start_row:end_row, start_col:end_col] = True
+
+    # bitmap = Bitmap(data=data, origin=origin)
+    # data = bitmap.data
+    # origin_coords = [bitmap.origin.row, bitmap.origin.col]
+    # return bitmap, data, origin_coords
+
+    # Use another another integer mask
     height = random.randint(200, 400)
     width = random.randint(200, 400)
     data_shape = (height, width)
     data = np.zeros(data_shape, dtype=np.bool_)
 
-    origin_coords = [round(random.uniform(0, 10), 6), round(random.uniform(0, 10), 6)]
+    origin_coords = [
+        random.randint(height // 2 - 50, height // 2 + 50),
+        random.randint(width // 2 - 50, width // 2 + 50),
+    ]
+
+    # origin_coords = [random.randint(0, 10), random.randint(0, 10)]
     origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
 
-    start_row, start_col = round(origin.row), round(origin.col)
+    start_row, start_col = origin.row, origin.col
     end_row, end_col = height - random.randint(0, 50), width - random.randint(0, 50)
     data[start_row:end_row, start_col:end_col] = True
 
@@ -170,15 +202,56 @@ def test_rotate(random_mask_int, random_mask_float):
     for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
         bitmap, data, origin = get_bitmap_data_origin(mask)
         random_image = get_random_image()
-        img_size, angle = random_image.shape[:2], random.randint(0, 360)
+
+        function_name = inspect.currentframe().f_code.co_name
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}_original", random_image, bitmap, [255, 0, 0]
+        )
+
+        img_size, angle = random_image.shape[:2], 45
         rotator = ImageRotator(img_size, angle)
         rotated_bitmap = bitmap.rotate(rotator)
+        rotated_image = rotator.rotate_img(random_image, True)
 
         assert isinstance(rotated_bitmap, Bitmap)
         assert rotated_bitmap.data.shape != data.shape
+        assert (
+            rotated_bitmap.data.shape[0] > 0 and rotated_bitmap.data.shape[1] > 0
+        ), "Rotated bitmap has invalid dimensions"
 
         function_name = inspect.currentframe().f_code.co_name
-        draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_bitmap)
+        draw_test(
+            dir_name, f"{function_name}_geometry_{idx}", rotated_image, rotated_bitmap, [0, 0, 255]
+        )
+
+
+# def test_rotate(random_mask_int, random_mask_float):
+#     for idx, mask in enumerate([random_mask_int, random_mask_float], 1):
+#         bitmap, data, origin = get_bitmap_data_origin(mask)
+#         random_image = get_random_image()
+#         img_size, angle = random_image.shape[:2], random.randint(0, 360)
+#         rotator = ImageRotator(img_size, angle)
+#         rotated_bitmap = bitmap.rotate(rotator)
+
+#         r_bitmap_origin = rotated_bitmap.origin
+#         r_bitmap_shape = rotated_bitmap.data.shape
+
+#         new_size = (
+#             r_bitmap_shape[0] + r_bitmap_origin.row,
+#             r_bitmap_shape[1] + r_bitmap_origin.col,
+#             3,
+#         )
+
+#         random_image = np.full(new_size, [0, 0, 0], dtype=np.uint8)
+
+#         assert isinstance(rotated_bitmap, Bitmap)
+#         assert rotated_bitmap.data.shape != data.shape
+#         assert (
+#             rotated_bitmap.data.shape[0] > 0 and rotated_bitmap.data.shape[1] > 0
+#         ), "Rotated bitmap has invalid dimensions"
+
+#         function_name = inspect.currentframe().f_code.co_name
+#         draw_test(dir_name, f"{function_name}_geometry_{idx}", random_image, rotated_bitmap)
 
 
 def test_resize(random_mask_int, random_mask_float):

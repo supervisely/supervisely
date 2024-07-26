@@ -51,11 +51,22 @@ def random_alpha_mask_int() -> (
 def random_alpha_mask_float() -> (
     Tuple[AlphaMask, np.ndarray, Tuple[Union[int, float], Union[int, float]]]
 ):
+    # height = random.randint(200, 400)
+    # width = random.randint(200, 400)
+    # data_shape = (height, width)
+    # data = np.ones(data_shape, dtype=np.uint8) * 255
+    # origin_coords = [round(random.uniform(0, 10), 6), round(random.uniform(0, 10), 6)]
+    # origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
+    # alpha_mask = AlphaMask(data=data, origin=origin)
+    # data = alpha_mask.data
+    # origin_coords = [alpha_mask.origin.row, alpha_mask.origin.col]
+    # return alpha_mask, data, origin_coords
+
     height = random.randint(200, 400)
     width = random.randint(200, 400)
     data_shape = (height, width)
     data = np.ones(data_shape, dtype=np.uint8) * 255
-    origin_coords = [round(random.uniform(0, 10), 6), round(random.uniform(0, 10), 6)]
+    origin_coords = [random.randint(0, 10), random.randint(0, 10)]
     origin = PointLocation(row=origin_coords[0], col=origin_coords[1])
     alpha_mask = AlphaMask(data=data, origin=origin)
     data = alpha_mask.data
