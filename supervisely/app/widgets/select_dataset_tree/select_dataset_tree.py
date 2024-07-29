@@ -141,6 +141,16 @@ class SelectDatasetTree(Widget):
         self._content = Container(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    def disable(self):
+        """Disable the widget in the UI."""
+        for widget in self._widgets:
+            widget.disable()
+
+    def enable(self) -> None:
+        """Enable the widget in the UI."""
+        for widget in self._widgets:
+            widget.enable()
+
     @property
     def team_id(self) -> int:
         """The ID of the team selected in the widget.

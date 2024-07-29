@@ -15,7 +15,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 
-EXT_TO_CONVERT = [".heic", ".avif", ".heif"]
+EXT_TO_CONVERT = [".heic", ".avif", ".heif", ".jfif"]
 
 
 def validate_image(path: str) -> tuple:

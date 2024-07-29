@@ -1,3 +1,5 @@
+# https://hub.docker.com/r/supervisely/base-py
+
 #FROM supervisely/base-py:6.0.17
 #FROM nvidia/cuda:9.2-cudnn7-runtime-ubuntu16.04
 
@@ -7,7 +9,11 @@ FROM supervisely/nvidia-cuda:11.1-cudnn8-runtime-ubuntu20.04
 ##############################################################################
 # common
 ##############################################################################
-RUN echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
+# RUN echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
+
+# workaround:
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -23,7 +29,6 @@ RUN apt-get update \
     && apt-get -qq -y autoremove \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
-
 
 
 ##############################################################################
@@ -132,6 +137,7 @@ RUN pip install protobuf==3.14.0
 RUN pip install Werkzeug==1.0.1
 RUN pip install sk-video==1.1.10
 
+RUN pip install --upgrade setuptools==70.3.0
 RUN /usr/bin/python3 -m pip install --upgrade pip
 ##############################################################################
 # Encoding for python SDK
