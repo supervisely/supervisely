@@ -14,7 +14,7 @@ class TaskType:
     OBJECT_DETECTION_3D = "object detection 3d"
 
 
-class Runtime:
+class RuntimeType:
     PYTORCH = "PyTorch"
     ONNX = "ONNX"
     TENSORRT = "TensorRT"
@@ -26,19 +26,20 @@ class ModelSource:
 
 
 @dataclass
-class ModelInfo:
-    checkpoint: str = None      # e.g. "YOLOv8-L (COCO)"
-    model_variant: str = None   # e.g. "YOLOv8-L"
-    architecture: str = None    # e.g. "YOLOv8"
+class CheckpointInfo:
+    checkpoint_name: str = None     # e.g. "YOLOv8-L (COCO)"
+    model_variant: str = None       # e.g. "YOLOv8-L"
+    architecture: str = None        # e.g. "YOLOv8"
+    model_source: str = None        # e.g. "Pretrained models"
 
 
 @dataclass
 class DeployInfo:
-    checkpoint: str
+    checkpoint_name: str
     model_variant: str
     architecture: str
-    task_type: str
     model_source: str
+    task_type: str
     device: str
     runtime: str
     hardware: str
