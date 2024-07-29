@@ -1,7 +1,7 @@
 # coding: utf-8
 
 # docs
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 
@@ -16,7 +16,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 def _geometry_to_mask_base(
-    geometry_type: Union[AlphaMask, Bitmap],
+    geometry_type: Type[Union[AlphaMask, Bitmap]],
     geometry: Geometry,
     radius: Optional[int] = 0,
     crop_image_shape: Optional[Tuple] = None,

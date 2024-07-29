@@ -114,17 +114,6 @@ class VectorGeometry(Geometry):
         self._exterior = deepcopy(result_exterior)
         self._interior = deepcopy(result_interior)
 
-        self._rounded_exterior = []
-        for p in self._exterior:
-            self._rounded_exterior.append(PointLocation(p.rounded_row, p.rounded_col))
-
-        self._rounded_interior = []
-        for i in self._interior:
-            p_coords = []
-            for p in i:
-                p_coords.append(PointLocation(p.rounded_row, p.rounded_col))
-            self._rounded_interior.append(p_coords)
-
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,
@@ -194,6 +183,24 @@ class VectorGeometry(Geometry):
         return deepcopy(self._exterior)
 
     @property
+    def rounded_exterior(self) -> List[PointLocation]:
+        """
+        VectorGeometry exterior points.
+
+        :return: VectorGeometry exterior points
+        :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            exterior = figure.exterior
+        """
+        rounded_exterior = []
+        for p in deepcopy(self._exterior):
+            rounded_exterior.append(PointLocation(p.rounded_row, p.rounded_col))
+        return rounded_exterior
+
+    @property
     def exterior_np(self) -> np.ndarray:
         """
         Converts exterior attribute of VectorGeometry to numpy array.
@@ -212,9 +219,9 @@ class VectorGeometry(Geometry):
             #  [3746 1646]]
         """
         if self._integer_coords:
-            return np.array(points_to_row_col_list(self._rounded_exterior), dtype=np.int64)
+            return np.array(points_to_row_col_list(self.rounded_exterior), dtype=np.int64)
         else:
-            return np.array(points_to_row_col_list(self._exterior), dtype=np.float64)
+            return np.array(points_to_row_col_list(self.exterior), dtype=np.float64)
 
     @property
     def interior(self) -> List[List[PointLocation]]:
@@ -230,6 +237,27 @@ class VectorGeometry(Geometry):
             interior = figure.interior
         """
         return deepcopy(self._interior)
+
+    @property
+    def rounded_interior(self) -> List[List[PointLocation]]:
+        """
+        VectorGeometry interior points.
+
+        :return: VectorGeometry interior points
+        :rtype: :class:`List[List[PointLocation]]<supervisely.geometry.point_location.PointLocation>`
+        :Usage example:
+
+         .. code-block:: python
+
+            interior = figure.interior
+        """
+        rounded_interior = []
+        for i in deepcopy(self._interior):
+            p_coords = []
+            for p in i:
+                p_coords.append(PointLocation(p.rounded_row, p.rounded_col))
+            rounded_interior.append(p_coords)
+        return rounded_interior
 
     @property
     def interior_np(self):
@@ -251,10 +279,10 @@ class VectorGeometry(Geometry):
         """
         if self._integer_coords:
             return [
-                np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._rounded_interior
+                np.array(points_to_row_col_list(i), dtype=np.int64) for i in self.rounded_interior
             ]
         else:
-            return [np.array(points_to_row_col_list(i), dtype=np.float64) for i in self._interior]
+            return [np.array(points_to_row_col_list(i), dtype=np.float64) for i in self.interior]
 
     def _transform(self, transform_fn):
         """ """

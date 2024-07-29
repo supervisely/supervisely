@@ -73,9 +73,6 @@ class Point(Geometry):
         self._row = unwrap_if_numpy(row)
         self._col = unwrap_if_numpy(col)
 
-        self._rounded_row = round(unwrap_if_numpy(row))
-        self._rounded_col = round(unwrap_if_numpy(col))
-
         if isinstance(self._row, float) or isinstance(self._col, float):
             self._integer_coords = False
 
@@ -109,7 +106,7 @@ class Point(Geometry):
             print(loc.row)
             # Output: 100
         """
-        return self._rounded_row
+        return round(self.row)
 
     @property
     def col(self) -> Union[int, float]:
@@ -141,7 +138,7 @@ class Point(Geometry):
             print(loc.col)
             # Output: 200
         """
-        return self._rounded_col
+        return round(self.col)
 
     @classmethod
     def from_point_location(
