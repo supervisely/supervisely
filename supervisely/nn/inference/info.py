@@ -1,4 +1,4 @@
-from typing import NamedTuple, Dict, Any
+from dataclasses import dataclass
 
 
 class TaskType:
@@ -14,28 +14,36 @@ class TaskType:
     OBJECT_DETECTION_3D = "object detection 3d"
 
 
-class Runtime:
+class RuntimeType:
     PYTORCH = "PyTorch"
     ONNX = "ONNX"
     TENSORRT = "TensorRT"
 
 
-class ModelInfo(NamedTuple):
-    model_name: str
-    architecture: str
-    task_type: str
-    model_source: str
+class ModelSource:
+    PRETRAINED = "Pretrained models"
+    CUSTOM = "Custom models"
 
 
-class DeployInfo(NamedTuple):
-    model_name: str
+@dataclass
+class CheckpointInfo:
+    checkpoint_name: str = None     # e.g. "YOLOv8-L (COCO)"
+    model_variant: str = None       # e.g. "YOLOv8-L"
+    architecture: str = None        # e.g. "YOLOv8"
+    model_source: str = None        # e.g. "Pretrained models"
+
+
+@dataclass
+class DeployInfo:
+    checkpoint_name: str
+    model_variant: str
     architecture: str
-    task_type: str
     model_source: str
+    task_type: str
     device: str
     runtime: str
     hardware: str
-    deploy_params: Dict[str, Any]
+    deploy_params: dict
 
 
 def get_hardware_info(idx: int = 0) -> str:
