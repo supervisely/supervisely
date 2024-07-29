@@ -200,7 +200,7 @@ class Polyline(VectorGeometry):
         # Value of -1 represents a filled polygon (cv2.FILLED) and works in certain functions like cv2.fillPoly() or cv2.rectangle()
         # but this does not apply to cv2.polylines()
         # Add debug logger why thickness changed ?
-        if thickness == -1:
+        if thickness < 0:
             thickness = 0
 
         cv2.polylines(bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness)

@@ -543,7 +543,7 @@ class GraphNodes(Geometry):
         # Value of -1 represents a filled polygon (cv2.FILLED) and works in certain functions like cv2.fillPoly() or cv2.rectangle()
         # Value of 0 is not valid
         # Add debug logger why thickness changed ?
-        if thickness < 0:
+        if thickness <= 0:
             thickness = 1
 
         # Draw edges first so that nodeas are then drawn on top.
