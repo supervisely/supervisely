@@ -36,8 +36,8 @@ class Polyline(VectorGeometry):
     Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
 
     :param exterior: List of exterior coordinates, the Polyline is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
     :param sly_id: Polyline ID in Supervisely server.
+    :type exterior: List[PointLocation], List[List[Union[int, float], Union[int, float]]], List[Tuple[Union[int, float], Union[int, float]]
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
     :type class_id: int, optional
@@ -68,7 +68,11 @@ class Polyline(VectorGeometry):
 
     def __init__(
         self,
-        exterior: Union[List[PointLocation], List[List[int, int]], List[Tuple[int, int]]],
+        exterior: Union[
+            List[PointLocation],
+            List[List[Union[int, float], Union[int, float]]],
+            List[Tuple[Union[int, float], Union[int, float]]],
+        ],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[int] = None,

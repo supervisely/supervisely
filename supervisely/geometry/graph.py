@@ -61,8 +61,8 @@ class Node(JsonSerializable):
         location: Optional[PointLocation] = None,
         disabled: Optional[bool] = False,
         label: Optional[str] = None,
-        row: Optional[int] = None,
-        col: Optional[int] = None,
+        row: Optional[Union[int, float]] = None,
+        col: Optional[Union[int, float]] = None,
     ):
         if None not in (location, row, col) or all(item is None for item in (location, row, col)):
             raise ValueError("Either location or row and col must be specified")

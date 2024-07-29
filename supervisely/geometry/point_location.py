@@ -19,9 +19,9 @@ class PointLocation(JsonSerializable):
     PointLocation in (row, col) position. :class:`PointLocation<PointLocation>` object is immutable.
 
     :param row: Position of PointLocation object on height.
-    :type row: int or float
+    :type row: Union[int, float]
     :param col: Position of PointLocation object on width.
-    :type col: int or float
+    :type col: Union[int, float]
 
     :Usage example:
 
@@ -48,10 +48,10 @@ class PointLocation(JsonSerializable):
     @property
     def row(self) -> Union[int, float]:
         """
-        Exact position of PointLocation on height.
+        Position of PointLocation on height.
 
         :return: Height of PointLocation
-        :rtype: int or float
+        :rtype: Union[int, float]
         :Usage example:
 
          .. code-block:: python
@@ -64,7 +64,7 @@ class PointLocation(JsonSerializable):
     @property
     def rounded_row(self) -> int:
         """
-        Position of PointLocation on height.
+        Rounded position of PointLocation on height.
 
         :return: Height of PointLocation
         :rtype: :class:`int`
@@ -80,10 +80,10 @@ class PointLocation(JsonSerializable):
     @property
     def col(self) -> Union[int, float]:
         """
-        Exact position of PointLocation on width.
+        Position of PointLocation on width.
 
         :return: Width of PointLocation
-        :rtype: int or float
+        :rtype: Union[int, float]
         :Usage example:
 
          .. code-block:: python
@@ -96,7 +96,7 @@ class PointLocation(JsonSerializable):
     @property
     def rounded_col(self) -> int:
         """
-        Position of PointLocation on width.
+        Rounded position of PointLocation on width.
 
         :return: Width of PointLocation
         :rtype: :class:`int`
@@ -398,7 +398,7 @@ def points_to_row_col_list(
 
 
 def row_col_list_to_points(
-    data: List[List[int, int]],
+    data: List[List[Union[int, float], Union[int, float]]],
     flip_row_col_order: Optional[bool] = False,
     do_round: Optional[bool] = False,
 ) -> List[PointLocation]:

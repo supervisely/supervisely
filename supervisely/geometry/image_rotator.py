@@ -142,10 +142,12 @@ class ImageRotator:
             #    }
             # }
         """
-        if not point._integer_coords:
-            point_np_uniform = np.array([point.row, point.col, 1])
+        # Remove this if statement or leave here for readability and safety?
+        # If point._integer_coords is True, then point.row and point.col are integers anyway
+        if point._integer_coords:
+            point_np_uniform = np.array([point.rounded_row, point.rounded_col, 1])
         else:
-            point_np_uniform = np.array([point.rounded_row, point.rounded_col, 1], dtype=np.int64)
+            point_np_uniform = np.array([point.row, point.col, 1])
 
         transformed_np = self.affine_matrix.dot(point_np_uniform)
         # Unwrap numpy types so that round() produces integer results.

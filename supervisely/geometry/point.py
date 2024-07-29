@@ -27,9 +27,9 @@ class Point(Geometry):
     Point geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Point<Point>` object is immutable.
 
     :param row: Position of Point on height.
-    :type row: int or float
+    :type row: Union[int, float]
     :param col: Position of Point on width.
-    :type col: int or float
+    :type col: Union[int, float]
     :param sly_id: Point ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
@@ -85,7 +85,7 @@ class Point(Geometry):
         Position of Point height.
 
         :return: Height of Point
-        :rtype: int or float
+        :rtype: Union[int, float]
         :Usage example:
 
          .. code-block:: python
@@ -98,7 +98,7 @@ class Point(Geometry):
     @property
     def rounded_row(self) -> int:
         """
-        Position of Point on height.
+        Rounded position of Point on height.
 
         :return: Height of Point
         :rtype: :class:`int`
@@ -117,7 +117,7 @@ class Point(Geometry):
         Position of Point width.
 
         :return: Width of Point
-        :rtype: int or float
+        :rtype: Union[int, float]
         :Usage example:
 
          .. code-block:: python
@@ -130,7 +130,7 @@ class Point(Geometry):
     @property
     def rounded_col(self) -> int:
         """
-        Position of Point on width.
+        Rounded position of Point on width.
 
         :return: Width of Point
         :rtype: :class:`int`

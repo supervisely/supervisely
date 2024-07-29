@@ -27,9 +27,9 @@ class VectorGeometry(Geometry):
     VectorGeometry is a base class of geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`VectorGeometry<VectorGeometry>` class object is immutable.
 
     :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[PointLocation], List[List[Union[int, float], Union[int, float]]], List[Tuple[Union[int, float], Union[int, float]]
     :param interior: Interior coordinates, object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
-    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+    :type interior: List[List[PointLocation]], List[List[List[Union[int, float], Union[int, float]]]], List[List[Tuple[Union[int, float], Union[int, float]]]]
     :param sly_id: VectorGeometry ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VectorGeometry belongs.
@@ -60,11 +60,15 @@ class VectorGeometry(Geometry):
 
     def __init__(
         self,
-        exterior: Union[List[PointLocation], List[List[int, int]], List[Tuple[int, int]]],
+        exterior: Union[
+            List[PointLocation],
+            List[List[Union[int, float], Union[int, float]]],
+            List[Tuple[Union[int, float], Union[int, float]]],
+        ],
         interior: Union[
             List[List[PointLocation]],
-            List[List[List[int, int]]],
-            List[List[Tuple[int, int]]],
+            List[List[List[Union[int, float], Union[int, float]]]],
+            List[List[Tuple[Union[int, float], Union[int, float]]]],
         ] = [],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,

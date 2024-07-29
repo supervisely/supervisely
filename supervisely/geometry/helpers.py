@@ -35,7 +35,6 @@ def _geometry_to_mask_base(
     # Set appropriate fill value and color for the geometry type
     if isinstance(geometry, AlphaMask):
         fill_value, color = 0, 255
-
     else:
         fill_value, color = False, True
 

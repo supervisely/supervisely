@@ -29,13 +29,13 @@ class Rectangle(Geometry):
     Rectangle geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Rectangle<Rectangle>` class object is immutable.
 
     :param top: Minimal vertical value of Rectangle object.
-    :type top: int or float
+    :type top: Union[int, float]
     :param left: Minimal horizontal value of Rectangle object.
-    :type left: int or float
+    :type left: Union[int, float]
     :param bottom: Maximal vertical value of Rectangle object.
-    :type bottom: int or float
+    :type bottom: Union[int, float]
     :param right: Maximal vertical value of Rectangle object.
-    :type right: int or float
+    :type right: Union[int, float]
     :param sly_id: Rectangle ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Rectangle belongs.
@@ -512,7 +512,7 @@ class Rectangle(Geometry):
         Minimal horizontal value of Rectangle.
 
         :return: Minimal horizontal value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -533,7 +533,7 @@ class Rectangle(Geometry):
         Maximal horizontal value of Rectangle.
 
         :return: Maximal horizontal value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -554,7 +554,7 @@ class Rectangle(Geometry):
         Minimal vertical value of Rectangle.
 
         :return: Minimal vertical value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -575,7 +575,7 @@ class Rectangle(Geometry):
         Maximal vertical value of Rectangle.
 
         :return: Maximal vertical value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -607,12 +607,12 @@ class Rectangle(Geometry):
         return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
     @property
-    def width(self) -> int:
+    def width(self) -> Union[int, float]:
         """
         Width of Rectangle.
 
         :return: Width
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -621,15 +621,16 @@ class Rectangle(Geometry):
             print(figure.width)
             # Output: 801
         """
+        # Always round ?
         return self.right - self.left + 1
 
     @property
-    def height(self) -> int:
+    def height(self) -> Union[int, float]:
         """
         Height of Rectangle
 
         :return: Height
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -638,6 +639,7 @@ class Rectangle(Geometry):
             print(figure.height)
             # Output: 601
         """
+        # Always round ?
         return self.bottom - self.top + 1
 
     def contains(self, rect: Rectangle) -> bool:
@@ -702,6 +704,7 @@ class Rectangle(Geometry):
             print(height, width)
             # Output: 700 900
         """
+        # Always round ?
         return self.height, self.width
 
     def get_cropped_numpy_slice(self, data: np.ndarray) -> np.ndarray:

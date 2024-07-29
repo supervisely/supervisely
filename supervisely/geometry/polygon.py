@@ -38,9 +38,9 @@ class Polygon(VectorGeometry):
     Polygon geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
 
     :param exterior: Exterior coordinates, object contour is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[PointLocation], List[List[Union[int, float], Union[int, float]]], List[Tuple[Union[int, float], Union[int, float]]
     :param interior: Interior coordinates, object holes are defined with these points.
-    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+    :type interior: List[List[PointLocation]], List[List[List[Union[int, float], Union[int, float]]]], List[List[Tuple[Union[int, float], Union[int, float]]]]
     :param sly_id: Polygon ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polygon belongs.
@@ -75,9 +75,15 @@ class Polygon(VectorGeometry):
 
     def __init__(
         self,
-        exterior: Union[List[PointLocation], List[List[int, int]], List[Tuple[int, int]]],
+        exterior: Union[
+            List[PointLocation],
+            List[List[Union[int, float], Union[int, float]]],
+            List[Tuple[Union[int, float], Union[int, float]]],
+        ],
         interior: Union[
-            List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+            List[List[PointLocation]],
+            List[List[List[Union[int, float], Union[int, float]]]],
+            List[List[Tuple[Union[int, float], Union[int, float]]]],
         ] = [],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
