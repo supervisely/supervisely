@@ -351,12 +351,24 @@ class Point(Geometry):
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         r = round(thickness / 2)  # @TODO: relation between thickness and point radius - ???
+
+        # cv2.circle function requires integer values
+        # center parameter specifies the center of the circle in the image
+        # image is represented as a grid of pixels
+        # these coordinates must be integers to correspond to specific pixel locations.
+        # add debug logger why coords changed ?
         center = (self.rounded_col, self.rounded_row)
         cv2.circle(bitmap, center, radius=r, color=color, thickness=cv2.FILLED)
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         # @TODO: mb dummy operation for Point
         r = round((thickness + 1) / 2)
+
+        # cv2.circle function requires integer values
+        # center parameter specifies the center of the circle in the image
+        # image is represented as a grid of pixels
+        # these coordinates must be integers to correspond to specific pixel locations.
+        # add debug logger why coords changed ?
         center = (self.rounded_col, self.rounded_row)
         cv2.circle(bitmap, center, radius=r, color=color, thickness=cv2.FILLED)
 

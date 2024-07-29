@@ -522,10 +522,10 @@ class Rectangle(Geometry):
             # Output: 100
         """
         # Always return self._points[0].col ?
-        if not self._integer_coords:
-            return self._points[0].col
-        else:
+        if self._integer_coords:
             return self._points[0].rounded_col
+        else:
+            return self._points[0].col
 
     @property
     def right(self) -> Union[int, float]:
@@ -543,10 +543,10 @@ class Rectangle(Geometry):
             # Output: 900
         """
         # Always return self._points[1].col ?
-        if not self._integer_coords:
-            return self._points[1].col
-        else:
+        if self._integer_coords:
             return self._points[1].rounded_col
+        else:
+            return self._points[1].col
 
     @property
     def top(self) -> Union[int, float]:
@@ -564,10 +564,10 @@ class Rectangle(Geometry):
             # Output: 100
         """
         # Always return self._points[0].row ?
-        if not self._integer_coords:
-            return self._points[0].row
-        else:
+        if self._integer_coords:
             return self._points[0].rounded_row
+        else:
+            return self._points[0].row
 
     @property
     def bottom(self) -> Union[int, float]:
@@ -585,10 +585,10 @@ class Rectangle(Geometry):
             # Output: 700
         """
         # Always return self._points[1].row ?
-        if not self._integer_coords:
-            return self._points[1].row
-        else:
+        if self._integer_coords:
             return self._points[1].rounded_row
+        else:
+            return self._points[1].row
 
     @property
     def center(self) -> PointLocation:
