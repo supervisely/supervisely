@@ -1405,9 +1405,18 @@ class VideoApi(RemoveableBulkModuleApi):
                     res = self.upload_hash(dataset_id, name, hash, stream_index)
                     video_info_results.append(res)
             except Exception as e:
-                logger.warning(
-                    "File skipped {!r}: error occurred during processing {!r}".format(name, str(e))
-                )
+                from supervisely.io.exception_handlers import ErrorHandler, handle_exception
+
+                msg = f"File skipped {name}: error occurred during processing: "
+                handled_exc = handle_exception(e)
+                if handled_exc is not None:
+                    if isinstance(handled_exc, ErrorHandler.API.PaymentRequired):
+                        raise e # re-raise original exception (will be handled in the UI)
+                    else:
+                        msg += handled_exc.get_message_for_exception()
+                else:
+                    msg += repr(e)
+                logger.warning(msg)
         return video_info_results
 
     def upload_path(

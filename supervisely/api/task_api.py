@@ -1112,3 +1112,25 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output},
         )
         return resp.json()
+
+    def update_status(
+        self,
+        task_id: int,
+        status: Status,
+    ) -> None:
+        """Sets the specified status for the task.
+
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :param status: Task status to set.
+        :type status: One of the values from :class:`Status`, e.g. Status.FINISHED, Status.ERROR, etc.
+        :raises ValueError: If the status value is not allowed.
+        """
+        # If status was passed without converting to string, convert it.
+        # E.g. Status.FINISHED -> "finished"
+        status = str(status)
+        if status not in self.Status.values():
+            raise ValueError(
+                f"Invalid status value: {status}. Allowed values: {self.Status.values()}"
+            )
+        self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
