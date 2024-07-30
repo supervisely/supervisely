@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Union
 
 from tqdm import tqdm
 
@@ -33,13 +33,13 @@ class MultiViewImageConverter(ImageConverter):
             logger.debug(f"Found multi-view images in {self._input_data}.")
             return True
 
-    def _find_image_directories(self) -> Dict[str, list]:
+    def _find_image_directories(self) -> Union[Dict[str, list], None]:
         group_map = defaultdict(list)
         ann_exts = [".json", ".xml", ".txt"]
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 if get_file_ext(file) in ann_exts:
-                    return
+                    return None
                 if get_file_ext(file) in SUPPORTED_IMG_EXTS:
                     group_map[root].append(os.path.join(root, file))
             
