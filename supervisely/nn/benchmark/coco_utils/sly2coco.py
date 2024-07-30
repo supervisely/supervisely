@@ -78,16 +78,20 @@ def sly2coco(sly_project_path: str, is_dt_dataset: bool, accepted_shapes: list =
                         rles = maskUtils.frPyObjects(polygon, img_h, img_w)
                         segmentation = maskUtils.merge(rles)
                     segmentation["counts"] = segmentation["counts"].decode()
-                    area = maskUtils.area(segmentation)
                     annotation = {
                         "id": annotation_id,
                         "image_id": img_id,
                         "category_id": category_id,
                         "segmentation": segmentation,
-                        "area": area,
                         "iscrowd": 0,
                         "sly_id": sly_id,
                     }
+                    if not is_dt_dataset:
+                        area = int(maskUtils.area(segmentation))
+                        bbox = maskUtils.toBbox(segmentation)
+                        bbox = [int(coord) for coord in bbox]
+                        annotation["area"] = area
+                        annotation["bbox"] = bbox
                 else:
                     raise NotImplementedError(f"Geometry type '{geometry_type}' is not implemented.")
                 # Extract confidence score from tag
