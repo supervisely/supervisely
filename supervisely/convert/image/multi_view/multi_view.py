@@ -2,8 +2,6 @@ import os
 from collections import defaultdict
 from typing import Dict, Union
 
-from tqdm import tqdm
-
 from supervisely import ProjectMeta, generate_free_name, is_development, logger
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters

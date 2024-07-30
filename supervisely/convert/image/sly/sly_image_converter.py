@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
 from supervisely import Annotation, Dataset, OpenMode, Project, ProjectMeta, logger
@@ -118,8 +118,8 @@ class SLYImageConverter(ImageConverter):
         self,
         item: ImageConverter.Item,
         meta: ProjectMeta = None,
-        renamed_classes: dict = None,
-        renamed_tags: dict = None,
+        renamed_classes: Optional[Dict[str, str]] = None,
+        renamed_tags: Optional[Dict[str, str]] = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:
@@ -142,7 +142,7 @@ class SLYImageConverter(ImageConverter):
     def read_sly_project(self, input_data: str) -> bool:
         try:
             self._items = []
-            project = {}
+            project : Dict = {}
             ds_cnt = 0
             self._meta = None
             logger.debug("Trying to find Supervisely project format in the input data")
@@ -194,7 +194,7 @@ class SLYImageConverter(ImageConverter):
     def read_sly_dataset(self, input_data: str) -> bool:
         try:
             self._items = []
-            project = {}
+            project : Dict = {}
             ds_cnt = 0
             self._meta = None
             logger.debug("Trying to read Supervisely datasets")
@@ -265,7 +265,7 @@ class SLYImageConverter(ImageConverter):
             project_structure: Dict,
             project_id: int,
             dataset_id: int,
-            parent_id: int = None,
+            parent_id: Optional[int] = None,
             first_dataset=False,
         ):
 
