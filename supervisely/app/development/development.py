@@ -176,7 +176,7 @@ def create_debug_task(
     task = None
     for session in sessions:
         if (session.details["meta"].get("redirectRequests") == redirect_requests) and (
-            session.details["status"] == str(api.app.Status.QUEUED)
+            session.details["status"] in [str(api.app.Status.QUEUED), str(api.app.Status.STARTED)]
         ):
             task = session.details
             if "id" not in task:
