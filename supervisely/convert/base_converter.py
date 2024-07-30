@@ -149,7 +149,7 @@ class BaseConverter:
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
-        self._supports_links = False # if converter supports uploading by links
+        self._supports_links = False  # if converter supports uploading by links
         self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
@@ -319,8 +319,6 @@ class BaseConverter:
         if meta2 is None:
             return meta1, {}, {}
 
-        meta1 = self._update_labeling_interface(meta1, meta2)
-
         # merge classes and tags from meta1 (unchanged) and meta2 (renamed if conflict)
         renamed_classes = {}
         renamed_tags = {}
@@ -362,6 +360,8 @@ class BaseConverter:
                 new_tag = new_tag.clone(name=new_name)
                 meta1 = meta1.add_tag_meta(new_tag)
 
+        meta1 = self._update_labeling_interface(meta1, meta2, renamed_tags)
+
         # update project meta
         meta1 = api.project.update_meta(dataset.project_id, meta1)
 
@@ -383,7 +383,12 @@ class BaseConverter:
             progress_cb = progress.update
         return progress, progress_cb
 
-    def _update_labeling_interface(self, meta1: ProjectMeta, meta2: ProjectMeta) -> ProjectMeta:
+    def _update_labeling_interface(
+        self,
+        meta1: ProjectMeta,
+        meta2: ProjectMeta,
+        renamed_tags: Dict[str, str] = None,
+    ) -> ProjectMeta:
         """
         Update project meta with labeling interface from the converter meta.
         Only update if the existing labeling interface is the default value.
@@ -398,5 +403,10 @@ class BaseConverter:
             return meta1
 
         if existing == LabelingInterface.DEFAULT:
-            return meta1.clone(project_settings=meta2.project_settings)
+            group_tag_name = meta2.project_settings.multiview_tag_name
+            if group_tag_name and renamed_tags:
+                group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+            new_settings = meta2.project_settings.clone(multiview_tag_name=group_tag_name)
+
+            return meta1.clone(project_settings=new_settings)
         return meta1
