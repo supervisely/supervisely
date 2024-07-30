@@ -26,7 +26,7 @@ class MultiViewImageConverter(ImageConverter):
         logger.debug(f"Validating format: {self.__str__()}")
         group_map = self._find_image_directories()
         if not group_map:
-            logger.debug(f"No multi-view images found in {self._input_data}.")
+            logger.debug(f"Input data does not match {str(self)} format.")
             return False
         else:
             self._group_map = group_map
@@ -35,9 +35,14 @@ class MultiViewImageConverter(ImageConverter):
 
     def _find_image_directories(self) -> Dict[str, list]:
         group_map = defaultdict(list)
+        ann_exts = [".json", ".xml", ".txt"]
         for root, _, files in os.walk(self._input_data):
-            if any([get_file_ext(file) in SUPPORTED_IMG_EXTS for file in files]):
-                group_map[root] = list_files(root, SUPPORTED_IMG_EXTS)
+            for file in files:
+                if get_file_ext(file) in ann_exts:
+                    return
+                if get_file_ext(file) in SUPPORTED_IMG_EXTS:
+                    group_map[root].append(os.path.join(root, file))
+            
         return group_map
 
     def upload_dataset(
