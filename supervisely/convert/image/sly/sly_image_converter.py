@@ -142,7 +142,7 @@ class SLYImageConverter(ImageConverter):
     def read_sly_project(self, input_data: str) -> bool:
         try:
             self._items = []
-            project : Dict = {}
+            project = {}
             ds_cnt = 0
             self._meta = None
             logger.debug("Trying to find Supervisely project format in the input data")
@@ -194,7 +194,7 @@ class SLYImageConverter(ImageConverter):
     def read_sly_dataset(self, input_data: str) -> bool:
         try:
             self._items = []
-            project : Dict = {}
+            project = {}
             ds_cnt = 0
             self._meta = None
             logger.debug("Trying to read Supervisely datasets")
