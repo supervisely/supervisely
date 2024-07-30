@@ -312,6 +312,7 @@ class SelectDatasetTree(Widget):
             always_open=always_open,
             append_to_body=self._append_to_body,
             width=193,
+            placeholder="Select dataset",
         )
         if self._dataset_id is not None:
             self._select_dataset.set_selected_by_id(self._dataset_id)

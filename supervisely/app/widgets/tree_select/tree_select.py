@@ -129,6 +129,7 @@ class TreeSelect(Widget):
         width: Optional[int] = None,
         append_to_body: bool = True,
         widget_id: Optional[str] = None,
+        placeholder: Optional[str] = None,
     ):
         self._items = items or []
         self._multiple = multiple_select
@@ -138,6 +139,7 @@ class TreeSelect(Widget):
         self._value = [] if multiple_select else None
         self._width = width
         self._append_to_body = append_to_body
+        self._placeholder = placeholder
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -166,6 +168,7 @@ class TreeSelect(Widget):
                 "alwaysOpen": self._always_open,
                 "valueFormat": self._value_format,
                 "appendToBody": self._append_to_body,
+                "placeholder": self._placeholder,
             },
         }
 
