@@ -29,6 +29,7 @@ class TreeSelect(Widget):
     :type append_to_body: bool, optional
     :widget_id: The unique identifier of the widget.
     :type widget_id: str, optional
+    :param placeholder: The placeholder text.
 
     :Public methods:
 
