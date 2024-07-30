@@ -398,6 +398,5 @@ class BaseConverter:
             return meta1
 
         if existing == LabelingInterface.DEFAULT:
-            new_settings = meta1.project_settings.clone(labeling_interface=new)
-            return meta1.clone(project_settings=new_settings)
+            return meta1.clone(project_settings=meta2.project_settings)
         return meta1
