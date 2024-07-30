@@ -358,7 +358,7 @@ class SelectDatasetTree(Widget):
             self._project_id = project_id
 
         self._select_team = Select(
-            items=self._get_select_items(),
+            items=self._get_select_items(), placeholder="Select team", filterable=True
         )
         self._select_team.set_value(self._team_id)
         if not team_is_selectable:
@@ -366,6 +366,7 @@ class SelectDatasetTree(Widget):
 
         self._select_workspace = Select(
             items=self._get_select_items(team_id=self._team_id),
+            placeholder="Select workspace",
             filterable=True,
         )
         self._select_workspace.set_value(self._workspace_id)
@@ -374,6 +375,7 @@ class SelectDatasetTree(Widget):
 
         self._select_project = Select(
             items=self._get_select_items(workspace_id=self._workspace_id),
+            placeholder="Select project",
             filterable=True,
         )
         self._select_project.set_value(self._project_id)
