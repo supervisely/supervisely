@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 
 import requests
 from pkg_resources import DistributionNotFound, get_distribution
@@ -15,6 +16,12 @@ def read(fname):
 
 response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
 version = response.json()["tag_name"]
+
+is_branch_install = any((arg.startswith("git+") and "@" in arg) for arg in sys.argv)
+if is_branch_install:
+    git_arg = next(arg for arg in sys.argv if arg.startswith("git+"))
+    branch_name = git_arg.split("@")[-1].split("#")[0]
+    version = version + "-" + branch_name
 
 
 INSTALL_REQUIRES = [
