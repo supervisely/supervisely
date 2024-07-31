@@ -471,3 +471,33 @@ class Point(Geometry):
         from supervisely.geometry.any_geometry import AnyGeometry
 
         return [AnyGeometry]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Point:
+        """
+        Convert Point to subpixel coordinates.
+
+        :param img_size: Image size (height, width) to which belongs Point object.
+        :type img_size: Tuple[int, int]
+        :return: Point object
+        :rtype: :class:`Point<Point>`
+        """
+        height, width = img_size
+        new_row = self.row
+        new_col = self.col
+        if self.row == height - 1:
+            new_row = self.row + 1
+        if self.col == width - 1:
+            new_col = self.col + 1
+
+        if self.row == new_row and self.col == new_col:
+            return self
+        else:
+            return Point(
+                row=new_row,
+                col=new_col,
+                sly_id=self.sly_id,
+                class_id=self.class_id,
+                labeler_login=self.labeler_login,
+                updated_at=self.updated_at,
+                created_at=self.created_at,
+            )

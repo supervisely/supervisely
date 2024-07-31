@@ -256,3 +256,29 @@ class Polyline(VectorGeometry):
         from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle, Bitmap, Polygon, AlphaMask]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Polyline:
+        """
+        Converts Polyline to subpixel coordinates.
+
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: Polyline object
+        :rtype: :class:`Polyline<Polyline>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
+            subpixel_figure = figure.to_subpixel((300, 300))
+        """
+        new_exterior = [point.to_subpixel(img_size) for point in self.exterior]
+        return Polyline(
+            exterior=new_exterior,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )

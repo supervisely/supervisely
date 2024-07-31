@@ -381,3 +381,7 @@ class BitmapBase(Geometry):
         return Rectangle.from_array(self._data).translate(
             drow=self._origin.row, dcol=self._origin.col
         )
+
+    def to_subpixel(self):
+        # No need to convert to subpixel
+        return self

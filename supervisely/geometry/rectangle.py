@@ -478,6 +478,9 @@ class Rectangle(Geometry):
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
+        # Rectangle.from_size(self.img_size) is used
+        # on reading annotation from json for each label
+        # to convert subpixel to pixel coordinates
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
@@ -770,3 +773,35 @@ class Rectangle(Geometry):
         from supervisely.geometry.polygon import Polygon
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
+        """
+        Convert Rectangle to subpixel coordinates.
+
+        :param img_size: Input image size (height, width) to which belongs Rectangle.
+        :type img_size: Tuple[int, int]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+        """
+        height, width = img_size
+        new_right = self.right
+        new_bottom = self.bottom
+        if self.right == width - 1:
+            new_right = self.right + 1
+        if self.bottom == height - 1:
+            new_bottom = self.bottom + 1
+
+        if self.right == new_right and self.bottom == new_bottom:
+            return self
+        else:
+            return Rectangle(
+                top=self.top,
+                left=self.left,
+                bottom=new_bottom,
+                right=new_right,
+                sly_id=self.sly_id,
+                class_id=self.class_id,
+                labeler_login=self.labeler_login,
+                updated_at=self.updated_at,
+                created_at=self.created_at,
+            )

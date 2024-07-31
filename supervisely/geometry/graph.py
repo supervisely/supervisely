@@ -44,8 +44,8 @@ class Node(JsonSerializable):
     :param disabled: Determines whether to display the Node when drawing or not.
     :type disabled: bool, optional
     :param label: str
-    :param row: int
-    :param col: int
+    :param row: Union[int, float]
+    :param col: Union[int, float]
     :Usage example:
 
      .. code-block:: python
@@ -147,6 +147,24 @@ class Node(JsonSerializable):
         :return: Node class object with the changed location attribute using the given function
         """
         return Node(transform_fn(self._location), disabled=self.disabled)
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Node:
+        """
+        Converts Node to subpixel coordinates.
+
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: Node object
+        :rtype: :class:`Node<Node>`
+        """
+        new_location = self._location.to_subpixel(img_size)
+        return Node(
+            location=new_location,
+            disabled=self.disabled,
+            label=self._label,
+            row=new_location.row,
+            col=new_location.col,
+        )
 
 
 def _maybe_transform_colors(elements, process_fn):
@@ -706,6 +724,35 @@ class GraphNodes(Geometry):
         from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> GraphNodes:
+        """
+        Converts GraphNodes to subpixel coordinates.
+
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of GraphNodes to a new variable
+            subpixel_figure = figure.to_subpixel((300, 300))
+        """
+        new_nodes = {}
+        for node_id in self.nodes.keys():
+            new_node = self.nodes[node_id].to_subpixel(img_size)
+            new_nodes[node_id] = new_node
+        return GraphNodes(
+            nodes=new_nodes,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )
 
 
 class KeypointsTemplate(GraphNodes, Geometry):

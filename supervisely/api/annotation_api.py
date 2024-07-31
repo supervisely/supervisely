@@ -750,6 +750,16 @@ class AnnotationApi(ModuleApi):
             image_id = 121236918
             upl_ann = api.annotation.upload_ann(image_id, ann)
         """
+        # Add method to_subpixel() to Annotation and call it before uploading annotation
+        # if coord(pixel) == width - 1 => border pixel, need to add 1 to current coord
+        # if coord(pixel) == height - 1 => border pixel, need to add 1 to current coord
+        # except Bitmap, AlphaMask
+
+        ann = ann.to_subpixel()
+        print("-----------------")
+        print("Ann with subpixel")
+        print(ann.to_json())
+        print("-----------------")
         self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(

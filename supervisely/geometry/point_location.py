@@ -349,6 +349,28 @@ class PointLocation(JsonSerializable):
         """
         return deepcopy(self)
 
+    def to_subpixel(self, img_size: Tuple[int, int]) -> PointLocation:
+        """
+        Convert PointLocation to subpixel coordinates.
+
+        :param img_size: Image size (height, width) to which belongs PointLocation object.
+        :type img_size: Tuple[int, int]
+        :return: PointLocation object
+        :rtype: :class:`PointLocation<PointLocation>`
+        """
+        height, width = img_size
+        new_row = self.row
+        new_col = self.col
+        if self.row == height - 1:
+            new_row = self.row + 1
+        if self.col == width - 1:
+            new_col = self.col + 1
+
+        if self.row == new_row and self.col == new_col:
+            return self
+        else:
+            return PointLocation(row=new_row, col=new_col)
+
 
 def _flip_row_col_order(coords):
     """ """
