@@ -28,7 +28,6 @@ class ModelSource:
 @dataclass
 class CheckpointInfo:
     checkpoint_name: str = None     # e.g. "YOLOv8-L (COCO)"
-    model_variant: str = None       # e.g. "YOLOv8-L"
     architecture: str = None        # e.g. "YOLOv8"
     model_source: str = None        # e.g. "Pretrained models"
 
@@ -36,7 +35,6 @@ class CheckpointInfo:
 @dataclass
 class DeployInfo:
     checkpoint_name: str
-    model_variant: str
     architecture: str
     model_source: str
     task_type: str
