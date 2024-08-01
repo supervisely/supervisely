@@ -1,12 +1,17 @@
 from supervisely.nn.inference import SessionJSON
 from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 from supervisely.nn.benchmark.evaluation import InstanceSegmentationEvaluator
+from supervisely.nn.benchmark.cv_tasks import CVTask
 
 
 CONF_THRES = 0.05
 
 
 class InstanceSegmentationBenchmark(BaseBenchmark):
+    @property
+    def cv_task(self):
+        return CVTask.OBJECT_DETECTION
+    
     def _get_evaluator_class(self) -> type:
         return InstanceSegmentationEvaluator
     

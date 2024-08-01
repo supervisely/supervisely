@@ -17,7 +17,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.api import Api
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
-from supervisely.geometry.rectangle import Rectangle
+from supervisely import Rectangle, Polygon, Bitmap
 from supervisely.io.fs import *
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
@@ -438,7 +438,7 @@ class Visualizer:
 
                         for label in gt_ann.labels:
                             if label.geometry.sly_id not in matched_ids and isinstance(
-                                label.geometry, Rectangle
+                                label.geometry, (Rectangle, Polygon, Bitmap)
                             ):
                                 conf_meta = dt_project.meta.get_tag_meta("confidence")
                                 labels.append(

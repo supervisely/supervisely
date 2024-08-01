@@ -5,3 +5,4 @@ class CVTask(StrEnum):
 
     OBJECT_DETECTION: str = "object_detection"
     SEMANTIC_SEGMENTATION: str = "semantic_segmentation"
+    INSTANCE_SEGMENTATION: str = "instance_segmentation"
