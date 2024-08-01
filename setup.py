@@ -68,6 +68,7 @@ INSTALL_REQUIRES = [
     "zstd",
     "pycocotools",
     "scikit-learn",
+    "ujson",
 ]
 
 ALT_INSTALL_REQUIRES = {
