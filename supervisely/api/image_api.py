@@ -10,7 +10,6 @@ import re
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from functools import partial
 from pathlib import Path
 from time import sleep
@@ -31,7 +30,6 @@ from uuid import uuid4
 
 import numpy as np
 import requests
-from requests.exceptions import HTTPError
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
@@ -2888,7 +2886,7 @@ class ImageApi(RemoveableBulkModuleApi):
         links: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
-        Uploads images to Supervisely either by paths or links and adds a tag to them.
+        Uploads images to Supervisely and adds a tag to them.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -2935,15 +2933,10 @@ class ImageApi(RemoveableBulkModuleApi):
             image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
         """
-        if paths is None and links is None:
-            raise ValueError("Either paths or links must be provided")
-
-        if paths is not None and links is not None:
-            raise ValueError("Either paths or links must be provided, not both")
-
         group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
+        image_infos = []
         if paths is not None:
             for path in paths:
                 if get_file_ext(path).lower() not in sly_image.SUPPORTED_IMG_EXTS:
@@ -2951,27 +2944,25 @@ class ImageApi(RemoveableBulkModuleApi):
                         f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
                     )
             names = [get_file_name(path) for path in paths]
-            image_infos = self.upload_paths(
+            image_infos_by_paths = self.upload_paths(
                 dataset_id=dataset_id,
                 names=names,
                 paths=paths,
                 progress_cb=progress_cb,
                 metas=metas,
             )
-        else:
-            for link in links:
-                if get_file_ext(link).lower() not in sly_image.SUPPORTED_IMG_EXTS:
-                    raise RuntimeError(
-                        f"Image {link!r} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
-                    )
+            image_infos.extend(image_infos_by_paths)
+
+        if links is not None:
             names = [get_file_name_with_ext(link) for link in links]
-            image_infos = self.upload_links(
+            image_infos_by_links = self.upload_links(
                 dataset_id=dataset_id,
                 names=names,
                 links=links,
                 progress_cb=progress_cb,
                 conflict_resolution="rename",
             )
+            image_infos.extend(image_infos_by_links)
 
         anns = [Annotation((info.height, info.width)).add_tag(group_tag) for info in image_infos]
         image_ids = [image_info.id for image_info in image_infos]
