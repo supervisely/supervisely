@@ -3,16 +3,23 @@
 
 # docs
 from __future__ import annotations
+
+from typing import Dict, List, Optional, Tuple, Union
+
 import cv2
-from typing import List, Tuple, Dict, Optional
-from supervisely.geometry.image_rotator import ImageRotator
 
-
-from supervisely.geometry.point_location import PointLocation
-from supervisely.geometry.geometry import Geometry
-from supervisely.geometry.rectangle import Rectangle
 from supervisely._utils import unwrap_if_numpy
-from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    ID,
+    LABELER_LOGIN,
+    UPDATED_AT,
+)
+from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.image_rotator import ImageRotator
+from supervisely.geometry.point_location import PointLocation
+from supervisely.geometry.rectangle import Rectangle
 
 
 class Point(Geometry):
@@ -20,9 +27,9 @@ class Point(Geometry):
     Point geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Point<Point>` object is immutable.
 
     :param row: Position of Point on height.
-    :type row: int or float
+    :type row: Union[int, float]
     :param col: Position of Point on width.
-    :type col: int or float
+    :type col: Union[int, float]
     :param sly_id: Point ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
@@ -44,20 +51,38 @@ class Point(Geometry):
         col = 200
         figure = sly.Point(row, col)
     """
-    def __init__(self, row: int, col: int,
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-        self._row = round(unwrap_if_numpy(row))
-        self._col = round(unwrap_if_numpy(col))
+
+    def __init__(
+        self,
+        row: Union[int, float],
+        col: Union[int, float],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
+
+        self._row = unwrap_if_numpy(row)
+        self._col = unwrap_if_numpy(col)
+
+        if isinstance(self._row, float) or isinstance(self._col, float):
+            self._integer_coords = False
 
     @property
-    def row(self) -> int:
+    def row(self) -> Union[int, float]:
         """
         Position of Point height.
 
         :return: Height of Point
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
         :Usage example:
 
          .. code-block:: python
@@ -68,12 +93,28 @@ class Point(Geometry):
         return self._row
 
     @property
-    def col(self) -> int:
+    def rounded_row(self) -> int:
+        """
+        Rounded position of Point on height.
+
+        :return: Height of Point
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.row)
+            # Output: 100
+        """
+        return round(self.row)
+
+    @property
+    def col(self) -> Union[int, float]:
         """
         Position of Point width.
 
         :return: Width of Point
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
         :Usage example:
 
          .. code-block:: python
@@ -83,9 +124,32 @@ class Point(Geometry):
         """
         return self._col
 
+    @property
+    def rounded_col(self) -> int:
+        """
+        Rounded position of Point on width.
+
+        :return: Width of Point
+        :rtype: :class:`int`
+        :Usage example:
+
+         .. code-block:: python
+
+            print(loc.col)
+            # Output: 200
+        """
+        return round(self.col)
+
     @classmethod
-    def from_point_location(cls, pt: PointLocation, sly_id: Optional[int] = None, class_id: Optional[int] = None,
-                            labeler_login: Optional[int] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None) -> Point:
+    def from_point_location(
+        cls,
+        pt: PointLocation,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ) -> Point:
         """
         Create Point from given :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object.
 
@@ -112,8 +176,15 @@ class Point(Geometry):
             figure_loc = sly.PointLocation(100, 200)
             figure = sly.Point.from_point_location(figure_loc)
         """
-        return cls(row=pt.row, col=pt.col,
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            row=pt.row,
+            col=pt.col,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     @property
     def point_location(self) -> PointLocation:
@@ -132,9 +203,8 @@ class Point(Geometry):
 
     @staticmethod
     def geometry_name():
-        """
-        """
-        return 'point'
+        """ """
+        return "point"
 
     def crop(self, rect: Rectangle) -> List[Point]:
         """
@@ -278,12 +348,26 @@ class Point(Geometry):
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         r = round(thickness / 2)  # @TODO: relation between thickness and point radius - ???
-        cv2.circle(bitmap, (self.col, self.row), radius=r, color=color, thickness=cv2.FILLED)
+
+        # cv2.circle function requires integer values
+        # center parameter specifies the center of the circle in the image
+        # image is represented as a grid of pixels
+        # these coordinates must be integers to correspond to specific pixel locations.
+        # add debug logger why coords changed ?
+        center = (self.rounded_col, self.rounded_row)
+        cv2.circle(bitmap, center, radius=r, color=color, thickness=cv2.FILLED)
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         # @TODO: mb dummy operation for Point
         r = round((thickness + 1) / 2)
-        cv2.circle(bitmap, (self.col, self.row), radius=r, color=color, thickness=cv2.FILLED)
+
+        # cv2.circle function requires integer values
+        # center parameter specifies the center of the circle in the image
+        # image is represented as a grid of pixels
+        # these coordinates must be integers to correspond to specific pixel locations.
+        # add debug logger why coords changed ?
+        center = (self.rounded_col, self.rounded_row)
+        cv2.circle(bitmap, center, radius=r, color=color, thickness=cv2.FILLED)
 
     @property
     def area(self) -> float:
@@ -372,13 +456,48 @@ class Point(Geometry):
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return cls.from_point_location(PointLocation.from_json(data),
-                                       sly_id=sly_id, class_id=class_id,
-                                       labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls.from_point_location(
+            PointLocation.from_json(data),
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
+        """ """
         from supervisely.geometry.any_geometry import AnyGeometry
+
         return [AnyGeometry]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Point:
+        """
+        Convert Point to subpixel coordinates.
+
+        :param img_size: Image size (height, width) to which belongs Point object.
+        :type img_size: Tuple[int, int]
+        :return: Point object
+        :rtype: :class:`Point<Point>`
+        """
+        height, width = img_size
+        new_row = self.row
+        new_col = self.col
+        if self.row == height - 1:
+            new_row = self.row + 1
+        if self.col == width - 1:
+            new_col = self.col + 1
+
+        if self.row == new_row and self.col == new_col:
+            return self
+        else:
+            return Point(
+                row=new_row,
+                col=new_col,
+                sly_id=self.sly_id,
+                class_id=self.class_id,
+                labeler_login=self.labeler_login,
+                updated_at=self.updated_at,
+                created_at=self.created_at,
+            )

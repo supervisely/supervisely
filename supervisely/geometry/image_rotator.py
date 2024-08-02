@@ -1,13 +1,13 @@
 # coding: utf-8
 
 import math
+from typing import List, Tuple
 
 import cv2
 import numpy as np
-from typing import List, Tuple
 
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.point_location import PointLocation
+from supervisely.geometry.rectangle import Rectangle
 
 
 # to rotate image & objects wrt source img center
@@ -28,6 +28,7 @@ class ImageRotator:
         height, width = 300, 400
         rotator = ImageRotator((height, width), 25)
     """
+
     # to get rect with max 'coloured' area in rotated img
     def _calc_inner_crop(self):
         """
@@ -71,19 +72,16 @@ class ImageRotator:
 
     @staticmethod
     def _affine_matrix_and_new_canvas_size(imsize, angle_degrees_ccw):
-        """
-        """
+        """ """
         rows, cols = imsize
         bottom, right = rows - 1, cols - 1
         image_center = (bottom / 2.0, right / 2.0)
         # Opencv uses a left-hand-side coordinate system (col, row), so to get the same effective transform we need to
         # negate the angle.
         affine_matrix = cv2.getRotationMatrix2D(image_center, -angle_degrees_ccw, 1.0)
-        source_corners_uniform = np.array([
-            [0, 0, 1],
-            [0, right, 1],
-            [bottom, 0, 1],
-            [bottom, right, 1]])
+        source_corners_uniform = np.array(
+            [[0, 0, 1], [0, right, 1], [bottom, 0, 1], [bottom, right, 1]]
+        )
         rotated_corners = affine_matrix.dot(source_corners_uniform.T).T
 
         # Get the upper and lower calues for rotated coordinates to find out the bounding box.
@@ -93,18 +91,24 @@ class ImageRotator:
         # Add extra translation to map the upper left corner of the boundig box to origin (i.e. to get coordinates in
         # the new canvas covering the entire rotated image.
         affine_matrix[:, 2] -= rotated_lower_values
-        new_canvas_size = np.ceil(rotated_upper_values - rotated_lower_values + 1).astype(np.int64).tolist()
+        new_canvas_size = (
+            np.ceil(rotated_upper_values - rotated_lower_values + 1).astype(np.int64).tolist()
+        )
         return affine_matrix, new_canvas_size
 
     def __init__(self, imsize: Tuple[int, int], angle_degrees_ccw: int):
         self.src_imsize = tuple(imsize)
         self.angle_degrees_ccw = angle_degrees_ccw
         # Transform matrix for the RHS (col, row) coordinate system.
-        self.affine_matrix, self.new_imsize = self._affine_matrix_and_new_canvas_size(imsize, angle_degrees_ccw)
+        self.affine_matrix, self.new_imsize = self._affine_matrix_and_new_canvas_size(
+            imsize, angle_degrees_ccw
+        )
         # Opencv uses a left-hand-side coordinate system (col, row), so to get the same effective transform we need to
         # negate the angle.
         # Also flip the image size as OpenCV uses cols-rows order.
-        self.opencv_affine_matrix, _ = self._affine_matrix_and_new_canvas_size(imsize[::-1], -angle_degrees_ccw)
+        self.opencv_affine_matrix, _ = self._affine_matrix_and_new_canvas_size(
+            imsize[::-1], -angle_degrees_ccw
+        )
         self._calc_inner_crop()
 
     def transform_point(self, point: PointLocation) -> PointLocation:
@@ -138,10 +142,22 @@ class ImageRotator:
             #    }
             # }
         """
-        point_np_uniform = np.array([point.row, point.col, 1])
+        # Remove this if statement or leave here for readability and safety?
+        # If point._integer_coords is True, then point.row and point.col are integers anyway
+        if point._integer_coords:
+            point_np_uniform = np.array([point.rounded_row, point.rounded_col, 1])
+        else:
+            point_np_uniform = np.array([point.row, point.col, 1])
+
         transformed_np = self.affine_matrix.dot(point_np_uniform)
         # Unwrap numpy types so that round() produces integer results.
-        return PointLocation(row=round(transformed_np[0].item()), col=round(transformed_np[1].item()))
+        if point._integer_coords:
+            transformed_row = round(transformed_np[0].item())
+            transformed_col = round(transformed_np[1].item())
+        else:
+            transformed_row = transformed_np[0].item()
+            transformed_col = transformed_np[1].item()
+        return PointLocation(row=transformed_row, col=transformed_col)
 
     def rotate_img(self, img: np.ndarray, use_inter_nearest: bool) -> np.ndarray:
         """
@@ -168,6 +184,7 @@ class ImageRotator:
             interp = cv2.INTER_NEAREST  # @TODO: cv2 INTER_NEAREST may shift coords, what to do?
         else:
             interp = cv2.INTER_LANCZOS4
-        res = cv2.warpAffine(src=img, M=self.opencv_affine_matrix, dsize=tuple(self.new_imsize[::-1]), flags=interp)
+        res = cv2.warpAffine(
+            src=img, M=self.opencv_affine_matrix, dsize=tuple(self.new_imsize[::-1]), flags=interp
+        )
         return res
-

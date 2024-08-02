@@ -81,6 +81,14 @@ class Annotation:
     :type img_tags: TagCollection or List[Tag]
     :param img_description: Image description.
     :type img_description: str, optional
+    :param pixelwise_scores_labels: List of Label objects.
+    :type pixelwise_scores_labels: List[Label]
+    :param custom_data: Custom data.
+    :type custom_data: dict, optional
+    :param image_id: Id of the image.
+    :type image_id: int, optional
+    :param use_subpixel_label_coords: If True, label coordinates will be converted to subpixel values.
+    :type use_subpixel_label_coords: bool, optional
     :raises: :class:`TypeError`, if image size is not tuple or list
     :Usage example:
 
@@ -127,6 +135,7 @@ class Annotation:
         pixelwise_scores_labels: Optional[List[Label]] = None,
         custom_data: Optional[Dict] = None,
         image_id: Optional[int] = None,
+        use_subpixel_label_coords: bool = False,
     ):
         if not isinstance(img_size, (tuple, list)):
             raise TypeError(
@@ -139,6 +148,7 @@ class Annotation:
             raise ValueError("Image resolution (height, width) has to defined both or none of them")
 
         self._img_description = img_description
+        self._use_subpixel_label_coords = use_subpixel_label_coords
 
         if img_tags is None:
             self._img_tags = TagCollection()
@@ -283,6 +293,23 @@ class Annotation:
             #   +----------------+------------+--------+
         """
         return self._img_tags
+    
+    @property
+    def use_subpixel_label_coords(self) -> bool:
+        """
+        Return flag that indicates if label coordinates are stored as subpixel values.
+
+        :return: Use subpixel label coordinates flag
+        :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            ann = sly.Annotation((500, 700), use_subpixel_label_coords=True)
+            print(ann.use_subpixel_label_coords)
+            # Output: True
+        """
+        return self._use_subpixel_label_coords
 
     def to_json(self) -> Dict:
         """
@@ -478,6 +505,7 @@ class Annotation:
         pixelwise_scores_labels: Optional[List[Label]] = None,
         custom_data: Optional[Dict] = None,
         image_id: Optional[int] = None,
+        use_subpixel_label_coords: Optional[bool] = None,
     ) -> Annotation:
         """
         Makes a copy of Annotation with new fields, if fields are given, otherwise it will use fields of the original Annotation.
@@ -490,6 +518,14 @@ class Annotation:
         :type img_tags: TagCollection or List[Tag]
         :param img_description: Image description.
         :type img_description: str, optional
+        :param pixelwise_scores_labels: List of Label objects.
+        :type pixelwise_scores_labels: List[Label]
+        :param custom_data: Custom data.
+        :type custom_data: dict, optional
+        :param image_id: Id of the image.
+        :type image_id: int, optional
+        :param use_subpixel_label_coords: If True, label coordinates will be converted to subpixel values.
+        :type use_subpixel_label_coords: bool, optional
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
         :Usage Example:
@@ -526,6 +562,7 @@ class Annotation:
             ),
             custom_data=take_with_default(custom_data, self.custom_data),
             image_id=take_with_default(image_id, self.image_id),
+            use_subpixel_label_coords=take_with_default(use_subpixel_label_coords, self.use_subpixel_label_coords)
         )
 
     def _add_labels_impl(self, dest, labels):
@@ -537,9 +574,16 @@ class Annotation:
         """
         for label in labels:
             if self.img_size.count(None) == 0:
+                # Rectangle.from_size(self.img_size) is used
+                # on reading annotation from json for each label
+                # to convert subpixel to pixel coordinates
+
                 # image has resolution in DB
-                canvas_rect = Rectangle.from_size(self.img_size)
-                dest.extend(label.crop(canvas_rect))
+                if not self.use_subpixel_label_coords:
+                    canvas_rect = Rectangle.from_size(self.img_size)
+                    dest.extend(label.crop(canvas_rect))
+                else:
+                    dest.append(label)
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
@@ -2915,3 +2959,13 @@ class Annotation:
         """Remove binding keys from all labels."""
         for label in self.labels:
             label.binding_key = None
+
+    def to_subpixel(self):
+        """
+        Convert all labels to subpixel precision
+        
+        :return: New instance of Annotation
+        :rtype: :class:`Annotation<Annotation>`
+        """
+        new_labels = [label.to_subpixel(self.img_size) for label in self.labels]
+        return self.clone(labels=new_labels, use_subpixel_label_coords=True)

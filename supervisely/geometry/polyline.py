@@ -4,27 +4,31 @@
 # docs
 
 from __future__ import annotations
+
+from typing import Dict, List, Optional, Tuple, Union
+
 import cv2
 import numpy as np
-from typing import List, Dict, Optional, Union, Tuple
-from supervisely.geometry.point import PointLocation
-from supervisely.geometry.rectangle import Rectangle
+from shapely.geometry import LineString
+from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import mapping
 
-from shapely.geometry import mapping, LineString, Polygon as ShapelyPolygon
-from supervisely.geometry.conversions import shapely_figure_to_coords_list
-from supervisely.geometry.point_location import row_col_list_to_points
-from supervisely.geometry.vector_geometry import VectorGeometry
-from supervisely.geometry.constants import (
-    EXTERIOR,
-    POINTS,
-    LABELER_LOGIN,
-    UPDATED_AT,
-    CREATED_AT,
-    ID,
-    CLASS_ID,
-)
-from supervisely.geometry import validation
 from supervisely import logger
+from supervisely.geometry import validation
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    EXTERIOR,
+    ID,
+    LABELER_LOGIN,
+    POINTS,
+    UPDATED_AT,
+)
+from supervisely.geometry.conversions import shapely_figure_to_coords_list
+from supervisely.geometry.point import PointLocation
+from supervisely.geometry.point_location import row_col_list_to_points
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.vector_geometry import VectorGeometry
 
 
 class Polyline(VectorGeometry):
@@ -32,8 +36,8 @@ class Polyline(VectorGeometry):
     Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
 
     :param exterior: List of exterior coordinates, the Polyline is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
     :param sly_id: Polyline ID in Supervisely server.
+    :type exterior: List[PointLocation], List[List[Union[int, float], Union[int, float]]], List[Tuple[Union[int, float], Union[int, float]]
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
     :type class_id: int, optional
@@ -59,14 +63,15 @@ class Polyline(VectorGeometry):
 
     @staticmethod
     def geometry_name():
-        """
-        """
+        """ """
         return "line"
 
     def __init__(
         self,
         exterior: Union[
-            List[PointLocation], List[List[int, int]], List[Tuple[int, int]]
+            List[PointLocation],
+            List[List[Union[int, float], Union[int, float]]],
+            List[Tuple[Union[int, float], Union[int, float]]],
         ],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
@@ -75,7 +80,9 @@ class Polyline(VectorGeometry):
         created_at: Optional[str] = None,
     ):
         if len(exterior) < 2:
-            raise ValueError(f'"{EXTERIOR}" field must contain at least two points to create "Polyline" object.')
+            raise ValueError(
+                f'"{EXTERIOR}" field must contain at least two points to create "Polyline" object.'
+            )
 
         super().__init__(
             exterior=exterior,
@@ -121,9 +128,7 @@ class Polyline(VectorGeometry):
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
         return cls(
-            exterior=row_col_list_to_points(
-                data[POINTS][EXTERIOR], flip_row_col_order=True
-            ),
+            exterior=row_col_list_to_points(data[POINTS][EXTERIOR], flip_row_col_order=True),
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
@@ -158,9 +163,7 @@ class Polyline(VectorGeometry):
             clipping_window_shpl = ShapelyPolygon(clipping_window)
 
             exterior = self.exterior_np
-            intersections_polygon = LineString(exterior).intersection(
-                clipping_window_shpl
-            )
+            intersections_polygon = LineString(exterior).intersection(clipping_window_shpl)
             mapping_shpl = mapping(intersections_polygon)
         except Exception:
             logger.warn("Line cropping exception, shapely.", exc_info=False)
@@ -182,17 +185,29 @@ class Polyline(VectorGeometry):
         return [Polyline(row_col_list_to_points(line)) for line in lines_combined]
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
-        """
-        """
+        """ """
         self._draw_contour_impl(bitmap, color, thickness, config=config)
 
     def _draw_contour_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
-        """
-        """
-        exterior = self.exterior_np[:, ::-1]
-        cv2.polylines(
-            bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness
-        )
+        """ """
+        # OpenCV cv2.polylines() function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # Add debug logger why coords changed ?
+
+        if self._integer_coords:
+            exterior = self.exterior_np[:, ::-1]
+        else:
+            exterior = self.exterior_np[:, ::-1].astype(np.int64)
+
+        # OpenCV cv2.polylines() thickness value must be a non-negative integer
+        # Value of -1 represents a filled polygon (cv2.FILLED) and works in certain functions like cv2.fillPoly() or cv2.rectangle()
+        # but this does not apply to cv2.polylines()
+        # Add debug logger why thickness changed ?
+        if thickness < 0:
+            thickness = 0
+
+        cv2.polylines(bitmap, pts=[exterior], isClosed=False, color=color, thickness=thickness)
 
     @property
     def area(self) -> float:
@@ -227,20 +242,43 @@ class Polyline(VectorGeometry):
             # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
             approx_figure = figure.approx_dp(0.75)
         """
-        exterior_np = self._approx_ring_dp(
-            self.exterior_np, epsilon, closed=True
-        ).tolist()
+        exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)
         return Polyline(exterior)
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
-        from supervisely.geometry.any_geometry import AnyGeometry
-        from supervisely.geometry.rectangle import Rectangle
+        """ """
         from supervisely.geometry.alpha_mask import AlphaMask
+        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
+        from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle, Bitmap, Polygon, AlphaMask]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Polyline:
+        """
+        Converts Polyline to subpixel coordinates.
+
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: Polyline object
+        :rtype: :class:`Polyline<Polyline>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
+            subpixel_figure = figure.to_subpixel((300, 300))
+        """
+        new_exterior = [point.to_subpixel(img_size) for point in self.exterior]
+        return Polyline(
+            exterior=new_exterior,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )

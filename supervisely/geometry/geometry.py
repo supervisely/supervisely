@@ -1,21 +1,21 @@
 # coding: utf-8
 
+import warnings
 from copy import deepcopy
 from typing import List, Tuple
 
 import numpy as np
-from supervisely.io.json import JsonSerializable
+
+from supervisely import logger
 from supervisely.geometry.constants import (
     ANY_SHAPE,
-    LABELER_LOGIN,
-    UPDATED_AT,
+    CLASS_ID,
     CREATED_AT,
     ID,
-    CLASS_ID,
+    LABELER_LOGIN,
+    UPDATED_AT,
 )
-from supervisely import logger
-
-import warnings
+from supervisely.io.json import JsonSerializable
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -28,13 +28,19 @@ class Geometry(JsonSerializable):
     """ """
 
     def __init__(
-        self, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None
+        self,
+        sly_id=None,
+        class_id=None,
+        labeler_login=None,
+        updated_at=None,
+        created_at=None,
     ):
         self.sly_id = sly_id
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
         self.class_id = class_id
+        self._integer_coords = True
 
     def _add_creation_info(self, d):
         """ """
@@ -84,7 +90,9 @@ class Geometry(JsonSerializable):
         :param rect:
         :return: list of Geometry
         """
-        return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
+        return [
+            geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)
+        ]
 
     def rotate(self, rotator):
         """Rotates around image center -> New Geometry
@@ -184,7 +192,9 @@ class Geometry(JsonSerializable):
         :param thickness: (int)
         :param config: drawing config specific to a concrete subclass, e.g. per edge colors
         """
-        self._draw_bool_compatible(self._draw_contour_impl, bitmap, color, thickness, config)
+        self._draw_bool_compatible(
+            self._draw_contour_impl, bitmap, color, thickness, config
+        )
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """Draws the figure contour on a given bitmap canvas
@@ -215,7 +225,9 @@ class Geometry(JsonSerializable):
         """ """
         if obj_class_shape != ANY_SHAPE:
             if self.geometry_name() != obj_class_shape:
-                raise ValueError("Geometry validation error: shape names are mismatched!")
+                raise ValueError(
+                    "Geometry validation error: shape names are mismatched!"
+                )
 
     @staticmethod
     def config_from_json(config):
@@ -243,14 +255,20 @@ class Geometry(JsonSerializable):
         allowed_transforms = self.allowed_transforms()
         if new_geometry not in allowed_transforms:
             raise NotImplementedError(
-                "from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name())
+                "from {!r} to {!r}".format(
+                    self.geometry_name(), new_geometry.geometry_name()
+                )
             )
 
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
-        from supervisely.geometry.rectangle import Rectangle
+        from supervisely.geometry.helpers import (
+            geometry_to_alpha_mask,
+            geometry_to_bitmap,
+            geometry_to_polygon,
+        )
         from supervisely.geometry.polygon import Polygon
-        from supervisely.geometry.helpers import geometry_to_bitmap, geometry_to_polygon, geometry_to_alpha_mask
+        from supervisely.geometry.rectangle import Rectangle
 
         res = []
         if new_geometry == Bitmap:
@@ -269,3 +287,13 @@ class Geometry(JsonSerializable):
                 )
             )
         return res
+
+    def to_subpixel(self, img_size):
+        """
+        Convert geometry to subpixel representation.
+
+        :param img_size: (int, int) image size
+        :type img_size: Tuple[int, int]
+        :return: Geometry
+        """
+        raise NotImplementedError()

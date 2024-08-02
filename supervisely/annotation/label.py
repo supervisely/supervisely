@@ -346,9 +346,7 @@ class LabelBase:
         return cls(
             geometry=geometry,
             obj_class=obj_class,
-            tags=TagCollection.from_json(
-                data[LabelJsonFields.TAGS], project_meta.tag_metas
-            ),
+            tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
@@ -826,9 +824,9 @@ class LabelBase:
         Example:
 
             {
-                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]], 
-                'visible': True, 
-                'negative': [], 
+                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]],
+                'visible': True,
+                'negative': [],
                 'positive': [[597, 933], [474.5072466934964, 1381.6437133813354]]
             }
         """
@@ -845,6 +843,19 @@ class LabelBase:
     @property
     def labeler_login(self):
         return self.geometry.labeler_login
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> LabelBase:
+        """
+        Converts Label geometry to subpixel precision.
+        
+        :param img_size: Image size (height, width) of the Annotation to which Label belongs.
+        :type img_size: Tuple[int, int]
+        :return: New instance of Label with subpixel precision geometry
+        :rtype: :class:`Label<LabelBase>`
+        """
+        new_geometry = self.geometry.to_subpixel(img_size)
+        label = self.clone(geometry=new_geometry)
+        return label
 
 
 class Label(LabelBase):

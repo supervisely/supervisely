@@ -2,16 +2,26 @@
 
 # docs
 from __future__ import annotations
+
+from typing import Dict, List, Optional, Tuple, Union
+
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+
 import supervisely as sly
-
-
-from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry import validation
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    EXTERIOR,
+    ID,
+    INTERIOR,
+    LABELER_LOGIN,
+    POINTS,
+    UPDATED_AT,
+)
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation, points_to_row_col_list
-from supervisely.geometry import validation
 
 
 class Rectangle(Geometry):
@@ -19,13 +29,13 @@ class Rectangle(Geometry):
     Rectangle geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Rectangle<Rectangle>` class object is immutable.
 
     :param top: Minimal vertical value of Rectangle object.
-    :type top: int or float
+    :type top: Union[int, float]
     :param left: Minimal horizontal value of Rectangle object.
-    :type left: int or float
+    :type left: Union[int, float]
     :param bottom: Maximal vertical value of Rectangle object.
-    :type bottom: int or float
+    :type bottom: Union[int, float]
     :param right: Maximal vertical value of Rectangle object.
-    :type right: int or float
+    :type right: Union[int, float]
     :param sly_id: Rectangle ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Rectangle belongs.
@@ -50,24 +60,45 @@ class Rectangle(Geometry):
         right = 900
         figure = sly.Rectangle(top, left, bottom, right)
     """
+
     @staticmethod
     def geometry_name():
-        """
-        """
-        return 'rectangle'
+        """ """
+        return "rectangle"
 
-    def __init__(self, top: int, left: int, bottom: int, right: int,
-                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
-                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        top: Union[int, float],
+        left: Union[int, float],
+        bottom: Union[int, float],
+        right: Union[int, float],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
 
         if top > bottom:
-            raise ValueError('Rectangle "top" argument must have less or equal value then "bottom"!')
+            raise ValueError(
+                'Rectangle "top" argument must have less or equal value then "bottom"!'
+            )
 
         if left > right:
-            raise ValueError('Rectangle "left" argument must have less or equal value then "right"!')
+            raise ValueError(
+                'Rectangle "left" argument must have less or equal value then "right"!'
+            )
 
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at,
-                         created_at=created_at)
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
+
+        if any(isinstance(coord, float) for coord in [top, left, bottom, right]):
+            self._integer_coords = False
 
         self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
 
@@ -96,7 +127,7 @@ class Rectangle(Geometry):
         packed_obj = {
             POINTS: {
                 EXTERIOR: points_to_row_col_list(self._points, flip_row_col_order=True),
-                INTERIOR: []
+                INTERIOR: [],
             }
         }
         self._add_creation_info(packed_obj)
@@ -137,11 +168,22 @@ class Rectangle(Geometry):
 
         exterior = data[POINTS][EXTERIOR]
         if len(exterior) != 2:
-            raise ValueError('"exterior" field must contain exactly two points to create Rectangle object.')
+            raise ValueError(
+                '"exterior" field must contain exactly two points to create Rectangle object.'
+            )
         [top, bottom] = sorted([exterior[0][1], exterior[1][1]])
         [left, right] = sorted([exterior[0][0], exterior[1][0]])
-        return cls(top=top, left=left, bottom=bottom, right=right,
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            top=top,
+            left=left,
+            bottom=bottom,
+            right=right,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -168,11 +210,18 @@ class Rectangle(Geometry):
         return [Rectangle(top=top, left=left, bottom=bottom, right=right)] if is_valid else []
 
     def _transform(self, transform_fn):
-        """
-        """
+        """ """
         transformed_corners = [transform_fn(p) for p in self.corners]
         rows, cols = zip(*points_to_row_col_list(transformed_corners))
-        return Rectangle(top=round(min(rows)), left=round(min(cols)), bottom=round(max(rows)), right=round(max(cols)))
+
+        if self._integer_coords:
+            top, left = round(min(rows)), round(min(cols))
+            bottom, right = round(max(rows)), round(max(cols))
+        else:
+            top, left = min(rows), min(cols)
+            bottom, right = max(rows), max(cols)
+
+        return Rectangle(top=top, left=left, bottom=bottom, right=right)
 
     @property
     def corners(self) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
@@ -195,8 +244,12 @@ class Rectangle(Geometry):
             # 700 900
             # 700 100
         """
-        return [PointLocation(row=self.top, col=self.left), PointLocation(row=self.top, col=self.right),
-                PointLocation(row=self.bottom, col=self.right), PointLocation(row=self.bottom, col=self.left)]
+        return [
+            PointLocation(row=self.top, col=self.left),
+            PointLocation(row=self.top, col=self.right),
+            PointLocation(row=self.bottom, col=self.right),
+            PointLocation(row=self.bottom, col=self.left),
+        ]
 
     def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
         """
@@ -298,7 +351,12 @@ class Rectangle(Geometry):
             fliplr_figure = figure.fliplr((height, width))
         """
         img_width = img_size[1]
-        return Rectangle(top=self.top, left=(img_width - self.right), bottom=self.bottom, right=(img_width - self.left))
+        return Rectangle(
+            top=self.top,
+            left=(img_width - self.right),
+            bottom=self.bottom,
+            right=(img_width - self.left),
+        )
 
     def flipud(self, img_size: Tuple[int, int]) -> Rectangle:
         """
@@ -318,19 +376,33 @@ class Rectangle(Geometry):
             flipud_figure = figure.flipud((height, width))
         """
         img_height = img_size[0]
-        return Rectangle(top=(img_height - self.bottom), left=self.left, bottom=(img_height - self.top),
-                         right=self.right)
+        return Rectangle(
+            top=(img_height - self.bottom),
+            left=self.left,
+            bottom=(img_height - self.top),
+            right=self.right,
+        )
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
-        """
-        """
+        """ """
         self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
-        cv2.rectangle(bitmap, pt1=(self.left, self.top), pt2=(self.right, self.bottom), color=color,
-                      thickness=thickness)
+        """ """
+        # cv2.rectangle function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # add debug logger why coords changed ?
+        rounded_pt1 = (round(self.left), round(self.top))
+        rounded_pt2 = (round(self.right), round(self.bottom))
+
+        cv2.rectangle(
+            bitmap,
+            pt1=rounded_pt1,
+            pt2=rounded_pt2,
+            color=color,
+            thickness=thickness,
+        )
 
     def to_bbox(self) -> Rectangle:
         """
@@ -406,6 +478,9 @@ class Rectangle(Geometry):
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
+        # Rectangle.from_size(self.img_size) is used
+        # on reading annotation from json for each label
+        # to convert subpixel to pixel coordinates
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
@@ -435,12 +510,12 @@ class Rectangle(Geometry):
         return cls(top=top, left=left, bottom=bottom, right=right)
 
     @property
-    def left(self) -> int:
+    def left(self) -> Union[int, float]:
         """
         Minimal horizontal value of Rectangle.
 
         :return: Minimal horizontal value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -449,15 +524,19 @@ class Rectangle(Geometry):
             print(figure.left)
             # Output: 100
         """
-        return self._points[0].col
+        # Always return self._points[0].col ?
+        if self._integer_coords:
+            return self._points[0].rounded_col
+        else:
+            return self._points[0].col
 
     @property
-    def right(self) -> int:
+    def right(self) -> Union[int, float]:
         """
         Maximal horizontal value of Rectangle.
 
         :return: Maximal horizontal value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -466,15 +545,19 @@ class Rectangle(Geometry):
             print(figure.right)
             # Output: 900
         """
-        return self._points[1].col
+        # Always return self._points[1].col ?
+        if self._integer_coords:
+            return self._points[1].rounded_col
+        else:
+            return self._points[1].col
 
     @property
-    def top(self) -> int:
+    def top(self) -> Union[int, float]:
         """
         Minimal vertical value of Rectangle.
 
         :return: Minimal vertical value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -483,15 +566,19 @@ class Rectangle(Geometry):
             print(rectangle.top)
             # Output: 100
         """
-        return self._points[0].row
+        # Always return self._points[0].row ?
+        if self._integer_coords:
+            return self._points[0].rounded_row
+        else:
+            return self._points[0].row
 
     @property
-    def bottom(self) -> int:
+    def bottom(self) -> Union[int, float]:
         """
         Maximal vertical value of Rectangle.
 
         :return: Maximal vertical value
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -500,7 +587,11 @@ class Rectangle(Geometry):
             print(figure.bottom)
             # Output: 700
         """
-        return self._points[1].row
+        # Always return self._points[1].row ?
+        if self._integer_coords:
+            return self._points[1].rounded_row
+        else:
+            return self._points[1].row
 
     @property
     def center(self) -> PointLocation:
@@ -519,12 +610,12 @@ class Rectangle(Geometry):
         return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
     @property
-    def width(self) -> int:
+    def width(self) -> Union[int, float]:
         """
         Width of Rectangle.
 
         :return: Width
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -533,15 +624,16 @@ class Rectangle(Geometry):
             print(figure.width)
             # Output: 801
         """
+        # Always round ?
         return self.right - self.left + 1
 
     @property
-    def height(self) -> int:
+    def height(self) -> Union[int, float]:
         """
         Height of Rectangle
 
         :return: Height
-        :rtype: :class:`int`
+        :rtype: Union[int, float]
 
         :Usage Example:
 
@@ -550,6 +642,7 @@ class Rectangle(Geometry):
             print(figure.height)
             # Output: 601
         """
+        # Always round ?
         return self.bottom - self.top + 1
 
     def contains(self, rect: Rectangle) -> bool:
@@ -571,10 +664,12 @@ class Rectangle(Geometry):
             print(figure.contains(rect))
             # Output: True
         """
-        return (self.left <= rect.left and
-                self.right >= rect.right and
-                self.top <= rect.top and
-                self.bottom >= rect.bottom)
+        return (
+            self.left <= rect.left
+            and self.right >= rect.right
+            and self.top <= rect.top
+            and self.bottom >= rect.bottom
+        )
 
     def contains_point_location(self, pt: PointLocation) -> bool:
         """
@@ -612,6 +707,7 @@ class Rectangle(Geometry):
             print(height, width)
             # Output: 700 900
         """
+        # Always round ?
         return self.height, self.width
 
     def get_cropped_numpy_slice(self, data: np.ndarray) -> np.ndarray:
@@ -632,7 +728,16 @@ class Rectangle(Geometry):
             print(mask_slice.shape)
             # Output: (199, 499)
         """
-        return data[self.top:(self.bottom+1), self.left:(self.right+1), ...]
+        # float values cannot be used for python array slicing
+        if self._integer_coords:
+            cropped_data = data[self.top : (self.bottom + 1), self.left : (self.right + 1), ...]
+        else:
+            cropped_data = data[
+                round(self.top) : (round(self.bottom) + 1),
+                round(self.left) : (round(self.right) + 1),
+                ...,
+            ]
+        return cropped_data
 
     def intersects_with(self, rect: Rectangle) -> bool:
         """
@@ -661,10 +766,42 @@ class Rectangle(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """
-        """
-        from supervisely.geometry.any_geometry import AnyGeometry
+        """ """
         from supervisely.geometry.alpha_mask import AlphaMask
+        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
+
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
+        """
+        Convert Rectangle to subpixel coordinates.
+
+        :param img_size: Input image size (height, width) to which belongs Rectangle.
+        :type img_size: Tuple[int, int]
+        :return: Rectangle object
+        :rtype: :class:`Rectangle<Rectangle>`
+        """
+        height, width = img_size
+        new_right = self.right
+        new_bottom = self.bottom
+        if self.right == width - 1:
+            new_right = self.right + 1
+        if self.bottom == height - 1:
+            new_bottom = self.bottom + 1
+
+        if self.right == new_right and self.bottom == new_bottom:
+            return self
+        else:
+            return Rectangle(
+                top=self.top,
+                left=self.left,
+                bottom=new_bottom,
+                right=new_right,
+                sly_id=self.sly_id,
+                class_id=self.class_id,
+                labeler_login=self.labeler_login,
+                updated_at=self.updated_at,
+                created_at=self.created_at,
+            )

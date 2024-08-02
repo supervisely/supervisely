@@ -38,9 +38,9 @@ class Polygon(VectorGeometry):
     Polygon geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
 
     :param exterior: Exterior coordinates, object contour is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[PointLocation], List[List[Union[int, float], Union[int, float]]], List[Tuple[Union[int, float], Union[int, float]]
     :param interior: Interior coordinates, object holes are defined with these points.
-    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+    :type interior: List[List[PointLocation]], List[List[List[Union[int, float], Union[int, float]]]], List[List[Tuple[Union[int, float], Union[int, float]]]]
     :param sly_id: Polygon ID in Supervisely server.
     :type sly_id: int, optional
     :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polygon belongs.
@@ -75,9 +75,15 @@ class Polygon(VectorGeometry):
 
     def __init__(
         self,
-        exterior: Union[List[PointLocation], List[List[int, int]], List[Tuple[int, int]]],
+        exterior: Union[
+            List[PointLocation],
+            List[List[Union[int, float], Union[int, float]]],
+            List[Tuple[Union[int, float], Union[int, float]]],
+        ],
         interior: Union[
-            List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+            List[List[PointLocation]],
+            List[List[List[Union[int, float], Union[int, float]]]],
+            List[List[Tuple[Union[int, float], Union[int, float]]]],
         ] = [],
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
@@ -216,17 +222,28 @@ class Polygon(VectorGeometry):
                 and len(intersection) > 0
                 and len(intersection[0]) >= 3
             ):
-                exterior = row_col_list_to_points(intersection[0], do_round=True)
+                exterior = row_col_list_to_points(intersection[0], do_round=self._integer_coords)
                 interiors = []
                 for interior_contour in intersection[1:]:
                     if len(interior_contour) > 2:
-                        interiors.append(row_col_list_to_points(interior_contour, do_round=True))
+                        interiors.append(
+                            row_col_list_to_points(interior_contour, do_round=self._integer_coords)
+                        )
                 out_polygons.append(Polygon(exterior, interiors))
         return out_polygons
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        exterior = self.exterior_np[:, ::-1]
+        # OpenCV cv2.fillPoly() function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # add debug logger why coords changed ?
+
+        if self._integer_coords:
+            exterior = self.exterior_np[:, ::-1]
+        else:
+            exterior = self.exterior_np[:, ::-1].astype(np.int64)
+
         interior = [x[:, ::-1] for x in self.interior_np]
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
         cv2.fillPoly(bmp_to_draw, pts=[exterior], color=1)
@@ -236,7 +253,16 @@ class Polygon(VectorGeometry):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        exterior = self.exterior_np[:, ::-1]
+        # OpenCV cv2.polylines() function requires integer values
+        # because it directly manipulates pixel values
+        # in an image that can only be referenced by integer indices
+        # add debug logger why coords changed ?
+
+        if self._integer_coords:
+            exterior = self.exterior_np[:, ::-1]
+        else:
+            exterior = self.exterior_np[:, ::-1].astype(np.int64)
+
         interior = [x[:, ::-1] for x in self.interior_np]
 
         poly_lines = [exterior] + interior
@@ -290,16 +316,44 @@ class Polygon(VectorGeometry):
         interior_np = [
             self._approx_ring_dp(x, epsilon, closed=True).tolist() for x in self.interior_np
         ]
-        exterior = row_col_list_to_points(exterior_np, do_round=True)
-        interior = [row_col_list_to_points(x, do_round=True) for x in interior_np]
+        exterior = row_col_list_to_points(exterior_np, do_round=self._integer_coords)
+        interior = [row_col_list_to_points(x, do_round=self._integer_coords) for x in interior_np]
         return Polygon(exterior, interior)
 
     @classmethod
     def allowed_transforms(cls):
         """ """
-        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.alpha_mask import AlphaMask
+        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle, Bitmap, AlphaMask]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Polygon:
+        """
+        Converts Polygon to subpixel coordinates.
+
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: Polygon object
+        :rtype: :class:`Polygon<Polygon>`
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
+            subpixel_figure = figure.to_subpixel((300, 300))
+        """
+        new_exterior = [point.to_subpixel(img_size) for point in self.exterior]
+        # No need for interior?
+        return Polygon(
+            exterior=new_exterior,
+            interior=self.interior,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )
