@@ -10,6 +10,7 @@ import re
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from time import sleep
@@ -30,6 +31,7 @@ from uuid import uuid4
 
 import numpy as np
 import requests
+from requests.exceptions import HTTPError
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
