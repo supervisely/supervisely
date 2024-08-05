@@ -221,10 +221,7 @@ class BaseBenchmark:
         self.api.file.upload_directory(self.team_id, speedtest_dir, remote_dir)
 
     def _generate_dt_project_name(self, gt_project_name, model_info):
-        dt_project_name = gt_project_name + " - " + model_info["model_name"]
-        if model_info.get("checkpoint_name"):
-            # add checkpoint_id
-            dt_project_name += f' ({model_info["checkpoint_name"]})'
+        dt_project_name = gt_project_name + " - " + model_info["checkpoint_name"]
         return dt_project_name
 
     def _generate_diff_project_name(self, dt_project_name):

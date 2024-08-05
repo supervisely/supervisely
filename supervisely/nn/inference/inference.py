@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from dataclasses import asdict
 
 import numpy as np
 import requests
@@ -56,7 +57,7 @@ from supervisely.decorators.inference import (
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.inference.info import DeployInfo, ModelInfo, Runtime, get_hardware_info
+from supervisely.nn.inference.info import DeployInfo, CheckpointInfo, RuntimeType, get_hardware_info
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -85,8 +86,8 @@ class Inference:
             model_dir = os.path.join(get_data_dir(), "models")
             fs.mkdir(model_dir)
         self.device: str = None
-        self.runtime: str = Runtime.PYTORCH
-        self.model_info: ModelInfo = None
+        self.runtime: str = None
+        self.checkpoint_info: CheckpointInfo = None
         self._model_dir = model_dir
         self._model_served = False
         self._deploy_params: dict = None
@@ -134,6 +135,7 @@ class Inference:
                     self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
                     device = gui.get_device()
+                    self.device = device
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
 
@@ -382,17 +384,20 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def _load_model(self, deploy_params: dict):
+        self.device = deploy_params.get("device")
+        self.runtime = deploy_params.get("runtime")
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
-        gui = self.gui
-        if gui is not None:
+        if self.gui is not None:
             self.update_gui(self._model_served)
-            gui.show_deployed_model_info(self)
+            self.gui.show_deployed_model_info(self)
 
     def shutdown_model(self):
         self._model_served = False
-        self.model_info = None
+        self.device = None
+        self.runtime = None
+        self.checkpoint_info = None
         clean_up_cuda()
         logger.info("Model has been stopped")
 
@@ -447,10 +452,11 @@ class Inference:
         return hr_info
     
     def _get_deploy_info(self) -> DeployInfo:
-        if not self.model_info:
-            raise RuntimeError("Model info (`self.model_info`) is not set. Please, set it in `load_model` method.")
+        if self.checkpoint_info is None:
+            raise ValueError("Checkpoint info is not set.")
         deploy_info = {
-            **self.model_info._asdict(),
+            **asdict(self.checkpoint_info),
+            "task_type": self.get_info()["task type"],
             "device": self.device,
             "runtime": self.runtime,
             "hardware": get_hardware_info(),
@@ -1976,7 +1982,7 @@ class Inference:
         @server.post("/get_deploy_info")
         @self._check_serve_before_call
         def _get_deploy_info():
-            return self._get_deploy_info()._asdict()
+            return asdict(self._get_deploy_info())
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):

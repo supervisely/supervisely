@@ -307,6 +307,7 @@ class PointTracking(Inference):
                             items.append(q.get_nowait())
                         if len(items) > 0:
                             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                            continue
                         if stop_event.is_set():
                             video_interface._notify(True, task="stop tracking")
                             return
