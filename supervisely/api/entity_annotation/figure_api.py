@@ -95,6 +95,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.TAGS,
             ApiField.META,
             ApiField.AREA,
+            ApiField.TRACK_ID,
         ]
 
     @staticmethod
@@ -481,6 +482,34 @@ class FigureApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=False):
         res = super()._convert_json_info(info, skip_missing=True)
         return FigureInfo(**res._asdict())
+
+    def get_list(self, dataset_id: int, filters: List = None):
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometryType",
+            "geometry",
+            "tags",
+            "meta",
+        ]
+        if filters is None:
+            filters = []
+        figures_infos = self.get_list_all_pages(
+            "figures.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters,
+                ApiField.FIELDS: fields,
+            },
+        )
+
+        return figures_infos
 
     def _download_geometries_generator(
         self, ids: List[int]
