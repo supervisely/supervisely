@@ -1205,6 +1205,7 @@ class Inference:
                             upload_f(joined_batch)
                         continue
                     if stop_event.is_set():
+                        self._on_inference_end(None, async_inference_request_uuid)
                         return
                     time.sleep(1)
             except Exception as e:
@@ -1550,10 +1551,6 @@ class Inference:
                 project_info,
                 inference_request_uuid,
             )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
             logger.debug(
                 "Inference has scheduled from 'inference_project_id_async' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
