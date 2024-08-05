@@ -2,17 +2,16 @@
 
 # docs
 from __future__ import annotations
+
 from copy import deepcopy
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
 import supervisely as sly
-
-
-
-from supervisely.io.json import JsonSerializable
-from supervisely.imaging import image as sly_image
+from supervisely._utils import unwrap_if_numpy
 from supervisely.geometry import validation
 from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS
-from supervisely._utils import unwrap_if_numpy
+from supervisely.imaging import image as sly_image
+from supervisely.io.json import JsonSerializable
 
 
 class PointLocation(JsonSerializable):
@@ -34,6 +33,7 @@ class PointLocation(JsonSerializable):
         col = 200
         loc = sly.PointLocation(row, col)
     """
+
     def __init__(self, row: int, col: int):
         self._row = round(unwrap_if_numpy(row))
         self._col = round(unwrap_if_numpy(col))
@@ -94,12 +94,7 @@ class PointLocation(JsonSerializable):
             #    }
             # }
         """
-        packed_obj = {
-            POINTS: {
-                EXTERIOR: [[self.col, self.row]],
-                INTERIOR: []
-            }
-        }
+        packed_obj = {POINTS: {EXTERIOR: [[self.col, self.row]], INTERIOR: []}}
         return packed_obj
 
     @classmethod
@@ -133,7 +128,9 @@ class PointLocation(JsonSerializable):
         validation.validate_geometry_points_fields(data)
         exterior = data[POINTS][EXTERIOR]
         if len(exterior) != 1:
-            raise ValueError('"exterior" field must contain exactly one point to create "PointLocation" object.')
+            raise ValueError(
+                '"exterior" field must contain exactly one point to create "PointLocation" object.'
+            )
         return cls(row=exterior[0][1], col=exterior[0][0])
 
     def scale(self, factor: float) -> PointLocation:
@@ -295,22 +292,45 @@ class PointLocation(JsonSerializable):
         """
         return deepcopy(self)
 
+    def to_subpixel(self, img_size: Tuple[int, int]) -> PointLocation:
+        """
+        Convert PointLocation to subpixel coordinates.
+        :param img_size: Image size (height, width) to which belongs PointLocation object.
+        :type img_size: Tuple[int, int]
+        :return: PointLocation object
+        :rtype: :class:`PointLocation<PointLocation>`
+        """
+        height, width = img_size
+        new_row = self.row
+        new_col = self.col
+        if self.row == height - 1:
+            new_row = self.row + 1
+        if self.col == width - 1:
+            new_col = self.col + 1
+
+        if self.row == new_row and self.col == new_col:
+            return self
+        else:
+            return PointLocation(row=new_row, col=new_col)
+
 
 def _flip_row_col_order(coords):
-    """
-    """
+    """ """
     if not all(len(x) == 2 for x in coords):
-        raise ValueError('Flipping row and column order values is only possible within tuples of 2 elements.')
+        raise ValueError(
+            "Flipping row and column order values is only possible within tuples of 2 elements."
+        )
     return [[y, x] for x, y in coords]
 
 
 def _maybe_flip_row_col_order(coords, flip=False):
-    """
-    """
+    """ """
     return _flip_row_col_order(coords) if flip else coords
 
 
-def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: Optional[bool] = False) -> List[List[int]]:
+def points_to_row_col_list(
+    points: List[PointLocation], flip_row_col_order: Optional[bool] = False
+) -> List[List[int]]:
     """
     Convert list of PointLocation objects to list of coords.
 
@@ -333,11 +353,16 @@ def points_to_row_col_list(points: List[PointLocation], flip_row_col_order: Opti
             print(points_row_col)
             # Output: [[100, 200], [300, 400]]
     """
-    return _maybe_flip_row_col_order(coords=[[p.row, p.col] for p in points], flip=flip_row_col_order)
+    return _maybe_flip_row_col_order(
+        coords=[[p.row, p.col] for p in points], flip=flip_row_col_order
+    )
 
 
-def row_col_list_to_points(data: List[List[int, int]], flip_row_col_order: Optional[bool] = False,
-                           do_round: Optional[bool] = False) -> List[PointLocation]:
+def row_col_list_to_points(
+    data: List[List[int, int]],
+    flip_row_col_order: Optional[bool] = False,
+    do_round: Optional[bool] = False,
+) -> List[PointLocation]:
     """
     Convert list of coords to list of PointLocation objects.
 
@@ -359,8 +384,11 @@ def row_col_list_to_points(data: List[List[int, int]], flip_row_col_order: Optio
             coords = [(row_1, col_1), (row_2, col_2)]
             locs = row_col_list_to_points(coords)
     """
+
     def _maybe_round(v):
         return v if not do_round else round(v)
 
-    return [PointLocation(row=_maybe_round(r), col=_maybe_round(c)) for r, c in
-            _maybe_flip_row_col_order(data, flip=flip_row_col_order)]
+    return [
+        PointLocation(row=_maybe_round(r), col=_maybe_round(c))
+        for r, c in _maybe_flip_row_col_order(data, flip=flip_row_col_order)
+    ]

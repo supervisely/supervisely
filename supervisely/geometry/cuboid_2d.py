@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -167,6 +167,32 @@ class Cuboid2d(GraphNodes):
 
         return [AnyGeometry, Rectangle, GraphNodes]
 
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Cuboid2d:
+        """
+        Convert all vertices of the graph to subpixel coordinates
+        :param img_size: image size
+        :type img_size: tuple
+        :return: new graph with subpixel coordinates
+        :rtype: :class:`Cuboid2d<Cuboid2d>`
+
+        :Usage Example:
+         .. code-block:: python
+            # Remember that Cuboid2D class object is immutable, and we need to assign new instance of GraphNodes to a new variable
+            subpixel_figure = figure.to_subpixel((300, 300))
+        """
+        new_nodes = {}
+        for node_id in self.nodes.keys():
+            new_node = self.nodes[node_id].to_subpixel(img_size)
+            new_nodes[node_id] = new_node
+        return Cuboid2d(
+            nodes=new_nodes,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )
+
 
 class Cuboid2dTemplate(Cuboid2d, Geometry):
     """
@@ -184,7 +210,7 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
         """
         config = {VERTICES: {}, EDGES: []}
 
-        x = y = w = h = s = 1 # sample values only for config creation
+        x = y = w = h = s = 1  # sample values only for config creation
         base_vertices = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
         shifted_vertices = [(vx + s, vy + s) for vx, vy in base_vertices]
         verices_coords = base_vertices + shifted_vertices
@@ -234,3 +260,12 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
         Return point names in order in which they were added
         """
         return self._point_names
+
+    def to_subpixel(self, img_size):
+        """
+        Convert geometry to subpixel representation.
+        :param img_size: (int, int) image size
+        :type img_size: Tuple[int, int]
+        :return: Geometry
+        """
+        raise NotImplementedError()

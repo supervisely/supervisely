@@ -254,14 +254,20 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
+
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
         :Usage example:
@@ -299,6 +305,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_ID: image_id,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: integer_coords,
             },
         )
         result = response.json()
@@ -327,14 +334,20 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
+
         :return: Annotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -364,6 +377,7 @@ class AnnotationApi(ModuleApi):
             image_id=image_id,
             with_custom_data=with_custom_data,
             force_metadata_for_links=force_metadata_for_links,
+            integer_coords=integer_coords,
         ).annotation
 
     def download_batch(
@@ -373,6 +387,7 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -383,6 +398,13 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
+
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -445,6 +467,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: integer_coords,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
 
@@ -484,6 +507,7 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
+        integer_coords: Optional[bool] = True,
     ) -> List[Dict]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -494,6 +518,11 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: Return coordinates as integers, otherwise as floats.
+        :type integer_coords: bool, optional
+
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
 
@@ -700,6 +729,7 @@ class AnnotationApi(ModuleApi):
         img_id: int,
         ann: Annotation,
         skip_bounds_validation: Optional[bool] = False,
+        convert_to_subpixel: Optional[bool] = False,
     ) -> None:
         """
         Loads an :class:`Annotation<supervisely.annotation.annotation.Annotation>` to a given image ID in the API.
@@ -724,6 +754,11 @@ class AnnotationApi(ModuleApi):
             image_id = 121236918
             upl_ann = api.annotation.upload_ann(image_id, ann)
         """
+        # Add method to_subpixel() to Annotation and call it before uploading annotation
+        if convert_to_subpixel:
+            ann = ann.to_subpixel()
+            # for idx, object in enumerate(ann.to_json()['objects']):
+            # print(f"Rectangle {idx}: {object['points']['exterior']}")
         self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(

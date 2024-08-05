@@ -148,6 +148,23 @@ class Node(JsonSerializable):
         """
         return Node(transform_fn(self._location), disabled=self.disabled)
 
+    def to_subpixel(self, img_size: Tuple[int, int]) -> Node:
+        """
+        Converts Node to subpixel coordinates.
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: Node object
+        :rtype: :class:`Node<Node>`
+        """
+        new_location = self._location.to_subpixel(img_size)
+        return Node(
+            location=new_location,
+            disabled=self.disabled,
+            label=self._label,
+            row=new_location.row,
+            col=new_location.col,
+        )
+
 
 def _maybe_transform_colors(elements, process_fn):
     """
@@ -262,7 +279,10 @@ class GraphNodes(Geometry):
             from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
-        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data[cls.items_json_field].items()}
+        nodes = {
+            node_id: Node.from_json(node_json)
+            for node_id, node_json in data[cls.items_json_field].items()
+        }
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
@@ -312,7 +332,11 @@ class GraphNodes(Geometry):
             #    }
             # }
         """
-        res = {self.items_json_field: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        res = {
+            self.items_json_field: {
+                node_id: node.to_json() for node_id, node in self._nodes.items()
+            }
+        }
         self._add_creation_info(res)
         return res
 
@@ -609,7 +633,9 @@ class GraphNodes(Geometry):
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
-        nodes_not_in_template = set(self._nodes.keys()) - set(settings[self.items_json_field].keys())
+        nodes_not_in_template = set(self._nodes.keys()) - set(
+            settings[self.items_json_field].keys()
+        )
         if len(nodes_not_in_template) > 0:
             raise ValueError(
                 "Graph contains nodes not declared in the template: {!r}.".format(
@@ -668,6 +694,31 @@ class GraphNodes(Geometry):
         from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle]
+
+    def to_subpixel(self, img_size: Tuple[int, int]) -> GraphNodes:
+        """
+        Converts GraphNodes to subpixel coordinates.
+        :param img_size: Image size in pixels (height, width).
+        :type img_size: Tuple[int, int]
+        :return: GraphNodes object
+        :rtype: :class:`GraphNodes<GraphNodes>`
+        :Usage Example:
+         .. code-block:: python
+            # Remember that GraphNodes class object is immutable, and we need to assign new instance of GraphNodes to a new variable
+            subpixel_figure = figure.to_subpixel((300, 300))
+        """
+        new_nodes = {}
+        for node_id in self.nodes.keys():
+            new_node = self.nodes[node_id].to_subpixel(img_size)
+            new_nodes[node_id] = new_node
+        return GraphNodes(
+            nodes=new_nodes,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )
 
 
 class KeypointsTemplate(GraphNodes, Geometry):
