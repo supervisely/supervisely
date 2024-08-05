@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import Dict, Optional, Union
 
 import supervisely.convert.image.cityscapes.cityscapes_helper as helper
 from supervisely import (
@@ -17,18 +17,23 @@ from supervisely import (
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import JUNK_FILES, get_file_name, get_file_ext
+from supervisely.io.fs import JUNK_FILES, get_file_name
 from supervisely.io.json import load_json_file
+from supervisely.project.project_settings import LabelingInterface
 
 
 class CityscapesConverter(ImageConverter):
 
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._classes_mapping = {}
-        self._labeling_interface: str = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.CITYSCAPES

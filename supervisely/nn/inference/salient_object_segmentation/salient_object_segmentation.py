@@ -1,18 +1,23 @@
-from typing import Dict
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.nn.prediction_dto import PredictionMask
-from supervisely.annotation.label import Label
-from supervisely.sly_logger import logger
-import numpy as np
 import functools
+from typing import Dict
+
+import numpy as np
+
+from supervisely.annotation.label import Label
+from supervisely.decorators.inference import (
+    _process_image_path,
+    _scale_ann_to_original_size,
+    process_image_sliding_window,
+)
+from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
-from supervisely.decorators.inference import _scale_ann_to_original_size, _process_image_path
 from supervisely.io.fs import silent_remove
-from supervisely.decorators.inference import process_image_sliding_window
 from supervisely.nn.inference.semantic_segmentation.semantic_segmentation import (
     SemanticSegmentation,
 )
+from supervisely.nn.prediction_dto import PredictionMask
+from supervisely.sly_logger import logger
 
 
 class SalientObjectSegmentation(SemanticSegmentation):
@@ -22,7 +27,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
         return info
 
     def _create_label(self, dto: PredictionMask):
-        geometry = Bitmap(dto.mask)
+        geometry = Bitmap(dto.mask, extra_validation=False)
         obj_class = self.model_meta.get_obj_class(dto.class_name)
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask is empty and will be slipped")
@@ -81,6 +86,8 @@ class SalientObjectSegmentation(SemanticSegmentation):
                 pad_right = right + width_padding
                 pad_top = top - height_padding
                 pad_bottom = bottom + height_padding
+            else:
+                raise ValueError("Unsupported padding format")
             return Rectangle(pad_top, pad_left, pad_bottom, pad_right)
 
         # function for padded bounding boxes processing
@@ -115,6 +122,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
 
             rectangle = Rectangle.from_json(rectangle_json)
             padding = settings.get("bbox_padding")
+            original_rectangle = None
             if padding is not None:
                 original_rectangle = rectangle
                 rectangle = bbox_padding(rectangle, padding)
@@ -123,7 +131,9 @@ class SalientObjectSegmentation(SemanticSegmentation):
                 elif "image_path" in kwargs.keys():
                     image_path = kwargs["image_path"]
                     image_np = sly_image.read(image_path)
-                rectangle = process_padded_bbox(image_np, rectangle)  # pylint: disable=used-before-assignment  
+                else:
+                    raise ValueError("image_np or image_path not provided!")
+                rectangle = process_padded_bbox(image_np, rectangle)
 
             if "image_np" in kwargs.keys():
                 image_np = kwargs["image_np"]
@@ -175,7 +185,9 @@ class SalientObjectSegmentation(SemanticSegmentation):
             predictions = self.predict_raw(image_path=image_path, settings=settings)
         else:
             predictions = self.predict(image_path=image_path, settings=settings)
-        ann = self._predictions_to_annotation(image_path, predictions)
+        ann = self._predictions_to_annotation(
+            image_path, predictions, settings.get("classes", None)
+        )
 
         logger.debug(
             f"Inferring image_path done. pred_annotation:",

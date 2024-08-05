@@ -8,8 +8,19 @@ from jsonschema import ValidationError, validate
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagValueType
+from supervisely.collection.str_enum import StrEnum
 from supervisely.io.json import JsonSerializable
 from supervisely.sly_logger import logger
+
+
+class LabelingInterface(str, StrEnum):
+    DEFAULT = "default"
+    MEDICAL_IMAGING_SINGLE = "medical_imaging_single"
+    IMAGES_WITH_16_COLOR = "images_with_16_color"
+    MULTISPECTRAL = "multispectral"
+    MULTIVIEW = "multi_view"
+    IMAGE_MATTING = "image_matting"
+    FISHEYE = "fisheye"
 
 
 class ProjectSettingsJsonFields:
@@ -18,6 +29,7 @@ class ProjectSettingsJsonFields:
     TAG_ID = "tagId"
     TAG_NAME = "tagName"
     IS_SYNCED = "isSynced"
+    LABELING_INTERFACE = "labelingInterface"
 
 
 class ProjectSettingsRequiredSchema:
@@ -39,7 +51,8 @@ class ProjectSettingsRequiredSchema:
                     ProjectSettingsJsonFields.IS_SYNCED,
                 ],
                 "additionalProperties": False,
-            }
+            },
+            ProjectSettingsJsonFields.LABELING_INTERFACE: {"type": ["string", "null"]},
         },
         "required": [ProjectSettingsJsonFields.MULTI_VIEW],
         "additionalProperties": False,
@@ -79,6 +92,8 @@ class ProjectSettings(JsonSerializable):
     :type multiview_tag_id: str, optional
     :param multiview_is_synced: Enable syncronization of views for the multi-view mode.
     :type multiview_is_synced: bool
+    :param labeling_interface: The interface for labeling images.
+    :type labeling_interface: str, optional
 
     :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
     :Usage example:
@@ -102,11 +117,20 @@ class ProjectSettings(JsonSerializable):
         multiview_tag_name: Optional[str] = None,
         multiview_tag_id: Optional[int] = None,
         multiview_is_synced: bool = False,
+        labeling_interface: Optional[LabelingInterface] = None,
     ):
         self.multiview_enabled = multiview_enabled
         self.multiview_tag_name = multiview_tag_name
         self.multiview_tag_id = multiview_tag_id
         self.multiview_is_synced = multiview_is_synced
+
+        if labeling_interface is not None:
+            if labeling_interface not in LabelingInterface.values():
+                raise ValueError(
+                    f"Invalid labeling interface value: {labeling_interface}. The available values: {LabelingInterface.values()}"
+                )
+
+        self.labeling_interface = labeling_interface
 
         if multiview_enabled is False and multiview_is_synced is True:
             logger.warn(
@@ -118,12 +142,14 @@ class ProjectSettings(JsonSerializable):
         validate_project_settings_schema(data)
 
         d_multiview = data[ProjectSettingsJsonFields.MULTI_VIEW]
+        labeling_interface = data.get(ProjectSettingsJsonFields.LABELING_INTERFACE)
 
         return cls(
             multiview_enabled=d_multiview[ProjectSettingsJsonFields.ENABLED],
             multiview_tag_name=d_multiview[ProjectSettingsJsonFields.TAG_NAME],
             multiview_tag_id=d_multiview[ProjectSettingsJsonFields.TAG_ID],
             multiview_is_synced=d_multiview[ProjectSettingsJsonFields.IS_SYNCED],
+            labeling_interface=labeling_interface,
         )
 
     def to_json(self) -> dict:
@@ -135,6 +161,8 @@ class ProjectSettings(JsonSerializable):
                 ProjectSettingsJsonFields.IS_SYNCED: self.multiview_is_synced,
             }
         }
+        if self.labeling_interface is not None:
+            data[ProjectSettingsJsonFields.LABELING_INTERFACE] = self.labeling_interface
         validate_project_settings_schema(data)
         return data
 
@@ -144,12 +172,14 @@ class ProjectSettings(JsonSerializable):
         multiview_tag_name: Optional[str] = None,
         multiview_tag_id: Optional[int] = None,
         multiview_is_synced: bool = None,
+        labeling_interface: Optional[LabelingInterface] = None,
     ):
         return ProjectSettings(
             multiview_enabled=take_with_default(multiview_enabled, self.multiview_enabled),
             multiview_tag_name=take_with_default(multiview_tag_name, self.multiview_tag_name),
             multiview_tag_id=take_with_default(multiview_tag_id, self.multiview_tag_id),
             multiview_is_synced=take_with_default(multiview_is_synced, self.multiview_is_synced),
+            labeling_interface=take_with_default(labeling_interface, self.labeling_interface),
         )
 
     def validate(self, meta):
@@ -174,4 +204,11 @@ class ProjectSettings(JsonSerializable):
             elif multi_tag.value_type != TagValueType.ANY_STRING:
                 raise RuntimeError(
                     f"The multi-view tag value type should be '{TagValueType.ANY_STRING}'. The provided type: '{multi_tag.value_type}'."
+                )
+
+        if meta.project_settings.labeling_interface is not None:
+            if meta.project_settings.labeling_interface not in LabelingInterface.values():
+                raise RuntimeError(
+                    f"Invalid labeling interface value: {meta.project_settings.labeling_interface}. "
+                    f"The available values: {LabelingInterface.values()}"
                 )

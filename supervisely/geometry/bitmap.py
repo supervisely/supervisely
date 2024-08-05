@@ -236,7 +236,7 @@ class Bitmap(BitmapBase):
             if not np.any(cropped_mask):
                 return []
             return [
-                Bitmap(
+                self.__class__(
                     data=cropped_mask,
                     origin=PointLocation(row=cropped_bbox.top, col=cropped_bbox.left),
                 )
@@ -267,7 +267,7 @@ class Bitmap(BitmapBase):
         )
         # TODO this might break if a sparse mask is resized too thinly. Instead, resize every pixel individually and set
         #  it in the resulting bitmap.
-        return Bitmap(data=scaled_data.astype(np.bool), origin=scaled_origin)
+        return self.__class__(data=scaled_data, origin=scaled_origin)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_impl"""
@@ -275,17 +275,18 @@ class Bitmap(BitmapBase):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_contour_impl"""
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
-            contours, _ = cv2.findContours(  # pylint: disable=no-member
+        # pylint: disable=(no-member, unpacking-non-sequence)
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
+            contours, _ = cv2.findContours(
                 self.data.astype(np.uint8),
-                cv2.RETR_LIST,  # pylint: disable=no-member
-                cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                cv2.RETR_LIST,
+                cv2.CHAIN_APPROX_SIMPLE,
             )
         else:
-            _, contours, _ = cv2.findContours(  # pylint: disable=no-member
+            _, contours, _ = cv2.findContours(
                 self.data.astype(np.uint8),
-                cv2.RETR_LIST,  # pylint: disable=no-member
-                cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                cv2.RETR_LIST,
+                cv2.CHAIN_APPROX_SIMPLE,
             )
         if contours is not None:
             for cont in contours:
@@ -293,9 +294,10 @@ class Bitmap(BitmapBase):
                     self.origin.col,
                     self.origin.row,
                 )  # cont with shape (rows, ?, 2)
-            cv2.drawContours(  # pylint: disable=no-member
+            cv2.drawContours(
                 bitmap, contours, -1, color, thickness=thickness
             )
+        # pylint: enable=(no-member, unpacking-non-sequence)
 
     @property
     def area(self) -> float:
@@ -350,9 +352,9 @@ class Bitmap(BitmapBase):
             return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
 
-        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
+        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=(no-member, unpacking-non-sequenc)
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] >= 4):
-            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs
+            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded.astype(bool)  # flat 2d mask
         else:
@@ -429,8 +431,11 @@ class Bitmap(BitmapBase):
             raise NotImplementedError("Method {!r} does't exist.".format(method_id))
 
         mask_u8 = self.data.astype(np.uint8)
-        res_mask = method(mask_u8).astype(bool)
-        return Bitmap(data=res_mask, origin=self.origin)
+        if self.__class__ == Bitmap:
+            res_mask = method(mask_u8).astype(bool)
+        else:
+            res_mask = method(mask_u8)
+        return self.__class__(data=res_mask, origin=self.origin)
 
     def to_contours(self) -> List[Polygon]:
         """
@@ -445,18 +450,20 @@ class Bitmap(BitmapBase):
             figure_contours = figure.to_contours()
         """
         origin, mask = self.origin, self.data
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):  # pylint: disable=no-member
-            contours, hier = cv2.findContours(  # pylint: disable=no-member
+        # pylint: disable=(no-member, unpacking-non-sequence)
+        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
+            contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
-                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes # pylint: disable=no-member
-                method=cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with hole
+                method=cv2.CHAIN_APPROX_SIMPLE,
             )
         else:
-            _, contours, hier = cv2.findContours(  # pylint: disable=no-member
+            _, contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
-                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with holes # pylint: disable=no-member
-                method=cv2.CHAIN_APPROX_SIMPLE,  # pylint: disable=no-member
+                mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with hole
+                method=cv2.CHAIN_APPROX_SIMPLE,
             )
+        # pylint: enable=(no-member, unpacking-non-sequence)
         if (hier is None) or (contours is None):
             return []
 
@@ -521,29 +528,36 @@ class Bitmap(BitmapBase):
         """
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data
-        full_size_mask = np.full(full_size, False, bool)
+        if self.__class__ == Bitmap:
+            full_size_mask = np.full(full_size, False, bool)
+        else:
+            full_size_mask = np.full(full_size, 0, np.uint8)
         full_size_mask[
             origin.row : origin.row + mask.shape[0],
             origin.col : origin.col + mask.shape[1],
         ] = mask
 
-        new_mask = bit_op(full_target_mask, full_size_mask).astype(bool)
+        if self.__class__ == Bitmap:
+            new_mask = bit_op(full_target_mask, full_size_mask).astype(bool)
+        else:
+            new_mask = bit_op(full_target_mask, full_size_mask).astype(np.uint8)
         if new_mask.sum() == 0:
             return []
         new_mask = new_mask[
             origin.row : origin.row + mask.shape[0],
             origin.col : origin.col + mask.shape[1],
         ]
-        return Bitmap(data=new_mask, origin=origin.clone())
+        return self.__class__(data=new_mask, origin=origin.clone())
 
     @classmethod
     def allowed_transforms(cls):
         """allowed_transforms"""
+        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
 
-        return [AnyGeometry, Polygon, Rectangle]
+        return [AlphaMask, AnyGeometry, Polygon, Rectangle]
 
     @classmethod
     def from_path(cls, path: str) -> Bitmap:

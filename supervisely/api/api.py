@@ -55,6 +55,7 @@ from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
 )
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
@@ -65,6 +66,77 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
+
+class ApiContext:
+    """
+    Context manager for the API object for optimization purposes.
+    Use this context manager when you need to perform a series of operations on the same project or dataset.
+    It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
+
+    :param api: API object.
+    :type api: :class:`Api`
+    :param project_id: Project ID.
+    :type project_id: int, optional
+    :param dataset_id: Dataset ID.
+    :type dataset_id: int, optional
+    :param project_meta: ProjectMeta object.
+    :type project_meta: :class:`ProjectMeta`, optional
+    :raises: :class:`RuntimeError`, if api is None.
+
+    :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            with ApiContext(
+                api,
+                project_id=33333,
+                dataset_id=99999,
+                project_meta=project_meta,
+                with_alpha_masks=True,
+            ):
+                api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                # another code here
+    """
+
+    def __init__(
+        self,
+        api: Api,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        with_alpha_masks: Optional[bool] = True,
+    ):
+        if api is None:
+            raise RuntimeError("Api object is None")
+        self.api = api
+        self.project_id = project_id
+        self.dataset_id = dataset_id
+        self.project_meta = project_meta
+        self.with_alpha_masks = with_alpha_masks
+
+    def __enter__(self):
+        self.api.optimization_context = {
+            "project_id": self.project_id,
+            "dataset_id": self.dataset_id,
+            "project_meta": self.project_meta,
+            "with_alpha_masks": self.with_alpha_masks,
+        }
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.api.optimization_context = {}
 
 
 class UserSession:
@@ -200,7 +272,7 @@ class Api:
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
     def __init__(
@@ -220,11 +292,11 @@ class Api:
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         if token is None:
             raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "API_TOKEN env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         self.server_address = Api.normalize_server_address(server_address)
 
@@ -250,6 +322,7 @@ class Api:
             self.headers["x-task-id"] = self.task_id
         self.context = {}
         self.additional_fields = {}
+        self.optimization_context = {}
 
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
@@ -328,14 +401,14 @@ class Api:
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             api = sly.Api.from_env()
 
             # alternatively you can store SERVER_ADDRESS and API_TOKEN
             # in "~/supervisely.env" .env file
-            # Learn more here: https://developer.supervise.ly/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
+            # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
 
             api = sly.Api.from_env()
         """
@@ -358,11 +431,11 @@ class Api:
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         if token is None:
             raise ValueError(
-                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
 
         return cls(

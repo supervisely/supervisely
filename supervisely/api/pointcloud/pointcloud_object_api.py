@@ -1,12 +1,13 @@
 # coding: utf-8
 
 from typing import List
-from supervisely.video_annotation.key_id_map import KeyIdMap
+
+from supervisely.api.entity_annotation.object_api import ObjectApi
+from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudObjectTagApi
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
-from supervisely.api.entity_annotation.object_api import ObjectApi
-from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudObjectTagApi
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudObjectApi(ObjectApi):
@@ -47,7 +48,7 @@ class PointcloudObjectApi(ObjectApi):
 
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -105,7 +106,7 @@ class PointcloudObjectApi(ObjectApi):
             from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

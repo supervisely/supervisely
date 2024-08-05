@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
 import supervisely.convert.image.csv.csv_helper as csv_helper
 from supervisely import (
     Annotation,
-    Api,
     batched,
     generate_free_name,
     is_development,
@@ -16,6 +15,7 @@ from supervisely import (
     ProjectMeta,
     TagCollection,
 )
+from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS
@@ -25,6 +25,7 @@ from supervisely.io.fs import (
     list_files_recursively,
 )
 from supervisely.io.json import load_json_file
+from supervisely.project.project_settings import LabelingInterface
 
 
 class CSVConverter(ImageConverter):
@@ -76,13 +77,17 @@ class CSVConverter(ImageConverter):
         ".tsv": csv_helper.convert_tsv_to_csv,
     }
 
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._csv_reader = None
         self._team_id = None
-        self._labeling_interface: str = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.CSV
@@ -268,6 +273,8 @@ class CSVConverter(ImageConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
+        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        project_id = dataset_info.project_id
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -320,7 +327,10 @@ class CSVConverter(ImageConverter):
                 progress_ann_cb = progress_ann.update
             else:
                 progress_ann_cb = None
-            api.annotation.upload_anns(img_ids, anns, progress_ann_cb)
+            with ApiContext(
+                api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
+            ):
+                api.annotation.upload_anns(img_ids, anns, progress_ann_cb)
 
         if log_progress:
             if is_development():

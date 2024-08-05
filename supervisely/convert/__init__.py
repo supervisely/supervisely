@@ -24,8 +24,11 @@ from supervisely.convert.image.masks.images_with_masks_converter import ImagesWi
 from supervisely.convert.image.pascal_voc.pascal_voc_converter import PascalVOCConverter
 from supervisely.convert.image.pdf.pdf_converter import PDFConverter
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
+from supervisely.convert.image.sly.fast_sly_image_converter import FastSlyImageConverter
 from supervisely.convert.image.yolo.yolo_converter import YOLOConverter
 from supervisely.convert.image.multi_view.multi_view import MultiViewImageConverter
+from supervisely.convert.image.label_me.label_me_converter import LabelmeConverter
+from supervisely.convert.image.label_studio.label_studio_converter import LabelStudioConverter
 
 
 

@@ -1,8 +1,11 @@
 # coding: utf-8
 
-from supervisely.api.module_api import ModuleApi
-from supervisely.api.module_api import ApiField
+from typing import List
+
+from supervisely._utils import batched
+from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -25,21 +28,22 @@ class TagApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
             info_sequence = api.video.tag.info_sequence()
         """
 
-        return [ApiField.ID,
-                ApiField.PROJECT_ID,
-                ApiField.NAME,
-                ApiField.SETTINGS,
-                ApiField.COLOR,
-                ApiField.CREATED_AT,
-                ApiField.UPDATED_AT
-                ]
+        return [
+            ApiField.ID,
+            ApiField.PROJECT_ID,
+            ApiField.NAME,
+            ApiField.SETTINGS,
+            ApiField.COLOR,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+        ]
 
     @staticmethod
     def info_tuple_name():
@@ -54,7 +58,7 @@ class TagApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -62,7 +66,7 @@ class TagApi(ModuleApi):
             print(tuple_name) # TagInfo
         """
 
-        return 'TagInfo'
+        return "TagInfo"
 
     def get_list(self, project_id: int, filters=None):
         """
@@ -76,7 +80,9 @@ class TagApi(ModuleApi):
         :rtype: list
         """
 
-        return self.get_list_all_pages('tags.list', {ApiField.PROJECT_ID: project_id, "filter": filters or []})
+        return self.get_list_all_pages(
+            "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
+        )
 
     def get_name_to_id_map(self, project_id: int):
         """
@@ -106,7 +112,13 @@ class TagApi(ModuleApi):
             tags_keys.append(tag.key())
         return tags_json, tags_keys
 
-    def append_to_entity(self, entity_id: int, project_id: int, tags: KeyIndexedCollection, key_id_map: KeyIdMap = None):
+    def append_to_entity(
+        self,
+        entity_id: int,
+        project_id: int,
+        tags: KeyIndexedCollection,
+        key_id_map: KeyIdMap = None,
+    ):
         """
         Add tags to entity in project with given ID.
 
@@ -138,20 +150,26 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
-        response = self._api.post(self._method_bulk_add, {self._entity_id_field: entity_id, ApiField.TAGS: tags_json})
+        response = self._api.post(
+            self._method_bulk_add, {self._entity_id_field: entity_id, ApiField.TAGS: tags_json}
+        )
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
-    def append_to_objects(self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap):
+    def append_to_objects(
+        self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap
+    ):
         """
-        Add Tags to Annotation Objects.
+        Add Tags to Annotation Objects for a specific entity (image etc.).
 
-        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :param entity_id: ID of the entity in Supervisely to add a tag to its objects
         :type entity_id: int
-        :param project_id: Project ID in Supervisely.
+        :param project_id: Project ID in Supervisely. Uses to get tag name to tag ID mapping.
         :type project_id: int
-        :param tags_json: Collection of tags
-        :type tags_json: KeyIndexedCollection
+        :param objects: Collection of Annotation Objects.
+        :type objects: KeyIndexedCollection
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap
         :return: List of tags IDs
         :rtype: list
         :Usage example:
@@ -160,12 +178,12 @@ class TagApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            pointcloud_id = 19373170
-            pcd_info = api.
+            img_id = 19373170
+            img_info = api.
         """
 
         tag_name_id_map = self.get_name_to_id_map(project_id)
@@ -175,8 +193,14 @@ class TagApi(ModuleApi):
         for object in objects:
             obj_id = key_id_map.get_object_id(object.key())
             if obj_id is None:
-                raise RuntimeError("Can not add tags to object: OBJECT_ID not found for key {}".format(object.key()))
-            tags_json, cur_tags_keys = self._tags_to_json(object.tags, tag_name_id_map=tag_name_id_map)
+                raise RuntimeError(
+                    "Can not add tags to object: OBJECT_ID not found for key {}".format(
+                        object.key()
+                    )
+                )
+            tags_json, cur_tags_keys = self._tags_to_json(
+                object.tags, tag_name_id_map=tag_name_id_map
+            )
             for tag in tags_json:
                 tag[ApiField.OBJECT_ID] = obj_id
                 tags_to_add.append(tag)
@@ -188,12 +212,13 @@ class TagApi(ModuleApi):
             return
         ids = self.append_to_objects_json(entity_id, tags_to_add)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
+        return ids
 
     def append_to_objects_json(self, entity_id: int, tags_json: dict) -> list:
         """
-        Add Tags to Annotation Objects.
+        Add Tags to Annotation Objects for specific entity (image etc.).
 
-        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :param entity_id: ID of the entity in Supervisely to add a tag to its objects
         :type entity_id: int
         :param tags_json: Collection of tags in JSON format
         :type tags_json: dict
@@ -203,7 +228,101 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
-        response = self._api.post('annotation-objects.tags.bulk.add',
-                                  {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json})
+        response = self._api.post(
+            "annotation-objects.tags.bulk.add",
+            {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json},
+        )
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
+
+    def add_to_objects(
+        self,
+        project_id: int,
+        tags_list: List[dict],
+        batch_size: int = 100,
+        log_progress: bool = False,
+    ) -> List[dict]:
+        """
+        Add Tags to existing Annotation Figures.
+        All figures must belong to entities of the same project.
+        Applies only to images project.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_list: List of tag object infos as dictionaries.
+        :type tags_list: List[dict]
+        :param batch_size: Number of tags to add in one request.
+        :type batch_size: int
+        :param log_progress: If True, will display a progress bar.
+        :type log_progress: bool
+        :return: List of tags infos as dictionaries.
+        :rtype: List[dict]
+
+        Usage example:
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address, token)
+
+            tag_list = [
+                {
+                    "tagId": 25926,
+                    "figureId": 652959,
+                    "value": None # value is optional for tag with type 'None'
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652959,
+                    "value": "v1"
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652958,
+                    "value": "v2"
+                }
+            ]
+            response = api.image.tag.add_to_figures(12345, tag_list)
+
+            print(response)
+            # Output:
+            #    [
+            #        {
+            #            "id": 80421101,
+            #            "tagId": 25926,
+            #            "figureId": 652959,
+            #            "value": None
+            #        },
+            #        {
+            #            "id": 80421102,
+            #            "tagId": 25927,
+            #            "figureId": 652959,
+            #            "value": "v1"
+            #        },
+            #        {
+            #            "id": 80421103,
+            #            "tagId": 25927,
+            #            "figureId": 652958,
+            #            "value": "v2"
+            #        }
+            #    ]
+        """
+        if type(self) is not TagApi:
+            raise NotImplementedError("This method is not available for classes except TagApi")
+
+        if len(tags_list) == 0:
+            return []
+
+        result = []
+        if log_progress:
+            ds_progress = tqdm_sly(
+                desc="Adding tags to figures",
+                total=len(tags_list),
+            )
+        for batch in batched(tags_list, batch_size):
+            data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
+            response = self._api.post("figures.tags.bulk.add", data)
+            result.extend(response.json())
+            if log_progress:
+                ds_progress.update(len(batch))
+        return result

@@ -530,7 +530,18 @@ class ApiField:
     """"""
     LIMIT_BY_WORKSPACE = "limitByWorkspace"
     """"""
-
+    COMMIT_TOKEN = "commitToken"
+    """"""
+    TEAM_FILE_ID = "teamFileId"
+    """"""
+    PROJECT_UPDATED_AT = "projectUpdatedAt"
+    """"""
+    NODE = "node"
+    """"""
+    OPERATOR = "operator"
+    """"""
+    SMART_TOOL_INPUT = "smartToolInput"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
@@ -840,7 +851,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -890,7 +901,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -929,7 +940,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -965,7 +976,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1064,7 +1075,7 @@ class CloneableModuleApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             # Load secrets and create API object from .env file (recommended)
@@ -1250,7 +1261,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1284,7 +1295,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

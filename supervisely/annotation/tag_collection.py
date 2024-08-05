@@ -3,12 +3,13 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict, Iterator, Any
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
-from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollection
+from typing import Any, Dict, Iterator, List, Optional
+
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollection
 
 
 class TagCollection(MultiKeyIndexedCollection):
@@ -250,7 +251,7 @@ class TagCollection(MultiKeyIndexedCollection):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

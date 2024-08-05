@@ -13,12 +13,11 @@ import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
-from supervisely.nn.inference.cache import InferenceImageCache, PersistentImageTTLCache
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 
 
-class PointTracking(Inference, InferenceImageCache):
+class PointTracking(Inference):
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -30,13 +29,6 @@ class PointTracking(Inference, InferenceImageCache):
             custom_inference_settings,
             sliding_window_mode=None,
             use_gui=False,
-        )
-        InferenceImageCache.__init__(
-            self,
-            maxsize=sly.env.smart_cache_size(),
-            ttl=sly.env.smart_cache_ttl(),
-            is_persistent=True,
-            base_folder=sly.env.smart_cache_container_dir(),
         )
 
         try:
@@ -87,7 +79,8 @@ class PointTracking(Inference, InferenceImageCache):
             context=context,
             api=api,
             load_all_frames=load_all_frames,
-            frame_loader=self.download_frame,
+            frame_loader=self.cache.download_frame,
+            frames_loader=self.cache.download_frames,
             should_notify=False,
         )
 
@@ -96,16 +89,16 @@ class PointTracking(Inference, InferenceImageCache):
             video_interface.frames_indexes[-1],
         ]
 
-        if isinstance(self._cache, PersistentImageTTLCache):
+        if self.cache.is_persistent:
             # if cache is persistent, run cache task for whole video
-            self.run_cache_task_manually(
+            self.cache.run_cache_task_manually(
                 api,
                 None,
                 video_id=video_interface.video_id,
             )
         else:
             # if cache is not persistent, run cache task for range of frames
-            self.run_cache_task_manually(
+            self.cache.run_cache_task_manually(
                 api,
                 [range_of_frames],
                 video_id=video_interface.video_id,
@@ -196,10 +189,10 @@ class PointTracking(Inference, InferenceImageCache):
             range(context["frame_index"], context["frame_index"] + context["frames"] + 1)
         )
         geometries = map(self._deserialize_geometry, context["input_geometries"])
-        frames = self.get_frames_from_cache(video_id, frame_indexes)
+        frames = self.cache.get_frames_from_cache(video_id, frame_indexes)
         return self._inference(frames, geometries, context)
 
-    def track_api_files(
+    def _track_api_files(
         self, request: Request, files: List[UploadFile], settings: str = Form("{}")
     ):
         state = json.loads(settings)
@@ -213,7 +206,6 @@ class PointTracking(Inference, InferenceImageCache):
         for file, frame_idx in zip(files, frame_indexes):
             img_bytes = file.file.read()
             frame = sly.image.read_bytes(img_bytes)
-            self.add_frame_to_cache(frame, video_id, frame_idx)
             frames.append(frame)
         sly.logger.info("Start tracking.")
         return self._inference(frames, geometries, state)
@@ -221,8 +213,8 @@ class PointTracking(Inference, InferenceImageCache):
     def serve(self):
         super().serve()
         server = self._app.get_server()
-        self.add_cache_endpoint(server)
-        self.add_cache_files_endpoint(server)
+        self.cache.add_cache_endpoint(server)
+        self.cache.add_cache_files_endpoint(server)
 
         @server.post("/track")
         def start_track(request: Request, task: BackgroundTasks):
@@ -230,16 +222,16 @@ class PointTracking(Inference, InferenceImageCache):
             return {"message": "Track task started."}
 
         @server.post("/track-api")
-        async def track_api(request: Request):
+        def track_api(request: Request):
             return self.track_api(request.state.api, request.state.context)
 
         @server.post("/track-api-files")
-        async def track_api_frames_files(
+        def track_api_frames_files(
             request: Request,
             files: List[UploadFile],
             settings: str = Form("{}"),
         ):
-            return self.track_api_files(request, files, settings)
+            return self._track_api_files(request, files, settings)
 
         def send_error_data(func):
             @functools.wraps(func)
@@ -281,7 +273,8 @@ class PointTracking(Inference, InferenceImageCache):
                 context=context,
                 api=api,
                 load_all_frames=load_all_frames,
-                frame_loader=self.download_frame,
+                frame_loader=self.cache.download_frame,
+                frames_loader=self.cache.download_frames,
             )
 
             range_of_frames = [
@@ -289,11 +282,21 @@ class PointTracking(Inference, InferenceImageCache):
                 video_interface.frames_indexes[-1],
             ]
 
-            self.run_cache_task_manually(
-                api,
-                [range_of_frames],
-                video_id=video_interface.video_id,
-            )
+            if self.cache.is_persistent:
+                # if cache is persistent, run cache task for whole video
+                self.cache.run_cache_task_manually(
+                    api,
+                    None,
+                    video_id=video_interface.video_id,
+                )
+            else:
+                # if cache is not persistent, run cache task for range of frames
+                self.cache.run_cache_task_manually(
+                    api,
+                    [range_of_frames],
+                    video_id=video_interface.video_id,
+                )
+
             api.logger.info("Start tracking.")
 
             def _upload_loop(q: Queue, stop_event: Event, video_interface: TrackerInterface):
@@ -304,6 +307,7 @@ class PointTracking(Inference, InferenceImageCache):
                             items.append(q.get_nowait())
                         if len(items) > 0:
                             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                            continue
                         if stop_event.is_set():
                             video_interface._notify(True, task="stop tracking")
                             return
@@ -419,12 +423,13 @@ class PointTracking(Inference, InferenceImageCache):
         images: List[np.ndarray],
         vis_path: str,
         thickness: int = 2,
+        classes_whitelist: List[str] = None,
     ):
         vis_path = Path(vis_path)
 
         for i, (pred, image) in enumerate(zip(predictions, images)):
             out_path = vis_path / f"img_{i}.jpg"
-            ann = self._predictions_to_annotation(image, [pred])
+            ann = self._predictions_to_annotation(image, [pred], classes_whitelist)
             ann.draw_pretty(
                 bitmap=image,
                 color=(255, 0, 0),
@@ -552,10 +557,15 @@ class PointTracking(Inference, InferenceImageCache):
         return F.exterior_to_sly_polyline(points_loc)
 
     def _predictions_to_annotation(
-        self, image: np.ndarray, predictions: List[Prediction]
+        self, image: np.ndarray, predictions: List[Prediction], classes_whitelist: List[str] = None
     ) -> sly.Annotation:
         labels = []
         for prediction in predictions:
+            if (
+                not classes_whitelist in (None, "all")
+                and prediction.class_name not in classes_whitelist
+            ):
+                continue
             label = self._create_label(prediction)
             if label is None:
                 # for example empty mask

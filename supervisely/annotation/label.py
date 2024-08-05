@@ -38,6 +38,12 @@ class LabelJsonFields:
     """"""
     INSTANCE_KEY = "instance"
     """"""
+    ID = "id"
+    """"""
+    GEOMETRY_TYPE = "geometryType"
+    """"""
+    SMART_TOOL_INPUT = "smartToolInput"
+    """"""
 
 
 class LabelBase:
@@ -52,6 +58,11 @@ class LabelBase:
     :type tags: TagCollection or List[Tag]
     :param description: Label description.
     :type description: str, optional
+    :param binding_key: Label binding key.
+    :type binding_key: str, optional
+    :param smart_tool_input: Smart Tool parameters that were used for labeling.
+    :type smart_tool_input: dict, optional
+
     :Usage example:
 
      .. code-block:: python
@@ -82,7 +93,8 @@ class LabelBase:
         obj_class: ObjClass,
         tags: Optional[Union[TagCollection, List[Tag]]] = None,
         description: Optional[str] = "",
-        binding_key=None,
+        binding_key: Optional[str] = None,
+        smart_tool_input: Optional[Dict] = None,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -95,6 +107,7 @@ class LabelBase:
             self._tags = TagCollection(tags)
 
         self._binding_key = binding_key
+        self._smart_tool_input = smart_tool_input
 
     def _validate_geometry(self):
         """
@@ -102,7 +115,8 @@ class LabelBase:
         :return: generate ValueError error if name is mismatch
         """
         self._geometry.validate(
-            self._obj_class.geometry_type.geometry_name(), self.obj_class.geometry_config
+            self._obj_class.geometry_type.geometry_name(),
+            self.obj_class.geometry_config,
         )
 
     def _validate_geometry_type(self):
@@ -266,6 +280,9 @@ class LabelBase:
         if self.binding_key is not None:
             res[LabelJsonFields.INSTANCE_KEY] = self.binding_key
 
+        if self._smart_tool_input is not None:
+            res[LabelJsonFields.SMART_TOOL_INPUT] = self._smart_tool_input
+
         return res
 
     @classmethod
@@ -324,12 +341,17 @@ class LabelBase:
             geometry = obj_class.geometry_type.from_json(data)
 
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
+        smart_tool_input = data.get(LabelJsonFields.SMART_TOOL_INPUT)
+
         return cls(
             geometry=geometry,
             obj_class=obj_class,
-            tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
+            tags=TagCollection.from_json(
+                data[LabelJsonFields.TAGS], project_meta.tag_metas
+            ),
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             binding_key=binding_key,
+            smart_tool_input=smart_tool_input,
         )
 
     def add_tag(self, tag: Tag) -> LabelBase:
@@ -400,6 +422,7 @@ class LabelBase:
         tags: Optional[Union[TagCollection, List[Tag]]] = None,
         description: Optional[str] = None,
         binding_key: Optional[str] = None,
+        smart_tool_input: Optional[Dict] = None,
     ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -412,6 +435,10 @@ class LabelBase:
         :type tags: TagCollection or List[Tag]
         :param description: Label description.
         :type description: str, optional
+        :param binding_key: Label binding key.
+        :type binding_key: str, optional
+        :param smart_tool_input: Smart Tool parameters that were used for labeling.
+        :type smart_tool_input: dict, optional
         :return: New instance of Label
         :rtype: :class:`Label<LabelBase>`
         :Usage example:
@@ -455,6 +482,7 @@ class LabelBase:
             tags=take_with_default(tags, self.tags),
             description=take_with_default(description, self.description),
             binding_key=take_with_default(binding_key, self.binding_key),
+            smart_tool_input=take_with_default(smart_tool_input, self.smart_tool_input),
         )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
@@ -789,6 +817,30 @@ class LabelBase:
         if key is not None and type(key) is not str:
             raise TypeError("Key has to be of type string or None")
         self._binding_key = key
+
+    @property
+    def smart_tool_input(self):
+        """
+        Smart Tool parameters that were used for labeling.
+
+        Example:
+
+            {
+                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]], 
+                'visible': True, 
+                'negative': [], 
+                'positive': [[597, 933], [474.5072466934964, 1381.6437133813354]]
+            }
+        """
+        return self._smart_tool_input
+
+    @smart_tool_input.setter
+    def smart_tool_input(self, smtool_input: Dict):
+        smtool_input_keys = ["crop", "visible", "negative", "positive"]
+        for k in smtool_input_keys:
+            if k not in smtool_input:
+                raise ValueError(f"Smart tool input has to contain key '{k}'")
+        self._smart_tool_input = smtool_input
 
     @property
     def labeler_login(self):
