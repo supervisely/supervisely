@@ -3,6 +3,7 @@ from typing import Callable, Dict, List, Optional, Union
 import supervisely.io.env as env
 from supervisely.api.api import Api
 from supervisely.app.widgets import Widget
+from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.select.select import Select
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
@@ -38,6 +39,8 @@ class SelectDatasetTree(Widget):
     :type append_to_body: bool
     :param widget_id: The unique identifier of the widget.
     :type widget_id: Union[str, None]
+    :param show_select_all_datasets_checkbox: Whether the checkbox to select all datasets should be shown.
+    :type show_select_all_datasets_checkbox: bool
 
     :Public methods:
     - `set_project_id(project_id: int) -> None`: Set the project ID to read datasets from.
@@ -92,6 +95,7 @@ class SelectDatasetTree(Widget):
         workspace_is_selectable: bool = True,
         append_to_body: bool = True,
         widget_id: Union[str, None] = None,
+        show_select_all_datasets_checkbox: bool = True,
     ):
         self._api = Api()
 
@@ -136,6 +140,11 @@ class SelectDatasetTree(Widget):
 
         # Create the dataset selector.
         self._create_dataset_selector(flat, always_open, select_all_datasets)
+
+        # Create the checkbox to select all datasets if needed.
+        self._select_all_datasets_checkbox = None
+        if show_select_all_datasets_checkbox:
+            self._create_select_all_datasets_checkbox(select_all_datasets)
 
         # Group the selectors and the dataset selector into a container.
         self._content = Container(self._widgets)
@@ -293,6 +302,28 @@ class SelectDatasetTree(Widget):
 
         return _click
 
+    def _create_select_all_datasets_checkbox(self, select_all_datasets: bool) -> None:
+        if not self._multiselect:
+            # We'll only create the checkbox if multiselect is enabled.
+            return
+        select_all_datasets_checkbox = Checkbox("Select all datasets")
+
+        @select_all_datasets_checkbox.value_changed
+        def select_all_datasets_checkbox_handler(checked: bool):
+            if checked:
+                self._select_dataset.select_all()
+                self._select_dataset.hide()
+            else:
+                self._select_dataset.clear_selected()
+                self._select_dataset.show()
+
+        if select_all_datasets:
+            self._select_dataset.hide()
+            select_all_datasets_checkbox.check()
+
+        self._widgets.append(select_all_datasets_checkbox)
+        self._select_all_datasets_checkbox = select_all_datasets_checkbox
+
     def _create_dataset_selector(
         self, flat: bool, always_open: bool, select_all_datasets: bool
     ) -> None:
@@ -357,6 +388,13 @@ class SelectDatasetTree(Widget):
             """
             self._select_dataset.set_items(self._read_datasets(project_id))
             self._project_id = project_id
+
+            if (
+                self._select_all_datasets_checkbox is not None
+                and self._select_all_datasets_checkbox.is_checked()
+            ):
+                self._select_dataset.select_all()
+                self._select_dataset.hide()
 
         self._select_team = Select(
             items=self._get_select_items(), placeholder="Select team", filterable=True
