@@ -1,10 +1,12 @@
 # coding: utf-8
 from __future__ import annotations
-from enum import Enum
+
 import json
+from enum import Enum
 from typing import Optional
-from supervisely.task.progress import Progress
+
 from supervisely.app import DialogWindowError
+from supervisely.task.progress import Progress
 
 
 class PullPolicy(Enum):
@@ -131,8 +133,8 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
                 started.add(layer_id)
                 need_report = False
             elif status is PullStatus.DOWNLOAD:
-                layers_total_load[layer_id] = progress_details["total"]
-                layers_current_load[layer_id] = progress_details["current"]
+                layers_total_load[layer_id] = progress_details.get("total", 1)
+                layers_current_load[layer_id] = progress_details.get("current", 0)
                 total_load = sum(layers_total_load.values())
                 current_load = sum(layers_current_load.values())
                 if total_load > progress_load.total:
@@ -156,8 +158,8 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
                     need_report = False
             elif status is PullStatus.COMPLETE_PULL:
                 pulled.add(layer_id)
-            
-            if (started != pulled):
+
+            if started != pulled:
                 if need_report:
                     if started == loaded:
                         progres_ext.report_progress()
