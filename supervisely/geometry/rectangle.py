@@ -97,7 +97,27 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        self._points = [PointLocation(row=top, col=left), PointLocation(row=bottom, col=right)]
+        # Adjust corners
+        # For the top and left coordinates:
+        # If the fractional part of the coordinate is greater than 0.7
+        # The coordinate is rounded up by adding 1 to its integer part
+        # Otherwise
+        # The coordinate is rounded down by taking its integer part
+        top = int(top) + 1 if top % 1 >= 0.7 else int(top)
+        left = int(left) + 1 if left % 1 >= 0.7 else int(left)
+
+        # For the bottom and right coordinates:
+        # If the fractional part of the coordinate is greater than or equal to 0.3
+        # The coordinate is rounded down by taking its integer part
+        # Otherwise
+        # The coordinate is rounded down further by subtracting 1 from its integer part
+        bottom = int(bottom) + 1 if bottom % 1 >= 0.3 else int(bottom)
+        right = int(right) + 1 if right % 1 >= 0.3 else int(right)
+
+        self._points = [
+            PointLocation(row=top, col=left),
+            PointLocation(row=bottom, col=right),
+        ]
 
     def to_json(self) -> Dict:
         """
@@ -738,25 +758,41 @@ class Rectangle(Geometry):
         :return: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
         """
-        height, width = img_size
-        new_right = self.right
-        new_bottom = self.bottom
-        if self.right == width - 1:
-            new_right = self.right + 1
-        if self.bottom == height - 1:
-            new_bottom = self.bottom + 1
+        # Pixel -> Subpixel
+        # Add 0.5 to each corner to center the coordinate within the pixel
+        new_left, new_top = self.left + 0.5, self.top + 0.5
+        new_right, new_bottom = self.right + 0.5, self.bottom + 0.5
+        return Rectangle(
+            top=new_top,
+            left=new_left,
+            bottom=new_bottom,
+            right=new_right,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )
 
-        if self.right == new_right and self.bottom == new_bottom:
-            return self
-        else:
-            return Rectangle(
-                top=self.top,
-                left=self.left,
-                bottom=new_bottom,
-                right=new_right,
-                sly_id=self.sly_id,
-                class_id=self.class_id,
-                labeler_login=self.labeler_login,
-                updated_at=self.updated_at,
-                created_at=self.created_at,
-            )
+        # height, width = img_size
+        # new_right = self.right
+        # new_bottom = self.bottom
+        # if self.right == width - 1:
+        #     new_right = self.right + 0.5
+        # if self.bottom == height - 1:
+        #     new_bottom = self.bottom + 0.5
+
+        # if self.right == new_right and self.bottom == new_bottom:
+        #     return self
+        # else:
+        #     return Rectangle(
+        #         top=self.top,
+        #         left=self.left,
+        #         bottom=new_bottom,
+        #         right=new_right,
+        #         sly_id=self.sly_id,
+        #         class_id=self.class_id,
+        #         labeler_login=self.labeler_login,
+        #         updated_at=self.updated_at,
+        #         created_at=self.created_at,
+        #     )

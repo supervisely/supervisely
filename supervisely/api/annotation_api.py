@@ -758,7 +758,7 @@ class AnnotationApi(ModuleApi):
         if convert_to_subpixel:
             ann = ann.to_subpixel()
             # for idx, object in enumerate(ann.to_json()['objects']):
-            # print(f"Rectangle {idx}: {object['points']['exterior']}")
+                # print(f"Rectangle {idx}: {object['points']['exterior']}")
         self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(
