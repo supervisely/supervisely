@@ -1,25 +1,24 @@
 # coding: utf-8
 from __future__ import annotations
-
-from typing import Dict, Optional, Tuple
-
 import numpy as np
+from typing import Tuple, Dict, Optional
 
 from supervisely.geometry.constants import (
-    CLASS_ID,
-    CREATED_AT,
     DATA,
+    ORIGIN,
     GEOMETRY_SHAPE,
     GEOMETRY_TYPE,
-    ID,
     LABELER_LOGIN,
-    ORIGIN,
     UPDATED_AT,
+    CREATED_AT,
+    ID,
+    CLASS_ID,
 )
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.image import resize_inter_nearest, restore_proportional_size
+
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
@@ -372,7 +371,3 @@ class BitmapBase(Geometry):
         return Rectangle.from_array(self._data).translate(
             drow=self._origin.row, dcol=self._origin.col
         )
-
-    def to_subpixel(self):
-        # No need to convert to subpixel
-        return self

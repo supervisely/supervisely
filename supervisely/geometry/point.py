@@ -3,23 +3,16 @@
 
 # docs
 from __future__ import annotations
-
-from typing import Dict, List, Optional, Tuple
-
 import cv2
-
-from supervisely._utils import unwrap_if_numpy
-from supervisely.geometry.constants import (
-    CLASS_ID,
-    CREATED_AT,
-    ID,
-    LABELER_LOGIN,
-    UPDATED_AT,
-)
-from supervisely.geometry.geometry import Geometry
+from typing import List, Tuple, Dict, Optional
 from supervisely.geometry.image_rotator import ImageRotator
+
+
 from supervisely.geometry.point_location import PointLocation
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.rectangle import Rectangle
+from supervisely._utils import unwrap_if_numpy
+from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
 
 
 class Point(Geometry):
@@ -51,24 +44,10 @@ class Point(Geometry):
         col = 200
         figure = sly.Point(row, col)
     """
-
-    def __init__(
-        self,
-        row: int,
-        col: int,
-        sly_id: Optional[int] = None,
-        class_id: Optional[int] = None,
-        labeler_login: Optional[int] = None,
-        updated_at: Optional[str] = None,
-        created_at: Optional[str] = None,
-    ):
-        super().__init__(
-            sly_id=sly_id,
-            class_id=class_id,
-            labeler_login=labeler_login,
-            updated_at=updated_at,
-            created_at=created_at,
-        )
+    def __init__(self, row: int, col: int,
+                 sly_id: Optional[int] = None, class_id: Optional[int] = None, labeler_login: Optional[int] = None,
+                 updated_at: Optional[str] = None, created_at: Optional[str] = None):
+        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
         self._row = round(unwrap_if_numpy(row))
         self._col = round(unwrap_if_numpy(col))
 
@@ -105,15 +84,8 @@ class Point(Geometry):
         return self._col
 
     @classmethod
-    def from_point_location(
-        cls,
-        pt: PointLocation,
-        sly_id: Optional[int] = None,
-        class_id: Optional[int] = None,
-        labeler_login: Optional[int] = None,
-        updated_at: Optional[str] = None,
-        created_at: Optional[str] = None,
-    ) -> Point:
+    def from_point_location(cls, pt: PointLocation, sly_id: Optional[int] = None, class_id: Optional[int] = None,
+                            labeler_login: Optional[int] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None) -> Point:
         """
         Create Point from given :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object.
 
@@ -140,15 +112,8 @@ class Point(Geometry):
             figure_loc = sly.PointLocation(100, 200)
             figure = sly.Point.from_point_location(figure_loc)
         """
-        return cls(
-            row=pt.row,
-            col=pt.col,
-            sly_id=sly_id,
-            class_id=class_id,
-            labeler_login=labeler_login,
-            updated_at=updated_at,
-            created_at=created_at,
-        )
+        return cls(row=pt.row, col=pt.col,
+                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     @property
     def point_location(self) -> PointLocation:
@@ -167,8 +132,9 @@ class Point(Geometry):
 
     @staticmethod
     def geometry_name():
-        """ """
-        return "point"
+        """
+        """
+        return 'point'
 
     def crop(self, rect: Rectangle) -> List[Point]:
         """
@@ -406,47 +372,13 @@ class Point(Geometry):
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return cls.from_point_location(
-            PointLocation.from_json(data),
-            sly_id=sly_id,
-            class_id=class_id,
-            labeler_login=labeler_login,
-            updated_at=updated_at,
-            created_at=created_at,
-        )
+        return cls.from_point_location(PointLocation.from_json(data),
+                                       sly_id=sly_id, class_id=class_id,
+                                       labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
-
         return [AnyGeometry]
-
-    def to_subpixel(self, img_size: Tuple[int, int]) -> Point:
-        """
-        Convert Point to subpixel coordinates.
-        :param img_size: Image size (height, width) to which belongs Point object.
-        :type img_size: Tuple[int, int]
-        :return: Point object
-        :rtype: :class:`Point<Point>`
-        """
-        height, width = img_size
-        new_row = self.row
-        new_col = self.col
-        if self.row == height - 1:
-            new_row = self.row + 1
-        if self.col == width - 1:
-            new_col = self.col + 1
-
-        if self.row == new_row and self.col == new_col:
-            return self
-        else:
-            return Point(
-                row=new_row,
-                col=new_col,
-                sly_id=self.sly_id,
-                class_id=self.class_id,
-                labeler_login=self.labeler_login,
-                updated_at=self.updated_at,
-                created_at=self.created_at,
-            )

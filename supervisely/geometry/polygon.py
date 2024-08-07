@@ -297,33 +297,9 @@ class Polygon(VectorGeometry):
     @classmethod
     def allowed_transforms(cls):
         """ """
-        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
+        from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
 
         return [AnyGeometry, Rectangle, Bitmap, AlphaMask]
-
-    def to_subpixel(self, img_size: Tuple[int, int]) -> Polygon:
-        """
-        Converts Polygon to subpixel coordinates.
-        :param img_size: Image size in pixels (height, width).
-        :type img_size: Tuple[int, int]
-        :return: Polygon object
-        :rtype: :class:`Polygon<Polygon>`
-        :Usage Example:
-         .. code-block:: python
-            # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
-            subpixel_figure = figure.to_subpixel((300, 300))
-        """
-        new_exterior = [point.to_subpixel(img_size) for point in self.exterior]
-        # No need for interior?
-        return Polygon(
-            exterior=new_exterior,
-            interior=self.interior,
-            sly_id=self.sly_id,
-            class_id=self.class_id,
-            labeler_login=self.labeler_login,
-            updated_at=self.updated_at,
-            created_at=self.created_at,
-        )
