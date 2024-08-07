@@ -84,14 +84,16 @@ class SessionJSON:
             self._base_url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
         else:
             self._base_url = session_url
-        self.set_inference_settings(inference_settings)
-
+        self.inference_settings = {}
         self._session_info = None
         self._default_inference_settings = None
         self._model_meta = None
         self._async_inference_uuid = None
         self._stop_async_inference_flag = False
         self.inference_result = None
+
+        if inference_settings is not None:
+            self.set_inference_settings(inference_settings)
 
         # Check connection:
         try:
@@ -115,8 +117,7 @@ class SessionJSON:
         return self._base_url
 
     def get_session_info(self) -> Dict[str, Any]:
-        if self._session_info is None:
-            self._session_info = self._get_from_endpoint("get_session_info")
+        self._session_info = self._get_from_endpoint("get_session_info")
         return self._session_info
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
@@ -132,6 +133,14 @@ class SessionJSON:
 
         return hr_info
 
+    def get_model_meta(self) -> Dict[str, Any]:
+        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
+        self._model_meta = meta_json
+        return self._model_meta
+
+    def get_deploy_info(self) -> Dict[str, Any]:
+        return self._get_from_endpoint("get_deploy_info")
+    
     def get_default_inference_settings(self) -> Dict[str, Any]:
         if self._default_inference_settings is None:
             resp = self._get_from_endpoint("get_custom_inference_settings")
@@ -141,13 +150,8 @@ class SessionJSON:
             self._default_inference_settings = settings
         return self._default_inference_settings
 
-    def get_model_meta(self) -> Dict[str, Any]:
-        if self._model_meta is None:
-            meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-            self._model_meta = meta_json
-        return self._model_meta
-
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
+        self._validate_new_inference_settings(inference_settings)
         self.inference_settings.update(inference_settings)
         return self.inference_settings
 
@@ -158,11 +162,21 @@ class SessionJSON:
     def _set_inference_settings_dict_or_yaml(self, dict_or_yaml_path) -> None:
         if isinstance(dict_or_yaml_path, str):
             with open(dict_or_yaml_path, "r") as f:
-                self.inference_settings: dict = yaml.safe_load(f)
+                new_settings = yaml.safe_load(f)
         elif isinstance(dict_or_yaml_path, dict):
-            self.inference_settings = dict_or_yaml_path
+            new_settings = dict_or_yaml_path
         else:
-            self.inference_settings = {}
+            raise ValueError(
+                "The `inference_settings` parameter must be either a dict or a path to a YAML file."
+            )
+        self._validate_new_inference_settings(new_settings)
+        self.inference_settings = new_settings
+
+    def _validate_new_inference_settings(self, new_settings: dict) -> None:
+        default_settings = self.get_default_inference_settings()
+        for key, value in new_settings.items():
+            if key not in default_settings:
+                raise ValueError(f"Key '{key}' is not acceptable. Acceptable keys are: {default_settings}")
 
     def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
@@ -310,9 +324,10 @@ class SessionJSON:
     def inference_project_id_async(
         self,
         project_id: int,
-        dataset_ids: List[int],
+        dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
         process_fn=None,
     ):
         if self._async_inference_uuid:
@@ -332,6 +347,7 @@ class SessionJSON:
         state["output_project_id"] = output_project_id
         state["cache_project_on_model"] = cache_project_on_model
         state["dataset_ids"] = dataset_ids
+        state["batch_size"] = batch_size
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -343,12 +359,54 @@ class SessionJSON:
         )
         return frame_iterator
 
+    def run_benchmark(
+        self,
+        project_id: int,
+        batch_size: int = 1,
+        num_iterations: int = 100,
+        num_warmup: int = 3,
+        dataset_ids: List[int] = None,
+        cache_project_on_model: bool = False,
+    ):
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "run_benchmark"
+        url = f"{self._base_url}/{endpoint}"
+        json_body = self._get_default_json_body()
+        state = json_body["state"]
+        params = {
+            "projectId": project_id,
+            "cache_project_on_model": cache_project_on_model,
+            "dataset_ids": dataset_ids,
+            "batch_size": batch_size,
+            "num_iterations": num_iterations,
+            "num_warmup": num_warmup,
+        }
+        state.update(params)
+        resp = self._post(url, json=json_body).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=None
+        )
+        return frame_iterator
+    
     def inference_project_id(
         self,
         project_id: int,
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
     ):
         return [
             pred
@@ -357,6 +415,7 @@ class SessionJSON:
                 dataset_ids,
                 output_project_id,
                 cache_project_on_model=cache_project_on_model,
+                batch_size=batch_size,
                 process_fn=None,
             )
         ]
@@ -593,10 +652,9 @@ class Session(SessionJSON):
         return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
-        if not isinstance(self._model_meta, sly.ProjectMeta):
-            model_meta_json = super().get_model_meta()
-            model_meta = sly.ProjectMeta.from_json(model_meta_json)
-            self._model_meta = model_meta
+        model_meta_json = super().get_model_meta()
+        model_meta = sly.ProjectMeta.from_json(model_meta_json)
+        self._model_meta = model_meta
         return self._model_meta
 
     def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
@@ -663,12 +721,14 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
             dataset_ids,
             output_project_id,
             cache_project_on_model=cache_project_on_model,
+            batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
         )
         return frame_iterator
@@ -679,11 +739,12 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
+        batch_size: int = 16,
     ):
         return [
             pred
             for pred in self.inference_project_id_async(
-                project_id, dataset_ids, output_project_id, cache_project_on_model
+                project_id, dataset_ids, output_project_id, cache_project_on_model, batch_size
             )
         ]
 
