@@ -1242,22 +1242,23 @@ class ConfidenceScore(MetricVis):
         )
         fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
 
-        # Add vertical line for the best threshold
-        fig.add_shape(
-            type="line",
-            x0=self._loader.mp.f1_optimal_conf,
-            x1=self._loader.mp.f1_optimal_conf,
-            y0=0,
-            y1=self._loader.mp.best_f1,
-            line=dict(color="gray", width=2, dash="dash"),
-        )
-        fig.add_annotation(
-            x=self._loader.mp.f1_optimal_conf,
-            y=self._loader.mp.best_f1 + 0.04,
-            text=f"F1-optimal threshold: {self._loader.mp.f1_optimal_conf:.2f}",
-            showarrow=False,
-        )
-        # fig.show()
+        if self._loader.mp.f1_optimal_conf is not None and self._loader.mp.best_f1 is not None:
+            # Add vertical line for the best threshold
+            fig.add_shape(
+                type="line",
+                x0=self._loader.mp.f1_optimal_conf,
+                x1=self._loader.mp.f1_optimal_conf,
+                y0=0,
+                y1=self._loader.mp.best_f1,
+                line=dict(color="gray", width=2, dash="dash"),
+            )
+            fig.add_annotation(
+                x=self._loader.mp.f1_optimal_conf,
+                y=self._loader.mp.best_f1 + 0.04,
+                text=f"F1-optimal threshold: {self._loader.mp.f1_optimal_conf:.2f}",
+                showarrow=False,
+            )
+
         return fig
 
 
@@ -1272,7 +1273,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
                 formats=[definitions.iou_threshold],
             ),
             notification_f1=Widget.Notification(
-                formats_title=[self._loader.mp.m_full.get_f1_optimal_conf()[0].round(4)]
+                formats_title=[round((self._loader.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)]
             ),
             chart=Widget.Chart(),
         )
@@ -1390,31 +1391,33 @@ class ConfidenceDistribution(MetricVis):
             )
         )
 
-        # Best threshold
-        fig.add_shape(
-            type="line",
-            x0=f1_optimal_conf,
-            x1=f1_optimal_conf,
-            y0=0,
-            y1=tp_y.max() * 1.3,
-            line=dict(color="orange", width=1, dash="dash"),
-        )
-        fig.add_annotation(
-            x=f1_optimal_conf,
-            y=tp_y.max() * 1.3,
-            text=f"F1-optimal threshold: {f1_optimal_conf:.2f}",
-            showarrow=False,
-        )
+        if f1_optimal_conf is not None:
 
-        fig.update_layout(
-            barmode="overlay",
-            title="Histogram of Confidence Scores (TP vs FP)",
-            width=800,
-            height=500,
-        )
-        fig.update_xaxes(title_text="Confidence Score", range=[0, 1])
-        fig.update_yaxes(title_text="Count", range=[0, tp_y.max() * 1.3])
-        # fig.show()
+            # Best threshold
+            fig.add_shape(
+                type="line",
+                x0=f1_optimal_conf,
+                x1=f1_optimal_conf,
+                y0=0,
+                y1=tp_y.max() * 1.3,
+                line=dict(color="orange", width=1, dash="dash"),
+            )
+            fig.add_annotation(
+                x=f1_optimal_conf,
+                y=tp_y.max() * 1.3,
+                text=f"F1-optimal threshold: {f1_optimal_conf:.2f}",
+                showarrow=False,
+            )
+
+            fig.update_layout(
+                barmode="overlay",
+                title="Histogram of Confidence Scores (TP vs FP)",
+                width=800,
+                height=500,
+            )
+            fig.update_xaxes(title_text="Confidence Score", range=[0, 1])
+            fig.update_yaxes(title_text="Count", range=[0, tp_y.max() * 1.3])
+
         return fig
 
 

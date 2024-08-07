@@ -76,19 +76,18 @@ class MetricProvider:
         self.recThrs = params["recThrs"]
 
     def calculate(self):
-        self.m_full = _MetricProvider(
-            self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
-        )
+        self.m_full = _MetricProvider(self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt)
         self.m_full._calculate_score_profile()
 
         # Find optimal confidence threshold
         self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
 
         # Filter by optimal confidence threshold
-        matches_filtered = filter_by_conf(self.matches, self.f1_optimal_conf)
-        self.m = _MetricProvider(
-            matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
-        )
+        if self.f1_optimal_conf is not None:
+            matches_filtered = filter_by_conf(self.matches, self.f1_optimal_conf)
+        else:
+            matches_filtered = self.matches
+        self.m = _MetricProvider(matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt)
         self.m._init_counts()
 
         self.ious = self.m.ious
@@ -265,12 +264,7 @@ class _MetricProvider:
             warnings.simplefilter("ignore")
             precision_per_image = outcomes_per_image[:, 0] / n_dt
             recall_per_image = outcomes_per_image[:, 0] / n_gt
-            f1_per_image = (
-                2
-                * precision_per_image
-                * recall_per_image
-                / (precision_per_image + recall_per_image)
-            )
+            f1_per_image = 2 * precision_per_image * recall_per_image / (precision_per_image + recall_per_image)
         prediction_table = pd.DataFrame(
             {
                 "image_name": image_names,
@@ -349,9 +343,7 @@ class _MetricProvider:
     def _calculate_score_profile(self):
         iouThrs = self.iouThrs
         n_gt = len(self.tp_matches) + len(self.fn_matches)
-        matches_sorted = sorted(
-            self.tp_matches + self.fp_matches, key=lambda x: x["score"], reverse=True
-        )
+        matches_sorted = sorted(self.tp_matches + self.fp_matches, key=lambda x: x["score"], reverse=True)
         scores = np.array([m["score"] for m in matches_sorted])
         ious = np.array([m["iou"] if m["type"] == "TP" else 0.0 for m in matches_sorted])
         iou_idxs = np.searchsorted(iouThrs, ious + np.spacing(1))
@@ -378,7 +370,8 @@ class _MetricProvider:
         pr_line /= len(iouThrs)
         rc_line /= len(iouThrs)
         f1s = np.array(f1s)
-        f1_line = f1s.mean(axis=0)
+        # f1_line = f1s.mean(axis=0)
+        f1_line = np.nanmean(f1s, axis=0)
         self.score_profile = {
             "scores": scores,
             "precision": pr_line,
@@ -413,6 +406,8 @@ class _MetricProvider:
         return self.score_profile
 
     def get_f1_optimal_conf(self):
+        if (~np.isnan(self.score_profile["f1"])).sum() == 0:
+            return None, None
         argmax = np.nanargmax(self.score_profile["f1"])
         f1_optimal_conf = self.score_profile["scores"][argmax]
         best_f1 = self.score_profile["f1"][argmax]
