@@ -303,13 +303,23 @@ class SelectDatasetTree(Widget):
         return _click
 
     def _create_select_all_datasets_checkbox(self, select_all_datasets: bool) -> None:
+        """Create the checkbox to select all datasets.
+
+        :param select_all_datasets: Whether all datasets should be selected by default.
+        :type select_all_datasets: bool
+        """
         if not self._multiselect:
             # We'll only create the checkbox if multiselect is enabled.
             return
         select_all_datasets_checkbox = Checkbox("Select all datasets")
 
         @select_all_datasets_checkbox.value_changed
-        def select_all_datasets_checkbox_handler(checked: bool):
+        def select_all_datasets_checkbox_handler(checked: bool) -> None:
+            """Handler function for the event when the checkbox value changes.
+
+            :param checked: The value of the checkbox.
+            :type checked: bool
+            """
             if checked:
                 self._select_dataset.select_all()
                 self._select_dataset.hide()
