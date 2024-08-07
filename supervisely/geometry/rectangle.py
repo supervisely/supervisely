@@ -3,6 +3,7 @@
 # docs
 from __future__ import annotations
 
+from math import ceil, floor
 from typing import Dict, List, Optional, Tuple
 
 import cv2
@@ -97,24 +98,32 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        # Adjust corners
-        # For the top and left coordinates:
-        # If the fractional part of the coordinate is greater than 0.7
-        # The coordinate is rounded up by adding 1 to its integer part
-        # Otherwise
-        # The coordinate is rounded down by taking its integer part
-        top = int(top) + 1 if top % 1 >= 0.7 else int(top)
-        left = int(left) + 1 if left % 1 >= 0.7 else int(left)
+        # Adjust coordinates
 
-        # For the bottom and right coordinates:
-        # If the fractional part of the coordinate is greater than or equal to 0.3
-        # The coordinate is rounded down by taking its integer part
-        # Otherwise
-        # The coordinate is rounded down further by subtracting 1 from its integer part
-        bottom = int(bottom) + 1 if bottom % 1 >= 0.3 else int(bottom)
-        right = int(right) + 1 if right % 1 >= 0.3 else int(right)
+        # Check if all coordinates are inside one pixel
+        # @TODO: Handle case if bottom or right coordinates are on image border
+        if floor(top) == floor(bottom) and floor(left) == floor(right):
+            top, left = floor(top), floor(left)
+            bottom, right = ceil(bottom), ceil(right)
 
-        # add more checks
+        # Otherwise, adjust the coordinates
+        else:
+            # For the top and left coordinates:
+            # If the fractional part of the coordinate is greater than or equal to 0.7
+            # The coordinate is rounded up by adding 1 to its integer part
+            # Otherwise
+            # The coordinate is rounded down by taking its integer part
+            top = ceil(top) if top % 1 >= 0.7 else floor(top)
+            left = ceil(left) if left % 1 >= 0.7 else floor(left)
+
+            # For the bottom and right coordinates:
+            # If the fractional part of the coordinate is greater than or equal to 0.3
+            # The coordinate is rounded up by adding 1 to its integer part
+            # Otherwise
+            # The coordinate is rounded down by taking its integer part
+            bottom = ceil(bottom) if bottom % 1 >= 0.3 else floor(bottom)
+            right = ceil(right) if right % 1 >= 0.3 else floor(right)
+
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
