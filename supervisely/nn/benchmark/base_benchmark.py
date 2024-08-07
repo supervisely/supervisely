@@ -350,10 +350,6 @@ class BaseBenchmark:
         return rows
 
     def visualize(self, dt_project_id=None):
-        eval_dir = self.get_eval_results_dir()
-        assert not sly.fs.dir_empty(
-            eval_dir
-        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         if dt_project_id is None:
             if self.dt_project_info is None:
                 raise RuntimeError(
@@ -361,6 +357,10 @@ class BaseBenchmark:
                 )
         else:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
+        eval_dir = self.get_eval_results_dir()
+        assert not sly.fs.dir_empty(
+            eval_dir
+        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
 
         self.diff_project_info, was_before = self._get_or_create_diff_project()
         vis = Visualizer(self)
