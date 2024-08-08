@@ -124,6 +124,15 @@ class Rectangle(Geometry):
             bottom = ceil(bottom) if bottom % 1 >= 0.3 else floor(bottom)
             right = ceil(right) if right % 1 >= 0.3 else floor(right)
 
+        # Avoid dot/line micro rectangle labels
+        # Example [[2, 2], [2, 2]]
+        # Will draw pixel in OpenCV, but when upload to Supervisely will be converted to empty rectangle (dot/line)
+        if top == bottom:
+            bottom += 1
+        if left == right:
+            right += 1
+
+
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
@@ -234,7 +243,11 @@ class Rectangle(Geometry):
         bottom = min(self.bottom, other.bottom)
         right = min(self.right, other.right)
         is_valid = (bottom >= top) and (left <= right)
-        return [Rectangle(top=top, left=left, bottom=bottom, right=right)] if is_valid else []
+        return (
+            [Rectangle(top=top, left=left, bottom=bottom, right=right)]
+            if is_valid
+            else []
+        )
 
     def _transform(self, transform_fn):
         """ """
@@ -248,7 +261,9 @@ class Rectangle(Geometry):
         )
 
     @property
-    def corners(self) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
+    def corners(
+        self,
+    ) -> List[PointLocation, PointLocation, PointLocation, PointLocation]:
         """
         Get list of Rectangle corners.
 
@@ -409,19 +424,33 @@ class Rectangle(Geometry):
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
         """ """
-        self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
+        self._draw_contour_impl(
+            bitmap, color, thickness=cv2.FILLED, config=config
+        )  # due to cv2
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
         height, width = bitmap.shape[:2]
-        # Handle right bottom corner
-        if self.right == width-1 and self.bottom == height-1:
+        # Handle one pixel case
+        if self.left == self.right and self.top == self.bottom:
             right = self.right
             bottom = self.bottom
+        # Handle right bottom corner
+        elif self.right == width - 1 and self.bottom == height - 1:
+            right = self.right
+            bottom = self.bottom
+        # Handle right border
+        elif self.right == width - 1 and self.bottom != height - 1:
+            right = self.right
+            bottom = max(self.top, self.bottom - 1)
+        # Handle bottom border
+        elif self.bottom == height - 1 and self.right != width - 1:
+            bottom = self.bottom
+            right = max(self.left, self.right - 1)
         # General case
         else:
-            right = max(0, self.right - 1)
-            bottom = max(0, self.bottom - 1)
+            right = max(self.left, self.right - 1)
+            bottom = max(self.top, self.bottom - 1)
 
         cv2.rectangle(
             bitmap,
@@ -617,7 +646,9 @@ class Rectangle(Geometry):
 
             center = figure.center()
         """
-        return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
+        return PointLocation(
+            row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2
+        )
 
     @property
     def width(self) -> int:
@@ -698,7 +729,9 @@ class Rectangle(Geometry):
             print(figure.contains_point_location(pt))
             # Output: True
         """
-        return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
+        return (self.left <= pt.col <= self.right) and (
+            self.top <= pt.row <= self.bottom
+        )
 
     def to_size(self) -> Tuple[int, int]:
         """
@@ -795,7 +828,7 @@ class Rectangle(Geometry):
         #     updated_at=self.updated_at,
         #     created_at=self.created_at,
         # )
-
+        # return self
         # Add 0.5 to borders only
         height, width = img_size
         new_right = self.right
