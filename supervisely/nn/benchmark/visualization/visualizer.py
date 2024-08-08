@@ -396,6 +396,7 @@ class Visualizer:
         logger.info("Saved: %r", "state.json")
 
     def update_diff_annotations(self):
+        self._add_tags_to_dt_project(self.mp.matches, self.dt_project_info.id)
         gt_project_path, dt_project_path = self._benchmark._download_projects()
 
         gt_project = Project(gt_project_path, OpenMode.READ)
@@ -498,3 +499,48 @@ class Visualizer:
                     )
 
         pass
+
+    def _add_tags_to_dt_project(self, matches: list, dt_project_id: int):
+        api = self._api
+        match_tag_meta = TagMeta("matched_gt_id", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY)
+        iou_tag_meta = TagMeta("iou", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY)
+
+        # update project meta with new tag metas
+        meta = api.project.get_meta(dt_project_id)
+        meta = ProjectMeta.from_json(meta)
+        meta_old = meta
+        if not meta.tag_metas.has_key("matched_gt_id"):
+            meta = meta.add_tag_meta(match_tag_meta)
+        if not meta.tag_metas.has_key("iou"):
+            meta = meta.add_tag_meta(iou_tag_meta)
+        if meta != meta_old:
+            meta = api.project.update_meta(dt_project_id, meta)
+
+        # get tag metas
+        # outcome_tag_meta = meta.get_tag_meta("outcome")
+        match_tag_meta = meta.get_tag_meta("matched_gt_id")
+        iou_tag_meta = meta.get_tag_meta("iou")
+
+        # mappings
+        gt_ann_mapping = self.click_data.gt_id_mapper.map_obj
+        dt_ann_mapping = self.click_data.dt_id_mapper.map_obj
+
+        # add tags to objects
+        logger.info("Adding tags to DT project")
+        for match in tqdm(matches):
+            if match["type"] == "TP":
+                outcome = "TP"
+                matched_gt_id = gt_ann_mapping[match["gt_id"]]
+                ann_dt_id = dt_ann_mapping[match["dt_id"]]
+                iou = match["iou"]
+                # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
+                api.advanced.add_tag_to_object(match_tag_meta.sly_id, ann_dt_id, int(matched_gt_id))
+                api.advanced.add_tag_to_object(iou_tag_meta.sly_id, ann_dt_id, float(iou))
+            elif match["type"] == "FP":
+                outcome = "FP"
+                # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
+            elif match["type"] == "FN":
+                outcome = "FN"
+            else:
+                raise ValueError(f"Unknown match type: {match['type']}")
+
