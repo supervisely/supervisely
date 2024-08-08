@@ -84,9 +84,14 @@ template_gallery_str = """<sly-iw-gallery
                 'init': {
                   'dataSource': '{{ init_data_source }}',
                 },
-              }"
+              }"{% if gallery_click_data_source %}
+                'chart-click': {
+                  'dataSource': '{{ gallery_click_data_source }}',
+                  'limit':10,
+                },{% endif %}              
               :command="{{ command }}"
               :data="{{ data }}"
+              {% if gallery_click_data_source %}:options="{'isModalWindow': true}"{% endif %}  
             />"""
 
 template_table_str = """<sly-iw-table
@@ -364,6 +369,10 @@ class MetricVis:
                     for w in self.schema:
                         if isinstance(w, Widget.Table):
                             w.gallery_id = widget.id
+
+                gallery_click_data_source = (
+                    f"/data/{basename}_click_data.json" if self.clickable else None
+                )
                 res[f"{basename}_html"] = self._template_gallery.render(
                     {
                         "widget_id": widget.id,
@@ -371,6 +380,7 @@ class MetricVis:
                         "command": "command",
                         "data": "data",
                         "is_table_gallery": widget.is_table_gallery,
+                        "gallery_click_data_source": gallery_click_data_source,
                     }
                 )
 
@@ -403,6 +413,9 @@ class MetricVis:
         pass
 
     def get_gallery(self, widget: Widget.Gallery) -> Optional[dict]:
+        pass
+
+    def get_gallery_click_data(self, widget: Widget.Gallery) -> Optional[dict]:
         pass
 
     def get_md_content(self, widget: Widget.Markdown):
@@ -484,6 +497,7 @@ class ExplorerGrid(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        self.clickable = True
         self.schema = Schema(
             markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
             gallery=Widget.Gallery(),
@@ -528,6 +542,25 @@ class ExplorerGrid(MetricVis):
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
         res["layoutData"] = res.pop("annotations")
+        res["projectMeta"] = project_metas[1].to_json()
+
+        return res
+
+    def get_gallery_click_data(self, widget: Widget.Table) -> Optional[dict]:
+        res = {}
+        res["layoutTemplate"] = [
+            {"skipObjectsFiltering": True},
+            {"skipObjectsFiltering": True},
+            None,
+        ]
+        res["clickData"] = {}
+
+        l1 = list(self._loader.gt_images_dct.values())
+        l2 = list(self._loader.dt_images_dct.values())
+        l3 = list(self._loader.diff_images_dct.values())
+
+        for gt, dt, diff in zip(l1, l2, l3):
+            res["clickData"][gt.name] = dict(imagesIds=[gt.id, dt.id, diff.id])
 
         return res
 
