@@ -43,8 +43,8 @@ from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 
 class LabelingJobInfo(NamedTuple):
@@ -70,6 +70,8 @@ class LabelingJobInfo(NamedTuple):
     finished_at: str
     status: str
     disabled: bool
+    labeling_queue_id: int
+    labeling_exam_id: int
     images_count: int
     finished_images_count: int
     rejected_images_count: int
@@ -158,6 +160,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              finished_at='2020-04-08T15:13:39.788Z',
                              status='completed',
                              disabled=False,
+                             labeling_queue_id=3,
+                             labeling_exam_id=None,
                              images_count=3,
                              finished_images_count=0,
                              rejected_images_count=1,
@@ -196,6 +200,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.FINISHED_AT,
             ApiField.STATUS,
             ApiField.DISABLED,
+            ApiField.LABELING_QUEUE_ID,
+            ApiField.LABELING_EXAM_ID,
             ApiField.IMAGES_COUNT,
             ApiField.FINISHED_IMAGES_COUNT,
             ApiField.REJECTED_IMAGES_COUNT,
@@ -563,6 +569,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         dataset_id: Optional[int] = None,
         show_disabled: Optional[bool] = False,
         reviewer_id: Optional[int] = None,
+        is_part_of_queue: Optional[bool] = True,
+        queue_ids: Optional[Union[List, int]] = None,
     ) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
@@ -581,6 +589,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type show_disabled: bool, optional
         :param reviewer_id: ID of the User who reviews the LabelingJob.
         :type reviewer_id: int, optional
+        :param is_part_of_queue: Filter by Labeling Queue. If True, all existing Labeling Jobs are returned. If False, only Labeling Jobs that are not part of the queue are returned.
+        :type is_part_of_queue: bool, optional
+        :param queue_ids: IDs of the Labeling Queues. If set, only Labeling Jobs from the selected queues are returned. Arg `is_part_of_queue` must be True.
+        :type queue_ids: Union[List, int], optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -619,6 +631,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             #         "2020-04-08T15:13:39.788Z",
             #         "completed",
             #         false,
+            #         3,
+            #         null,
             #         3,
             #         0,
             #         1,
@@ -660,6 +674,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             #         "2020-04-08T15:17:33.572Z",
             #         "completed",
             #         false,
+            #         3,
+            #         null,
             #         2,
             #         0,
             #         0,
@@ -680,6 +696,12 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             #     ]
             # ]
         """
+        if not is_part_of_queue and queue_ids is not None:
+            raise ValueError("To filter by `queue_id`, `is_part_of_queue` must be set to `True`.")
+
+        if isinstance(queue_ids, int):
+            queue_ids = [queue_ids]
+
         filters = []
         if created_by_id is not None:
             filters.append(
@@ -695,6 +717,12 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
+        if not is_part_of_queue:
+            filters.append({"field": ApiField.LABELING_QUEUE_ID, "operator": "=", "value": None})
+        if queue_ids is not None:
+            filters.append(
+                {"field": ApiField.LABELING_QUEUE_ID, "operator": "in", "value": queue_ids}
+            )
         return self.get_list_all_pages(
             "jobs.list",
             {ApiField.TEAM_ID: team_id, "showDisabled": show_disabled, ApiField.FILTER: filters},
