@@ -74,9 +74,7 @@ template_chart_str = """
             />
 """
 
-template_radiogroup_str = (
-    """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
-)
+template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
 
 
 template_gallery_str = """<sly-iw-gallery
@@ -140,7 +138,9 @@ class Widget:
 
     class Markdown(BaseWidget):
 
-        def __init__(self, title: Optional[str] = None, is_header: bool = False, formats: list = []) -> None:
+        def __init__(
+            self, title: Optional[str] = None, is_header: bool = False, formats: list = []
+        ) -> None:
             self.title = title
             self.is_header = is_header
             self.formats = formats
@@ -258,7 +258,10 @@ class MetricVis:
             if isinstance(widget, Widget.Chart):
                 _is_before_chart = False
 
-            if isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse)) and _is_before_chart:
+            if (
+                isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse))
+                and _is_before_chart
+            ):
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
@@ -272,7 +275,10 @@ class MetricVis:
                     res += "\n            {{ " + f"{basename}_clickdata_html" + " }}"
                 continue
 
-            if isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse)) and not _is_before_chart:
+            if (
+                isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse))
+                and not _is_before_chart
+            ):
                 res += "\n            {{ " + f"{widget.name}_html" + " }}"
                 continue
 
@@ -422,12 +428,35 @@ class Overview(MetricVis):
         )
         fig.update_layout(
             polar=dict(
-                radialaxis=dict(range=[0.0, 1.0]),
+                radialaxis=dict(
+                    range=[0.0, 1.0],
+                    ticks="outside",
+                ),
                 angularaxis=dict(rotation=90, direction="clockwise"),
             ),
+            dragmode=False,
             # title="Overall Metrics",
-            width=600,
-            height=500,
+            # width=700,
+            # height=500,
+            # autosize=False,
+            # margin=dict(l=50, r=50, t=100, b=50, pad=4),
+        )
+        # fig.update_polars(automargin=True)
+        fig.update_yaxes(automargin="top")
+        # fig.update_xaxes(automargin="top")
+        fig.update_layout(
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            )
         )
         return fig
 
@@ -457,11 +486,15 @@ class ExplorerGrid(MetricVis):
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
             for x in [gt_project_id, dt_project_id, diff_project_id]
         ]
-        for gt_image, pred_image, diff_image in zip(gt_image_infos, pred_image_infos, diff_image_infos):
+        for gt_image, pred_image, diff_image in zip(
+            gt_image_infos, pred_image_infos, diff_image_infos
+        ):
             image_infos = [gt_image, pred_image, diff_image]
             ann_infos = [api.annotation.download(x.id) for x in image_infos]
 
-            for idx, (image_info, ann_info, project_meta) in enumerate(zip(image_infos, ann_infos, project_metas)):
+            for idx, (image_info, ann_info, project_meta) in enumerate(
+                zip(image_infos, ann_infos, project_metas)
+            ):
                 image_name = image_info.name
                 image_url = image_info.full_storage_url
                 is_ignore = True if idx == 0 else False
@@ -521,7 +554,9 @@ class ModelPredictions(MetricVis):
             for x in [gt_project_id, dt_project_id, diff_project_id]
         ]
 
-        for idx, (image_info, ann_info, project_meta) in enumerate(zip(images_infos, anns_infos, project_metas)):
+        for idx, (image_info, ann_info, project_meta) in enumerate(
+            zip(images_infos, anns_infos, project_metas)
+        ):
             image_name = image_info.name
             image_url = image_info.full_storage_url
             is_ignore = True if idx == 0 else False
@@ -653,6 +688,21 @@ class OutcomeCounts(MetricVis):
         fig.update_xaxes(title_text="Count")
         fig.update_yaxes(tickangle=-90)
 
+        fig.update_layout(
+            dragmode=False,
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         return fig
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
@@ -728,7 +778,7 @@ class Recall(MetricVis):
             sorted_by_f1,
             x="category",
             y="recall",
-            title="Per-class Recall (Sorted by F1)",
+            # title="Per-class Recall (Sorted by F1)",
             color="recall",
             color_continuous_scale="Plasma",
         )
@@ -767,7 +817,7 @@ class Precision(MetricVis):
             sorted_by_precision,
             x="category",
             y="precision",
-            title="Per-class Precision (Sorted by F1)",
+            # title="Per-class Precision (Sorted by F1)",
             color="precision",
             color_continuous_scale="Plasma",
         )
@@ -786,7 +836,9 @@ class RecallVsPrecision(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
-            markdown_PR=Widget.Markdown(title="Recall vs Precision", is_header=True, formats=[definitions.f1_score]),
+            markdown_PR=Widget.Markdown(
+                title="Recall vs Precision", is_header=True, formats=[definitions.f1_score]
+            ),
             chart=Widget.Chart(),
         )
 
@@ -813,7 +865,7 @@ class RecallVsPrecision(MetricVis):
         )
         fig.update_layout(
             barmode="group",
-            title="Per-class Precision and Recall (Sorted by F1)",
+            # title="Per-class Precision and Recall (Sorted by F1)",
         )
         fig.update_xaxes(title_text="Category")
         fig.update_yaxes(title_text="Value", range=[0, 1])
@@ -829,9 +881,11 @@ class PRCurve(MetricVis):
             markdown_pr_curve=Widget.Markdown(
                 title="Precision-Recall Curve", is_header=True, formats=[definitions.f1_score]
             ),
-            collapse=Widget.Collapse(
+            collapse_pr=Widget.Collapse(
                 schema=Schema(
-                    markdown_trade_offs=Widget.Markdown(title="About Trade-offs between precision and recall"),
+                    markdown_trade_offs=Widget.Markdown(
+                        title="About Trade-offs between precision and recall"
+                    ),
                     markdown_what_is_pr_curve=Widget.Markdown(
                         title="What is PR curve?",
                         formats=[
@@ -842,7 +896,9 @@ class PRCurve(MetricVis):
                     ),
                 )
             ),
-            notification_ap=Widget.Notification(formats_title=[loader.base_metrics()["mAP"].round(2)]),
+            notification_ap=Widget.Notification(
+                formats_title=[loader.base_metrics()["mAP"].round(2)]
+            ),
             chart=Widget.Chart(),
         )
 
@@ -877,7 +933,21 @@ class PRCurve(MetricVis):
             showarrow=False,
             bgcolor="white",
         )
-
+        fig.update_layout(
+            dragmode=False,
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         # fig.show()
         return fig
 
@@ -1047,7 +1117,9 @@ class FrequentlyConfused(MetricVis):
         y_labels = confused_df[widget.switch_key]
 
         fig = go.Figure()
-        fig.add_trace(go.Bar(x=x_labels, y=y_labels, marker=dict(color=y_labels, colorscale="Reds")))
+        fig.add_trace(
+            go.Bar(x=x_labels, y=y_labels, marker=dict(color=y_labels, colorscale="Reds"))
+        )
         fig.update_layout(
             # title="Frequently confused class pairs",
             xaxis_title="Class pair",
@@ -1101,13 +1173,19 @@ class IOUDistribution(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
-            markdown_localization_accuracy=Widget.Markdown(title="Localization Accuracy (IoU)", is_header=True),
-            collapse=Widget.Collapse(Schema(markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"))),
+            markdown_localization_accuracy=Widget.Markdown(
+                title="Localization Accuracy (IoU)", is_header=True
+            ),
+            collapse_iou=Widget.Collapse(
+                Schema(markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"))
+            ),
             markdown_iou_distribution=Widget.Markdown(
                 title="IoU Distribution", is_header=True, formats=[definitions.iou_score]
             ),
             chart=Widget.Chart(),
-            notification_avg_iou=Widget.Notification(formats_title=[self._loader.base_metrics()["iou"].round(2)]),
+            notification_avg_iou=Widget.Notification(
+                formats_title=[self._loader.base_metrics()["iou"].round(2)]
+            ),
         )
 
     def get_figure(self, widget: Widget) -> Optional[go.Figure]:
@@ -1135,7 +1213,21 @@ class IOUDistribution(MetricVis):
             line=dict(color="orange", width=2, dash="dash"),
         )
         fig.add_annotation(x=mean_iou, y=y1, text=f"Mean IoU: {mean_iou:.2f}", showarrow=False)
-        # fig.show()
+        fig.update_layout(
+            dragmode=False,
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         return fig
 
 
@@ -1151,7 +1243,9 @@ class ReliabilityDiagram(MetricVis):
                 Schema(markdown_what_is_calibration=Widget.Markdown(title="What is calibration?"))
             ),
             markdown_calibration_score_2=Widget.Markdown(),
-            markdown_reliability_diagram=Widget.Markdown(title="Reliability Diagram", is_header=True),
+            markdown_reliability_diagram=Widget.Markdown(
+                title="Reliability Diagram", is_header=True
+            ),
             chart=Widget.Chart(),
             collapse_ece=Widget.Collapse(
                 Schema(
@@ -1217,8 +1311,12 @@ class ConfidenceScore(MetricVis):
             ),
             chart=Widget.Chart(),
             markdown_confidence_score_2=Widget.Markdown(),
-            collapse=Widget.Collapse(
-                Schema(markdown_plot_confidence_profile=Widget.Markdown(title="How to plot Confidence Profile?"))
+            collapse_conf_score=Widget.Collapse(
+                Schema(
+                    markdown_plot_confidence_profile=Widget.Markdown(
+                        title="How to plot Confidence Profile?"
+                    )
+                )
             ),
             markdown_calibration_score_3=Widget.Markdown(),
         )
@@ -1258,7 +1356,21 @@ class ConfidenceScore(MetricVis):
                 text=f"F1-optimal threshold: {self._loader.mp.f1_optimal_conf:.2f}",
                 showarrow=False,
             )
-
+        fig.update_layout(
+            dragmode=False,
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         return fig
 
 
@@ -1322,7 +1434,21 @@ class F1ScoreAtDifferentIOU(MetricVis):
                 ay=-30,
             )
 
-        # fig.show()
+        fig.update_layout(
+            dragmode=False,
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         return fig
 
 
@@ -1442,7 +1568,7 @@ class PerClassAvgPrecision(MetricVis):
         fig = px.scatter_polar(
             r=ap_per_class,
             theta=self._loader.mp.cat_names,
-            title="Per-class Average Precision (AP)",
+            # title="Per-class Average Precision (AP)",
             labels=dict(r="Average Precision", theta="Category"),
             width=800,
             height=800,
@@ -1450,7 +1576,7 @@ class PerClassAvgPrecision(MetricVis):
         )
         # fill points
         fig.update_traces(fill="toself")
-        # fig.show()
+
         return fig
 
 
@@ -1471,7 +1597,9 @@ class PerClassOutcomeCounts(MetricVis):
                 ],
             ),
             markdown_class_outcome_counts_2=Widget.Markdown(formats=[definitions.f1_score]),
-            collapse=Widget.Collapse(Schema(markdown_normalization=Widget.Markdown(title="Normalization"))),
+            collapse_perclass_outcome=Widget.Collapse(
+                Schema(markdown_normalization=Widget.Markdown(title="Normalization"))
+            ),
             chart_01=Widget.Chart(switch_key="relative"),
             chart_02=Widget.Chart(switch_key="absolute"),
         )
@@ -1649,7 +1777,9 @@ class OverallErrorAnalysis(MetricVis):
         fig.update_layout(
             height=400,
             width=1200,
-            polar=dict(radialaxis=dict(visible=True, showline=False, showticklabels=False, range=[0, 100])),
+            polar=dict(
+                radialaxis=dict(visible=True, showline=False, showticklabels=False, range=[0, 100])
+            ),
             showlegend=False,
             plot_bgcolor="rgba(0, 0, 0, 0)",
             yaxis=dict(showticklabels=False),

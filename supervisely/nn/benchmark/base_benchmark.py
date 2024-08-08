@@ -357,6 +357,7 @@ class BaseBenchmark:
                 )
         else:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
+
         eval_dir = self.get_eval_results_dir()
         assert not sly.fs.dir_empty(
             eval_dir
@@ -387,6 +388,8 @@ class BaseBenchmark:
         assert not sly.fs.dir_empty(
             layout_dir
         ), f"The layout dir {layout_dir!r} is empty. You should run evaluation before uploading results."
+
+        # self.api.file.remove_dir(self.team_id, dest_dir, silent=True)
 
         with tqdm_sly(
             desc="Uploading layout",
