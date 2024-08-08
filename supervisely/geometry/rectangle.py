@@ -413,13 +413,25 @@ class Rectangle(Geometry):
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
+        height, width = bitmap.shape[:2]
+        # Handle right bottom corner
+        if self.right == width-1 and self.bottom == height-1:
+            right = self.right
+            bottom = self.bottom
+        # General case
+        else:
+            right = max(0, self.right - 1)
+            bottom = max(0, self.bottom - 1)
+
         cv2.rectangle(
             bitmap,
             pt1=(self.left, self.top),
-            pt2=(self.right, self.bottom),
+            pt2=(right, bottom),
             color=color,
             thickness=thickness,
         )
+        print("-----------------------------------------------")
+        print(f"OpenCV drawn coords: [[{self.left, self.top}][{right, bottom}]]")
 
     def to_bbox(self) -> Rectangle:
         """
