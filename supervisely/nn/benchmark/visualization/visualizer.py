@@ -36,8 +36,8 @@ from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
     # Overview,
-    # ExplorerGrid,
-    ModelPredictions,
+    ExplorerGrid,
+    # ModelPredictions,
     # # WhatIs,
     # OutcomeCounts,
     # Recall,
@@ -339,6 +339,14 @@ class Visualizer:
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(ujson.dumps(content))
                 logger.info("Saved: %r", basename)
+
+                click_data = mv.get_gallery_click_data(widget)
+                if click_data is not None:
+                    basename = f"{widget.name}_{mv.name}_clickdata.json"
+                    local_path = f"{self.layout_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(ujson.dumps(click_data))
+                    logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Table):
             content = mv.get_table(widget)
