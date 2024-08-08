@@ -64,11 +64,13 @@ template_chart_str = """
                 'chart-click': {
                   'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
                   'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
-                  'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['confusion_matrix'] %}
-                  'keySeparator': '{{ key_separator }}',{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
-                  'getKey': (payload) => payload.points[0].data.x,{% endif %}
-                  'galleryId': '{{ widget_id }}_modal',
-                  'limit': 9         
+                  'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['pr_curve_by_class'] %}
+                  'getKey': (payload) => payload.points[0].data.legendgroup,{% endif %}{% if cls_name in ['per_class_avg_precision'] %}
+                  'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
+                  'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
+                  'keySeparator': '{{ key_separator }}',{% endif %}
+                  'galleryId': '{{ widget_id }}_modal',zz
+                  'limit': 9
                 },{% endif %}
               }"
               :command="{{ command }}"
@@ -936,7 +938,6 @@ class OutcomeCounts(MetricVis):
             res["clickData"][key]["imagesIds"] = []
 
             tmp = set()
-
             for x in v:
                 dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
                 tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
@@ -1151,6 +1152,7 @@ class PRCurveByClass(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        self.clickable = True
         self.schema = Schema(
             markdown_pr_by_class=Widget.Markdown(title="PR Curve by Class"),
             chart=Widget.Chart(),
@@ -1704,7 +1706,7 @@ class ConfidenceDistribution(MetricVis):
 
             fig.update_layout(
                 barmode="overlay",
-                title="Histogram of Confidence Scores (TP vs FP)",
+                # title="Histogram of Confidence Scores (TP vs FP)",
                 width=800,
                 height=500,
             )
@@ -1718,6 +1720,7 @@ class PerClassAvgPrecision(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        self.clickable = True
         self.schema = Schema(
             markdown_class_ap=Widget.Markdown(
                 title="Average Precision by Class",
@@ -1827,38 +1830,44 @@ class PerClassOutcomeCounts(MetricVis):
         if not self.clickable:
             return
         res = {}
-        res["projectMeta"] = self._loader.dt_project_meta.to_json()
+        res["layoutTemplate"] = [None, None, None]
+
         res["clickData"] = {}
         for key1, v1 in self._loader.click_data.outcome_counts_by_class.items():
             for key2, v2 in v1.items():
                 key = key1 + self._keypair_sep + key2
                 res["clickData"][key] = {}
-                res["clickData"][key]["layoutData"] = {}
-                res["clickData"][key]["layout"] = []
+                res["clickData"][key]["imagesIds"] = []
 
-                tmp = {0: [], 1: [], 2: [], 3: []}
+                tmp = set()
+                for x in v2:
+                    dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
+                    tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
 
-                images = set(x["dt_img_id"] for x in v2)
+                for img_id in tmp:
+                    res["clickData"][key]["imagesIds"].append(img_id)
 
-                for idx, img_id in enumerate(images):
-                    ui_id = f"ann_{img_id}"
-                    info: ImageInfo = self._loader.dt_images_dct[img_id]
-                    res["clickData"][key]["layoutData"][ui_id] = {
-                        "imageUrl": info.preview_url,
-                        "annotation": {
-                            "imageId": info.id,
-                            "imageName": info.name,
-                            "createdAt": info.created_at,
-                            "updatedAt": info.updated_at,
-                            "link": info.link,
-                            "annotation": self._loader.dt_ann_jsons[img_id],
-                        },
-                    }
-                    if len(tmp[3]) < 5:
-                        tmp[idx % 4].append(ui_id)
+                # images = set(x["dt_img_id"] for x in v2)
 
-                for _, val in tmp.items():
-                    res["clickData"][key]["layout"].append(val)
+                # for idx, img_id in enumerate(images):
+                #     ui_id = f"ann_{img_id}"
+                #     info: ImageInfo = self._loader.dt_images_dct[img_id]
+                #     res["clickData"][key]["layoutData"][ui_id] = {
+                #         "imageUrl": info.preview_url,
+                #         "annotation": {
+                #             "imageId": info.id,
+                #             "imageName": info.name,
+                #             "createdAt": info.created_at,
+                #             "updatedAt": info.updated_at,
+                #             "link": info.link,
+                #             "annotation": self._loader.dt_ann_jsons[img_id],
+                #         },
+                #     }
+                #     if len(tmp[3]) < 5:
+                #         tmp[idx % 4].append(ui_id)
+
+                # for _, val in tmp.items():
+                #     res["clickData"][key]["layout"].append(val)
 
         return res
 
