@@ -35,25 +35,25 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
-    # Overview,
+    Overview,
     ExplorerGrid,
-    # ModelPredictions,
+    ModelPredictions,
     # # WhatIs,
-    # OutcomeCounts,
-    # Recall,
-    # Precision,
-    # RecallVsPrecision,
-    # PRCurve,
-    # PRCurveByClass,
-    # ConfusionMatrix,
-    # FrequentlyConfused,
-    # IOUDistribution,
-    # ReliabilityDiagram,
-    # ConfidenceScore,
-    # F1ScoreAtDifferentIOU,
-    # ConfidenceDistribution,
-    # PerClassAvgPrecision,
-    # PerClassOutcomeCounts,
+    OutcomeCounts,
+    Recall,
+    Precision,
+    RecallVsPrecision,
+    PRCurve,
+    PRCurveByClass,
+    ConfusionMatrix,
+    FrequentlyConfused,
+    IOUDistribution,
+    ReliabilityDiagram,
+    ConfidenceScore,
+    F1ScoreAtDifferentIOU,
+    ConfidenceDistribution,
+    PerClassAvgPrecision,
+    PerClassOutcomeCounts,
     # segmentation-only
     # # TODO integrate binary files while saving to self.layout_dir to the current solution
     # OverallErrorAnalysis,
@@ -342,10 +342,17 @@ class Visualizer:
 
                 click_data = mv.get_gallery_click_data(widget)
                 if click_data is not None:
-                    basename = f"{widget.name}_{mv.name}_clickdata.json"
+                    basename = f"{widget.name}_{mv.name}_click_data.json"
                     local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
                         f.write(ujson.dumps(click_data))
+                    logger.info("Saved: %r", basename)
+
+                    modal_data = mv.get_gallery_modal(widget)
+                    basename = f"{widget.name}_{mv.name}_modal_data.json"
+                    local_path = f"{self.layout_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(ujson.dumps(modal_data))
                     logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Table):
@@ -396,12 +403,10 @@ class Visualizer:
         logger.info("Saved: %r", "state.json")
 
     def update_diff_annotations(self):
-        self._add_tags_to_dt_project(self.mp.matches, self.dt_project_info.id)
         gt_project_path, dt_project_path = self._benchmark._download_projects()
 
         gt_project = Project(gt_project_path, OpenMode.READ)
         dt_project = Project(dt_project_path, OpenMode.READ)
-        dt_project_meta = self.dt_project_meta
 
         dt_images_dct = {}
         dt_anns_dct = {}
@@ -414,7 +419,7 @@ class Visualizer:
             image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
 
             dt_anns_dct[dataset.name] = [
-                dataset.get_ann(name, dt_project_meta) for name in image_names
+                dataset.get_ann(name, dt_project.meta) for name in image_names
             ]
             dt_images_dct[dataset.name] = [dataset.get_image_info(name) for name in image_names]
             names_dct[dataset.name] = image_names
@@ -425,8 +430,13 @@ class Visualizer:
                 dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]
             ]
 
-        matched_id_map = self._get_matched_id_map()  # dt_id -> gt_id
-        matched_gt_ids = set(matched_id_map.values())
+        matched_ids = []
+        for dataset in dt_project.datasets:
+            for dt_ann in dt_anns_dct[dataset.name]:
+                for label in dt_ann.labels:
+                    matched_gt_id = label.tags.get("matched_gt_id")
+                    if matched_gt_id is not None:
+                        matched_ids.append(matched_gt_id.value)
 
         new_tag = TagMeta(
             "outcome",
@@ -434,9 +444,9 @@ class Visualizer:
             possible_values=["TP", "FP", "FN"],
             applicable_to=TagApplicableTo.OBJECTS_ONLY,
         )
-        tag_metas = dt_project_meta.tag_metas
-        if dt_project_meta.get_tag_meta(new_tag.name) is None:
-            tag_metas = dt_project_meta.tag_metas.add(new_tag)
+        tag_metas = dt_project.meta.tag_metas
+        if dt_project.meta.get_tag_meta(new_tag.name) is None:
+            tag_metas = dt_project.meta.tag_metas.add(new_tag)
 
         diff_meta = ProjectMeta(
             obj_classes=gt_project.meta.obj_classes,
@@ -459,7 +469,7 @@ class Visualizer:
                     for gt_ann, dt_ann in zip(gt_anns_dct[dataset.name], dt_anns_dct[dataset.name]):
                         labels = []
                         for label in dt_ann.labels:
-                            match_tag_id = matched_id_map.get(label.geometry.sly_id)
+                            match_tag_id = label.tags.get("matched_gt_id")
                             if match_tag_id is not None:
                                 new = label.clone(tags=label.tags.add(Tag(new_tag, "TP")))
                             else:
@@ -470,10 +480,10 @@ class Visualizer:
                         dt_anns_new.append(Annotation(gt_ann.img_size, labels))
 
                         for label in gt_ann.labels:
-                            if label.geometry.sly_id not in matched_gt_ids and isinstance(
+                            if label.geometry.sly_id not in matched_ids and isinstance(
                                 label.geometry, Rectangle
                             ):
-                                conf_meta = dt_project_meta.get_tag_meta("confidence")
+                                conf_meta = dt_project.meta.get_tag_meta("confidence")
                                 labels.append(
                                     label.clone(
                                         tags=label.tags.add_items(
@@ -495,57 +505,3 @@ class Visualizer:
                     )
 
         pass
-
-    def _add_tags_to_dt_project(self, matches: list, dt_project_id: int):
-        api = self._api
-        match_tag_meta = TagMeta("matched_gt_id", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY)
-        iou_tag_meta = TagMeta("iou", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY)
-
-        # update project meta with new tag metas
-        meta = api.project.get_meta(dt_project_id)
-        meta = ProjectMeta.from_json(meta)
-        meta_old = meta
-        if not meta.tag_metas.has_key("matched_gt_id"):
-            meta = meta.add_tag_meta(match_tag_meta)
-        if not meta.tag_metas.has_key("iou"):
-            meta = meta.add_tag_meta(iou_tag_meta)
-        if meta != meta_old:
-            meta = api.project.update_meta(dt_project_id, meta)
-            self.dt_project_meta = meta
-
-        # get tag metas
-        # outcome_tag_meta = meta.get_tag_meta("outcome")
-        match_tag_meta = meta.get_tag_meta("matched_gt_id")
-        iou_tag_meta = meta.get_tag_meta("iou")
-
-        # mappings
-        gt_ann_mapping = self.click_data.gt_id_mapper.map_obj
-        dt_ann_mapping = self.click_data.dt_id_mapper.map_obj
-
-        # add tags to objects
-        logger.info("Adding tags to DT project")
-        for match in tqdm(matches):
-            if match["type"] == "TP":
-                outcome = "TP"
-                matched_gt_id = gt_ann_mapping[match["gt_id"]]
-                ann_dt_id = dt_ann_mapping[match["dt_id"]]
-                iou = match["iou"]
-                # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
-                api.advanced.add_tag_to_object(match_tag_meta.sly_id, ann_dt_id, int(matched_gt_id))
-                api.advanced.add_tag_to_object(iou_tag_meta.sly_id, ann_dt_id, float(iou))
-            elif match["type"] == "FP":
-                outcome = "FP"
-                # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
-            elif match["type"] == "FN":
-                outcome = "FN"
-            else:
-                raise ValueError(f"Unknown match type: {match['type']}")
-
-    def _get_matched_id_map(self):        
-        gt_ann_mapping = self.click_data.gt_id_mapper.map_obj
-        dt_ann_mapping = self.click_data.dt_id_mapper.map_obj
-        dtId2matched_gt_id = {}
-        for match in self.mp.matches:
-            if match["type"] == "TP":
-                dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
-        return dtId2matched_gt_id

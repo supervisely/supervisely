@@ -79,20 +79,42 @@ template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="
 
 template_gallery_str = """<sly-iw-gallery
               iw-widget-id="{{ widget_id }}"{% if is_table_gallery %}
-              ref='{{ widget_id }}'
-              {% endif %}:actions="{
+              ref='{{ widget_id }}'{% endif %}
+              :actions="{
                 'init': {
                   'dataSource': '{{ init_data_source }}',
                 },
-              }"{% if gallery_click_data_source %}
-                'chart-click': {
-                  'dataSource': '{{ gallery_click_data_source }}',
-                  'limit':10,
-                },{% endif %}              
+              }"
               :command="{{ command }}"
               :data="{{ data }}"
-              {% if gallery_click_data_source %}:options="{'isModalWindow': true}"{% endif %}  
-            />"""
+                />
+              {% if gallery_click_data_source %}
+                <el-button iw-widget-id="btn-1" @click="command({
+                  method: 'update-gallery',
+                  payload: {
+                    data: {
+                      'key': 'explore',
+                      'limit': 9,
+                      'dataSource': '{{ gallery_click_data_source }}',
+                    },
+                    'galleryId': '{{ widget_id }}_modal',
+                  },
+                  internalCommand: true
+                })">Click to Explore</el-button>
+
+                <sly-iw-gallery
+                    ref='{{ widget_id }}_modal'
+                    iw-widget-id='{{ widget_id }}_modal'
+                    :options="{'isModalWindow': true}"
+                    :actions="{
+                        'init': {
+                        'dataSource': '{{ gallery_modal_data_source }}',
+                        },
+                    }"
+                    :command="command"
+                    :data="data"
+                />{% endif %}
+                """
 
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
@@ -373,6 +395,9 @@ class MetricVis:
                 gallery_click_data_source = (
                     f"/data/{basename}_click_data.json" if self.clickable else None
                 )
+                gallery_modal_data_source = (
+                    f"/data/{basename}_modal_data.json" if self.clickable else None
+                )
                 res[f"{basename}_html"] = self._template_gallery.render(
                     {
                         "widget_id": widget.id,
@@ -381,6 +406,7 @@ class MetricVis:
                         "data": "data",
                         "is_table_gallery": widget.is_table_gallery,
                         "gallery_click_data_source": gallery_click_data_source,
+                        "gallery_modal_data_source": gallery_modal_data_source,
                     }
                 )
 
@@ -512,9 +538,9 @@ class ExplorerGrid(MetricVis):
         gt_dataset = api.dataset.get_list(gt_project_id)[0]
         dt_dataset = api.dataset.get_list(dt_project_id)[0]
         diff_dataset = api.dataset.get_list(diff_project_id)[0]
-        gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id)[:5]
-        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id)[:5]
-        diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id)[:5]
+        gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id)[:3]
+        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id)[:3]
+        diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id)[:3]
         project_metas = [
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
             for x in [gt_project_id, dt_project_id, diff_project_id]
@@ -554,13 +580,23 @@ class ExplorerGrid(MetricVis):
             None,
         ]
         res["clickData"] = {}
+        res["clickData"]["explore"] = {}
+        res["clickData"]["explore"]["imagesIds"] = []
 
         l1 = list(self._loader.gt_images_dct.values())
         l2 = list(self._loader.dt_images_dct.values())
         l3 = list(self._loader.diff_images_dct.values())
 
         for gt, dt, diff in zip(l1, l2, l3):
-            res["clickData"][gt.name] = dict(imagesIds=[gt.id, dt.id, diff.id])
+            res["clickData"]["explore"]["imagesIds"] += [gt.id, dt.id, diff.id]
+
+        return res
+
+    def get_gallery_modal(self, widget: Widget.Gallery):
+        res = self.get_gallery(widget)
+
+        res.pop("layout")
+        res.pop("layoutData")
 
         return res
 
