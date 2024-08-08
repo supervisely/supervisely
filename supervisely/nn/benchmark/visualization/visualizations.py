@@ -106,7 +106,8 @@ template_gallery_str = """<sly-iw-gallery
               :data="{{ data }}"
                 />
               {% if gallery_click_data_source %}
-                <el-button iw-widget-id="btn-1" @click="command({
+              <div style="display: flex; justify-content: center; margin-top:10px;" >                
+                <el-button iw-widget-id="btn-1" type="primary" @click="command({
                   method: 'update-gallery',
                   payload: {
                     data: {
@@ -118,6 +119,7 @@ template_gallery_str = """<sly-iw-gallery
                   },
                   internalCommand: true
                 })">Click to Explore</el-button>
+                </div>
 
                 <sly-iw-gallery
                     ref='{{ widget_id }}_modal'
@@ -304,7 +306,13 @@ class MetricVis:
         for widget in self.schema:
             if isinstance(widget, Widget.Markdown):
                 if widget.title is not None and widget.is_header:
-                    res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{widget.id}'">{widget.title}</el-button>\n          </div>"""
+                    res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{widget.id}'" """
+                    res += (
+                        """:style="{fontWeight: data.scrollIntoView==='"""
+                        + widget.id
+                        + """' ? 'bold' : 'normal'}"""
+                    )
+                    res += f""" ">{widget.title}</el-button>\n          </div>"""
         return res
 
     @property
