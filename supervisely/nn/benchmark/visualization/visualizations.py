@@ -78,8 +78,9 @@ template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="
 
 
 template_gallery_str = """<sly-iw-gallery
-              iw-widget-id="{{ widget_id }}"
-              :actions="{
+              iw-widget-id="{{ widget_id }}"{% if is_table_gallery %}
+              ref='{{ widget_id }}'
+              {% endif %}:actions="{
                 'init': {
                   'dataSource': '{{ init_data_source }}',
                 },
@@ -90,10 +91,16 @@ template_gallery_str = """<sly-iw-gallery
 
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
+                style="cursor: pointer;"
                 :actions="{
                   'init': {
                     'dataSource': '{{ init_data_source }}',
                   },
+                  'chart-click': {
+                    'dataSource': '{{ table_click_data }}',
+                    'galleryId': '{{ table_gallery_id }}',
+                    'limit': 3,
+                   },
                 }"
               :command="{{ command }}"
               :data="{{ data }}"
@@ -167,14 +174,17 @@ class Widget:
             from supervisely.app.widgets.fast_table.fast_table import FastTable
 
             self.table = FastTable
+            self.gallery_id = None
             super().__init__()
 
     class Gallery(BaseWidget):
 
-        def __init__(self) -> None:
+        def __init__(self, is_table_gallery: bool = False) -> None:
             from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
                 GridGalleryV2,
             )
+
+            self.is_table_gallery = is_table_gallery
 
             self.gallery = GridGalleryV2(
                 columns_number=3,
@@ -348,12 +358,17 @@ class MetricVis:
                 )
             if isinstance(widget, Widget.Gallery):
                 basename = f"{widget.name}_{self.name}"
+                if widget.is_table_gallery:
+                    for w in self.schema:
+                        if isinstance(w, Widget.Table):
+                            w.gallery_id = widget.id
                 res[f"{basename}_html"] = self._template_gallery.render(
                     {
                         "widget_id": widget.id,
                         "init_data_source": f"/data/{basename}.json",
                         "command": "command",
                         "data": "data",
+                        "is_table_gallery": widget.is_table_gallery,
                     }
                 )
 
@@ -365,6 +380,8 @@ class MetricVis:
                         "init_data_source": f"/data/{basename}.json",
                         "command": "command",
                         "data": "data",
+                        "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
+                        "table_gallery_id": widget.gallery_id,
                     }
                 )
 
@@ -518,11 +535,12 @@ class ModelPredictions(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
-            markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
-            gallery=Widget.Gallery(),
-            markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
+            # markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
+            gallery=Widget.Gallery(is_table_gallery=True),
+            # markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
             table=Widget.Table(),
         )
+        self._row_ids = None
 
     def get_gallery(self, widget: Widget.Gallery) -> dict:
         res = {}
@@ -603,17 +621,35 @@ class ModelPredictions(MetricVis):
         for old, new in zip(ImageInfo._fields, api.image.info_sequence()):
             key_mapping[old] = new
 
+        self._row_ids = []
+
         for row in tbl["data"]["data"]:
             name = row["items"][0]
             info = self._loader.dt_images_dct_by_name[name]
 
             dct = {
                 "row": {key_mapping[k]: v for k, v in info._asdict().items()},
-                "id": info.id,
+                "id": str(info.id),
                 "items": row["items"],
             }
 
+            self._row_ids.append(dct["id"])
             res["content"].append(dct)
+
+        return res
+
+    def get_table_click_data(self, widget: Widget.Table) -> Optional[dict]:
+        res = {}
+        res["layoutTemplate"] = [{"skipObjectsFiltering": True}, None, None]
+        res["clickData"] = {}
+
+        for idx_str in self._row_ids:
+            idx = int(idx_str)
+            dt_image = self._loader.dt_images_dct[idx]
+            gt_image = self._loader.gt_images_dct_by_name[dt_image.name]
+            diff_image = self._loader.diff_images_dct_by_name[dt_image.name]
+
+            res["clickData"][idx] = dict(imagesIds=[gt_image.id, dt_image.id, diff_image.id])
 
         return res
 
@@ -725,32 +761,35 @@ class OutcomeCounts(MetricVis):
         res["clickData"] = {}
         for key, v in self._loader.click_data.outcome_counts.items():
             res["clickData"][key] = {}
-            res["clickData"][key]["layoutData"] = {}
-            res["clickData"][key]["layout"] = []
+            # res["clickData"][key]["layoutData"] = {}
+            # res["clickData"][key]["layout"] = []
+
+            res["clickData"][key]["imagesIds"] = []
 
             tmp = {0: [], 1: [], 2: [], 3: []}
 
             images = set(x["dt_img_id"] for x in v)
 
             for idx, img_id in enumerate(images):
-                ui_id = f"ann_{img_id}"
-                info: ImageInfo = self._loader.dt_images_dct[img_id]
-                res["clickData"][key]["layoutData"][ui_id] = {
-                    "imageUrl": info.preview_url,
-                    "annotation": {
-                        "imageId": info.id,
-                        "imageName": info.name,
-                        "createdAt": info.created_at,
-                        "updatedAt": info.updated_at,
-                        "link": info.link,
-                        "annotation": self._loader.dt_ann_jsons[img_id],
-                    },
-                }
-                if len(tmp[3]) < 5:
-                    tmp[idx % 4].append(ui_id)
+                # ui_id = f"ann_{img_id}"
+                # info: ImageInfo = self._loader.dt_images_dct[img_id]
+                res["clickData"][key]["imagesIds"].append(img_id)
+            #     res["clickData"][key]["layoutData"][ui_id] = {
+            #         "imageUrl": info.preview_url,
+            #         "annotation": {
+            #             "imageId": info.id,
+            #             "imageName": info.name,
+            #             "createdAt": info.created_at,
+            #             "updatedAt": info.updated_at,
+            #             "link": info.link,
+            #             "annotation": self._loader.dt_ann_jsons[img_id],
+            #         },
+            #     }
+            #     if len(tmp[3]) < 5:
+            #         tmp[idx % 4].append(ui_id)
 
-            for _, val in tmp.items():
-                res["clickData"][key]["layout"].append(val)
+            # for _, val in tmp.items():
+            #     res["clickData"][key]["layout"].append(val)
 
         return res
 

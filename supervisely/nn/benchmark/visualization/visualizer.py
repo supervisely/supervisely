@@ -35,25 +35,25 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
-    Overview,
+    # Overview,
     # ExplorerGrid,
-    # ModelPredictions,
+    ModelPredictions,
     # # WhatIs,
     OutcomeCounts,
-    Recall,
-    Precision,
-    RecallVsPrecision,
-    PRCurve,
-    PRCurveByClass,
-    ConfusionMatrix,
-    FrequentlyConfused,
-    IOUDistribution,
-    ReliabilityDiagram,
-    ConfidenceScore,
-    F1ScoreAtDifferentIOU,
-    ConfidenceDistribution,
-    PerClassAvgPrecision,
-    PerClassOutcomeCounts,
+    # Recall,
+    # Precision,
+    # RecallVsPrecision,
+    # PRCurve,
+    # PRCurveByClass,
+    # ConfusionMatrix,
+    # FrequentlyConfused,
+    # IOUDistribution,
+    # ReliabilityDiagram,
+    # ConfidenceScore,
+    # F1ScoreAtDifferentIOU,
+    # ConfidenceDistribution,
+    # PerClassAvgPrecision,
+    # PerClassOutcomeCounts,
     # segmentation-only
     # # TODO integrate binary files while saving to self.layout_dir to the current solution
     # OverallErrorAnalysis,
@@ -238,7 +238,6 @@ class Visualizer:
             data=self._api.project.get_meta(id=self.dt_project_info.id)
         )
         datasets = self._api.dataset.get_list(self.dt_project_info.id)
-
         tmp = {}
         self.dt_images_dct = {}
         self.dt_images_dct_by_name = {}
@@ -254,6 +253,28 @@ class Visualizer:
             for d in datasets
             for ann in self._api.annotation.download_batch(d.id, tmp[d.id])
         }
+
+        datasets = self._api.dataset.get_list(self.gt_project_info.id)
+        tmp = {}
+        self.gt_images_dct = {}
+        self.gt_images_dct_by_name = {}
+        for d in datasets:
+            images = self._api.image.get_list(d.id)
+            tmp[d.id] = [x.id for x in images]
+            for info in images:
+                self.gt_images_dct[info.id] = info
+                self.gt_images_dct_by_name[info.name] = info
+
+        datasets = self._api.dataset.get_list(self.diff_project_info.id)
+        tmp = {}
+        self.diff_images_dct = {}
+        self.diff_images_dct_by_name = {}
+        for d in datasets:
+            images = self._api.image.get_list(d.id)
+            tmp[d.id] = [x.id for x in images]
+            for info in images:
+                self.diff_images_dct[info.id] = info
+                self.diff_images_dct_by_name[info.name] = info
 
     def visualize(self):
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
@@ -323,6 +344,13 @@ class Visualizer:
             content = mv.get_table(widget)
             if content is not None:
                 basename = f"{widget.name}_{mv.name}.json"
+                local_path = f"{self.layout_dir}/data/{basename}"
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(ujson.dumps(content))
+                logger.info("Saved: %r", basename)
+
+                content = mv.get_table_click_data(widget)
+                basename = f"{widget.name}_{mv.name}_click_data.json"
                 local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(ujson.dumps(content))
