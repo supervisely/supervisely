@@ -133,8 +133,10 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
                 started.add(layer_id)
                 need_report = False
             elif status is PullStatus.DOWNLOAD:
-                layers_total_load[layer_id] = progress_details.get("total", 1)
                 layers_current_load[layer_id] = progress_details.get("current", 0)
+                layers_total_load[layer_id] = progress_details.get(
+                    "total", layers_current_load[layer_id]
+                )
                 total_load = sum(layers_total_load.values())
                 current_load = sum(layers_current_load.values())
                 if total_load > progress_load.total:
@@ -146,8 +148,10 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
             elif status is PullStatus.COMPLETE_LOAD:
                 loaded.add(layer_id)
             elif status is PullStatus.EXTRACT:
-                layers_total_extract[layer_id] = progress_details.get("total", 1)
                 layers_current_extract[layer_id] = progress_details.get("current", 0)
+                layers_total_extract[layer_id] = progress_details.get(
+                    "total", layers_current_extract[layer_id]
+                )
                 total_ext = sum(layers_total_extract.values())
                 current_ext = sum(layers_current_extract.values())
                 if total_ext > progres_ext.total:
