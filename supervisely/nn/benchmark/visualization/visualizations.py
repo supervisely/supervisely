@@ -67,11 +67,28 @@ template_chart_str = """
                   'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['confusion_matrix'] %}
                   'keySeparator': '{{ key_separator }}',{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
                   'getKey': (payload) => payload.points[0].data.x,{% endif %}
+                  'galleryId': '{{ widget_id }}_modal',
+                  'limit': 9         
                 },{% endif %}
               }"
               :command="{{ command }}"
               :data="{{ data }}"
             />
+
+              {% if chart_modal_data_source %}
+
+                <sly-iw-gallery
+                    ref='{{ widget_id }}_modal'
+                    iw-widget-id='{{ widget_id }}_modal'
+                    :options="{'isModalWindow': true}"
+                    :actions="{
+                        'init': {
+                        'dataSource': '{{ chart_modal_data_source }}',
+                        },
+                    }"
+                    :command="command"
+                    :data="data"
+                />{% endif %}
 """
 
 template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
@@ -194,6 +211,18 @@ class Widget:
 
         def __init__(self, switch_key: Optional[str] = None) -> None:
             self.switch_key = switch_key
+
+            from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
+                GridGalleryV2,
+            )
+
+            self.gallery = GridGalleryV2(
+                columns_number=3,
+                enable_zoom=False,
+                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+                show_zoom_slider=False,
+            )
+
             super().__init__()
 
     class Table(BaseWidget):
@@ -370,7 +399,10 @@ class MetricVis:
                             "switch_key": widget.switch_key,
                         }
                     )
-                chart_click_path = f"/data/{basename}_clickdata.json" if self.clickable else None
+                chart_click_path = f"/data/{basename}_click_data.json" if self.clickable else None
+                chart_modal_data_source = (
+                    f"/data/{basename}_modal_data.json" if self.clickable else None
+                )
                 res[f"{basename}_html"] = self._template_chart.render(
                     {
                         "widget_id": widget.id,
@@ -383,6 +415,7 @@ class MetricVis:
                         "switchable": self.switchable,
                         "radio_group": self.radiogroup_id,
                         "switch_key": widget.switch_key,
+                        "chart_modal_data_source": chart_modal_data_source,
                     }
                 )
             if isinstance(widget, Widget.Gallery):
@@ -434,6 +467,52 @@ class MetricVis:
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         pass
+
+    def get_modal_data(self, widget: Widget.Chart) -> Optional[dict]:
+        res = {}
+        api = self._loader._api
+        gt_project_id = self._loader.gt_project_info.id
+        dt_project_id = self._loader.dt_project_info.id
+        diff_project_id = self._loader.diff_project_info.id
+        gt_dataset = api.dataset.get_list(gt_project_id)[0]
+        dt_dataset = api.dataset.get_list(dt_project_id)[0]
+        diff_dataset = api.dataset.get_list(diff_project_id)[0]
+        gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id)[:3]
+        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id)[:3]
+        diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id)[:3]
+        project_metas = [
+            ProjectMeta.from_json(data=api.project.get_meta(id=x))
+            for x in [gt_project_id, dt_project_id, diff_project_id]
+        ]
+        for gt_image, pred_image, diff_image in zip(
+            gt_image_infos, pred_image_infos, diff_image_infos
+        ):
+            image_infos = [gt_image, pred_image, diff_image]
+            ann_infos = [api.annotation.download(x.id) for x in image_infos]
+
+            for idx, (image_info, ann_info, project_meta) in enumerate(
+                zip(image_infos, ann_infos, project_metas)
+            ):
+                image_name = image_info.name
+                image_url = image_info.full_storage_url
+                is_ignore = True if idx in [0, 1] else False
+                widget.gallery.append(
+                    title=image_name,
+                    image_url=image_url,
+                    annotation_info=ann_info,
+                    column_index=idx,
+                    project_meta=project_meta,
+                    ignore_tags_filtering=is_ignore,
+                )
+        res.update(widget.gallery.get_json_state())
+        res.update(widget.gallery.get_json_data()["content"])
+        res["layoutData"] = res.pop("annotations")
+        res["projectMeta"] = project_metas[1].to_json()
+
+        res.pop("layout")
+        res.pop("layoutData")
+
+        return res
 
     def get_table(self, widget: Widget.Table) -> Optional[dict]:
         pass
@@ -798,7 +877,7 @@ class OutcomeCounts(MetricVis):
             width=600,
             height=300,
         )
-        fig.update_xaxes(title_text="Count")
+        fig.update_xaxes(title_text="Count (images)")
         fig.update_yaxes(tickangle=-90)
 
         fig.update_layout(
@@ -835,38 +914,20 @@ class OutcomeCounts(MetricVis):
             "showFilter": True,
         }
         res["projectMeta"] = self._loader.dt_project_meta.to_json()
+        res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
         for key, v in self._loader.click_data.outcome_counts.items():
             res["clickData"][key] = {}
-            # res["clickData"][key]["layoutData"] = {}
-            # res["clickData"][key]["layout"] = []
-
             res["clickData"][key]["imagesIds"] = []
 
-            tmp = {0: [], 1: [], 2: [], 3: []}
+            tmp = set()
 
-            images = set(x["dt_img_id"] for x in v)
+            for x in v:
+                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
+                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
 
-            for idx, img_id in enumerate(images):
-                # ui_id = f"ann_{img_id}"
-                # info: ImageInfo = self._loader.dt_images_dct[img_id]
+            for img_id in tmp:
                 res["clickData"][key]["imagesIds"].append(img_id)
-            #     res["clickData"][key]["layoutData"][ui_id] = {
-            #         "imageUrl": info.preview_url,
-            #         "annotation": {
-            #             "imageId": info.id,
-            #             "imageName": info.name,
-            #             "createdAt": info.created_at,
-            #             "updatedAt": info.updated_at,
-            #             "link": info.link,
-            #             "annotation": self._loader.dt_ann_jsons[img_id],
-            #         },
-            #     }
-            #     if len(tmp[3]) < 5:
-            #         tmp[idx % 4].append(ui_id)
-
-            # for _, val in tmp.items():
-            #     res["clickData"][key]["layout"].append(val)
 
         return res
 

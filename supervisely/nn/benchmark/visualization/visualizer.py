@@ -115,7 +115,6 @@ class ClickData:
             self.objects_by_class[cat_name].append(self._gather(match))
 
         self.confusion_matrix = self._confusion_matrix()
-
         self.frequently_confused = self._frequently_confused(self.confusion_matrix)
 
     def _confusion_matrix(self):
@@ -325,10 +324,17 @@ class Visualizer:
 
                 click_data = mv.get_click_data(widget)
                 if click_data is not None:
-                    basename = f"{widget.name}_{mv.name}_clickdata.json"
+                    basename = f"{widget.name}_{mv.name}_click_data.json"
                     local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
                         f.write(ujson.dumps(click_data))
+                    logger.info("Saved: %r", basename)
+
+                    modal_data = mv.get_modal_data(widget)
+                    basename = f"{widget.name}_{mv.name}_modal_data.json"
+                    local_path = f"{self.layout_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(ujson.dumps(modal_data))
                     logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Gallery):
