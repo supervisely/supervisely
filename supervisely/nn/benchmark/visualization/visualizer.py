@@ -417,13 +417,8 @@ class Visualizer:
                 dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]
             ]
 
-        matched_ids = []
-        for dataset in dt_project.datasets:
-            for dt_ann in dt_anns_dct[dataset.name]:
-                for label in dt_ann.labels:
-                    matched_gt_id = label.tags.get("matched_gt_id")
-                    if matched_gt_id is not None:
-                        matched_ids.append(matched_gt_id.value)
+        matched_id_map = self._get_matched_id_map()  # dt_id -> gt_id
+        matched_gt_ids = set(matched_id_map.values())
 
         new_tag = TagMeta(
             "outcome",
@@ -456,7 +451,7 @@ class Visualizer:
                     for gt_ann, dt_ann in zip(gt_anns_dct[dataset.name], dt_anns_dct[dataset.name]):
                         labels = []
                         for label in dt_ann.labels:
-                            match_tag_id = label.tags.get("matched_gt_id")
+                            match_tag_id = matched_id_map.get(label.geometry.sly_id)
                             if match_tag_id is not None:
                                 new = label.clone(tags=label.tags.add(Tag(new_tag, "TP")))
                             else:
@@ -467,7 +462,7 @@ class Visualizer:
                         dt_anns_new.append(Annotation(gt_ann.img_size, labels))
 
                         for label in gt_ann.labels:
-                            if label.geometry.sly_id not in matched_ids and isinstance(
+                            if label.geometry.sly_id not in matched_gt_ids and isinstance(
                                 label.geometry, Rectangle
                             ):
                                 conf_meta = dt_project_meta.get_tag_meta("confidence")
@@ -537,3 +532,12 @@ class Visualizer:
                 outcome = "FN"
             else:
                 raise ValueError(f"Unknown match type: {match['type']}")
+
+    def _get_matched_id_map(self):        
+        gt_ann_mapping = self.click_data.gt_id_mapper.map_obj
+        dt_ann_mapping = self.click_data.dt_id_mapper.map_obj
+        dtId2matched_gt_id = {}
+        for match in self.mp.matches:
+            if match["type"] == "TP":
+                dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
+        return dtId2matched_gt_id
