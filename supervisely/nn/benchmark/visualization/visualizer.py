@@ -393,6 +393,7 @@ class Visualizer:
 
         gt_project = Project(gt_project_path, OpenMode.READ)
         dt_project = Project(dt_project_path, OpenMode.READ)
+        dt_project_meta = self.dt_project_meta
 
         dt_images_dct = {}
         dt_anns_dct = {}
@@ -405,7 +406,7 @@ class Visualizer:
             image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
 
             dt_anns_dct[dataset.name] = [
-                dataset.get_ann(name, dt_project.meta) for name in image_names
+                dataset.get_ann(name, dt_project_meta) for name in image_names
             ]
             dt_images_dct[dataset.name] = [dataset.get_image_info(name) for name in image_names]
             names_dct[dataset.name] = image_names
@@ -430,9 +431,9 @@ class Visualizer:
             possible_values=["TP", "FP", "FN"],
             applicable_to=TagApplicableTo.OBJECTS_ONLY,
         )
-        tag_metas = dt_project.meta.tag_metas
-        if dt_project.meta.get_tag_meta(new_tag.name) is None:
-            tag_metas = dt_project.meta.tag_metas.add(new_tag)
+        tag_metas = dt_project_meta.tag_metas
+        if dt_project_meta.get_tag_meta(new_tag.name) is None:
+            tag_metas = dt_project_meta.tag_metas.add(new_tag)
 
         diff_meta = ProjectMeta(
             obj_classes=gt_project.meta.obj_classes,
@@ -469,7 +470,7 @@ class Visualizer:
                             if label.geometry.sly_id not in matched_ids and isinstance(
                                 label.geometry, Rectangle
                             ):
-                                conf_meta = dt_project.meta.get_tag_meta("confidence")
+                                conf_meta = dt_project_meta.get_tag_meta("confidence")
                                 labels.append(
                                     label.clone(
                                         tags=label.tags.add_items(
@@ -507,6 +508,7 @@ class Visualizer:
             meta = meta.add_tag_meta(iou_tag_meta)
         if meta != meta_old:
             meta = api.project.update_meta(dt_project_id, meta)
+            self.dt_project_meta = meta
 
         # get tag metas
         # outcome_tag_meta = meta.get_tag_meta("outcome")
@@ -535,4 +537,3 @@ class Visualizer:
                 outcome = "FN"
             else:
                 raise ValueError(f"Unknown match type: {match['type']}")
-
