@@ -43,8 +43,8 @@ from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 
 class LabelingJobInfo(NamedTuple):
@@ -70,6 +70,8 @@ class LabelingJobInfo(NamedTuple):
     finished_at: str
     status: str
     disabled: bool
+    labeling_queue_id: int
+    labeling_exam_id: str
     images_count: int
     finished_images_count: int
     rejected_images_count: int
@@ -158,6 +160,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              finished_at='2020-04-08T15:13:39.788Z',
                              status='completed',
                              disabled=False,
+                             labeling_queue_id=3,
+                             labeling_exam_id=None,
                              images_count=3,
                              finished_images_count=0,
                              rejected_images_count=1,
@@ -196,6 +200,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.FINISHED_AT,
             ApiField.STATUS,
             ApiField.DISABLED,
+            ApiField.LABELING_QUEUE_ID,
+            ApiField.LABELING_EXAM_ID,
             ApiField.IMAGES_COUNT,
             ApiField.FINISHED_IMAGES_COUNT,
             ApiField.REJECTED_IMAGES_COUNT,
