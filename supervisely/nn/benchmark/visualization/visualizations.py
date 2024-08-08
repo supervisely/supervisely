@@ -92,14 +92,15 @@ template_gallery_str = """<sly-iw-gallery
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
                 style="cursor: pointer;"
+                :options="{ isRowClickable: true }" 
                 :actions="{
                   'init': {
                     'dataSource': '{{ init_data_source }}',
                   },
                   'chart-click': {
                     'dataSource': '{{ table_click_data }}',
-                    'galleryId': '{{ table_gallery_id }}',
-                    'limit': 3,
+                    'galleryId': '{{ table_gallery_id }}',                    
+                    'getKey':(payload)=>payload.row[0],
                    },
                 }"
               :command="{{ command }}"
@@ -191,7 +192,6 @@ class Widget:
                 enable_zoom=False,
                 default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
                 show_zoom_slider=False,
-                
             )
 
             super().__init__()
@@ -516,7 +516,7 @@ class ExplorerGrid(MetricVis):
             ):
                 image_name = image_info.name
                 image_url = image_info.full_storage_url
-                is_ignore = True if idx in [0,1] else False
+                is_ignore = True if idx in [0, 1] else False
                 widget.gallery.append(
                     title=image_name,
                     image_url=image_url,
@@ -537,9 +537,9 @@ class ModelPredictions(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
-            # markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
+            markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
             gallery=Widget.Gallery(is_table_gallery=True),
-            # markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
+            markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
             table=Widget.Table(),
         )
         self._row_ids = None
@@ -592,6 +592,8 @@ class ModelPredictions(MetricVis):
         res.update(widget.gallery.get_json_data()["content"])
         res["layoutData"] = res.pop("annotations")
 
+        res["projectMeta"] = project_metas[1].to_json()
+
         return res
 
     def get_table(self, widget: Widget.Table) -> dict:
@@ -631,7 +633,7 @@ class ModelPredictions(MetricVis):
 
             dct = {
                 "row": {key_mapping[k]: v for k, v in info._asdict().items()},
-                "id": str(info.id),
+                "id": info.name,
                 "items": row["items"],
             }
 
@@ -642,16 +644,20 @@ class ModelPredictions(MetricVis):
 
     def get_table_click_data(self, widget: Widget.Table) -> Optional[dict]:
         res = {}
-        res["layoutTemplate"] = [{"skipObjectsFiltering": True}, None, None]
+        res["layoutTemplate"] = [
+            {"skipObjectsFiltering": True},
+            {"skipObjectsFiltering": True},
+            None,
+        ]
         res["clickData"] = {}
 
         for idx_str in self._row_ids:
-            idx = int(idx_str)
-            dt_image = self._loader.dt_images_dct[idx]
-            gt_image = self._loader.gt_images_dct_by_name[dt_image.name]
-            diff_image = self._loader.diff_images_dct_by_name[dt_image.name]
 
-            res["clickData"][idx] = dict(imagesIds=[gt_image.id, dt_image.id, diff_image.id])
+            gt_image = self._loader.gt_images_dct_by_name[idx_str]
+            dt_image = self._loader.dt_images_dct_by_name[idx_str]
+            diff_image = self._loader.diff_images_dct_by_name[idx_str]
+
+            res["clickData"][idx_str] = dict(imagesIds=[gt_image.id, dt_image.id, diff_image.id])
 
         return res
 

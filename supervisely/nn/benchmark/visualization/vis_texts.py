@@ -67,6 +67,7 @@ markdown_predictions_table = """### Prediction Table
 The table helps you in finding samples with specific cases of interest. You can sort by parameters such as the number of predictions, or specific a metric, e.g, recall, then click on a row to view this image and predictions.
 
 **Example**: you can sort by **FN** (False Negatives) in descending order to identify samples where the model failed to detect many objects.
+*Click on the row* to view the image with **Ground Truth**, **Predicted**, or the **Difference** annotations.
 """
 
 markdown_what_is = """## What is YOLOv8 model? (collapse)
