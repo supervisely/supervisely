@@ -899,21 +899,7 @@ class OutcomeCounts(MetricVis):
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         res = {}
-        res["filters"] = [
-            {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
-            {"type": "tag", "tagId": "outcome", "value": "TP"},
-        ]
-        res["options"] = {
-            "fitOnResize": True,
-            "enableZoom": False,
-            "showOpacityInHeader": True,
-            "showZoomInHeader": True,
-            "opacity": 0.8,
-            "enableObjectsPointerEvents": True,
-            "showTransparentBackground": True,
-            "showFilter": True,
-        }
-        res["projectMeta"] = self._loader.dt_project_meta.to_json()
+
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
         for key, v in self._loader.click_data.outcome_counts.items():
@@ -1210,11 +1196,12 @@ class ConfusionMatrix(MetricVis):
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         res = dict(projectMeta=self._loader.dt_project_meta.to_json())
+        res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
 
         unique_pairs = set()
         filtered_pairs = []
-        for k, v in self._loader.click_data.confusion_matrix.items():
+        for k, val in self._loader.click_data.confusion_matrix.items():
             ordered_pair = tuple(sorted(k))
             if ordered_pair not in unique_pairs:
                 unique_pairs.add(ordered_pair)
@@ -1224,31 +1211,16 @@ class ConfusionMatrix(MetricVis):
             subkey1, subkey2 = ordered_pair
             key = subkey1 + self._keypair_sep + subkey2
             res["clickData"][key] = {}
-            res["clickData"][key]["layoutData"] = {}
-            res["clickData"][key]["layout"] = []
+            res["clickData"][key]["imagesIds"] = []
 
-            tmp = {0: [], 1: [], 2: [], 3: []}
-            images = set(x["dt_img_id"] for x in v)
+            tmp = set()
 
-            for idx, img_id in enumerate(images):
-                ui_id = f"ann_{img_id}"
-                info: ImageInfo = self._loader.dt_images_dct[img_id]
-                res["clickData"][key]["layoutData"][ui_id] = {
-                    "imageUrl": info.preview_url,
-                    "annotation": {
-                        "imageId": info.id,
-                        "imageName": info.name,
-                        "createdAt": info.created_at,
-                        "updatedAt": info.updated_at,
-                        "link": info.link,
-                        "annotation": self._loader.dt_ann_jsons[img_id],
-                    },
-                }
-                if len(tmp[3]) < 5:
-                    tmp[idx % 4].append(ui_id)
+            for x in val:
+                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
+                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
 
-            for _, val in tmp.items():
-                res["clickData"][key]["layout"].append(val)
+            for img_id in tmp:
+                res["clickData"][key]["imagesIds"].append(img_id)
 
         return res
 
