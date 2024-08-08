@@ -146,8 +146,8 @@ def _docker_pull_progress(docker_api, docker_image_name, logger, raise_exception
             elif status is PullStatus.COMPLETE_LOAD:
                 loaded.add(layer_id)
             elif status is PullStatus.EXTRACT:
-                layers_total_extract[layer_id] = progress_details["total"]
-                layers_current_extract[layer_id] = progress_details["current"]
+                layers_total_extract[layer_id] = progress_details.get("total", 1)
+                layers_current_extract[layer_id] = progress_details.get("current", 0)
                 total_ext = sum(layers_total_extract.values())
                 current_ext = sum(layers_current_extract.values())
                 if total_ext > progres_ext.total:
