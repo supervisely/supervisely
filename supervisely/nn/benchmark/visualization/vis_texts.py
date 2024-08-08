@@ -16,19 +16,22 @@ definitions = SimpleNamespace(
 checkpoint_name = "YOLOv8-L (COCO 2017 val)"
 
 
-markdown_overview = f"""# {checkpoint_name}
+markdown_overview = """# {}
 
 ## Overview
 
-- **Model**: [YOLOv8-L]()
+- **Model**: {}
+- **Architecture**: {}
 - **Year**: 2023
 - **Authors**: ultralytics
-- **Task type**: object detection
+- **Task type**: {}
+- **Runtime**: {}
+- **Hardware**: {}
 - **Training dataset (?)**: COCO 2017 train
 - **Model classes (?)**: (80): a, b, c, … (collapse)
 - **Model weights (?)**: [/path/to/yolov8l.pt]()
 - **License (?)**: AGPL-3.0
-- [GitHub](https://github.com/ultralytics/ultralytics)
+- [Checkpoint URL]({})
 """
 
 markdown_key_metrics = """## Key Metrics

@@ -563,8 +563,23 @@ class Overview(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        info = loader.inference_info
         self.schema = Schema(
-            markdown_overview=Widget.Markdown(title="Overview", is_header=True),
+            markdown_overview=Widget.Markdown(
+                title="Overview",
+                is_header=True,
+                formats=[
+                    info.get("deploy_params", {}).get("checkpoint_name"),
+                    info.get("model_name"),
+                    info.get("architecture"),
+                    # info.get("year", "???"),
+                    # info.get("authors", "???"),
+                    info.get("task_type"),
+                    info.get("runtime"),
+                    info.get("hardware"),
+                    info.get("deploy_params", {}).get("checkpoint_url"),
+                ],
+            ),
             markdown_key_metrics=Widget.Markdown(
                 title="Key Metrics",
                 is_header=True,

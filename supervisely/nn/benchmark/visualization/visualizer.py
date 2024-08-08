@@ -184,10 +184,11 @@ class Visualizer:
 
     def _initialize_object_detection_loader(self):
 
-        cocoGt_path, cocoDt_path, eval_data_path = (
+        cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
             self.eval_dir + "/cocoGt.json",
             self.eval_dir + "/cocoDt.json",
             self.eval_dir + "/eval_data.pkl",
+            self.eval_dir + "/inference_info.json",
         )
 
         with open(cocoGt_path, "r") as f:
@@ -204,6 +205,13 @@ class Visualizer:
 
         with open(eval_data_path, "rb") as f:
             eval_data = pickle.load(f)
+
+        inference_info = {}
+        if file_exists(inference_info_path):
+            with open(inference_info_path, "r") as f:
+                inference_info = json.load(f)
+
+        self.inference_info = inference_info
 
         mp = MetricProvider(
             eval_data["matches"],
