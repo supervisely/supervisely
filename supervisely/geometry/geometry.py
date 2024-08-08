@@ -269,3 +269,9 @@ class Geometry(JsonSerializable):
                 )
             )
         return res
+
+    def to_subpixel(self):
+        """
+        Implement in subclasses
+        """
+        return self
