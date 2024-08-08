@@ -71,7 +71,7 @@ class LabelingJobInfo(NamedTuple):
     status: str
     disabled: bool
     labeling_queue_id: int
-    labeling_exam_id: str
+    labeling_exam_id: int
     images_count: int
     finished_images_count: int
     rejected_images_count: int
