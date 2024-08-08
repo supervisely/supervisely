@@ -63,7 +63,7 @@ template_chart_str = """
                 },{% if chart_click_data_source %}
                 'chart-click': {
                   'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
-                  'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused'] %}
+                  'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
                   'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['confusion_matrix'] %}
                   'keySeparator': '{{ key_separator }}',{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
                   'getKey': (payload) => payload.points[0].data.x,{% endif %}
@@ -466,7 +466,26 @@ class MetricVis:
         pass
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
-        pass
+        if not self.clickable:
+            return
+        res = {}
+
+        res["layoutTemplate"] = [None, None, None]
+        res["clickData"] = {}
+        for key, v in self._loader.click_data.objects_by_class.items():
+            res["clickData"][key] = {}
+            res["clickData"][key]["imagesIds"] = []
+
+            tmp = set()
+
+            for x in v:
+                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
+                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+
+            for img_id in tmp:
+                res["clickData"][key]["imagesIds"].append(img_id)
+
+        return res
 
     def get_modal_data(self, widget: Widget.Chart) -> Optional[dict]:
         res = {}
@@ -925,6 +944,7 @@ class Recall(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         tp_plus_fn = self._loader.mp.TP_count + self._loader.mp.FN_count
+        self.clickable = True
         self.schema = Schema(
             markdown_R=Widget.Markdown(title="Recall", is_header=True),
             notification_recall=Widget.Notification(
@@ -961,6 +981,7 @@ class Precision(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        self.clickable = True
         self.schema = Schema(
             markdown_P=Widget.Markdown(title="Precision", is_header=True),
             notification_precision=Widget.Notification(
@@ -1000,6 +1021,7 @@ class RecallVsPrecision(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        self.clickable = True
         self.schema = Schema(
             markdown_PR=Widget.Markdown(
                 title="Recall vs Precision", is_header=True, formats=[definitions.f1_score]
