@@ -29,6 +29,7 @@ class GridGalleryV2(Widget):
         transparent_background: bool = True,
         show_filter: bool = True,
         fill_rectangle: bool = True,
+        enable_panning=False,
         border_width: int = 3,
         default_tag_filters: List[Union[str, dict]] = None,
         widget_id: str = None,
@@ -59,6 +60,8 @@ class GridGalleryV2(Widget):
         self._enable_pointer_events: bool = enable_pointer_events
         self._transparent_background: bool = transparent_background
         self._show_filter: bool = show_filter
+
+        self._enablePan = enable_panning
 
         self._filters_tags = default_tag_filters
         # if filters_tags is not None:
@@ -147,6 +150,7 @@ class GridGalleryV2(Widget):
                 "enableObjectsPointerEvents": self._enable_pointer_events,
                 "showTransparentBackground": self._transparent_background,
                 "showFilter": self._show_filter,
+                "enablePan": self._enablePan,
             },
         }
 

@@ -36,7 +36,7 @@ from supervisely.task.progress import tqdm_sly
 
 _METRIC_VISUALIZATIONS = (
     # Overview,
-    # ExplorerGrid,
+    ExplorerGrid,
     ModelPredictions,
     # # WhatIs,
     OutcomeCounts,

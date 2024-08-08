@@ -44,7 +44,10 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Inference Speed**: The number of frames per second (FPS) the model can process, measured with a batch size of 1. The inference speed is important in applications, where real-time object detection is required. Additionally, slower models pour more GPU resources, so their inference cost is higher.
 """
 
-markdown_explorer = """## Explore Predictions"""
+markdown_explorer = """## Explore Predictions
+
+Compare **Ground Truth** (1st column) and **Predictions** (2nd column) projects to recognize mistakes and pecularities of the data. Use *filter* to change the *confidence* threshold and model's *outcomes* (TP, FP and FN), which will be shown as the **Difference** (3rd column).
+"""
 
 
 markdown_predictions_gallery = """## Model Predictions

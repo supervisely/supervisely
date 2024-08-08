@@ -190,6 +190,8 @@ class Widget:
                 columns_number=3,
                 enable_zoom=False,
                 default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+                show_zoom_slider=False,
+                
             )
 
             super().__init__()
@@ -514,7 +516,7 @@ class ExplorerGrid(MetricVis):
             ):
                 image_name = image_info.name
                 image_url = image_info.full_storage_url
-                is_ignore = True if idx == 0 else False
+                is_ignore = True if idx in [0,1] else False
                 widget.gallery.append(
                     title=image_name,
                     image_url=image_url,
@@ -577,7 +579,7 @@ class ModelPredictions(MetricVis):
         ):
             image_name = image_info.name
             image_url = image_info.full_storage_url
-            is_ignore = True if idx == 0 else False
+            is_ignore = True if idx in [0, 1] else False
             widget.gallery.append(
                 title=image_name,
                 image_url=image_url,
