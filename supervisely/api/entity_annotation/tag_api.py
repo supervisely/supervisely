@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import List
+from typing import Dict, List, Optional, Union
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
@@ -210,11 +210,13 @@ class TagApi(ModuleApi):
             raise RuntimeError("SDK error: len(tags_keys) != len(tags_to_add)")
         if len(tags_keys) == 0:
             return
-        ids = self.append_to_objects_json(entity_id, tags_to_add)
+        ids = self.append_to_objects_json(entity_id, tags_to_add, project_id)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
         return ids
 
-    def append_to_objects_json(self, entity_id: int, tags_json: dict) -> list:
+    def append_to_objects_json(
+        self, entity_id: int, tags_json: List[Dict], project_id: Optional[int] = None
+    ) -> List[int]:
         """
         Add Tags to Annotation Objects for specific entity (image etc.).
 
@@ -228,10 +230,11 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
-        response = self._api.post(
-            "annotation-objects.tags.bulk.add",
-            {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json},
-        )
+        if project_id is not None:
+            json_data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: tags_json}
+        else:
+            json_data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json}
+        response = self._api.post("annotation-objects.tags.bulk.add", json_data)
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
@@ -325,4 +328,153 @@ class TagApi(ModuleApi):
             result.extend(response.json())
             if log_progress:
                 ds_progress.update(len(batch))
+        return result
+
+    def append_to_entities(
+        self,
+        project_id: int,
+        tags_list: List[Dict[str, Union[str, int, None]]],
+        batch_size: int = 100,
+        log_progress: bool = False,
+    ) -> List[int]:
+        """
+        Bulk add tags to entities (images, videos, etc.) in a project.
+        All entities must belong to the same project.
+
+        `tags_list` example: [{"tagId": 12345, "entityId": 54321, "value": "tag_value"}, ...].
+        `frameRange` field in the tags list is optional and is supported only for video projects.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_list: List of tag object infos as dictionaries
+                          (e.g. {"tagId": 12345, "entityId": 54321, "value": "tag_value"}).
+        :param batch_size: Number of tags to add in one request.
+        :type batch_size: int
+        :param log_progress: If True, will display a progress bar.
+        :type log_progress: bool
+        :return: List of tags IDs.
+        :rtype: List[int]
+
+        Usage example:
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address, token)
+
+            project_id = 12345
+
+            tag_list = [
+                {
+                    "tagId": 25926,
+                    "figureId": 652959,
+                    "value": None # value is optional for tag with type 'None'
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652959,
+                    "value": "v1"
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652958,
+                    "value": "v2"
+                }
+            ]
+            api.image.tag.append_to_entities(project_id, tag_list)
+        """
+
+        if len(tags_list) == 0:
+            return []
+
+        result = []
+        if log_progress:
+            ds_progress = tqdm_sly(
+                desc="Adding tags to entities",
+                total=len(tags_list),
+            )
+
+        for batch in batched(tags_list, batch_size):
+            data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
+            response = self._api.post("tags.entities.bulk.add", data)
+            result.extend([obj[ApiField.ID] for obj in response.json()])
+            if log_progress:
+                ds_progress.update(len(batch))
+
+        return result
+
+    def append_to_objects_batch(
+        self,
+        project_id: int,
+        tags_list: List[Dict[str, Union[str, int, None]]],
+        batch_size: int = 100,
+        log_progress: bool = False,
+    ) -> List[int]:
+        """
+        Add Tags to existing Annotation Objects.
+        All objects must belong to entities of the same project.
+        Not available for images project.
+
+        `tags_list` example: [{"tagId": 12345, "figureId": 54321, "value": "tag_value"}, ...].
+        `frameRange` field in the tags list is optional and is supported only for video and pointcloud episodes projects.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_list: List of tag object infos as dictionaries
+                            (e.g. {"tagId": 12345, "figureId": 54321, "value": "tag_value"}).
+        :type tags_list: List[dict]
+        :param batch_size: Number of tags to add in one request.
+        :type batch_size: int
+        :param log_progress: If True, will display a progress bar.
+        :type log_progress: bool
+        :return: List of tags IDs.
+        :rtype: List[int]
+
+        Usage example:
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address, token)
+
+            tag_list = [
+                {
+                    "tagId": 25926,
+                    "figureId": 652959,
+                    "value": None
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652959,
+                    "value": "v1"
+                },
+                {
+                    "tagId": 25927,
+                    "figureId": 652958,
+                    "value": "v2"
+                }
+            ]
+            api.image.tag.add_to_objects_batch(12345, tag_list)
+        """
+        if type(self) is TagApi:
+            raise NotImplementedError("This method is not available for images project")
+
+        if len(tags_list) == 0:
+            return []
+
+        result = []
+        if log_progress:
+            ds_progress = tqdm_sly(
+                desc="Adding tags to figures",
+                total=len(tags_list),
+            )
+
+        for batch in batched(tags_list, batch_size):
+            data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
+            response = self._api.post("annotation-objects.tags.bulk.add", data)
+            result.extend([obj[ApiField.ID] for obj in response.json()])
+
+            if log_progress:
+                ds_progress.update(len(batch))
+
         return result
