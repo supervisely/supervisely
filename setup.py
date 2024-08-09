@@ -179,7 +179,13 @@ setup(
         include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
     ),
     package_data={
-        "": ["*.html", "*.css", "*.js", "*.md"],
+        "": [
+            "*.html",
+            "*.css",
+            "*.js",
+            "*.md",
+            "versions.json",
+        ],
         "supervisely": [
             "video/*.sh",
             "app/development/*.sh",
