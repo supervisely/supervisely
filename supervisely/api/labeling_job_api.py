@@ -571,6 +571,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         reviewer_id: Optional[int] = None,
         is_part_of_queue: Optional[bool] = True,
         queue_ids: Optional[Union[List, int]] = None,
+        exclude_statuses: Optional[
+            List[Literal["pending", "in_progress", "on_review", "completed"]]
+        ] = None,
     ) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
@@ -593,6 +596,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type is_part_of_queue: bool, optional
         :param queue_ids: IDs of the Labeling Queues. If set, only Labeling Jobs from the selected queues are returned. Arg `is_part_of_queue` must be True.
         :type queue_ids: Union[List, int], optional
+        :param exclude_statuses: Exclude Labeling Jobs with given statuses.
+        :type exclude_statuses: List[Literal["pending", "in_progress", "on_review", "completed"]], optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -723,6 +728,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append(
                 {"field": ApiField.LABELING_QUEUE_ID, "operator": "in", "value": queue_ids}
             )
+        if exclude_statuses is not None:
+            filters.append({"field": ApiField.STATUS, "operator": "!in", "value": exclude_statuses})
         return self.get_list_all_pages(
             "jobs.list",
             {ApiField.TEAM_ID: team_id, "showDisabled": show_disabled, ApiField.FILTER: filters},
