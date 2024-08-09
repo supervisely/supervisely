@@ -69,7 +69,7 @@ template_chart_str = """
                   'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
                   'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
                   'keySeparator': '{{ key_separator }}',{% endif %}
-                  'galleryId': '{{ widget_id }}_modal',zz
+                  'galleryId': '{{ widget_id }}_modal',
                   'limit': 9
                 },{% endif %}
               }"
