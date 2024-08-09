@@ -1522,7 +1522,7 @@ class ConfidenceScore(MetricVis):
         fig = px.line(
             self._loader.dfsp_down,
             x="scores",
-            y=["Precision", "Recall", "F1"],
+            y=["precision", "recall", "f1"],
             # title="Confidence Score Profile",
             labels={"value": "Value", "variable": "Metric", "scores": "Confidence Score"},
             width=None,
@@ -1769,6 +1769,9 @@ class PerClassAvgPrecision(MetricVis):
         # fill points
         fig.update_traces(fill="toself")
 
+        fig.update_layout(
+            modebar_add=["resetScale"]
+        )
         return fig
 
 

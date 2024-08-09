@@ -224,7 +224,7 @@ class Visualizer:
         self.mp = mp
 
         self.df_score_profile = pd.DataFrame(
-            self.mp.confidence_score_profile(), columns=["scores", "Precision", "Recall", "F1"]
+            self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
         )
 
         # downsample
