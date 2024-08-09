@@ -579,7 +579,8 @@ class Annotation:
 
                 if not self.use_subpixel_label_coords:
                     canvas_rect = Rectangle.from_size(self.img_size)
-                    dest.extend(label.crop(canvas_rect))
+                    cropped_labels = label.crop(canvas_rect)
+                    dest.extend(cropped_labels)
                 else:
                     dest.append(label)
             else:

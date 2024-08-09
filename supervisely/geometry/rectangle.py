@@ -98,15 +98,14 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        # Adjust coordinates
-
+        # Adjust coordinates        
+        # -----------------------------------------------
         # Check if all coordinates are inside one pixel
-        # @TODO: Handle case if bottom or right coordinates are on image border
         if floor(top) == floor(bottom) and floor(left) == floor(right):
             top, left = floor(top), floor(left)
             bottom, right = ceil(bottom), ceil(right)
 
-        # Otherwise, adjust the coordinates
+        # Otherwise, adjust coordinates to the nearest pixel
         else:
             # For the top and left coordinates:
             # If the fractional part of the coordinate is greater than or equal to 0.7
@@ -124,14 +123,15 @@ class Rectangle(Geometry):
             bottom = ceil(bottom) if bottom % 1 >= 0.3 else floor(bottom)
             right = ceil(right) if right % 1 >= 0.3 else floor(right)
 
-        # Avoid dot/line micro rectangle labels
-        # Example [[2, 2], [2, 2]]
-        # Will draw pixel in OpenCV, but when upload to Supervisely will be converted to empty rectangle (dot/line)
+            # Avoid dot/line micro rectangle labels
+            # Ensure at least a 1x1 rectangle
+            # Example [[2, 2], [2, 2]] or [[3.8, 3.84], [4.16, 4.15]] -> [[4, 4], [4, 4]]
+            # Will draw pixel in OpenCV, but when upload to Supervisely will be converted to empty rectangle (dot/line)
         if top == bottom:
             bottom += 1
         if left == right:
             right += 1
-
+        # -----------------------------------------------
 
         self._points = [
             PointLocation(row=top, col=left),
@@ -431,36 +431,59 @@ class Rectangle(Geometry):
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
         height, width = bitmap.shape[:2]
-        # Handle one pixel case
-        if self.left == self.right and self.top == self.bottom:
-            right = self.right
-            bottom = self.bottom
-        # Handle right bottom corner
-        elif self.right == width - 1 and self.bottom == height - 1:
-            right = self.right
-            bottom = self.bottom
-        # Handle right border
-        elif self.right == width - 1 and self.bottom != height - 1:
-            right = self.right
-            bottom = max(self.top, self.bottom - 1)
-        # Handle bottom border
-        elif self.bottom == height - 1 and self.right != width - 1:
-            bottom = self.bottom
-            right = max(self.left, self.right - 1)
+        left = self.left
+        top = self.top
+        right = self.right
+        bottom = self.bottom
+        # # Handle one pixel case
+        if left == right and top == bottom:
+                right = right
+                bottom = bottom
+                
+        #Handle one pixel top right corner
+        elif left == width and right >= width and bottom != height:
+            left = min(width - 1, left - 1)
+            right = min(width - 1, right - 1)
+            top = min(height - 1, top)
+            bottom = min(top, bottom - 1)
+        # Handle border right bottom (corner)
+        elif right >= width and bottom >= height:
+            right = min(width -1 , right - 1)
+            bottom = min(height -1 , bottom - 1)
+        # Handle pre border right bottom (corner)
+        elif right == width - 1 and bottom == height - 1:
+            right = right - 1
+            bottom = bottom - 1    
+        # Handle right border (except corner)
+        elif right == width and bottom != height:
+            right = min(width - 1, right - 1)
+            bottom = max(top, bottom - 1)
+        # Handle right pre border
+        elif right == width - 1 and bottom != height - 1:
+            right = right - 1 # -1 require change in self.from_size() to distinct border from pre border pixel
+            bottom = max(top, bottom - 1)
+        # Handle bottom border (except corner)
+        elif bottom >= height and right != width:
+            bottom = min(height - 1, bottom - 1)
+            right = max(left, right - 1)
+        # Handle bottom pre border
+        elif bottom == height - 1 and right != width - 1:
+            bottom = bottom - 1 # -1 require change in self.from_size() to distinct border from pre border pixel
+            right = max(left, right - 1)
         # General case
         else:
-            right = max(self.left, self.right - 1)
-            bottom = max(self.top, self.bottom - 1)
+            right = max(left, right - 1)
+            bottom = max(top, bottom - 1)
 
         cv2.rectangle(
             bitmap,
-            pt1=(self.left, self.top),
+            pt1=(left, top),
             pt2=(right, bottom),
             color=color,
             thickness=thickness,
         )
         print("-----------------------------------------------")
-        print(f"OpenCV drawn coords: [[{self.left, self.top}][{right, bottom}]]")
+        print(f"OpenCV drawn coords: [[{left, top}][{right, bottom}]]")
 
     def to_bbox(self) -> Rectangle:
         """
@@ -536,7 +559,10 @@ class Rectangle(Geometry):
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
-        return cls(0, 0, size[0] - 1, size[1] - 1)
+        return cls(0, 0, size[0], size[1])
+    
+        # Unable to distinguish border from pre border pixel
+        # return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
     def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
@@ -814,36 +840,49 @@ class Rectangle(Geometry):
         :rtype: :class:`Rectangle<Rectangle>`
         """
         # Pixel -> Subpixel
-        # Add 0.5 to each corner to center the coordinate within the pixel
-        # new_left, new_top = self.left + 0.5, self.top + 0.5
-        # new_right, new_bottom = self.right + 0.5, self.bottom + 0.5
-        # return Rectangle(
-        #     top=new_top,
-        #     left=new_left,
-        #     bottom=new_bottom,
-        #     right=new_right,
-        #     sly_id=self.sly_id,
-        #     class_id=self.class_id,
-        #     labeler_login=self.labeler_login,
-        #     updated_at=self.updated_at,
-        #     created_at=self.created_at,
-        # )
-        # return self
         # Add 0.5 to borders only
         height, width = img_size
+        # new_right = self.right if self.right < width - 1 else self.right + 0.5
+        # new_bottom = self.bottom  if self.bottom  < height - 1 else self.bottom  + 0.5
+
+        # new_right = self.right if self.right == width else self.right + 0.5
+        # new_bottom = self.bottom if self.bottom == height else self.bottom + 0.5
+
+        new_left = self.left
+        new_top = self.top
+        
         new_right = self.right
         new_bottom = self.bottom
-        if self.right == width - 1:
+        if new_right == width:
             new_right = self.right + 0.5
-        if self.bottom == height - 1:
+        if new_bottom == height:
             new_bottom = self.bottom + 0.5
+            
+        # Remove changes in self.from_size()
+        # but will be unable to distinguish border from pre border pixel
+        # resulting in preborder pixel to also cover border pixel
+        # if new_right == width -1 :
+            # new_right = self.right + 0.5
+        # if new_bottom == height - 1:
+            # new_bottom = self.bottom + 0.5
+
+        if new_left >= width:
+            new_left = min(width - 1, new_left)
+        if new_top >= height:
+            new_top = min(height - 1, new_top)
+        if new_right >= width:
+            new_right = max(new_left, width)
+        if new_bottom >= height:
+            new_bottom = max(new_top, height)
+            
+        
 
         if self.right == new_right and self.bottom == new_bottom:
             return self
         else:
             return Rectangle(
-                top=self.top,
-                left=self.left,
+                top=new_top,
+                left=new_left,
                 bottom=new_bottom,
                 right=new_right,
                 sly_id=self.sly_id,
