@@ -1,0 +1,14 @@
+<sly-grid-gallery-v2
+  id="{{{widget.widget_id}}}"
+  :options="state.{{{widget.widget_id}}}.options"
+  :layout="data.{{{widget.widget_id}}}.content.layout"
+  :layout-data="data.{{{widget.widget_id}}}.content.annotations"
+  :filters.sync="state.{{{widget.widget_id}}}.filters"
+  :project-meta="data.{{{widget.widget_id}}}.content.projectMeta"
+  :objects-bindings="data.{{{widget.widget_id}}}.content.objectsBindings"
+></sly-grid-gallery-v2>
+<div
+  v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length === 0"
+>
+  {{{widget._empty_message}}}
+</div>

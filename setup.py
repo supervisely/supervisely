@@ -66,6 +66,9 @@ INSTALL_REQUIRES = [
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
     "zstd",
+    "pycocotools",
+    "scikit-learn",
+    "ujson",
 ]
 
 ALT_INSTALL_REQUIRES = {
