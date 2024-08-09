@@ -250,7 +250,7 @@ class Widget:
             self.gallery = GridGalleryV2(
                 columns_number=3,
                 enable_zoom=False,
-                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "FP"}],
                 show_zoom_slider=False,
             )
 
