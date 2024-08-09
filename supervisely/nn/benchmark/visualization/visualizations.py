@@ -697,7 +697,7 @@ class ExplorerGrid(MetricVis):
         tmp = res["layout"][2][0]
         res["layout"][2][0] = {
             "layoutDataKey": tmp,
-            "options": {"skipObjectTagsFiltering": True, "columnTitle": "Difference"},
+            "options": {"columnTitle": "Difference"},
         }
 
         return res
