@@ -132,7 +132,7 @@ setup(
             "*.js",
             "*.md",
             "versions.json",
-    ],
+        ],
         "supervisely": [
             "video/*.sh",
             "app/development/*.sh",
