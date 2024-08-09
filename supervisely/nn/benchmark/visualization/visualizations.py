@@ -690,6 +690,16 @@ class ExplorerGrid(MetricVis):
         res["layoutData"] = res.pop("annotations")
         res["projectMeta"] = project_metas[1].to_json()
 
+        #! TODO refactor later
+        res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
+        res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
+
+        tmp = res["layout"][2][0]
+        res["layout"][2][0] = {
+            "layoutDataKey": tmp,
+            "options": {"skipObjectTagsFiltering": True, "columnTitle": "Difference"},
+        }
+
         return res
 
     def get_gallery_click_data(self, widget: Widget.Table) -> Optional[dict]:

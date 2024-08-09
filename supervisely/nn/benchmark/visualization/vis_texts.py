@@ -49,7 +49,7 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 
 markdown_explorer = """## Explore Predictions
 
-Compare **Ground Truth** (1st column) and **Predictions** (2nd column) projects to recognize mistakes and pecularities of the data. Use *filter* to change the *confidence* threshold and model's *outcomes* (TP, FP and FN), which will be shown as the **Difference** (3rd column).
+Compare **Ground Truth** and **Prediction** projects to recognize mistakes and pecularities of the data. Use *filter* to change the *confidence* threshold and model's *outcomes* (TP, FP and FN), which will be shown as the **Difference**.
 """
 
 
