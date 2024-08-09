@@ -622,9 +622,6 @@ class Overview(MetricVis):
             # autosize=False,
             # margin=dict(l=50, r=50, t=100, b=50, pad=4),
         )
-        # fig.update_polars(automargin=True)
-        fig.update_yaxes(automargin="top")
-        # fig.update_xaxes(automargin="top")
         fig.update_layout(
             modebar=dict(
                 remove=[

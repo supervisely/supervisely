@@ -238,12 +238,9 @@ class Visualizer:
         dt_id_mapper = IdMapper(cocoDt_dataset)
 
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
-
         self.base_metrics = self.mp.base_metrics
 
-        self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_info.id)
-        )
+        self.dt_project_meta = ProjectMeta.from_json(data=self._api.project.get_meta(id=self.dt_project_info.id))
         datasets = self._api.dataset.get_list(self.dt_project_info.id)
         tmp = {}
         self.dt_images_dct = {}
@@ -261,27 +258,8 @@ class Visualizer:
             for ann in self._api.annotation.download_batch(d.id, tmp[d.id])
         }
 
-        datasets = self._api.dataset.get_list(self.gt_project_info.id)
-        tmp = {}
-        self.gt_images_dct = {}
-        self.gt_images_dct_by_name = {}
-        for d in datasets:
-            images = self._api.image.get_list(d.id)
-            tmp[d.id] = [x.id for x in images]
-            for info in images:
-                self.gt_images_dct[info.id] = info
-                self.gt_images_dct_by_name[info.name] = info
-
-        datasets = self._api.dataset.get_list(self.diff_project_info.id)
-        tmp = {}
-        self.diff_images_dct = {}
-        self.diff_images_dct_by_name = {}
-        for d in datasets:
-            images = self._api.image.get_list(d.id)
-            tmp[d.id] = [x.id for x in images]
-            for info in images:
-                self.diff_images_dct[info.id] = info
-                self.diff_images_dct_by_name[info.name] = info
+        self._update_pred_dcts()
+        self._update_diff_dcts()
 
     def visualize(self):
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
@@ -432,17 +410,13 @@ class Visualizer:
             infos = [ImageInfo(**json.load(open(path, "r"))) for path in paths]
             image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
 
-            dt_anns_dct[dataset.name] = [
-                dataset.get_ann(name, dt_project.meta) for name in image_names
-            ]
+            dt_anns_dct[dataset.name] = [dataset.get_ann(name, dt_project.meta) for name in image_names]
             dt_images_dct[dataset.name] = [dataset.get_image_info(name) for name in image_names]
             names_dct[dataset.name] = image_names
 
         gt_anns_dct = {}
         for dataset in gt_project.datasets:
-            gt_anns_dct[dataset.name] = [
-                dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]
-            ]
+            gt_anns_dct[dataset.name] = [dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]]
 
         matched_ids = []
         for dataset in dt_project.datasets:
@@ -470,12 +444,8 @@ class Visualizer:
         self._api.project.update_meta(self.diff_project_info.id, diff_meta.to_json())
         self._api.project.update_meta(self.dt_project_info.id, diff_meta.to_json())
 
-        with tqdm_sly(
-            desc="Creating diff_project", total=sum([len(x) for x in gt_anns_dct.values()])
-        ) as pbar1:
-            with tqdm_sly(
-                desc="Updating dt_project", total=sum([len(x) for x in gt_anns_dct.values()])
-            ) as pbar2:
+        with tqdm_sly(desc="Creating diff_project", total=sum([len(x) for x in gt_anns_dct.values()])) as pbar1:
+            with tqdm_sly(desc="Updating dt_project", total=sum([len(x) for x in gt_anns_dct.values()])) as pbar2:
 
                 for dataset in self._api.dataset.get_list(self.diff_project_info.id):
                     diff_anns_new, dt_anns_new = [], []
@@ -494,16 +464,10 @@ class Visualizer:
                         dt_anns_new.append(Annotation(gt_ann.img_size, labels))
 
                         for label in gt_ann.labels:
-                            if label.geometry.sly_id not in matched_ids and isinstance(
-                                label.geometry, Rectangle
-                            ):
+                            if label.geometry.sly_id not in matched_ids and isinstance(label.geometry, Rectangle):
                                 conf_meta = dt_project.meta.get_tag_meta("confidence")
                                 labels.append(
-                                    label.clone(
-                                        tags=label.tags.add_items(
-                                            [Tag(new_tag, "FN"), Tag(conf_meta, 1)]
-                                        )
-                                    )
+                                    label.clone(tags=label.tags.add_items([Tag(new_tag, "FN"), Tag(conf_meta, 1)]))
                                 )
 
                         diff_anns_new.append(Annotation(gt_ann.img_size, labels))
@@ -514,8 +478,31 @@ class Visualizer:
                     diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
 
                     diff_image_ids = [image.id for image in diff_images]
-                    self._api.annotation.upload_anns(
-                        diff_image_ids, diff_anns_new, progress_cb=pbar1
-                    )
+                    self._api.annotation.upload_anns(diff_image_ids, diff_anns_new, progress_cb=pbar1)
 
-        pass
+        self._update_pred_dcts()
+        self._update_diff_dcts()
+
+    def _update_pred_dcts(self):
+        datasets = self._api.dataset.get_list(self.gt_project_info.id)
+        tmp = {}
+        self.gt_images_dct = {}
+        self.gt_images_dct_by_name = {}
+        for d in datasets:
+            images = self._api.image.get_list(d.id)
+            tmp[d.id] = [x.id for x in images]
+            for info in images:
+                self.gt_images_dct[info.id] = info
+                self.gt_images_dct_by_name[info.name] = info
+
+    def _update_diff_dcts(self):
+        datasets = self._api.dataset.get_list(self.diff_project_info.id)
+        tmp = {}
+        self.diff_images_dct = {}
+        self.diff_images_dct_by_name = {}
+        for d in datasets:
+            images = self._api.image.get_list(d.id)
+            tmp[d.id] = [x.id for x in images]
+            for info in images:
+                self.diff_images_dct[info.id] = info
+                self.diff_images_dct_by_name[info.name] = info

@@ -49,9 +49,7 @@ class BaseBenchmark:
         cache_project_on_agent: bool = False,
     ):
         self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(
-            output_project_id, batch_size, cache_project_on_agent
-        )
+        self._eval_inference_info = self._run_inference(output_project_id, batch_size, cache_project_on_agent)
         self.evaluate(self.dt_project_info.id)
         self._dump_eval_inference_info(self._eval_inference_info)
 
@@ -64,9 +62,7 @@ class BaseBenchmark:
         cache_project_on_agent: bool = False,
     ):
         self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(
-            output_project_id, batch_size, cache_project_on_agent
-        )
+        self._eval_inference_info = self._run_inference(output_project_id, batch_size, cache_project_on_agent)
 
     def _run_inference(
         self,
@@ -156,9 +152,7 @@ class BaseBenchmark:
             )
             for speedtest in tqdm_sly(iterator):
                 speedtest_results.append(speedtest)
-            assert (
-                len(speedtest_results) == num_iterations
-            ), "Speedtest failed to run all iterations."
+            assert len(speedtest_results) == num_iterations, "Speedtest failed to run all iterations."
             avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(speedtest_results)
             benchmark = {
                 "benchmark": avg_speedtest,
@@ -231,9 +225,7 @@ class BaseBenchmark:
         if output_project_id is None:
             dt_project_name = self._generate_dt_project_name(self.gt_project_info.name, model_info)
             dt_wrokspace_id = self.gt_project_info.workspace_id
-            dt_project_info = self.api.project.create(
-                dt_wrokspace_id, dt_project_name, change_name_if_conflict=True
-            )
+            dt_project_info = self.api.project.create(dt_wrokspace_id, dt_project_name, change_name_if_conflict=True)
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
@@ -290,9 +282,7 @@ class BaseBenchmark:
         }
         return model_info
 
-    def _init_model_session(
-        self, model_session: Union[int, str, SessionJSON], inference_settings: dict = None
-    ):
+    def _init_model_session(self, model_session: Union[int, str, SessionJSON], inference_settings: dict = None):
         if isinstance(model_session, int):
             session = SessionJSON(self.api, model_session)
         elif isinstance(model_session, str):
@@ -327,12 +317,10 @@ class BaseBenchmark:
         avg = x.mean(1)
         std = x.std(1)
         avg_speedtest = {
-            k: float(avg[i]) if not np.isnan(avg[i]).any() else None
-            for i, k in enumerate(speedtest_results[0].keys())
+            k: float(avg[i]) if not np.isnan(avg[i]).any() else None for i, k in enumerate(speedtest_results[0].keys())
         }
         std_speedtest = {
-            k: float(std[i]) if not np.isnan(std[i]).any() else None
-            for i, k in enumerate(speedtest_results[0].keys())
+            k: float(std[i]) if not np.isnan(std[i]).any() else None for i, k in enumerate(speedtest_results[0].keys())
         }
         return avg_speedtest, std_speedtest
 
@@ -372,7 +360,7 @@ class BaseBenchmark:
     def _get_or_create_diff_project(self) -> Tuple[sly.ProjectInfo, bool]:
         diff_project_name = self._generate_diff_project_name(self.dt_project_info.name)
         diff_workspace_id = self.dt_project_info.workspace_id
-        diff_project_info = self.api.project.get_info_by_name(diff_workspace_id, diff_project_name)
+        diff_project_info = self.api.project.get_info_by_name(diff_workspace_id, diff_project_name, raise_error=False)
         is_existed = True
         if diff_project_info is None:
             is_existed = False
