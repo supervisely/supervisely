@@ -16,6 +16,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.api import Api
+from supervisely.app.widgets import GridGalleryV2
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import *
@@ -76,7 +77,21 @@ def generate_main_template(metric_visualizations: List[MetricVis]):
     for vis in metric_visualizations:
         template_str += vis.template_main_str
 
-    template_str += "\n        </div>\n    </sly-iw-sidebar>\n</div>"
+    template_str += "\n        </div>\n    </sly-iw-sidebar>"
+
+    template_str += """\n
+        <sly-iw-gallery
+            ref='modal_general'
+            iw-widget-id='modal_general'
+            :options="{'isModalWindow': true}"
+            :actions="{
+                'init': {
+                'dataSource': '/data/modal_general.json',
+                },
+            }"
+            :command="command"
+            :data="data"
+        /> \n</div>"""
 
     return template_str
 
@@ -177,6 +192,13 @@ class Visualizer:
         self.gt_project_info = benchmark.gt_project_info
         self.diff_project_info = benchmark.diff_project_info
 
+        self.gt_project_meta = ProjectMeta.from_json(
+            data=self._api.project.get_meta(id=self.gt_project_info.id)
+        )
+        self.dt_project_meta = ProjectMeta.from_json(
+            data=self._api.project.get_meta(id=self.dt_project_info.id)
+        )
+
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_object_detection_loader()
         else:
@@ -240,9 +262,6 @@ class Visualizer:
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
         self.base_metrics = self.mp.base_metrics
 
-        self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_info.id)
-        )
         datasets = self._api.dataset.get_list(self.dt_project_info.id)
         tmp = {}
         self.dt_images_dct = {}
@@ -272,6 +291,27 @@ class Visualizer:
             for widget in mv.schema:
                 self._write_markdown_files(mv, widget)
                 self._write_json_files(mv, widget)
+
+        res = {}
+        gallery = GridGalleryV2(
+            columns_number=3,
+            enable_zoom=False,
+            default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+            show_zoom_slider=False,
+        )
+        gallery._update_filters()
+        res.update(gallery.get_json_state())
+
+        # res.update(gallery.get_json_data()["content"])
+        # res["layoutData"] = res.pop("annotations")
+
+        res["projectMeta"] = self.dt_project_meta.to_json()
+        basename = "modal_general.json"
+        local_path = f"{self.layout_dir}/data/{basename}"
+        with open(local_path, "w", encoding="utf-8") as f:
+            f.write(ujson.dumps(res))
+        logger.info("Saved: %r", basename)
+
         self._save_template(initialized)
 
     def _write_markdown_files(self, metric_visualization: MetricVis, widget: Widget):
@@ -318,12 +358,12 @@ class Visualizer:
                         f.write(ujson.dumps(click_data))
                     logger.info("Saved: %r", basename)
 
-                    modal_data = mv.get_modal_data(widget)
-                    basename = f"{widget.name}_{mv.name}_modal_data.json"
-                    local_path = f"{self.layout_dir}/data/{basename}"
-                    with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(modal_data))
-                    logger.info("Saved: %r", basename)
+                    # modal_data = mv.get_modal_data(widget)
+                    # basename = f"{widget.name}_{mv.name}_modal_data.json"
+                    # local_path = f"{self.layout_dir}/data/{basename}"
+                    # with open(local_path, "w", encoding="utf-8") as f:
+                    #     f.write(ujson.dumps(modal_data))
+                    # logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Gallery):
             content = mv.get_gallery(widget)
@@ -342,12 +382,12 @@ class Visualizer:
                         f.write(ujson.dumps(click_data))
                     logger.info("Saved: %r", basename)
 
-                    modal_data = mv.get_gallery_modal(widget)
-                    basename = f"{widget.name}_{mv.name}_modal_data.json"
-                    local_path = f"{self.layout_dir}/data/{basename}"
-                    with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(modal_data))
-                    logger.info("Saved: %r", basename)
+                    # modal_data = mv.get_gallery_modal(widget)
+                    # basename = f"{widget.name}_{mv.name}_modal_data.json"
+                    # local_path = f"{self.layout_dir}/data/{basename}"
+                    # with open(local_path, "w", encoding="utf-8") as f:
+                    #     f.write(ujson.dumps(modal_data))
+                    # logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Table):
             content = mv.get_table(widget)

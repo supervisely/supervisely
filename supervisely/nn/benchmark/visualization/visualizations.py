@@ -69,7 +69,7 @@ template_chart_str = """
                   'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
                   'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
                   'keySeparator': '{{ key_separator }}',{% endif %}
-                  'galleryId': '{{ widget_id }}_modal',
+                  'galleryId': 'modal_general',
                   'limit': 9
                 },{% endif %}
               }"
@@ -77,20 +77,7 @@ template_chart_str = """
               :data="{{ data }}"
             />
 
-              {% if chart_modal_data_source %}
 
-                <sly-iw-gallery
-                    ref='{{ widget_id }}_modal'
-                    iw-widget-id='{{ widget_id }}_modal'
-                    :options="{'isModalWindow': true}"
-                    :actions="{
-                        'init': {
-                        'dataSource': '{{ chart_modal_data_source }}',
-                        },
-                    }"
-                    :command="command"
-                    :data="data"
-                />{% endif %}
 """
 
 template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
@@ -121,22 +108,20 @@ template_gallery_str = """<sly-iw-gallery
                   },
                   internalCommand: true
                 })">Click to Explore</el-button>
-                </div>
-
-                <sly-iw-gallery
-                    ref='{{ widget_id }}_modal'
-                    iw-widget-id='{{ widget_id }}_modal'
-                    :options="{'isModalWindow': true}"
-                    :actions="{
-                        'init': {
-                        'dataSource': '{{ gallery_modal_data_source }}',
-                        },
-                    }"
-                    :command="command"
-                    :data="data"
-                />{% endif %}
-                """
-
+                </div> {% endif %}
+"""
+# <sly-iw-gallery
+#     ref='{{ widget_id }}_modal'
+#     iw-widget-id='{{ widget_id }}_modal'
+#     :options="{'isModalWindow': true}"
+#     :actions="{
+#         'init': {
+#         'dataSource': '{{ gallery_modal_data_source }}',
+#         },
+#     }"
+#     :command="command"
+#     :data="data"
+# />
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
                 style="cursor: pointer;"
@@ -410,9 +395,7 @@ class MetricVis:
                         }
                     )
                 chart_click_path = f"/data/{basename}_click_data.json" if self.clickable else None
-                chart_modal_data_source = (
-                    f"/data/{basename}_modal_data.json" if self.clickable else None
-                )
+                chart_modal_data_source = f"/data/modal_general.json" if self.clickable else None
                 res[f"{basename}_html"] = self._template_chart.render(
                     {
                         "widget_id": widget.id,
@@ -533,10 +516,11 @@ class MetricVis:
                     project_meta=project_meta,
                     ignore_tags_filtering=is_ignore,
                 )
+
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
         res["layoutData"] = res.pop("annotations")
-        res["projectMeta"] = project_metas[1].to_json()
+        res["projectMeta"] = project_metas[0].to_json()
 
         res.pop("layout")
         res.pop("layoutData")
@@ -1769,9 +1753,7 @@ class PerClassAvgPrecision(MetricVis):
         # fill points
         fig.update_traces(fill="toself")
 
-        fig.update_layout(
-            modebar_add=["resetScale"]
-        )
+        fig.update_layout(modebar_add=["resetScale"])
         return fig
 
 
