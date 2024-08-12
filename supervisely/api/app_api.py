@@ -407,6 +407,7 @@ class AppApi(TaskApi):
                 "6.9.31" if min_instance_version is None else min_instance_version
             )
 
+        # pylint: disable=no-self-argument
         def check_compatibility_decorator(func):
             """Decorator to check instance compatibility with workflow features.
             If the instance is not compatible, the function will not be executed."""
@@ -414,9 +415,11 @@ class AppApi(TaskApi):
             def wrapper(self, *args, **kwargs):
                 if not check_workflow_compatibility(self._api, self._min_instance_version):
                     return
-                return func(self, *args, **kwargs)
+                return func(self, *args, **kwargs)  # pylint: disable=not-callable
 
             return wrapper
+
+        # pylint: enable=no-self-argument
 
         def _add_edge(
             self,
