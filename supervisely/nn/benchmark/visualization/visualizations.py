@@ -720,9 +720,9 @@ class ModelPredictions(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
-            markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=True),
-            gallery=Widget.Gallery(is_table_gallery=True),
+            markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=False),            
             markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
+            gallery=Widget.Gallery(is_table_gallery=True),
             table=Widget.Table(),
         )
         self._row_ids = None
@@ -777,6 +777,15 @@ class ModelPredictions(MetricVis):
 
         res["projectMeta"] = project_metas[1].to_json()
 
+        res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
+        res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
+
+        tmp = res["layout"][2][0]
+        res["layout"][2][0] = {
+            "layoutDataKey": tmp,
+            "options": {"columnTitle": "Difference"},
+        }
+
         return res
 
     def get_table(self, widget: Widget.Table) -> dict:
@@ -828,9 +837,9 @@ class ModelPredictions(MetricVis):
     def get_table_click_data(self, widget: Widget.Table) -> Optional[dict]:
         res = {}
         res["layoutTemplate"] = [
-            {"skipObjectsFiltering": True},
-            {"skipObjectsFiltering": True},
-            None,
+            {"skipObjectsFiltering": True, "columnTitle": "Ground Truth"},
+            {"skipObjectsFiltering": True, "columnTitle": "Prediction"},
+            {"skipObjectsFiltering": False, "columnTitle": "Difference"},
         ]
         res["clickData"] = {}
 
@@ -841,6 +850,7 @@ class ModelPredictions(MetricVis):
             diff_image = self._loader.diff_images_dct_by_name[idx_str]
 
             res["clickData"][idx_str] = dict(imagesIds=[gt_image.id, dt_image.id, diff_image.id])
+
 
         return res
 
