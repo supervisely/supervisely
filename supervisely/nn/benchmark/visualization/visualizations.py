@@ -478,6 +478,11 @@ class MetricVis:
             for img_id in tmp:
                 res["clickData"][key]["imagesIds"].append(img_id)
 
+            res["clickData"][key]["filters"] = [
+                {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+                {"type": "tag", "tagId": "outcome", "value": "TP"},
+            ]                
+
         return res
 
     def get_modal_data(self, widget: Widget.Chart) -> Optional[dict]:
@@ -704,6 +709,11 @@ class ExplorerGrid(MetricVis):
         for gt, dt, diff in zip(l1, l2, l3):
             res["clickData"]["explore"]["imagesIds"] += [gt.id, dt.id, diff.id]
 
+        res["clickData"]["explore"]["filters"] = [
+            {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+            {"type": "tag", "tagId": "outcome", "value": "FP"},
+        ]
+
         return res
 
     def get_gallery_modal(self, widget: Widget.Gallery):
@@ -720,7 +730,9 @@ class ModelPredictions(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
-            markdown_predictions_gallery=Widget.Markdown(title="Model Predictions", is_header=False),            
+            markdown_predictions_gallery=Widget.Markdown(
+                title="Model Predictions", is_header=False
+            ),
             markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
             gallery=Widget.Gallery(is_table_gallery=True),
             table=Widget.Table(),
@@ -851,7 +863,6 @@ class ModelPredictions(MetricVis):
 
             res["clickData"][idx_str] = dict(imagesIds=[gt_image.id, dt_image.id, diff_image.id])
 
-
         return res
 
 
@@ -960,6 +971,10 @@ class OutcomeCounts(MetricVis):
 
             for img_id in tmp:
                 res["clickData"][key]["imagesIds"].append(img_id)
+                res["clickData"][key]["filters"] = [
+                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                    {"type": "tag", "tagId": "outcome", "value": key},
+                ]
 
         return res
 
@@ -1863,29 +1878,10 @@ class PerClassOutcomeCounts(MetricVis):
 
                 for img_id in tmp:
                     res["clickData"][key]["imagesIds"].append(img_id)
-
-                # images = set(x["dt_img_id"] for x in v2)
-
-                # for idx, img_id in enumerate(images):
-                #     ui_id = f"ann_{img_id}"
-                #     info: ImageInfo = self._loader.dt_images_dct[img_id]
-                #     res["clickData"][key]["layoutData"][ui_id] = {
-                #         "imageUrl": info.preview_url,
-                #         "annotation": {
-                #             "imageId": info.id,
-                #             "imageName": info.name,
-                #             "createdAt": info.created_at,
-                #             "updatedAt": info.updated_at,
-                #             "link": info.link,
-                #             "annotation": self._loader.dt_ann_jsons[img_id],
-                #         },
-                #     }
-                #     if len(tmp[3]) < 5:
-                #         tmp[idx % 4].append(ui_id)
-
-                # for _, val in tmp.items():
-                #     res["clickData"][key]["layout"].append(val)
-
+                    res["clickData"][key]["filters"] = [
+                        {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                        {"type": "tag", "tagId": "outcome", "value": key2},
+                    ]
         return res
 
 
