@@ -366,7 +366,7 @@ class TagApi(ModuleApi):
                 ds_progress.update(len(batch))
         return result
 
-    def append_to_entities_json(
+    def add_to_entities_json(
         self,
         project_id: int,
         tags_list: List[Dict[str, Union[str, int, None]]],
@@ -416,7 +416,7 @@ class TagApi(ModuleApi):
                     "value": "v2"
                 }
             ]
-            api.image.tag.append_to_entities(project_id=12345, tag_list=tag_list)
+            api.image.tag.add_to_entities_json(project_id=12345, tag_list=tag_list)
         """
 
         result = []
@@ -439,7 +439,7 @@ class TagApi(ModuleApi):
 
         return result
 
-    def append_to_objects_json_batch(
+    def add_to_objects_json_batch(
         self,
         project_id: int,
         tags_list: List[Dict[str, Union[str, int, None]]],
@@ -490,7 +490,7 @@ class TagApi(ModuleApi):
                     "value": "v2"
                 }
             ]
-            api.video.tag.add_to_objects_batch(project_id=12345, tags_list=tag_list)
+            api.video.tag.add_to_objects_json_batch(project_id=12345, tags_list=tag_list)
         """
         if type(self) is TagApi:
             raise NotImplementedError("This method is not available for images project")

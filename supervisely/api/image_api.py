@@ -2736,6 +2736,72 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
+    def add_tags_batch(
+        self,
+        image_ids: List[int],
+        tag_id: int,
+        values: Optional[List[Union[str, int, None]]] = None,
+        log_progress: bool = False,
+        batch_size: Optional[int] = 100,
+        tag_meta: Optional[TagMeta] = None,
+    ) -> None:
+        """
+        Add tag with given ID to Images by IDs with different values.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param tag_id: Tag ID in Supervisely.
+        :type tag_id: int
+        :param values: List of tag values.
+        :type values: List[int or str or None], optional
+        :param log_progress: If True, will log progress.
+        :type log_progress: bool, optional
+        :param batch_size: Batch size
+        :type batch_size: int, optional
+        :param tag_meta: Tag Meta. Needed for value validation, omit to skip validation
+        :type tag_meta: TagMeta, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [2389126, 2389127]
+            tag_id = 277083
+            values = ['value1', 'value2']
+            api.image.add_tags_batch(image_ids, tag_id, values)
+        """
+
+        values = values or [None] * len(image_ids)
+
+        if tag_meta:
+            if not (tag_meta.sly_id == tag_id):
+                raise ValueError("tag_meta.sly_id and tag_id should be same")
+            for value in values:
+                if not tag_meta.is_valid_value(value):
+                    raise ValueError("Tag {} can not have value {}".format(tag_meta.name, value))
+
+        if len(image_ids) == 0:
+            return []
+
+        if len(image_ids) != len(values):
+            raise ValueError("Length of image_ids and values should be the same")
+
+        data = []
+        project_id = self.get_project_id(image_ids[0])
+        for image_id, value in zip(image_ids, values):
+            data.append(
+                {ApiField.ENTITY_ID: image_id, ApiField.TAG_ID: tag_id, ApiField.VALUE: value}
+            )
+
+        return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
+
     def remove_batch(
         self,
         ids: List[int],
