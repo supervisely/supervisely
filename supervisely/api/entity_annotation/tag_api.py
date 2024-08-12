@@ -367,17 +367,17 @@ class TagApi(ModuleApi):
             tag_list = [
                 {
                     "tagId": 25926,
-                    "figureId": 652959,
+                    "entityId": 652959,
                     "value": None # value is optional for tag with type 'None'
                 },
                 {
                     "tagId": 25927,
-                    "figureId": 652959,
+                    "entityId": 652959,
                     "value": "v1"
                 },
                 {
                     "tagId": 25927,
-                    "figureId": 652958,
+                    "entityId": 652958,
                     "value": "v2"
                 }
             ]
