@@ -146,7 +146,9 @@ class Annotation:
             )
         self._img_size = tuple(img_size)
         if self._img_size.count(None) == 1:
-            raise ValueError("Image resolution (height, width) has to defined both or none of them")
+            raise ValueError(
+                "Image resolution (height, width) has to defined both or none of them"
+            )
 
         self._img_description = img_description
         self._use_subpixel_label_coords = use_subpixel_label_coords
@@ -162,7 +164,9 @@ class Annotation:
 
         self._labels = []
         self._add_labels_impl(self._labels, take_with_default(labels, []))
-        self._pixelwise_scores_labels = []  # @TODO: store pixelwise scores as usual geometry labels
+        self._pixelwise_scores_labels = (
+            []
+        )  # @TODO: store pixelwise scores as usual geometry labels
         self._add_labels_impl(
             self._pixelwise_scores_labels,
             take_with_default(pixelwise_scores_labels, []),
@@ -574,15 +578,18 @@ class Annotation:
         :return: list of the Label class objects
         """
         for label in labels:
+            # @TODO: check cropped labels
+            # dest.append(label)
+            # continue
             if self.img_size.count(None) == 0:
                 # image has resolution in DB
 
-                if not self.use_subpixel_label_coords:
-                    canvas_rect = Rectangle.from_size(self.img_size)
-                    cropped_labels = label.crop(canvas_rect)
-                    dest.extend(cropped_labels)
-                else:
-                    dest.append(label)
+                canvas_rect = Rectangle.from_size(
+                    self.img_size, 
+                    True, # self.use_subpixel_label_coords
+                )
+                cropped_labels = label.crop(canvas_rect)
+                dest.extend(cropped_labels)
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
@@ -686,7 +693,9 @@ class Annotation:
         retained_labels = [_label for _label in self._labels if _label != label]
         if len(retained_labels) == len(self._labels):
             raise KeyError(
-                "Trying to delete a non-existing label of class: {}".format(label.obj_class.name)
+                "Trying to delete a non-existing label of class: {}".format(
+                    label.obj_class.name
+                )
             )
         return self.clone(labels=retained_labels)
 
@@ -707,7 +716,9 @@ class Annotation:
         """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
-        return self.clone(pixelwise_scores_labels=[*self._pixelwise_scores_labels, *new_labels])
+        return self.clone(
+            pixelwise_scores_labels=[*self._pixelwise_scores_labels, *new_labels]
+        )
 
     def add_tag(self, tag: Tag) -> Annotation:
         """
@@ -797,7 +808,9 @@ class Annotation:
             # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
             new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
         """
-        retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
+        retained_tags = [
+            tag for tag in self._img_tags.items() if tag.meta.name not in tag_names
+        ]
         return self.clone(img_tags=TagCollection(items=retained_tags))
 
     def delete_tag_by_name(self, tag_name: str) -> Annotation:
@@ -914,7 +927,9 @@ class Annotation:
             # return result
 
             # short, hard-to-debug alternative
-            return list(itertools.chain(*[label_transform_fn(label) for label in src_labels]))
+            return list(
+                itertools.chain(*[label_transform_fn(label) for label in src_labels])
+            )
 
         new_labels = _do_transform_labels(self._labels, label_transform_fn)
         new_pixelwise_scores_labels = _do_transform_labels(
@@ -1104,7 +1119,9 @@ class Annotation:
 
         return self.transform_labels(_rotate_label, tuple(rotator.new_imsize))
 
-    def resize(self, out_size: Tuple[int, int], skip_empty_masks: bool = False) -> Annotation:
+    def resize(
+        self, out_size: Tuple[int, int], skip_empty_masks: bool = False
+    ) -> Annotation:
         """
         Resizes current Annotation.
 
@@ -1360,7 +1377,9 @@ class Annotation:
         The function get size of font for image with given size
         :return: font for drawing
         """
-        return sly_font.get_font(font_size=sly_font.get_readable_font_size(self.img_size))
+        return sly_font.get_font(
+            font_size=sly_font.get_readable_font_size(self.img_size)
+        )
 
     def _draw_tags(self, bitmap):
         """
@@ -1683,13 +1702,17 @@ class Annotation:
         for label in self._labels:
             cur_name = label.obj_class.name
             if cur_name not in stat:
-                raise KeyError("Class {!r} not found in {}".format(cur_name, class_names))
+                raise KeyError(
+                    "Class {!r} not found in {}".format(cur_name, class_names)
+                )
             stat[cur_name] += 1
             total += 1
         stat["total"] = total
         return stat
 
-    def draw_class_idx_rgb(self, render: np.ndarray, name_to_index: Dict[str, int]) -> None:
+    def draw_class_idx_rgb(
+        self, render: np.ndarray, name_to_index: Dict[str, int]
+    ) -> None:
         """
         Draws current Annotation on render.
 
@@ -1741,7 +1764,9 @@ class Annotation:
     def filter_labels_by_min_side(
         self,
         thresh: int,
-        filter_operator: Optional[Callable] = operator.lt,  # operator from the operator module
+        filter_operator: Optional[
+            Callable
+        ] = operator.lt,  # operator from the operator module
         classes: Optional[List[str]] = None,
     ) -> Annotation:
         """
@@ -1981,13 +2006,17 @@ class Annotation:
             draw_tags=draw_tags,
             fill_rectangles=fill_rectangles,
         )
-        non_empty_pixels = np.tile(np.any(vis_filled != 0, axis=2)[:, :, np.newaxis], (1, 1, 3))
+        non_empty_pixels = np.tile(
+            np.any(vis_filled != 0, axis=2)[:, :, np.newaxis], (1, 1, 3)
+        )
         mixes_bitmap = np.where(
             non_empty_pixels, vis_filled * opacity + bitmap * (1 - opacity), bitmap
         ).astype(np.uint8)
         np.copyto(bitmap, mixes_bitmap)
         if thickness > 0:
-            self.draw_contour(bitmap, color=color, thickness=thickness, draw_tags=draw_tags)
+            self.draw_contour(
+                bitmap, color=color, thickness=thickness, draw_tags=draw_tags
+            )
         if output_path:
             sly_image.write(output_path, bitmap)
 
@@ -2243,7 +2272,9 @@ class Annotation:
         """add_bg_object"""
         if bg_obj_class not in [label.obj_class for label in self.labels]:
             bg_geometry = Rectangle.from_size(self.img_size)
-            bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]
+            bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[
+                0
+            ]
 
             new_label = Label(bg_geometry, bg_obj_class)
 
@@ -2640,7 +2671,9 @@ class Annotation:
             if type(lbl.geometry) in [Bitmap, Polygon]:
                 to_render_labels.append(lbl)
                 if type(lbl.geometry) is Polygon:
-                    new_class = _polygons_to_bitmaps_classes.get(lbl.obj_class.name, None)
+                    new_class = _polygons_to_bitmaps_classes.get(
+                        lbl.obj_class.name, None
+                    )
                     if new_class is None:
                         new_class = lbl.obj_class.clone(geometry_type=Bitmap)
                         _polygons_to_bitmaps_classes[lbl.obj_class.name] = new_class
@@ -2658,7 +2691,10 @@ class Annotation:
             dest_class = aux_mapping[lbl.obj_class]
             if dest_class is None:
                 continue  # skip labels
-            if dest_class == lbl.obj_class and lbl.obj_class.geometry_type != AnyGeometry:
+            if (
+                dest_class == lbl.obj_class
+                and lbl.obj_class.geometry_type != AnyGeometry
+            ):
                 new_labels.append(lbl)
             else:
                 bbox = lbl.geometry.to_bbox()
@@ -2771,9 +2807,13 @@ class Annotation:
             for ia_box in ia_boxes:
                 obj_class = meta.get_obj_class(ia_box.label)
                 if obj_class is None:
-                    raise KeyError("Class {!r} not found in project meta".format(ia_box.label))
+                    raise KeyError(
+                        "Class {!r} not found in project meta".format(ia_box.label)
+                    )
                 lbl = Label(
-                    Rectangle(top=ia_box.y1, left=ia_box.x1, bottom=ia_box.y2, right=ia_box.x2),
+                    Rectangle(
+                        top=ia_box.y1, left=ia_box.x1, bottom=ia_box.y2, right=ia_box.x2
+                    ),
                     obj_class,
                 )
                 labels.append(lbl)

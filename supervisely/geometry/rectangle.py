@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from math import ceil, floor
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -78,6 +78,7 @@ class Rectangle(Geometry):
         labeler_login: Optional[int] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        convert_to_pixel=True,
     ):
 
         if top > bottom:
@@ -98,40 +99,8 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        # Adjust coordinates        
-        # -----------------------------------------------
-        # Check if all coordinates are inside one pixel
-        if floor(top) == floor(bottom) and floor(left) == floor(right):
-            top, left = floor(top), floor(left)
-            bottom, right = ceil(bottom), ceil(right)
-
-        # Otherwise, adjust coordinates to the nearest pixel
-        else:
-            # For the top and left coordinates:
-            # If the fractional part of the coordinate is greater than or equal to 0.7
-            # The coordinate is rounded up by adding 1 to its integer part
-            # Otherwise
-            # The coordinate is rounded down by taking its integer part
-            top = ceil(top) if top % 1 >= 0.7 else floor(top)
-            left = ceil(left) if left % 1 >= 0.7 else floor(left)
-
-            # For the bottom and right coordinates:
-            # If the fractional part of the coordinate is greater than or equal to 0.3
-            # The coordinate is rounded up by adding 1 to its integer part
-            # Otherwise
-            # The coordinate is rounded down by taking its integer part
-            bottom = ceil(bottom) if bottom % 1 >= 0.3 else floor(bottom)
-            right = ceil(right) if right % 1 >= 0.3 else floor(right)
-
-            # Avoid dot/line micro rectangle labels
-            # Ensure at least a 1x1 rectangle
-            # Example [[2, 2], [2, 2]] or [[3.8, 3.84], [4.16, 4.15]] -> [[4, 4], [4, 4]]
-            # Will draw pixel in OpenCV, but when upload to Supervisely will be converted to empty rectangle (dot/line)
-        if top == bottom:
-            bottom += 1
-        if left == right:
-            right += 1
-        # -----------------------------------------------
+        if convert_to_pixel:
+            top, left, bottom, right = self.coords_to_pixel(top, left, bottom, right)
 
         self._points = [
             PointLocation(row=top, col=left),
@@ -431,49 +400,10 @@ class Rectangle(Geometry):
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
         height, width = bitmap.shape[:2]
-        left = self.left
-        top = self.top
-        right = self.right
-        bottom = self.bottom
-        # # Handle one pixel case
-        if left == right and top == bottom:
-                right = right
-                bottom = bottom
-                
-        #Handle one pixel top right corner
-        elif left == width and right >= width and bottom != height:
-            left = min(width - 1, left - 1)
-            right = min(width - 1, right - 1)
-            top = min(height - 1, top)
-            bottom = min(top, bottom - 1)
-        # Handle border right bottom (corner)
-        elif right >= width and bottom >= height:
-            right = min(width -1 , right - 1)
-            bottom = min(height -1 , bottom - 1)
-        # Handle pre border right bottom (corner)
-        elif right == width - 1 and bottom == height - 1:
-            right = right - 1
-            bottom = bottom - 1    
-        # Handle right border (except corner)
-        elif right == width and bottom != height:
-            right = min(width - 1, right - 1)
-            bottom = max(top, bottom - 1)
-        # Handle right pre border
-        elif right == width - 1 and bottom != height - 1:
-            right = right - 1 # -1 require change in self.from_size() to distinct border from pre border pixel
-            bottom = max(top, bottom - 1)
-        # Handle bottom border (except corner)
-        elif bottom >= height and right != width:
-            bottom = min(height - 1, bottom - 1)
-            right = max(left, right - 1)
-        # Handle bottom pre border
-        elif bottom == height - 1 and right != width - 1:
-            bottom = bottom - 1 # -1 require change in self.from_size() to distinct border from pre border pixel
-            right = max(left, right - 1)
-        # General case
-        else:
-            right = max(left, right - 1)
-            bottom = max(top, bottom - 1)
+        left = max(0, self.left)
+        top = max(0, self.top)
+        right = min(width - 1, self.right)
+        bottom = min(height - 1, self.bottom)
 
         cv2.rectangle(
             bitmap,
@@ -541,7 +471,7 @@ class Rectangle(Geometry):
 
     # TODO re-evaluate whether we need this, looks trivial.
     @classmethod
-    def from_size(cls, size: Tuple[int, int]) -> Rectangle:
+    def from_size(cls, size: Tuple[int, int], subpixels=True) -> Rectangle:
         """
         Create Rectangle with given size shape.
 
@@ -559,10 +489,10 @@ class Rectangle(Geometry):
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
-        return cls(0, 0, size[0], size[1])
-    
-        # Unable to distinguish border from pre border pixel
-        # return cls(0, 0, size[0] - 1, size[1] - 1)
+        if subpixels is True:
+            return cls(0, 0, size[0], size[1])
+        else:
+            return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
     def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
@@ -831,6 +761,47 @@ class Rectangle(Geometry):
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
 
+    def coords_to_pixel(
+        self,
+        top: Union[int, float],
+        left: Union[int, float],
+        bottom: Union[int, float],
+        right: Union[int, float],
+    ):
+        """
+        Convert subpixel coordinates to pixel coordinates.
+        :param top: Minimal vertical value of Rectangle object.
+        :type top: Union[int, float]
+        :param left: Minimal horizontal value of Rectangle object.
+        :type left: Union[int, float]
+        :param bottom: Maximal vertical value of Rectangle object.
+        :type bottom: Union[int, float]
+        :param right: Maximal vertical value of Rectangle object.
+        :type right: Union[int, float]
+        :return: top, left, bottom, right coordinates in pixel format
+        """
+
+        if left % 1 >= 0.7:
+            left = ceil(left)
+        else:
+            left = floor(left)
+
+        if top % 1 >= 0.7:
+            top = ceil(top)
+        else:
+            top = floor(top)
+
+        if right % 1 >= 0.3:
+            right = floor(right)
+        else:
+            right = max(left, floor(right) - 1)
+
+        if bottom % 1 >= 0.3:
+            bottom = floor(bottom)
+        else:
+            bottom = max(top, floor(bottom) - 1)
+        return top, left, bottom, right
+
     def to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
         """
         Convert Rectangle to subpixel coordinates.
@@ -840,54 +811,45 @@ class Rectangle(Geometry):
         :rtype: :class:`Rectangle<Rectangle>`
         """
         # Pixel -> Subpixel
-        # Add 0.5 to borders only
+        # General Case
+        # Add 1 to right and bottom to make it inclusive
         height, width = img_size
-        # new_right = self.right if self.right < width - 1 else self.right + 0.5
-        # new_bottom = self.bottom  if self.bottom  < height - 1 else self.bottom  + 0.5
+        left = self.left
+        top = self.top
+        right = self.right + 1
+        bottom = self.bottom + 1
+        # -----------------------------------------------
 
-        # new_right = self.right if self.right == width else self.right + 0.5
-        # new_bottom = self.bottom if self.bottom == height else self.bottom + 0.5
-
-        new_left = self.left
-        new_top = self.top
+        # Cases
+        # Check if coordinates are within the image
+        if left < 0:
+            left = 0
+        if top < 0:
+            top = 0
         
-        new_right = self.right
-        new_bottom = self.bottom
-        if new_right == width:
-            new_right = self.right + 0.5
-        if new_bottom == height:
-            new_bottom = self.bottom + 0.5
-            
-        # Remove changes in self.from_size()
-        # but will be unable to distinguish border from pre border pixel
-        # resulting in preborder pixel to also cover border pixel
-        # if new_right == width -1 :
-            # new_right = self.right + 0.5
-        # if new_bottom == height - 1:
-            # new_bottom = self.bottom + 0.5
+        if right >= width:
+            right = width
+        if bottom >= height:
+            bottom = height
+        # -----------------------------------------------
+        # Check if coordinates are in 1 pixel range
+        # Include the pixel if it is in the range
+        # discuss_1
+        if left == right and right == width:
+            left = width - 1
+        if top == bottom and bottom == height:
+            top = height - 1
+        # -----------------------------------------------
 
-        if new_left >= width:
-            new_left = min(width - 1, new_left)
-        if new_top >= height:
-            new_top = min(height - 1, new_top)
-        if new_right >= width:
-            new_right = max(new_left, width)
-        if new_bottom >= height:
-            new_bottom = max(new_top, height)
-            
-        
-
-        if self.right == new_right and self.bottom == new_bottom:
-            return self
-        else:
-            return Rectangle(
-                top=new_top,
-                left=new_left,
-                bottom=new_bottom,
-                right=new_right,
-                sly_id=self.sly_id,
-                class_id=self.class_id,
-                labeler_login=self.labeler_login,
-                updated_at=self.updated_at,
-                created_at=self.created_at,
-            )
+        return Rectangle(
+            top=top,
+            left=left,
+            bottom=bottom,
+            right=right,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+            convert_to_pixel=False,
+        )
