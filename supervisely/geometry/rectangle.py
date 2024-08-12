@@ -78,7 +78,6 @@ class Rectangle(Geometry):
         labeler_login: Optional[int] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
-        convert_to_pixel=True,
     ):
 
         if top > bottom:
@@ -99,9 +98,7 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        if convert_to_pixel:
-            top, left, bottom, right = self.coords_to_pixel(top, left, bottom, right)
-
+        top, left, bottom, right = self.apply_round_logic(top, left, bottom, right)
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
@@ -400,10 +397,10 @@ class Rectangle(Geometry):
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
         height, width = bitmap.shape[:2]
-        left = max(0, self.left)
-        top = max(0, self.top)
-        right = min(width - 1, self.right)
-        bottom = min(height - 1, self.bottom)
+        left = max(0, min(self.left, self.right, width - 1))
+        top = max(0, min(self.top, self.bottom, height - 1))
+        right = min(width - 1, max(self.left, self.right))
+        bottom = min(height - 1, max(self.top, self.bottom))
 
         cv2.rectangle(
             bitmap,
@@ -471,7 +468,7 @@ class Rectangle(Geometry):
 
     # TODO re-evaluate whether we need this, looks trivial.
     @classmethod
-    def from_size(cls, size: Tuple[int, int], subpixels=True) -> Rectangle:
+    def from_size(cls, size: Tuple[int, int]) -> Rectangle:
         """
         Create Rectangle with given size shape.
 
@@ -489,10 +486,9 @@ class Rectangle(Geometry):
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
-        if subpixels is True:
-            return cls(0, 0, size[0], size[1])
-        else:
-            return cls(0, 0, size[0] - 1, size[1] - 1)
+        # Add flag to not crop the image when uploading subpixels
+        # return cls(0, 0, size[0], size[1])
+        return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
     def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
@@ -802,12 +798,67 @@ class Rectangle(Geometry):
             bottom = max(top, floor(bottom) - 1)
         return top, left, bottom, right
 
+    def apply_round_logic(
+        self,
+        top: Union[int, float],
+        left: Union[int, float],
+        bottom: Union[int, float],
+        right: Union[int, float],
+    ) -> Tuple[int, int, int, int]:
+
+        # Check case if all coords in 1 pixel range
+        if int(top) == int(bottom) and int(left) == int(right):
+            return int(top), int(left), int(bottom), int(right)
+
+        if top % 1 >= 0.7:
+            top = ceil(top)
+        else:
+            top = floor(top)
+
+        if left % 1 >= 0.7:
+            left = ceil(left)
+        else:
+            left = floor(left)
+
+        if bottom % 1 >= 0.3:
+            bottom = ceil(bottom)
+        else:
+            bottom = floor(bottom)
+        if right % 1 >= 0.3:
+            right = ceil(right)
+        else:
+            right = floor(right)
+        return top, left, bottom, right
+
+    def to_pixel(self) -> Rectangle:
+        """
+        Convert subpixel coordinates to pixel format.
+
+        :return: Rectangle object with corners in pixel format
+        :rtype: :class:`Rectangle<Rectangle>`
+        """
+        left = floor(self.left)
+        top = floor(self.top)
+        right = max(left, floor(self.right) - 1)
+        bottom = max(top, floor(self.bottom) - 1)
+        return Rectangle(
+            top=top,
+            left=left,
+            bottom=bottom,
+            right=right,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
+        )
+
     def to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
         """
         Convert Rectangle to subpixel coordinates.
         :param img_size: Input image size (height, width) to which belongs Rectangle.
         :type img_size: Tuple[int, int]
-        :return: Rectangle object
+        :return: Rectangle object with corners in subpixel format
         :rtype: :class:`Rectangle<Rectangle>`
         """
         # Pixel -> Subpixel
@@ -826,13 +877,13 @@ class Rectangle(Geometry):
             left = 0
         if top < 0:
             top = 0
-        
+
         if right >= width:
             right = width
         if bottom >= height:
             bottom = height
         # -----------------------------------------------
-        # Check if coordinates are in 1 pixel range
+        # Check if coordinates are in 1 pixel range on border
         # Include the pixel if it is in the range
         # discuss_1
         if left == right and right == width:
@@ -851,5 +902,4 @@ class Rectangle(Geometry):
             labeler_login=self.labeler_login,
             updated_at=self.updated_at,
             created_at=self.created_at,
-            convert_to_pixel=False,
         )

@@ -578,16 +578,9 @@ class Annotation:
         :return: list of the Label class objects
         """
         for label in labels:
-            # @TODO: check cropped labels
-            # dest.append(label)
-            # continue
             if self.img_size.count(None) == 0:
                 # image has resolution in DB
-
-                canvas_rect = Rectangle.from_size(
-                    self.img_size, 
-                    True, # self.use_subpixel_label_coords
-                )
+                canvas_rect = Rectangle.from_size(self.img_size)
                 cropped_labels = label.crop(canvas_rect)
                 dest.extend(cropped_labels)
             else:
