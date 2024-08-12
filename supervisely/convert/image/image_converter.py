@@ -1,5 +1,5 @@
-import os
 import mimetypes
+import os
 from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
@@ -16,10 +16,10 @@ from supervisely import (
     is_development,
     logger,
 )
-from supervisely.convert.base_converter import BaseConverter
 from supervisely.api.api import ApiContext
+from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.fs import get_file_ext, get_file_name, dirs_filter, list_files
+from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 
@@ -31,12 +31,13 @@ class ImageConverter(BaseConverter):
     modality = "images"
 
     class Item(BaseConverter.BaseItem):
+
         def __init__(
             self,
             item_path: str,
             ann_data: Union[str, dict] = None,
             meta_data: Union[str, dict] = None,
-            shape: Union[Tuple, List] = None,
+            shape: Optional[Union[Tuple, List]] = None,
             custom_data: Optional[dict] = None,
         ):
             self._path: str = item_path
@@ -51,7 +52,7 @@ class ImageConverter(BaseConverter):
         def meta(self) -> Union[str, dict]:
             return self._meta_data
 
-        def set_shape(self, shape: Tuple[int, int] = None) -> None:
+        def set_shape(self, shape: Optional[Tuple[int, int]] = None) -> None:
             try:
                 if shape is not None:
                     self._shape = shape
@@ -193,7 +194,9 @@ class ImageConverter(BaseConverter):
 
         def _is_meta_dir(dirpath: str) -> bool:
             if os.path.basename(dirpath).lower() == "meta":
-                jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
+                jsons = list_files(
+                    dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True
+                )
                 return len(jsons) > 0
             return False
 

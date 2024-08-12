@@ -3,10 +3,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from typing import Literal, Optional
 
 from supervisely._utils import is_production
 from supervisely.api.api import Api
@@ -33,21 +30,17 @@ from supervisely.io.fs import (
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+from supervisely.project.project_settings import LabelingInterface
 
 
 class ImportManager:
+
     def __init__(
         self,
         input_data: str,
         project_type: ProjectType,
-        team_id: int = None,
-        labeling_interface: Literal[
-            "default",
-            "multi_view",
-            "multispectral",
-            "images_with_16_color",
-            "medical_imaging_single",
-        ] = "default",
+        team_id: Optional[int] = None,
+        labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
         self._api = Api.from_env()
