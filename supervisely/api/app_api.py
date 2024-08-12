@@ -137,6 +137,9 @@ def check_workflow_compatibility(api, min_instance_version):
                 _is_workflow_compatible = False
             else:
                 _is_workflow_compatible = True
+            logger.debug(
+                f"Compatibility is checked. Workflow features are {'enabled' if _is_workflow_compatible else 'disabled'}."
+            )
         except Exception as e:
             logger.error(
                 "Can not check compatibility with Supervisely instance. "
