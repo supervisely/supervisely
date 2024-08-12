@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from supervisely import (
     AnyGeometry,
@@ -10,6 +10,7 @@ from supervisely import (
     logger,
 )
 from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.io.fs import get_file_name
 from supervisely.io.json import load_json_file
 
 SLY_ANN_KEYS = ["figures", "objects", "tags"]
@@ -21,9 +22,7 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         ann_json = ann_json["annotation"]
 
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(
-            f"Pointcloud Annotation file {ann_path} is not in Supervisely format"
-        )
+        logger.warn(f"Pointcloud Annotation file {ann_path} is not in Supervisely format")
         return meta
 
     object_key_to_name = {}
@@ -55,7 +54,7 @@ def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectM
 
 
 def create_classes_from_annotation(
-        figure: dict, meta: ProjectMeta, object_key_to_name: dict
+    figure: dict, meta: ProjectMeta, object_key_to_name: dict
 ) -> ProjectMeta:
     obj_key = figure.get("objectKey")
     if obj_key is None:
@@ -77,7 +76,7 @@ def create_classes_from_annotation(
                 meta = meta.delete_obj_class(class_name)
                 obj_class = ObjClass(name=class_name, geometry_type=AnyGeometry)
                 meta = meta.add_obj_class(obj_class)
-    
+
     return meta
 
 
@@ -91,3 +90,21 @@ def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
         for tag in ann_json["tags"]:
             tag["name"] = renamed_tags.get(tag["name"], tag["name"])
     return ann_json
+
+
+def find_related_items(
+    name: str,
+    possible_img_ext: List[str],
+    rimg_dict: Dict[str, str],
+    rimg_ann_dict: Dict[str, str],
+):
+    name_noext = get_file_name(name)
+    for ext in possible_img_ext:
+        for img_name in [f"{name_noext}{ext}", f"{name}{ext}"]:
+            rimg_path = rimg_dict.get(img_name)
+            if rimg_path:
+                for ann_path in [f"{name_noext}.json", f"{name}.json", f"{img_name}.json"]:
+                    rimg_ann_path = rimg_ann_dict.get(ann_path)
+                    if rimg_ann_path:
+                        return rimg_path, rimg_ann_path
+    return None, None
