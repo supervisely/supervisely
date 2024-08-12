@@ -104,7 +104,7 @@ template_gallery_str = """<sly-iw-gallery
                       'limit': 9,
                       'dataSource': '{{ gallery_click_data_source }}',
                     },
-                    'galleryId': '{{ widget_id }}_modal',
+                    'galleryId': 'modal_general',
                   },
                   internalCommand: true
                 })">Click to Explore</el-button>
