@@ -125,32 +125,35 @@ def check_workflow_compatibility(api, min_instance_version):
     """
 
     global _workflow_compatibility_version_cache
-    message = None
     try:
         if min_instance_version in _workflow_compatibility_version_cache:
             return _workflow_compatibility_version_cache[min_instance_version]
-        else:
-            instance_version = _workflow_compatibility_version_cache.get("instance_version", None)
-            if instance_version is None:
-                instance_version = api.instance_version
-                _workflow_compatibility_version_cache["instance_version"] = instance_version
-            if instance_version == "unknown":
-                # to check again on the next call
-                _workflow_compatibility_version_cache["instance_version"] = None
-                logger.info(
-                    "Can not check compatibility with Supervisely instance. "
-                    "Workflow features will be disabled."
-                )
-                return False
-            is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
-            _workflow_compatibility_version_cache[min_instance_version] = is_compatible
-            if not is_compatible:
-                message = f"Supervisely instance version '{instance_version}' does not support workflow features."
-                if not is_community():
-                    message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
 
-                logger.info(message)
-            return is_compatible
+        instance_version = _workflow_compatibility_version_cache.setdefault(
+            "instance_version", api.instance_version
+        )
+
+        if instance_version == "unknown":
+            # to check again on the next call
+            del _workflow_compatibility_version_cache["instance_version"]
+            logger.info(
+                "Can not check compatibility with Supervisely instance. "
+                "Workflow features will be disabled."
+            )
+            return False
+
+        is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
+        _workflow_compatibility_version_cache[min_instance_version] = is_compatible
+
+        if not is_compatible:
+            message = f"Supervisely instance version '{instance_version}' does not support workflow features."
+            if not is_community():
+                message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
+
+            logger.info(message)
+
+        return is_compatible
+
     except Exception as e:
         logger.error(
             "Can not check compatibility with Supervisely instance. "
