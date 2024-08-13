@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
@@ -24,6 +24,10 @@ class Card(Widget):
     :type content_top_right: Optional[Widget]
     :param lock_message: Message to be displayed when the card is locked.
     :type lock_message: Optional[str]
+    :param remove_padding: If True, padding will be removed from the card.
+    :type remove_padding: Optional[bool]
+    :param overflow: Overflow property of the card. Can be "auto", "unset" or "scroll".
+    :type overflow: Optional[Literal["auto", "unset", "scroll"]]
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
@@ -46,6 +50,7 @@ class Card(Widget):
         lock_message: Optional[str] = "Card content is locked",
         widget_id: Optional[str] = None,
         remove_padding: Optional[bool] = False,
+        overflow: Optional[Literal["auto", "unset", "scroll"]] = "auto",
     ):
         self._title = title
         self._description = description
@@ -57,7 +62,12 @@ class Card(Widget):
         self._remove_padding = remove_padding
         if self._slot_content is not None:
             self._show_slot = True
-        self._options = {"collapsable": self._collapsable, "marginBottom": "0px"}
+        self._overflow = overflow
+        self._options = {
+            "collapsable": self._collapsable,
+            "marginBottom": "0px",
+            "contentOverflow": self._overflow,
+        }
         self._lock_message = lock_message
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._disabled = {"disabled": False, "message": self._lock_message}

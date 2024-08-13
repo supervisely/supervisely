@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from supervisely import (
     Api,
@@ -36,7 +36,7 @@ class PointcloudConverter(BaseConverter):
         def create_empty_annotation(self) -> PointcloudAnnotation:
             return PointcloudAnnotation()
 
-        def set_related_images(self, related_images: dict) -> None:
+        def set_related_images(self, related_images: Tuple[str, str]) -> None:
             self._related_images.append(related_images)
 
     @property
