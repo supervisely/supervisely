@@ -191,7 +191,7 @@ class GridGalleryV2(Widget):
         project_meta: ProjectMeta,
         title: str = "",
         column_index: int = None,
-        ignore_tags_filtering: bool = False,
+        ignore_tags_filtering: Union[bool, List[str]] = False,
         # zoom_to: int = None,
         # zoom_factor: float = 1.2,
         # title_url=None,
@@ -248,10 +248,11 @@ class GridGalleryV2(Widget):
 
         for cell_data in self._data:
             tmp = cell_data["cell_uuid"]
-            if cell_data.get("skipObjectTagsFiltering") is True:
+            skip_filters: Union[bool, List[str]] = cell_data.get("skipObjectTagsFiltering")
+            if skip_filters is True or isinstance(skip_filters, list):
                 tmp = {
                     "layoutDataKey": cell_data["cell_uuid"],
-                    "options": {"skipObjectTagsFiltering": True},
+                    "options": {"skipObjectTagsFiltering": skip_filters},
                 }
 
             layout[cell_data["column_index"]].append(tmp)

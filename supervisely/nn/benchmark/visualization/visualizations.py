@@ -481,7 +481,7 @@ class MetricVis:
             res["clickData"][key]["filters"] = [
                 {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
                 {"type": "tag", "tagId": "outcome", "value": "TP"},
-            ]                
+            ]
 
         return res
 
@@ -609,7 +609,7 @@ class Overview(MetricVis):
             # width=700,
             # height=500,
             # autosize=False,
-            # margin=dict(l=50, r=50, t=100, b=50, pad=4),
+            margin=dict(l=25, r=25, t=25, b=25),
         )
         fig.update_layout(
             modebar=dict(
@@ -654,6 +654,7 @@ class ExplorerGrid(MetricVis):
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
             for x in [gt_project_id, dt_project_id, diff_project_id]
         ]
+        is_ignore = [True, ["outcome"], False]
         for gt_image, pred_image, diff_image in zip(
             gt_image_infos, pred_image_infos, diff_image_infos
         ):
@@ -665,14 +666,13 @@ class ExplorerGrid(MetricVis):
             ):
                 image_name = image_info.name
                 image_url = image_info.full_storage_url
-                is_ignore = True if idx in [0, 1] else False
                 widget.gallery.append(
                     title=image_name,
                     image_url=image_url,
                     annotation_info=ann_info,
                     column_index=idx,
                     project_meta=project_meta,
-                    ignore_tags_filtering=is_ignore,
+                    ignore_tags_filtering=is_ignore[idx],
                 )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
@@ -694,9 +694,9 @@ class ExplorerGrid(MetricVis):
     def get_gallery_click_data(self, widget: Widget.Table) -> Optional[dict]:
         res = {}
         res["layoutTemplate"] = [
-            {"skipObjectsFiltering": True},
-            {"skipObjectsFiltering": True},
-            None,
+            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
+            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
+            {"columnTitle": "Difference"},
         ]
         res["clickData"] = {}
         res["clickData"]["explore"] = {}
@@ -768,20 +768,20 @@ class ModelPredictions(MetricVis):
             ProjectMeta.from_json(data=api.project.get_meta(id=x))
             for x in [gt_project_id, dt_project_id, diff_project_id]
         ]
+        is_ignore = [True, ["outcome"], False]
 
         for idx, (image_info, ann_info, project_meta) in enumerate(
             zip(images_infos, anns_infos, project_metas)
         ):
             image_name = image_info.name
             image_url = image_info.full_storage_url
-            is_ignore = True if idx in [0, 1] else False
             widget.gallery.append(
                 title=image_name,
                 image_url=image_url,
                 annotation_info=ann_info,
                 column_index=idx,
                 project_meta=project_meta,
-                ignore_tags_filtering=is_ignore,
+                ignore_tags_filtering=is_ignore[idx],
             )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
@@ -849,9 +849,9 @@ class ModelPredictions(MetricVis):
     def get_table_click_data(self, widget: Widget.Table) -> Optional[dict]:
         res = {}
         res["layoutTemplate"] = [
-            {"skipObjectsFiltering": True, "columnTitle": "Ground Truth"},
-            {"skipObjectsFiltering": True, "columnTitle": "Prediction"},
-            {"skipObjectsFiltering": False, "columnTitle": "Difference"},
+            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
+            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
+            {"skipObjectTagsFiltering": False, "columnTitle": "Difference"},
         ]
         res["clickData"] = {}
 
@@ -1774,11 +1774,12 @@ class PerClassAvgPrecision(MetricVis):
             width=800,
             height=800,
             range_r=[0, 1],
-        )
-        # fill points
+        )            
         fig.update_traces(fill="toself")
-
-        fig.update_layout(modebar_add=["resetScale"])
+        fig.update_layout(
+            modebar_add=["resetScale"],
+            margin=dict(l=80, r=80, t=0, b=0),
+        )
         return fig
 
 
