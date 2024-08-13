@@ -519,6 +519,7 @@ class AppApi(TaskApi):
 
         def __init__(self, api):
             self._api = api
+            # minimum instance version that supports workflow features
             self._min_instance_version = "6.9.31"
 
         # pylint: disable=no-self-argument
@@ -549,7 +550,7 @@ class AppApi(TaskApi):
             data: dict,
             transaction_type: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input or output to a workflow node.
@@ -561,7 +562,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: dict
             """
@@ -584,6 +585,8 @@ class AppApi(TaskApi):
                 data_id = data.get("data_id") if data_type != "app_session" else node_id
                 data_meta = data.get("meta", {})
                 if meta is not None:
+                    if isinstance(meta, WorkflowMeta):
+                        meta = meta.as_dict
                     if validate_json(meta, self.__custom_meta_schema):
                         data_meta.update(meta)
                     else:
@@ -613,7 +616,7 @@ class AppApi(TaskApi):
             version_id: Optional[int] = None,
             version_num: Optional[int] = None,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "project" to the workflow node.
@@ -631,7 +634,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -691,7 +694,7 @@ class AppApi(TaskApi):
             self,
             dataset: Union[int, DatasetInfo],
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "dataset" to the workflow node.
@@ -702,7 +705,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -742,7 +745,7 @@ class AppApi(TaskApi):
             file: Union[int, FileInfo, str],
             model_weight=False,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "file" to the workflow node.
@@ -755,7 +758,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -806,7 +809,7 @@ class AppApi(TaskApi):
             self,
             path: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "folder" to the workflow node.
@@ -818,7 +821,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -863,7 +866,7 @@ class AppApi(TaskApi):
             self,
             input_task_id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "task" to the workflow node.
@@ -874,7 +877,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -912,7 +915,7 @@ class AppApi(TaskApi):
             project: Union[int, ProjectInfo],
             version_id: Optional[int] = None,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "project" to the workflow node.
@@ -926,7 +929,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -976,7 +979,7 @@ class AppApi(TaskApi):
             self,
             dataset: Union[int, DatasetInfo],
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "dataset" to the workflow node.
@@ -987,7 +990,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -1027,7 +1030,7 @@ class AppApi(TaskApi):
             file: Union[int, FileInfo],
             model_weight=False,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "file" to the workflow node.
@@ -1040,7 +1043,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -1081,7 +1084,7 @@ class AppApi(TaskApi):
             self,
             path: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "folder" to the workflow node.
@@ -1093,7 +1096,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -1137,7 +1140,7 @@ class AppApi(TaskApi):
         def add_output_app(
             self,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "app_session" to the workflow node.
@@ -1146,7 +1149,7 @@ class AppApi(TaskApi):
             :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -1183,7 +1186,7 @@ class AppApi(TaskApi):
             self,
             output_task_id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "task" to the workflow node.
@@ -1194,7 +1197,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -1231,7 +1234,7 @@ class AppApi(TaskApi):
             self,
             id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "job" to the workflow node. Job is a Labeling Job.
@@ -1242,7 +1245,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
