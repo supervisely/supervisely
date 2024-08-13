@@ -2771,7 +2771,6 @@ class ImageApi(RemoveableBulkModuleApi):
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
-
             image_ids = [2389126, 2389127]
             tag_ids = 277083
             values = ['value1', 'value2']
@@ -2811,6 +2810,39 @@ class ImageApi(RemoveableBulkModuleApi):
         ]
 
         return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
+
+    def update_tag_value(
+        self, tag_id: int, value: Union[str, float]
+    ) -> Dict:
+        """
+        Update tag value with given ID.
+
+        :param tag_id: Tag ID in Supervisely.
+        :type value: int
+        :param value: Tag value.
+        :type value: str or float
+        :param project_meta: Project Meta.
+        :type project_meta: ProjectMeta
+        :return: Information about updated tag.
+        :rtype: :class:`dict`
+        :Usage example:
+
+            .. code-block:: python
+            
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            
+            tag_id = 277083
+            new_value = 'new_value'
+            api.image.update_tag_value(tag_id, new_value)
+
+        """
+        data = {ApiField.ID: tag_id, ApiField.VALUE: value}
+        response = self._api.post("image-tags.update-tag-value", data)
+        return response.json()
 
     def remove_batch(
         self,
