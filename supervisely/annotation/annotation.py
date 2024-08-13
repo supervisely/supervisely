@@ -86,8 +86,6 @@ class Annotation:
     :type custom_data: dict, optional
     :param image_id: Id of the image.
     :type image_id: int, optional
-    :param use_subpixel_label_coords: If True, label coordinates will be converted to subpixel values.
-    :type use_subpixel_label_coords: bool, optional
 
     :raises: :class:`TypeError`, if image size is not tuple or list
     :Usage example:
@@ -135,7 +133,6 @@ class Annotation:
         pixelwise_scores_labels: Optional[List[Label]] = None,
         custom_data: Optional[Dict] = None,
         image_id: Optional[int] = None,
-        use_subpixel_label_coords: bool = False,
     ):
         if not isinstance(img_size, (tuple, list)):
             raise TypeError(
@@ -148,7 +145,6 @@ class Annotation:
             raise ValueError("Image resolution (height, width) has to defined both or none of them")
 
         self._img_description = img_description
-        self._use_subpixel_label_coords = use_subpixel_label_coords
 
         if img_tags is None:
             self._img_tags = TagCollection()
@@ -293,20 +289,6 @@ class Annotation:
             #   +----------------+------------+--------+
         """
         return self._img_tags
-
-    @property
-    def use_subpixel_label_coords(self) -> bool:
-        """
-        Return flag that indicates if label coordinates are stored as subpixel values.
-        :return: Use subpixel label coordinates flag
-        :rtype: :class:`bool`
-        :Usage example:
-         .. code-block:: python
-            ann = sly.Annotation((500, 700), use_subpixel_label_coords=True)
-            print(ann.use_subpixel_label_coords)
-            # Output: True
-        """
-        return self._use_subpixel_label_coords
 
     def to_json(self) -> Dict:
         """
@@ -502,7 +484,6 @@ class Annotation:
         pixelwise_scores_labels: Optional[List[Label]] = None,
         custom_data: Optional[Dict] = None,
         image_id: Optional[int] = None,
-        use_subpixel_label_coords: Optional[bool] = None,
     ) -> Annotation:
         """
         Makes a copy of Annotation with new fields, if fields are given, otherwise it will use fields of the original Annotation.
@@ -521,8 +502,6 @@ class Annotation:
         :type custom_data: dict, optional
         :param image_id: Id of the image.
         :type image_id: int, optional
-        :param use_subpixel_label_coords: If True, label coordinates will be converted to subpixel values.
-        :type use_subpixel_label_coords: bool, optional
 
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
@@ -560,9 +539,6 @@ class Annotation:
             ),
             custom_data=take_with_default(custom_data, self.custom_data),
             image_id=take_with_default(image_id, self.image_id),
-            use_subpixel_label_coords=take_with_default(
-                use_subpixel_label_coords, self.use_subpixel_label_coords
-            ),
         )
 
     def _add_labels_impl(self, dest, labels):
