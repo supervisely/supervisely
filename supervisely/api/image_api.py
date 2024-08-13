@@ -2785,7 +2785,10 @@ class ImageApi(RemoveableBulkModuleApi):
         if isinstance(tag_metas, TagMeta):
             tag_metas = [tag_metas] * len(image_ids)
 
-        values = values or [None] * len(image_ids)
+        if values is None:
+            values = [None] * len(image_ids)
+        elif isinstance(values, (str, int)):
+            values = [values] * len(image_ids)
 
         if len(values) != len(image_ids):
             raise ValueError("Length of image_ids and values should be the same")
