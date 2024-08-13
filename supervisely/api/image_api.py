@@ -2828,13 +2828,13 @@ class ImageApi(RemoveableBulkModuleApi):
         :Usage example:
 
             .. code-block:: python
-            
+
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
-            
+
             tag_id = 277083
             new_value = 'new_value'
             api.image.update_tag_value(tag_id, new_value)
