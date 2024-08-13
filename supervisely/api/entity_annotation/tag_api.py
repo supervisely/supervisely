@@ -502,10 +502,21 @@ class TagApi(ModuleApi):
             api.video.tag.add_to_objects_json_batch(project_id, tag_map)
         """
 
-        obj_field_name = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID
-        data = [
-            dict(tag.to_json(), **{obj_field_name: obj_id, ApiField.TAG_ID: tag.meta.sly_id})
-            for obj_id, tags in tags_map.items()
-            for tag in tags
-        ]
+        OBJ_ID_FIELD = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID
+
+        data = []
+        for obj_id, tags in tags_map.items():
+            for tag in tags:
+
+                if tag.meta.sly_id is None:
+                    raise ValueError(f"Tag {tag.name} meta has no sly_id")
+
+                data.append(
+                    {
+                        ApiField.TAG_ID: tag.meta.sly_id,
+                        OBJ_ID_FIELD: obj_id,
+                        **tag.to_json()
+                    }
+                )
+
         return self.add_to_objects(project_id, data, batch_size, log_progress)
