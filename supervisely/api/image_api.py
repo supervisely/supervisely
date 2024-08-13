@@ -2740,7 +2740,7 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         image_ids: List[int],
         tag_ids: Union[int, List[int]],
-        values: Optional[List[Union[str, int, None]]] = None,
+        values: Optional[Union[str, int, List[Union[str, int]]]] = None,
         log_progress: bool = False,
         batch_size: Optional[int] = 100,
         tag_metas: Optional[Union[TagMeta, List[TagMeta]]] = None,
@@ -2752,8 +2752,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type image_ids: List[int]
         :param tag_ids: Tag IDs in Supervisely.
         :type tag_ids: int or List[int]
-        :param values: List of tag values.
-        :type values: List[int or str or None], optional
+        :param values: List of tag values for each image or single value for all images.
+        :type values: List[str] or List[int] or str or int, optional
         :param log_progress: If True, will log progress.
         :type log_progress: bool, optional
         :param batch_size: Batch size
