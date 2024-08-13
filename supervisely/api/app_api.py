@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
@@ -360,6 +361,81 @@ class SessionInfo(NamedTuple):
                 details={},
             )
         return info
+
+
+@dataclass
+class WorkflowSettings:
+    """Used to customize the appearance and behavior of the workflow node."""
+
+    title: Optional[str] = None
+    icon: Optional[str] = None
+    icon_color: Optional[str] = None
+    icon_bg_color: Optional[str] = None
+    url: Optional[str] = None
+    url_title: Optional[str] = None
+
+    def __post_init__(self):
+        if (self.url and not self.url_title) or (not self.url and self.url_title):
+            logger.info(
+                "Workflow Warning: both 'url' and 'url_title' must be set together in WorkflowSettings. "
+                "Setting MainLink to default."
+            )
+            self.url = None
+            self.url_title = None
+        if not all([self.icon, self.icon_color, self.icon_bg_color]) and any(
+            [self.icon, self.icon_color, self.icon_bg_color]
+        ):
+            logger.info(
+                "Workflow Warning: all three parameters 'icon', 'icon_color', and 'icon_bg_color' must be set together in WorkflowSettings. "
+                "Setting Icon to default."
+            )
+            self.icon = None
+            self.icon_color = None
+            self.icon_bg_color = None
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        result = {}
+        if self.title is not None:
+            result["title"] = f"<h4>{self.title}</h4>"
+        if self.icon is not None and self.icon_color is not None and self.icon_bg_color is not None:
+            result["icon"] = {}
+            result["icon"]["icon"] = f"zmdi-{self.icon}"
+            result["icon"]["color"] = self.icon_color
+            result["icon"]["backgroundColor"] = self.icon_bg_color
+        if self.url is not None and self.url_title is not None:
+            result["mainLink"] = {}
+            result["mainLink"]["url"] = self.url
+            result["mainLink"]["title"] = self.url_title
+        return result
+
+
+@dataclass
+class WorkflowMeta:
+    """Used to customize the appearance of the workflow main and/or related node."""
+
+    customRelationSettings: Optional[WorkflowSettings] = None
+    customNodeSettings: Optional[WorkflowSettings] = None
+
+    def __post_init__(self):
+        if not (self.customRelationSettings or self.customNodeSettings):
+            raise ValueError(
+                "At least one of customRelationSettings or customNodeSettings must be specified"
+            )
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        result = {}
+        if self.customRelationSettings is not None:
+            result["customRelationSettings"] = self.customRelationSettings.as_dict
+        if self.customNodeSettings is not None:
+            result["customNodeSettings"] = self.customNodeSettings.as_dict
+        return result if result != {} else None
+
+    @classmethod
+    def create_as_dict(cls, **kwargs) -> Dict[str, Any]:
+        instance = cls(**kwargs)
+        return instance.as_dict
 
 
 class AppApi(TaskApi):
