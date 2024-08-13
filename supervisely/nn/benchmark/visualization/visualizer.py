@@ -64,7 +64,7 @@ _METRIC_VISUALIZATIONS = (
 
 def generate_main_template(metric_visualizations: List[MetricVis]):
     template_str = """<div>
-    <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false,  disableSplit: true, sidebarWidth: 300 }">
+    <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false,  disableResize: true, sidebarWidth: 300 }">
         <div slot="sidebar">"""
 
     for vis in metric_visualizations:
