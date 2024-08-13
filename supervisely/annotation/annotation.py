@@ -3,6 +3,7 @@
 
 # docs
 from __future__ import annotations
+
 import itertools
 import json
 import operator
@@ -552,8 +553,7 @@ class Annotation:
             if self.img_size.count(None) == 0:
                 # image has resolution in DB
                 canvas_rect = Rectangle.from_size(self.img_size)
-                cropped_labels = label.crop(canvas_rect)
-                dest.extend(cropped_labels)
+                dest.extend(label.crop(canvas_rect))
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
