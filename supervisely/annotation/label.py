@@ -844,7 +844,7 @@ class LabelBase:
     def labeler_login(self):
         return self.geometry.labeler_login
 
-    def to_subpixel(self, img_size: Tuple[int, int]) -> LabelBase:
+    def _to_subpixel(self, img_size: Tuple[int, int]) -> LabelBase:
         """
         Converts Label geometry to subpixel precision.
 
@@ -853,7 +853,7 @@ class LabelBase:
         :return: New instance of Label with subpixel precision geometry
         :rtype: :class:`Label<LabelBase>`
         """
-        new_geometry = self.geometry.to_subpixel(img_size)
+        new_geometry = self.geometry._to_subpixel(img_size)
         label = self.clone(geometry=new_geometry)
         return label
 

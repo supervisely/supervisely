@@ -756,7 +756,7 @@ class AnnotationApi(ModuleApi):
         """
         # Convert to subpixel if needed
         if convert_to_subpixel:
-            ann = ann.to_subpixel()
+            ann = ann._to_subpixel()
         self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(

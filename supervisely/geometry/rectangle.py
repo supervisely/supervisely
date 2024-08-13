@@ -98,7 +98,7 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        top, left, bottom, right = self.apply_round_logic(top, left, bottom, right)
+        top, left, bottom, right = self._apply_round_logic(top, left, bottom, right)
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
@@ -186,7 +186,7 @@ class Rectangle(Geometry):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
-        ).to_pixel()
+        )._to_pixel()
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -740,7 +740,7 @@ class Rectangle(Geometry):
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
 
-    def apply_round_logic(
+    def _apply_round_logic(
         self,
         top: Union[int, float],
         left: Union[int, float],
@@ -772,7 +772,7 @@ class Rectangle(Geometry):
             right = floor(right)
         return top, left, bottom, right
 
-    def to_pixel(self) -> Rectangle:
+    def _to_pixel(self) -> Rectangle:
         """
         Convert subpixel coordinates to pixel format.
 
@@ -795,7 +795,7 @@ class Rectangle(Geometry):
             created_at=self.created_at,
         )
 
-    def to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
+    def _to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
         """
         Convert Rectangle to subpixel coordinates.
         :param img_size: Input image size (height, width) to which belongs Rectangle.
