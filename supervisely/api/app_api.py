@@ -365,7 +365,21 @@ class SessionInfo(NamedTuple):
 
 @dataclass
 class WorkflowSettings:
-    """Used to customize the appearance and behavior of the workflow node."""
+    """Used to customize the appearance and behavior of the workflow node.
+
+    :param title: Title of the node. It is displayed in the node header.
+    :type title: Optional[str]
+    :param icon: Icon of the node. It is displayed in the node body.
+    :type icon: Optional[str]
+    :param icon_color: Color of the icon.
+    :type icon_color: Optional[str]
+    :param icon_bg_color: Background color of the icon.
+    :type icon_bg_color: Optional[str]
+    :param url: URL to be opened when the user clicks on it.
+    :type url: Optional[str]
+    :param url_title: Title of the URL.
+    :type url_title: Optional[str]
+    """
 
     title: Optional[str] = None
     icon: Optional[str] = None
@@ -412,24 +426,31 @@ class WorkflowSettings:
 
 @dataclass
 class WorkflowMeta:
-    """Used to customize the appearance of the workflow main and/or related node."""
+    """Used to customize the appearance of the workflow main and/or relation node.
 
-    customRelationSettings: Optional[WorkflowSettings] = None
-    customNodeSettings: Optional[WorkflowSettings] = None
+    :param relation_settings: customizes the appearance of the relation node - inputs and outputs
+    :type relation_settings: Optional[WorkflowSettings]
+    :param node_settings: customizes the appearance of the main node - the task itself
+    :type node_settings: Optional[WorkflowSettings]
+    """
+
+    relation_settings: Optional[WorkflowSettings] = None
+    node_settings: Optional[WorkflowSettings] = None
 
     def __post_init__(self):
-        if not (self.customRelationSettings or self.customNodeSettings):
-            raise ValueError(
-                "At least one of customRelationSettings or customNodeSettings must be specified"
+        if not (self.relation_settings or self.node_settings):
+            logger.info(
+                "Workflow Warning: at least one of 'relation_settings' or 'node_settings' must be specified in WorkflowMeta. "
+                "Customization will not be applied."
             )
 
     @property
     def as_dict(self) -> Dict[str, Any]:
         result = {}
-        if self.customRelationSettings is not None:
-            result["customRelationSettings"] = self.customRelationSettings.as_dict
-        if self.customNodeSettings is not None:
-            result["customNodeSettings"] = self.customNodeSettings.as_dict
+        if self.relation_settings is not None:
+            result["customRelationSettings"] = self.relation_settings.as_dict
+        if self.node_settings is not None:
+            result["customNodeSettings"] = self.node_settings.as_dict
         return result if result != {} else None
 
     @classmethod
