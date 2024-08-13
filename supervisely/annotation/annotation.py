@@ -3,7 +3,6 @@
 
 # docs
 from __future__ import annotations
-
 import itertools
 import json
 import operator
@@ -2955,12 +2954,14 @@ class Annotation:
         for label in self.labels:
             label.binding_key = None
 
-    def _to_subpixel(self):
+    def _to_subpixel(self) -> Annotation:
         """
         Convert all labels to subpixel precision
 
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
         """
-        new_labels = [label._to_subpixel(self.img_size) for label in self.labels]
-        return self.clone(labels=new_labels, use_subpixel_label_coords=True)
+        new_ann = self.clone()
+        new_labels = [label._to_subpixel(new_ann.img_size) for label in new_ann.labels]
+        new_ann._labels = new_labels
+        return new_ann

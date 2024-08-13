@@ -473,8 +473,6 @@ class Rectangle(Geometry):
             size = (300, 400)
             figure_from_size = sly.Rectangle.from_size(size)
         """
-        # Add flag to not crop the image when uploading subpixels
-        # return cls(0, 0, size[0], size[1])
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod

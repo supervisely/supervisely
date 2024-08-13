@@ -753,8 +753,6 @@ class AnnotationApi(ModuleApi):
             image_id = 121236918
             upl_ann = api.annotation.upload_ann(image_id, ann)
         """
-        # Convert to subpixel if needed
-        ann = ann._to_subpixel()
         self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(
