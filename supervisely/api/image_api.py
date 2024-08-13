@@ -2793,12 +2793,11 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(image_ids) != len(values):
             raise ValueError("Length of image_ids and values should be the same")
 
-        data = []
         project_id = self.get_project_id(image_ids[0])
-        for image_id, value in zip(image_ids, values):
-            data.append(
-                {ApiField.ENTITY_ID: image_id, ApiField.TAG_ID: tag_id, ApiField.VALUE: value}
-            )
+        data = [
+            {ApiField.ENTITY_ID: image_id, ApiField.TAG_ID: tag_id, ApiField.VALUE: value}
+            for image_id, value in zip(image_ids, values)
+        ]
 
         return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
 
