@@ -801,7 +801,6 @@ class Rectangle(Geometry):
         :return: Rectangle object with corners in subpixel format
         :rtype: :class:`Rectangle<Rectangle>`
         """
-        # Pixel -> Subpixel
         # General Case
         # Add 1 to right and bottom to make it inclusive
         height, width = img_size
@@ -825,7 +824,6 @@ class Rectangle(Geometry):
         # -----------------------------------------------
         # Check if coordinates are in 1 pixel range on border
         # Include the pixel if it is in the range
-        # discuss_1
         if left == right and right == width:
             left = width - 1
         if top == bottom and bottom == height:
