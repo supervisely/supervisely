@@ -108,7 +108,10 @@ _context_menu_targets = {
     },
 }
 
-# to check if the instance is compatible with the workflow features
+# Used to check if the instance is compatible with the workflow features
+# and to avoid multiple requests to the API.
+# Consists of the instance version and the result of the check for each necessary version during the session.
+# Example: {"instance_version": "6.10.1", "6.9.31": True}
 _workflow_compatibility_version_cache = {}
 
 
