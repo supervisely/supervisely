@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
@@ -279,11 +279,17 @@ class TagApi(ModuleApi):
         tags_list: List[dict],
         batch_size: int = 100,
         log_progress: bool = False,
-    ) -> List[dict]:
+    ) -> List[Dict[str, Union[str, int, None]]]:
         """
-        Add Tags to existing Annotation Figures.
-        All figures must belong to entities of the same project.
-        Applies only to images project.
+        For images project:
+            Add Tags to existing Annotation Figures (labels).
+            The `tags_list` example: [{"tagId": 12345, "figureId": 54321, "value": "tag_value"}, ...].
+        For video, pointcloud, volume and pointcloud episodes projects:
+            Add Tags to existing Annotation Objects.
+            The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
+            The `tags_list`` example: [{"tagId": 12345, "objectId": 54321, "value": "tag_value"}, ...].
+
+        All objects must belong to entities of the same project.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
@@ -345,14 +351,11 @@ class TagApi(ModuleApi):
             #        }
             #    ]
         """
-        if type(self) is not TagApi:
-            raise NotImplementedError("This method is available only for images project")
 
         result = []
 
         if len(tags_list) == 0:
             return result
-
         if log_progress:
             ds_progress = tqdm_sly(
                 desc="Adding tags to figures",
@@ -360,7 +363,10 @@ class TagApi(ModuleApi):
             )
         for batch in batched(tags_list, batch_size):
             data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
-            response = self._api.post("figures.tags.bulk.add", data)
+            if type(self) is TagApi:
+                response = self._api.post("figures.tags.bulk.add", data)
+            else:
+                response = self._api.post("annotation-objects.tags.bulk.add", data)
             result.extend(response.json())
             if log_progress:
                 ds_progress.update(len(batch))
@@ -425,10 +431,7 @@ class TagApi(ModuleApi):
             return result
 
         if log_progress:
-            ds_progress = tqdm_sly(
-                desc="Adding tags to entities",
-                total=len(tags_list),
-            )
+            ds_progress = tqdm_sly(desc="Adding tags to entities", total=len(tags_list))
 
         for batch in batched(tags_list, batch_size):
             data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
@@ -439,32 +442,34 @@ class TagApi(ModuleApi):
 
         return result
 
-    def add_to_objects_json_batch(
+    def add_tags_collection_to_objects(
         self,
         project_id: int,
-        tags_list: List[Dict[str, Union[str, int, None]]],
+        tags_map: Dict[int, Any],
         batch_size: int = 100,
         log_progress: bool = False,
-    ) -> List[int]:
+    ) -> List[Dict[str, Union[str, int, None]]]:
         """
-        Add Tags to existing Annotation Objects.
-        All objects must belong to entities of the same project.
-        Not available for images project.
+        For images project:
+            Add Tags to existing Annotation Figures (labels).
+            The `tags_map` example: {figure_id_1: TagCollection, ...}.
+        For video, pointcloud, volume and pointcloud episodes projects:
+            Add Tags to existing Annotation Objects.
+            The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
+            The `tags_map` example: {object_id_1: TagCollection, ...}.
 
-        `tags_list` example: [{"tagId": 12345, "objectId": 54321, "value": "tag_value"}, ...].
-        `frameRange` field in the tags list is optional and is supported only for video and pointcloud episodes projects.
+        All objects must belong to entities of the same project.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
-        :param tags_list: List of tag object infos as dictionaries
-                            (e.g. {"tagId": 12345, "objectId": 54321, "value": "tag_value"}).
-        :type tags_list: List[dict]
+        :param tags_map: Dictionary with mapping figure/object ID to tags collection.
+        :type tags_map: Dict[int, Any]
         :param batch_size: Number of tags to add in one request.
         :type batch_size: int
         :param log_progress: If True, will display a progress bar.
         :type log_progress: bool
-        :return: List of tags IDs.
-        :rtype: List[int]
+        :return: List of tags infos as dictionaries.
+        :rtype: List[Dit[str, Union[str, int, None]]]
 
         Usage example:
         .. code-block:: python
@@ -473,44 +478,34 @@ class TagApi(ModuleApi):
 
             api = sly.Api(server_address, token)
 
-            tag_list = [
-                {
-                    "tagId": 25926,
-                    "objectId": 652959,
-                    "value": None
-                },
-                {
-                    "tagId": 25927,
-                    "objectId": 652959,
-                    "value": "v1"
-                },
-                {
-                    "tagId": 25927,
-                    "objectId": 652958,
-                    "value": "v2"
-                }
-            ]
-            api.video.tag.add_to_objects_json_batch(project_id=12345, tags_list=tag_list)
+            project_id = 12345
+
+            tag_meta = sly.TagMeta("tag_name", sly.TagValueType.ANY_STRING)
+            meta = sly.ProjectMeta(tag_metas=[tag_meta])
+            meta = sly.ProjectMeta.from_json(api.project.update_meta(project_id, meta))
+            tag_meta = meta.get_tag_meta("tag_name")
+
+            # for images project:
+            tag_map = {
+                652959: sly.TagCollection([sly.Tag(tag_meta, value="v1"), sly.Tag(tag_meta, value="v2"), ...]),
+                652958: sly.TagCollection([sly.Tag(tag_meta, value="v3"), sly.Tag(tag_meta, value="v4"), ...]),
+                ...
+            }
+            api.image.tag.add_tags_to_objects(project_id, tag_map)
+
+            # for videos projects (frameRange is optional):
+            tag_map = {
+                652959: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v1", frameRange=[1, 10]), ...]),
+                652958: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v2", frameRange=[4, 12]), ...]),
+                ...
+            }
+            api.video.tag.add_to_objects_json_batch(project_id, tag_map)
         """
-        if type(self) is TagApi:
-            raise NotImplementedError("This method is not available for images project")
 
-        result = []
-
-        if len(tags_list) == 0:
-            return result
-
-        if log_progress:
-            ds_progress = tqdm_sly(
-                desc="Adding tags to figures",
-                total=len(tags_list),
-            )
-
-        for batch in batched(tags_list, batch_size):
-            ids = self.append_to_objects_json(entity_id=None, tags_json=batch, project_id=project_id)
-            result.extend(ids)
-
-            if log_progress:
-                ds_progress.update(len(batch))
-
-        return result
+        obj_field_name = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID
+        data = [
+            dict(tag.to_json(), **{obj_field_name: obj_id, ApiField.TAG_ID: tag.meta.sly_id})
+            for obj_id, tags in tags_map.items()
+            for tag in tags
+        ]
+        return self.add_to_objects(project_id, data, batch_size, log_progress)
