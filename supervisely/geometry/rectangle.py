@@ -175,6 +175,7 @@ class Rectangle(Geometry):
             )
         [top, bottom] = sorted([exterior[0][1], exterior[1][1]])
         [left, right] = sorted([exterior[0][0], exterior[1][0]])
+
         return cls(
             top=top,
             left=left,
@@ -185,7 +186,7 @@ class Rectangle(Geometry):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
-        )
+        ).to_pixel()
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -209,11 +210,7 @@ class Rectangle(Geometry):
         bottom = min(self.bottom, other.bottom)
         right = min(self.right, other.right)
         is_valid = (bottom >= top) and (left <= right)
-        return (
-            [Rectangle(top=top, left=left, bottom=bottom, right=right)]
-            if is_valid
-            else []
-        )
+        return [Rectangle(top=top, left=left, bottom=bottom, right=right)] if is_valid else []
 
     def _transform(self, transform_fn):
         """ """
@@ -390,27 +387,17 @@ class Rectangle(Geometry):
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
         """ """
-        self._draw_contour_impl(
-            bitmap, color, thickness=cv2.FILLED, config=config
-        )  # due to cv2
+        self._draw_contour_impl(bitmap, color, thickness=cv2.FILLED, config=config)  # due to cv2
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
-        height, width = bitmap.shape[:2]
-        left = max(0, min(self.left, self.right, width - 1))
-        top = max(0, min(self.top, self.bottom, height - 1))
-        right = min(width - 1, max(self.left, self.right))
-        bottom = min(height - 1, max(self.top, self.bottom))
-
         cv2.rectangle(
             bitmap,
-            pt1=(left, top),
-            pt2=(right, bottom),
+            pt1=(self.left, self.top),
+            pt2=(self.right, self.bottom),
             color=color,
             thickness=thickness,
         )
-        print("-----------------------------------------------")
-        print(f"OpenCV drawn coords: [[{left, top}][{right, bottom}]]")
 
     def to_bbox(self) -> Rectangle:
         """
@@ -598,9 +585,7 @@ class Rectangle(Geometry):
 
             center = figure.center()
         """
-        return PointLocation(
-            row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2
-        )
+        return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
     @property
     def width(self) -> int:
@@ -681,9 +666,7 @@ class Rectangle(Geometry):
             print(figure.contains_point_location(pt))
             # Output: True
         """
-        return (self.left <= pt.col <= self.right) and (
-            self.top <= pt.row <= self.bottom
-        )
+        return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
 
     def to_size(self) -> Tuple[int, int]:
         """
@@ -756,47 +739,6 @@ class Rectangle(Geometry):
         from supervisely.geometry.polygon import Polygon
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
-
-    def coords_to_pixel(
-        self,
-        top: Union[int, float],
-        left: Union[int, float],
-        bottom: Union[int, float],
-        right: Union[int, float],
-    ):
-        """
-        Convert subpixel coordinates to pixel coordinates.
-        :param top: Minimal vertical value of Rectangle object.
-        :type top: Union[int, float]
-        :param left: Minimal horizontal value of Rectangle object.
-        :type left: Union[int, float]
-        :param bottom: Maximal vertical value of Rectangle object.
-        :type bottom: Union[int, float]
-        :param right: Maximal vertical value of Rectangle object.
-        :type right: Union[int, float]
-        :return: top, left, bottom, right coordinates in pixel format
-        """
-
-        if left % 1 >= 0.7:
-            left = ceil(left)
-        else:
-            left = floor(left)
-
-        if top % 1 >= 0.7:
-            top = ceil(top)
-        else:
-            top = floor(top)
-
-        if right % 1 >= 0.3:
-            right = floor(right)
-        else:
-            right = max(left, floor(right) - 1)
-
-        if bottom % 1 >= 0.3:
-            bottom = floor(bottom)
-        else:
-            bottom = max(top, floor(bottom) - 1)
-        return top, left, bottom, right
 
     def apply_round_logic(
         self,

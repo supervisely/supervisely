@@ -339,10 +339,6 @@ class LabelBase:
             geometry = geometry_type_actual.from_json(data)
         else:
             geometry = obj_class.geometry_type.from_json(data)
-            
-        # Only rectangle for now
-        if isinstance(geometry, Rectangle):
-            geometry = geometry.to_pixel()
 
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
         smart_tool_input = data.get(LabelJsonFields.SMART_TOOL_INPUT)
