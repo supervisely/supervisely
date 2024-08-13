@@ -729,7 +729,6 @@ class AnnotationApi(ModuleApi):
         img_id: int,
         ann: Annotation,
         skip_bounds_validation: Optional[bool] = False,
-        convert_to_subpixel: Optional[bool] = False,
     ) -> None:
         """
         Loads an :class:`Annotation<supervisely.annotation.annotation.Annotation>` to a given image ID in the API.
@@ -755,8 +754,7 @@ class AnnotationApi(ModuleApi):
             upl_ann = api.annotation.upload_ann(image_id, ann)
         """
         # Convert to subpixel if needed
-        if convert_to_subpixel:
-            ann = ann._to_subpixel()
+        ann = ann._to_subpixel()
         self.upload_anns([img_id], [ann], skip_bounds_validation=skip_bounds_validation)
 
     def upload_anns(
@@ -803,6 +801,7 @@ class AnnotationApi(ModuleApi):
                 api.annotation.upload_anns(img_ids, [ann1, ann2])
         """
         # img_ids from the same dataset
+        anns = [ann._to_subpixel() for ann in anns]
         self._upload_batch(
             Annotation.to_json,
             img_ids,
