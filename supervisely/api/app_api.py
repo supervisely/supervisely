@@ -115,7 +115,7 @@ _context_menu_targets = {
 _workflow_compatibility_version_cache = {}
 
 
-def check_workflow_compatibility(api, min_instance_version):
+def check_workflow_compatibility(api, min_instance_version: str) -> bool:
     """Check if the instance is compatible with the workflow features.
     If the instance is not compatible, the user will be notified about it.
 
