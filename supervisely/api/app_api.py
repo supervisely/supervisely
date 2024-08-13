@@ -14,6 +14,8 @@ STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
 
+from functools import wraps
+
 from pkg_resources import parse_version
 
 from supervisely import env, logger
@@ -107,12 +109,11 @@ _context_menu_targets = {
 }
 
 # to check if the instance is compatible with the workflow features
-_is_workflow_compatible = None
+_workflow_compatibility_version_cache = {}
 
 
 def check_workflow_compatibility(api, min_instance_version):
     """Check if the instance is compatible with the workflow features.
-    The compatibility is checked only once.
     If the instance is not compatible, the user will be notified about it.
 
     :param api: Supervisely API object
@@ -123,33 +124,39 @@ def check_workflow_compatibility(api, min_instance_version):
     :rtype: bool
     """
 
-    global _is_workflow_compatible
+    global _workflow_compatibility_version_cache
     message = None
-    if _is_workflow_compatible is None:
-        try:
-            isinstance_version = api.instance_version
-            if isinstance_version == "unknown":
-                _is_workflow_compatible = False
-                message = "Can not check compatibility with Supervisely instance. Workflow features will be disabled."
-            elif parse_version(isinstance_version) < parse_version(min_instance_version):
-                _is_workflow_compatible = False
-                message = f"Supervisely instance version '{isinstance_version}' does not support workflow features."
+    try:
+        if min_instance_version in _workflow_compatibility_version_cache:
+            return _workflow_compatibility_version_cache[min_instance_version]
+        else:
+            instance_version = _workflow_compatibility_version_cache.get("instance_version", None)
+            if instance_version is None:
+                instance_version = api.instance_version
+                _workflow_compatibility_version_cache["instance_version"] = instance_version
+            if instance_version == "unknown":
+                # to check again on the next call
+                _workflow_compatibility_version_cache["instance_version"] = None
+                logger.info(
+                    "Can not check compatibility with Supervisely instance. "
+                    "Workflow features will be disabled."
+                )
+                return False
+            is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
+            _workflow_compatibility_version_cache[min_instance_version] = is_compatible
+            if not is_compatible:
+                message = f"Supervisely instance version '{instance_version}' does not support workflow features."
                 if not is_community():
                     message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
-            else:
-                _is_workflow_compatible = True
-            logger.debug(
-                f"Compatibility is checked. Workflow features are {'enabled' if _is_workflow_compatible else 'disabled'}."
-            )
-            if message is not None:
+
                 logger.info(message)
-        except Exception as e:
-            logger.error(
-                "Can not check compatibility with Supervisely instance. "
-                f"Workflow features will be disabled. Error: {repr(e)}"
-            )
-            _is_workflow_compatible = False
-    return _is_workflow_compatible
+            return is_compatible
+    except Exception as e:
+        logger.error(
+            "Can not check compatibility with Supervisely instance. "
+            f"Workflow features will be disabled. Error: {repr(e)}"
+        )
+        return False
 
 
 class AppInfo(NamedTuple):
@@ -412,11 +419,12 @@ class AppApi(TaskApi):
             self._min_instance_version = "6.9.31"
 
         # pylint: disable=no-self-argument
-        def check_compatibility_decorator(min_instance_version: str = None):
+        def check_instance_compatibility(min_instance_version: str = None):
             """Decorator to check instance compatibility with workflow features.
             If the instance is not compatible, the function will not be executed."""
 
             def decorator(func):
+                @wraps(func)
                 def wrapper(self, *args, **kwargs):
                     version_to_check = (
                         min_instance_version
@@ -425,7 +433,7 @@ class AppApi(TaskApi):
                     )
                     if not check_workflow_compatibility(self._api, version_to_check):
                         return
-                    return func(self, *args, **kwargs)  # pylint: disable=not-callable
+                    return func(self, *args, **kwargs)
 
                 return wrapper
 
@@ -495,7 +503,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_input_project(
             self,
             project: Optional[Union[int, ProjectInfo]] = None,
@@ -575,7 +583,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_input_dataset(
             self,
             dataset: Union[int, DatasetInfo],
@@ -625,7 +633,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_input_file(
             self,
             file: Union[int, FileInfo, str],
@@ -690,7 +698,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_input_folder(
             self,
             path: str,
@@ -747,7 +755,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_input_task(
             self,
             input_task_id: int,
@@ -795,7 +803,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_project(
             self,
             project: Union[int, ProjectInfo],
@@ -860,7 +868,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_dataset(
             self,
             dataset: Union[int, DatasetInfo],
@@ -910,7 +918,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_file(
             self,
             file: Union[int, FileInfo],
@@ -965,7 +973,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_folder(
             self,
             path: str,
@@ -1022,7 +1030,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_app(
             self,
             task_id: Optional[int] = None,
@@ -1067,7 +1075,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_task(
             self,
             output_task_id: int,
@@ -1115,7 +1123,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator()
+        @check_instance_compatibility()
         def add_output_job(
             self,
             id: int,
