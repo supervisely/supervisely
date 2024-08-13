@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import json
-import os
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import take_with_default
+from supervisely._utils import is_community, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 
@@ -15,8 +14,9 @@ STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
 
+from pkg_resources import parse_version
+
 from supervisely import env, logger
-from supervisely._utils import is_community
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.api.project_api import ProjectInfo
@@ -124,22 +124,25 @@ def check_workflow_compatibility(api, min_instance_version):
     """
 
     global _is_workflow_compatible
+    message = None
     if _is_workflow_compatible is None:
         try:
-            if not api.is_version_supported(min_instance_version):
-                logger.info(
-                    f"Supervisely instance version {api.instance_version} does not support workflow features."
-                )
-                if not is_community():
-                    logger.info(
-                        f"To use them, please update your instance to version {min_instance_version} or higher."
-                    )
+            isinstance_version = api.instance_version
+            if isinstance_version == "unknown":
                 _is_workflow_compatible = False
+                message = "Can not check compatibility with Supervisely instance. Workflow features will be disabled."
+            elif parse_version(isinstance_version) < parse_version(min_instance_version):
+                _is_workflow_compatible = False
+                message = f"Supervisely instance version '{isinstance_version}' does not support workflow features."
+                if not is_community():
+                    message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
             else:
                 _is_workflow_compatible = True
             logger.debug(
                 f"Compatibility is checked. Workflow features are {'enabled' if _is_workflow_compatible else 'disabled'}."
             )
+            if message is not None:
+                logger.info(message)
         except Exception as e:
             logger.error(
                 "Can not check compatibility with Supervisely instance. "
@@ -404,23 +407,29 @@ class AppApi(TaskApi):
             ],
         }
 
-        def __init__(self, api, min_instance_version: str = None):
+        def __init__(self, api):
             self._api = api
-            self._min_instance_version = (
-                "6.9.31" if min_instance_version is None else min_instance_version
-            )
+            self._min_instance_version = "6.9.31"
 
         # pylint: disable=no-self-argument
-        def check_compatibility_decorator(func):
+        def check_compatibility_decorator(min_instance_version: str = None):
             """Decorator to check instance compatibility with workflow features.
             If the instance is not compatible, the function will not be executed."""
 
-            def wrapper(self, *args, **kwargs):
-                if not check_workflow_compatibility(self._api, self._min_instance_version):
-                    return
-                return func(self, *args, **kwargs)  # pylint: disable=not-callable
+            def decorator(func):
+                def wrapper(self, *args, **kwargs):
+                    version_to_check = (
+                        min_instance_version
+                        if min_instance_version is not None
+                        else self._min_instance_version
+                    )
+                    if not check_workflow_compatibility(self._api, version_to_check):
+                        return
+                    return func(self, *args, **kwargs)  # pylint: disable=not-callable
 
-            return wrapper
+                return wrapper
+
+            return decorator
 
         # pylint: enable=no-self-argument
 
@@ -486,7 +495,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_input_project(
             self,
             project: Optional[Union[int, ProjectInfo]] = None,
@@ -566,7 +575,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_input_dataset(
             self,
             dataset: Union[int, DatasetInfo],
@@ -616,7 +625,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_input_file(
             self,
             file: Union[int, FileInfo, str],
@@ -681,7 +690,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_input_folder(
             self,
             path: str,
@@ -738,7 +747,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_input_task(
             self,
             input_task_id: int,
@@ -786,7 +795,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_project(
             self,
             project: Union[int, ProjectInfo],
@@ -851,7 +860,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_dataset(
             self,
             dataset: Union[int, DatasetInfo],
@@ -901,7 +910,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_file(
             self,
             file: Union[int, FileInfo],
@@ -956,7 +965,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_folder(
             self,
             path: str,
@@ -1013,7 +1022,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_app(
             self,
             task_id: Optional[int] = None,
@@ -1058,7 +1067,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_task(
             self,
             output_task_id: int,
@@ -1106,7 +1115,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_compatibility_decorator
+        @check_compatibility_decorator()
         def add_output_job(
             self,
             id: int,
