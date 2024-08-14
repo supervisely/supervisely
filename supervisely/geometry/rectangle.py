@@ -98,7 +98,7 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        top, left, bottom, right = self._round_corners(top, left, bottom, right)
+        top, left, bottom, right = self._round_subpixel_coordinates(top, left, bottom, right)
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
@@ -186,7 +186,8 @@ class Rectangle(Geometry):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
-        )._to_pixel_coordinate_system()
+        )
+        # )._to_pixel_coordinate_system()
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -738,15 +739,16 @@ class Rectangle(Geometry):
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
 
-    def _round_corners(
-        self,
+    @classmethod
+    def _round_subpixel_coordinates(
+        cls,
         top: Union[int, float],
         left: Union[int, float],
         bottom: Union[int, float],
         right: Union[int, float],
     ) -> Tuple[int, int, int, int]:
         """
-        Apply rounding logic to the Rectangle coordinates.
+        Apply rounding logic to the Rectangle coordinates. Coordinates will remain in subpixel precision.
 
         Top will be rounded down if the decimal part is lesser than 0.7, it will include the vertical pixel if it is in the range, otherwise it will be rounded up and this pixel will not be included.
         Left will be rounded down if the decimal part is lesser than 0.7, it will include the horizontal pixel if it is in the range, otherwise it will be rounded up and this pixel will not be included.
@@ -787,28 +789,28 @@ class Rectangle(Geometry):
         :return: Rounded rectangle coordinates
         :rtype: Tuple[int, int, int, int]
         """
-        MIN_PIXEL_OVERLAP = 0.3
-        MAX_PIXEL_OVERLAP = 1 - MIN_PIXEL_OVERLAP
+        RIGHT_OVERLAP = 0.3
+        LEFT_OVERLAP = 1 - RIGHT_OVERLAP
 
         # Check case if all coords in 1 pixel range
         if int(top) == int(bottom) and int(left) == int(right):
             return int(top), int(left), int(bottom), int(right)
 
-        if top % 1 >= MAX_PIXEL_OVERLAP:
+        if top % 1 >= LEFT_OVERLAP:
             top = ceil(top)
         else:
             top = floor(top)
 
-        if left % 1 >= MAX_PIXEL_OVERLAP:
+        if left % 1 >= LEFT_OVERLAP:
             left = ceil(left)
         else:
             left = floor(left)
 
-        if bottom % 1 >= MIN_PIXEL_OVERLAP:
+        if bottom % 1 >= RIGHT_OVERLAP:
             bottom = ceil(bottom)
         else:
             bottom = floor(bottom)
-        if right % 1 >= MIN_PIXEL_OVERLAP:
+        if right % 1 >= RIGHT_OVERLAP:
             right = ceil(right)
         else:
             right = floor(right)
@@ -881,6 +883,7 @@ class Rectangle(Geometry):
             created_at=self.created_at,
         )
 
+
     def _to_subpixel_coordinate_system(self) -> Rectangle:
         """
         Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
@@ -908,3 +911,35 @@ class Rectangle(Geometry):
             updated_at=self.updated_at,
             created_at=self.created_at,
         )
+
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        [left, top], [right, bottom]
+        """
+        top = data[POINTS][EXTERIOR][0][1]
+        left = data[POINTS][EXTERIOR][0][0]
+        bottom = data[POINTS][EXTERIOR][1][1]
+        right = data[POINTS][EXTERIOR][1][0]
+        
+        top, left, bottom, right = cls._round_subpixel_coordinates(top, left, bottom, right)
+        right = max(left, right - 1)
+        bottom = max(top, bottom - 1)
+        data[POINTS][EXTERIOR] = [[left, top], [right, bottom]]
+        return data
+    
+    
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        [left, top], [right, bottom]
+        """
+        top = data[POINTS][EXTERIOR][0][1]
+        left = data[POINTS][EXTERIOR][0][0]
+        bottom = data[POINTS][EXTERIOR][1][1]
+        right = data[POINTS][EXTERIOR][1][0]
+        
+        right = max(left, right + 1)
+        bottom = max(top, bottom + 1)
+        data[POINTS][EXTERIOR] = [[left, top], [right, bottom]]
+        return data

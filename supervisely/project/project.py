@@ -3218,6 +3218,12 @@ def _download_project(
                         dataset_id, image_ids, progress_cb=anns_progress
                     )
                     ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+                    
+                    # Temporary fix
+                    anns = [Annotation.from_json(ann_json, meta) for ann_json in ann_jsons if ann_json]
+                    ann_jsons = [ann.to_json() for ann in anns]
+                    # --------------------------------------------
+                    
                 else:
                     ann_jsons = []
                     for image_info in batch:
@@ -3694,7 +3700,15 @@ def _download_dataset(
         # download annotations
         if only_image_tags is False:
             ann_info_list = api.annotation.download_batch(dataset_id, img_ids, anns_progress)
-            img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
+            
+            # Temporary fix
+            ann_jsons = [ann.annotation for ann in ann_info_list if ann.annotation]
+            anns = [Annotation.from_json(ann_json, project_meta) for ann_json in ann_jsons]
+            ann_jsons = [ann.to_json() for ann in anns]
+            img_name_to_ann = {ann.image_id: ann_jsons for ann in ann_info_list}
+            # -------------------------------------------
+            
+            # img_name_to_ann = {ann.image_id: ann.annotation for ann in ann_info_list}
         else:
             img_name_to_ann = {}
             for image_info in images_to_download:

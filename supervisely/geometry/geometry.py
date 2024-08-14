@@ -2,8 +2,8 @@
 
 import warnings
 from copy import deepcopy
-from typing import List, Tuple
-
+from typing import List, Tuple, Dict
+from math import floor
 import numpy as np
 
 from supervisely import logger
@@ -14,6 +14,13 @@ from supervisely.geometry.constants import (
     ID,
     LABELER_LOGIN,
     UPDATED_AT,
+    BITMAP,
+    POINTS,
+    NODES,
+    EXTERIOR,
+    INTERIOR,
+    ORIGIN,
+    LOC,
 )
 from supervisely.io.json import JsonSerializable
 
@@ -28,7 +35,12 @@ class Geometry(JsonSerializable):
     """ """
 
     def __init__(
-        self, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None
+        self,
+        sly_id=None,
+        class_id=None,
+        labeler_login=None,
+        updated_at=None,
+        created_at=None,
     ):
         self.sly_id = sly_id
         self.labeler_login = labeler_login
@@ -84,7 +96,9 @@ class Geometry(JsonSerializable):
         :param rect:
         :return: list of Geometry
         """
-        return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
+        return [
+            geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)
+        ]
 
     def rotate(self, rotator):
         """Rotates around image center -> New Geometry
@@ -184,7 +198,9 @@ class Geometry(JsonSerializable):
         :param thickness: (int)
         :param config: drawing config specific to a concrete subclass, e.g. per edge colors
         """
-        self._draw_bool_compatible(self._draw_contour_impl, bitmap, color, thickness, config)
+        self._draw_bool_compatible(
+            self._draw_contour_impl, bitmap, color, thickness, config
+        )
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """Draws the figure contour on a given bitmap canvas
@@ -215,7 +231,9 @@ class Geometry(JsonSerializable):
         """ """
         if obj_class_shape != ANY_SHAPE:
             if self.geometry_name() != obj_class_shape:
-                raise ValueError("Geometry validation error: shape names are mismatched!")
+                raise ValueError(
+                    "Geometry validation error: shape names are mismatched!"
+                )
 
     @staticmethod
     def config_from_json(config):
@@ -243,7 +261,9 @@ class Geometry(JsonSerializable):
         allowed_transforms = self.allowed_transforms()
         if new_geometry not in allowed_transforms:
             raise NotImplementedError(
-                "from {!r} to {!r}".format(self.geometry_name(), new_geometry.geometry_name())
+                "from {!r} to {!r}".format(
+                    self.geometry_name(), new_geometry.geometry_name()
+                )
             )
 
         from supervisely.geometry.alpha_mask import AlphaMask
@@ -289,6 +309,36 @@ class Geometry(JsonSerializable):
         """
         return self
 
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        # Point, Polygon, Polyline. Rectangle have its own implementation
+        if data.get(POINTS) is not None:
+            exterior = data[POINTS][EXTERIOR]
+            interior = data[POINTS][INTERIOR]
+            for point in exterior:
+                point[0] = floor(point[0])
+                point[1] = floor(point[1])
+            for point in interior:
+                point[0] = floor(point[0])
+                point[1] = floor(point[1])
+            data[POINTS][EXTERIOR] = exterior
+            data[POINTS][INTERIOR] = interior
+        # Bitmap and AlphaMask
+        if data.get(BITMAP) is not None:
+            origin = data[BITMAP][ORIGIN]
+            data[BITMAP][ORIGIN] = [floor(origin[0]), floor(origin[1])]
+        # Graph
+        if data.get(NODES) is not None:
+            nodes = data[NODES]
+            for node in nodes.values():
+                node[LOC] = [floor(node[LOC][0]), floor(node[LOC][1])]
+            data[NODES] = nodes
+        return data
+    
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        return data
+
     def _to_subpixel_coordinate_system(self):
         """
         This method should be implemented in subclasses.
@@ -299,8 +349,6 @@ class Geometry(JsonSerializable):
         which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-        :param img_size: Image size (height, width) of the Annotation to which Label belongs.
-        :type img_size: Tuple[int, int]
         :return: New instance of Geometry object in subpixel coordinates system
         :rtype: :class:`Geometry<Geometry>`
         """

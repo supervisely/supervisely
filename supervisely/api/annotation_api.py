@@ -310,6 +310,9 @@ class AnnotationApi(ModuleApi):
         # check if there are any AlphaMask geometries in the batch
         additonal_geometries = defaultdict(int)
         labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+        # -- convert labels to pixel coordinate system
+        labels = [Label._to_pixel_coordinate_system_json(label_json) for label_json in labels]
+        # --------------------------------------------
         for idx, label in enumerate(labels):
             if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
                 figure_id = label[LabelJsonFields.ID]
@@ -460,6 +463,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.INTEGER_COORDS: False,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
+            # [ann_info.annotation for ann_info in results]
 
             if need_download_alpha_masks is True:
                 additonal_geometries = defaultdict(tuple)

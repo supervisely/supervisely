@@ -2943,7 +2943,7 @@ class Annotation:
         """
         new_ann = self.clone()
         new_labels = [
-            label._to_subpixel_coordinate_system(new_ann.img_size) for label in new_ann.labels
+            label._to_subpixel_coordinate_system() for label in new_ann.labels
         ]
         new_ann._labels = new_labels
         return new_ann
