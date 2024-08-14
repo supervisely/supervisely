@@ -844,16 +844,20 @@ class LabelBase:
     def labeler_login(self):
         return self.geometry.labeler_login
 
-    def _to_subpixel(self, img_size: Tuple[int, int]) -> LabelBase:
+    def _to_subpixel_coordinate_system(self, img_size: Tuple[int, int]) -> LabelBase:
         """
-        Converts Label geometry to subpixel precision.
+        Convert label geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param img_size: Image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :return: New instance of Label with subpixel precision geometry
         :rtype: :class:`Label<LabelBase>`
         """
-        new_geometry = self.geometry._to_subpixel(img_size)
+        new_geometry = self.geometry._to_subpixel_coordinate_system(img_size)
         label = self.clone(geometry=new_geometry)
         return label
 

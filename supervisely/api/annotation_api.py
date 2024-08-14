@@ -254,7 +254,6 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        integer_coords: Optional[bool] = True,
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
@@ -265,8 +264,6 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param integer_coords: Return coordinates as integers, otherwise as floats.
-        :type integer_coords: bool, optional
 
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
@@ -305,7 +302,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_ID: image_id,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                ApiField.INTEGER_COORDS: integer_coords,
+                ApiField.INTEGER_COORDS: False,
             },
         )
         result = response.json()
@@ -334,7 +331,6 @@ class AnnotationApi(ModuleApi):
         image_id: int,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        integer_coords: Optional[bool] = True,
     ) -> Dict[str, Union[str, int, list, dict]]:
         """
         Download Annotation in json format by image ID from API.
@@ -345,8 +341,6 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param integer_coords: Return coordinates as integers, otherwise as floats.
-        :type integer_coords: bool, optional
 
         :return: Annotation in json format
         :rtype: :class:`dict`
@@ -377,7 +371,6 @@ class AnnotationApi(ModuleApi):
             image_id=image_id,
             with_custom_data=with_custom_data,
             force_metadata_for_links=force_metadata_for_links,
-            integer_coords=integer_coords,
         ).annotation
 
     def download_batch(
@@ -387,7 +380,6 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        integer_coords: Optional[bool] = True,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -402,8 +394,6 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param integer_coords: Return coordinates as integers, otherwise as floats.
-        :type integer_coords: bool, optional
 
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
@@ -467,7 +457,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                ApiField.INTEGER_COORDS: integer_coords,
+                ApiField.INTEGER_COORDS: False,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
 
@@ -507,7 +497,6 @@ class AnnotationApi(ModuleApi):
         image_ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links: Optional[bool] = True,
-        integer_coords: Optional[bool] = True,
     ) -> List[Dict]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -520,8 +509,6 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param integer_coords: Return coordinates as integers, otherwise as floats.
-        :type integer_coords: bool, optional
 
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
@@ -799,7 +786,6 @@ class AnnotationApi(ModuleApi):
                 api.annotation.upload_anns(img_ids, [ann1, ann2])
         """
         # img_ids from the same dataset
-        anns = [ann._to_subpixel() for ann in anns]
         self._upload_batch(
             Annotation.to_json,
             img_ids,
@@ -810,14 +796,29 @@ class AnnotationApi(ModuleApi):
 
     def _upload_batch(
         self,
-        func_ann_to_json,
-        img_ids,
-        anns,
+        func_ann_to_json: Callable,
+        img_ids: List[int],
+        anns: List[Union[Dict, Annotation, str]],
         progress_cb=None,
         skip_bounds_validation: Optional[bool] = False,
     ):
         """
-        _upload_batch
+        General method for uploading annotations to instance.
+
+        Method is used in: upload_paths, upload_jsons, upload_anns
+
+        :param func_ann_to_json: Function to convert annotation to json or read annotation from file.
+        :type func_ann_to_json: callable
+        :param img_ids: List of image IDs in Supervisely to which annotations will be uploaded.
+        :type img_ids: List[int]
+        :param anns: List of annotations. Can be json, Annotation object or path to annotation file.
+        :type anns: List[Union[Dict, Annotation, str]]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param skip_bounds_validation: Skip bounds validation.
+        :type skip_bounds_validation: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
         """
         # img_ids from the same dataset
         if len(img_ids) == 0:
@@ -859,8 +860,13 @@ class AnnotationApi(ModuleApi):
                 special_geometries = []
                 # check if there are any AlphaMask geometries in the batch
                 for img_id, ann in batch:
-                    ann_json = func_ann_to_json(ann)
-                    ann_json = copy.deepcopy(ann_json)
+                    if isinstance(ann, dict) or isinstance(ann, str):
+                        ann_json = func_ann_to_json(ann)
+                        ann_json = copy.deepcopy(ann_json)
+                        ann = Annotation.from_json(ann_json)
+                    ann = ann._to_subpixel_coordinate_system()
+                    ann_json = ann.to_json()
+
                     filtered_labels = []
                     if AnnotationJsonFields.LABELS not in ann_json:
                         raise RuntimeError(
@@ -894,9 +900,13 @@ class AnnotationApi(ModuleApi):
                     data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
             else:
                 for img_id, ann in batch:
-                    data.append(
-                        {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
-                    )
+                    if isinstance(ann, dict) or isinstance(ann, str):
+                        ann_json = func_ann_to_json(ann)
+                        ann_json = copy.deepcopy(ann_json)
+                        ann = Annotation.from_json(ann_json)
+                    ann = ann._to_subpixel_coordinate_system()
+                    ann_json = ann.to_json()
+                    data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
 
             self._api.post(
                 "annotations.bulk.add",

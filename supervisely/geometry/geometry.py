@@ -274,14 +274,34 @@ class Geometry(JsonSerializable):
             )
         return res
 
-    def _to_pixel(self):
+    def _to_pixel_coordinate_system(self):
         """
-        Implement in subclasses
+        This method should be implemented in subclasses.
+
+        Convert geometry from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :return: New instance of Geometry object in pixel coordinates system
+        :rtype: :class:`Geometry<Geometry>`
         """
         return self
 
-    def _to_subpixel(self):
+    def _to_subpixel_coordinate_system(self):
         """
-        Implement in subclasses
+        This method should be implemented in subclasses.
+
+        Convert geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param img_size: Image size (height, width) of the Annotation to which Label belongs.
+        :type img_size: Tuple[int, int]
+        :return: New instance of Geometry object in subpixel coordinates system
+        :rtype: :class:`Geometry<Geometry>`
         """
         return self

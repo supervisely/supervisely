@@ -98,7 +98,7 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        top, left, bottom, right = self._apply_round_logic(top, left, bottom, right)
+        top, left, bottom, right = self._round_corners(top, left, bottom, right)
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
@@ -186,7 +186,7 @@ class Rectangle(Geometry):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
-        )._to_pixel()
+        )._to_pixel_coordinate_system()
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -738,43 +738,131 @@ class Rectangle(Geometry):
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon]
 
-    def _apply_round_logic(
+    def _round_corners(
         self,
         top: Union[int, float],
         left: Union[int, float],
         bottom: Union[int, float],
         right: Union[int, float],
     ) -> Tuple[int, int, int, int]:
+        """
+        Apply rounding logic to the Rectangle coordinates.
+
+        Top will be rounded down if the decimal part is lesser than 0.7, it will include the vertical pixel if it is in the range, otherwise it will be rounded up and this pixel will not be included.
+        Left will be rounded down if the decimal part is lesser than 0.7, it will include the horizontal pixel if it is in the range, otherwise it will be rounded up and this pixel will not be included.
+        Bottom will be rounded up if the decimal part is greater than 0.3, it will include the vertical pixel if it is in the range, otherwise it will be rounded down and this pixel will not be included.
+        Right will be rounded up if the decimal part is greater than 0.3, it will include the horizontal pixel if it is in the range, otherwise it will be rounded down and this pixel will not be included.
+
+        Example:
+        Input coordinates:
+        - top = 1.55, left = 1.74, bottom = 4.63, right = 3.76
+        Output coordinates:
+        - top = 1, left = 2, bottom = 5, right = 4
+        - top will be rounded down to 2, left will be rounded down to 2, bottom will be rounded up to 6, right will be rounded down to 6
+
+
+        Subpixel coordinate system:
+            0   1   2   3   4   5
+        0   +---+---+---+---+---+
+            |   |   |   |   |   |
+        1   +---+---+---+---+---+
+            |   |   | x | x |   |
+        2   +---+---+---+---+---+
+            |   |   | x | x |   |
+        3   +---+---+---+---+---+
+            |   |   | x | x |   |
+        4   +---+---+---+---+---+
+            |   |   | x | x |   |
+        5   +---+---+---+---+---+
+
+
+        :param top: Minimal vertical value of Rectangle object.
+        :type top: Union[int, float]
+        :param left: Minimal horizontal value of Rectangle object.
+        :type left: Union[int, float]
+        :param bottom: Maximal vertical value of Rectangle object.
+        :type bottom: Union[int, float]
+        :param right: Maximal vertical value of Rectangle object.
+        :type right: Union[int, float]
+        :return: Rounded rectangle coordinates
+        :rtype: Tuple[int, int, int, int]
+        """
+        MIN_PIXEL_OVERLAP = 0.3
+        MAX_PIXEL_OVERLAP = 1 - MIN_PIXEL_OVERLAP
 
         # Check case if all coords in 1 pixel range
         if int(top) == int(bottom) and int(left) == int(right):
             return int(top), int(left), int(bottom), int(right)
 
-        if top % 1 >= 0.7:
+        if top % 1 >= MAX_PIXEL_OVERLAP:
             top = ceil(top)
         else:
             top = floor(top)
 
-        if left % 1 >= 0.7:
+        if left % 1 >= MAX_PIXEL_OVERLAP:
             left = ceil(left)
         else:
             left = floor(left)
 
-        if bottom % 1 >= 0.3:
+        if bottom % 1 >= MIN_PIXEL_OVERLAP:
             bottom = ceil(bottom)
         else:
             bottom = floor(bottom)
-        if right % 1 >= 0.3:
+        if right % 1 >= MIN_PIXEL_OVERLAP:
             right = ceil(right)
         else:
             right = floor(right)
         return top, left, bottom, right
 
-    def _to_pixel(self) -> Rectangle:
+    def _to_pixel_coordinate_system(self) -> Rectangle:
         """
-        Convert subpixel coordinates to pixel format.
+        Convert Rectangle from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
 
-        :return: Rectangle object with corners in pixel format
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        Example:
+        Step 1. Input coordinates:
+        - top = 1.55, left = 1.74, bottom = 4.63, right = 3.76
+
+        Step 2. Round the coordinates:
+        - top = 1, left = 2, bottom = 5, right = 4
+        - top will be rounded down to 2, left will be rounded down to 2, bottom will be rounded up to 6, right will be rounded down to 6
+
+        Draw coordinates in pixel coordinate system:
+            0   1   2   3   4   5
+        0   +---+---+---+---+---+
+            |   |   |   |   |   |
+        1   +---+---+---+---+---+
+            |   |   | x | x |   |
+        2   +---+---+---+---+---+
+            |   |   | x | x |   |
+        3   +---+---+---+---+---+
+            |   |   | x | x |   |
+        4   +---+---+---+---+---+
+            |   |   | x | x |   |
+        5   +---+---+---+---+---+
+                      x   x
+
+        Step 3. Convert to pixel coordinates by subtracting a subpixel offset:
+        - top = 1, left = 2, bottom = 4, right = 3
+
+        Draw coordinates in pixel coordinate system:
+            0   1   2   3   4   5
+        0   +---+---+---+---+---+
+            |   |   |   |   |   |
+        1   +---+---+---+---+---+
+            |   |   | x | x |   |
+        2   +---+---+---+---+---+
+            |   |   | x | x |   |
+        3   +---+---+---+---+---+
+            |   |   | x | x |   |
+        4   +---+---+---+---+---+
+            |   |   | x | x |   |
+        5   +---+---+---+---+---+
+
+        :return: New instance of Rectangle object with corners in pixel format.
         :rtype: :class:`Rectangle<Rectangle>`
         """
         left = floor(self.left)
@@ -793,12 +881,17 @@ class Rectangle(Geometry):
             created_at=self.created_at,
         )
 
-    def _to_subpixel(self, img_size: Tuple[int, int]) -> Rectangle:
+    def _to_subpixel_coordinate_system(self, img_size: Tuple[int, int]) -> Rectangle:
         """
-        Convert Rectangle to subpixel coordinates.
-        :param img_size: Input image size (height, width) to which belongs Rectangle.
+        Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param img_size: The size of the input image (height, width) to which the Rectangle belongs.
         :type img_size: Tuple[int, int]
-        :return: Rectangle object with corners in subpixel format
+        :return: New instance of Rectangle object with corners in subpixel format.
         :rtype: :class:`Rectangle<Rectangle>`
         """
         # General Case
