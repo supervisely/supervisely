@@ -863,7 +863,7 @@ class AnnotationApi(ModuleApi):
                     if isinstance(ann, dict) or isinstance(ann, str):
                         ann_json = func_ann_to_json(ann)
                         ann_json = copy.deepcopy(ann_json)
-                        ann = Annotation.from_json(ann_json)
+                        ann = Annotation.from_json(ann_json, project_meta)
                     ann = ann._to_subpixel_coordinate_system()
                     ann_json = ann.to_json()
 
@@ -903,7 +903,7 @@ class AnnotationApi(ModuleApi):
                     if isinstance(ann, dict) or isinstance(ann, str):
                         ann_json = func_ann_to_json(ann)
                         ann_json = copy.deepcopy(ann_json)
-                        ann = Annotation.from_json(ann_json)
+                        ann = Annotation.from_json(ann_json, project_meta)
                     ann = ann._to_subpixel_coordinate_system()
                     ann_json = ann.to_json()
                     data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
