@@ -20,7 +20,6 @@ markdown_overview = """# {}
 
 ## Overview
 
-- **Model**: {}
 - **Architecture**: {}
 - **Year**: 2023
 - **Authors**: ultralytics
@@ -29,6 +28,7 @@ markdown_overview = """# {}
 - **Hardware**: {}
 - [Checkpoint URL]({})
 """
+# - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
 # - **Model classes (?)**: (80): a, b, c, … (collapse)
 # - **Model weights (?)**: [/path/to/yolov8l.pt]()

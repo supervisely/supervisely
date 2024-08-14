@@ -558,8 +558,7 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get("checkpoint_name", info.get("model_name")),
-                    info.get("model_name"),
+                    info.get("deploy_params", {}).get("checkpoint_name",),
                     info.get("architecture"),
                     # info.get("year", "???"),
                     # info.get("authors", "???"),
