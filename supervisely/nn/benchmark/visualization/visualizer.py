@@ -594,8 +594,9 @@ class Visualizer:
         if not meta.tag_metas.has_key("iou"):
             meta = meta.add_tag_meta(iou_tag_meta)
         if meta != meta_old:
-            meta = api.project.update_meta(dt_project_id, meta)
-            self.dt_project_meta = meta
+            api.project.update_meta(dt_project_id, meta)
+            self.dt_project_meta = ProjectMeta.from_json(api.project.get_meta())
+
         # get tag metas
         # outcome_tag_meta = meta.get_tag_meta("outcome")
         match_tag_meta = meta.get_tag_meta("matched_gt_id")
