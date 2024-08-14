@@ -774,7 +774,7 @@ class Rectangle(Geometry):
         4   +---+---+---+---+---+
             |   |   | x | x |   |
         5   +---+---+---+---+---+
-
+                      x   x
 
         :param top: Minimal vertical value of Rectangle object.
         :type top: Union[int, float]
@@ -881,7 +881,7 @@ class Rectangle(Geometry):
             created_at=self.created_at,
         )
 
-    def _to_subpixel_coordinate_system(self, img_size: Tuple[int, int]) -> Rectangle:
+    def _to_subpixel_coordinate_system(self) -> Rectangle:
         """
         Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
 
@@ -889,39 +889,13 @@ class Rectangle(Geometry):
         which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-        :param img_size: The size of the input image (height, width) to which the Rectangle belongs.
-        :type img_size: Tuple[int, int]
         :return: New instance of Rectangle object with corners in subpixel format.
         :rtype: :class:`Rectangle<Rectangle>`
         """
-        # General Case
-        # Add 1 to right and bottom to make it inclusive
-        height, width = img_size
         left = self.left
         top = self.top
         right = self.right + 1
         bottom = self.bottom + 1
-        # -----------------------------------------------
-
-        # Cases
-        # Check if coordinates are within the image
-        if left < 0:
-            left = 0
-        if top < 0:
-            top = 0
-
-        if right >= width:
-            right = width
-        if bottom >= height:
-            bottom = height
-        # -----------------------------------------------
-        # Check if coordinates are in 1 pixel range on border
-        # Include the pixel if it is in the range
-        if left == right and right == width:
-            left = width - 1
-        if top == bottom and bottom == height:
-            top = height - 1
-        # -----------------------------------------------
 
         return Rectangle(
             top=top,
