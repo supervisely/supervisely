@@ -103,6 +103,8 @@ Jupyter notebooks + python scripts + apps + videos + guides + …
 markdown_outcome_counts = """## Outcome Counts
 
 This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.
+
+*Click on the chart to explore corresponding images.*
 """
 
 markdown_R = """## Recall
@@ -124,6 +126,8 @@ This chart further analyzes Recall, breaking it down to each class in separate.
 Since the overall recall is calculated as an average across all classes, we provide a chart showing the recall for each individual class. This illustrates how much each class contributes to the overall recall.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+
+*Click on the chart to explore corresponding images.*
 """
 
 
@@ -145,7 +149,10 @@ This chart further analyzes Precision, breaking it down to each class in separat
 
 Since the overall precision is computed as an average across all classes, we provide a chart showing the precision for each class individually. This illustrates how much each class contributes to the overall precision.
 
-_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._"""
+_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+
+*Click on the chart to explore corresponding images.*
+"""
 
 
 markdown_PR = """## Recall vs. Precision
@@ -153,6 +160,8 @@ markdown_PR = """## Recall vs. Precision
 This section compares Precision and Recall on a common graph, identifying **disbalance** between these two.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+
+*Click on the chart to explore corresponding images.*
 """
 
 
@@ -177,13 +186,19 @@ notification_ap = {
 
 markdown_pr_by_class = """### Precision-Recall Curve by Class
 
-In this plot, you can evaluate PR curve for each class individually."""
+In this plot, you can evaluate PR curve for each class individually.
+
+*Click on the chart to explore corresponding images.*
+"""
 
 markdown_confusion_matrix = """## Confusion Matrix
 
 Confusion matrix helps to find the number of confusions between different classes made by the model.
 Each row of the matrix represents the instances in a ground truth class, while each column represents the instances in a predicted class.
-The diagonal elements represent the number of correct predictions for each class (True Positives), and the off-diagonal elements show misclassifications."""
+The diagonal elements represent the number of correct predictions for each class (True Positives), and the off-diagonal elements show misclassifications.
+
+*Click on the chart to explore corresponding images.*
+"""
 
 
 markdown_frequently_confused = """### Frequently Confused Classes
@@ -193,6 +208,8 @@ This chart displays the most frequently confused pairs of classes. In general, i
 The chart calculates the **probability of confusion** between different pairs of classes. For instance, if the probability of confusion for the pair “{} - {}” is {}, this means that when the model predicts either “{}” or “{}”, there is a {}% chance that the model might mistakenly predict one instead of the other.
 
 The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
+
+*Click on the chart to explore corresponding images.*
 """
 
 
@@ -292,7 +309,10 @@ Ideally, the histogram for TP predictions should have higher confidence, indicat
 
 markdown_class_ap = """## Average Precision by Class
 
-A quick visual comparison of the model performance across all classes. Each axis in the chart represents a different class, and the distance to the center indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class."""
+A quick visual comparison of the model performance across all classes. Each axis in the chart represents a different class, and the distance to the center indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class.
+
+*Click on the chart to explore corresponding images.*
+"""
 
 
 markdown_class_outcome_counts_1 = """### Outcome Counts by Class
@@ -305,4 +325,6 @@ markdown_normalization = "By default, the normalization is used for better intra
 markdown_class_outcome_counts_2 = """You can switch the plot view between normalized and absolute values.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+
+*Click on the chart to explore corresponding images.*
 """
