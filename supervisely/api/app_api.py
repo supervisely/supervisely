@@ -523,7 +523,7 @@ class AppApi(TaskApi):
             self._min_instance_version = "6.9.31"
 
         # pylint: disable=no-self-argument
-        def check_instance_compatibility(min_instance_version: str = None):
+        def check_instance_compatibility(min_instance_version: Optional[str] = None):
             """Decorator to check instance compatibility with workflow features.
             If the instance is not compatible, the function will not be executed."""
 
