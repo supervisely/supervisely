@@ -608,7 +608,7 @@ class Visualizer:
         # add tags to objects
         logger.info("Adding tags to DT project")
         with tqdm_sly(desc="Adding tags to DT project", total=len(matches)) as pbar:
-            for match in tqdm_sly(matches, "Adding tags to DT project"):
+            for match in matches:
                 if match["type"] == "TP":
                     outcome = "TP"
                     matched_gt_id = gt_ann_mapping[match["gt_id"]]
