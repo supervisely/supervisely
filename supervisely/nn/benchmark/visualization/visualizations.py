@@ -80,7 +80,7 @@ template_chart_str = """
 
 """
 
-template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}">{{ switch_key }}</el-radio>"""
+template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}" style="margin-top: 10px;">{{ switch_key }}</el-radio>"""
 
 
 template_gallery_str = """<sly-iw-gallery
@@ -558,7 +558,7 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get("checkpoint_name"),
+                    info.get("deploy_params", {}).get("checkpoint_name", info.get("model_name")),
                     info.get("model_name"),
                     info.get("architecture"),
                     # info.get("year", "???"),
@@ -1007,12 +1007,13 @@ class Recall(MetricVis):
             color="recall",
             color_continuous_scale="Plasma",
         )
+        fig.update_traces(hovertemplate="Class: %{x}<br>Recall: %{y:.2f}<extra></extra>")
         if len(sorted_by_f1) <= 20:
             fig.update_traces(
                 text=sorted_by_f1["recall"].round(2),
                 textposition="outside",
             )
-        fig.update_xaxes(title_text="Category")
+        fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Recall", range=[0, 1])
         return fig
 
@@ -1047,12 +1048,13 @@ class Precision(MetricVis):
             color="precision",
             color_continuous_scale="Plasma",
         )
+        fig.update_traces(hovertemplate="Class: %{x}<br>Precision: %{y:.2f}<extra></extra>")
         if len(sorted_by_precision) <= 20:
             fig.update_traces(
                 text=sorted_by_precision.round(2),
                 textposition="outside",
             )
-        fig.update_xaxes(title_text="Category")
+        fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
         return fig
 
@@ -1094,7 +1096,7 @@ class RecallVsPrecision(MetricVis):
             barmode="group",
             # title="Per-class Precision and Recall (Sorted by F1)",
         )
-        fig.update_xaxes(title_text="Category")
+        fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Value", range=[0, 1])
         # fig.show()
         return fig
@@ -1160,6 +1162,7 @@ class PRCurve(MetricVis):
             showarrow=False,
             bgcolor="white",
         )
+        fig.update_traces(hovertemplate="Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>")
         fig.update_layout(
             dragmode=False,
             modebar=dict(
@@ -1336,10 +1339,15 @@ class FrequentlyConfused(MetricVis):
         )
         fig.update_layout(
             # title="Frequently confused class pairs",
-            xaxis_title="Class pair",
+            xaxis_title="Class Pair",
             yaxis_title=y_labels.name.capitalize(),
         )
         fig.update_traces(text=y_labels.round(2))
+        fig.update_traces(
+            hovertemplate="Class Pair: %{x}<br>"
+            + y_labels.name.capitalize()
+            + ": %{y:.2f}<extra></extra>"
+        )
         return fig
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
@@ -1412,6 +1420,7 @@ class IOUDistribution(MetricVis):
             y1=y1,
             line=dict(color="orange", width=2, dash="dash"),
         )
+        fig.update_traces(hovertemplate="IoU: %{x:.2f}<br>Count: %{y}<extra></extra>")
         fig.add_annotation(x=mean_iou, y=y1, text=f"Mean IoU: {mean_iou:.2f}", showarrow=False)
         fig.update_layout(
             dragmode=False,
@@ -1494,7 +1503,9 @@ class ReliabilityDiagram(MetricVis):
             width=700,
             height=500,
         )
-
+        fig.update_traces(
+            hovertemplate="Confidence Score: %{x:.2f}<br>Fraction of True Positives: %{y:.2f}<extra></extra>"
+        )
         # fig.show()
         return fig
 
@@ -1537,6 +1548,9 @@ class ConfidenceScore(MetricVis):
             width=None,
             height=500,
             color_discrete_map=color_map,
+        )
+        fig.update_traces(
+            hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>"
         )
         fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
 
@@ -1605,16 +1619,20 @@ class F1ScoreAtDifferentIOU(MetricVis):
             np.concatenate([self._loader.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
             columns=["scores"] + iou_names,
         )
+        labels = {"value": "Value", "variable": "IoU threshold", "scores": "Confidence Score"}
 
         fig = px.line(
             df,
             x="scores",
             y=iou_names,
             # title="F1-Score at different IoU Thresholds",
-            labels={"value": "Value", "variable": "IoU threshold", "scores": "Confidence Score"},
+            labels=labels,
             color_discrete_sequence=px.colors.sequential.Viridis,
             width=None,
             height=500,
+        )
+        fig.update_traces(
+            hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>"
         )
         fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
 
@@ -1687,6 +1705,7 @@ class ConfidenceDistribution(MetricVis):
                 marker=dict(color="#dd3f3f"),
                 opacity=0.5,
                 xbins=dict(size=0.025, start=0.0, end=1.0),
+                hovertemplate="Confidence Score: %{x:.2f}<br>Count: %{y}<extra></extra>",
             )
         )
         fig.add_trace(
@@ -1696,6 +1715,7 @@ class ConfidenceDistribution(MetricVis):
                 marker=dict(color="#1fb466"),
                 opacity=0.5,
                 xbins=dict(size=0.025, start=0.0, end=1.0),
+                hovertemplate="Confidence Score: %{x:.2f}<br>Count: %{y:.2f}<extra></extra>",
             )
         )
         fig.add_trace(
@@ -1705,6 +1725,7 @@ class ConfidenceDistribution(MetricVis):
                 mode="lines+markers",
                 name="TP",
                 line=dict(color="#1fb466", width=2),
+                hovertemplate="Confidence Score: %{x:.2f}<br>Count: %{y:.2f}<extra></extra>",
             )
         )
         fig.add_trace(
@@ -1714,6 +1735,7 @@ class ConfidenceDistribution(MetricVis):
                 mode="lines+markers",
                 name="FP",
                 line=dict(color="#dd3f3f", width=2),
+                hovertemplate="Confidence Score: %{x:.2f}<br>Count: %{y:.2f}<extra></extra>",
             )
         )
 
@@ -1743,7 +1765,6 @@ class ConfidenceDistribution(MetricVis):
             )
             fig.update_xaxes(title_text="Confidence Score", range=[0, 1])
             fig.update_yaxes(title_text="Count", range=[0, tp_y.max() * 1.3])
-
         return fig
 
 
@@ -1765,12 +1786,12 @@ class PerClassAvgPrecision(MetricVis):
 
         # AP per-class
         ap_per_class = self._loader.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
-        # Per-class Average Precision (AP)
+        labels = dict(r="Average Precision", theta="Class")
         fig = px.scatter_polar(
             r=ap_per_class,
             theta=self._loader.mp.cat_names,
             # title="Per-class Average Precision (AP)",
-            labels=dict(r="Average Precision", theta="Category"),
+            labels=labels,
             width=800,
             height=800,
             range_r=[0, 1],
@@ -1779,6 +1800,13 @@ class PerClassAvgPrecision(MetricVis):
         fig.update_layout(
             modebar_add=["resetScale"],
             margin=dict(l=80, r=80, t=0, b=0),
+        )
+        fig.update_traces(
+            hovertemplate=labels["theta"]
+            + ": %{theta}<br>"
+            + labels["r"]
+            + ": %{r:.2f}<br>"
+            + "<extra></extra>"
         )
         return fig
 
@@ -1830,8 +1858,9 @@ class PerClassOutcomeCounts(MetricVis):
         cat_names_sorted = [self._loader.mp.cat_names[i] for i in sort_indices]
         tp_rel, fn_rel, fp_rel = tp_rel[sort_indices], fn_rel[sort_indices], fp_rel[sort_indices]
 
+        images_count = np.concatenate([tp[sort_indices], fn[sort_indices], fp[sort_indices]])
         if widget.switch_key == "normalized":
-            y_label = "Images fraction"
+            y_label = "Images Fraction"
             # Stacked per-class counts
             data = {
                 "count": np.concatenate([tp_rel, fn_rel, fp_rel]),
@@ -1839,9 +1868,9 @@ class PerClassOutcomeCounts(MetricVis):
                 "category": cat_names_sorted * 3,
             }
         elif widget.switch_key == "absolute":
-            y_label = "Images count"
+            y_label = "Images Count"
             data = {
-                "count": np.concatenate([tp[sort_indices], fn[sort_indices], fp[sort_indices]]),
+                "count": images_count,
                 "Type": ["TP"] * K + ["FN"] * K + ["FP"] * K,
                 "category": cat_names_sorted * 3,
             }
@@ -1863,12 +1892,14 @@ class PerClassOutcomeCounts(MetricVis):
         xaxis_title = fig.layout.xaxis.title.text
         yaxis_title = fig.layout.yaxis.title.text
         if widget.switch_key == "normalized":
+
             fig.update_traces(
                 hovertemplate="Type=%{fullData.name} <br>"
                 + xaxis_title
                 + "=%{x}<br>"
                 + yaxis_title
-                + "=%{y:.2f}<extra></extra>",
+                + "=%{y:.2f}<extra></extra>"
+                # "Images count=%{y:.2f}<extra></extra>"
             )
         elif widget.switch_key == "absolute":
             fig.update_traces(

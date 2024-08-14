@@ -27,12 +27,12 @@ markdown_overview = """# {}
 - **Task type**: {}
 - **Runtime**: {}
 - **Hardware**: {}
-- **Training dataset (?)**: COCO 2017 train
-- **Model classes (?)**: (80): a, b, c, … (collapse)
-- **Model weights (?)**: [/path/to/yolov8l.pt]()
-- **License (?)**: AGPL-3.0
 - [Checkpoint URL]({})
 """
+# - **Training dataset (?)**: COCO 2017 train
+# - **Model classes (?)**: (80): a, b, c, … (collapse)
+# - **Model weights (?)**: [/path/to/yolov8l.pt]()
+# - **License (?)**: AGPL-3.0
 
 markdown_key_metrics = """## Key Metrics
 
@@ -49,7 +49,7 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 
 markdown_explorer = """## Explore Predictions
 
-Compare **Ground Truth** and **Prediction** projects to recognize mistakes and pecularities of the data. Use *filter* to change the *confidence* threshold and model's *outcomes* (TP, FP and FN), which will be shown as the **Difference**.
+Compare **Ground Truth** and **Prediction** projects to recognize mistakes and pecularities of the data, which will be shown in the **Difference** column. Click *filter* to change the *confidence* threshold and model's false *outcomes* (**FP** and **FN**, but we have reserved the possibility of viewing the **TP** outcome as well).
 """
 
 
