@@ -615,10 +615,13 @@ class Visualizer:
                     ann_dt_id = dt_ann_mapping[match["dt_id"]]
                     iou = match["iou"]
                     # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
-                    api.advanced.add_tag_to_object(
-                        match_tag_meta.sly_id, ann_dt_id, int(matched_gt_id)
-                    )
-                    api.advanced.add_tag_to_object(iou_tag_meta.sly_id, ann_dt_id, float(iou))
+                    if matched_gt_id is not None:
+                        api.advanced.add_tag_to_object(
+                            match_tag_meta.sly_id, ann_dt_id, int(matched_gt_id)
+                        )
+                        api.advanced.add_tag_to_object(iou_tag_meta.sly_id, ann_dt_id, float(iou))
+                    else:
+                        continue
                 elif match["type"] == "FP":
                     outcome = "FP"
                     # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
