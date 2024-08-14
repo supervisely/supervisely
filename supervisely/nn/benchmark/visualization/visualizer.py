@@ -306,6 +306,10 @@ class Visualizer:
         # res.update(gallery.get_json_data()["content"])
         # res["layoutData"] = res.pop("annotations")
 
+        # res["projectMeta"] = self.dt_project_meta.to_json()
+        self.dt_project_meta = ProjectMeta.from_json(
+            data=self._api.project.get_meta(id=self.dt_project_info.id)
+        )
         res["projectMeta"] = self.dt_project_meta.to_json()
         basename = "modal_general.json"
         local_path = f"{self.layout_dir}/data/{basename}"
@@ -594,8 +598,8 @@ class Visualizer:
         if not meta.tag_metas.has_key("iou"):
             meta = meta.add_tag_meta(iou_tag_meta)
         if meta != meta_old:
-            api.project.update_meta(dt_project_id, meta)
-            self.dt_project_meta = ProjectMeta.from_json(api.project.get_meta())
+            meta = api.project.update_meta(dt_project_id, meta)
+            self.dt_project_meta = meta
 
         # get tag metas
         # outcome_tag_meta = meta.get_tag_meta("outcome")
