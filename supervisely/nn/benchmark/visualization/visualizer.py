@@ -192,8 +192,12 @@ class Visualizer:
         self.gt_project_info = benchmark.gt_project_info
         self.diff_project_info = benchmark.diff_project_info
 
-        self.gt_project_meta = ProjectMeta.from_json(data=self._api.project.get_meta(id=self.gt_project_info.id))
-        self.dt_project_meta = ProjectMeta.from_json(data=self._api.project.get_meta(id=self.dt_project_info.id))
+        self.gt_project_meta = ProjectMeta.from_json(
+            data=self._api.project.get_meta(id=self.gt_project_info.id)
+        )
+        self.dt_project_meta = ProjectMeta.from_json(
+            data=self._api.project.get_meta(id=self.dt_project_info.id)
+        )
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_object_detection_loader()
@@ -451,13 +455,17 @@ class Visualizer:
             infos = [ImageInfo(**json.load(open(path, "r"))) for path in paths]
             image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
 
-            dt_anns_dct[dataset.name] = [dataset.get_ann(name, dt_project_meta) for name in image_names]
+            dt_anns_dct[dataset.name] = [
+                dataset.get_ann(name, dt_project_meta) for name in image_names
+            ]
             dt_images_dct[dataset.name] = [dataset.get_image_info(name) for name in image_names]
             names_dct[dataset.name] = image_names
 
         gt_anns_dct = {}
         for dataset in gt_project.datasets:
-            gt_anns_dct[dataset.name] = [dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]]
+            gt_anns_dct[dataset.name] = [
+                dataset.get_ann(name, gt_project.meta) for name in names_dct[dataset.name]
+            ]
 
         # matched_ids = []
         # for dataset in dt_project.datasets:
@@ -492,44 +500,52 @@ class Visualizer:
         self._api.project.update_meta(self.diff_project_info.id, diff_meta.to_json())
         # self._api.project.update_meta(self.dt_project_info.id, diff_meta.to_json())
 
-        with tqdm_sly(desc="Creating diff_project", total=sum([len(x) for x in gt_anns_dct.values()])) as pbar1:
-            with tqdm_sly(desc="Updating dt_project", total=sum([len(x) for x in gt_anns_dct.values()])) as pbar2:
+        with tqdm_sly(
+            desc="Creating diff_project", total=sum([len(x) for x in gt_anns_dct.values()])
+        ) as pbar1:
+            # with tqdm_sly(desc="Updating dt_project", total=sum([len(x) for x in gt_anns_dct.values()])) as pbar2:
 
-                for dataset in self._api.dataset.get_list(self.diff_project_info.id):
-                    diff_anns_new, dt_anns_new = [], []
+            for dataset in self._api.dataset.get_list(self.diff_project_info.id):
+                diff_anns_new, dt_anns_new = [], []
 
-                    for gt_ann, dt_ann in zip(gt_anns_dct[dataset.name], dt_anns_dct[dataset.name]):
-                        labels = []
-                        for label in dt_ann.labels:
-                            # match_tag_id = label.tags.get("matched_gt_id")
-                            match_tag_id = matched_id_map.get(label.geometry.sly_id)
+                for gt_ann, dt_ann in zip(gt_anns_dct[dataset.name], dt_anns_dct[dataset.name]):
+                    labels = []
+                    for label in dt_ann.labels:
+                        # match_tag_id = label.tags.get("matched_gt_id")
+                        match_tag_id = matched_id_map.get(label.geometry.sly_id)
 
-                            if match_tag_id is not None:
-                                new = label.clone(tags=label.tags.add(Tag(new_tag, "TP")))
-                            else:
-                                new = label.clone(tags=label.tags.add(Tag(new_tag, "FP")))
+                        if match_tag_id is not None:
+                            new = label.clone(tags=label.tags.add(Tag(new_tag, "TP")))
+                        else:
+                            new = label.clone(tags=label.tags.add(Tag(new_tag, "FP")))
 
-                            labels.append(new)
+                        labels.append(new)
 
-                        dt_anns_new.append(Annotation(gt_ann.img_size, labels))
+                    dt_anns_new.append(Annotation(gt_ann.img_size, labels))
 
-                        for label in gt_ann.labels:
-                            if label.geometry.sly_id not in matched_gt_ids and isinstance(label.geometry, Rectangle):
-                                conf_meta = dt_project_meta.get_tag_meta("confidence")
+                    for label in gt_ann.labels:
+                        if label.geometry.sly_id not in matched_gt_ids and isinstance(
+                            label.geometry, Rectangle
+                        ):
+                            conf_meta = dt_project_meta.get_tag_meta("confidence")
 
-                                labels.append(
-                                    label.clone(tags=label.tags.add_items([Tag(new_tag, "FN"), Tag(conf_meta, 1)]))
+                            labels.append(
+                                label.clone(
+                                    tags=label.tags.add_items(
+                                        [Tag(new_tag, "FN"), Tag(conf_meta, 1)]
+                                    )
                                 )
+                            )
 
-                        diff_anns_new.append(Annotation(gt_ann.img_size, labels))
+                    diff_anns_new.append(Annotation(gt_ann.img_size, labels))
 
-                    dt_image_ids = [x.id for x in dt_images_dct[dataset.name]]
-                    self._api.annotation.upload_anns(dt_image_ids, dt_anns_new, progress_cb=pbar2)
+                dt_image_ids = [x.id for x in dt_images_dct[dataset.name]]
+                # self._api.annotation.upload_anns(dt_image_ids, dt_anns_new, progress_cb=pbar2)
 
-                    diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
+                diff_images = self._api.image.copy_batch(dataset.id, dt_image_ids)
 
-                    diff_image_ids = [image.id for image in diff_images]
-                    self._api.annotation.upload_anns(diff_image_ids, diff_anns_new, progress_cb=pbar1)
+                diff_image_ids = [image.id for image in diff_images]
+                self._api.annotation.upload_anns(diff_image_ids, diff_anns_new, progress_cb=pbar1)
 
         self._update_pred_dcts()
         self._update_diff_dcts()
@@ -560,8 +576,12 @@ class Visualizer:
 
     def _add_tags_to_dt_project(self, matches: list, dt_project_id: int):
         api = self._api
-        match_tag_meta = TagMeta("matched_gt_id", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY)
-        iou_tag_meta = TagMeta("iou", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY)
+        match_tag_meta = TagMeta(
+            "matched_gt_id", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY
+        )
+        iou_tag_meta = TagMeta(
+            "iou", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY
+        )
 
         # update project meta with new tag metas
         meta = api.project.get_meta(dt_project_id)
@@ -585,7 +605,7 @@ class Visualizer:
 
         # add tags to objects
         logger.info("Adding tags to DT project")
-        for match in tqdm(matches):
+        for match in tqdm_sly(matches, "Adding tags to DT project"):
             if match["type"] == "TP":
                 outcome = "TP"
                 matched_gt_id = gt_ann_mapping[match["gt_id"]]
