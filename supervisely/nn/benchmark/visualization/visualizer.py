@@ -232,8 +232,9 @@ class Visualizer:
         if file_exists(inference_info_path):
             with open(inference_info_path, "r") as f:
                 inference_info = json.load(f)
-
-        self.inference_info = inference_info
+            self.inference_info = inference_info
+        else:
+            self.inference_info = self._benchmark._eval_inference_info
 
         mp = MetricProvider(
             eval_data["matches"],
