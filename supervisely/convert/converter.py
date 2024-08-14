@@ -9,6 +9,7 @@ from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from supervisely.convert.image.csv.csv_converter import CSVConverter
+from supervisely.convert.image.high_color.high_color_depth import HighColorDepthImageConverter
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
@@ -62,7 +63,7 @@ class ImportManager:
 
         self._modality = project_type
         self._converter = self.get_converter()
-        if isinstance(self._converter, CSVConverter):
+        if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
             self._converter.team_id = self._team_id
 
     @property
