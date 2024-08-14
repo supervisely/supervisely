@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import json
-import os
+from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import take_with_default
+from supervisely._utils import is_community, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 
@@ -14,6 +14,10 @@ from supervisely.api.task_api import TaskApi
 STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
+
+from functools import wraps
+
+from pkg_resources import parse_version
 
 from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo
@@ -104,6 +108,62 @@ _context_menu_targets = {
         "key": "nothing",
     },
 }
+
+# Used to check if the instance is compatible with the workflow features
+# and to avoid multiple requests to the API.
+# Consists of the instance version and the result of the check for each necessary version during the session.
+# Example: {"instance_version": "6.10.1", "6.9.31": True}
+_workflow_compatibility_version_cache = {}
+
+
+def check_workflow_compatibility(api, min_instance_version: str) -> bool:
+    """Check if the instance is compatible with the workflow features.
+    If the instance is not compatible, the user will be notified about it.
+
+    :param api: Supervisely API object
+    :type api: supervisely.api.api.Api
+    :param min_instance_version: Minimum version of the instance that supports workflow features
+    :type min_instance_version: str
+    :return: True if the instance is compatible, False otherwise
+    :rtype: bool
+    """
+
+    global _workflow_compatibility_version_cache
+    try:
+        if min_instance_version in _workflow_compatibility_version_cache:
+            return _workflow_compatibility_version_cache[min_instance_version]
+
+        instance_version = _workflow_compatibility_version_cache.setdefault(
+            "instance_version", api.instance_version
+        )
+
+        if instance_version == "unknown":
+            # to check again on the next call
+            del _workflow_compatibility_version_cache["instance_version"]
+            logger.info(
+                "Can not check compatibility with Supervisely instance. "
+                "Workflow features will be disabled."
+            )
+            return False
+
+        is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
+        _workflow_compatibility_version_cache[min_instance_version] = is_compatible
+
+        if not is_compatible:
+            message = f"Supervisely instance version '{instance_version}' does not support workflow features."
+            if not is_community():
+                message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
+
+            logger.info(message)
+
+        return is_compatible
+
+    except Exception as e:
+        logger.error(
+            "Can not check compatibility with Supervisely instance. "
+            f"Workflow features will be disabled. Error: {repr(e)}"
+        )
+        return False
 
 
 class AppInfo(NamedTuple):
@@ -303,6 +363,102 @@ class SessionInfo(NamedTuple):
         return info
 
 
+@dataclass
+class WorkflowSettings:
+    """Used to customize the appearance and behavior of the workflow node.
+
+    :param title: Title of the node. It is displayed in the node header.
+    :type title: Optional[str]
+    :param icon: Icon of the node. It is displayed in the node body.
+    :type icon: Optional[str]
+    :param icon_color: Color of the icon.
+    :type icon_color: Optional[str]
+    :param icon_bg_color: Background color of the icon.
+    :type icon_bg_color: Optional[str]
+    :param url: URL to be opened when the user clicks on it.
+    :type url: Optional[str]
+    :param url_title: Title of the URL.
+    :type url_title: Optional[str]
+    """
+
+    title: Optional[str] = None
+    icon: Optional[str] = None
+    icon_color: Optional[str] = None
+    icon_bg_color: Optional[str] = None
+    url: Optional[str] = None
+    url_title: Optional[str] = None
+
+    def __post_init__(self):
+        if (self.url and not self.url_title) or (not self.url and self.url_title):
+            logger.info(
+                "Workflow Warning: both 'url' and 'url_title' must be set together in WorkflowSettings. "
+                "Setting MainLink to default."
+            )
+            self.url = None
+            self.url_title = None
+        if not all([self.icon, self.icon_color, self.icon_bg_color]) and any(
+            [self.icon, self.icon_color, self.icon_bg_color]
+        ):
+            logger.info(
+                "Workflow Warning: all three parameters 'icon', 'icon_color', and 'icon_bg_color' must be set together in WorkflowSettings. "
+                "Setting Icon to default."
+            )
+            self.icon = None
+            self.icon_color = None
+            self.icon_bg_color = None
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        result = {}
+        if self.title is not None:
+            result["title"] = f"<h4>{self.title}</h4>"
+        if self.icon is not None and self.icon_color is not None and self.icon_bg_color is not None:
+            result["icon"] = {}
+            result["icon"]["icon"] = f"zmdi-{self.icon}"
+            result["icon"]["color"] = self.icon_color
+            result["icon"]["backgroundColor"] = self.icon_bg_color
+        if self.url is not None and self.url_title is not None:
+            result["mainLink"] = {}
+            result["mainLink"]["url"] = self.url
+            result["mainLink"]["title"] = self.url_title
+        return result
+
+
+@dataclass
+class WorkflowMeta:
+    """Used to customize the appearance of the workflow main and/or relation node.
+
+    :param relation_settings: customizes the appearance of the relation node - inputs and outputs
+    :type relation_settings: Optional[WorkflowSettings]
+    :param node_settings: customizes the appearance of the main node - the task itself
+    :type node_settings: Optional[WorkflowSettings]
+    """
+
+    relation_settings: Optional[WorkflowSettings] = None
+    node_settings: Optional[WorkflowSettings] = None
+
+    def __post_init__(self):
+        if not (self.relation_settings or self.node_settings):
+            logger.info(
+                "Workflow Warning: at least one of 'relation_settings' or 'node_settings' must be specified in WorkflowMeta. "
+                "Customization will not be applied."
+            )
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        result = {}
+        if self.relation_settings is not None:
+            result["customRelationSettings"] = self.relation_settings.as_dict
+        if self.node_settings is not None:
+            result["customNodeSettings"] = self.node_settings.as_dict
+        return result if result != {} else None
+
+    @classmethod
+    def create_as_dict(cls, **kwargs) -> Dict[str, Any]:
+        instance = cls(**kwargs)
+        return instance.as_dict
+
+
 class AppApi(TaskApi):
     """AppApi"""
 
@@ -314,10 +470,14 @@ class AppApi(TaskApi):
         A task can also be used as an input or output element.
         For example, an inference task takes a deployed model and a project as inputs, and the output is a new state of the project.
         This functionality uses versioning optionally.
-        """
 
-        def __init__(self, api):
-            self._api = api
+        If instances are not compatible with the workflow features, the functionality will be disabled.
+
+        :param api: Supervisely API object
+        :type api: supervisely.api.api.Api
+        :param min_instance_version: Minimum version of the instance that supports workflow features
+        :type min_instance_version: str
+        """
 
         __custom_meta_schema = {
             "type": "object",
@@ -357,12 +517,40 @@ class AppApi(TaskApi):
             ],
         }
 
+        def __init__(self, api):
+            self._api = api
+            # minimum instance version that supports workflow features
+            self._min_instance_version = "6.9.31"
+
+        # pylint: disable=no-self-argument
+        def check_instance_compatibility(min_instance_version: Optional[str] = None):
+            """Decorator to check instance compatibility with workflow features.
+            If the instance is not compatible, the function will not be executed."""
+
+            def decorator(func):
+                @wraps(func)
+                def wrapper(self, *args, **kwargs):
+                    version_to_check = (
+                        min_instance_version
+                        if min_instance_version is not None
+                        else self._min_instance_version
+                    )
+                    if not check_workflow_compatibility(self._api, version_to_check):
+                        return
+                    return func(self, *args, **kwargs)
+
+                return wrapper
+
+            return decorator
+
+        # pylint: enable=no-self-argument
+
         def _add_edge(
             self,
             data: dict,
             transaction_type: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input or output to a workflow node.
@@ -374,7 +562,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: dict
             """
@@ -397,6 +585,8 @@ class AppApi(TaskApi):
                 data_id = data.get("data_id") if data_type != "app_session" else node_id
                 data_meta = data.get("meta", {})
                 if meta is not None:
+                    if isinstance(meta, WorkflowMeta):
+                        meta = meta.as_dict
                     if validate_json(meta, self.__custom_meta_schema):
                         data_meta.update(meta)
                     else:
@@ -419,13 +609,14 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_project(
             self,
             project: Optional[Union[int, ProjectInfo]] = None,
             version_id: Optional[int] = None,
             version_num: Optional[int] = None,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "project" to the workflow node.
@@ -443,7 +634,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -498,11 +689,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_dataset(
             self,
             dataset: Union[int, DatasetInfo],
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "dataset" to the workflow node.
@@ -513,7 +705,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -547,12 +739,13 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_file(
             self,
             file: Union[int, FileInfo, str],
             model_weight=False,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "file" to the workflow node.
@@ -565,7 +758,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -611,11 +804,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_folder(
             self,
             path: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "folder" to the workflow node.
@@ -627,7 +821,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -667,11 +861,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_task(
             self,
             input_task_id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "task" to the workflow node.
@@ -682,7 +877,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -714,12 +909,13 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_project(
             self,
             project: Union[int, ProjectInfo],
             version_id: Optional[int] = None,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "project" to the workflow node.
@@ -733,7 +929,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -778,11 +974,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_dataset(
             self,
             dataset: Union[int, DatasetInfo],
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "dataset" to the workflow node.
@@ -793,7 +990,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -827,12 +1024,13 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_file(
             self,
             file: Union[int, FileInfo],
             model_weight=False,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "file" to the workflow node.
@@ -845,7 +1043,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -881,11 +1079,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_folder(
             self,
             path: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "folder" to the workflow node.
@@ -897,7 +1096,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -937,10 +1136,11 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_app(
             self,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "app_session" to the workflow node.
@@ -949,7 +1149,7 @@ class AppApi(TaskApi):
             :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -981,11 +1181,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_task(
             self,
             output_task_id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "task" to the workflow node.
@@ -996,7 +1197,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
@@ -1028,11 +1229,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_job(
             self,
             id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "job" to the workflow node. Job is a Labeling Job.
@@ -1043,7 +1245,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
             :meta example:
