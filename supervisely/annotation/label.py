@@ -844,22 +844,6 @@ class LabelBase:
     def labeler_login(self):
         return self.geometry.labeler_login
 
-    @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
-        """
-        Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
-
-        :param data: Label in json format.
-        :type data: dict
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        """
-        if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-            data = Rectangle._to_pixel_coordinate_system_json(data)
-        else:
-            data = Geometry._to_pixel_coordinate_system_json(data)
-        return data
-
     def _to_subpixel_coordinate_system(self) -> LabelBase:
         """
         Convert label geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
@@ -875,6 +859,37 @@ class LabelBase:
         label = self.clone(geometry=new_geometry)
         return label
 
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
+
+        :param data: Label in json format.
+        :type data: dict
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        """
+        if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+            data = Rectangle._to_pixel_coordinate_system_json(data)
+        else:
+            data = Geometry._to_pixel_coordinate_system_json(data)
+        return data
+    
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
+
+        :param data: Label in json format.
+        :type data: dict
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        """
+        if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+            data = Rectangle._to_subpixel_coordinate_system_json(data)
+        else:
+            data = Geometry._to_subpixel_coordinate_system_json(data)
+        return data
 
 class Label(LabelBase):
     def _validate_geometry_type(self):

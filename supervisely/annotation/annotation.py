@@ -16,12 +16,13 @@ from PIL import Image
 
 from supervisely import logger
 from supervisely._utils import take_with_default
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
@@ -2947,3 +2948,45 @@ class Annotation:
         ]
         new_ann._labels = new_labels
         return new_ann
+
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from subpixel precision to pixel precision.
+
+        :param data: Label in json format.
+        :type data: dict
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        """
+        new_labels = []
+        for label in data[AnnotationJsonFields.LABELS]:
+            if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+                label = Rectangle._to_pixel_coordinate_system_json(label)
+            else:
+                label = Geometry._to_pixel_coordinate_system_json(label)
+            new_labels.append(label)
+            
+        data[AnnotationJsonFields.LABELS] = new_labels
+        return data
+    
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from pixel precision to subpixel precision.
+
+        :param data: Label in json format.
+        :type data: dict
+        :return: Json format as a dict
+        :rtype: :class:`dict`
+        """
+        new_labels = []
+        for label in data[AnnotationJsonFields.LABELS]:
+            if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+                label = Rectangle._to_subpixel_coordinate_system_json(label)
+            else:
+                label = Geometry._to_subpixel_coordinate_system_json(label)
+            new_labels.append(label)
+            
+        data[AnnotationJsonFields.LABELS] = new_labels
+        return data

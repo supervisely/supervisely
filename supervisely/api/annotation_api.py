@@ -310,6 +310,7 @@ class AnnotationApi(ModuleApi):
         # check if there are any AlphaMask geometries in the batch
         additonal_geometries = defaultdict(int)
         labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+        
         # -- convert labels to pixel coordinate system
         labels = [Label._to_pixel_coordinate_system_json(label_json) for label_json in labels]
         # --------------------------------------------
@@ -487,6 +488,7 @@ class AnnotationApi(ModuleApi):
                         ].update({BITMAP: geometry})
 
             for ann_dict in results:
+                ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(ann_dict[ApiField.ANNOTATION])
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
 
@@ -864,13 +866,8 @@ class AnnotationApi(ModuleApi):
                 special_geometries = []
                 # check if there are any AlphaMask geometries in the batch
                 for img_id, ann in batch:
-                    if isinstance(ann, dict) or isinstance(ann, str):
-                        ann_json = func_ann_to_json(ann)
-                        ann_json = copy.deepcopy(ann_json)
-                        ann = Annotation.from_json(ann_json, project_meta)
-                    ann = ann._to_subpixel_coordinate_system()
-                    ann_json = ann.to_json()
-
+                    ann_json = func_ann_to_json(ann)
+                    ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
                     filtered_labels = []
                     if AnnotationJsonFields.LABELS not in ann_json:
                         raise RuntimeError(
@@ -904,12 +901,8 @@ class AnnotationApi(ModuleApi):
                     data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
             else:
                 for img_id, ann in batch:
-                    if isinstance(ann, dict) or isinstance(ann, str):
-                        ann_json = func_ann_to_json(ann)
-                        ann_json = copy.deepcopy(ann_json)
-                        ann = Annotation.from_json(ann_json, project_meta)
-                    ann = ann._to_subpixel_coordinate_system()
-                    ann_json = ann.to_json()
+                    ann_json = func_ann_to_json(ann)
+                    ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
                     data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
 
             self._api.post(
