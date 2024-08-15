@@ -846,7 +846,7 @@ class LabelBase:
         return self.geometry.labeler_login
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
 
@@ -861,13 +861,13 @@ class LabelBase:
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-            data = Rectangle._to_pixel_coordinate_system_json(data)
+            data = Rectangle._to_pixel_coordinate_system_json(data, image_size)
         else:
-            data = Geometry._to_pixel_coordinate_system_json(data)
+            data = Geometry._to_pixel_coordinate_system_json(data, image_size)
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
 
@@ -882,9 +882,9 @@ class LabelBase:
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-            data = Rectangle._to_subpixel_coordinate_system_json(data)
+            data = Rectangle._to_subpixel_coordinate_system_json(data, image_size)
         else:
-            data = Geometry._to_subpixel_coordinate_system_json(data)
+            data = Geometry._to_subpixel_coordinate_system_json(data, image_size)
         return data
 
     # def _to_subpixel_coordinate_system(self) -> LabelBase:

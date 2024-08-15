@@ -2,7 +2,7 @@
 
 import warnings
 from copy import deepcopy
-from math import floor
+from math import ceil, floor
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -288,11 +288,13 @@ class Geometry(JsonSerializable):
         return res
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert geometry from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
 
         This method should be reimplemented in subclasses if needed.
+        
+        Point order: [x, y]
 
         In the labeling tool, labels are created with subpixel precision,
         which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
@@ -303,6 +305,7 @@ class Geometry(JsonSerializable):
         :return: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
+        height, width = image_size[:2]
         data = deepcopy(data)  # Avoid modifying the original data
 
         # Point, Polygon, Polyline. Rectangle have its own implementation
@@ -310,11 +313,11 @@ class Geometry(JsonSerializable):
             exterior = data[POINTS][EXTERIOR]
             interior = data[POINTS][INTERIOR]
             for point in exterior:
-                point[0] = floor(point[0])
-                point[1] = floor(point[1])
+                point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
             for point in interior:
-                point[0] = floor(point[0])
-                point[1] = floor(point[1])
+                point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
 
@@ -332,11 +335,13 @@ class Geometry(JsonSerializable):
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
 
         This method should be reimplemented in subclasses if needed.
+
+        Point order: [x, y]
 
         In the labeling tool, labels are created with subpixel precision,
         which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
@@ -348,6 +353,31 @@ class Geometry(JsonSerializable):
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
+
+        # Point, Polygon, Polyline. Rectangle have its own implementation
+        if data.get(POINTS) is not None:
+            exterior = data[POINTS][EXTERIOR]
+            interior = data[POINTS][INTERIOR]
+            for point in exterior:
+                point[0] = point[0] + 0.5
+                point[1] = point[1] + 0.5
+            for point in interior:
+                point[0] = point[0] + 0.5
+                point[1] = point[1] + 0.5
+            data[POINTS][EXTERIOR] = exterior
+            data[POINTS][INTERIOR] = interior
+
+        # Bitmap and AlphaMask
+        if data.get(BITMAP) is not None:
+            origin = data[BITMAP][ORIGIN]
+            data[BITMAP][ORIGIN] = [floor(origin[0]), floor(origin[1])]
+
+        # Graph
+        if data.get(NODES) is not None:
+            nodes = data[NODES]
+            for node in nodes.values():
+                node[LOC] = [floor(node[LOC][0]), floor(node[LOC][1])]
+            data[NODES] = nodes
         return data
 
     # def _to_pixel_coordinate_system(self):

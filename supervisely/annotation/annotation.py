@@ -2932,7 +2932,7 @@ class Annotation:
             label.binding_key = None
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision.
 
@@ -2949,16 +2949,16 @@ class Annotation:
         new_labels = []
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-                label = Rectangle._to_pixel_coordinate_system_json(label)
+                label = Rectangle._to_pixel_coordinate_system_json(label, image_size)
             else:
-                label = Geometry._to_pixel_coordinate_system_json(label)
+                label = Geometry._to_pixel_coordinate_system_json(label, image_size)
             new_labels.append(label)
 
         data[AnnotationJsonFields.LABELS] = new_labels
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert label geometry from pixel precision to subpixel precision.
 
@@ -2972,12 +2972,13 @@ class Annotation:
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
+        image_size = data[AnnotationJsonFields.IMG_SIZE]
         new_labels = []
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-                label = Rectangle._to_subpixel_coordinate_system_json(label)
+                label = Rectangle._to_subpixel_coordinate_system_json(label, image_size)
             else:
-                label = Geometry._to_subpixel_coordinate_system_json(label)
+                label = Geometry._to_subpixel_coordinate_system_json(label, image_size)
             new_labels.append(label)
 
         data[AnnotationJsonFields.LABELS] = new_labels

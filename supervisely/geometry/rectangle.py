@@ -816,7 +816,7 @@ class Rectangle(Geometry):
         return top, left, bottom, right
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert Rectangle from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
 
@@ -884,7 +884,7 @@ class Rectangle(Geometry):
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
         """
         Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
 
