@@ -39,10 +39,6 @@ class PointLocation(JsonSerializable):
         self._row = floor(unwrap_if_numpy(row))
         self._col = floor(unwrap_if_numpy(col))
 
-        # Old implementation
-        # self._row = round(unwrap_if_numpy(row))
-        # self._col = round(unwrap_if_numpy(col))
-
     @property
     def row(self) -> int:
         """

@@ -4,9 +4,9 @@
 # docs
 from __future__ import annotations
 
-import copy
 import json
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
@@ -306,8 +306,9 @@ class AnnotationApi(ModuleApi):
             },
         )
         result = response.json()
+        result = deepcopy(result) # Avoid changing the original data
 
-        # convert annotation to pixel coordinate system
+        # Convert annotation to pixel coordinate system
         result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
             result[ApiField.ANNOTATION]
         )
@@ -465,8 +466,7 @@ class AnnotationApi(ModuleApi):
                 ApiField.INTEGER_COORDS: False,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
-            # [ann_info.annotation for ann_info in results]
-
+            results = deepcopy(results)  # Avoid changing the original data
             if need_download_alpha_masks is True:
                 additonal_geometries = defaultdict(tuple)
                 for ann_idx, ann_dict in enumerate(results):
@@ -489,6 +489,7 @@ class AnnotationApi(ModuleApi):
                         ].update({BITMAP: geometry})
 
             for ann_dict in results:
+                # Convert annotation to pixel coordinate system
                 ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
                     ann_dict[ApiField.ANNOTATION]
                 )
@@ -870,6 +871,7 @@ class AnnotationApi(ModuleApi):
                 # check if there are any AlphaMask geometries in the batch
                 for img_id, ann in batch:
                     ann_json = func_ann_to_json(ann)
+                    ann_json = deepcopy(ann_json)  # Avoid changing the original data
                     ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
                     filtered_labels = []
                     if AnnotationJsonFields.LABELS not in ann_json:
@@ -905,6 +907,7 @@ class AnnotationApi(ModuleApi):
             else:
                 for img_id, ann in batch:
                     ann_json = func_ann_to_json(ann)
+                    ann_json = deepcopy(ann_json)  # Avoid changing the original data
                     ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
                     data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
 

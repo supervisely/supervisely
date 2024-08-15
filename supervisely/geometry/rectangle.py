@@ -3,6 +3,7 @@
 # docs
 from __future__ import annotations
 
+from copy import deepcopy
 from math import ceil, floor
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -98,7 +99,6 @@ class Rectangle(Geometry):
             created_at=created_at,
         )
 
-        top, left, bottom, right = self._round_subpixel_coordinates(top, left, bottom, right)
         self._points = [
             PointLocation(row=top, col=left),
             PointLocation(row=bottom, col=right),
@@ -187,7 +187,6 @@ class Rectangle(Geometry):
             updated_at=updated_at,
             created_at=created_at,
         )
-        # )._to_pixel_coordinate_system()
 
     def crop(self, other: Rectangle) -> List[Rectangle]:
         """
@@ -816,9 +815,12 @@ class Rectangle(Geometry):
             right = floor(right)
         return top, left, bottom, right
 
-    def _to_pixel_coordinate_system(self) -> Rectangle:
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert Rectangle from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
+
+        Points order in json format: [[left, top], [right, bottom]]
 
         In the labeling tool, labels are created with subpixel precision,
         which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
@@ -828,7 +830,7 @@ class Rectangle(Geometry):
         Step 1. Input coordinates:
         - top = 1.55, left = 1.74, bottom = 4.63, right = 3.76
 
-        Step 2. Round the coordinates:
+        Step 2. Round the coordinates (still remain in subpixel precision):
         - top = 1, left = 2, bottom = 5, right = 4
         - top will be rounded down to 2, left will be rounded down to 2, bottom will be rounded up to 6, right will be rounded down to 6
 
@@ -864,82 +866,141 @@ class Rectangle(Geometry):
             |   |   | x | x |   |
         5   +---+---+---+---+---+
 
-        :return: New instance of Rectangle object with corners in pixel format.
-        :rtype: :class:`Rectangle<Rectangle>`
+        :param data: Json data with geometry config.
+        :type data: dict
+        :return: Json data with coordinates converted to pixel coordinate system.
+        :rtype: :class:`dict`
         """
-        left = floor(self.left)
-        top = floor(self.top)
-        right = max(left, floor(self.right) - 1)
-        bottom = max(top, floor(self.bottom) - 1)
-        return Rectangle(
-            top=top,
-            left=left,
-            bottom=bottom,
-            right=right,
-            sly_id=self.sly_id,
-            class_id=self.class_id,
-            labeler_login=self.labeler_login,
-            updated_at=self.updated_at,
-            created_at=self.created_at,
-        )
-
-
-    def _to_subpixel_coordinate_system(self) -> Rectangle:
-        """
-        Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
-
-        In the labeling tool, labels are created with subpixel precision,
-        which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
-        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
-
-        :return: New instance of Rectangle object with corners in subpixel format.
-        :rtype: :class:`Rectangle<Rectangle>`
-        """
-        left = self.left
-        top = self.top
-        right = self.right + 1
-        bottom = self.bottom + 1
-
-        return Rectangle(
-            top=top,
-            left=left,
-            bottom=bottom,
-            right=right,
-            sly_id=self.sly_id,
-            class_id=self.class_id,
-            labeler_login=self.labeler_login,
-            updated_at=self.updated_at,
-            created_at=self.created_at,
-        )
-
-    @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
-        """
-        [left, top], [right, bottom]
-        """
+        data = deepcopy(data)  # Avoid modifying the original data
         top = data[POINTS][EXTERIOR][0][1]
         left = data[POINTS][EXTERIOR][0][0]
         bottom = data[POINTS][EXTERIOR][1][1]
         right = data[POINTS][EXTERIOR][1][0]
-        
+
         top, left, bottom, right = cls._round_subpixel_coordinates(top, left, bottom, right)
         right = max(left, right - 1)
         bottom = max(top, bottom - 1)
         data[POINTS][EXTERIOR] = [[left, top], [right, bottom]]
         return data
-    
-    
+
     @classmethod
     def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
-        [left, top], [right, bottom]
+        Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+        Points order in json format: [[left, top], [right, bottom]]
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Json data with geometry config.
+        :type data: dict
+        :return: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: :class:`dict`
         """
+        data = deepcopy(data)  # Avoid modifying the original data
         top = data[POINTS][EXTERIOR][0][1]
         left = data[POINTS][EXTERIOR][0][0]
         bottom = data[POINTS][EXTERIOR][1][1]
         right = data[POINTS][EXTERIOR][1][0]
-        
+
         right = max(left, right + 1)
         bottom = max(top, bottom + 1)
         data[POINTS][EXTERIOR] = [[left, top], [right, bottom]]
         return data
+
+    # def _to_pixel_coordinate_system(self) -> Rectangle:
+    #     """
+    #     Convert Rectangle from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     Example:
+    #     Step 1. Input coordinates:
+    #     - top = 1.55, left = 1.74, bottom = 4.63, right = 3.76
+
+    #     Step 2. Round the coordinates:
+    #     - top = 1, left = 2, bottom = 5, right = 4
+    #     - top will be rounded down to 2, left will be rounded down to 2, bottom will be rounded up to 6, right will be rounded down to 6
+
+    #     Draw coordinates in pixel coordinate system:
+    #         0   1   2   3   4   5
+    #     0   +---+---+---+---+---+
+    #         |   |   |   |   |   |
+    #     1   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     2   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     3   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     4   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     5   +---+---+---+---+---+
+    #                   x   x
+
+    #     Step 3. Convert to pixel coordinates by subtracting a subpixel offset:
+    #     - top = 1, left = 2, bottom = 4, right = 3
+
+    #     Draw coordinates in pixel coordinate system:
+    #         0   1   2   3   4   5
+    #     0   +---+---+---+---+---+
+    #         |   |   |   |   |   |
+    #     1   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     2   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     3   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     4   +---+---+---+---+---+
+    #         |   |   | x | x |   |
+    #     5   +---+---+---+---+---+
+
+    #     :return: New instance of Rectangle object with corners in pixel format.
+    #     :rtype: :class:`Rectangle<Rectangle>`
+    #     """
+    #     left = floor(self.left)
+    #     top = floor(self.top)
+    #     right = max(left, floor(self.right) - 1)
+    #     bottom = max(top, floor(self.bottom) - 1)
+    #     return Rectangle(
+    #         top=top,
+    #         left=left,
+    #         bottom=bottom,
+    #         right=right,
+    #         sly_id=self.sly_id,
+    #         class_id=self.class_id,
+    #         labeler_login=self.labeler_login,
+    #         updated_at=self.updated_at,
+    #         created_at=self.created_at,
+    #     )
+
+    # def _to_subpixel_coordinate_system(self) -> Rectangle:
+    #     """
+    #     Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     :return: New instance of Rectangle object with corners in subpixel format.
+    #     :rtype: :class:`Rectangle<Rectangle>`
+    #     """
+    #     left = self.left
+    #     top = self.top
+    #     right = self.right + 1
+    #     bottom = self.bottom + 1
+
+    #     return Rectangle(
+    #         top=top,
+    #         left=left,
+    #         bottom=bottom,
+    #         right=right,
+    #         sly_id=self.sly_id,
+    #         class_id=self.class_id,
+    #         labeler_login=self.labeler_login,
+    #         updated_at=self.updated_at,
+    #         created_at=self.created_at,
+    #     )

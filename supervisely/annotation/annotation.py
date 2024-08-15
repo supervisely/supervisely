@@ -22,8 +22,8 @@ from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.polygon import Polygon
@@ -2931,34 +2931,21 @@ class Annotation:
         for label in self.labels:
             label.binding_key = None
 
-    def _to_subpixel_coordinate_system(self) -> Annotation:
-        """
-        Convert all labels in the annotation from pixel precision to subpixel precision by subtracting a subpixel offset from the coordinates.
-
-        In the labeling tool, labels are created with subpixel precision,
-        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
-        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
-
-        :return: New instance of Annotation with labels in subpixel precision.
-        :rtype: :class:`Annotation<Annotation>`
-        """
-        new_ann = self.clone()
-        new_labels = [
-            label._to_subpixel_coordinate_system() for label in new_ann.labels
-        ]
-        new_ann._labels = new_labels
-        return new_ann
-
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision.
 
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
         :param data: Label in json format.
         :type data: dict
-        :return: Json format as a dict
+        :return: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
+        data = deepcopy(data)  # Avoid modifying the original data
         new_labels = []
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
@@ -2966,20 +2953,25 @@ class Annotation:
             else:
                 label = Geometry._to_pixel_coordinate_system_json(label)
             new_labels.append(label)
-            
+
         data[AnnotationJsonFields.LABELS] = new_labels
         return data
-    
+
     @classmethod
     def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert label geometry from pixel precision to subpixel precision.
 
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
         :param data: Label in json format.
         :type data: dict
-        :return: Json format as a dict
+        :return: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
+        data = deepcopy(data)  # Avoid modifying the original data
         new_labels = []
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
@@ -2987,6 +2979,22 @@ class Annotation:
             else:
                 label = Geometry._to_subpixel_coordinate_system_json(label)
             new_labels.append(label)
-            
+
         data[AnnotationJsonFields.LABELS] = new_labels
         return data
+
+    # def _to_subpixel_coordinate_system(self) -> Annotation:
+    #     """
+    #     Convert all labels in the annotation from pixel precision to subpixel precision by subtracting a subpixel offset from the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     :return: New instance of Annotation with labels in subpixel precision.
+    #     :rtype: :class:`Annotation<Annotation>`
+    #     """
+    #     new_ann = self.clone()
+    #     new_labels = [label._to_subpixel_coordinate_system() for label in new_ann.labels]
+    #     new_ann._labels = new_labels
+    #     return new_ann
