@@ -307,13 +307,14 @@ class AnnotationApi(ModuleApi):
         )
         result = response.json()
 
+        # convert annotation to pixel coordinate system
+        result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+            result[ApiField.ANNOTATION]
+        )
+
         # check if there are any AlphaMask geometries in the batch
         additonal_geometries = defaultdict(int)
         labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
-        
-        # -- convert labels to pixel coordinate system
-        labels = [Label._to_pixel_coordinate_system_json(label_json) for label_json in labels]
-        # --------------------------------------------
         for idx, label in enumerate(labels):
             if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
                 figure_id = label[LabelJsonFields.ID]
@@ -488,7 +489,9 @@ class AnnotationApi(ModuleApi):
                         ].update({BITMAP: geometry})
 
             for ann_dict in results:
-                ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(ann_dict[ApiField.ANNOTATION])
+                ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+                    ann_dict[ApiField.ANNOTATION]
+                )
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
 
