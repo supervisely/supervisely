@@ -525,7 +525,7 @@ class AppApi(TaskApi):
             self._enabled = True
             if is_development():
                 self._enabled = False
-                logger.info(
+                logger.warning(
                     "Workflow is disabled in development mode. To enable it, use the 'enable' method before using the functionality."
                 )
 
