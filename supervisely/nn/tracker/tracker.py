@@ -198,8 +198,8 @@ class BaseTracker:
             tlwh = [
                 rectangle.top,
                 rectangle.left,
-                rectangle.height,
                 rectangle.width,
+                rectangle.height,
                 confidence,
             ]
 
