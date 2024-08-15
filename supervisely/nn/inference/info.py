@@ -16,7 +16,7 @@ class TaskType:
 
 class RuntimeType:
     PYTORCH = "PyTorch"
-    ONNX = "ONNX"
+    ONNXRUNTIME = "ONNXRuntime"
     TENSORRT = "TensorRT"
 
 
