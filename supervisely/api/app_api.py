@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import is_community, take_with_default
+from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 
@@ -521,6 +521,29 @@ class AppApi(TaskApi):
             self._api = api
             # minimum instance version that supports workflow features
             self._min_instance_version = "6.9.31"
+            # for development purposes
+            self._enabled = True
+            if is_development():
+                self._enabled = False
+                logger.warning(
+                    "Workflow is disabled in development mode. "
+                    "To enable it, use `api.app.workflow.enable()` right after Api initialization."
+                )
+
+        def enable(self):
+            """Enable the workflow functionality."""
+            self._enabled = True
+            logger.info("Workflow is enabled.")
+
+        def disable(self):
+            """Disable the workflow functionality."""
+            self._enabled = False
+            logger.info("Workflow is disabled.")
+
+        def is_enabled(self) -> bool:
+            """Check if the workflow functionality is enabled."""
+            logger.info(f"Workflow check: is {'enabled' if self._enabled else 'disabled'}.")
+            return self._enabled
 
         # pylint: disable=no-self-argument
         def check_instance_compatibility(min_instance_version: Optional[str] = None):
@@ -535,7 +558,10 @@ class AppApi(TaskApi):
                         if min_instance_version is not None
                         else self._min_instance_version
                     )
-                    if not check_workflow_compatibility(self._api, version_to_check):
+                    if (
+                        not check_workflow_compatibility(self._api, version_to_check)
+                        or not self._enabled
+                    ):
                         return
                     return func(self, *args, **kwargs)
 
