@@ -816,7 +816,7 @@ class Rectangle(Geometry):
         return top, left, bottom, right
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
         """
         Convert Rectangle from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
 
@@ -867,11 +867,15 @@ class Rectangle(Geometry):
         5   +---+---+---+---+---+
 
         :param data: Json data with geometry config.
-        :type data: dict
+        :type data: :class:`dict`
+        :param image_size: Image size in pixels (height, width).
+        :type image_size: List[int]
         :return: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
+        height, width = image_size[:2]
+
         top = data[POINTS][EXTERIOR][0][1]
         left = data[POINTS][EXTERIOR][0][0]
         bottom = data[POINTS][EXTERIOR][1][1]
@@ -884,7 +888,7 @@ class Rectangle(Geometry):
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert Rectangle from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
 
@@ -895,7 +899,7 @@ class Rectangle(Geometry):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: dict
+        :type data: :class:`dict`
         :return: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """

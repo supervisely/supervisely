@@ -288,12 +288,12 @@ class Geometry(JsonSerializable):
         return res
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
         """
         Convert geometry from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
 
         This method should be reimplemented in subclasses if needed.
-        
+
         Point order: [x, y]
 
         In the labeling tool, labels are created with subpixel precision,
@@ -301,12 +301,14 @@ class Geometry(JsonSerializable):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: dict
+        :type data: :class:`dict`
+        :param image_size: Image size in pixels (height, width).
+        :type image_size: List[int]
         :return: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
-        height, width = image_size[:2]
         data = deepcopy(data)  # Avoid modifying the original data
+        height, width = image_size[:2]
 
         # Point, Polygon, Polyline. Rectangle have its own implementation
         if data.get(POINTS) is not None:
@@ -329,13 +331,24 @@ class Geometry(JsonSerializable):
         # Graph
         if data.get(NODES) is not None:
             nodes = data[NODES]
-            for node in nodes.values():
-                node[LOC] = [floor(node[LOC][0]), floor(node[LOC][1])]
+            for node_key in nodes:
+                nodes[node_key][LOC] = [
+                    (
+                        floor(nodes[node_key][LOC][0]) - 1
+                        if nodes[node_key][LOC][0] == width
+                        else floor(nodes[node_key][LOC][0])
+                    ),
+                    (
+                        floor(nodes[node_key][LOC][1]) - 1
+                        if nodes[node_key][LOC][1] == height
+                        else floor(nodes[node_key][LOC][1])
+                    ),
+                ]
             data[NODES] = nodes
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
 
@@ -348,7 +361,7 @@ class Geometry(JsonSerializable):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: dict
+        :type data: :class:`dict`
         :return: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
@@ -375,8 +388,11 @@ class Geometry(JsonSerializable):
         # Graph
         if data.get(NODES) is not None:
             nodes = data[NODES]
-            for node in nodes.values():
-                node[LOC] = [floor(node[LOC][0]), floor(node[LOC][1])]
+            for node_key in nodes:
+                nodes[node_key][LOC] = [
+                    floor(nodes[node_key][LOC][0]) + 0.5,
+                    floor(nodes[node_key][LOC][1]) + 0.5,
+                ]
             data[NODES] = nodes
         return data
 

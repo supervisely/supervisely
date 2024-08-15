@@ -2932,7 +2932,7 @@ class Annotation:
             label.binding_key = None
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision.
 
@@ -2941,11 +2941,15 @@ class Annotation:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: dict
+        :type data: :class:`dict`
         :return: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
+        image_size = [
+            data[AnnotationJsonFields.IMG_SIZE][AnnotationJsonFields.IMG_SIZE_HEIGHT],
+            data[AnnotationJsonFields.IMG_SIZE][AnnotationJsonFields.IMG_SIZE_WIDTH],
+        ]
         new_labels = []
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
@@ -2958,7 +2962,7 @@ class Annotation:
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert label geometry from pixel precision to subpixel precision.
 
@@ -2972,13 +2976,12 @@ class Annotation:
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
-        image_size = data[AnnotationJsonFields.IMG_SIZE]
         new_labels = []
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-                label = Rectangle._to_subpixel_coordinate_system_json(label, image_size)
+                label = Rectangle._to_subpixel_coordinate_system_json(label)
             else:
-                label = Geometry._to_subpixel_coordinate_system_json(label, image_size)
+                label = Geometry._to_subpixel_coordinate_system_json(label)
             new_labels.append(label)
 
         data[AnnotationJsonFields.LABELS] = new_labels

@@ -846,7 +846,7 @@ class LabelBase:
         return self.geometry.labeler_login
 
     @classmethod
-    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
 
@@ -855,7 +855,9 @@ class LabelBase:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: dict
+        :type data: :class:`dict`
+        :param image_size: Image size in pixels (height, width).
+        :type image_size: List[int]
         :return: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
@@ -867,7 +869,7 @@ class LabelBase:
         return data
 
     @classmethod
-    def _to_subpixel_coordinate_system_json(cls, data: Dict, image_size) -> Dict:
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
         """
         Convert label geometry from subpixel precision to pixel precision by rounding the coordinates.
 
@@ -876,15 +878,15 @@ class LabelBase:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: dict
+        :type data: :class:`dict`
         :return: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
-            data = Rectangle._to_subpixel_coordinate_system_json(data, image_size)
+            data = Rectangle._to_subpixel_coordinate_system_json(data)
         else:
-            data = Geometry._to_subpixel_coordinate_system_json(data, image_size)
+            data = Geometry._to_subpixel_coordinate_system_json(data)
         return data
 
     # def _to_subpixel_coordinate_system(self) -> LabelBase:
