@@ -328,7 +328,7 @@ class Geometry(JsonSerializable):
             origin = data[BITMAP][ORIGIN]
             data[BITMAP][ORIGIN] = [floor(origin[0]), floor(origin[1])]
 
-        # Graph
+        # GraphNodes and Cuboid
         if data.get(NODES) is not None:
             nodes = data[NODES]
             for node_key in nodes:
@@ -385,7 +385,7 @@ class Geometry(JsonSerializable):
             origin = data[BITMAP][ORIGIN]
             data[BITMAP][ORIGIN] = [floor(origin[0]), floor(origin[1])]
 
-        # Graph
+        # GraphNodes and Cuboid
         if data.get(NODES) is not None:
             nodes = data[NODES]
             for node_key in nodes:
