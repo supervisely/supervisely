@@ -33,6 +33,8 @@ class GridGalleryV2(Widget):
         border_width: int = 3,
         default_tag_filters: List[Union[str, dict]] = None,
         widget_id: str = None,
+        sync_views: bool = False,
+        sync_views_bindings: List[List[str]] = None,
     ):
         self._data = []
         self._layout = []
@@ -60,6 +62,11 @@ class GridGalleryV2(Widget):
         self._enable_pointer_events: bool = enable_pointer_events
         self._transparent_background: bool = transparent_background
         self._show_filter: bool = show_filter
+
+        self._sync_views: bool = sync_views
+        if sync_views is False and sync_views_bindings is not None:
+            raise ValueError("sync_views must be True if sync_views_bindings is not None")
+        self._views_bindings: List[List[str]] = sync_views_bindings if sync_views_bindings is not None else []
 
         self._enablePan = enable_panning
 
@@ -151,6 +158,10 @@ class GridGalleryV2(Widget):
                 "showTransparentBackground": self._transparent_background,
                 "showFilter": self._show_filter,
                 "enablePan": self._enablePan,
+                "lineWidth": self._border_width,
+                "syncViews": self._sync_views,
+                "syncViewsBindings": self._views_bindings,
+
             },
         }
 
