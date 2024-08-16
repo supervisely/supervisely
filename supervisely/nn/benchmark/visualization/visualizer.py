@@ -91,7 +91,20 @@ def generate_main_template(metric_visualizations: List[MetricVis]):
             }"
             :command="command"
             :data="data"
-        /> \n</div>"""
+        /> \n
+        <sly-iw-gallery
+            ref='modal_extra'
+            iw-widget-id='modal_extra'
+            :options="{'isModalWindow': true}"
+            :actions="{
+                'init': {
+                'dataSource': '/data/modal_extra.json',
+                },
+            }"
+            :command="command"
+            :data="data"
+        /> \n
+        </div>"""
 
     return template_str
 
@@ -311,11 +324,11 @@ class Visualizer:
             data=self._api.project.get_meta(id=self.dt_project_info.id)
         )
         res["projectMeta"] = self.dt_project_meta.to_json()
-        basename = "modal_general.json"
-        local_path = f"{self.layout_dir}/data/{basename}"
-        with open(local_path, "w", encoding="utf-8") as f:
-            f.write(ujson.dumps(res))
-        logger.info("Saved: %r", basename)
+        for basename in ["modal_general.json", "modal_extra.json"]:
+            local_path = f"{self.layout_dir}/data/{basename}"
+            with open(local_path, "w", encoding="utf-8") as f:
+                f.write(ujson.dumps(res))
+            logger.info("Saved: %r", basename)
 
         self._save_template(initialized)
 
@@ -385,6 +398,14 @@ class Visualizer:
                     local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
                         f.write(ujson.dumps(click_data))
+                    logger.info("Saved: %r", basename)
+
+                diff_data = mv.get_diff_gallery_data(widget)
+                if diff_data is not None:
+                    basename = f"{widget.name}_{mv.name}_diff_data.json"
+                    local_path = f"{self.layout_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(ujson.dumps(diff_data))
                     logger.info("Saved: %r", basename)
 
                     # modal_data = mv.get_gallery_modal(widget)
@@ -612,6 +633,8 @@ class Visualizer:
 
         # add tags to objects
         logger.info("Adding tags to DT project")
+
+        pred_tag_list = []
         with tqdm_sly(desc="Adding tags to DT project", total=len(matches)) as pbar:
             for match in matches:
                 if match["type"] == "TP":
@@ -621,10 +644,20 @@ class Visualizer:
                     iou = match["iou"]
                     # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
                     if matched_gt_id is not None:
-                        api.advanced.add_tag_to_object(
-                            match_tag_meta.sly_id, ann_dt_id, int(matched_gt_id)
+                        pred_tag_list.extend(
+                            [
+                                {
+                                    "tagId": match_tag_meta.sly_id,
+                                    "figureId": ann_dt_id,
+                                    "value": int(matched_gt_id),
+                                },
+                                {
+                                    "tagId": iou_tag_meta.sly_id,
+                                    "figureId": ann_dt_id,
+                                    "value": float(iou),
+                                },
+                            ]
                         )
-                        api.advanced.add_tag_to_object(iou_tag_meta.sly_id, ann_dt_id, float(iou))
                     else:
                         continue
                 elif match["type"] == "FP":
@@ -636,6 +669,7 @@ class Visualizer:
                     raise ValueError(f"Unknown match type: {match['type']}")
 
                 pbar.update(1)
+        api.image.tag.add_to_objects(dt_project_id, pred_tag_list)
 
     def _get_matched_id_map(self):
         gt_ann_mapping = self.click_data.gt_id_mapper.map_obj

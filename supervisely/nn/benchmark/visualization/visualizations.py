@@ -84,16 +84,33 @@ template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="
 
 
 template_gallery_str = """<sly-iw-gallery
-              iw-widget-id="{{ widget_id }}"{% if is_table_gallery %}
-              ref='{{ widget_id }}'{% endif %}
+              iw-widget-id="{{ widget_id }}"
+              {% if is_table_gallery %}
+              ref='{{ widget_id }}'
+              {% endif %}
               :actions="{
                 'init': {
                   'dataSource': '{{ init_data_source }}',
                 },
+                {% if gallery_diff_data_source %}
+                'chart-click': {
+                    'dataSource': '{{ gallery_diff_data_source }}',
+                    'getKey':(payload)=>payload['annotation']['image_id'],
+                    'galleryId': 'modal_extra',
+                        'limit': 3,
+                },
+                {% endif %}
               }"
               :command="{{ command }}"
               :data="{{ data }}"
-                />
+            >
+                {% if gallery_diff_data_source %}
+                    <span slot="image-left-header">
+                        <i class="zmdi zmdi-collection-image"></i> More details
+                    </span>
+                {% endif %}
+            </sly-iw-gallery>
+
               {% if gallery_click_data_source %}
               <div style="display: flex; justify-content: center; margin-top:10px;" >                
                 <el-button iw-widget-id="btn-1" type="primary" @click="command({
@@ -107,9 +124,69 @@ template_gallery_str = """<sly-iw-gallery
                     'galleryId': 'modal_general',
                   },
                   internalCommand: true
-                })">Click to Explore</el-button>
+                })">Explore all predictions</el-button>
                 </div> {% endif %}
 """
+
+
+#         """<sly-iw-gallery
+#   iw-widget-id="{{ widget_id }}"
+#   {% if is_table_gallery %}
+#   ref='{{ widget_id }}'
+#   {% endif %}
+#   :actions="{
+#     'init': {
+#       'dataSource': '{{ init_data_source }}',
+#     },
+#     {% if gallery_click_data_source %}
+#     'chart-click': {
+#         'dataSource': '{{ gallery_click_data_source }}',
+#         'getKey':(payload)=>payload['annotation']['image_id'],
+#         'galleryId': 'modal_extra',
+#             'limit': 3,
+#     },
+#     {% endif %}
+#   }"
+#   :command="{{ command }}"
+#   :data="{{ data }}"
+#     >
+#     {% if gallery_click_data_source %}
+#         <span slot="image-left-header">
+#             <i class="zmdi zmdi-collection-image"></i> More details
+#         </span>
+#     {% endif %}
+# </sly-iw-gallery>
+#   {% if gallery_full_data_source %}
+#   <div style="display: flex; justify-content: center; margin-top:10px;" >
+#     <el-button iw-widget-id="btn-1" type="primary" @click="command({
+#       method: 'update-gallery',
+#       payload: {
+#         data: {
+#           'key': 'explore',
+#           'limit': 9,
+#           'dataSource': '{{ gallery_full_data_source }}',
+#         },
+#         'galleryId': 'modal_general',
+#       },
+#       internalCommand: true
+#     })">Explore all predictions</el-button>
+#   </div>
+#   {% endif %}"""
+# {% if gallery_click_data_source %}
+# <div style="display: flex; justify-content: center; margin-top:10px;" >
+#     <el-button iw-widget-id="btn-1" type="primary" @click="command({
+#     method: 'update-gallery',
+#     payload: {
+#         data: {
+#         'key': 'diff',
+#         'limit': 3,
+#         'dataSource': '{{ gallery_click_data_source }}',
+#         },
+#         'galleryId': 'modal_extra',
+#     },
+#     internalCommand: true
+#     })">Show differents</el-button>
+#     </div> {% endif %}
 # <sly-iw-gallery
 #     ref='{{ widget_id }}_modal'
 #     iw-widget-id='{{ widget_id }}_modal'
@@ -207,6 +284,8 @@ class Widget:
 
             self.gallery = GridGalleryV2(
                 columns_number=3,
+                annotations_opacity=0.5,
+                border_width=4,
                 enable_zoom=False,
                 default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
                 show_zoom_slider=False,
@@ -234,6 +313,8 @@ class Widget:
 
             self.gallery = GridGalleryV2(
                 columns_number=3,
+                annotations_opacity=0.5,
+                border_width=4,
                 enable_zoom=False,
                 default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "FP"}],
                 show_zoom_slider=False,
@@ -270,6 +351,7 @@ class MetricVis:
 
         self.cv_tasks: List[CVTask] = CVTask.values()
         self.clickable: bool = False
+        self.has_diffs_view: bool = False
         self.switchable: bool = False
         self.schema: Schema = None
 
@@ -424,6 +506,9 @@ class MetricVis:
                 gallery_modal_data_source = (
                     f"/data/{basename}_modal_data.json" if self.clickable else None
                 )
+                gallery_diff_data_source = (
+                    f"/data/{basename}_diff_data.json" if self.has_diffs_view else None
+                )
                 res[f"{basename}_html"] = self._template_gallery.render(
                     {
                         "widget_id": widget.id,
@@ -432,6 +517,7 @@ class MetricVis:
                         "data": "data",
                         "is_table_gallery": widget.is_table_gallery,
                         "gallery_click_data_source": gallery_click_data_source,
+                        "gallery_diff_data_source": gallery_diff_data_source,
                         "gallery_modal_data_source": gallery_modal_data_source,
                     }
                 )
@@ -445,7 +531,7 @@ class MetricVis:
                         "command": "command",
                         "data": "data",
                         "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
-                        "table_gallery_id": widget.gallery_id,
+                        "table_gallery_id": f"modal_extra",
                     }
                 )
 
@@ -541,6 +627,33 @@ class MetricVis:
     def get_gallery_click_data(self, widget: Widget.Gallery) -> Optional[dict]:
         pass
 
+    def get_diff_gallery_data(self, widget: Widget.Gallery) -> Optional[dict]:
+        res = {}
+
+        res["layoutTemplate"] = [
+            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
+            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
+            {"columnTitle": "Difference"},
+        ]
+
+        click_data = res.setdefault("clickData", {})
+
+        l1 = list(self._loader.gt_images_dct.values())
+        l2 = list(self._loader.dt_images_dct.values())
+        l3 = list(self._loader.diff_images_dct.values())
+
+        default_filters = [
+            {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+            {"type": "tag", "tagId": "outcome", "value": "FP"},
+        ]
+
+        for gt, pred, diff in zip(l1, l2, l3):
+            key = click_data.setdefault(str(pred.id), {})
+            key["imagesIds"] = [gt.id, pred.id, diff.id]
+            key["filters"] = default_filters
+
+        return res
+
     def get_md_content(self, widget: Widget.Markdown):
         return getattr(contents, widget.name).format(*widget.formats)
 
@@ -558,13 +671,16 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get("checkpoint_name",),
+                    info.get("deploy_params", {}).get(
+                        "checkpoint_name",
+                    ),
                     info.get("architecture"),
                     # info.get("year", "???"),
                     # info.get("authors", "???"),
                     info.get("task_type"),
                     info.get("runtime"),
                     info.get("hardware"),
+                    info.get("deploy_params", {}).get("checkpoint_url"),
                     info.get("deploy_params", {}).get("checkpoint_url"),
                 ],
             ),
@@ -632,96 +748,157 @@ class ExplorerGrid(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.clickable = True
+        self.has_diffs_view = True
         self.schema = Schema(
             markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
             gallery=Widget.Gallery(),
         )
 
-    def get_gallery(self, widget: Widget.Gallery):
+    def _get_gallery(self, widget: Widget.Gallery, limit: Optional[int] = None) -> dict:
         res = {}
         api = self._loader._api
-        gt_project_id = self._loader.gt_project_info.id
         dt_project_id = self._loader.dt_project_info.id
-        diff_project_id = self._loader.diff_project_info.id
-        gt_dataset = api.dataset.get_list(gt_project_id)[0]
         dt_dataset = api.dataset.get_list(dt_project_id)[0]
-        diff_dataset = api.dataset.get_list(diff_project_id)[0]
-        gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id)[:3]
-        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id)[:3]
-        diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id)[:3]
-        project_metas = [
-            ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [gt_project_id, dt_project_id, diff_project_id]
-        ]
-        is_ignore = [True, ["outcome"], False]
-        for gt_image, pred_image, diff_image in zip(
-            gt_image_infos, pred_image_infos, diff_image_infos
-        ):
-            image_infos = [gt_image, pred_image, diff_image]
-            ann_infos = [api.annotation.download(x.id) for x in image_infos]
-
-            for idx, (image_info, ann_info, project_meta) in enumerate(
-                zip(image_infos, ann_infos, project_metas)
-            ):
-                image_name = image_info.name
-                image_url = image_info.full_storage_url
-                widget.gallery.append(
-                    title=image_name,
-                    image_url=image_url,
-                    annotation_info=ann_info,
-                    column_index=idx,
-                    project_meta=project_meta,
-                    ignore_tags_filtering=is_ignore[idx],
-                )
+        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id, limit=limit)
+        project_meta = ProjectMeta.from_json(api.project.get_meta(dt_project_id))
+        # is_ignore = [True, ["outcome"], False]
+        for idx, pred_image in enumerate(pred_image_infos):
+            ann_info = api.annotation.download(pred_image.id)
+            image_name = pred_image.name
+            image_url = pred_image.full_storage_url
+            widget.gallery.append(
+                title=image_name,
+                image_url=image_url,
+                annotation_info=ann_info,
+                column_index=idx % 3,
+                project_meta=project_meta,
+                ignore_tags_filtering=["outcome"],
+            )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
         res["layoutData"] = res.pop("annotations")
-        res["projectMeta"] = project_metas[1].to_json()
+        res["projectMeta"] = project_meta.to_json()
 
-        #! TODO refactor later
-        res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
-        res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
+        # # ! TODO refactor later
+        # res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
+        # res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
 
-        tmp = res["layout"][2][0]
-        res["layout"][2][0] = {
-            "layoutDataKey": tmp,
-            "options": {"columnTitle": "Difference"},
-        }
+        # tmp = res["layout"][2][0]
+        # res["layout"][2][0] = {
+        #     "layoutDataKey": tmp,
+        #     "options": {"columnTitle": "Difference"},
+        # }
 
         return res
 
-    def get_gallery_click_data(self, widget: Widget.Table) -> Optional[dict]:
+    def get_gallery(self, widget: Widget.Gallery):
+        return self._get_gallery(widget, limit=6)
+
+    def get_gallery_click_data(self, widget: Widget.Gallery):
         res = {}
-        res["layoutTemplate"] = [
-            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
-            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
-            {"columnTitle": "Difference"},
-        ]
-        res["clickData"] = {}
-        res["clickData"]["explore"] = {}
-        res["clickData"]["explore"]["imagesIds"] = []
 
-        l1 = list(self._loader.gt_images_dct.values())
-        l2 = list(self._loader.dt_images_dct.values())
-        l3 = list(self._loader.diff_images_dct.values())
+        res["layoutTemplate"] = [{"skipObjectTagsFiltering": ["outcome"]}] * 3
+        click_data = res.setdefault("clickData", {})
+        explore = click_data.setdefault("explore", {})
+        images_ids = explore.setdefault("imagesIds", [])
 
-        for gt, dt, diff in zip(l1, l2, l3):
-            res["clickData"]["explore"]["imagesIds"] += [gt.id, dt.id, diff.id]
+        images = list(self._loader.dt_images_dct.values())
+        images_ids.extend([x.id for x in images])
 
-        res["clickData"]["explore"]["filters"] = [
+        explore["filters"] = [
             {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
             {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 
         return res
+        # return self._get_gallery(widget)
 
-    def get_gallery_modal(self, widget: Widget.Gallery):
-        res = self.get_gallery(widget)
+    # def get_gallery_click_data(self, widget: Widget.Gallery) -> Optional[dict]:
+    #     res = {}
+    #     api = self._loader._api
+    #     gt_project_id = self._loader.gt_project_info.id
+    #     dt_project_id = self._loader.dt_project_info.id
+    #     diff_project_id = self._loader.diff_project_info.id
+    #     gt_dataset = api.dataset.get_list(gt_project_id)[0]
+    #     dt_dataset = api.dataset.get_list(dt_project_id)[0]
+    #     diff_dataset = api.dataset.get_list(diff_project_id)[0]
+    #     gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id, limit=3)
+    #     pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id, limit=3)
+    #     diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id, limit=3)
+    #     project_metas = [
+    #         ProjectMeta.from_json(data=api.project.get_meta(id=x))
+    #         for x in [gt_project_id, dt_project_id, diff_project_id]
+    #     ]
+    #     is_ignore = [True, ["outcome"], False]
+    #     for gt_image, pred_image, diff_image in zip(
+    #         gt_image_infos, pred_image_infos, diff_image_infos
+    #     ):
+    #         image_infos = [gt_image, pred_image, diff_image]
+    #         ann_infos = [api.annotation.download(x.id) for x in image_infos]
 
-        res.pop("layout")
-        res.pop("layoutData")
+    #         for idx, (image_info, ann_info, project_meta) in enumerate(
+    #             zip(image_infos, ann_infos, project_metas)
+    #         ):
+    #             image_name = image_info.name
+    #             image_url = image_info.full_storage_url
+    #             widget.gallery.append(
+    #                 title=image_name,
+    #                 image_url=image_url,
+    #                 annotation_info=ann_info,
+    #                 column_index=idx,
+    #                 project_meta=project_meta,
+    #                 ignore_tags_filtering=is_ignore[idx],
+    #             )
+    #     res.update(widget.gallery.get_json_state())
+    #     res.update(widget.gallery.get_json_data()["content"])
+    #     res["layoutData"] = res.pop("annotations")
+    #     res["projectMeta"] = project_metas[1].to_json()
+
+    #     #! TODO refactor later
+    #     res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
+    #     res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
+
+    #     tmp = res["layout"][2][0]
+    #     res["layout"][2][0] = {
+    #         "layoutDataKey": tmp,
+    #         "options": {"columnTitle": "Difference"},
+    #     }
+
+    #     return res
+
+    def get_diff_gallery_data(self, widget: Widget.Table) -> Optional[dict]:
+        res = {}
+
+        res["layoutTemplate"] = [
+            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
+            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
+            {"columnTitle": "Difference"},
+        ]
+
+        click_data = res.setdefault("clickData", {})
+
+        l1 = list(self._loader.gt_images_dct.values())
+        l2 = list(self._loader.dt_images_dct.values())
+        l3 = list(self._loader.diff_images_dct.values())
+
+        default_filters = [
+            {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+            {"type": "tag", "tagId": "outcome", "value": "FP"},
+        ]
+        for gt, pred, diff in zip(l1, l2, l3):
+            key = click_data.setdefault(str(pred.id), {})
+            key["imagesIds"] = [gt.id, pred.id, diff.id]
+            key["filters"] = default_filters
 
         return res
+
+    # def get_gallery_modal(self, widget: Widget.Gallery):
+    #     res = self.get_gallery(widget)
+
+    #     res.pop("layout")
+    #     res.pop("layoutData")
+
+    #     return res
 
 
 class ModelPredictions(MetricVis):
@@ -733,71 +910,71 @@ class ModelPredictions(MetricVis):
                 title="Model Predictions", is_header=False
             ),
             markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
-            gallery=Widget.Gallery(is_table_gallery=True),
+            # gallery=Widget.Gallery(is_table_gallery=True),
             table=Widget.Table(),
         )
         self._row_ids = None
 
-    def get_gallery(self, widget: Widget.Gallery) -> dict:
-        res = {}
-        api = self._loader._api
-        df = self._loader.mp.prediction_table().round(2)
-        gt_project_id = self._loader.gt_project_info.id
-        dt_project_id = self._loader.dt_project_info.id
-        diff_project_id = self._loader.diff_project_info.id
+    # def get_gallery(self, widget: Widget.Gallery) -> dict:
+    #     res = {}
+    #     api = self._loader._api
+    #     df = self._loader.mp.prediction_table().round(2)
+    #     gt_project_id = self._loader.gt_project_info.id
+    #     dt_project_id = self._loader.dt_project_info.id
+    #     diff_project_id = self._loader.diff_project_info.id
 
-        def _get_image(name: str, project_id):
-            for dataset in api.dataset.get_list(project_id):
-                info = api.image.get_info_by_name(dataset.id, name)
-                if info is None:
-                    continue
-                else:
-                    return info
+    #     def _get_image(name: str, project_id):
+    #         for dataset in api.dataset.get_list(project_id):
+    #             info = api.image.get_info_by_name(dataset.id, name)
+    #             if info is None:
+    #                 continue
+    #             else:
+    #                 return info
 
-        infos = [None] * 3
-        selected_image_name = str(df.iloc[0, 0])
-        for idx, project_id in enumerate([gt_project_id, dt_project_id, diff_project_id]):
-            infos[idx] = _get_image(selected_image_name, project_id)
+    #     infos = [None] * 3
+    #     selected_image_name = str(df.iloc[0, 0])
+    #     for idx, project_id in enumerate([gt_project_id, dt_project_id, diff_project_id]):
+    #         infos[idx] = _get_image(selected_image_name, project_id)
 
-        gt_image_info, pred_image_info, diff_image_info = infos
+    #     gt_image_info, pred_image_info, diff_image_info = infos
 
-        images_infos = [gt_image_info, pred_image_info, diff_image_info]
-        anns_infos = [api.annotation.download(x.id) for x in images_infos]
-        project_metas = [
-            ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [gt_project_id, dt_project_id, diff_project_id]
-        ]
-        is_ignore = [True, ["outcome"], False]
+    #     images_infos = [gt_image_info, pred_image_info, diff_image_info]
+    #     anns_infos = [api.annotation.download(x.id) for x in images_infos]
+    #     project_metas = [
+    #         ProjectMeta.from_json(data=api.project.get_meta(id=x))
+    #         for x in [gt_project_id, dt_project_id, diff_project_id]
+    #     ]
+    #     is_ignore = [True, ["outcome"], False]
 
-        for idx, (image_info, ann_info, project_meta) in enumerate(
-            zip(images_infos, anns_infos, project_metas)
-        ):
-            image_name = image_info.name
-            image_url = image_info.full_storage_url
-            widget.gallery.append(
-                title=image_name,
-                image_url=image_url,
-                annotation_info=ann_info,
-                column_index=idx,
-                project_meta=project_meta,
-                ignore_tags_filtering=is_ignore[idx],
-            )
-        res.update(widget.gallery.get_json_state())
-        res.update(widget.gallery.get_json_data()["content"])
-        res["layoutData"] = res.pop("annotations")
+    #     for idx, (image_info, ann_info, project_meta) in enumerate(
+    #         zip(images_infos, anns_infos, project_metas)
+    #     ):
+    #         image_name = image_info.name
+    #         image_url = image_info.full_storage_url
+    #         widget.gallery.append(
+    #             title=image_name,
+    #             image_url=image_url,
+    #             annotation_info=ann_info,
+    #             column_index=idx,
+    #             project_meta=project_meta,
+    #             ignore_tags_filtering=is_ignore[idx],
+    #         )
+    #     res.update(widget.gallery.get_json_state())
+    #     res.update(widget.gallery.get_json_data()["content"])
+    #     res["layoutData"] = res.pop("annotations")
 
-        res["projectMeta"] = project_metas[1].to_json()
+    #     res["projectMeta"] = project_metas[1].to_json()
 
-        res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
-        res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
+    #     res["layout"][0][0]["options"]["columnTitle"] = "Ground Truth"
+    #     res["layout"][1][0]["options"]["columnTitle"] = "Prediction"
 
-        tmp = res["layout"][2][0]
-        res["layout"][2][0] = {
-            "layoutDataKey": tmp,
-            "options": {"columnTitle": "Difference"},
-        }
+    #     tmp = res["layout"][2][0]
+    #     res["layout"][2][0] = {
+    #         "layoutDataKey": tmp,
+    #         "options": {"columnTitle": "Difference"},
+    #     }
 
-        return res
+    #     return res
 
     def get_table(self, widget: Widget.Table) -> dict:
         res = {}
@@ -852,15 +1029,21 @@ class ModelPredictions(MetricVis):
             {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
             {"skipObjectTagsFiltering": False, "columnTitle": "Difference"},
         ]
-        res["clickData"] = {}
+        click_data = res.setdefault("clickData", {})
 
-        for idx_str in self._row_ids:
+        default_filters = [
+            {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+            {"type": "tag", "tagId": "outcome", "value": "FP"},
+        ]
 
-            gt_image = self._loader.gt_images_dct_by_name[idx_str]
-            dt_image = self._loader.dt_images_dct_by_name[idx_str]
-            diff_image = self._loader.diff_images_dct_by_name[idx_str]
+        l1 = list(self._loader.gt_images_dct.values())
+        l2 = list(self._loader.dt_images_dct.values())
+        l3 = list(self._loader.diff_images_dct.values())
 
-            res["clickData"][idx_str] = dict(imagesIds=[gt_image.id, dt_image.id, diff_image.id])
+        for gt, pred, diff in zip(l1, l2, l3):
+            key = click_data.setdefault(str(pred.name), {})
+            key["imagesIds"] = [gt.id, pred.id, diff.id]
+            key["filters"] = default_filters
 
         return res
 
