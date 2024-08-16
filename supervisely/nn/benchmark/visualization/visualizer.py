@@ -104,6 +104,39 @@ def generate_main_template(metric_visualizations: List[MetricVis]):
             :command="command"
             :data="data"
         /> \n
+        <sly-iw-gallery
+            ref='modal_general_diff'
+            iw-widget-id='modal_general_diff'
+            :options="{'isModalWindow': true}"
+            :actions="{
+                'init': {
+                'dataSource': '/data/modal_general_diff.json',
+                },
+            }"
+            :command="command"
+            :data="data"
+        /> \n
+        <sly-iw-gallery
+            ref='modal_general_diff'
+            iw-widget-id='modal_general_diff'
+            :options="{'isModalWindow': true}"
+            :actions="{
+                'init': {
+                'dataSource': '/data/modal_general_diff.json',
+                },
+                'chart-click': {
+                    'dataSource': '/data/gallery_explorer_grid_diff_data.json',
+                    'galleryId': 'modal_extra',
+                        'limit': 3,
+                },
+            }"
+            :command="command"
+            :data="data"
+        > \n
+            <span slot="image-left-header">
+                <i class="zmdi zmdi-collection-image"></i> More details
+            </span>
+        </sly-iw-gallery>
         </div>"""
 
     return template_str
@@ -324,7 +357,7 @@ class Visualizer:
             data=self._api.project.get_meta(id=self.dt_project_info.id)
         )
         res["projectMeta"] = self.dt_project_meta.to_json()
-        for basename in ["modal_general.json", "modal_extra.json"]:
+        for basename in ["modal_general.json", "modal_extra.json", "modal_general_diff.json"]:
             local_path = f"{self.layout_dir}/data/{basename}"
             with open(local_path, "w", encoding="utf-8") as f:
                 f.write(ujson.dumps(res))
