@@ -32,18 +32,6 @@ def generate_main_template(metric_visualizations: List):
             :data="data"
         /> \n
         <sly-iw-gallery
-            ref='modal_extra'
-            iw-widget-id='modal_extra'
-            :options="{'isModalWindow': true}"
-            :actions="{
-                'init': {
-                'dataSource': '/data/modal_extra.json',
-                },
-            }"
-            :command="command"
-            :data="data"
-        /> \n
-        <sly-iw-gallery
             ref='modal_general_diff'
             iw-widget-id='modal_general_diff'
             :options="{'isModalWindow': true}"
@@ -53,7 +41,7 @@ def generate_main_template(metric_visualizations: List):
                 },
                 'chart-click': {
                     'dataSource': '/data/gallery_explorer_grid_diff_data.json',
-                    'galleryId': 'modal_extra',
+                    'galleryId': 'modal_general',
                         'limit': 3,
                 },
             }"
@@ -127,7 +115,7 @@ template_gallery_str = """<sly-iw-gallery
                 'chart-click': {
                     'dataSource': '{{ gallery_diff_data_source }}',
                     'getKey':(payload)=>payload['annotation']['image_id'],
-                    'galleryId': 'modal_extra',
+                    'galleryId': 'modal_general',
                         'limit': 3,
                 },
                 {% endif %}
