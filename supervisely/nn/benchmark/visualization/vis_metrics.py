@@ -219,17 +219,14 @@ class ModelPredictions(MetricVis):
 
     def get_table(self, widget: Widget.Table) -> dict:
         res = {}
-        api = self._loader._api
-        gt_project_id = self._loader.gt_project_info.id
         dt_project_id = self._loader.dt_project_info.id
-        diff_project_id = self._loader.diff_project_info.id
-        gt_dataset = api.dataset.get_list(gt_project_id)[0]
-        dt_dataset = api.dataset.get_list(dt_project_id)[0]
-        diff_dataset = api.dataset.get_list(diff_project_id)[0]
 
-        tmp = api.image.get_list(dataset_id=dt_dataset.id)
+        tmp = set()
+        for dt_dataset in self._loader._api.dataset.get_list(dt_project_id):
+            names = [x.name for x in self._loader._api.image.get_list(dt_dataset.id)]
+            tmp.update(names)
         df = self._loader.mp.prediction_table().round(2)
-        df = df[df["image_name"].isin([x.name for x in tmp])]
+        df = df[df["image_name"].isin(tmp)]
         columns_options = [{}] * len(df.columns)
         for idx, col in enumerate(columns_options):
             if idx == 0:
@@ -243,7 +240,7 @@ class ModelPredictions(MetricVis):
         res["content"] = []
 
         key_mapping = {}
-        for old, new in zip(ImageInfo._fields, api.image.info_sequence()):
+        for old, new in zip(ImageInfo._fields, self._loader._api.image.info_sequence()):
             key_mapping[old] = new
 
         self._row_ids = []

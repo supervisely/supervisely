@@ -150,7 +150,7 @@ class Visualizer:
             data=self._api.project.get_meta(id=self.dt_project_info.id)
         )
         res["projectMeta"] = self.dt_project_meta.to_json()
-        for basename in ["modal_general.json", "modal_extra.json", "modal_general_diff.json"]:
+        for basename in ["modal_general.json", "modal_general_diff.json"]:
             local_path = f"{self.layout_dir}/data/{basename}"
             with open(local_path, "w", encoding="utf-8") as f:
                 f.write(ujson.dumps(res))
@@ -302,11 +302,14 @@ class Visualizer:
         names_map = {}
         pred_images_map = {}
         pred_anns_map = {}
+        total = 0
 
         for dataset in pred_project.datasets:
             dataset: Dataset
-            image_names = dataset.get_items_names()
-            infos = [dataset.get_item_info(name) for name in image_names]
+            infos = [dataset.get_item_info(name) for name in dataset.get_items_names()]
+            infos = sorted(infos, key=lambda info: info.id)
+            image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
+            total += len(image_names)
 
             pred_images_map[dataset.name] = infos
             names_map[dataset.name] = image_names
@@ -322,46 +325,47 @@ class Visualizer:
         outcome_tag = meta.get_tag_meta("outcome")
         conf_meta = meta.get_tag_meta("confidence")
 
-        with tqdm_sly(
-            desc="Creating diff_project", total=sum([len(x) for x in gt_anns_map.values()])
-        ) as pbar1:
-            with tqdm_sly(
-                desc="Updating pred_project", total=sum([len(x) for x in gt_anns_map.values()])
-            ) as pbar2:
+        pred_tag_list = []
+        pbar = tqdm_sly(desc="Creating diff_project", total=total)
+        for dataset in self._api.dataset.get_list(self.diff_project_info.id):
+            diff_anns_new, dt_anns_new = [], []
 
-                for dataset in self._api.dataset.get_list(self.diff_project_info.id):
-                    diff_anns_new, dt_anns_new = [], []
+            for gt_ann, dt_ann in zip(gt_anns_map[dataset.name], pred_anns_map[dataset.name]):
+                labels = []
+                for label in dt_ann.labels:
+                    # match_tag_id = label.tags.get("matched_gt_id")
+                    match_tag_id = matched_id_map.get(label.geometry.sly_id)
 
-                    for gt_ann, dt_ann in zip(
-                        gt_anns_map[dataset.name], pred_anns_map[dataset.name]
+                    value = "TP" if match_tag_id else "FP"
+                    label = label.add_tag(Tag(outcome_tag, value))
+                    labels.append(label)
+
+                    pred_tag_list.append(
+                        {
+                            "tagId": outcome_tag.sly_id,
+                            "figureId": label.geometry.sly_id,
+                            "value": value,
+                        }
+                    )
+
+                for label in gt_ann.labels:
+                    if label.geometry.sly_id not in matched_gt_ids and isinstance(
+                        label.geometry, Rectangle
                     ):
-                        labels = []
-                        for label in dt_ann.labels:
-                            # match_tag_id = label.tags.get("matched_gt_id")
-                            match_tag_id = matched_id_map.get(label.geometry.sly_id)
+                        label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
+                        labels.append(label)
 
-                            value = "TP" if match_tag_id else "FP"
-                            label = label.add_tag(Tag(outcome_tag, value))
-                            labels.append(label)
+                diff_anns_new.append(Annotation(gt_ann.img_size, labels))
 
-                        dt_anns_new.append(Annotation(gt_ann.img_size, labels))
+            pred_img_ids = [x.id for x in pred_images_map[dataset.name]]
+            # self._api.annotation.upload_anns(pred_img_ids, dt_anns_new, progress_cb=pbar2)
 
-                        for label in gt_ann.labels:
-                            if label.geometry.sly_id not in matched_gt_ids and isinstance(
-                                label.geometry, Rectangle
-                            ):
-                                label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
-                                labels.append(label)
+            diff_images = self._api.image.copy_batch(dataset.id, pred_img_ids)
 
-                        diff_anns_new.append(Annotation(gt_ann.img_size, labels))
+            diff_img_ids = [image.id for image in diff_images]
+            self._api.annotation.upload_anns(diff_img_ids, diff_anns_new, progress_cb=pbar.update)
 
-                    pred_img_ids = [x.id for x in pred_images_map[dataset.name]]
-                    self._api.annotation.upload_anns(pred_img_ids, dt_anns_new, progress_cb=pbar2)
-
-                    diff_images = self._api.image.copy_batch(dataset.id, pred_img_ids)
-
-                    diff_img_ids = [image.id for image in diff_images]
-                    self._api.annotation.upload_anns(diff_img_ids, diff_anns_new, progress_cb=pbar1)
+        self._api.image.tag.add_to_objects(self.dt_project_info.id, pred_tag_list)
 
         self._update_gt_dcts()
         self._update_diff_dcts()
