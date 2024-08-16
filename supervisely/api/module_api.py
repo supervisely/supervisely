@@ -546,6 +546,8 @@ class ApiField:
     """"""
     LABELING_EXAM_ID = "labelingExamId"
     """"""
+    INTEGER_COORDS = "integerCoords"
+    """"""
 
 
 def _get_single_item(items):
