@@ -1,9 +1,6 @@
-# pylint: disable=no-member
-# pylint: disable=not-an-iterable
-
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.visualization.visualizer import Visualizer
@@ -12,559 +9,13 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from jinja2 import Template
-from plotly.subplots import make_subplots
 
-import supervisely.nn.benchmark.visualization.vis_texts as contents
-from supervisely._utils import camel_to_snake, rand_str
 from supervisely.api.image_api import ImageInfo
-from supervisely.collection.str_enum import StrEnum
 from supervisely.nn.benchmark.cv_tasks import CVTask
+from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_texts import definitions
+from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 from supervisely.project.project_meta import ProjectMeta
-
-
-class classproperty:
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, owner):
-        return self.func(owner)
-
-
-# class CVTask(StrEnum):
-
-#     OBJECT_DETECTION: str = "object_detection"
-#     SEGMENTATION: str = "segmentation"
-
-
-template_markdown_str = """
-            <sly-iw-markdown
-              id="{{ widget_id }}"
-              class="markdown-no-border"
-              iw-widget-id="{{ widget_id }}"
-              :actions="{
-                'init': {
-                  'dataSource': '{{ data_source }}',
-                },
-              }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            />
-"""
-
-template_chart_str = """
-            <sly-iw-chart
-              iw-widget-id="{{ widget_id }}"{% if switchable %}
-              v-show="state.{{ radio_group }} === '{{ switch_key }}'"
-              {% endif %}:actions="{
-                'init': {
-                  'dataSource': '{{ init_data_source }}',
-                },{% if chart_click_data_source %}
-                'chart-click': {
-                  'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
-                  'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
-                  'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['pr_curve_by_class'] %}
-                  'getKey': (payload) => payload.points[0].data.legendgroup,{% endif %}{% if cls_name in ['per_class_avg_precision'] %}
-                  'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
-                  'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
-                  'keySeparator': '{{ key_separator }}',{% endif %}
-                  'galleryId': 'modal_general',
-                  'limit': 9
-                },{% endif %}
-              }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            />
-
-
-"""
-
-template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="{{ switch_key }}" style="margin-top: 10px;">{{ switch_key }}</el-radio>"""
-
-
-template_gallery_str = """<sly-iw-gallery
-              iw-widget-id="{{ widget_id }}"
-              {% if is_table_gallery %}
-              ref='{{ widget_id }}'
-              {% endif %}
-              :actions="{
-                'init': {
-                  'dataSource': '{{ init_data_source }}',
-                },
-                {% if gallery_diff_data_source %}
-                'chart-click': {
-                    'dataSource': '{{ gallery_diff_data_source }}',
-                    'getKey':(payload)=>payload['annotation']['image_id'],
-                    'galleryId': 'modal_extra',
-                        'limit': 3,
-                },
-                {% endif %}
-              }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            >
-                {% if gallery_diff_data_source %}
-                    <span slot="image-left-header">
-                        <i class="zmdi zmdi-collection-image"></i> More details
-                    </span>
-                {% endif %}
-            </sly-iw-gallery>
-
-              {% if gallery_click_data_source %}
-              <div style="display: flex; justify-content: center; margin-top:10px;" >                
-                <el-button iw-widget-id="btn-1" type="primary" @click="command({
-                  method: 'update-gallery',
-                  payload: {
-                    data: {
-                      'key': 'explore',
-                      'limit': 9,
-                      'dataSource': '{{ gallery_click_data_source }}',
-                    },
-                    'galleryId': 'modal_general_diff',
-                  },
-                  internalCommand: true
-                })">Explore all predictions</el-button>
-                </div> {% endif %}
-"""
-
-
-template_table_str = """<sly-iw-table
-                iw-widget-id="{{ widget_id }}"
-                style="cursor: pointer;"
-                :options="{ isRowClickable: true }" 
-                :actions="{
-                  'init': {
-                    'dataSource': '{{ init_data_source }}',
-                  },
-                  'chart-click': {
-                    'dataSource': '{{ table_click_data }}',
-                    'galleryId': '{{ table_gallery_id }}',                    
-                    'getKey':(payload)=>payload.row[0],
-                   },
-                }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            />"""
-
-template_notification_str = """
-            <sly-iw-notification              
-              iw-widget-id="{{ widget_id }}"
-              :data="{{ data }}"
-            >
-              <span slot="title">
-                {{ title }}
-              </span>
-
-              <span slot="description">
-                {{ description }}
-              </span>
-            </sly-iw-notification>"""
-
-
-class BaseWidget:
-    def __init__(self) -> None:
-        self.type = camel_to_snake(self.__class__.__name__)
-        self.id = f"{self.type}_{rand_str(5)}"
-        self.name = None
-
-
-class Widget:
-
-    class Collapse(BaseWidget):
-
-        def __init__(self, schema: Schema) -> None:
-            super().__init__()
-            self.schema = schema
-            res = "<el-collapse>"
-            for subwidget in schema:
-                res += f"""\n                <el-collapse-item title="{subwidget.title}">"""
-                res += "\n            {{ " + f"{subwidget.name}_html" + " }}"
-                res += "\n                </el-collapse-item>"
-            res += "\n            </el-collapse>"
-            self.template_schema = Template(res)
-
-    class Markdown(BaseWidget):
-
-        def __init__(
-            self, title: Optional[str] = None, is_header: bool = False, formats: list = []
-        ) -> None:
-            self.title = title
-            self.is_header = is_header
-            self.formats = formats
-            super().__init__()
-
-    class Notification(BaseWidget):
-
-        def __init__(self, formats_title: list = [], formats_desc: list = []) -> None:
-            self.title: str = None
-            self.description: str = None
-            self.formats_title: list = formats_title
-            self.formats_desc: list = formats_desc
-            super().__init__()
-
-    class Chart(BaseWidget):
-
-        def __init__(self, switch_key: Optional[str] = None) -> None:
-            self.switch_key = switch_key
-
-            from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
-                GridGalleryV2,
-            )
-
-            self.gallery = GridGalleryV2(
-                columns_number=3,
-                annotations_opacity=0.5,
-                border_width=4,
-                enable_zoom=False,
-                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
-                show_zoom_slider=False,
-            )
-
-            super().__init__()
-
-    class Table(BaseWidget):
-
-        def __init__(self) -> None:
-            from supervisely.app.widgets.fast_table.fast_table import FastTable
-
-            self.table = FastTable
-            self.gallery_id = None
-            super().__init__()
-
-    class Gallery(BaseWidget):
-
-        def __init__(self, is_table_gallery: bool = False) -> None:
-            from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
-                GridGalleryV2,
-            )
-
-            self.is_table_gallery = is_table_gallery
-
-            self.gallery = GridGalleryV2(
-                columns_number=3,
-                annotations_opacity=0.5,
-                border_width=4,
-                enable_zoom=False,
-                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "FP"}],
-                show_zoom_slider=False,
-            )
-
-            super().__init__()
-
-
-class Schema:
-
-    def __init__(self, **kw_widgets: Widget) -> None:
-        for argname, widget in kw_widgets.items():
-            widget.name = argname
-            if isinstance(widget, Widget.Notification):
-                widget.title = getattr(contents, argname)["title"]
-                widget.description = getattr(contents, argname)["description"]
-            setattr(self, argname, widget)
-
-    def __iter__(self) -> Iterator:
-        for attr in vars(self).values():
-            yield attr
-
-    def __getitem__(self, key) -> Widget:
-        return getattr(self, key)
-
-    def __repr__(self):
-        elements = ", ".join(f"{attr.name} ({attr.type})" for attr in self)
-        return f"Schema({elements})"
-
-
-class MetricVis:
-
-    def __init__(self, loader: Visualizer) -> None:
-
-        self.cv_tasks: List[CVTask] = CVTask.values()
-        self.clickable: bool = False
-        self.has_diffs_view: bool = False
-        self.switchable: bool = False
-        self.schema: Schema = None
-
-        self._loader = loader
-        self._template_markdown = Template(template_markdown_str)
-        self._template_chart = Template(template_chart_str)
-        self._template_radiogroup = Template(template_radiogroup_str)
-        self._template_gallery = Template(template_gallery_str)
-        self._template_table = Template(template_table_str)
-        self._template_notification = Template(template_notification_str)
-        self._keypair_sep = "-"
-
-    @property
-    def radiogroup_id(self) -> Optional[str]:
-        if self.switchable:
-            return f"radiogroup_" + self.name
-
-    @property
-    def template_sidebar_str(self) -> str:
-        res = ""
-        for widget in self.schema:
-            if isinstance(widget, Widget.Markdown):
-                if widget.title is not None and widget.is_header:
-                    res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{widget.id}'" """
-                    res += (
-                        """:style="{fontWeight: data.scrollIntoView==='"""
-                        + widget.id
-                        + """' ? 'bold' : 'normal'}"""
-                    )
-                    res += f""" ">{widget.title}</el-button>\n          </div>"""
-        return res
-
-    @property
-    def template_main_str(self) -> str:
-        res = ""
-        _is_before_chart = True
-
-        def _add_radio_buttons():
-            res = ""
-            for widget in self.schema:
-                if isinstance(widget, Widget.Chart):
-                    basename = f"{widget.name}_{self.name}"
-                    res += "\n            {{ " + f"el_radio_{basename}_html" + " }}"
-            return res
-
-        is_radiobuttons_added = False
-
-        for widget in self.schema:
-            if isinstance(widget, Widget.Chart):
-                _is_before_chart = False
-
-            if (
-                isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse))
-                and _is_before_chart
-            ):
-                res += "\n            {{ " + f"{widget.name}_html" + " }}"
-                continue
-
-            if isinstance(widget, (Widget.Chart, Widget.Gallery, Widget.Table)):
-                basename = f"{widget.name}_{self.name}"
-                if self.switchable and not is_radiobuttons_added:
-                    res += _add_radio_buttons()
-                    is_radiobuttons_added = True
-                res += "\n            {{ " + f"{basename}_html" + " }}"
-                if self.clickable:
-                    res += "\n            {{ " + f"{basename}_clickdata_html" + " }}"
-                continue
-
-            if (
-                isinstance(widget, (Widget.Markdown, Widget.Notification, Widget.Collapse))
-                and not _is_before_chart
-            ):
-                res += "\n            {{ " + f"{widget.name}_html" + " }}"
-                continue
-
-        return res
-
-    def get_html_snippets(self) -> dict:
-        res = {}
-        for widget in self.schema:
-            if isinstance(widget, Widget.Markdown):
-                res[f"{widget.name}_html"] = self._template_markdown.render(
-                    {
-                        "widget_id": widget.id,
-                        "data_source": f"/data/{widget.name}.md",
-                        "command": "command",
-                        "data": "data",
-                    }
-                )
-
-            if isinstance(widget, Widget.Collapse):
-                subres = {}
-                for subwidget in widget.schema:
-                    if isinstance(subwidget, Widget.Markdown):
-                        subres[f"{subwidget.name}_html"] = self._template_markdown.render(
-                            {
-                                "widget_id": subwidget.id,
-                                "data_source": f"/data/{subwidget.name}.md",
-                                "command": "command",
-                                "data": "data",
-                            }
-                        )
-                res[f"{widget.name}_html"] = widget.template_schema.render(**subres)
-                continue
-
-            if isinstance(widget, Widget.Notification):
-                res[f"{widget.name}_html"] = self._template_notification.render(
-                    {
-                        "widget_id": widget.id,
-                        "data": "data",
-                        "title": widget.title.format(*widget.formats_title),
-                        "description": widget.description.format(*widget.formats_desc),
-                    }
-                )
-
-            if isinstance(widget, Widget.Chart):
-                basename = f"{widget.name}_{self.name}"
-                if self.switchable:
-                    res[f"el_radio_{basename}_html"] = self._template_radiogroup.render(
-                        {
-                            "radio_group": self.radiogroup_id,
-                            "switch_key": widget.switch_key,
-                        }
-                    )
-                chart_click_path = f"/data/{basename}_click_data.json" if self.clickable else None
-                chart_modal_data_source = f"/data/modal_general.json" if self.clickable else None
-                res[f"{basename}_html"] = self._template_chart.render(
-                    {
-                        "widget_id": widget.id,
-                        "init_data_source": f"/data/{basename}.json",
-                        "chart_click_data_source": chart_click_path,
-                        "command": "command",
-                        "data": "data",
-                        "cls_name": self.name,
-                        "key_separator": self._keypair_sep,
-                        "switchable": self.switchable,
-                        "radio_group": self.radiogroup_id,
-                        "switch_key": widget.switch_key,
-                        "chart_modal_data_source": chart_modal_data_source,
-                    }
-                )
-            if isinstance(widget, Widget.Gallery):
-                basename = f"{widget.name}_{self.name}"
-                if widget.is_table_gallery:
-                    for w in self.schema:
-                        if isinstance(w, Widget.Table):
-                            w.gallery_id = widget.id
-
-                gallery_click_data_source = (
-                    f"/data/{basename}_click_data.json" if self.clickable else None
-                )
-                gallery_modal_data_source = (
-                    f"/data/{basename}_modal_data.json" if self.clickable else None
-                )
-                gallery_diff_data_source = (
-                    f"/data/{basename}_diff_data.json" if self.has_diffs_view else None
-                )
-                res[f"{basename}_html"] = self._template_gallery.render(
-                    {
-                        "widget_id": widget.id,
-                        "init_data_source": f"/data/{basename}.json",
-                        "command": "command",
-                        "data": "data",
-                        "is_table_gallery": widget.is_table_gallery,
-                        "gallery_click_data_source": gallery_click_data_source,
-                        "gallery_diff_data_source": gallery_diff_data_source,
-                        "gallery_modal_data_source": gallery_modal_data_source,
-                    }
-                )
-
-            if isinstance(widget, Widget.Table):
-                basename = f"{widget.name}_{self.name}"
-                res[f"{basename}_html"] = self._template_table.render(
-                    {
-                        "widget_id": widget.id,
-                        "init_data_source": f"/data/{basename}.json",
-                        "command": "command",
-                        "data": "data",
-                        "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
-                        "table_gallery_id": f"modal_extra",
-                    }
-                )
-
-        return res
-
-    @property
-    def name(self) -> str:
-        return camel_to_snake(self.__class__.__name__)
-
-    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
-        pass
-
-    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
-        if not self.clickable:
-            return
-        res = {}
-
-        res["layoutTemplate"] = [None, None, None]
-        res["clickData"] = {}
-        for key, v in self._loader.click_data.objects_by_class.items():
-            res["clickData"][key] = {}
-            res["clickData"][key]["imagesIds"] = []
-
-            tmp = set()
-
-            for x in v:
-                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
-
-            for img_id in tmp:
-                res["clickData"][key]["imagesIds"].append(img_id)
-
-            res["clickData"][key]["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
-                {"type": "tag", "tagId": "outcome", "value": "TP"},
-            ]
-
-        return res
-
-    def get_modal_data(self, widget: Widget.Chart) -> Optional[dict]:
-        res = {}
-        api = self._loader._api
-        gt_project_id = self._loader.gt_project_info.id
-        dt_project_id = self._loader.dt_project_info.id
-        diff_project_id = self._loader.diff_project_info.id
-        gt_dataset = api.dataset.get_list(gt_project_id)[0]
-        dt_dataset = api.dataset.get_list(dt_project_id)[0]
-        diff_dataset = api.dataset.get_list(diff_project_id)[0]
-        gt_image_infos = api.image.get_list(dataset_id=gt_dataset.id)[:3]
-        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id)[:3]
-        diff_image_infos = api.image.get_list(dataset_id=diff_dataset.id)[:3]
-        project_metas = [
-            ProjectMeta.from_json(data=api.project.get_meta(id=x))
-            for x in [gt_project_id, dt_project_id, diff_project_id]
-        ]
-        for gt_image, pred_image, diff_image in zip(
-            gt_image_infos, pred_image_infos, diff_image_infos
-        ):
-            image_infos = [gt_image, pred_image, diff_image]
-            ann_infos = [api.annotation.download(x.id) for x in image_infos]
-
-            for idx, (image_info, ann_info, project_meta) in enumerate(
-                zip(image_infos, ann_infos, project_metas)
-            ):
-                image_name = image_info.name
-                image_url = image_info.full_storage_url
-                is_ignore = True if idx in [0, 1] else False
-                widget.gallery.append(
-                    title=image_name,
-                    image_url=image_url,
-                    annotation_info=ann_info,
-                    column_index=idx,
-                    project_meta=project_meta,
-                    ignore_tags_filtering=is_ignore,
-                )
-
-        res.update(widget.gallery.get_json_state())
-        res.update(widget.gallery.get_json_data()["content"])
-        res["layoutData"] = res.pop("annotations")
-        res["projectMeta"] = project_metas[0].to_json()
-
-        res.pop("layout")
-        res.pop("layoutData")
-
-        return res
-
-    def get_table(self, widget: Widget.Table) -> Optional[dict]:
-        pass
-
-    def get_gallery(self, widget: Widget.Gallery) -> Optional[dict]:
-        pass
-
-    def get_gallery_click_data(self, widget: Widget.Gallery) -> Optional[dict]:
-        pass
-
-    def get_diff_gallery_data(self, widget: Widget.Gallery) -> Optional[dict]:
-        pass
-
-    def get_md_content(self, widget: Widget.Markdown):
-        return getattr(contents, widget.name).format(*widget.formats)
-
-    def initialize_formats(self, loader: Visualizer, widget: Widget):
-        pass
 
 
 class Overview(MetricVis):
@@ -663,13 +114,14 @@ class ExplorerGrid(MetricVis):
     def _get_gallery(self, widget: Widget.Gallery, limit: Optional[int] = None) -> dict:
         res = {}
         api = self._loader._api
-        dt_project_id = self._loader.dt_project_info.id
-        dt_dataset = api.dataset.get_list(dt_project_id)[0]
-        pred_image_infos = api.image.get_list(dataset_id=dt_dataset.id, limit=limit)
-        project_meta = ProjectMeta.from_json(api.project.get_meta(dt_project_id))
-        # is_ignore = [True, ["outcome"], False]
-        for idx, pred_image in enumerate(pred_image_infos):
-            ann_info = api.annotation.download(pred_image.id)
+        pred_project_id = self._loader.dt_project_info.id
+        pred_dataset = api.dataset.get_list(pred_project_id)[0]
+        project_meta = ProjectMeta.from_json(api.project.get_meta(pred_project_id))
+        pred_image_infos = api.image.get_list(dataset_id=pred_dataset.id, limit=limit)
+        pred_image_ids = [x.id for x in pred_image_infos]
+        ann_infos = api.annotation.download_batch(pred_dataset.id, pred_image_ids)
+
+        for idx, (pred_image, ann_info) in enumerate(zip(pred_image_infos, ann_infos)):
             image_name = pred_image.name
             image_url = pred_image.full_storage_url
             widget.gallery.append(
@@ -682,13 +134,20 @@ class ExplorerGrid(MetricVis):
             )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
+        object_bindings = res.pop("objectBindings")
+        for binding in object_bindings:
+            for obj in binding:
+                obj["annotationKey"] = res["annotations"][obj["annotationKey"]]["annotation"][
+                    "image_id"
+                ]
+        res["objectBindings"] = object_bindings
         res["layoutData"] = res.pop("annotations")
         res["projectMeta"] = project_meta.to_json()
 
         return res
 
     def get_gallery(self, widget: Widget.Gallery):
-        return self._get_gallery(widget, limit=6)
+        return self._get_gallery(widget, limit=8)
 
     def get_gallery_click_data(self, widget: Widget.Gallery):
         res = {}
@@ -708,7 +167,7 @@ class ExplorerGrid(MetricVis):
 
         return res
 
-    def get_diff_gallery_data(self, widget: Widget.Table) -> Optional[dict]:
+    def get_diff_gallery_data(self, widget: Widget.Gallery) -> Optional[dict]:
         res = {}
 
         res["layoutTemplate"] = [
@@ -723,6 +182,7 @@ class ExplorerGrid(MetricVis):
         l2 = list(self._loader.dt_images_dct.values())
         l3 = list(self._loader.diff_images_dct.values())
 
+        # f1_optimal_conf, best_f1 = self._loader.mp.m_full.get_f1_optimal_conf()
         default_filters = [
             {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
             {"type": "tag", "tagId": "outcome", "value": "FP"},
@@ -1908,6 +1368,8 @@ class OverallErrorAnalysis(MetricVis):
         self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
 
     def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
+        from plotly.subplots import make_subplots
+
         fig = make_subplots(
             rows=1,
             cols=3,
@@ -2036,3 +1498,30 @@ class ClasswiseErrorAnalysis(MetricVis):
             },
         )
         return fig
+
+
+ALL_METRICS = (
+    Overview,
+    ExplorerGrid,
+    ModelPredictions,
+    # # WhatIs,
+    OutcomeCounts,
+    Recall,
+    Precision,
+    RecallVsPrecision,
+    PRCurve,
+    PRCurveByClass,
+    ConfusionMatrix,
+    FrequentlyConfused,
+    IOUDistribution,
+    ReliabilityDiagram,
+    ConfidenceScore,
+    F1ScoreAtDifferentIOU,
+    ConfidenceDistribution,
+    PerClassAvgPrecision,
+    PerClassOutcomeCounts,
+    # segmentation-only
+    # # TODO integrate binary files while saving to self.layout_dir to the current solution
+    # OverallErrorAnalysis,
+    # ClasswiseErrorAnalysis,
+)
