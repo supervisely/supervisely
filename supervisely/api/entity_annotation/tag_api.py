@@ -283,11 +283,15 @@ class TagApi(ModuleApi):
         """
         For images project:
             Add Tags to existing Annotation Figures (labels).
-            The `tags_list` example: [{"tagId": 12345, "figureId": 54321, "value": "tag_value"}, ...].
+            The `tags_list` example:
+                [{"tagId": 12345, "figureId": 54321, "value": "tag_value"}, ...].
         For video, pointcloud, volume and pointcloud episodes projects:
             Add Tags to existing Annotation Objects.
             The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
-            The `tags_list`` example: [{"tagId": 12345, "objectId": 54321, "value": "tag_value"}, ...].
+            The `tags_list`` example:
+                [{"tagId": 12345, "objectId": 54321, "value": "tag_value"}, ...].
+            or with frameRange:
+                [{"tagId": 12345, "objectId": 54321, "value": "tag_value", "frameRange": [1, 10]}, ...].
 
         All objects must belong to entities of the same project.
 
@@ -300,7 +304,7 @@ class TagApi(ModuleApi):
         :param log_progress: If True, will display a progress bar.
         :type log_progress: bool
         :return: List of tags infos as dictionaries.
-        :rtype: List[dict]
+        :rtype: List[Dict[str, Union[str, int, None]]]
 
         Usage example:
         .. code-block:: python
@@ -313,7 +317,8 @@ class TagApi(ModuleApi):
                 {
                     "tagId": 25926,
                     "figureId": 652959,
-                    "value": None # value is optional for tag with type 'None'
+                    "value": None # optional for tag with type 'None'
+                    "frameRange": [1, 10] # optional (supported only for video and pointcloud episodes projects)
                 },
                 {
                     "tagId": 25927,
@@ -323,7 +328,7 @@ class TagApi(ModuleApi):
                 {
                     "tagId": 25927,
                     "figureId": 652958,
-                    "value": "v2"
+                    "value": "v2",
                 }
             ]
             response = api.image.tag.add_to_figures(12345, tag_list)
@@ -383,9 +388,12 @@ class TagApi(ModuleApi):
         Bulk add tags to entities (images, videos, pointclouds, volumes) in a project.
         Not supported for pointcloud episodes projects.
         All entities must belong to the same project.
-        The `frameRange` field in the tags list is optional and is supported only for video projects.
+        The `frameRange` field in a tag object within the tags list is optional and is supported only for video projects.
 
-        `tags_list` example: [{"tagId": 12345, "entityId": 54321, "value": "tag_value"}, ...].
+        The `tags_list` example:
+            [{"tagId": 12345, "entityId": 54321, "value": "tag_value"}, ...].
+        or with frameRange:
+            [{"tagId": 12345, "entityId": 54321, "value": "tag_value", "frameRange": [1, 10]}, ...].
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
@@ -409,7 +417,8 @@ class TagApi(ModuleApi):
                 {
                     "tagId": 25926,
                     "entityId": 652959,
-                    "value": None # value is optional for tag with type 'None'
+                    "value": None # optional for tag with type 'None'
+                    "frameRange": [1, 10] # optional (supported only for video projects)
                 },
                 {
                     "tagId": 25927,

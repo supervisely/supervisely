@@ -2740,11 +2740,11 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         image_ids: List[int],
         tag_ids: Union[int, List[int]],
-        values: Optional[Union[str, int, List[Union[str, int]]]] = None,
+        values: Optional[Union[str, int, List[Union[str, int, None]]]] = None,
         log_progress: bool = False,
         batch_size: Optional[int] = 100,
         tag_metas: Optional[Union[TagMeta, List[TagMeta]]] = None,
-    ) -> None:
+    ) -> List[int]:
         """
         Add tag with given ID to Images by IDs with different values.
 
@@ -2760,8 +2760,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param tag_metas: Tag Metas. Needed for values validation, omit to skip validation
         :type tag_metas: TagMeta or List[TagMeta], optional
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :return: List of tags IDs.
+        :rtype: List[int]
         :Usage example:
 
          .. code-block:: python
