@@ -21,12 +21,10 @@ markdown_overview = """# {}
 ## Overview
 
 - **Architecture**: {}
-- **Year**: 2023
-- **Authors**: ultralytics
 - **Task type**: {}
 - **Runtime**: {}
 - **Hardware**: {}
-- [Checkpoint URL]({})
+- **Checkpoint URL**: [{}]({})
 """
 # - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
