@@ -9,6 +9,7 @@ from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.cuboid import Cuboid
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_3d import Point3d
@@ -31,6 +32,7 @@ type_to_shape_text = {
     Point3d: "point 3d",  # "zmdi zmdi-select-all"
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
+    Mask3D: "3d mask",
 }
 
 
