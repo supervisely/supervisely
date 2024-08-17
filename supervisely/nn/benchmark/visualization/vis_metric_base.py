@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, List, Optional
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 
-import plotly.graph_objects as go
 from jinja2 import Template
 
 import supervisely.nn.benchmark.visualization.vis_texts as contents
@@ -219,7 +218,7 @@ class MetricVis:
     def name(self) -> str:
         return camel_to_snake(self.__class__.__name__)
 
-    def get_figure(self, widget: Widget.Chart) -> Optional[go.Figure]:
+    def get_figure(self, widget: Widget.Chart): # -> Optional[go.Figure]:
         pass
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
