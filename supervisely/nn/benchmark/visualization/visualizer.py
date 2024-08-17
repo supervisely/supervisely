@@ -26,7 +26,8 @@ from supervisely.nn.benchmark.evaluation.object_detection.metric_provider import
     MetricProvider,
 )
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
-from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS, MetricVis
+from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
+from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
 from supervisely.nn.benchmark.visualization.vis_templates import generate_main_template
 from supervisely.nn.benchmark.visualization.vis_widgets import Widget
 from supervisely.project.project_meta import ProjectMeta
@@ -324,11 +325,12 @@ class Visualizer:
 
         outcome_tag = meta.get_tag_meta("outcome")
         conf_meta = meta.get_tag_meta("confidence")
+        match_tag = meta.get_tag_meta("matched_gt_id")
 
         pred_tag_list = []
         pbar = tqdm_sly(desc="Creating diff_project", total=total)
         for dataset in self._api.dataset.get_list(self.diff_project_info.id):
-            diff_anns_new, dt_anns_new = [], []
+            diff_anns_new = []
 
             for gt_ann, dt_ann in zip(gt_anns_map[dataset.name], pred_anns_map[dataset.name]):
                 labels = []
@@ -338,6 +340,8 @@ class Visualizer:
 
                     value = "TP" if match_tag_id else "FP"
                     label = label.add_tag(Tag(outcome_tag, value))
+                    if not match_tag_id:
+                        label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
                     labels.append(label)
 
                     pred_tag_list.append(
@@ -349,11 +353,10 @@ class Visualizer:
                     )
 
                 for label in gt_ann.labels:
-                    if label.geometry.sly_id not in matched_gt_ids and isinstance(
-                        label.geometry, Rectangle
-                    ):
-                        label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
-                        labels.append(label)
+                    if label.geometry.sly_id not in matched_gt_ids:
+                        if self._is_label_compatible_to_cv_task(label):
+                            label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
+                            labels.append(label)
 
                 diff_anns_new.append(Annotation(gt_ann.img_size, labels))
 
@@ -385,11 +388,15 @@ class Visualizer:
         datasets = self._api.dataset.get_list(self.diff_project_info.id)
         self.diff_images_dct = {}
         self.diff_images_dct_by_name = {}
+        self.diff_ann_jsons = {}
         for d in datasets:
             images = self._api.image.get_list(d.id)
             for info in images:
                 self.diff_images_dct[info.id] = info
                 self.diff_images_dct_by_name[info.name] = info
+
+            diff_anns = self._api.annotation.download_batch(d.id, [x.id for x in images])
+            self.diff_ann_jsons.update({ann.image_id: ann.annotation for ann in diff_anns})
 
     def _update_pred_dcts(self):
         datasets = self._api.dataset.get_list(self.dt_project_info.id)
@@ -495,3 +502,8 @@ class Visualizer:
             if match["type"] == "TP":
                 dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
         return dtId2matched_gt_id
+
+    def _is_label_compatible_to_cv_task(self, label):
+        if self.cv_task == CVTask.OBJECT_DETECTION:
+            return isinstance(label.geometry, Rectangle)
+        return False
