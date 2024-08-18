@@ -45,13 +45,6 @@ class ExplorerGrid(MetricVis):
             )
         res.update(widget.gallery.get_json_state())
         res.update(widget.gallery.get_json_data()["content"])
-        object_bindings = res.pop("objectBindings")
-        for binding in object_bindings:
-            for obj in binding:
-                obj["annotationKey"] = res["annotations"][obj["annotationKey"]]["annotation"][
-                    "image_id"
-                ]
-        res["objectBindings"] = object_bindings
         res["layoutData"] = res.pop("annotations")
         res["projectMeta"] = project_meta.to_json()
 
