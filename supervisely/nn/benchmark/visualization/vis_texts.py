@@ -15,6 +15,13 @@ definitions = SimpleNamespace(
 
 checkpoint_name = "YOLOv8-L (COCO 2017 val)"
 
+clickable_label = """
+<i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
+  <span style="color: #5a6772">
+    Click on the chart to explore corresponding images.
+  </span>
+</div>
+"""
 
 markdown_overview = """# {}
 
@@ -102,8 +109,7 @@ markdown_outcome_counts = """## Outcome Counts
 
 This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
 
 markdown_R = """## Recall
 
@@ -125,8 +131,7 @@ Since the overall recall is calculated as an average across all classes, we prov
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
 
 
 markdown_P = """## Precision
@@ -149,8 +154,7 @@ Since the overall precision is computed as an average across all classes, we pro
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
 
 
 markdown_PR = """## Recall vs. Precision
@@ -159,7 +163,11 @@ This section compares Precision and Recall on a common graph, identifying **disb
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
+<i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
+  <span style="color: #5a6772">
+    Click on the chart to explore corresponding images.
+  </span>
+</div>
 """
 
 
@@ -186,8 +194,7 @@ markdown_pr_by_class = """### Precision-Recall Curve by Class
 
 In this plot, you can evaluate PR curve for each class individually.
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
 
 markdown_confusion_matrix = """## Confusion Matrix
 
@@ -207,8 +214,7 @@ The chart calculates the **probability of confusion** between different pairs of
 
 The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
 
 
 markdown_localization_accuracy = """## Localization Accuracy (IoU)
@@ -309,13 +315,13 @@ markdown_class_ap = """## Average Precision by Class
 
 A quick visual comparison of the model performance across all classes. Each axis in the chart represents a different class, and the distance to the center indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class.
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
 
 
 markdown_class_outcome_counts_1 = """### Outcome Counts by Class
 
 This chart breaks down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN) by classes. This helps to visually assess the type of errors the model often encounters for each class.
+
 """
 
 markdown_normalization = "By default, the normalization is used for better intraclass comparison. The total outcome counts are divided by the number of ground truth instances of the corresponding class. This is useful, because the sum of TP + FN always gives 1.0, representing all ground truth instances for a class, that gives a visual understanding of what portion of instances the model detected. So, if a green bar (TP outcomes) reaches the 1.0, this means the model is managed to predict all objects for the class. Everything that is higher than 1.0 corresponds to False Positives, i.e, redundant predictions. You can turn off the normalization switching to absolute values."
@@ -324,5 +330,4 @@ markdown_class_outcome_counts_2 = """You can switch the plot view between normal
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
-"""
+""" + clickable_label
