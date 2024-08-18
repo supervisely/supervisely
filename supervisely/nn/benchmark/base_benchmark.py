@@ -379,13 +379,14 @@ class BaseBenchmark:
 
         # self.api.file.remove_dir(self.team_id, dest_dir, silent=True)
 
+        remote_dir = dest_dir
         with tqdm_sly(
             desc="Uploading layout",
             total=get_directory_size(layout_dir),
             unit="B",
             unit_scale=True,
         ) as pbar:
-            self.api.file.upload_directory(
+            remote_dir = self.api.file.upload_directory(
                 self.team_id,
                 layout_dir,
                 dest_dir,
@@ -394,4 +395,21 @@ class BaseBenchmark:
                 progress_size_cb=pbar,
             )
 
-        logger.info(f"Uploaded to: {dest_dir!r}")
+        logger.info(f"Uploaded to: {remote_dir!r}")
+
+        return remote_dir
+
+    def save_reporn_link(self, remote_dir: str):
+        template_path = os.path.join(remote_dir, "template.vue")
+        vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
+
+        report_link = self.api.server_address + "/model-benchmark?id=" + str(vue_template_info.id)
+        local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")
+        with open(local_path, "w") as file:
+            file.write(report_link)
+
+        remote_path = os.path.join(remote_dir, "open.lnk")
+        file_info = self.api.file.upload(self.team_id, local_path, remote_path)
+
+        logger.info(f"Report link: {report_link}")
+        return file_info
