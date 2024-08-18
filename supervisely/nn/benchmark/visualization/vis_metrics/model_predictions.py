@@ -85,9 +85,52 @@ class ModelPredictions(MetricVis):
         l2 = list(self._loader.dt_images_dct.values())
         l3 = list(self._loader.diff_images_dct.values())
 
-        for gt, pred, diff in zip(l1, l2, l3):
+        pred_anns = self._loader.dt_ann_jsons  # {image_id: ann_json}
+        diff_anns = self._loader.diff_ann_jsons  # {image_id: ann_json}
+
+        for gt, pred, diff, pred_ann, diff_ann in zip(
+            l1, l2, l3, pred_anns.items(), diff_anns.items()
+        ):
+            assert gt.name == pred.name == diff.name
             key = click_data.setdefault(str(pred.name), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
+            image_id, ann_json = pred_ann
+            assert image_id == pred.id
+            object_bindings = []
+            for obj in ann_json["objects"]:
+                for tag in obj["tags"]:
+                    if tag["name"] == "matched_gt_id":
+                        object_bindings.append(
+                            [
+                                {
+                                    "id": obj["id"],
+                                    "annotationKey": image_id,
+                                },
+                                {
+                                    "id": int(tag["value"]),
+                                    "annotationKey": gt.id,
+                                },
+                            ]
+                        )
+
+            image_id, ann_json = diff_ann
+            assert image_id == diff.id
+            for obj in ann_json["objects"]:
+                for tag in obj["tags"]:
+                    if tag["name"] == "matched_gt_id":
+                        object_bindings.append(
+                            [
+                                {
+                                    "id": obj["id"],
+                                    "annotationKey": image_id,
+                                },
+                                {
+                                    "id": int(tag["value"]),
+                                    "annotationKey": pred.id,
+                                },
+                            ]
+                        )
+            key["objectsBindings"] = object_bindings
 
         return res
