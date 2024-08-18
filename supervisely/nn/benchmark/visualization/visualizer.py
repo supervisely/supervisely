@@ -56,9 +56,11 @@ class Visualizer:
         self.dt_project_meta = ProjectMeta.from_json(
             data=self._api.project.get_meta(id=self.dt_project_info.id)
         )
+        self._docs_link = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_object_detection_loader()
+            self.docs_link = self._docs_link + CVTask.OBJECT_DETECTION.value.replace("_", "-")
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
