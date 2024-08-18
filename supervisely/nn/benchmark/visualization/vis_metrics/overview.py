@@ -31,6 +31,8 @@ class Overview(MetricVis):
                     info.get("hardware"),
                     info.get("deploy_params", {}).get("checkpoint_url"),
                     info.get("deploy_params", {}).get("checkpoint_url"),
+                    self._loader.docs_link,
+                    self._loader.docs_link,
                 ],
             ),
             markdown_key_metrics=Widget.Markdown(
