@@ -14,7 +14,9 @@ def generate_main_template(metric_visualizations: List):
         <div style="padding: 0 15px;">"""
 
     for vis in metric_visualizations:
+        template_str += """\n                <div style="margin-top: 20px;">"""
         template_str += vis.template_main_str
+        template_str += """\n                </div>"""
 
     template_str += "\n        </div>\n    </sly-iw-sidebar>"
 
