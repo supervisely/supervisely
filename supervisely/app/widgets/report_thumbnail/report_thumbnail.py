@@ -25,8 +25,8 @@ class ReportThumbnail(Widget):
             "description": self._description,
             "icon": {
                 "className": "zmdi zmdi-assignment",
-                "color": "#674EA7",
-                "bgColor": "#CCCCFF",
+                "color": "#dcb0ff",
+                "bgColor": "#faebff",
             },
         }
 
