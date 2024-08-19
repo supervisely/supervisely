@@ -51,7 +51,7 @@ def generate_main_template(metric_visualizations: List):
             :data="data"
         > \n
             <span slot="image-left-header">
-                <i class="zmdi zmdi-collection-image"></i> More details
+                <i class="zmdi zmdi-collection-image"></i> Compare with GT
             </span>
         </sly-iw-gallery>
         </div>"""
@@ -127,7 +127,7 @@ template_gallery_str = """<sly-iw-gallery
             >
                 {% if gallery_diff_data_source %}
                     <span slot="image-left-header">
-                        <i class="zmdi zmdi-collection-image"></i> More details
+                        <i class="zmdi zmdi-collection-image"></i> Compare with GT
                     </span>
                 {% endif %}
             </sly-iw-gallery>
