@@ -41,7 +41,8 @@ class OutcomeCounts(MetricVis):
                 name="TP",
                 orientation="h",
                 marker=dict(color="#1fb466"),
-                hovertext=f"TP: {self._loader.mp.TP_count} images",
+                # hovertext=f"TP: {self._loader.mp.TP_count} images",
+                hovertemplate="TP: %{x} images<extra></extra>",
             )
         )
         fig.add_trace(
@@ -51,7 +52,8 @@ class OutcomeCounts(MetricVis):
                 name="FN",
                 orientation="h",
                 marker=dict(color="#dd3f3f"),
-                hovertext=f"FN: {self._loader.mp.FN_count} images",
+                # hovertext=f"FN: {self._loader.mp.FN_count} images",
+                hovertemplate="FN: %{x} images<extra></extra>",
             )
         )
         fig.add_trace(
@@ -61,7 +63,8 @@ class OutcomeCounts(MetricVis):
                 name="FP",
                 orientation="h",
                 marker=dict(color="#d5a5a5"),
-                hovertext=f"FP: {self._loader.mp.FP_count} images",
+                # hovertext=f"FP: {self._loader.mp.FP_count} images",
+                hovertemplate="FP: %{x} images<extra></extra>",
             )
         )
         fig.update_layout(
