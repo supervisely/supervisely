@@ -48,7 +48,7 @@ class Overview(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  #  -> Optional[go.Figure]
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go # pylint: disable=import-error
 
         # Overall Metrics
         base_metrics = self._loader.mp.base_metrics()

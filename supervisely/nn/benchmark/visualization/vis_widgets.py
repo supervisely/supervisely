@@ -7,28 +7,9 @@ from jinja2 import Template
 import supervisely.nn.benchmark.visualization.vis_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
 
-# need to update typing of Schema class as it is iterable
 
-class SchemaMeta(type):
-    def __new__(cls, name, bases, dct):
-        def __iter__(self):
-            for attr in vars(self).values():
-                yield attr
+class Schema:
 
-        def __getitem__(self, key):
-            return getattr(self, key)
-
-        def __repr__(self):
-            elements = ", ".join(f"{attr.name} ({attr.type})" for attr in self)
-            return f"Schema({elements})"
-
-        dct["__iter__"] = __iter__
-        dct["__getitem__"] = __getitem__
-        dct["__repr__"] = __repr__
-
-        return super().__new__(cls, name, bases, dct)
-
-class Schema(metaclass=SchemaMeta):
     def __init__(self, **kw_widgets: Widget) -> None:
         for argname, widget in kw_widgets.items():
             widget.name = argname
@@ -36,6 +17,18 @@ class Schema(metaclass=SchemaMeta):
                 widget.title = getattr(contents, argname)["title"]
                 widget.description = getattr(contents, argname)["description"]
             setattr(self, argname, widget)
+
+    def __iter__(self) -> Iterator:
+        for attr in vars(self).values():
+            yield attr
+
+    def __getitem__(self, key) -> Widget:
+        return getattr(self, key)
+
+    def __repr__(self):
+        elements = ", ".join(f"{attr.name} ({attr.type})" for attr in self)
+        return f"Schema({elements})"
+
 
 class BaseWidget:
     def __init__(self) -> None:

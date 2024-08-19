@@ -49,7 +49,7 @@ class MetricVis:
     @property
     def template_sidebar_str(self) -> str:
         res = ""
-        for widget in self.schema:
+        for widget in self.schema:  # pylint: disable=not-an-iterable
             if isinstance(widget, Widget.Markdown):
                 if widget.title is not None and widget.is_header:
                     res += f"""\n          <div>\n            <el-button type="text" @click="data.scrollIntoView='{widget.id}'" """
@@ -68,7 +68,7 @@ class MetricVis:
 
         def _add_radio_buttons():
             res = ""
-            for widget in self.schema:
+            for widget in self.schema:  # pylint: disable=not-an-iterable
                 if isinstance(widget, Widget.Chart):
                     basename = f"{widget.name}_{self.name}"
                     res += "\n            {{ " + f"el_radio_{basename}_html" + " }}"
@@ -76,7 +76,7 @@ class MetricVis:
 
         is_radiobuttons_added = False
 
-        for widget in self.schema:
+        for widget in self.schema:  # pylint: disable=not-an-iterable
             if isinstance(widget, Widget.Chart):
                 _is_before_chart = False
 
@@ -108,7 +108,7 @@ class MetricVis:
 
     def get_html_snippets(self) -> dict:
         res = {}
-        for widget in self.schema:
+        for widget in self.schema:  # pylint: disable=not-an-iterable
             if isinstance(widget, Widget.Markdown):
                 res[f"{widget.name}_html"] = self._template_markdown.render(
                     {
@@ -173,7 +173,7 @@ class MetricVis:
             if isinstance(widget, Widget.Gallery):
                 basename = f"{widget.name}_{self.name}"
                 if widget.is_table_gallery:
-                    for w in self.schema:
+                    for w in self.schema:  # pylint: disable=not-an-iterable
                         if isinstance(w, Widget.Table):
                             w.gallery_id = widget.id
 

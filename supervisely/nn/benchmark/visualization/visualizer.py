@@ -66,7 +66,7 @@ class Visualizer:
         self.f1_optimal_conf = round((self.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)
 
     def _initialize_object_detection_loader(self):
-        from pycocotools.coco import COCO
+        from pycocotools.coco import COCO # pylint: disable=import-error
 
         cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
             self.eval_dir + "/cocoGt.json",
