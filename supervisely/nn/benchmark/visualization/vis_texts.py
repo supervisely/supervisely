@@ -15,11 +15,11 @@ definitions = SimpleNamespace(
 
 checkpoint_name = "YOLOv8-L (COCO 2017 val)"
 
+#   <span style="color: #5a6772">
+#   </span>
 clickable_label = """
 <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
-#   <span style="color: #5a6772">
-    <em>Click on the chart to explore corresponding images.</em>
-  </span>
+    Click on the chart to explore corresponding images.
 </div>
 """
 
@@ -32,7 +32,7 @@ markdown_overview = """# {}
 - **Runtime**: {}
 - **Hardware**: {}
 - **Checkpoint URL**: <a href="{}" target="_blank">{}</a>
-- Learn metrics details and how to use them in <a href="{}" target="_blank">technical report</a>.
+- Learn metrics details and how to use them in <a href="{}" target="_blank">technical report</a>
 """
 # - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
