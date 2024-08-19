@@ -15,12 +15,11 @@ definitions = SimpleNamespace(
 
 checkpoint_name = "YOLOv8-L (COCO 2017 val)"
 
-#   <span style="color: #5a6772">
-#   </span>
+# <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
 clickable_label = """
-<i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
+<span style="color: #5a6772">
     Click on the chart to explore corresponding images.
-</div>
+</span>
 """
 
 markdown_overview = """# {}

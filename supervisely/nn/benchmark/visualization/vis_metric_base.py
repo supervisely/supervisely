@@ -18,8 +18,8 @@ from supervisely.nn.benchmark.visualization.vis_templates import (
     template_radiogroup_str,
     template_table_str,
 )
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
+from supervisely.project.project_meta import ProjectMeta
 
 
 class MetricVis:
@@ -218,12 +218,19 @@ class MetricVis:
     def name(self) -> str:
         return camel_to_snake(self.__class__.__name__)
 
-    def get_figure(self, widget: Widget.Chart): # -> Optional[go.Figure]:
+    @property
+    def f1_optimal_conf(self) -> Optional[float]:
+        return self._loader.f1_optimal_conf
+
+    def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
         pass
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
         if not self.clickable:
             return
+
+        optimal_conf = round(self.f1_optimal_conf, 1)
+
         res = {}
 
         res["layoutTemplate"] = [None, None, None]
@@ -242,7 +249,7 @@ class MetricVis:
                 res["clickData"][key]["imagesIds"].append(img_id)
 
             res["clickData"][key]["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+                {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
                 {"type": "tag", "tagId": "outcome", "value": "TP"},
             ]
 

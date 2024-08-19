@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterator, Optional
+from typing import Iterator, List, Optional
 
 from jinja2 import Template
 
@@ -73,8 +73,11 @@ class Widget:
 
     class Chart(BaseWidget):
 
-        def __init__(self, switch_key: Optional[str] = None) -> None:
+        def __init__(
+            self, switch_key: Optional[str] = None, filters: Optional[List] = None
+        ) -> None:
             self.switch_key = switch_key
+            filters = filters or [{"confidence": [0.6, 1]}, {"outcome": "TP"}]
 
             from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
                 GridGalleryV2,
@@ -82,10 +85,10 @@ class Widget:
 
             self.gallery = GridGalleryV2(
                 columns_number=3,
-                annotations_opacity=0.5,
+                annotations_opacity=0.4,
                 border_width=4,
                 enable_zoom=False,
-                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+                default_tag_filters=filters,
                 show_zoom_slider=False,
             )
 
@@ -102,19 +105,20 @@ class Widget:
 
     class Gallery(BaseWidget):
 
-        def __init__(self, is_table_gallery: bool = False) -> None:
+        def __init__(self, is_table_gallery: bool = False, filters: Optional[List] = None) -> None:
             from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import (
                 GridGalleryV2,
             )
 
             self.is_table_gallery = is_table_gallery
+            filters = filters or [{"confidence": [0.6, 1]}]
 
             self.gallery = GridGalleryV2(
                 columns_number=3,
-                annotations_opacity=0.5,
+                annotations_opacity=0.4,
                 border_width=4,
                 enable_zoom=False,
-                default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "FP"}],
+                default_tag_filters=filters,
                 show_zoom_slider=False,
             )
 

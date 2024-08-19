@@ -64,6 +64,8 @@ class Visualizer:
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
+        self.f1_optimal_conf = round((self.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)
+
     def _initialize_object_detection_loader(self):
         from pycocotools.coco import COCO
 
@@ -140,10 +142,13 @@ class Visualizer:
                 self._write_json_files(mv, widget)
 
         res = {}
+        optimal_conf = round(self.f1_optimal_conf, 1)
         gallery = GridGalleryV2(
             columns_number=3,
             enable_zoom=False,
-            default_tag_filters=[{"confidence": [0.6, 1]}, {"outcome": "TP"}],
+            annotations_opacity=0.4,
+            border_width=4,
+            default_tag_filters=[{"confidence": [optimal_conf, 1]}],
             show_zoom_slider=False,
         )
         gallery._update_filters()
@@ -357,8 +362,8 @@ class Visualizer:
                 for label in gt_ann.labels:
                     if label.geometry.sly_id not in matched_gt_ids:
                         if self._is_label_compatible_to_cv_task(label):
-                            label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
-                            labels.append(label)
+                            new_label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
+                            labels.append(new_label)
 
                 diff_anns_new.append(Annotation(gt_ann.img_size, labels))
 

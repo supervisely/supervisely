@@ -72,12 +72,13 @@ class ModelPredictions(MetricVis):
         res["layoutTemplate"] = [
             {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
             {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
-            {"skipObjectTagsFiltering": False, "columnTitle": "Difference"},
+            {"skipObjectTagsFiltering": ["confidence"], "columnTitle": "Difference"},
         ]
         click_data = res.setdefault("clickData", {})
 
+        optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [0.6, 1]},
+            {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
             {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 
