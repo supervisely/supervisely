@@ -31,8 +31,8 @@ markdown_overview = """# {}
 - **Task type**: {}
 - **Runtime**: {}
 - **Hardware**: {}
-- **Checkpoint URL**: [{}]({})
-- **Technical details**: [{}]({})
+- **Checkpoint URL**: <a href="{}" target="_blank">{}</a>
+- Learn metrics details and how to use them in <a href="{}" target="_blank">technical report</a>.
 """
 # - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
