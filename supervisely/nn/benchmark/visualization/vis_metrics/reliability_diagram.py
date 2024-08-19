@@ -39,7 +39,7 @@ class ReliabilityDiagram(MetricVis):
         )
 
     def get_figure(self, widget: Widget):  # -> Optional[go.Figure]:
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         # Calibration curve (only positive predictions)
         true_probs, pred_probs = self._loader.mp.m_full.calibration_curve()

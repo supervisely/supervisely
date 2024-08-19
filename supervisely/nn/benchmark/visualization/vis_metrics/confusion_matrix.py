@@ -24,8 +24,7 @@ class ConfusionMatrix(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         confusion_matrix = self._loader.mp.confusion_matrix()
         # Confusion Matrix

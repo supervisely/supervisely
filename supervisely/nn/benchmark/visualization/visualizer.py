@@ -5,7 +5,6 @@ import pickle
 from typing import TYPE_CHECKING, Tuple
 
 import pandas as pd
-import ujson
 from jinja2 import Template
 
 from supervisely.annotation.annotation import Annotation
@@ -132,6 +131,8 @@ class Visualizer:
         self._objects_bindings = []
 
     def visualize(self):
+        import ujson # pylint: disable=import-error
+
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
 
         initialized = [mv(self) for mv in ALL_METRICS]
@@ -186,6 +187,7 @@ class Visualizer:
                 logger.info("Saved: %r", f"{subwidget.name}.md")
 
     def _write_json_files(self, mv: MetricVis, widget: Widget):
+        import ujson  # pylint: disable=import-error
 
         if isinstance(widget, Widget.Chart):
             fig = mv.get_figure(widget)

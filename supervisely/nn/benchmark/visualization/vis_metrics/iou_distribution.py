@@ -31,7 +31,7 @@ class IOUDistribution(MetricVis):
         )
 
     def get_figure(self, widget: Widget):  # -> Optional[go.Figure]:
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
         nbins = 40

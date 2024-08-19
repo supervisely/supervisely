@@ -30,8 +30,7 @@ class OutcomeCounts(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
-        # Outcome counts
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
         fig.add_trace(

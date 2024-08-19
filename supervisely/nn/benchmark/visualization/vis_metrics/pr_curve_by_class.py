@@ -22,8 +22,7 @@ class PRCurveByClass(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         # Precision-Recall curve per-class
         df = pd.DataFrame(self._loader.mp.pr_curve(), columns=self._loader.mp.cat_names)

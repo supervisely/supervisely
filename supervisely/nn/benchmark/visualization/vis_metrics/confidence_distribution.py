@@ -29,7 +29,7 @@ class ConfidenceDistribution(MetricVis):
         )
 
     def get_figure(self, widget: Widget):  # -> Optional[go.Figure]:
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         f1_optimal_conf, best_f1 = self._loader.mp.m_full.get_f1_optimal_conf()
 

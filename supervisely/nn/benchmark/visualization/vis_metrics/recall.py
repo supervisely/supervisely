@@ -27,8 +27,7 @@ class Recall(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  #  -> Optional[go.Figure]
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         # Per-class Precision bar chart
         # per_class_metrics_df_sorted = per_class_metrics_df.sort_values(by="recall")

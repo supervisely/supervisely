@@ -42,7 +42,7 @@ class FrequentlyConfused(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[Tuple[go.Figure]]:
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         # Frequency of confusion as bar chart
         confused_df = self._loader.mp.frequently_confused()

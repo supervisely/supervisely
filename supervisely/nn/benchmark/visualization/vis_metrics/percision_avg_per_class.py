@@ -25,8 +25,7 @@ class PerClassAvgPrecision(MetricVis):
         )
 
     def get_figure(self, widget: Widget):  # -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         # AP per-class
         ap_per_class = self._loader.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))

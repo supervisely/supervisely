@@ -38,8 +38,7 @@ class PerClassOutcomeCounts(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  #  -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         # Per-class Counts
         iou_thres = 0
@@ -64,21 +63,19 @@ class PerClassOutcomeCounts(MetricVis):
         tp_rel, fn_rel, fp_rel = tp_rel[sort_indices], fn_rel[sort_indices], fp_rel[sort_indices]
 
         images_count = np.concatenate([tp[sort_indices], fn[sort_indices], fp[sort_indices]])
+        data = {
+            "Type": ["TP"] * K + ["FN"] * K + ["FP"] * K,
+            "category": cat_names_sorted * 3,
+        }
+        y_label = ""
         if widget.switch_key == "normalized":
             y_label = "Images Fraction"
             # Stacked per-class counts
-            data = {
-                "count": np.concatenate([tp_rel, fn_rel, fp_rel]),
-                "Type": ["TP"] * K + ["FN"] * K + ["FP"] * K,
-                "category": cat_names_sorted * 3,
-            }
+            data["count"] = np.concatenate([tp_rel, fn_rel, fp_rel])
         elif widget.switch_key == "absolute":
             y_label = "Images Count"
-            data = {
-                "count": images_count,
-                "Type": ["TP"] * K + ["FN"] * K + ["FP"] * K,
-                "category": cat_names_sorted * 3,
-            }
+            data["count"] = images_count
+        
 
         df = pd.DataFrame(data)
 

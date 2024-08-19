@@ -14,11 +14,11 @@ class OverallErrorAnalysis(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
-        self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
+        self.cv_tasks: List[CVTask] = [CVTask.SEMANTIC_SEGMENTATION.value]
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
+        import plotly.graph_objects as go  # pylint: disable=import-error
+        from plotly.subplots import make_subplots  # pylint: disable=import-error
 
         fig = make_subplots(
             rows=1,

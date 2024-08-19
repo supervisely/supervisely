@@ -30,8 +30,7 @@ class F1ScoreAtDifferentIOU(MetricVis):
         )
 
     def get_figure(self, widget: Widget):  # -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         # score_profile = self._loader.m_full.confidence_score_profile()
         f1s = self._loader.mp.m_full.score_profile_f1s

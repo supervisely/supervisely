@@ -33,8 +33,7 @@ class ConfidenceScore(MetricVis):
         )
 
     def get_figure(self, widget: Widget):  # -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
 
         color_map = {
             "Precision": "#1f77b4",

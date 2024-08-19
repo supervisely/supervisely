@@ -16,10 +16,10 @@ class ClasswiseErrorAnalysis(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
-        self.cv_tasks: List[CVTask] = [CVTask.SEGMENTATION.value]
+        self.cv_tasks: List[CVTask] = [CVTask.SEMANTIC_SEGMENTATION.value]
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go # pylint: disable=import-error
 
         pd.options.mode.chained_assignment = None  # TODO rm later
 

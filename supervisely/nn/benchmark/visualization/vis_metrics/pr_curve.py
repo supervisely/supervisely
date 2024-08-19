@@ -40,8 +40,8 @@ class PRCurve(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # pylint: disable=import-error
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         # Precision-Recall curve
         fig = px.line(

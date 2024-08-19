@@ -23,7 +23,7 @@ class RecallVsPrecision(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  #  -> Optional[go.Figure]
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         blue_color = "#1f77b4"
         orange_color = "#ff7f0e"
