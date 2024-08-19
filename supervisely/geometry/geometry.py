@@ -317,9 +317,10 @@ class Geometry(JsonSerializable):
             for point in exterior:
                 point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
                 point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
-            for point in interior:
-                point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
-                point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+            for coords in interior:
+                for point in coords:
+                    point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                    point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
 
@@ -374,9 +375,10 @@ class Geometry(JsonSerializable):
             for point in exterior:
                 point[0] = point[0] + 0.5
                 point[1] = point[1] + 0.5
-            for point in interior:
-                point[0] = point[0] + 0.5
-                point[1] = point[1] + 0.5
+            for coords in interior:
+                for point in coords:
+                    point[0] = point[0] + 0.5
+                    point[1] = point[1] + 0.5
             data[POINTS][EXTERIOR] = exterior
             data[POINTS][INTERIOR] = interior
 
