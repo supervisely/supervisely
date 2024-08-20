@@ -507,7 +507,7 @@ class Visualizer:
         gt_ann_mapping = self.click_data.gt_id_mapper.map_obj
         dt_ann_mapping = self.click_data.dt_id_mapper.map_obj
         dtId2matched_gt_id = {}
-        for match in self.mp.matches:
+        for match in self.mp.m.matches:
             if match["type"] == "TP":
                 dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
         return dtId2matched_gt_id
