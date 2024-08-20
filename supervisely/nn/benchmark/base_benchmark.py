@@ -1,14 +1,17 @@
 import os
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 
-import supervisely as sly
+from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
+from supervisely.app.widgets import SlyTqdm
+from supervisely.io import env, fs, json
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 from supervisely.nn.inference import SessionJSON
+from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
@@ -16,10 +19,11 @@ from supervisely.task.progress import tqdm_sly
 class BaseBenchmark:
     def __init__(
         self,
-        api: sly.Api,
+        api: Api,
         gt_project_id: int,
         gt_dataset_ids: List[int] = None,
         output_dir: str = "./benchmark",
+        progress: Optional[SlyTqdm] = None,
     ):
         self.api = api
         self.session: SessionJSON = None
@@ -28,10 +32,11 @@ class BaseBenchmark:
         self.diff_project_info = None
         self.gt_dataset_ids = gt_dataset_ids
         self.output_dir = output_dir
-        self.team_id = sly.env.team_id()
+        self.team_id = env.team_id()
         self.evaluator: BaseEvaluator = None
         self._eval_inference_info = None
         self._speedtest = None
+        self.pbar = progress or tqdm_sly
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -49,7 +54,9 @@ class BaseBenchmark:
         cache_project_on_agent: bool = False,
     ):
         self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(output_project_id, batch_size, cache_project_on_agent)
+        self._eval_inference_info = self._run_inference(
+            output_project_id, batch_size, cache_project_on_agent
+        )
         self.evaluate(self.dt_project_info.id)
         self._dump_eval_inference_info(self._eval_inference_info)
 
@@ -62,7 +69,9 @@ class BaseBenchmark:
         cache_project_on_agent: bool = False,
     ):
         self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(output_project_id, batch_size, cache_project_on_agent)
+        self._eval_inference_info = self._run_inference(
+            output_project_id, batch_size, cache_project_on_agent
+        )
 
     def _run_inference(
         self,
@@ -79,8 +88,11 @@ class BaseBenchmark:
             cache_project_on_model=cache_project_on_agent,
             batch_size=batch_size,
         )
-        for _ in tqdm_sly(iterator):
-            pass
+        with self.pbar(
+            message="Inference in progress", total=self.gt_project_info.items_count
+        ) as p:
+            for _ in iterator:
+                p.update(batch_size)
         inference_info = {
             "gt_project_id": self.gt_project_info.id,
             "gt_dataset_ids": self.gt_dataset_ids,
@@ -101,6 +113,8 @@ class BaseBenchmark:
             gt_project_path=gt_project_path,
             dt_project_path=dt_project_path,
             result_dir=eval_results_dir,
+            items_count=self.gt_project_info.items_count,
+            progress=self.pbar,
         )
         self.evaluator.evaluate()
 
@@ -141,7 +155,7 @@ class BaseBenchmark:
         }
         benchmarks = []
         for bs in batch_sizes:
-            sly.logger.debug(f"Running speedtest for batch_size={bs}")
+            logger.debug(f"Running speedtest for batch_size={bs}")
             speedtest_results = []
             iterator = self.session.run_benchmark(
                 project_id,
@@ -152,7 +166,9 @@ class BaseBenchmark:
             )
             for speedtest in tqdm_sly(iterator):
                 speedtest_results.append(speedtest)
-            assert len(speedtest_results) == num_iterations, "Speedtest failed to run all iterations."
+            assert (
+                len(speedtest_results) == num_iterations
+            ), "Speedtest failed to run all iterations."
             avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(speedtest_results)
             benchmark = {
                 "benchmark": avg_speedtest,
@@ -191,16 +207,23 @@ class BaseBenchmark:
 
     def upload_eval_results(self, remote_dir: str):
         eval_dir = self.get_eval_results_dir()
-        assert not sly.fs.dir_empty(
+        assert not fs.dir_empty(
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
-        self.api.file.upload_directory(
-            self.team_id,
-            eval_dir,
-            remote_dir,
-            replace_if_conflict=True,
-            change_name_if_conflict=False,
-        )
+        with self.pbar(
+            message="Uploading evaluation results",
+            total=fs.get_directory_size(eval_dir),
+            unit="B",
+            unit_scale=True,
+        ) as p:
+            self.api.file.upload_directory(
+                self.team_id,
+                eval_dir,
+                remote_dir,
+                replace_if_conflict=True,
+                change_name_if_conflict=False,
+                progress_size_cb=p,
+            )
 
     def get_layout_results_dir(self) -> str:
         dir = os.path.join(self.get_base_dir(), "layout")
@@ -209,7 +232,7 @@ class BaseBenchmark:
 
     def upload_speedtest_results(self, remote_dir: str):
         speedtest_dir = self.get_speedtest_results_dir()
-        assert not sly.fs.dir_empty(
+        assert not fs.dir_empty(
             speedtest_dir
         ), f"Speedtest dir {speedtest_dir!r} is empty. You should run speedtest before uploading results."
         self.api.file.upload_directory(self.team_id, speedtest_dir, remote_dir)
@@ -221,11 +244,13 @@ class BaseBenchmark:
     def _generate_diff_project_name(self, dt_project_name):
         return "[diff]: " + dt_project_name
 
-    def _get_or_create_dt_project(self, output_project_id, model_info) -> sly.ProjectInfo:
+    def _get_or_create_dt_project(self, output_project_id, model_info) -> ProjectInfo:
         if output_project_id is None:
             dt_project_name = self._generate_dt_project_name(self.gt_project_info.name, model_info)
             dt_wrokspace_id = self.gt_project_info.workspace_id
-            dt_project_info = self.api.project.create(dt_wrokspace_id, dt_project_name, change_name_if_conflict=True)
+            dt_project_info = self.api.project.create(
+                dt_wrokspace_id, dt_project_name, change_name_if_conflict=True
+            )
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
@@ -234,30 +259,34 @@ class BaseBenchmark:
     def _download_projects(self):
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
-            print(f"GT annotations will be downloaded to: {gt_path}")
-            sly.download_project(
-                self.api,
-                self.gt_project_info.id,
-                gt_path,
-                dataset_ids=self.gt_dataset_ids,
-                log_progress=True,
-                save_images=False,
-                save_image_info=True,
-            )
+            total = self.dt_project_info.items_count * 2
+            with self.pbar(message="Downloading GT annotations", total=total) as p:
+                download_project(
+                    self.api,
+                    self.gt_project_info.id,
+                    gt_path,
+                    dataset_ids=self.gt_dataset_ids,
+                    log_progress=True,
+                    save_images=False,
+                    save_image_info=True,
+                    progress_cb=p.update,
+                )
         else:
-            print(f"GT annotations already exist: {gt_path}")
+            logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
-            print(f"DT annotations will be downloaded to: {dt_path}")
-            sly.download_project(
-                self.api,
-                self.dt_project_info.id,
-                dt_path,
-                log_progress=True,
-                save_images=False,
-                save_image_info=True,
-            )
+            total = self.gt_project_info.items_count * 2
+            with self.pbar(message="Downloading DT annotations", total=total) as p:
+                download_project(
+                    self.api,
+                    self.dt_project_info.id,
+                    dt_path,
+                    log_progress=True,
+                    save_images=False,
+                    save_image_info=True,
+                    progress_cb=p.update,
+                )
         else:
-            print(f"DT annotations already exist: {dt_path}")
+            logger.info(f"Found DT annotations in {dt_path}")
         self._dump_project_info(self.gt_project_info, gt_path)
         self._dump_project_info(self.dt_project_info, dt_path)
         return gt_path, dt_path
@@ -273,7 +302,7 @@ class BaseBenchmark:
                 "id": app_info["id"],
             }
         else:
-            sly.logger.warn("session.task_id is not set. App info will not be fetched.")
+            logger.warn("session.task_id is not set. App info will not be fetched.")
             app_info = None
         model_info = {
             **deploy_info,
@@ -282,7 +311,9 @@ class BaseBenchmark:
         }
         return model_info
 
-    def _init_model_session(self, model_session: Union[int, str, SessionJSON], inference_settings: dict = None):
+    def _init_model_session(
+        self, model_session: Union[int, str, SessionJSON], inference_settings: dict = None
+    ):
         if isinstance(model_session, int):
             session = SessionJSON(self.api, model_session)
         elif isinstance(model_session, str):
@@ -296,19 +327,19 @@ class BaseBenchmark:
             session.set_inference_settings(inference_settings)
         return session
 
-    def _dump_project_info(self, project_info: sly.ProjectInfo, project_path):
+    def _dump_project_info(self, project_info: ProjectInfo, project_path):
         project_info_path = os.path.join(project_path, "project_info.json")
-        sly.json.dump_json_file(project_info._asdict(), project_info_path, indent=2)
+        json.dump_json_file(project_info._asdict(), project_info_path, indent=2)
         return project_info_path
 
     def _dump_eval_inference_info(self, eval_inference_info):
         info_path = os.path.join(self.get_eval_results_dir(), "inference_info.json")
-        sly.json.dump_json_file(eval_inference_info, info_path)
+        json.dump_json_file(eval_inference_info, info_path)
         return info_path
 
     def _dump_speedtest(self, speedtest):
         path = os.path.join(self.get_speedtest_results_dir(), "speedtest.json")
-        sly.json.dump_json_file(speedtest, path, indent=2)
+        json.dump_json_file(speedtest, path, indent=2)
         return path
 
     def _calculate_speedtest_statistics(self, speedtest_results: list):
@@ -317,10 +348,12 @@ class BaseBenchmark:
         avg = x.mean(1)
         std = x.std(1)
         avg_speedtest = {
-            k: float(avg[i]) if not np.isnan(avg[i]).any() else None for i, k in enumerate(speedtest_results[0].keys())
+            k: float(avg[i]) if not np.isnan(avg[i]).any() else None
+            for i, k in enumerate(speedtest_results[0].keys())
         }
         std_speedtest = {
-            k: float(std[i]) if not np.isnan(std[i]).any() else None for i, k in enumerate(speedtest_results[0].keys())
+            k: float(std[i]) if not np.isnan(std[i]).any() else None
+            for i, k in enumerate(speedtest_results[0].keys())
         }
         return avg_speedtest, std_speedtest
 
@@ -347,7 +380,7 @@ class BaseBenchmark:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
 
         eval_dir = self.get_eval_results_dir()
-        assert not sly.fs.dir_empty(
+        assert not fs.dir_empty(
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
 
@@ -357,10 +390,12 @@ class BaseBenchmark:
             vis.update_diff_annotations()
         vis.visualize()
 
-    def _get_or_create_diff_project(self) -> Tuple[sly.ProjectInfo, bool]:
+    def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
         diff_project_name = self._generate_diff_project_name(self.dt_project_info.name)
         diff_workspace_id = self.dt_project_info.workspace_id
-        diff_project_info = self.api.project.get_info_by_name(diff_workspace_id, diff_project_name, raise_error=False)
+        diff_project_info = self.api.project.get_info_by_name(
+            diff_workspace_id, diff_project_name, raise_error=False
+        )
         is_existed = True
         if diff_project_info is None:
             is_existed = False
@@ -373,26 +408,26 @@ class BaseBenchmark:
 
     def upload_visualizations(self, dest_dir: str):
         layout_dir = self.get_layout_results_dir()
-        assert not sly.fs.dir_empty(
+        assert not fs.dir_empty(
             layout_dir
         ), f"The layout dir {layout_dir!r} is empty. You should run evaluation before uploading results."
 
         # self.api.file.remove_dir(self.team_id, dest_dir, silent=True)
 
         remote_dir = dest_dir
-        with tqdm_sly(
-            desc="Uploading layout",
+        with self.pbar(
+            message="Uploading visualizations",
             total=get_directory_size(layout_dir),
             unit="B",
             unit_scale=True,
-        ) as pbar:
+        ) as p:
             remote_dir = self.api.file.upload_directory(
                 self.team_id,
                 layout_dir,
                 dest_dir,
                 replace_if_conflict=True,
                 change_name_if_conflict=False,
-                progress_size_cb=pbar,
+                progress_size_cb=p,
             )
 
         logger.info(f"Uploaded to: {remote_dir!r}")
