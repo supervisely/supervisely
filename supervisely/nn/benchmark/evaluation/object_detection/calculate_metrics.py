@@ -2,11 +2,23 @@ from collections import defaultdict
 from typing import Callable, Optional
 
 import numpy as np
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 
 
-def calculate_metrics(cocoGt: COCO, cocoDt: COCO, progress_cb: Optional[Callable] = None):
+def calculate_metrics(cocoGt, cocoDt, progress_cb: Optional[Callable] = None):
+    """
+    Calculate COCO metrics.
+
+    :param cocoGt: Ground truth dataset in COCO format
+    :type cocoGt: COCO
+    :param cocoDt: Predicted dataset in COCO format
+    :type cocoDt: COCO
+    :param progress_cb: Progress callback
+    :type progress_cb: Optional[Callable]
+    :return: Results of the evaluation
+    :rtype: dict
+    """
+    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
+
     progress_cb(1) if progress_cb is not None else None
     cocoEval = COCOeval(cocoGt, cocoDt, iouType="bbox")
     progress_cb(1) if progress_cb is not None else None
@@ -44,9 +56,11 @@ def calculate_metrics(cocoGt: COCO, cocoDt: COCO, progress_cb: Optional[Callable
     return eval_data
 
 
-def get_counts(cocoEval: COCOeval):
+def get_counts(cocoEval):
     """
     true_positives, false_positives, false_negatives
+
+    type cocoEval: COCOeval
     """
     aRng = cocoEval.params.areaRng[0]
     cat_ids = cocoEval.params.catIds
@@ -81,9 +95,11 @@ def get_counts(cocoEval: COCOeval):
     return true_positives[cat_ids], false_positives[cat_ids], false_negatives[cat_ids]
 
 
-def get_counts_and_scores(cocoEval: COCOeval, cat_id: int, t: int):
+def get_counts_and_scores(cocoEval, cat_id: int, t: int):
     """
     tps, fps, scores, n_positives
+
+    type cocoEval: COCOeval
     """
     aRng = cocoEval.params.areaRng[0]
     eval_imgs = [ev for ev in cocoEval.evalImgs if ev is not None and ev["aRng"] == aRng]
@@ -128,7 +144,10 @@ def get_counts_and_scores(cocoEval: COCOeval, cat_id: int, t: int):
     return tps, fps, scores, n_positives
 
 
-def get_eval_img_dict(cocoEval: COCOeval):
+def get_eval_img_dict(cocoEval):
+    """
+    type cocoEval: COCOeval
+    """
     aRng = cocoEval.params.areaRng[0]
     eval_img_dict = defaultdict(list)  # img_id : dt/gt
     for i, eval_img in enumerate(cocoEval.evalImgs):
@@ -144,7 +163,10 @@ def get_eval_img_dict(cocoEval: COCOeval):
     return eval_img_dict
 
 
-def get_eval_img_dict_cls(cocoEval_cls: COCOeval):
+def get_eval_img_dict_cls(cocoEval_cls):
+    """
+    type cocoEval_cls: COCOeval
+    """
     # For miss-classification
     aRng = cocoEval_cls.params.areaRng[0]
     eval_img_dict_cls = defaultdict(list)  # img_id : dt/gt
@@ -179,9 +201,10 @@ def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t
     return None, None
 
 
-def get_matches(
-    eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls: COCOeval, iou_t: int = 0
-):
+def get_matches(eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls, iou_t: int = 0):
+    """
+    type cocoEval_cls: COCOeval
+    """
     catIds = cocoEval_cls.cocoGt.getCatIds()
     matches = []
     for img_id, eval_imgs in eval_img_dict.items():
@@ -270,7 +293,11 @@ def get_matches(
     return matches
 
 
-def get_rare_classes(cocoGt: COCO, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
+def get_rare_classes(cocoGt, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
+    """
+    :param cocoGt: Ground truth dataset in COCO format
+    :type cocoGt: COCO
+    """
     anns_cat_ids = [ann["category_id"] for ann in cocoGt.anns.values()]
     cat_ids, cat_counts = np.unique(anns_cat_ids, return_counts=True)
     inds_sorted = np.argsort(cat_counts)
