@@ -144,3 +144,5 @@ from supervisely.app.widgets.tags_table.tags_table import TagsTable
 from supervisely.app.widgets.checkbox_field.checkbox_field import CheckboxField
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
 from supervisely.app.widgets.select_dataset_tree.select_dataset_tree import SelectDatasetTree
+from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import GridGalleryV2
+from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThumbnail
