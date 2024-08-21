@@ -20,6 +20,9 @@ class ConfidenceScore(MetricVis):
                 is_header=True,
                 formats=[definitions.confidence_threshold],
             ),
+            notification_f1=Widget.Notification(
+                formats_title=[round((self._loader.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)]
+            ),
             chart=Widget.Chart(),
             markdown_confidence_score_2=Widget.Markdown(),
             collapse_conf_score=Widget.Collapse(
