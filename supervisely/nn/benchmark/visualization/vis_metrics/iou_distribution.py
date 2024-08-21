@@ -18,15 +18,15 @@ class IOUDistribution(MetricVis):
             markdown_localization_accuracy=Widget.Markdown(
                 title="Localization Accuracy (IoU)", is_header=True
             ),
-            collapse_iou=Widget.Collapse(
-                Schema(markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"))
-            ),
             markdown_iou_distribution=Widget.Markdown(
                 title="IoU Distribution", is_header=True, formats=[definitions.iou_score]
             ),
-            chart=Widget.Chart(),
             notification_avg_iou=Widget.Notification(
                 formats_title=[self._loader.base_metrics()["iou"].round(2)]
+            ),
+            chart=Widget.Chart(),
+            collapse_iou=Widget.Collapse(
+                Schema(markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"))
             ),
         )
 
