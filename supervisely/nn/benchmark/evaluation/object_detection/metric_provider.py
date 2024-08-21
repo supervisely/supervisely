@@ -444,8 +444,8 @@ class _MetricProvider:
         return f1_optimal_conf, best_f1
 
     def calibration_curve(self):
-        from sklearn.calibration import (
-            calibration_curve,  # pylint: disable=import-error
+        from sklearn.calibration import (  # pylint: disable=import-error
+            calibration_curve,
         )
 
         true_probs, pred_probs = calibration_curve(self.y_true, self.scores, n_bins=10)
