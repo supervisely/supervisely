@@ -12,7 +12,7 @@ class BaseEvaluator:
         gt_project_path: str,
         dt_project_path: str,
         result_dir: str = "./evaluation",
-        items_count: Optional[int] = None,
+        items_count: Optional[int] = None,  # TODO: is it needed?
         progress: Optional[SlyTqdm] = None,
     ):
         self.gt_project_path = gt_project_path

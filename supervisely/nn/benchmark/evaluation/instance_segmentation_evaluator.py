@@ -20,8 +20,21 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
         self._dump_eval_results()
 
     def _convert_to_coco(self):
-        cocoGt_json = sly2coco(self.gt_project_path, is_dt_dataset=False, accepted_shapes=['polygon', 'bitmap'])
-        cocoDt_json = sly2coco(self.dt_project_path, is_dt_dataset=True, accepted_shapes=['polygon', 'bitmap'])
+        # with self.pbar(
+        #     message="Converting GT and DT to COCO format",
+        #     total=self.total_items * 2
+        # ) as pbar:
+        # TODO: self.total_items can be None
+        cocoGt_json = sly2coco(
+            self.gt_project_path,
+            is_dt_dataset=False,
+            accepted_shapes=["polygon", "bitmap"],
+        )
+        cocoDt_json = sly2coco(
+            self.dt_project_path,
+            is_dt_dataset=True,
+            accepted_shapes=["polygon", "bitmap"],
+        )
         assert cocoDt_json['categories'] == cocoGt_json['categories']
         assert [x['id'] for x in cocoDt_json['images']] == [x['id'] for x in cocoGt_json['images']]
         return cocoGt_json, cocoDt_json
