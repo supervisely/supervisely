@@ -92,7 +92,7 @@ class BaseBenchmark:
             message="Inference in progress", total=self.gt_project_info.items_count
         ) as p:
             for _ in iterator:
-                p.update(batch_size)
+                p.update(1)
         inference_info = {
             "gt_project_id": self.gt_project_info.id,
             "gt_dataset_ids": self.gt_dataset_ids,
