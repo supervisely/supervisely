@@ -1,5 +1,4 @@
 import os
-
 from supervisely.io.json import dump_json_file
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco, calculate_metrics
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
@@ -10,7 +9,12 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
         with self.pbar(message="Calculating metrics", total=10) as p:
-            self.eval_data = calculate_metrics(self.cocoGt, self.cocoDt, progress_cb=p.update)
+            self.eval_data = calculate_metrics(
+                self.cocoGt,
+                self.cocoDt,
+                iouType="bbox",
+                progress_cb=p.update
+                )
         self._dump_eval_results()
 
     def _convert_to_coco(self):

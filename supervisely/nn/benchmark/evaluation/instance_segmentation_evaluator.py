@@ -1,5 +1,5 @@
 import os
-import supervisely as sly
+from supervisely.io.json import dump_json_file
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco, calculate_metrics
 
@@ -9,7 +9,13 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
         self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
         self._dump_datasets()
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
-        self.eval_data = calculate_metrics(self.cocoGt, self.cocoDt)
+        with self.pbar(message="Calculating metrics", total=10) as p:
+            self.eval_data = calculate_metrics(
+                self.cocoGt,
+                self.cocoDt,
+                iouType="segm",
+                progress_cb=p.update
+                )
         self._dump_eval_results()
 
     def _convert_to_coco(self):
@@ -21,8 +27,8 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
     
     def _dump_datasets(self):
         cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
-        sly.json.dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
-        sly.json.dump_json_file(self.cocoDt_json, cocoDt_path, indent=None)
+        dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
+        dump_json_file(self.cocoDt_json, cocoDt_path, indent=None)
 
     def _dump_eval_results(self):
         cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
