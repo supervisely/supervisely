@@ -157,12 +157,7 @@ This section compares Precision and Recall on a common graph, identifying **disb
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-<i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
-  <span style="color: #5a6772">
-    Click on the chart to explore corresponding images.
-  </span>
-</div>
-"""
+""" + clickable_label
 
 
 markdown_pr_curve = """## Precision-Recall Curve
