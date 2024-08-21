@@ -1835,7 +1835,9 @@ class ImageApi(RemoveableBulkModuleApi):
         # ordered_results = [name_to_res[name] for name in names]
 
         if len(idx_to_id) > 0:
-            logger.info("Inserting skipped image infos")
+            logger.info(
+                "Adding ImageInfo of images with the same name that already exist in the dataset to the response."
+            )
 
             idx_to_id = dict(reversed(list(idx_to_id.items())))
             image_infos = self._api.image.get_info_by_id_batch(list(idx_to_id.values()))
