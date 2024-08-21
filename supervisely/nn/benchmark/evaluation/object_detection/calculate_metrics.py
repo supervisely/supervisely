@@ -1,10 +1,10 @@
 from collections import defaultdict
-from typing import Callable, Optional
+from typing import Callable, Optional, Literal
 
 import numpy as np
 
 
-def calculate_metrics(cocoGt, cocoDt, progress_cb: Optional[Callable] = None):
+def calculate_metrics(cocoGt, cocoDt, iouType: Literal["bbox", "segm"], progress_cb: Optional[Callable] = None):
     """
     Calculate COCO metrics.
 
@@ -12,6 +12,8 @@ def calculate_metrics(cocoGt, cocoDt, progress_cb: Optional[Callable] = None):
     :type cocoGt: COCO
     :param cocoDt: Predicted dataset in COCO format
     :type cocoDt: COCO
+    :param iouType: Type of IoU calculation
+    :type iouType: Literal["bbox", "segm"]
     :param progress_cb: Progress callback
     :type progress_cb: Optional[Callable]
     :return: Results of the evaluation
@@ -20,7 +22,7 @@ def calculate_metrics(cocoGt, cocoDt, progress_cb: Optional[Callable] = None):
     from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
 
     progress_cb(1) if progress_cb is not None else None
-    cocoEval = COCOeval(cocoGt, cocoDt, iouType="bbox")
+    cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
     progress_cb(1) if progress_cb is not None else None
     cocoEval.evaluate()
     progress_cb(1) if progress_cb is not None else None
@@ -30,7 +32,7 @@ def calculate_metrics(cocoGt, cocoDt, progress_cb: Optional[Callable] = None):
     progress_cb(1) if progress_cb is not None else None
 
     # For classification metrics
-    cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType="bbox")
+    cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType=iouType)
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.params.useCats = 0
     cocoEval_cls.evaluate()
