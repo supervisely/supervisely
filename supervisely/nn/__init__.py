@@ -9,3 +9,4 @@ from supervisely.nn.prediction_dto import (
     PredictionMask,
     PredictionSegmentation,
 )
+from supervisely.nn.benchmark.object_detection_benchmark import ObjectDetectionBenchmark
