@@ -115,7 +115,7 @@ class Visualizer:
             self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
         else:
             self.dfsp_down = self.df_score_profile
-        
+
         self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
         if self.f1_optimal_conf is None:
             self.f1_optimal_conf = 0.01
@@ -357,9 +357,6 @@ class Visualizer:
                     for label in dt_ann.labels:
                         # match_tag_id = label.tags.get("matched_gt_id")
                         match_tag_id = matched_id_map.get(label.geometry.sly_id)
-                        conf = label.tags.get("confidence").value
-                        if conf < self.f1_optimal_conf:
-                            continue
 
                         value = "TP" if match_tag_id else "FP"
                         pred_tag_list.append(
@@ -369,6 +366,11 @@ class Visualizer:
                                 "value": value,
                             }
                         )
+                        conf = label.tags.get("confidence").value
+                        if conf < self.f1_optimal_conf:
+                            continue  # do not add labels with low confidence to diff project
+                        if match_tag_id:
+                            continue  # do not add TP labels to diff project
                         label = label.add_tag(Tag(outcome_tag, value))
                         if not match_tag_id:
                             label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
