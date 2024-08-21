@@ -15,18 +15,23 @@ definitions = SimpleNamespace(
 
 checkpoint_name = "YOLOv8-L (COCO 2017 val)"
 
+# <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
+clickable_label = """
+<span style="color: #5a6772">
+    Click on the chart to explore corresponding images.
+</span>
+"""
 
 markdown_overview = """# {}
 
 ## Overview
 
 - **Architecture**: {}
-- **Year**: 2023
-- **Authors**: ultralytics
 - **Task type**: {}
 - **Runtime**: {}
 - **Hardware**: {}
-- [Checkpoint URL]({})
+- **Checkpoint URL**: <a href="{}" target="_blank">{}</a>
+- Learn metrics details and how to use them in <a href="{}" target="_blank">technical report</a>
 """
 # - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
@@ -48,14 +53,17 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 """
 
 markdown_explorer = """## Explore Predictions
+In this section you can visually assess the model performance through examples. This helps users better understand model capabilities and limitations, giving an intuitive grasp of prediction quality in different scenarios.
 
-Compare **Ground Truth** and **Prediction** projects to recognize mistakes and pecularities of the data, which will be shown in the **Difference** column. Click *filter* to change the *confidence* threshold and model's false *outcomes* (**FP** and **FN**, but we have reserved the possibility of viewing the **TP** outcome as well).
+Explore the model's predictions on the grid. Click one of the images to view the **Ground Truth**, **Prediction**, or the **Difference** annotations on the side-by-side view. This helps you to recognize mistakes and peculiarities of the data, which will be shown in the **Difference** column. The *filter* option allows you to change the *confidence* threshold and model's false *outcomes*.
+
+
+> Note that in the modal with the difference views the **threshold** filter is applied only to the **Prediction** column, while the **outcome** filter is applied to the **Difference** column. 
+The **Difference** is calculated only for the optimal confidence threshold, which is the confidence score that maximizes the F1-score. This allows you to focus on the most accurate predictions made by the model.
 """
 
+markdown_predictions_gallery = """
 
-markdown_predictions_gallery = """## Model Predictions
-
-In this section you can visually assess the model performance through examples. This helps users better understand model capabilities and limitations, giving an intuitive grasp of prediction quality in different scenarios.
 """
 # You can choose one of the sorting method:
 
@@ -65,7 +73,7 @@ In this section you can visually assess the model performance through examples. 
 # - **Dataset order**: Displays images in the original order of the dataset.
 # """
 
-markdown_predictions_table = """### Prediction Table
+markdown_predictions_table = """### Prediction details for every image
 
 The table helps you in finding samples with specific cases of interest. You can sort by parameters such as the number of predictions, or specific a metric, e.g, recall, then click on a row to view this image and predictions.
 
@@ -73,39 +81,23 @@ The table helps you in finding samples with specific cases of interest. You can 
 \n\n*Click on the row* to view the image with **Ground Truth**, **Prediction**, or the **Difference** annotations.
 """
 
-markdown_what_is = """## What is YOLOv8 model? (collapse)
-
-Можно также добавить ссылку на наш блог пост, если есть
-
-![blog post link]
-
-**О чем еще здесь можно рассказать:**
-
-- Ключевая инфа о модели текстом: год, конференция, paper, гитхаб, какой скор на лидерборде от авторов, в каком сценарии эта модель была или есть SOTA и в каком году. Что-то ещё из того что писали про свою модель сами авторы, взять из ридми на гитхабе.
-- Особенности модели, чем отличается от остальных, какую проблему решали авторы этой моделью.
-- Для чего эта модель идеально подходит, какие сценарии использования? Возможно авторы проектировали модель под специальный use case, описать это. Например, YOLO подходит для real-time object detection, для real-time detection на видео.
-- Историческая справка, как развивалась модель, прошлые версии.
-- Краткий анализ метрик. На чем модель фейлит, а в чем хорошо предсказывает.
+markdown_what_is = """
 """
 
-markdown_experts = """## Expert insights?
-
-linkedin - ответ на вопрос когда применять когда нет, что лучше или хуже, что нужно учитывать. текст в свободной форме
+markdown_experts = """
 """
 
-markdown_how_to_use = """## How To Use: Training, inference, evaluation loop (collapse)
-
-Однотипная диаграмка, и небольшой текст со ссылками - Sly apps, inference notebooks, docker images, … небольшой раздел со ссылками на документацию (embeddings sampling, improvement loop, active learning, labeling jobs, model comparison, .… – стандартизован для всех моделей). какие-то модели будут частично интегрированы
-
-Jupyter notebooks + python scripts + apps + videos + guides + …
+markdown_how_to_use = """
 """
 
-markdown_outcome_counts = """## Outcome Counts
+markdown_outcome_counts = (
+    """## Outcome Counts
 
 This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 markdown_R = """## Recall
 
@@ -119,7 +111,8 @@ notification_recall = {
     "description": "The model correctly found <b>{} of {}</b> total instances in the dataset.",
 }
 
-markdown_R_perclass = """### Per-class Recall
+markdown_R_perclass = (
+    """### Per-class Recall
 
 This chart further analyzes Recall, breaking it down to each class in separate.
 
@@ -127,8 +120,9 @@ Since the overall recall is calculated as an average across all classes, we prov
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 
 markdown_P = """## Precision
@@ -143,7 +137,8 @@ notification_precision = {
     "description": "The model correctly predicted <b>{} of {}</b> predictions made by the model in total.",
 }
 
-markdown_P_perclass = """### Per-class Precision
+markdown_P_perclass = (
+    """### Per-class Precision
 
 This chart further analyzes Precision, breaking it down to each class in separate.
 
@@ -151,8 +146,9 @@ Since the overall precision is computed as an average across all classes, we pro
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 
 markdown_PR = """## Recall vs. Precision
@@ -161,7 +157,11 @@ This section compares Precision and Recall on a common graph, identifying **disb
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
+<i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
+  <span style="color: #5a6772">
+    Click on the chart to explore corresponding images.
+  </span>
+</div>
 """
 
 
@@ -184,12 +184,14 @@ notification_ap = {
     "description": "",
 }
 
-markdown_pr_by_class = """### Precision-Recall Curve by Class
+markdown_pr_by_class = (
+    """### Precision-Recall Curve by Class
 
 In this plot, you can evaluate PR curve for each class individually.
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 markdown_confusion_matrix = """## Confusion Matrix
 
@@ -201,7 +203,8 @@ The diagonal elements represent the number of correct predictions for each class
 """
 
 
-markdown_frequently_confused = """### Frequently Confused Classes
+markdown_frequently_confused = (
+    """### Frequently Confused Classes
 
 This chart displays the most frequently confused pairs of classes. In general, it finds out which classes visually seem very similar to the model.
 
@@ -209,8 +212,9 @@ The chart calculates the **probability of confusion** between different pairs of
 
 The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 
 markdown_localization_accuracy = """## Localization Accuracy (IoU)
@@ -307,24 +311,29 @@ Additionally, it provides a view of how predicted probabilities are distributed.
 Ideally, the histogram for TP predictions should have higher confidence, indicating that the model is sure about its correct predictions, and the FP predictions should have very low confidence, or not present at all.
 """
 
-markdown_class_ap = """## Average Precision by Class
+markdown_class_ap = (
+    """## Average Precision by Class
 
 A quick visual comparison of the model performance across all classes. Each axis in the chart represents a different class, and the distance to the center indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class.
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 
 markdown_class_outcome_counts_1 = """### Outcome Counts by Class
 
 This chart breaks down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN) by classes. This helps to visually assess the type of errors the model often encounters for each class.
+
 """
 
 markdown_normalization = "By default, the normalization is used for better intraclass comparison. The total outcome counts are divided by the number of ground truth instances of the corresponding class. This is useful, because the sum of TP + FN always gives 1.0, representing all ground truth instances for a class, that gives a visual understanding of what portion of instances the model detected. So, if a green bar (TP outcomes) reaches the 1.0, this means the model is managed to predict all objects for the class. Everything that is higher than 1.0 corresponds to False Positives, i.e, redundant predictions. You can turn off the normalization switching to absolute values."
 
-markdown_class_outcome_counts_2 = """You can switch the plot view between normalized and absolute values.
+markdown_class_outcome_counts_2 = (
+    """You can switch the plot view between normalized and absolute values.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)

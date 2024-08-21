@@ -140,7 +140,7 @@ class GridGalleryV2(Widget):
     def get_json_state(self):
         return {
             "filters": self._filters,
-            "object_bindings": self._object_bindings,
+            "objectBindings": self._object_bindings,
             "options": {
                 "fitOnResize": self._fit_on_resize,
                 "enableZoom": self._enable_zoom,
@@ -151,6 +151,8 @@ class GridGalleryV2(Widget):
                 "showTransparentBackground": self._transparent_background,
                 "showFilter": self._show_filter,
                 "enablePan": self._enablePan,
+                "lineWidth": self._border_width,
+
             },
         }
 
