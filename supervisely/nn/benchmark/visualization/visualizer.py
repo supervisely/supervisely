@@ -116,7 +116,7 @@ class Visualizer:
         else:
             self.dfsp_down = self.df_score_profile
         
-        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()
+        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
         if self.f1_optimal_conf is None:
             self.f1_optimal_conf = 0.01
             logger.warn("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
