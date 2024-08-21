@@ -11,7 +11,6 @@ from supervisely._utils import batched
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
-from supervisely.app.widgets import GridGalleryV2
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import file_exists, mkdir
@@ -133,6 +132,8 @@ class Visualizer:
 
     def visualize(self):
         import ujson  # pylint: disable=import-error
+
+        from supervisely.app.widgets import GridGalleryV2
 
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
 
