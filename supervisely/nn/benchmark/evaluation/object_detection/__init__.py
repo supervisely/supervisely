@@ -1,1 +1,0 @@
-from supervisely.nn.benchmark.evaluation.object_detection.metric_provider import MetricProvider

@@ -4,7 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.evaluation.object_detection import metrics
+from supervisely.nn.benchmark.evaluation import metrics
 
 METRIC_NAMES = {
     "mAP": "mAP",
