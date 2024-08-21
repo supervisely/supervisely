@@ -1,3 +1,4 @@
+# isort: skip_file
 from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem, DynamicWidget
 from supervisely.app.widgets.widget import Widget, generate_id
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
@@ -5,6 +6,7 @@ from supervisely.app.widgets.notification_box.notification_box import Notificati
 from supervisely.app.widgets.done_label.done_label import DoneLabel
 from supervisely.app.widgets.sly_tqdm.sly_tqdm import SlyTqdm, Progress
 from supervisely.app.widgets.grid_gallery.grid_gallery import GridGallery
+from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import GridGalleryV2
 from supervisely.app.widgets.classes_table.classes_table import ClassesTable
 from supervisely.app.widgets.classic_table.classic_table import ClassicTable
 from supervisely.app.widgets.confusion_matrix.confusion_matrix import ConfusionMatrix
@@ -65,6 +67,7 @@ from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
 from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
 from supervisely.app.widgets.file_thumbnail.file_thumbnail import FileThumbnail
+from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThumbnail
 from supervisely.app.widgets.model_info.model_info import ModelInfo
 from supervisely.app.widgets.match_tags_or_classes.match_tags_or_classes import (
     MatchTagMetas,

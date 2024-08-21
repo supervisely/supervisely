@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from dataclasses import asdict
 
 import numpy as np
 import requests
@@ -56,6 +57,7 @@ from supervisely.decorators.inference import (
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
+from supervisely.nn.inference.info import DeployInfo, CheckpointInfo, RuntimeType, get_hardware_info
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -83,8 +85,12 @@ class Inference:
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
             fs.mkdir(model_dir)
+        self.device: str = None
+        self.runtime: str = None
+        self.checkpoint_info: CheckpointInfo = None
         self._model_dir = model_dir
         self._model_served = False
+        self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
         self._app: Application = None
@@ -110,7 +116,6 @@ class Inference:
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
-        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -125,15 +130,14 @@ class Inference:
 
             def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 Progress("Deploying model ...", 1)
-
                 if isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
-                    self.load_model(**deploy_params)
-                    self.update_gui(self._model_served)
+                    self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
                     device = gui.get_device()
+                    self.device = device
                     self.load_on_device(self._model_dir, device)
-                gui.show_deployed_model_info(self)
+                    gui.show_deployed_model_info(self)
 
             def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
                 self.shutdown_model()
@@ -379,8 +383,21 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _load_model(self, deploy_params: dict):
+        self.device = deploy_params.get("device")
+        self.runtime = deploy_params.get("runtime")
+        self.load_model(**deploy_params)
+        self._model_served = True
+        self._deploy_params = deploy_params
+        if self.gui is not None:
+            self.update_gui(self._model_served)
+            self.gui.show_deployed_model_info(self)
+
     def shutdown_model(self):
         self._model_served = False
+        self.device = None
+        self.runtime = None
+        self.checkpoint_info = None
         clean_up_cuda()
         logger.info("Model has been stopped")
 
@@ -433,6 +450,19 @@ class Inference:
                 hr_info[hr_name] = data
 
         return hr_info
+    
+    def _get_deploy_info(self) -> DeployInfo:
+        if self.checkpoint_info is None:
+            raise ValueError("Checkpoint info is not set.")
+        deploy_info = {
+            **asdict(self.checkpoint_info),
+            "task_type": self.get_info()["task type"],
+            "device": self.device,
+            "runtime": self.runtime,
+            "hardware": get_hardware_info(),
+            "deploy_params": self._deploy_params,
+        }
+        return DeployInfo(**deploy_info)
 
     @property
     def sliding_window_mode(self) -> Literal["basic", "advanced", "none"]:
@@ -651,7 +681,7 @@ class Inference:
         ) -> Tuple[List[Annotation], dict]:
         t0 = time.time()
         predictions, benchmark = self.predict_benchmark(images_np, settings)
-        total_time = time.time() - t0
+        total_time = (time.time() - t0) * 1000  # ms
         benchmark = {
             "total": total_time,
             "preprocess": benchmark.get("preprocess"),
@@ -699,8 +729,8 @@ class Inference:
         :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
 
-        :return: tuple of annotation and benchmark dict with speedtest results in seconds.
-            The benchmark dict should contain the following keys (all values are in seconds):
+        :return: tuple of annotation and benchmark dict with speedtest results in milliseconds.
+            The benchmark dict should contain the following keys (all values in milliseconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
                 steps like NMS (Non-Maximum Suppression), decoding module, and everything that is done to calculate meaningful predictions.
@@ -1294,6 +1324,185 @@ class Inference:
         upload_thread.join()
         return results
 
+    def _run_benchmark(
+        self,
+        api: Api,
+        state: dict,
+        async_inference_request_uuid: str = None,
+    ):
+        """Run benchmark on project images.
+        """
+        logger.debug("Running speedtest...", extra={"state": state})
+        project_id = state["projectId"]
+        batch_size = state["batch_size"]
+        num_iterations = state["num_iterations"]
+        num_warmup = state.get("num_warmup", 3)
+        dataset_ids = state.get("dataset_ids", None)
+        cache_project_on_model = state.get("cache_project_on_model", False)
+
+        datasets_infos = api.dataset.get_list(project_id, recursive=True)
+        if dataset_ids is not None:
+            datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
+
+        # progress
+        preparing_progress = {"current": 0, "total": 1}
+        preparing_progress["status"] = "download_info"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = len(datasets_infos)
+        progress_cb = None
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+            sly_progress: Progress = inference_request["progress"]
+            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
+
+            inference_request["preparing_progress"]["total"] = len(datasets_infos)
+            preparing_progress = inference_request["preparing_progress"]
+
+            if cache_project_on_model:
+                progress_cb = sly_progress.iters_done
+                preparing_progress["total"] = sly_progress.total
+                preparing_progress["status"] = "download_project"
+
+        if cache_project_on_model:
+            download_to_cache(api, project_id, datasets_infos, progress_cb=progress_cb)
+
+        images_infos_dict = {}
+        for dataset_info in datasets_infos:
+            images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
+            if not cache_project_on_model:
+                preparing_progress["current"] += 1
+
+        preparing_progress["status"] = "inference"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = num_iterations
+
+        def _download_images(datasets_infos: List[DatasetInfo]):
+            for dataset_info in datasets_infos:
+                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
+                with ThreadPoolExecutor(batch_size) as executor:
+                    for image_id in image_ids:
+                        executor.submit(
+                            self.cache.download_image,
+                            api,
+                            dataset_info.id,
+                            image_id,
+                        )
+
+        if not cache_project_on_model:
+            # start downloading in parallel
+            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+
+        def _add_results_to_request(results: List[Dict]):
+            if async_inference_request_uuid is None:
+                return
+            inference_request["pending_results"].append(results)
+            sly_progress.iters_done(1)
+
+        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
+            try:
+                while True:
+                    items = []
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        for batch in items:
+                            upload_f(batch)
+                        continue
+                    if stop_event.is_set():
+                        self._on_inference_end(None, async_inference_request_uuid)
+                        return
+                    time.sleep(1)
+            except Exception as e:
+                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                raise
+
+        upload_f = _add_results_to_request
+
+        upload_queue = Queue()
+        stop_upload_event = threading.Event()
+        threading.Thread(
+            target=_upload_loop,
+            args=[upload_queue, stop_upload_event, api, upload_f],
+            daemon=True,
+        ).start()
+
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+        results = []
+        stop = False
+
+        def image_batch_generator(batch_size):
+            while True:
+                for dataset_info in datasets_infos:
+                    batch = [] # guarantee the full batch comes from the same dataset.
+                    for image_info in images_infos_dict[dataset_info.id]:
+                        batch.append(image_info)
+                        if len(batch) == batch_size:
+                            yield dataset_info, batch
+                            batch = []
+
+        batch_generator = image_batch_generator(batch_size)
+        try:
+            for i in range(num_iterations + num_warmup):
+                if stop:
+                    break
+                if (
+                    async_inference_request_uuid is not None
+                    and inference_request["cancel_inference"] is True
+                ):
+                    logger.debug(
+                        f"Cancelling inference project...",
+                        extra={"inference_request_uuid": async_inference_request_uuid},
+                    )
+                    results = []
+                    stop = True
+                    break
+
+                dataset_info, images_infos_batch = next(batch_generator)
+
+                # Read images
+                if cache_project_on_model:
+                    images_paths, _ = zip(
+                        *read_from_cached_project(
+                            project_id,
+                            dataset_info.name,
+                            [ii.name for ii in images_infos_batch],
+                        )
+                    )
+                    images_nps = [sly_image.read(path) for path in images_paths]
+                else:
+                    images_nps = self.cache.download_images(
+                        api,
+                        dataset_info.id,
+                        [info.id for info in images_infos_batch],
+                        return_images=True,
+                    )
+                # Inference
+                anns, benchmark = self._inference_benchmark(
+                    images_np=images_nps,
+                    settings=settings,
+                )
+                # Collect results if warmup is done
+                if i >= num_warmup:
+                    results.append(benchmark)
+                    upload_queue.put(benchmark)
+        except Exception:
+            stop_upload_event.set()
+            raise
+        if async_inference_request_uuid is not None and len(results) > 0:
+            inference_request["result"] = results
+        stop_upload_event.set()
+        return results
+
     def _on_inference_start(self, inference_request_uuid):
         inference_request = {
             "progress": Progress("Inferring model...", total_cnt=1),
@@ -1560,6 +1769,45 @@ class Inference:
                 "inference_request_uuid": inference_request_uuid,
             }
 
+        @server.post("/run_benchmark")
+        def run_benchmark(response: Response, request: Request):
+            logger.debug(
+                f"'run_benchmark' request in json format:{request.state.state}"
+            )
+            project_id = request.state.state["projectId"]
+            project_info = request.state.api.project.get_info_by_id(project_id)
+            if project_info.type != str(ProjectType.IMAGES):
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                response.body = {"message": "Only images projects are supported."}
+                raise ValueError("Only images projects are supported.")
+            batch_size = request.state.state["batch_size"]
+            if batch_size > 1 and not self.is_batch_inference_supported():
+                response.status_code = status.HTTP_501_NOT_IMPLEMENTED
+                return {
+                    "message": "Batch inference is not implemented for this model.",
+                    "success": False,
+                }
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                self._run_benchmark,
+                request.state.api,
+                request.state.state,
+                inference_request_uuid,
+            )
+            logger.debug(
+                "Speedtest has scheduled from 'run_benchmark' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
+
         @server.post(f"/get_inference_progress")
         def get_inference_progress(response: Response, request: Request):
             inference_request_uuid = request.state.state.get("inference_request_uuid")
@@ -1714,16 +1962,11 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                self.load_model(**deploy_params)
-                self.update_gui(self._model_served)
+                self._load_model(deploy_params)
                 self.set_params_to_gui(deploy_params)
-
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")
                 self.gui.set_deployed(device)
-
-                self.gui.show_deployed_model_info(self)
-                self._model_served = True
                 return {"result": "model was successfully deployed"}
             except Exception as e:
                 self.gui._success_label.hide()
@@ -1735,6 +1978,11 @@ class Inference:
                 "deployed": self._model_served,
                 "description:": "Model is ready to receive requests",
             }
+        
+        @server.post("/get_deploy_info")
+        @self._check_serve_before_call
+        def _get_deploy_info():
+            return asdict(self._get_deploy_info())
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
@@ -1950,6 +2198,19 @@ def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int
         else:
             labels.append(label)
     return ann.clone(labels=labels)
+
+
+class Timer:
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.time()
+        self.duration = (self.end - self.start) * 1000  # ms
+
+    def get_time(self):
+        return self.duration
 
 
 class TempImageWriter:
