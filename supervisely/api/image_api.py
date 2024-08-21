@@ -482,7 +482,7 @@ class ImageApi(RemoveableBulkModuleApi):
             "objects_annotator",
             "tagged_by_annotator",
             "issues_count",
-            "job"
+            "job",
         ]
         if not all([filter["type"] in allowed_filter_types for filter in filters]):
             raise ValueError(f"'type' field must be one of: {allowed_filter_types}")
@@ -2737,9 +2737,7 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
-    def update_tag_value(
-        self, tag_id: int, value: Union[str, float]
-    ) -> Dict:
+    def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
         """
         Update tag value with given ID.
 
@@ -2920,9 +2918,11 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         links: Optional[List[str]] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
+        At least one of `paths` or `links` must be provided.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -2940,6 +2940,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param links: List of links to images.
         :type links: Optional[List[str]]
+        :param conflict_resolution: The strategy to resolve upload conflicts.
+            Options:
+                - 'replace': Replaces the existing images in the dataset with the new ones if there is a conflict and logs the deletion of existing images.
+                - 'skip': Ignores uploading the new images if there is a conflict; the original image's ImageInfo list will be returned instead.
+                - 'rename': (default) Renames the new images to prevent name conflicts.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -2969,6 +2975,10 @@ class ImageApi(RemoveableBulkModuleApi):
             image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
         """
+
+        if paths is None and links is None:
+            raise ValueError("At least one of 'paths' or 'links' must be provided.")
+
         group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
@@ -2986,6 +2996,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 paths=paths,
                 progress_cb=progress_cb,
                 metas=metas,
+                conflict_resolution=conflict_resolution,
             )
             image_infos.extend(image_infos_by_paths)
 
@@ -2996,7 +3007,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 names=names,
                 links=links,
                 progress_cb=progress_cb,
-                conflict_resolution="rename",
+                conflict_resolution=conflict_resolution,
             )
             image_infos.extend(image_infos_by_links)
 
