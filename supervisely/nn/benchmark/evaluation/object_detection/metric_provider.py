@@ -3,8 +3,6 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from pycocotools.coco import COCO
-from sklearn.calibration import calibration_curve
 
 from supervisely.nn.benchmark.evaluation.object_detection import metrics
 
@@ -19,7 +17,10 @@ METRIC_NAMES = {
 }
 
 
-def _get_outcomes_per_image(matches, cocoGt: COCO):
+def _get_outcomes_per_image(matches, cocoGt):
+    """
+    type cocoGt: COCO
+    """
     img_ids = sorted(cocoGt.getImgIds())
     imgId2idx = {img_id: idx for idx, img_id in enumerate(img_ids)}
     outcomes_per_image = np.zeros((len(img_ids), 3), dtype=float)
@@ -55,7 +56,21 @@ def filter_by_conf(matches: list, conf: float):
 
 
 class MetricProvider:
-    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt: COCO, cocoDt: COCO):
+    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt, cocoDt):
+        """
+        Main class for calculating prediction metrics.
+
+        :param matches: dictionary with matches between ground truth and predicted objects
+        :type matches: list
+        :param coco_metrics: dictionary with COCO metrics
+        :type coco_metrics: dict
+        :param params: dictionary with evaluation parameters
+        :type params: dict
+        :param cocoGt: COCO object with ground truth annotations
+        :type cocoGt: COCO
+        :param cocoDt: COCO object with predicted annotations
+        :type cocoDt: COCO
+        """
         self.matches = matches
         self.coco_metrics = coco_metrics
         self.params = params
@@ -76,7 +91,9 @@ class MetricProvider:
         self.recThrs = params["recThrs"]
 
     def calculate(self):
-        self.m_full = _MetricProvider(self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt)
+        self.m_full = _MetricProvider(
+            self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
+        )
         self.m_full._calculate_score_profile()
 
         # Find optimal confidence threshold
@@ -87,7 +104,9 @@ class MetricProvider:
             matches_filtered = filter_by_conf(self.matches, self.f1_optimal_conf)
         else:
             matches_filtered = self.matches
-        self.m = _MetricProvider(matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt)
+        self.m = _MetricProvider(
+            matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
+        )
         self.m._init_counts()
 
         self.ious = self.m.ious
@@ -155,7 +174,11 @@ class MetricProvider:
 
 
 class _MetricProvider:
-    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt: COCO, cocoDt: COCO):
+    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt, cocoDt):
+        """
+        type cocoGt: COCO
+        type cocoDt: COCO
+        """
 
         self.cocoGt = cocoGt
 
@@ -264,7 +287,12 @@ class _MetricProvider:
             warnings.simplefilter("ignore")
             precision_per_image = outcomes_per_image[:, 0] / n_dt
             recall_per_image = outcomes_per_image[:, 0] / n_gt
-            f1_per_image = 2 * precision_per_image * recall_per_image / (precision_per_image + recall_per_image)
+            f1_per_image = (
+                2
+                * precision_per_image
+                * recall_per_image
+                / (precision_per_image + recall_per_image)
+            )
         prediction_table = pd.DataFrame(
             {
                 "image_name": image_names,
@@ -343,7 +371,9 @@ class _MetricProvider:
     def _calculate_score_profile(self):
         iouThrs = self.iouThrs
         n_gt = len(self.tp_matches) + len(self.fn_matches)
-        matches_sorted = sorted(self.tp_matches + self.fp_matches, key=lambda x: x["score"], reverse=True)
+        matches_sorted = sorted(
+            self.tp_matches + self.fp_matches, key=lambda x: x["score"], reverse=True
+        )
         scores = np.array([m["score"] for m in matches_sorted])
         ious = np.array([m["iou"] if m["type"] == "TP" else 0.0 for m in matches_sorted])
         iou_idxs = np.searchsorted(iouThrs, ious + np.spacing(1))
@@ -414,6 +444,10 @@ class _MetricProvider:
         return f1_optimal_conf, best_f1
 
     def calibration_curve(self):
+        from sklearn.calibration import (
+            calibration_curve,  # pylint: disable=import-error
+        )
+
         true_probs, pred_probs = calibration_curve(self.y_true, self.scores, n_bins=10)
         return true_probs, pred_probs
 

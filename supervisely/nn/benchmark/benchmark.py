@@ -20,7 +20,7 @@ class Benchmark:
         self.evaluator = self._get_evaluator()
 
     def run_evaluation(self):
-        self.evaluator.run_evaluation()
+        self.evaluator.evaluate()
 
     def run_speedtest(self, batch_sizes: List[int] = [1, 8, 16]):
         pass
@@ -51,6 +51,7 @@ class Benchmark:
             session = model_session
         else:
             raise ValueError(f"Unsupported type of 'model_session' argument: {type(model_session)}")
-        
+
         if inference_settings is not None:
             session.set_inference_settings(inference_settings)
+        return session
