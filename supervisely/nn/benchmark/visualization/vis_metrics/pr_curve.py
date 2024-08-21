@@ -24,7 +24,7 @@ class PRCurve(MetricVis):
                         title="About Trade-offs between precision and recall"
                     ),
                     markdown_what_is_pr_curve=Widget.Markdown(
-                        title="What is PR curve?",
+                        title="How the PR curve is built?",
                         formats=[
                             definitions.confidence_score,
                             definitions.true_positives,
