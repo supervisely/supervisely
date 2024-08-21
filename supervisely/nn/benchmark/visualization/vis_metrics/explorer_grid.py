@@ -90,7 +90,7 @@ class ExplorerGrid(MetricVis):
         optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
             {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
-            {"type": "tag", "tagId": "outcome", "value": "FP"},
+            # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
         for gt, pred, diff, pred_ann, diff_ann in zip(
             l1, l2, l3, pred_anns.items(), diff_anns.items()

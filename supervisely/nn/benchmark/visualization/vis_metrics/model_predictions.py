@@ -34,11 +34,31 @@ class ModelPredictions(MetricVis):
             tmp.update(names)
         df = self._loader.mp.prediction_table().round(2)
         df = df[df["image_name"].isin(tmp)]
-        columns_options = [{}] * len(df.columns)
-        for idx, col in enumerate(columns_options):
-            if idx == 0:
-                continue
-            columns_options[idx] = {"maxValue": df.iloc[:, idx].max()}
+        # columns_options = [{}] * len(df.columns)
+        # for idx, col in enumerate(columns_options):
+        #     if idx == 0:
+        #         continue
+        #     columns_options[idx] = {"maxValue": df.iloc[:, idx].max()}
+        columns_options = [
+            {},
+            {"subtitle": "objects count", "tooltip": "Number of ground truth objects on the image"},
+            {"subtitle": "objects count", "tooltip": "Number of predicted objects on the image"},
+            {
+                "subtitle": "objects count",
+                "tooltip": "True Positive objects count (correctly detected)",
+            },
+            {
+                "subtitle": "objects count",
+                "tooltip": "False Positive objects count (incorrect detections)",
+            },
+            {
+                "subtitle": "objects count",
+                "tooltip": "False Negative objects count (missed detections)",
+            },
+            {"maxValue": 1, "tooltip": "Precision (positive predictive value)"},
+            {"maxValue": 1, "tooltip": "Recall (sensitivity)"},
+            {"maxValue": 1, "tooltip": "F1 score (harmonic mean of precision and recall)"},
+        ]
         table_model_preds = widget.table(df, columns_options=columns_options)
         tbl = table_model_preds.to_json()
 
@@ -79,7 +99,7 @@ class ModelPredictions(MetricVis):
         optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
             {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
-            {"type": "tag", "tagId": "outcome", "value": "FP"},
+            # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 
         l1 = list(self._loader.gt_images_dct.values())
