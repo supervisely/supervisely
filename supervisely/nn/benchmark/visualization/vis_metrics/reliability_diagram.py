@@ -18,15 +18,15 @@ class ReliabilityDiagram(MetricVis):
             markdown_calibration_score_1=Widget.Markdown(
                 title="Calibration Score", is_header=True, formats=[definitions.confidence_score]
             ),
-            notification_ece=Widget.Notification(
-                formats_title=[self._loader.mp.m_full.expected_calibration_error().round(4)]
-            ),
             collapse_what_is=Widget.Collapse(
                 Schema(markdown_what_is_calibration=Widget.Markdown(title="What is calibration?"))
             ),
             markdown_calibration_score_2=Widget.Markdown(),
             markdown_reliability_diagram=Widget.Markdown(
                 title="Reliability Diagram", is_header=True
+            ),
+            notification_ece=Widget.Notification(
+                formats_title=[self._loader.mp.m_full.expected_calibration_error().round(4)]
             ),
             chart=Widget.Chart(),
             collapse_ece=Widget.Collapse(
