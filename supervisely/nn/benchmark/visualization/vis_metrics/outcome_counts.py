@@ -68,7 +68,7 @@ class OutcomeCounts(MetricVis):
             width=600,
             height=300,
         )
-        fig.update_xaxes(title_text="Count (images)")
+        fig.update_xaxes(title_text="Count (objects)")
         fig.update_yaxes(tickangle=-90)
 
         fig.update_layout(
