@@ -39,7 +39,7 @@ class Benchmark:
 
     def _init_model_session(
             self,
-            api: sly.Api,
+            api: Api,
             model_session: Union[int, str, SessionJSON],
             inference_settings: dict = None
             ):
