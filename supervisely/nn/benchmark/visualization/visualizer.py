@@ -62,7 +62,6 @@ class Visualizer:
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
-        self.f1_optimal_conf = round((self.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)
         self.pbar = benchmark.pbar
 
     def _initialize_object_detection_loader(self):
@@ -116,6 +115,11 @@ class Visualizer:
             self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
         else:
             self.dfsp_down = self.df_score_profile
+        
+        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()
+        if self.f1_optimal_conf is None:
+            self.f1_optimal_conf = 0.01
+            logger.warn("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
 
         # Click data
         gt_id_mapper = IdMapper(cocoGt_dataset)
@@ -353,6 +357,9 @@ class Visualizer:
                     for label in dt_ann.labels:
                         # match_tag_id = label.tags.get("matched_gt_id")
                         match_tag_id = matched_id_map.get(label.geometry.sly_id)
+                        conf = label.tags.get("confidence").value
+                        if conf < self.f1_optimal_conf:
+                            continue
 
                         value = "TP" if match_tag_id else "FP"
                         pred_tag_list.append(
@@ -362,11 +369,6 @@ class Visualizer:
                                 "value": value,
                             }
                         )
-                        # for tag in label.tags:
-                        #     if tag.meta.name == "confidence":
-                        #         if tag.value < self.f1_optimal_conf:
-                        #             continue
-
                         label = label.add_tag(Tag(outcome_tag, value))
                         if not match_tag_id:
                             label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
@@ -521,7 +523,7 @@ class Visualizer:
         gt_ann_mapping = self.click_data.gt_id_mapper.map_obj
         dt_ann_mapping = self.click_data.dt_id_mapper.map_obj
         dtId2matched_gt_id = {}
-        for match in self.mp.m.matches:
+        for match in self.mp.matches_filtered:
             if match["type"] == "TP":
                 dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
         return dtId2matched_gt_id

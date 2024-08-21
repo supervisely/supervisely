@@ -107,6 +107,7 @@ class MetricProvider:
         self.m = _MetricProvider(
             matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
         )
+        self.matches_filtered = matches_filtered
         self.m._init_counts()
 
         self.ious = self.m.ious
