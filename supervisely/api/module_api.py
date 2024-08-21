@@ -542,6 +542,13 @@ class ApiField:
     """"""
     SMART_TOOL_INPUT = "smartToolInput"
     """"""
+    LABELING_QUEUE_ID = "labelingQueueId"
+    """"""
+    LABELING_EXAM_ID = "labelingExamId"
+    """"""
+    INTEGER_COORDS = "integerCoords"
+    """"""
+
 
 def _get_single_item(items):
     """_get_single_item"""
