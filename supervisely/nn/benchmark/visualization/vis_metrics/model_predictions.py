@@ -18,7 +18,7 @@ class ModelPredictions(MetricVis):
             markdown_predictions_gallery=Widget.Markdown(
                 title="Model Predictions", is_header=False
             ),
-            markdown_predictions_table=Widget.Markdown(title="Prediction Table", is_header=True),
+            markdown_predictions_table=Widget.Markdown(title="Prediction details for every image", is_header=True),
             # gallery=Widget.Gallery(is_table_gallery=True),
             table=Widget.Table(),
         )
