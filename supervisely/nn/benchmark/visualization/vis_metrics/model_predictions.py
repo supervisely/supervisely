@@ -33,12 +33,7 @@ class ModelPredictions(MetricVis):
             names = [x.name for x in self._loader._api.image.get_list(dt_dataset.id)]
             tmp.update(names)
         df = self._loader.mp.prediction_table().round(2)
-        df = df[df["image_name"].isin(tmp)]
-        # columns_options = [{}] * len(df.columns)
-        # for idx, col in enumerate(columns_options):
-        #     if idx == 0:
-        #         continue
-        #     columns_options[idx] = {"maxValue": df.iloc[:, idx].max()}
+        df = df[df["Image name"].isin(tmp)]
         columns_options = [
             {},
             {"subtitle": "objects count", "tooltip": "Number of ground truth objects on the image"},
