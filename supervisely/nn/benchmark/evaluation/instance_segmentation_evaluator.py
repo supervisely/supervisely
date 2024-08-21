@@ -1,8 +1,7 @@
 import os
 import supervisely as sly
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.evaluation.instance_segmentation import calculate_metrics
-from supervisely.nn.benchmark.coco_utils import sly2coco, read_coco_datasets
+from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco, calculate_metrics
 
 
 class InstanceSegmentationEvaluator(BaseEvaluator):

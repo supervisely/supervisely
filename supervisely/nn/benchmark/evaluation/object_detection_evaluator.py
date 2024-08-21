@@ -1,9 +1,8 @@
 import os
 
 from supervisely.io.json import dump_json_file
-from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
+from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco, calculate_metrics
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.evaluation.object_detection import calculate_metrics
 
 
 class ObjectDetectionEvaluator(BaseEvaluator):
