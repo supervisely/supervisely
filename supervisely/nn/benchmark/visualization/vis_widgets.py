@@ -44,7 +44,7 @@ class Widget:
         def __init__(self, schema: Schema) -> None:
             super().__init__()
             self.schema = schema
-            res = "<el-collapse>"
+            res = "<el-collapse class='mb-6'>"
             for subwidget in schema:
                 res += f"""\n                <el-collapse-item title="{subwidget.title}">"""
                 res += "\n            {{ " + f"{subwidget.name}_html" + " }}"

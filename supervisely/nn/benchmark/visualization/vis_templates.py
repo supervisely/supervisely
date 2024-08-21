@@ -169,15 +169,17 @@ template_table_str = """<sly-iw-table
             />"""
 
 template_notification_str = """
-            <sly-iw-notification              
-              iw-widget-id="{{ widget_id }}"
-              :data="{{ data }}"
-            >
-              <span slot="title">
-                {{ title }}
-              </span>
+            <div style="margin-top: 20px; margin-bottom: 20px;">
+                <sly-iw-notification              
+                iw-widget-id="{{ widget_id }}"
+                :data="{{ data }}"
+                >
+                <span slot="title">
+                    {{ title }}
+                </span>
 
-              <span slot="description">
-                {{ description }}
-              </span>
-            </sly-iw-notification>"""
+                <span slot="description">
+                    {{ description }}
+                </span>
+                </sly-iw-notification>
+            </div>"""
