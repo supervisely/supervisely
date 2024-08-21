@@ -18,7 +18,9 @@ class ModelPredictions(MetricVis):
             markdown_predictions_gallery=Widget.Markdown(
                 title="Model Predictions", is_header=False
             ),
-            markdown_predictions_table=Widget.Markdown(title="Prediction details for every image", is_header=True),
+            markdown_predictions_table=Widget.Markdown(
+                title="Prediction details for every image", is_header=True
+            ),
             # gallery=Widget.Gallery(is_table_gallery=True),
             table=Widget.Table(),
         )
@@ -111,6 +113,7 @@ class ModelPredictions(MetricVis):
             key = click_data.setdefault(str(pred.name), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
+            key["title"] = f"Image: {pred.name}"
             image_id, ann_json = pred_ann
             assert image_id == pred.id
             object_bindings = []

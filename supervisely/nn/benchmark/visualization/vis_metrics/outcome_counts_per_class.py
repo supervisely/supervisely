@@ -125,15 +125,18 @@ class PerClassOutcomeCounts(MetricVis):
                 res["clickData"][key] = {}
                 res["clickData"][key]["imagesIds"] = []
 
-                tmp = set()
-                for x in v2:
-                    dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                    tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                res["clickData"][key]["title"] = f"Class: {key1}. Outcome: {key2}"
 
-                for img_id in tmp:
-                    res["clickData"][key]["imagesIds"].append(img_id)
-                    res["clickData"][key]["filters"] = [
-                        {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                        {"type": "tag", "tagId": "outcome", "value": key2},
-                    ]
+                img_ids = set()
+                for x in v2:
+                    if key2 == "FN":
+                        dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
+                        img_ids.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                    else:
+                        img_ids.add(self._loader.dt_images_dct[x["dt_img_id"]].id)
+                res["clickData"][key]["imagesIds"] = list(img_ids)
+                res["clickData"][key]["filters"] = [
+                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                    {"type": "tag", "tagId": "outcome", "value": key2},
+                ]
         return res

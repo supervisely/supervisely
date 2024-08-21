@@ -229,7 +229,7 @@ class MetricVis:
         if not self.clickable:
             return
 
-        optimal_conf = round(self.f1_optimal_conf, 1)
+        optimal_conf = round(self.f1_optimal_conf, 4)
 
         res = {}
 
@@ -239,18 +239,21 @@ class MetricVis:
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
 
-            tmp = set()
+            # tmp = defaultdict(list)
+            img_ids = set()
+            obj_ids = set()
+
+            res["clickData"][key]["title"] = f"Class: {key}"
 
             for x in v:
-                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                img_ids.add(x["dt_img_id"])
+                obj_ids.add(x["dt_obj_id"])
 
-            for img_id in tmp:
-                res["clickData"][key]["imagesIds"].append(img_id)
-
+            res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [
                 {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
                 {"type": "tag", "tagId": "outcome", "value": "TP"},
+                {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
             ]
 
         return res
