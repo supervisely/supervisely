@@ -100,6 +100,7 @@ class BaseBenchmark:
             "batch_size": batch_size,
             **model_info,
         }
+        self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
         return inference_info
 
     def evaluate(self, dt_project_id):
