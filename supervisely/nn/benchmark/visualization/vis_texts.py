@@ -17,9 +17,9 @@ checkpoint_name = "YOLOv8-L (COCO 2017 val)"
 
 # <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
 clickable_label = """
-<span style="color: #5a6772">
-    Click on the chart to explore corresponding images.
-</span>
+> <span style="color: #5a6772">
+>     Click on the chart to explore corresponding images.
+> </span>
 """
 
 markdown_overview = """# {}
@@ -55,11 +55,9 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 markdown_explorer = """## Explore Predictions
 In this section you can visually assess the model performance through examples. This helps users better understand model capabilities and limitations, giving an intuitive grasp of prediction quality in different scenarios.
 
-Explore the model's predictions on the grid. Click one of the images to view the **Ground Truth**, **Prediction**, or the **Difference** annotations on the side-by-side view. This helps you to recognize mistakes and peculiarities of the data, which will be shown in the **Difference** column. The *filter* option allows you to change the *confidence* threshold and model's false *outcomes*.
+> Click on the image to view the **Ground Truth**, **Prediction**, and **Difference** annotations side-by-side. 
 
-
-> Note that in the modal with the difference views the **threshold** filter is applied only to the **Prediction** column, while the **outcome** filter is applied to the **Difference** column. 
-The **Difference** is calculated only for the optimal confidence threshold, which is the confidence score that maximizes the F1-score. This allows you to focus on the most accurate predictions made by the model.
+> Filtering options allow you to adjust the confidence threshold (only for predictions) and the model's false outcomes (only for differences). Differences are calculated only for the optimal confidence threshold, allowing you to focus on the most accurate predictions made by the model.
 """
 
 markdown_predictions_gallery = """
@@ -78,7 +76,9 @@ markdown_predictions_table = """### Prediction details for every image
 The table helps you in finding samples with specific cases of interest. You can sort by parameters such as the number of predictions, or specific a metric, e.g, recall, then click on a row to view this image and predictions.
 
 **Example**: you can sort by **FN** (False Negatives) in descending order to identify samples where the model failed to detect many objects.
-\n\n*Click on the row* to view the image with **Ground Truth**, **Prediction**, or the **Difference** annotations.
+
+
+> Click on the row to view the image with **Ground Truth**, **Prediction**, or the **Difference** annotations.
 """
 
 markdown_what_is = """
