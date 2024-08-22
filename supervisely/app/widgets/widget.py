@@ -273,6 +273,7 @@ class DynamicWidget(Widget):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         self.reload = self.update_template_for_offline_session(self.reload)
         super().__init__(widget_id=widget_id, file_path=file_path)
+        self._loop = asyncio.get_event_loop()
 
     def reload(self):  # pylint: disable=method-hidden
         raise NotImplementedError()
@@ -287,9 +288,7 @@ class DynamicWidget(Widget):
             self._sly_app.get_server().cached_template = None
             client = Application().test_client
 
-            loop = asyncio.get_event_loop()
-            loop.run_in_executor(None, client.get, "/")
-            _ = run_sync(client.get("/"))
+            self._loop.run_in_executor(None, client.get, "/")
 
         return wrapper
 
