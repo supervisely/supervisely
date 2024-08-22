@@ -47,6 +47,10 @@ def get_static_paths_by_mounted_object(mount) -> list:
                     )
                 )
 
+    sly.logger.info("----------------------------------------------------")
+    sly.logger.info("get_static_paths_by_mounted_object()")
+    sly.logger.info(f"Static paths: {static_paths}")
+    sly.logger.info("----------------------------------------------------")
     return static_paths
 
 
@@ -98,6 +102,15 @@ def upload_to_supervisely(static_dir_path):
     task_id = sly.env.task_id(raise_not_found=False)
     task_id = 0000 if task_id is None else task_id
     remote_dir = get_offline_session_files_path(task_id)
+
+    # Del later
+    sly.logger.info("----------------------------------------------------")
+    sly.logger.info("Uploading app files to Supervisely for offline usage")
+    for root, dirs, files in os.walk(static_dir_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            sly.logger.info(f"Uploading file: {file_path}")
+    sly.logger.info("----------------------------------------------------")
 
     res_remote_dir: str = api.file.upload_directory(
         team_id=team_id,

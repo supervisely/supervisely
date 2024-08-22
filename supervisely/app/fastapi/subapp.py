@@ -29,12 +29,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
-from supervisely._utils import (
-    is_debug_with_sly_net,
-    is_development,
-    is_docker,
-    is_production,
-)
+from supervisely._utils import is_debug_with_sly_net, is_development, is_docker, is_production
 from supervisely.api.api import API_TOKEN, SERVER_ADDRESS, TASK_ID, Api
 from supervisely.api.module_api import ApiField
 from supervisely.app.exceptions import DialogWindowBase
@@ -330,7 +325,7 @@ def create(
 
         import supervisely
 
-        # app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
+        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
 
     return app
 
