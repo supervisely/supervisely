@@ -44,9 +44,9 @@ class PRCurve(MetricVis):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         # Precision-Recall curve
-        tmp = self._loader.mp.pr_curve().mean((0, 1))
-        indecies = tmp != -1
-        pr_curve = self.coco_precision[:, :, indecies, 0, 2].mean(0)
+        # tmp = self._loader.mp.pr_curve().mean((0, 1))
+        # indecies = tmp != -1
+        # pr_curve = self.coco_precision[:, :, indecies, 0, 2].mean(0) # ? 'PRCurve' has no 'coco_precision' member
 
         fig = px.line(
             x=self._loader.mp.recThrs,
