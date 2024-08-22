@@ -39,7 +39,7 @@ class OutcomeCounts(MetricVis):
                 y=["Outcome"],
                 name="TP",
                 orientation="h",
-                marker=dict(color="#1fb466"),
+                marker=dict(color="#8ACAA1"),
                 hovertemplate="TP: %{x} objects<extra></extra>",
             )
         )
@@ -59,7 +59,7 @@ class OutcomeCounts(MetricVis):
                 y=["Outcome"],
                 name="FP",
                 orientation="h",
-                marker=dict(color="#d5a5a5"),
+                marker=dict(color="#F7ADAA"),
                 hovertemplate="FP: %{x} objects<extra></extra>",
             )
         )

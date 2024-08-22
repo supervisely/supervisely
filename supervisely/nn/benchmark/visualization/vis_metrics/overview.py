@@ -16,9 +16,8 @@ class Overview(MetricVis):
         super().__init__(loader)
         info = loader.inference_info
         url = info.get("checkpoint_url")
-        link_text = info.get("custom_checkpoint_path")
-        if link_text is None:
-            link_text = url
+        link_text = info.get("custom_checkpoint_path", url) 
+        link_text = link_text.replace("_", "\_")
         self.schema = Schema(
             markdown_overview=Widget.Markdown(
                 title="Overview",

@@ -78,7 +78,7 @@ class PerClassOutcomeCounts(MetricVis):
 
         df = pd.DataFrame(data)
 
-        color_map = {"TP": "#1fb466", "FN": "#dd3f3f", "FP": "#d5a5a5"}
+        color_map = {"TP": "#8ACAA1", "FN": "#dd3f3f", "FP": "#F7ADAA"}
         fig = px.bar(
             df,
             x="category",
