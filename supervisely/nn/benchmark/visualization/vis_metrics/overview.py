@@ -15,8 +15,8 @@ class Overview(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         info = loader.inference_info
-        url = info.get("deploy_params", {}).get("checkpoint_url")
-        link_text = info.get("deploy_params", {}).get("checkpoint_path")
+        url = info.get("checkpoint_url")
+        link_text = info.get("custom_checkpoint_path")
         if link_text is None:
             link_text = url
         self.schema = Schema(
