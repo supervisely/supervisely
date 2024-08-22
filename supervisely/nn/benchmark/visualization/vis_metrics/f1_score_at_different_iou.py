@@ -23,9 +23,6 @@ class F1ScoreAtDifferentIOU(MetricVis):
                 is_header=True,
                 formats=[definitions.iou_threshold],
             ),
-            notification_f1=Widget.Notification(
-                formats_title=[round((self._loader.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)]
-            ),
             chart=Widget.Chart(),
         )
 

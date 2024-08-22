@@ -296,9 +296,9 @@ class _MetricProvider:
             )
         prediction_table = pd.DataFrame(
             {
-                "image_name": image_names,
-                "N gt": n_gt,
-                "N dt": n_dt,
+                "Image name": image_names,
+                "GT objects": n_gt,
+                "Predictions": n_dt,
                 "TP": outcomes_per_image[:, 0],
                 "FP": outcomes_per_image[:, 1],
                 "FN": outcomes_per_image[:, 2],

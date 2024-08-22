@@ -25,6 +25,9 @@ class ReliabilityDiagram(MetricVis):
             markdown_reliability_diagram=Widget.Markdown(
                 title="Reliability Diagram", is_header=True
             ),
+            notification_ece=Widget.Notification(
+                formats_title=[self._loader.mp.m_full.expected_calibration_error().round(4)]
+            ),
             chart=Widget.Chart(),
             collapse_ece=Widget.Collapse(
                 Schema(
@@ -32,9 +35,6 @@ class ReliabilityDiagram(MetricVis):
                         title="How to interpret the Calibration curve"
                     )
                 )
-            ),
-            notification_ece=Widget.Notification(
-                formats_title=[self._loader.mp.m_full.expected_calibration_error().round(4)]
             ),
         )
 

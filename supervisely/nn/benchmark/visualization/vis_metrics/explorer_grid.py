@@ -62,6 +62,7 @@ class ExplorerGrid(MetricVis):
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": ["outcome"]}] * 3
         click_data = res.setdefault("clickData", {})
         explore = click_data.setdefault("explore", {})
+        explore["title"] = "Explore all predictions"
         images_ids = explore.setdefault("imagesIds", [])
 
         images = list(self._loader.dt_images_dct.values())
@@ -90,7 +91,7 @@ class ExplorerGrid(MetricVis):
         optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
             {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
-            {"type": "tag", "tagId": "outcome", "value": "FP"},
+            # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
         for gt, pred, diff, pred_ann, diff_ann in zip(
             l1, l2, l3, pred_anns.items(), diff_anns.items()
@@ -99,6 +100,7 @@ class ExplorerGrid(MetricVis):
             key = click_data.setdefault(str(pred.id), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
+            key["title"] = f"Image: {pred.name}"
             image_id, ann_json = pred_ann
             assert image_id == pred.id
             object_bindings = []

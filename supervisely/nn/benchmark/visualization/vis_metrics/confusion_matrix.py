@@ -79,14 +79,18 @@ class ConfusionMatrix(MetricVis):
             key = subkey1 + self._keypair_sep + subkey2
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
+            res["clickData"][key]["title"] = f"Class Pair: {subkey1} - {subkey2}"
 
-            tmp = set()
-
+            img_ids = set()
+            obj_ids = set()
             for x in val:
-                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                image_id = self._loader.dt_images_dct[x["dt_img_id"]].id
+                img_ids.add(image_id)
+                obj_ids.add(x["dt_obj_id"])
 
-            for img_id in tmp:
-                res["clickData"][key]["imagesIds"].append(img_id)
+            res["clickData"][key]["imagesIds"] = list(img_ids)
+            res["clickData"][key]["filters"] = [
+                {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
+            ]
 
         return res

@@ -68,7 +68,7 @@ class OutcomeCounts(MetricVis):
             width=600,
             height=300,
         )
-        fig.update_xaxes(title_text="Count (images)")
+        fig.update_xaxes(title_text="Count (objects)")
         fig.update_yaxes(tickangle=-90)
 
         fig.update_layout(
@@ -99,16 +99,19 @@ class OutcomeCounts(MetricVis):
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
 
-            tmp = set()
+            img_ids = set()
             for x in v:
-                dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                tmp.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                if key == "FN":
+                    dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
+                    img_ids.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                else:
+                    img_ids.add(self._loader.dt_images_dct[x["dt_img_id"]].id)
 
-            for img_id in tmp:
-                res["clickData"][key]["imagesIds"].append(img_id)
-                res["clickData"][key]["filters"] = [
-                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                    {"type": "tag", "tagId": "outcome", "value": key},
-                ]
+            res["clickData"][key]["title"] = f"{key}: {len(v)} objects"
+            res["clickData"][key]["imagesIds"] = list(img_ids)
+            res["clickData"][key]["filters"] = [
+                {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                {"type": "tag", "tagId": "outcome", "value": key},
+            ]
 
         return res
