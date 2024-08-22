@@ -256,8 +256,11 @@ class BaseBenchmark:
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
         return dt_project_info
+    
+    def download_projects(self, save_images: bool = False):
+        return self._download_projects(save_images=save_images)
 
-    def _download_projects(self):
+    def _download_projects(self, save_images=False):
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
             total = self.dt_project_info.items_count * 2
@@ -268,7 +271,7 @@ class BaseBenchmark:
                     gt_path,
                     dataset_ids=self.gt_dataset_ids,
                     log_progress=True,
-                    save_images=False,
+                    save_images=save_images,
                     save_image_info=True,
                     progress_cb=p.update,
                 )
@@ -282,7 +285,7 @@ class BaseBenchmark:
                     self.dt_project_info.id,
                     dt_path,
                     log_progress=True,
-                    save_images=False,
+                    save_images=save_images,
                     save_image_info=True,
                     progress_cb=p.update,
                 )
@@ -435,7 +438,7 @@ class BaseBenchmark:
 
         return remote_dir
 
-    def save_reporn_link(self, remote_dir: str):
+    def upload_report_link(self, remote_dir: str):
         template_path = os.path.join(remote_dir, "template.vue")
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
 
