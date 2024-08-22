@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
@@ -29,6 +31,7 @@ class PerClassAvgPrecision(MetricVis):
 
         # AP per-class
         ap_per_class = self._loader.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
+        ap_per_class[ap_per_class == -1] = 0  # -1 is a placeholder for no GT
         labels = dict(r="Average Precision", theta="Class")
         fig = px.scatter_polar(
             r=ap_per_class,

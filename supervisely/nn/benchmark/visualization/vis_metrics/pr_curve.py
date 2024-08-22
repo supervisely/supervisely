@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
@@ -44,13 +46,12 @@ class PRCurve(MetricVis):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         # Precision-Recall curve
-        # tmp = self._loader.mp.pr_curve().mean((0, 1))
-        # indecies = tmp != -1
-        # pr_curve = self.coco_precision[:, :, indecies, 0, 2].mean(0) # ? 'PRCurve' has no 'coco_precision' member
-
+        pr_curve = self._loader.mp.pr_curve().copy()
+        pr_curve[pr_curve == -1] = np.nan  # -1 is a placeholder for no GT
+        pr_curve = np.nanmean(pr_curve, axis=-1)
         fig = px.line(
             x=self._loader.mp.recThrs,
-            y=self._loader.mp.pr_curve().mean(-1),  # TODO: pr_curve
+            y=pr_curve,
             # title="Precision-Recall Curve",
             labels={"x": "Recall", "y": "Precision"},
             width=600,
