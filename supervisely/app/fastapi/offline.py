@@ -146,12 +146,6 @@ def dump_files_to_supervisely(app: FastAPI, template_response):
         app_template_path = pathlib.Path(tempfile.mkdtemp())
         app_static_paths = get_static_paths_by_mounted_object(mount=app)
 
-        app_static_paths = app_static_paths[1:]
-        sly.logger.info("----------------------------------------------------")
-        sly.logger.info("AFTER app_static_paths")
-        sly.logger.info(f"Static paths: {app_static_paths}")
-        sly.logger.info("----------------------------------------------------")
-
         dump_statics_to_dir(static_dir_path=app_template_path, static_paths=app_static_paths)
         dump_html_to_dir(static_dir_path=app_template_path, template=template_response)
 
