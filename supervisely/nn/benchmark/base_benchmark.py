@@ -10,6 +10,7 @@ from supervisely.io import env, fs, json
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.visualization.visualizer import Visualizer
+from supervisely.nn.benchmark.utils import WORKSPACE_NAME, WORKSPACE_DESCRIPTION
 from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
@@ -88,6 +89,7 @@ class BaseBenchmark:
             cache_project_on_model=cache_project_on_agent,
             batch_size=batch_size,
         )
+        output_project_id = self.dt_project_info.id
         with self.pbar(
             message="Inference in progress", total=self.gt_project_info.items_count
         ) as p:
@@ -248,15 +250,17 @@ class BaseBenchmark:
     def _get_or_create_dt_project(self, output_project_id, model_info) -> ProjectInfo:
         if output_project_id is None:
             dt_project_name = self._generate_dt_project_name(self.gt_project_info.name, model_info)
-            dt_wrokspace_id = self.gt_project_info.workspace_id
+            workspace = self.api.workspace.get_info_by_name(self.team_id, WORKSPACE_NAME)
+            if workspace is None:
+                workspace = self.api.workspace.create(self.team_id, WORKSPACE_NAME, WORKSPACE_DESCRIPTION)
             dt_project_info = self.api.project.create(
-                dt_wrokspace_id, dt_project_name, change_name_if_conflict=True
+                workspace.id, dt_project_name, change_name_if_conflict=True
             )
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
         return dt_project_info
-    
+
     def download_projects(self, save_images: bool = False):
         return self._download_projects(save_images=save_images)
 
