@@ -288,7 +288,7 @@ class DynamicWidget(Widget):
             self._sly_app.get_server().cached_template = None
             client = Application().test_client
 
-            self._loop.run_in_executor(None, client.get, "/")
+            self._loop.create_task(client.get("/"))
 
         return wrapper
 
