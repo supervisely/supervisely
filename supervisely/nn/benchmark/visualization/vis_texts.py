@@ -172,7 +172,7 @@ markdown_trade_offs = """- A system with high recall but low precision generates
 - The ideal system achieves both high precision and high recall, meaning it returns many results with a high accuracy rate.
 """
 
-markdown_what_is_pr_curve = """1. **Sort predictions*: Arrange all the bounding box predictions by their <abbr title="{}">confidence scores</abbr> in descending order.
+markdown_what_is_pr_curve = """1. **Sort predictions**: Arrange all the bounding box predictions by their <abbr title="{}">confidence scores</abbr> in descending order.
 
 2. **Classify outcomes**: For each prediction, determine if it is a <abbr title="{}">true positive</abbr> (TP) or a <abbr title="{}">false positive</abbr> (FP) and record these classifications in a table.
 
