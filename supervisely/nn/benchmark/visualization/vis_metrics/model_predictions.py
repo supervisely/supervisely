@@ -37,7 +37,7 @@ class ModelPredictions(MetricVis):
         df = self._loader.mp.prediction_table().round(2)
         df = df[df["Image name"].isin(tmp)]
         columns_options = [
-            {},
+            {"maxWidth": "225px"},
             {"subtitle": "objects count", "tooltip": "Number of ground truth objects on the image"},
             {"subtitle": "objects count", "tooltip": "Number of predicted objects on the image"},
             {
