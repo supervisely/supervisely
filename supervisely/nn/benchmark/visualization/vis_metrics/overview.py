@@ -15,6 +15,10 @@ class Overview(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         info = loader.inference_info
+        url = info.get("deploy_params", {}).get("checkpoint_url")
+        link_text = info.get("deploy_params", {}).get("checkpoint_path")
+        if link_text is None:
+            link_text = url
         self.schema = Schema(
             markdown_overview=Widget.Markdown(
                 title="Overview",
@@ -29,8 +33,8 @@ class Overview(MetricVis):
                     info.get("task_type"),
                     info.get("runtime"),
                     info.get("hardware"),
-                    info.get("deploy_params", {}).get("checkpoint_url"),
-                    info.get("deploy_params", {}).get("checkpoint_url"),
+                    url,
+                    link_text,
                     self._loader.docs_link,
                     self._loader.docs_link,
                 ],
