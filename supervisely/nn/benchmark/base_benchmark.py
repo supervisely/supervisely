@@ -436,6 +436,11 @@ class BaseBenchmark:
 
         logger.info(f"Uploaded to: {remote_dir!r}")
 
+        template_path = os.path.join(remote_dir, "template.vue")
+        vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
+        report_link = f"{self.api.server_address}/model-benchmark?id={vue_template_info.id}"
+        logger.info(f"Open url: {report_link}")
+
         return remote_dir
 
     def upload_report_link(self, remote_dir: str):
