@@ -57,7 +57,7 @@ from supervisely.decorators.inference import (
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.inference.info import DeployInfo, CheckpointInfo, RuntimeType, get_hardware_info
+from supervisely.nn.inference.utils import DeployInfo, CheckpointInfo, RuntimeType, get_hardware_info
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
