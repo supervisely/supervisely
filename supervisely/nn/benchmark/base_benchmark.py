@@ -116,8 +116,8 @@ class BaseBenchmark:
             gt_project_path=gt_project_path,
             dt_project_path=dt_project_path,
             result_dir=eval_results_dir,
-            items_count=self.gt_project_info.items_count,
             progress=self.pbar,
+            items_count=self.gt_project_info.items_count,
         )
         self.evaluator.evaluate()
 

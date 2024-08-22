@@ -135,8 +135,6 @@ class Visualizer:
         self._objects_bindings = []
 
     def visualize(self):
-        import ujson  # pylint: disable=import-error
-
         from supervisely.app.widgets import GridGalleryV2
 
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
@@ -173,7 +171,7 @@ class Visualizer:
         for basename in ["modal_general.json", "modal_general_diff.json"]:
             local_path = f"{self.layout_dir}/data/{basename}"
             with open(local_path, "w", encoding="utf-8") as f:
-                f.write(ujson.dumps(res))
+                f.write(json.dumps(res))
             logger.info("Saved: %r", basename)
 
         self._save_template(initialized)
@@ -198,8 +196,6 @@ class Visualizer:
                 logger.info("Saved: %r", f"{subwidget.name}.md")
 
     def _write_json_files(self, mv: MetricVis, widget: Widget):
-        import ujson  # pylint: disable=import-error
-
         if isinstance(widget, Widget.Chart):
             fig = mv.get_figure(widget)
             if fig is not None:
@@ -220,14 +216,14 @@ class Visualizer:
                     basename = f"{widget.name}_{mv.name}_click_data.json"
                     local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(click_data))
+                        f.write(json.dumps(click_data))
                     logger.info("Saved: %r", basename)
 
                     # modal_data = mv.get_modal_data(widget)
                     # basename = f"{widget.name}_{mv.name}_modal_data.json"
                     # local_path = f"{self.layout_dir}/data/{basename}"
                     # with open(local_path, "w", encoding="utf-8") as f:
-                    #     f.write(ujson.dumps(modal_data))
+                    #     f.write(json.dumps(modal_data))
                     # logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Gallery):
@@ -236,7 +232,7 @@ class Visualizer:
                 basename = f"{widget.name}_{mv.name}.json"
                 local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
-                    f.write(ujson.dumps(content))
+                    f.write(json.dumps(content))
                 logger.info("Saved: %r", basename)
 
                 click_data = mv.get_gallery_click_data(widget)
@@ -244,7 +240,7 @@ class Visualizer:
                     basename = f"{widget.name}_{mv.name}_click_data.json"
                     local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(click_data))
+                        f.write(json.dumps(click_data))
                     logger.info("Saved: %r", basename)
 
                 diff_data = mv.get_diff_gallery_data(widget)
@@ -252,14 +248,14 @@ class Visualizer:
                     basename = f"{widget.name}_{mv.name}_diff_data.json"
                     local_path = f"{self.layout_dir}/data/{basename}"
                     with open(local_path, "w", encoding="utf-8") as f:
-                        f.write(ujson.dumps(diff_data))
+                        f.write(json.dumps(diff_data))
                     logger.info("Saved: %r", basename)
 
                     # modal_data = mv.get_gallery_modal(widget)
                     # basename = f"{widget.name}_{mv.name}_modal_data.json"
                     # local_path = f"{self.layout_dir}/data/{basename}"
                     # with open(local_path, "w", encoding="utf-8") as f:
-                    #     f.write(ujson.dumps(modal_data))
+                    #     f.write(json.dumps(modal_data))
                     # logger.info("Saved: %r", basename)
 
         if isinstance(widget, Widget.Table):
@@ -268,14 +264,14 @@ class Visualizer:
                 basename = f"{widget.name}_{mv.name}.json"
                 local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
-                    f.write(ujson.dumps(content))
+                    f.write(json.dumps(content))
                 logger.info("Saved: %r", basename)
 
                 content = mv.get_table_click_data(widget)
                 basename = f"{widget.name}_{mv.name}_click_data.json"
                 local_path = f"{self.layout_dir}/data/{basename}"
                 with open(local_path, "w", encoding="utf-8") as f:
-                    f.write(ujson.dumps(content))
+                    f.write(json.dumps(content))
                 logger.info("Saved: %r", basename)
 
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
