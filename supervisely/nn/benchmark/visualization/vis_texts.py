@@ -165,12 +165,22 @@ markdown_pr_curve = """## Precision-Recall Curve
 Precision-Recall curve is an overall performance indicator. It helps to visually assess both precision and recall for all predictions made by the model on the whole dataset. This gives you an understanding of how precision changes as you attempt to increase recall, providing a view of **trade-offs between precision and recall** <abbr title="{}">(?)</abbr>. Ideally, a high-quality model will maintain strong precision as recall increases. This means that as you move from left to right on the curve, there should not be a significant drop in precision. Such a model is capable of finding many relevant instances, maintaining a high level of precision.
 """
 
-markdown_trade_offs = """A system with high recall but low precision returns many results, but most of its predictions are incorrect or redundant (false positive). A system with high precision but low recall is just the opposite, returning very few results, most of its predictions are correct. An ideal system with high precision and high recall will return many results, with all results predicted correctly."""
+markdown_trade_offs = """- A system with high recall but low precision generates many results, but most of its predictions are incorrect or redundant (false positives).
 
-markdown_what_is_pr_curve = """Imagine you sort all the predictions by their <abbr title="{}">confidence scores</abbr> from highest to lowest and write it down in a table. As you iterate over each sorted prediction, you classify it as a <abbr title="{}">true positive</abbr> (TP) or a <abbr title="{}">false positive</abbr> (FP). For each prediction, you then calculate the cumulative precision and recall so far. Each prediction is plotted as a point on a graph, with recall on the x-axis and precision on the y-axis. Now you have a plot very similar to the PR-curve, but it appears as a zig-zag curve due to variations as you move from one prediction to the next.
+- Conversely, a system with high precision but low recall produces very few results, but most of its predictions are accurate.
 
- **Forming the Actual PR Curve**: The true PR curve is derived by plotting only the maximum precision value for each recall level across all thresholds.
-This means you connect only the highest points of precision for each segment of recall, smoothing out the zig-zags and forming a curve that typically slopes downward as recall increases.
+- The ideal system achieves both high precision and high recall, meaning it returns many results with a high accuracy rate.
+"""
+
+markdown_what_is_pr_curve = """1. **Sort predictions*: Arrange all the bounding box predictions by their <abbr title="{}">confidence scores</abbr> in descending order.
+
+2. **Classify outcomes**: For each prediction, determine if it is a <abbr title="{}">true positive</abbr> (TP) or a <abbr title="{}">false positive</abbr> (FP) and record these classifications in a table.
+
+3. **Calculate cumulative metrics**: As you move through each prediction, calculate the cumulative precision and recall. Add these values to the table.
+
+4. **Plot points**: Each row in the table now represents a point on a graph, with cumulative recall on the x-axis and cumulative precision on the y-axis. Initially, this creates a zig-zag line because of variations between predictions.
+
+5. **Smooth the curve**: The true PR curve is derived by plotting only the maximum precision value for each recall level across all thresholds. This means you connect only the highest points of precision for each segment of recall, smoothing out the zig-zags and forming a curve that typically slopes downward as recall increases.
 """
 
 
@@ -322,7 +332,10 @@ This chart breaks down all predictions into <abbr title="{}">True Positives</abb
 
 """
 
-markdown_normalization = "By default, the normalization is used for better intraclass comparison. The total outcome counts are divided by the number of ground truth instances of the corresponding class. This is useful, because the sum of TP + FN always gives 1.0, representing all ground truth instances for a class, that gives a visual understanding of what portion of instances the model detected. So, if a green bar (TP outcomes) reaches the 1.0, this means the model is managed to predict all objects for the class. Everything that is higher than 1.0 corresponds to False Positives, i.e, redundant predictions. You can turn off the normalization switching to absolute values."
+markdown_normalization = """Normalization is used for better intraclass comparison. If the normalization is on, the total outcome counts are divided by the number of ground truth instances of the corresponding class. This is useful, because on the chart, the sum of TP and FN bars will always result in 1.0, representing the full set of ground truth instances in the dataset for a class. This provides a clear visual understanding of how many instances the model correctly detected, how many it missed, and how many were false positives. For example, if a green bar (TP outcomes) reaches 1.0, this means the model has managed to predict all objects for the class without false negatives. Everything that is higher than 1.0 corresponds to False Positives, i.e, redundant predictions that the model should not predict. You can turn off the normalization, switching to absolute counts.
+
+If normalization is off, the chart will display the total count of instances that correspond to outcome type (one of TP, FP or FN). This mode is identical to the main Outcome Counts graph on the top of the page. However, when normalization is off, you may encounter a class imbalance problem. Visually, bars that correspond to classes with many instances in the dataset will be much larger than others. This complicates the visual analysis.
+"""
 
 markdown_class_outcome_counts_2 = (
     """You can switch the plot view between normalized and absolute values.
