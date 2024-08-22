@@ -15,6 +15,7 @@ from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
+from supervisely._utils import is_development
 
 
 class BaseBenchmark:
@@ -255,7 +256,8 @@ class BaseBenchmark:
                 workspace = self.api.workspace.create(
                     self.team_id, WORKSPACE_NAME, WORKSPACE_DESCRIPTION
                 )
-            self.api.workspace.change_visibility(workspace.id, visible=False)
+            visible = is_development()
+            self.api.workspace.change_visibility(workspace.id, visible=visible)
             dt_project_info = self.api.project.create(
                 workspace.id, dt_project_name, change_name_if_conflict=True
             )
