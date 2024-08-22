@@ -330,7 +330,7 @@ def create(
 
         import supervisely
 
-        app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
+        # app.mount("/css", StaticFiles(directory=supervisely.__path__[0]), name="sly_static")
 
     return app
 
@@ -530,8 +530,8 @@ def _init(
             assert resp.status_code == 200
             logger.info("Application has been shut down successfully")
 
-        # if static_dir is not None:
-        # app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
+        if static_dir is not None:
+            app.mount("/static", CustomStaticFiles(directory=static_dir), name="static_files")
 
     return app
 
