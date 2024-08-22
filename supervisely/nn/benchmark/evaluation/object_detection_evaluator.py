@@ -34,7 +34,7 @@ class ObjectDetectionEvaluator(BaseEvaluator):
                 accepted_shapes=["rectangle"],
                 progress_cb=pbar.update,
             )
-        assert cocoDt_json["categories"] == cocoGt_json["categories"]
+        assert cocoDt_json["categories"] == cocoGt_json["categories"], "Classes in GT and Pred projects must be the same"
         assert [x["id"] for x in cocoDt_json["images"]] == [x["id"] for x in cocoGt_json["images"]]
         return cocoGt_json, cocoDt_json
 
