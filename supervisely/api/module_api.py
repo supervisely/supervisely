@@ -542,6 +542,8 @@ class ApiField:
     """"""
     SMART_TOOL_INPUT = "smartToolInput"
     """"""
+    HIDDEN = "hidden"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""

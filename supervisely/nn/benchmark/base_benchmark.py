@@ -9,8 +9,8 @@ from supervisely.app.widgets import SlyTqdm
 from supervisely.io import env, fs, json
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
+from supervisely.nn.benchmark.utils import WORKSPACE_DESCRIPTION, WORKSPACE_NAME
 from supervisely.nn.benchmark.visualization.visualizer import Visualizer
-from supervisely.nn.benchmark.utils import WORKSPACE_NAME, WORKSPACE_DESCRIPTION
 from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
@@ -252,7 +252,10 @@ class BaseBenchmark:
             dt_project_name = self._generate_dt_project_name(self.gt_project_info.name, model_info)
             workspace = self.api.workspace.get_info_by_name(self.team_id, WORKSPACE_NAME)
             if workspace is None:
-                workspace = self.api.workspace.create(self.team_id, WORKSPACE_NAME, WORKSPACE_DESCRIPTION)
+                workspace = self.api.workspace.create(
+                    self.team_id, WORKSPACE_NAME, WORKSPACE_DESCRIPTION
+                )
+            self.api.workspace.change_visibility(workspace.id, visible=False)
             dt_project_info = self.api.project.create(
                 workspace.id, dt_project_name, change_name_if_conflict=True
             )
@@ -452,6 +455,7 @@ class BaseBenchmark:
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
 
         report_link = "/model-benchmark?id=" + str(vue_template_info.id)
+        report_link = vue_template_info.full_storage_url
         local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")
         with open(local_path, "w") as file:
             file.write(report_link)
