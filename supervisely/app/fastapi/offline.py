@@ -25,7 +25,7 @@ def get_static_paths_by_mounted_object(mount) -> list:
 
     if os.path.exists("static"):
         static_paths.append(
-            StaticPath(local_path=pathlib.Path("static"), url_path=pathlib.PosixPath("sly/static"))
+            StaticPath(local_path=pathlib.Path("static"), url_path=pathlib.PosixPath("static"))
         )
         # static_paths.append(StaticPath(local_path=pathlib.Path("static"), url_path="./static"))
 
