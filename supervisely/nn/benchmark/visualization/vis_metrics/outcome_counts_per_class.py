@@ -125,7 +125,7 @@ class PerClassOutcomeCounts(MetricVis):
                 res["clickData"][key] = {}
                 res["clickData"][key]["imagesIds"] = []
 
-                res["clickData"][key]["title"] = f"Class: {key1}. Outcome: {key2}"
+                res["clickData"][key]["title"] = f"Images with objects of class '{key1}' and outcome '{key2}'"
 
                 img_ids = set()
                 for x in v2:

@@ -243,7 +243,9 @@ class MetricVis:
             img_ids = set()
             obj_ids = set()
 
-            res["clickData"][key]["title"] = f"Class: {key}"
+            res["clickData"][key][
+                "title"
+            ] = f"{key} class: {len(v)} object{'s' if len(v) > 1 else ''}"
 
             for x in v:
                 img_ids.add(x["dt_img_id"])

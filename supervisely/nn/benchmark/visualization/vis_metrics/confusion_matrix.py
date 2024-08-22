@@ -80,6 +80,9 @@ class ConfusionMatrix(MetricVis):
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
             res["clickData"][key]["title"] = f"Class Pair: {subkey1} - {subkey2}"
+            sub_title_1 = f"{subkey1} (GT)" if subkey1 != "(None)" else "No GT"
+            sub_title_2 = f"{subkey2} (Prediction)" if subkey2 != "(None)" else "No Prediction"
+            res["clickData"][key]["title"] = f"Confusion Matrix: {sub_title_1} – {sub_title_2}"
 
             img_ids = set()
             obj_ids = set()

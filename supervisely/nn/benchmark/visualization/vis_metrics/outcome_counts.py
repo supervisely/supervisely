@@ -107,7 +107,7 @@ class OutcomeCounts(MetricVis):
                 else:
                     img_ids.add(self._loader.dt_images_dct[x["dt_img_id"]].id)
 
-            res["clickData"][key]["title"] = f"{key}: {len(v)} objects"
+            res["clickData"][key]["title"] = f"{key}: {len(v)} object{'s' if len(v) > 1 else ''}"
             res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [
                 {"type": "tag", "tagId": "confidence", "value": [0, 1]},
