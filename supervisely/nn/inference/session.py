@@ -359,7 +359,7 @@ class SessionJSON:
         )
         return frame_iterator
 
-    def run_benchmark(
+    def run_speedtest(
         self,
         project_id: int,
         batch_size: int = 1,
@@ -377,7 +377,7 @@ class SessionJSON:
                 self._on_async_inference_end()
             except Exception as exc:
                 logger.error(f"An error has occurred while stopping the previous inference. {exc}")
-        endpoint = "run_benchmark"
+        endpoint = "run_speedtest"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         state = json_body["state"]

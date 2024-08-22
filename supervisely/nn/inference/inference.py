@@ -1324,13 +1324,13 @@ class Inference:
         upload_thread.join()
         return results
 
-    def _run_benchmark(
+    def _run_speedtest(
         self,
         api: Api,
         state: dict,
         async_inference_request_uuid: str = None,
     ):
-        """Run benchmark on project images.
+        """Run speedtest on project images.
         """
         logger.debug("Running speedtest...", extra={"state": state})
         project_id = state["projectId"]
@@ -1769,10 +1769,10 @@ class Inference:
                 "inference_request_uuid": inference_request_uuid,
             }
 
-        @server.post("/run_benchmark")
-        def run_benchmark(response: Response, request: Request):
+        @server.post("/run_speedtest")
+        def run_speedtest(response: Response, request: Request):
             logger.debug(
-                f"'run_benchmark' request in json format:{request.state.state}"
+                f"'run_speedtest' request in json format:{request.state.state}"
             )
             project_id = request.state.state["projectId"]
             project_info = request.state.api.project.get_info_by_id(project_id)
@@ -1794,13 +1794,13 @@ class Inference:
             future = self._executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
-                self._run_benchmark,
+                self._run_speedtest,
                 request.state.api,
                 request.state.state,
                 inference_request_uuid,
             )
             logger.debug(
-                "Speedtest has scheduled from 'run_benchmark' endpoint",
+                "Speedtest has scheduled from 'run_speedtest' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
             )
             return {

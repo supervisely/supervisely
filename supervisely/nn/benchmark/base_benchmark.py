@@ -160,7 +160,7 @@ class BaseBenchmark:
         for bs in batch_sizes:
             logger.debug(f"Running speedtest for batch_size={bs}")
             speedtest_results = []
-            iterator = self.session.run_benchmark(
+            iterator = self.session.run_speedtest(
                 project_id,
                 batch_size=bs,
                 num_iterations=num_iterations,
