@@ -25,11 +25,6 @@ def get_static_paths_by_mounted_object(mount) -> list:
 
     if hasattr(mount, "routes"):
         for current_route in mount.routes:
-            if type(current_route) == Mount:
-                sly.logger.debug("=====================================")
-                sly.logger.debug(f"current_route: {current_route}")
-                sly.logger.debug(f"current_route.app: {current_route.app}")
-                sly.logger.debug(f"current_route.path: {current_route.path}")
             if type(current_route) == Mount and type(current_route.app) == FastAPI:
                 sly.logger.debug(f"Mount, FastAPI")
                 all_children_paths = get_static_paths_by_mounted_object(current_route)
@@ -43,15 +38,12 @@ def get_static_paths_by_mounted_object(mount) -> list:
                     )
                 static_paths.extend(all_children_paths)
             elif type(current_route) == Mount and isinstance(current_route.app, StaticFiles):
-                sly.logger.debug(f"Mount, StaticFiles")
                 static_paths.append(
                     StaticPath(
                         local_path=pathlib.Path(current_route.app.directory),
                         url_path=pathlib.Path(str(current_route.path).lstrip("/")),
                     )
                 )
-            if type(current_route) == Mount:
-                sly.logger.debug("=====================================")
 
     return static_paths
 
