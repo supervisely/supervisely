@@ -2,10 +2,11 @@ import json
 import os
 from os.path import join as pjoin
 from typing import Callable, Optional
+
 import numpy as np
 
-from supervisely._utils import batched
 from supervisely import Bitmap
+from supervisely._utils import batched
 
 
 def sly2coco(
@@ -15,7 +16,7 @@ def sly2coco(
     conf_threshold: float = None,
     progress_cb: Optional[Callable] = None,
 ):
-    from pycocotools import mask as maskUtils
+    from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
     datasets = [
         name
@@ -59,8 +60,8 @@ def sly2coco(
                     ann = json.load(f)
                 with open(os.path.join(imginfo_path, ann_file), "r") as f:
                     img_info = json.load(f)
-                img_w = ann['size']['width']
-                img_h = ann['size']['height']
+                img_w = ann["size"]["width"]
+                img_h = ann["size"]["height"]
                 img = {
                     "id": img_id,
                     "file_name": img_name,
@@ -74,9 +75,9 @@ def sly2coco(
                     geometry_type = label["geometryType"]
                     if accepted_shapes is not None and geometry_type not in accepted_shapes:
                         continue
-                    class_name = label['classTitle']
+                    class_name = label["classTitle"]
                     category_id = cat2id[class_name]
-                    sly_id = label['id']
+                    sly_id = label["id"]
                     if geometry_type == "rectangle":
                         ((left, top), (right, bottom)) = label["points"]["exterior"]
                         width = right - left + 1
@@ -91,12 +92,12 @@ def sly2coco(
                             "sly_id": sly_id,
                         }
                     elif geometry_type in ["polygon", "bitmap"]:
-                        if geometry_type == 'bitmap':
+                        if geometry_type == "bitmap":
                             bitmap = Bitmap.from_json(label)
                             mask_np = _uncrop_bitmap(bitmap, img_w, img_h)
                             segmentation = maskUtils.encode(np.asfortranarray(mask_np))
                         else:
-                            polygon = label['points']['exterior']
+                            polygon = label["points"]["exterior"]
                             polygon = [[coord for sublist in polygon for coord in sublist]]
                             rles = maskUtils.frPyObjects(polygon, img_h, img_w)
                             segmentation = maskUtils.merge(rles)
@@ -137,7 +138,7 @@ def sly2coco(
 
 
 def _extract_confidence(label: dict):
-    conf_tag = [tag for tag in label['tags'] if tag['name'] in ['confidence', 'confidence-model']]
+    conf_tag = [tag for tag in label["tags"] if tag["name"] in ["confidence", "confidence-model"]]
     assert len(conf_tag) == 1, f"'confidence' tag is not found."
     return float(conf_tag[0]["value"])
 
