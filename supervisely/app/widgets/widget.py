@@ -288,7 +288,7 @@ class DynamicWidget(Widget):
             self._sly_app.get_server().cached_template = None
             client = Application().test_client
 
-            self._loop.create_task(client.get("/"))
+            asyncio.run_coroutine_threadsafe(client.get("/"), self._loop)
 
         return wrapper
 
