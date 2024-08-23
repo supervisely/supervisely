@@ -1,3 +1,4 @@
+import asyncio
 import os
 import signal
 import sys
@@ -28,12 +29,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
-from supervisely._utils import (
-    is_debug_with_sly_net,
-    is_development,
-    is_docker,
-    is_production,
-)
+from supervisely._utils import is_debug_with_sly_net, is_development, is_docker, is_production
 from supervisely.api.api import API_TOKEN, SERVER_ADDRESS, TASK_ID, Api
 from supervisely.api.module_api import ApiField
 from supervisely.app.exceptions import DialogWindowBase
@@ -501,16 +497,22 @@ def _init(
 
     if headless is False:
         app.cached_template = None
+        app.is_caching_template = False
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
             if request.query_params.get("ping", False) in ("true", "True", True, 1, "1"):
                 return JSONResponse(content={"message": "App is running"}, status_code=200)
+
+            while app.is_caching_template:
+                sleep(0.1)
             if app.cached_template is None:
+                app.is_caching_template = True
                 app.cached_template = Jinja2Templates().TemplateResponse(
                     "index.html", {"request": request}
                 )
+                app.is_caching_template = False
             return app.cached_template
 
         @app.on_event("shutdown")

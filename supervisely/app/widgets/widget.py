@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import re
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -271,6 +273,7 @@ class DynamicWidget(Widget):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         self.reload = self.update_template_for_offline_session(self.reload)
         super().__init__(widget_id=widget_id, file_path=file_path)
+        self._loop = asyncio.get_event_loop()
 
     def reload(self):  # pylint: disable=method-hidden
         raise NotImplementedError()
@@ -284,7 +287,8 @@ class DynamicWidget(Widget):
             os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "False"
             self._sly_app.get_server().cached_template = None
             client = Application().test_client
-            _ = run_sync(client.get("/"))
+
+            asyncio.run_coroutine_threadsafe(client.get("/"), self._loop)
 
         return wrapper
 
