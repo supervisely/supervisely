@@ -136,6 +136,10 @@ class ApiField:
     """"""
     DISABLED = "disabled"
     """"""
+    DISABLED_AT = "disabledAt"
+    """"""
+    DISABLED_BY = "disabledBy"
+    """"""
     LAST_LOGIN = "lastLogin"
     """"""
     PASSWORD = "password"
@@ -159,6 +163,8 @@ class ApiField:
     CREATED_BY_ID = (["createdBy"], "created_by_id")
     """"""
     CREATED_BY_LOGIN = (["managerLogin"], "created_by_login")
+    """"""
+    CREATED_BY_USER = "createdByUser"
     """"""
     ASSIGNED_TO_ID = (["userId"], "assigned_to_id")
     """"""
@@ -545,6 +551,22 @@ class ApiField:
     LABELING_QUEUE_ID = "labelingQueueId"
     """"""
     LABELING_EXAM_ID = "labelingExamId"
+    """"""
+    IS_PINNED = "isPinned"
+    """"""
+    EVENTS = "events"
+    """"""
+    COMMENTS = "comments"
+    """"""
+    COMMENT = "comment"
+    """"""
+    ASSIGNEES = "assignees"
+    """"""
+    LINKS = "links"
+    """"""
+    IS_LOCAL = "isLocal"
+    """"""
+    ISSUE_ID = "issueId"
     """"""
 
 
