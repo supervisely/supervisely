@@ -12,13 +12,6 @@
 			rel="stylesheet"
 			href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
 		/>
-		{% if is_development %}
-		<link
-			type="text/css"
-			rel="stylesheet"
-			href="https://cdn.jsdelivr.net/npm/jsoneditor@9.7.0/dist/jsoneditor.min.css"
-		/>
-		{% endif %}
 		<style>
 			#app-global-loading-icon {
 				background: white;
@@ -80,12 +73,7 @@
 				<img src="https://app.supervise.ly/loading.gif" />
 			</div>
 		</center>
-		<script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.0.4/dist/socket.io.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/axios@0.17.1/dist/axios.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
-		{% if is_development %}
-		<script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.7.0/dist/jsoneditor.min.js"></script>
-		{% endif %}
 		<script
 			type="module"
 			src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
