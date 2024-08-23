@@ -31,6 +31,21 @@ class AnnotationInfo(NamedTuple):
     created_at: str
     updated_at: str
 
+    def to_json(self) -> Dict[str, Any]:
+        """
+        Convert AnnotationInfo to JSON format.
+
+        :return: AnnotationInfo in JSON format.
+        :rtype: :class:`Dict[str, Any]`
+        """
+        return {
+            ApiField.IMAGE_ID: self.image_id,
+            ApiField.IMAGE_NAME: self.image_name,
+            ApiField.ANNOTATION: self.annotation,
+            ApiField.CREATED_AT: self.created_at,
+            ApiField.UPDATED_AT: self.updated_at,
+        }
+
 
 class AnnotationApi(ModuleApi):
     """

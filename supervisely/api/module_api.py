@@ -568,6 +568,20 @@ class ApiField:
     """"""
     ISSUE_ID = "issueId"
     """"""
+    EXTRA = "extra"
+    """"""
+    FIGURE_IMAGE_ID = "figureImageId"
+    """"""
+    BINDINGS = "bindings"
+    """"""
+    TOP = "top"
+    """"""
+    LEFT = "left"
+    """"""
+    POSITION = "position"
+    """"""
+    ANNOTATION_DATA = "annotationData"
+    """"""
 
 
 def _get_single_item(items):

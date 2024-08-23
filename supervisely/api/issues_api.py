@@ -1,9 +1,11 @@
 # coding: utf-8
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Union
 
+from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.project.project_meta import ProjectMeta
 
 # TODO: Update autodocs configuration to include this module.
 
@@ -346,3 +348,132 @@ class IssuesApi(ModuleApiBase):
         )
 
         return CommentInfo.from_json(response.json())
+
+    def _create_bindings(
+        self, label_id: int, image_id: int
+    ) -> Dict[str, Union[str, int, Dict[str, int]]]:
+        """Create bindings from the given parameters.
+
+        :param label_id: Label ID.
+        :type label_id: int
+        :param image_id: Image ID.
+        :type image_id: int
+        :return: Bindings.
+        :rtype: Dict[str, Union[str, int, Dict[str, int]]]"""
+        # NOTE: This method is designed to handle the bindings for different cases,
+        # e.g. linking dataset, project, etc. At the moment, it's used for linking
+        # the issue with the image. Later, it can be extended to handle other cases.
+        # In this case parameters should be optional.
+        return {
+            ApiField.FIELD: ApiField.FIGURE_ID,
+            ApiField.VALUE: label_id,
+            ApiField.EXTRA: {ApiField.FIGURE_IMAGE_ID: image_id},
+        }
+
+    def add_subissue(
+        self,
+        issue_id: int,
+        image_ids: Union[int, List[int]],
+        label_ids: Union[int, List[int]],
+        top: Union[int, float],
+        left: Union[int, float],
+        annotation_info: AnnotationInfo,
+        project_meta: ProjectMeta,
+    ) -> None:
+        """Add a subissue to the specified issue.
+        Image and label IDs should be the same type, e.g. both int or list of ints.
+        If they are lists, they should have the same length.
+        Annotation info should be an instance of AnnotationInfo, not sly.Annotation, since the
+        second one does not contain required information.
+
+        :param issue_id: Issue ID.
+        :type issue_id: int
+        :param image_ids: Image ID or list of image IDs to be binded with the issue.
+        :type image_ids: Union[int, List[int]]
+        :param label_ids: Label ID or list of label IDs to be binded with the issue.
+        :type label_ids: Union[int, List[int]]
+        :param top: Top position of the marker of subissue in the Labeling interface.
+        :type top: Union[int, float]
+        :param left: Left position of the marker of subissue in the Labeling interface.
+        :type left: Union[int, float]
+        :param annotation_info: Information about the annotation.
+        :type annotation_info: AnnotationInfo
+        :param project_meta: Project meta information.
+        :type project_meta: ProjectMeta
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+            image_id = 456
+            label_id = 789
+
+            # Get project meta and annotation info.
+            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+            annotation_info = api.annotation.download(image_id)
+
+            # Add a subissue to the specified issue.
+            api.issues.add_subissue(
+                issue_id=1,
+                image_ids=image_id,
+                label_ids=label_id,
+                top=100,
+                left=100,
+                annotation_info=annotation_info,
+                project_meta=project_meta
+            )
+        """
+        # NOTE: DO NOT USE THIS METHOD IN PRODUCTION CODE.
+        # From the API side, there will be significant changes in the future which lead to
+        # changes in the method signature.
+        bindings = self._create_bindings(label_ids, image_ids)
+        if type(image_ids) != type(label_ids):
+            raise ValueError(
+                "Image ID and Label ID should be the same type, e.g. both int or list of ints."
+            )
+        if isinstance(image_ids, int):
+            image_ids = [image_ids]
+            label_ids = [label_ids]
+
+        if len(image_ids) != len(label_ids):
+            raise ValueError(
+                "Image ID and Label ID should have the same length when they are lists."
+            )
+
+        if not isinstance(annotation_info, AnnotationInfo):
+            raise ValueError("annotation_info should be an instance of AnnotationInfo.")
+
+        bindings = [
+            self._create_bindings(label_id, image_id)
+            for label_id, image_id in zip(label_ids, image_ids)
+        ]
+
+        classes = project_meta.to_json()["classes"]
+
+        annotation_data = annotation_info.to_json()
+        annotation_data[ApiField.META] = {ApiField.CLASSES: classes}
+
+        payload = {
+            ApiField.ISSUE_ID: issue_id,
+            ApiField.BINDINGS: bindings,
+            ApiField.META: {
+                ApiField.POSITION: {ApiField.LEFT: left, ApiField.TOP: top},
+                ApiField.ANNOTATION_DATA: annotation_data,
+            },
+            ApiField.PARENT_ID: issue_id,
+        }
+
+        self._api.post("issues.sub-issue.add", payload)
