@@ -457,7 +457,6 @@ class BaseBenchmark:
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
 
         report_link = "/model-benchmark?id=" + str(vue_template_info.id)
-        report_link = vue_template_info.full_storage_url
         local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")
         with open(local_path, "w") as file:
             file.write(report_link)
