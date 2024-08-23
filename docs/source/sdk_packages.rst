@@ -144,6 +144,15 @@ API
 
     FileApi
 
+.. currentmodule:: supervisely.api.storage_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    StorageApi
+
 .. currentmodule:: supervisely.api.image_annotation_tool_api
 
 .. autosummary::

@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
 from supervisely import Annotation, Dataset, OpenMode, Project, ProjectMeta, logger
@@ -10,6 +10,7 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import dirs_filter, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
+from supervisely.project.project_settings import LabelingInterface
 
 DATASET_ITEMS = "items"
 NESTED_DATASETS = "datasets"
@@ -31,6 +32,14 @@ class SLYImageConverter(ImageConverter):
     @property
     def key_file_ext(self) -> str:
         return ".json"
+
+    def validate_labeling_interface(self) -> bool:
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.IMAGE_MATTING,
+            LabelingInterface.FISHEYE,
+            LabelingInterface.MULTIVIEW,
+        ]
 
     def generate_meta_from_annotation(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         ann_json = load_json_file(ann_path)
@@ -109,8 +118,8 @@ class SLYImageConverter(ImageConverter):
         self,
         item: ImageConverter.Item,
         meta: ProjectMeta = None,
-        renamed_classes: dict = None,
-        renamed_tags: dict = None,
+        renamed_classes: Optional[Dict[str, str]] = None,
+        renamed_tags: Optional[Dict[str, str]] = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:
@@ -256,7 +265,7 @@ class SLYImageConverter(ImageConverter):
             project_structure: Dict,
             project_id: int,
             dataset_id: int,
-            parent_id: int = None,
+            parent_id: Optional[int] = None,
             first_dataset=False,
         ):
 

@@ -16,13 +16,14 @@ from PIL import Image
 
 from supervisely import logger
 from supervisely._utils import take_with_default
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.polygon import Polygon
@@ -81,6 +82,13 @@ class Annotation:
     :type img_tags: TagCollection or List[Tag]
     :param img_description: Image description.
     :type img_description: str, optional
+    :param pixelwise_scores_labels: List of Label objects.
+    :type pixelwise_scores_labels: List[Label]
+    :param custom_data: Custom data.
+    :type custom_data: dict, optional
+    :param image_id: Id of the image.
+    :type image_id: int, optional
+
     :raises: :class:`TypeError`, if image size is not tuple or list
     :Usage example:
 
@@ -490,6 +498,13 @@ class Annotation:
         :type img_tags: TagCollection or List[Tag]
         :param img_description: Image description.
         :type img_description: str, optional
+        :param pixelwise_scores_labels: List of Label objects.
+        :type pixelwise_scores_labels: List[Label]
+        :param custom_data: Custom data.
+        :type custom_data: dict, optional
+        :param image_id: Id of the image.
+        :type image_id: int, optional
+
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
         :Usage Example:
@@ -2915,3 +2930,75 @@ class Annotation:
         """Remove binding keys from all labels."""
         for label in self.labels:
             label.binding_key = None
+
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from subpixel precision to pixel precision.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Label in json format.
+        :type data: :class:`dict`
+        :return: Json data with coordinates converted to pixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+        image_size = [
+            data[AnnotationJsonFields.IMG_SIZE][AnnotationJsonFields.IMG_SIZE_HEIGHT],
+            data[AnnotationJsonFields.IMG_SIZE][AnnotationJsonFields.IMG_SIZE_WIDTH],
+        ]
+        new_labels = []
+        for label in data[AnnotationJsonFields.LABELS]:
+            if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+                label = Rectangle._to_pixel_coordinate_system_json(label, image_size)
+            else:
+                label = Geometry._to_pixel_coordinate_system_json(label, image_size)
+            new_labels.append(label)
+
+        data[AnnotationJsonFields.LABELS] = new_labels
+        return data
+
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from pixel precision to subpixel precision.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Label in json format.
+        :type data: dict
+        :return: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+        new_labels = []
+        for label in data[AnnotationJsonFields.LABELS]:
+            if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+                label = Rectangle._to_subpixel_coordinate_system_json(label)
+            else:
+                label = Geometry._to_subpixel_coordinate_system_json(label)
+            new_labels.append(label)
+
+        data[AnnotationJsonFields.LABELS] = new_labels
+        return data
+
+    # def _to_subpixel_coordinate_system(self) -> Annotation:
+    #     """
+    #     Convert all labels in the annotation from pixel precision to subpixel precision by subtracting a subpixel offset from the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     :return: New instance of Annotation with labels in subpixel precision.
+    #     :rtype: :class:`Annotation<Annotation>`
+    #     """
+    #     new_ann = self.clone()
+    #     new_labels = [label._to_subpixel_coordinate_system() for label in new_ann.labels]
+    #     new_ann._labels = new_labels
+    #     return new_ann
