@@ -14,6 +14,8 @@ from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
+import random
+import string
 
 
 class TrainInfo(NamedTuple):
@@ -312,7 +314,9 @@ class BaseTrainArtifacts:
             ]
 
         def _upload_metadata(json_data: dict) -> None:
-            json_data_path = self._metadata_file_name
+            random_string = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            json_data_path = f"{random_string}.txt"
+            # json_data_path = self._metadata_file_name
             dump_json_file(json_data, json_data_path)
             self._api.file.upload(
                 self._team_id,
@@ -343,8 +347,13 @@ class BaseTrainArtifacts:
         }
         if config_path is not None:
             train_json["config_path"] = config_path
-        _upload_metadata(train_json)
-        logger.info(f"Metadata for '{artifacts_folder}' was generated")
+        is_valid = self._validate_train_json(train_json)
+        if is_valid:
+            _upload_metadata(train_json)
+            logger.info(f"Metadata for '{artifacts_folder}' was generated")
+        else:
+            logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+            train_json = None
         return train_json
 
     def _fetch_json_from_url(self, metadata_url: str):
@@ -401,6 +410,10 @@ class BaseTrainArtifacts:
             logger.debug(
                 f"Fetch metadata for {metadata_path}: '{format(end_find_time - start_find_time, '.6f')}' sec"
             )
+            is_valid = self._validate_train_json(json_data)
+            if not is_valid:
+                logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+                json_data = None
         return json_data
 
     def _validate_sort(self, sort: Literal["desc", "asc"]):
@@ -417,6 +430,34 @@ class BaseTrainArtifacts:
             if self.is_valid_artifacts_path(artifacts_folder):
                 folders[artifacts_folder].append(file_info)
         return folders
+
+    def _validate_train_json(self, train_json) -> bool:
+        if not isinstance(train_json, dict):
+            # Invalid train_json format
+            return False
+        required_fields = [
+            "app_name",
+            "task_id",
+            "artifacts_folder",
+            "session_link",
+            "task_type",
+            "project_name",
+            "checkpoints",
+        ]
+        if self.app_name == "Train MMDetection" or self.app_name == "Train MMDetection 3.0":
+            required_fields.append("config_path")
+
+        for field in required_fields:
+            if field not in train_json:
+                # Missing 'field' in train_json
+                return False
+            else:
+                value = train_json.get(field)
+                if value is None:
+                    logger.debug(f"Field '{field}' is None")
+                    # 'field' is None
+                    return False
+        return True
 
     def _create_train_infos(self, folders):
         train_infos = []
