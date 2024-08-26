@@ -1,3 +1,5 @@
+import random
+import string
 from abc import abstractmethod
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,8 +16,6 @@ from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
-import random
-import string
 
 
 class TrainInfo(NamedTuple):
@@ -316,7 +316,6 @@ class BaseTrainArtifacts:
         def _upload_metadata(json_data: dict) -> None:
             random_string = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
             json_data_path = f"{random_string}.txt"
-            # json_data_path = self._metadata_file_name
             dump_json_file(json_data, json_data_path)
             self._api.file.upload(
                 self._team_id,

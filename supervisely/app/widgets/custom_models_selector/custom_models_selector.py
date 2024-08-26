@@ -1,5 +1,4 @@
 import os
-import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -404,17 +403,13 @@ class CustomModelsSelector(Widget):
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_train_info(train_info):
-
             try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
                 model_row = CustomModelsSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
                     train_info=train_info,
                     task_type=train_info.task_type,
                 )
-                loop.close()
                 return train_info.task_type, model_row
             except Exception as e:
                 logger.warn(f"Failed to process train info: {train_info}")
