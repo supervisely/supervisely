@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Callable, Dict, List, Union
 
-from supervisely import env
+from supervisely import env, logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
 from supervisely.api.file_api import FileApi, FileInfo
@@ -77,7 +77,6 @@ class CustomModelsSelector(Widget):
 
             # col 2 project
             self._training_project_name = train_info.project_name
-
             project_info = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
             )
@@ -394,7 +393,6 @@ class CustomModelsSelector(Widget):
 
     def _generate_table_rows(self, train_infos: List[TrainInfo]) -> Dict[str, List[ModelRow]]:
         """Method to generate table rows from remote path to training app save directory"""
-        table_rows = defaultdict(list)
 
         def process_train_info(train_info):
             try:
@@ -406,18 +404,23 @@ class CustomModelsSelector(Widget):
                 )
                 return train_info.task_type, model_row
             except Exception as e:
-                return None
+                logger.warn(f"Failed to process train info: {train_info}")
+                return None, None
+
+        table_rows = defaultdict(list)
 
         with ThreadPoolExecutor() as executor:
-            futures = [
-                executor.submit(process_train_info, train_info) for train_info in train_infos
-            ]
+            futures = {
+                executor.submit(process_train_info, train_info): train_info
+                for train_info in train_infos
+            }
 
             for future in as_completed(futures):
                 result = future.result()
                 if result:
                     task_type, model_row = result
-                    table_rows[task_type].append(model_row)
+                    if task_type is not None and model_row is not None:
+                        table_rows[task_type].append(model_row)
 
         return dict(table_rows)
 
