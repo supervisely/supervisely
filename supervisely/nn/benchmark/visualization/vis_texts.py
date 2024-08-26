@@ -13,8 +13,6 @@ definitions = SimpleNamespace(
     iou_threshold="The IoU threshold is a predefined value (set at 0.5 in many benchmarks) that determines the minimum acceptable IoU score for a predicted bounding box to be considered a correct detection. When the IoU of a predicted bounding box and an actual bounding box is below this threshold, the prediction is considered a false positive. Higher IoU thresholds require more precise localization, which can lead to lower metrics if the model's predictions are less accurate.",
 )
 
-checkpoint_name = "YOLOv8-L (COCO 2017 val)"
-
 # <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
 clickable_label = """
 > <span style="color: #5a6772">
