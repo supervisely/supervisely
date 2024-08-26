@@ -258,18 +258,6 @@ setup(
             "plotly>=4.11.0, <6.0.0",
             "psutil>=5.4.5, <6.0.0",
         ],
-        # legacy dependencies
-        "plugins": [
-            "jsonschema>=2.6.0,<3.0.0",
-        ],
-        "sdk-nn-plugins": [
-            "flask-restful>=0.3.7, <1.0.0",
-            "Werkzeug>=1.0.1, <3.0.0",
-        ],
-        "aug": [
-            "imgaug>=0.4.0, <1.0.0",
-            "imagecorruptions>=1.1.2, <2.0.0",
-        ],
         "tracking": [
             "yacs",
             "matplotlib>=3.3.2, <4.0.0",
@@ -281,6 +269,23 @@ setup(
             "faiss-gpu",
             "tabulate",
             "tensorboard",
+        ],
+        "model-benchmark": [
+            "pycocotools",
+            "scikit-learn",
+            "plotly==5.22.0",
+        ],
+        # legacy dependencies
+        "plugins": [
+            "jsonschema>=2.6.0,<3.0.0",
+        ],
+        "sdk-nn-plugins": [
+            "flask-restful>=0.3.7, <1.0.0",
+            "Werkzeug>=1.0.1, <3.0.0",
+        ],
+        "aug": [
+            "imgaug>=0.4.0, <1.0.0",
+            "imagecorruptions>=1.1.2, <2.0.0",
         ],
     },
 )

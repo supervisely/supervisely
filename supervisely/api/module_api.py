@@ -548,7 +548,8 @@ class ApiField:
     """"""
     INTEGER_COORDS = "integerCoords"
     """"""
-
+    HIDDEN = "hidden"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""

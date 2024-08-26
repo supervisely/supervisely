@@ -237,3 +237,30 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return WorkspaceInfo(**res._asdict())
+
+    def change_visibility(self, id: int, visible: bool):
+        """
+        Change Workspace visibility.
+
+        :param id: Workspace ID.
+        :type id: int
+        :param visible: Visibility status.
+        :type visible: bool
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.workspace.change_visibility(58, False)
+        """
+
+        response = self._api.post(
+            "workspaces.visibility.set",
+            {ApiField.ID: id, ApiField.HIDDEN: not visible},
+        )
+        
