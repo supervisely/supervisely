@@ -1,6 +1,6 @@
 from supervisely.nn.inference import SessionJSON
 
-WORKSPACE_NAME = "Model Benchmark: predctions and differences"
+WORKSPACE_NAME = "Model Benchmark: predictions and differences"
 WORKSPACE_DESCRIPTION = "Technical workspace for model benchmarking. Contains predictions and differences between ground truth and predictions."
 
 def try_set_conf_auto(session: SessionJSON, conf: float):
