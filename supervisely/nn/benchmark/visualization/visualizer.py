@@ -21,9 +21,7 @@ from supervisely.project.project_meta import ProjectMeta
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 
-from supervisely.nn.benchmark.evaluation.coco.metric_provider import (
-    MetricProvider,
-)
+from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
@@ -59,12 +57,85 @@ class Visualizer:
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_object_detection_loader()
             self.docs_link = self._docs_link + CVTask.OBJECT_DETECTION.value.replace("_", "-")
+        elif benchmark.cv_task == CVTask.INSTANCE_SEGMENTATION:
+            self._initialize_instance_segmentation_loader()
+            self.docs_link = self._docs_link + CVTask.INSTANCE_SEGMENTATION.value.replace("_", "-")
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
         self.pbar = benchmark.pbar
 
     def _initialize_object_detection_loader(self):
+        from pycocotools.coco import COCO  # pylint: disable=import-error
+
+        cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
+            self.eval_dir + "/cocoGt.json",
+            self.eval_dir + "/cocoDt.json",
+            self.eval_dir + "/eval_data.pkl",
+            self.eval_dir + "/inference_info.json",
+        )
+
+        with open(cocoGt_path, "r") as f:
+            cocoGt_dataset = json.load(f)
+        with open(cocoDt_path, "r") as f:
+            cocoDt_dataset = json.load(f)
+
+        # Remove COCO read logs
+        with HiddenCocoPrints():
+            cocoGt = COCO()
+            cocoGt.dataset = cocoGt_dataset
+            cocoGt.createIndex()
+            cocoDt = cocoGt.loadRes(cocoDt_dataset["annotations"])
+
+        with open(eval_data_path, "rb") as f:
+            eval_data = pickle.load(f)
+
+        inference_info = {}
+        if file_exists(inference_info_path):
+            with open(inference_info_path, "r") as f:
+                inference_info = json.load(f)
+            self.inference_info = inference_info
+        else:
+            self.inference_info = self._benchmark._eval_inference_info
+
+        self.mp = MetricProvider(
+            eval_data["matches"],
+            eval_data["coco_metrics"],
+            eval_data["params"],
+            cocoGt,
+            cocoDt,
+        )
+        self.mp.calculate()
+
+        self.df_score_profile = pd.DataFrame(
+            self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
+        )
+
+        # downsample
+        if len(self.df_score_profile) > 5000:
+            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        else:
+            self.dfsp_down = self.df_score_profile
+
+        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
+        if self.f1_optimal_conf is None:
+            self.f1_optimal_conf = 0.01
+            logger.warn("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
+
+        # Click data
+        gt_id_mapper = IdMapper(cocoGt_dataset)
+        dt_id_mapper = IdMapper(cocoDt_dataset)
+
+        self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
+        self.base_metrics = self.mp.base_metrics
+
+        self._update_pred_dcts()
+        self._update_gt_dcts()
+        self._update_diff_dcts()
+
+        self._objects_bindings = []
+
+    def _initialize_instance_segmentation_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
         cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
