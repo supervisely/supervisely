@@ -198,14 +198,16 @@ In this plot, you can evaluate PR curve for each class individually.
     + clickable_label
 )
 
-markdown_confusion_matrix = """## Confusion Matrix
+markdown_confusion_matrix = (
+    """## Confusion Matrix
 
 Confusion matrix helps to find the number of confusions between different classes made by the model.
 Each row of the matrix represents the instances in a ground truth class, while each column represents the instances in a predicted class.
 The diagonal elements represent the number of correct predictions for each class (True Positives), and the off-diagonal elements show misclassifications.
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 
 markdown_frequently_confused = (
