@@ -1,7 +1,8 @@
 import os
+
 from supervisely.io.json import dump_json_file
-from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
+from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
 
 
@@ -11,11 +12,8 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
         with self.pbar(message="Calculating metrics", total=10) as p:
             self.eval_data = calculate_metrics(
-                self.cocoGt,
-                self.cocoDt,
-                iouType="bbox",
-                progress_cb=p.update
-                )
+                self.cocoGt, self.cocoDt, iouType="bbox", progress_cb=p.update
+            )
         self._dump_eval_results()
 
     def _convert_to_coco(self):
@@ -34,7 +32,16 @@ class ObjectDetectionEvaluator(BaseEvaluator):
                 accepted_shapes=["rectangle"],
                 progress_cb=pbar.update,
             )
-        assert cocoDt_json["categories"] == cocoGt_json["categories"], "Classes in GT and Pred projects must be the same"
+        if len(cocoGt_json["annotations"]) == 0:
+            raise ValueError("Not found any annotations in GT project")
+        if len(cocoDt_json["annotations"]) == 0:
+            raise ValueError(
+                "Not found any predictions in DT project. "
+                "Please make sure that your model produces predictions."
+            )
+        assert (
+            cocoDt_json["categories"] == cocoGt_json["categories"]
+        ), "Classes in GT and Pred projects must be the same"
         assert [x["id"] for x in cocoDt_json["images"]] == [x["id"] for x in cocoGt_json["images"]]
         return cocoGt_json, cocoDt_json
 
