@@ -254,7 +254,7 @@ class Event:
                     ),  # there is no such field in ApiField
                 )
 
-        class ImageChanded:
+        class ImageChanged:
             """This event is triggered when the user changes the image in the Image Labeling Tooolbox."""
 
             endpoint = "/manual_selected_image_changed"
