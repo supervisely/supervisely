@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -16,6 +15,7 @@ class Precision(MetricVis):
         super().__init__(loader)
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_P=Widget.Markdown(title="Precision", is_header=True),
             notification_precision=Widget.Notification(
                 formats_title=[self._loader.base_metrics()["precision"].round(2)],
@@ -24,7 +24,9 @@ class Precision(MetricVis):
                     (self._loader.mp.TP_count + self._loader.mp.FP_count),
                 ],
             ),
-            markdown_P_perclass=Widget.Markdown(formats=[definitions.f1_score]),
+            markdown_P_perclass=Widget.Markdown(
+                formats=[self._loader.vis_texts.definitions.f1_score]
+            ),
             chart=Widget.Chart(),
         )
 

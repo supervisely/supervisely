@@ -21,6 +21,7 @@ class FrequentlyConfused(MetricVis):
         pair = df["category_pair"][0]
         prob = df["probability"][0]
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_frequently_confused=Widget.Markdown(
                 title="Frequently Confused Classes",
                 is_header=True,

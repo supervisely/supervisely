@@ -15,6 +15,7 @@ class ModelPredictions(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_predictions_gallery=Widget.Markdown(
                 title="Model Predictions", is_header=False
             ),

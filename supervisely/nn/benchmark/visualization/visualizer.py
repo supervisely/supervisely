@@ -68,6 +68,10 @@ class Visualizer:
     def _initialize_object_detection_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
+        from supervisely.nn.benchmark.visualization import vis_texts
+
+        self.vis_texts = vis_texts
+
         cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
             self.eval_dir + "/cocoGt.json",
             self.eval_dir + "/cocoDt.json",
@@ -137,6 +141,12 @@ class Visualizer:
 
     def _initialize_instance_segmentation_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
+
+        from supervisely.nn.benchmark.visualization.instance_segmentation import (
+            text_template,
+        )
+
+        self.vis_texts = text_template
 
         cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
             self.eval_dir + "/cocoGt.json",

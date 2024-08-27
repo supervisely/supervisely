@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -17,13 +16,14 @@ class OutcomeCounts(MetricVis):
 
         self.clickable: bool = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_outcome_counts=Widget.Markdown(
                 title="Outcome Counts",
                 is_header=True,
                 formats=[
-                    definitions.true_positives,
-                    definitions.false_positives,
-                    definitions.false_negatives,
+                    self._loader.vis_texts.definitions.true_positives,
+                    self._loader.vis_texts.definitions.false_positives,
+                    self._loader.vis_texts.definitions.false_negatives,
                 ],
             ),
             chart=Widget.Chart(),

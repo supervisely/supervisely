@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -15,11 +14,17 @@ class ReliabilityDiagram(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_calibration_score_1=Widget.Markdown(
-                title="Calibration Score", is_header=True, formats=[definitions.confidence_score]
+                title="Calibration Score",
+                is_header=True,
+                formats=[self._loader.vis_texts.definitions.confidence_score],
             ),
             collapse_what_is=Widget.Collapse(
-                Schema(markdown_what_is_calibration=Widget.Markdown(title="What is calibration?"))
+                Schema(
+                    self._loader.vis_texts,
+                    markdown_what_is_calibration=Widget.Markdown(title="What is calibration?"),
+                )
             ),
             markdown_calibration_score_2=Widget.Markdown(),
             markdown_reliability_diagram=Widget.Markdown(
@@ -31,9 +36,10 @@ class ReliabilityDiagram(MetricVis):
             chart=Widget.Chart(),
             collapse_ece=Widget.Collapse(
                 Schema(
+                    self._loader.vis_texts,
                     markdown_calibration_curve_interpretation=Widget.Markdown(
                         title="How to interpret the Calibration curve"
-                    )
+                    ),
                 )
             ),
         )
