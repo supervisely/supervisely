@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import time
 from datetime import datetime
-from typing import List, NamedTuple, Tuple, Union
+from typing import List, NamedTuple, Optional, Tuple, Union
 
 import requests
 import zstd
@@ -92,7 +92,7 @@ class DataVersion(ModuleApiBase):
         if self.project_info.version is None:
             self._create_warning_system_file()
 
-    def get_list(self, project_id: int, filters: List = None) -> List[VersionInfo]:
+    def get_list(self, project_id: int, filters: Optional[List] = None) -> List[VersionInfo]:
         """
         Get list of project versions.
 
@@ -182,8 +182,8 @@ class DataVersion(ModuleApiBase):
     def create(
         self,
         project_info: Union[ProjectInfo, int],
-        version_title: str = None,
-        version_description: str = None,
+        version_title: Optional[str] = None,
+        version_description: Optional[str] = None,
     ) -> int:
         """
         Create a new project version.
@@ -194,9 +194,9 @@ class DataVersion(ModuleApiBase):
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
         :param version_title: Version title
-        :type version_title: str
+        :type version_title: Optional[str]
         :param version_description: Version description
-        :type version_description: str
+        :type version_description: Optional[str]
         :return: Version ID
         :rtype: int
         """
@@ -257,8 +257,8 @@ class DataVersion(ModuleApiBase):
         commit_token: str,
         updated_at: str,
         file_id: int,
-        title: str = None,
-        description: str = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """
         Commit project version.
@@ -275,9 +275,9 @@ class DataVersion(ModuleApiBase):
         :param file_id: File ID
         :type file_id: int
         :param title: Version title
-        :type title: str
+        :type title: Optional[str]
         :param description: Version description
-        :type description: str
+        :type description: Optional[str]
         :return: None
         """
         body = {
@@ -357,8 +357,8 @@ class DataVersion(ModuleApiBase):
     def restore(
         self,
         project_info: Union[ProjectInfo, int],
-        version_id: int = None,
-        version_num: int = None,
+        version_id: Optional[int] = None,
+        version_num: Optional[int] = None,
         skip_missed_entities: bool = False,
     ) -> ProjectInfo:
         """
