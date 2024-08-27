@@ -31,6 +31,7 @@ class MetricVis:
         self.has_diffs_view: bool = False
         self.switchable: bool = False
         self.schema: Schema = None
+        self.empty = False
 
         self._loader = loader
         self._template_markdown = Template(template_markdown_str)

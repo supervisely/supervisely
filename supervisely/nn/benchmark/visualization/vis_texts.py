@@ -347,3 +347,8 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 """
     + clickable_label
 )
+
+empty = """### {}
+
+> {}
+"""
