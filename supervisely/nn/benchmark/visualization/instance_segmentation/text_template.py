@@ -10,7 +10,7 @@ definitions = SimpleNamespace(
     average_precision="Average precision (AP) is computed as the area under the precision-recall curve. It measures the precision of the model at different recall levels and provides a single number that summarizes the trade-off between precision and recall for a given class.",
     about_pr_tradeoffs="A system with high recall but low precision returns many results, but most of its predictions are incorrect or redundant (false positive). A system with high precision but low recall is just the opposite, returning very few results, most of its predictions are correct. An ideal system with high precision and high recall will return many results, with all results predicted correctly.",
     iou_score="Intersection over Union (IoU) measures the overlap between two masks: one predicted by the model and one from the ground truth. It is calculated as the area of intersection between the predicted mask and the ground truth mask, divided by the area of their union. A higher IoU score indicates better alignment between the predicted and ground truth masks.",
-    iou_threshold="The IoU threshold is a predefined value (set to 0.5 in many benchmarks) that determines the minimum acceptable IoU score for a predicted mask to be considered a correct prediction. When the IoU of a predicted mask and actual mask is higer than this IoU threshold, the prediction is considered correct. Some metrics will evaluate the model with different IoU thresholds to provide more insights about the model's performance.",
+    iou_threshold="The IoU threshold is a predefined value (set to 0.5 in many benchmarks) that determines the minimum acceptable IoU score for a predicted mask to be considered a correct prediction. When the IoU of a predicted mask and actual mask is higher than this IoU threshold, the prediction is considered correct. Some metrics will evaluate the model with different IoU thresholds to provide more insights about the model's performance.",
 )
 
 # <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
@@ -44,9 +44,9 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Mean Average Precision (mAP)**: A comprehensive metric of detection and instance segmentation performance. mAP calculates the <abbr title="{}">average precision</abbr> across all classes at different levels of <abbr title="{}">IoU thresholds</abbr> and precision-recall trade-offs. In other words, it evaluates the performance of a model by considering its ability to detect and localize objects accurately across multiple IoU thresholds and object categories.
 - **Precision**: Precision indicates how often the model's predictions are actually correct when it predicts an object. This calculates the ratio of correct predictions to the total number of predictions made by the model.
 - **Recall**: Recall measures the model's ability to find all relevant objects in a dataset. This calculates the ratio of correct predictions to the total number of instances in a dataset.
-- **Intersection over Union (IoU)**: IoU measures how closely predicted bounding boxes match the actual (ground truth) bounding boxes. It is calculated as the area of overlap between the predicted bounding box and the ground truth bounding box, divided by the area of union of these bounding boxes.
-- **Classification Accuracy**: We separately measure the model's capability to correctly classify objects. It's calculated as a proportion of correctly classified objects among all matched predictions. A predicted bounding box is considered matched if it overlaps a ground true bounding box with IoU equal or higher than 0.5.
-- **Calibration Score**: This score represents the consistency of predicted probabilities (or <abbr title="{}">confidence scores</abbr>) made by the model, evaluating how well the predicted probabilities align with actual outcomes. A well-calibrated model means that when it predicts an object with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
+- **Intersection over Union (IoU)**: IoU measures the overlap between two masks: one predicted by the model and one from the ground truth. It is calculated as the area of intersection between the predicted mask and the ground truth mask, divided by the area of their union. A higher IoU score indicates better alignment between the predicted and ground truth masks.
+- **Classification Accuracy**: We additionally measure the classification accuracy of an instance segmentation model. This metric represents the percentage of correctly labeled instances among all instances where the predicted segmentation masks accurately match the ground truth masks (with an IoU greater than 0.5, regardless of class).
+- **Calibration Score**: This score represents the consistency of predicted probabilities (or <abbr title="{}">confidence scores</abbr>) made by the model. We evaluate how well predicted probabilities align with actual outcomes. A well-calibrated model means that when it predicts an object with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
 - **Inference Speed**: The number of frames per second (FPS) the model can process, measured with a batch size of 1. The inference speed is important in applications, where real-time inference is required. Additionally, slower models pour more GPU resources, so their inference cost is higher.
 """
 
@@ -99,9 +99,9 @@ This chart is used to evaluate the overall model performance by breaking down al
 
 markdown_R = """## Recall
 
-This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, this answers the question: “Of all instances in the dataset, how many of them is the model managed to find out?”
+This section measures the ability of the model to find **all relevant instances in the dataset**. In other words, it answers the question: “Of all instances in the dataset, how many of them is the model managed to find out?”
 
-To measure this, we calculate **Recall**. Recall counts errors, when the model does not detect an object that actually is present in a dataset and should be detected. Recall is calculated as the portion of correct predictions (true positives) over all instances in the dataset (true positives + false negatives).
+To measure this, we calculate **Recall**. Recall counts errors, when the model does not predict an object that actually is present in a dataset and should be predicted. Recall is calculated as the portion of correct predictions (true positives) over all instances in the dataset (true positives + false negatives).
 """
 
 notification_recall = {
@@ -125,9 +125,9 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 
 markdown_P = """## Precision
 
-This section measures the accuracy of all predictions made by the model. In other words, this answers the question: “Of all predictions made by the model, how many of them are actually correct?”.
+This section measures the accuracy of all predictions made by the model. In other words, it answers the question: “Of all predictions made by the model, how many of them are actually correct?”.
 
-To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
+To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object, but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
 """
 
 notification_precision = {
@@ -151,7 +151,7 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 
 markdown_PR = """## Recall vs. Precision
 
-This section compares Precision and Recall on a common graph, identifying **disbalance** between these two.
+This section compares Precision and Recall in one graph, identifying **imbalance** between these two.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
@@ -170,7 +170,7 @@ markdown_trade_offs = """- A system with high recall but low precision generates
 - The ideal system achieves both high precision and high recall, meaning it returns many results with a high accuracy rate.
 """
 
-markdown_what_is_pr_curve = """1. **Sort predictions**: Arrange all the bounding box predictions by their <abbr title="{}">confidence scores</abbr> in descending order.
+markdown_what_is_pr_curve = """1. **Sort predictions**: Arrange all predicted objects by their <abbr title="{}">confidence scores</abbr> in descending order.
 
 2. **Classify outcomes**: For each prediction, determine if it is a <abbr title="{}">true positive</abbr> (TP) or a <abbr title="{}">false positive</abbr> (FP) and record these classifications in a table.
 
@@ -196,14 +196,16 @@ In this plot, you can evaluate PR curve for each class individually.
     + clickable_label
 )
 
-markdown_confusion_matrix = """## Confusion Matrix
+markdown_confusion_matrix = (
+    """## Confusion Matrix
 
 Confusion matrix helps to find the number of confusions between different classes made by the model.
 Each row of the matrix represents the instances in a ground truth class, while each column represents the instances in a predicted class.
 The diagonal elements represent the number of correct predictions for each class (True Positives), and the off-diagonal elements show misclassifications.
 
-*Click on the chart to explore corresponding images.*
 """
+    + clickable_label
+)
 
 
 markdown_frequently_confused = (
@@ -220,26 +222,19 @@ The measure is class-symmetric, meaning that the probability of confusing a {} w
 )
 
 
-markdown_localization_accuracy = """## Localization Accuracy (IoU)
+markdown_localization_accuracy = """## Mask accuracy (IoU)
 
-This section measures how closely predicted bounding boxes generated by the model are aligned with the actual (ground truth) bounding boxes.
+This section measures how accurately predicted masks match the actual shapes of ground truth instances. We calculate the average <abbr title="{}">IoU score</abbr> of predictions and visualize a histogram of IoU scores.
 """
 
-# text_image = Text(
-#     "<img src='https://github.com/dataset-ninja/model-benchmark-template/assets/78355358/8d7c63d0-2f3b-4f3f-9fd8-c6383a4bfba4' alt='alt text' width='300' />"
-# )
-# text_info = Text(
-#     "To measure it, we calculate the <b>Intersection over Union (IoU)</b>. Intuitively, the higher the IoU, the closer two bounding boxes are. IoU is calculated by dividing the <b>area of overlap</b> between the predicted bounding box and the ground truth bounding box by the <b>area of union</b> of these two boxes.",
-#     "info",
-# )
 markdown_iou_calculation = """<img src='https://github.com/dataset-ninja/model-benchmark-template/assets/78355358/8d7c63d0-2f3b-4f3f-9fd8-c6383a4bfba4' alt='alt text' width='300' />
 
-To measure it, we calculate the <b>Intersection over Union (IoU)</b>. Intuitively, the higher the IoU, the closer two bounding boxes are. IoU is calculated by dividing the <b>area of overlap</b> between the predicted bounding box and the ground truth bounding box by the <b>area of union</b> of these two boxes.
+To measure it, we calculate the <b>Intersection over Union (IoU)</b>. IoU measures the overlap between two masks: one predicted by the model and one from the ground truth. Unlike object detection, which uses rectangular bounding boxes, instance segmentation deals with masks that represent the exact shape of an object. It is calculated similarly by taking the area of intersection between the predicted mask and the ground truth mask and dividing it by the area of their union.
 """
 
 markdown_iou_distribution = """### IoU Distribution
 
-This histogram represents the distribution of <abbr title="{}">IoU scores</abbr> between all predictions and their matched ground truth objects. This gives you a sense of how well the model aligns bounding boxes. Ideally, if the model aligns boxes very well, rightmost bars (from 0.9 to 1.0 IoU) should be much higher than others.
+This histogram represents the distribution of <abbr title="{}">IoU scores</abbr> among all predictions. This gives a sense of how accurate the model is in generating masks of the objects. Ideally, the rightmost bars (from 0.9 to 1.0 IoU) should be much higher than others.
 """
 
 
@@ -250,16 +245,12 @@ notification_avg_iou = {
 
 markdown_calibration_score_1 = """## Calibration Score
 
-This section analyzes <abbr title="{}">confidence scores</abbr> (or predicted probabilities) that the model generates for every predicted bounding box.
+This section analyzes <abbr title="{}">confidence scores</abbr> (or predicted probabilities) that the model generates for every predicted segmentation mask.
 """
 
 markdown_what_is_calibration = """In some applications, it's crucial for a model not only to make accurate predictions but also to provide reliable **confidence levels**. A well-calibrated model aligns its confidence scores with the actual likelihood of predictions being correct. For example, if a model claims 90% confidence for predictions but they are correct only half the time, it is **overconfident**. Conversely, **underconfidence** occurs when a model assigns lower confidence scores than the actual likelihood of its predictions. In the context of autonomous driving, this might cause a vehicle to brake or slow down too frequently, reducing travel efficiency and potentially causing traffic issues."""
 markdown_calibration_score_2 = """To evaluate the calibration, we draw a <b>Reliability Diagram</b> and calculate <b>Expected Calibration Error</b> (ECE)."""
 
-# text_info = Text(
-#     "To evaluate the calibration, we draw a <b>Reliability Diagram</b> and calculate <b>Expected Calibration Error</b> (ECE) and <b>Maximum Calibration Error</b> (MCE).",
-#     "info",
-# )
 markdown_reliability_diagram = """### Reliability Diagram
 
 Reliability diagram, also known as a Calibration curve, helps in understanding whether the confidence scores of a model accurately represent the true probability of a correct prediction. A well-calibrated model means that when it predicts an instance with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
@@ -303,14 +294,14 @@ notification_f1 = {
 
 markdown_f1_at_ious = """### Confidence Profile at Different IoU thresholds
 
-This chart breaks down the Confidence Profile into multiple curves, each for one <abbr title="{}">IoU threshold</abbr>. In this way you can understand how the f1-optimal confidence threshold changes with various IoU thresholds. Higher IoU thresholds mean that the model should align bounding boxes very close to ground truth bounding boxes.
+This chart breaks down the Confidence Profile into multiple curves, each for one <abbr title="{}">IoU threshold</abbr>. In this way you can understand how the f1-optimal confidence threshold changes with various IoU thresholds. Higher IoU thresholds mean that the model should generate more accurate masks to get a correct prediction. This chart helps to find the optimal confidence threshold for different levels of mask accuracy.
 """
 markdown_confidence_distribution = """### Confidence Distribution
 This graph helps to assess whether high confidence scores correlate with correct predictions (<abbr title="{}">true positives</abbr>) and the low confidence scores correlate with incorrect ones (<abbr title="{}">false positives</abbr>). It consists of two histograms, one for true positive predictions filled with green, and one for false positives filled with red.
 
 Additionally, it provides a view of how predicted probabilities are distributed. Whether the model skews probabilities to lower or higher values, leading to imbalance?
 
-Ideally, the histogram for TP predictions should have higher confidence, indicating that the model is sure about its correct predictions, and the FP predictions should have very low confidence, or not present at all.
+Ideally, the green histogram (TP predictions) should have higher confidence scores and be shifted to the right, indicating that the model is sure about its correct predictions, and the red histogram (FP predictions) should have lower confidence scores and be shifted to the left.
 """
 
 markdown_class_ap = (
@@ -329,7 +320,7 @@ This chart breaks down all predictions into <abbr title="{}">True Positives</abb
 
 """
 
-markdown_normalization = """Normalization is used for better intraclass comparison. If the normalization is on, the total outcome counts are divided by the number of ground truth instances of the corresponding class. This is useful, because on the chart, the sum of TP and FN bars will always result in 1.0, representing the full set of ground truth instances in the dataset for a class. This provides a clear visual understanding of how many instances the model correctly detected, how many it missed, and how many were false positives. For example, if a green bar (TP outcomes) reaches 1.0, this means the model has managed to predict all objects for the class without false negatives. Everything that is higher than 1.0 corresponds to False Positives, i.e, redundant predictions that the model should not predict. You can turn off the normalization, switching to absolute counts.
+markdown_normalization = """Normalization is used for better interclass comparison. If the normalization is on, the total outcome counts are divided by the number of ground truth instances of the corresponding class. This is useful, because on the chart, the sum of TP and FN bars will always result in 1.0, representing the full set of ground truth instances in the dataset for a class. This provides a clear visual understanding of how many instances the model correctly detected, how many it missed, and how many were false positives. For example, if a green bar (TP outcomes) reaches 1.0, this means the model has managed to predict all objects for the class without false negatives. Everything that is higher than 1.0 corresponds to False Positives, i.e, redundant predictions that the model should not predict. You can turn off the normalization, switching to absolute counts.
 
 If normalization is off, the chart will display the total count of instances that correspond to outcome type (one of TP, FP or FN). This mode is identical to the main Outcome Counts graph on the top of the page. However, when normalization is off, you may encounter a class imbalance problem. Visually, bars that correspond to classes with many instances in the dataset will be much larger than others. This complicates the visual analysis.
 """
