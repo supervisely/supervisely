@@ -370,10 +370,6 @@ class WorkflowSettings:
     :param title: Title of the node. It is displayed in the node header.
                   Title is formatted with the `<h4>` tag.
     :type title: Optional[str]
-    :param description: Description of the node. It is displayed under the title line.
-                        Do not recommend using it for long texts.
-                        Description is formatted with the `<small>` tag and used to clarify specific information.
-    :type description: Optional[str]
     :param icon: Icon of the node. It is displayed in the node body.
                  The icon name should be from the Material Design Icons set.
                  Do not include the 'zmdi-' prefix.
@@ -382,19 +378,23 @@ class WorkflowSettings:
     :type icon_color: Optional[str]
     :param icon_bg_color: Background color of the icon in hexadecimal format.
     :type icon_bg_color: Optional[str]
-    :param url: URL to be opened when the user clicks on it.
+    :param url: URL to be opened when the user clicks on it. Must start with a slash and be relative to the instance.
     :type url: Optional[str]
     :param url_title: Title of the URL.
     :type url_title: Optional[str]
+    :param description: Description of the node. It is displayed under the title line.
+                        Do not recommend using it for long texts.
+                        Description is formatted with the `<small>` tag and used to clarify specific information.
+    :type description: Optional[str]
     """
 
     title: Optional[str] = None
-    description: Optional[str] = None
     icon: Optional[str] = None
     icon_color: Optional[str] = None
     icon_bg_color: Optional[str] = None
     url: Optional[str] = None
     url_title: Optional[str] = None
+    description: Optional[str] = None
 
     def __post_init__(self):
         if (self.url and not self.url_title) or (not self.url and self.url_title):
