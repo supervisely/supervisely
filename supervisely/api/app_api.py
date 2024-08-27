@@ -667,7 +667,7 @@ class AppApi(TaskApi):
             Arguments project and version_id are mutually exclusive. If both are specified, version_id will be used.
             Argument version_num can only be used in conjunction with the project.
             This type is used to show that the application has used the specified project.
-            Customization of the project node is not supported. All customizations will be ignored.
+            Customization of the project node is not supported and will be ignored.
             You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
@@ -727,7 +727,7 @@ class AppApi(TaskApi):
             """
             Add input type "dataset" to the workflow node.
             This type is used to show that the application has used the specified dataset.
-            Customization of the dataset node is not supported. All customizations will be ignored.
+            Customization of the dataset node is not supported and will be ignored.
             You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
@@ -874,7 +874,7 @@ class AppApi(TaskApi):
         # pylint: disable=redundant-keyword-arg
         @check_instance_compatibility(
             min_instance_version="6.11.11"
-        )  # Min instance version that accepts the this method
+        )  # Min instance version that accepts this method
         def add_input_job(
             self,
             id: int,
@@ -919,7 +919,7 @@ class AppApi(TaskApi):
             Add output type "project" to the workflow node.
             The project version can be specified with "version" argument to indicate that the project version was created especially as result of this task.
             This type is used to show that the application has created a project with the result of its work.
-            Customization of the project node is not supported. All customizations will be ignored.
+            Customization of the project node is not supported and will be ignored.
             You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
@@ -967,7 +967,7 @@ class AppApi(TaskApi):
             """
             Add output type "dataset" to the workflow node.
             This type is used to show that the application has created a dataset with the result of its work.
-            Customization of the dataset node is not supported. All customizations will be ignored.
+            Customization of the dataset node is not supported and will be ignored.
             You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
@@ -1132,7 +1132,7 @@ class AppApi(TaskApi):
         # pylint: disable=redundant-keyword-arg
         @check_instance_compatibility(
             min_instance_version="6.11.11"
-        )  # Min instance version that accepts the this method
+        )  # Min instance version that accepts this method
         def add_output_job(
             self,
             id: int,
