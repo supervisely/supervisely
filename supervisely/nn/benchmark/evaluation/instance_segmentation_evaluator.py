@@ -39,7 +39,7 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
             raise ValueError("Not found any annotations in GT project")
         if len(cocoDt_json["annotations"]) == 0:
             raise ValueError(
-                "Not found any predictions in DT project. "
+                "Not found any predictions. "
                 "Please make sure that your model produces predictions."
             )
         assert cocoDt_json['categories'] == cocoGt_json['categories']
