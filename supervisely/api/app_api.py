@@ -559,7 +559,12 @@ class AppApi(TaskApi):
         # pylint: disable=no-self-argument
         def check_instance_compatibility(min_instance_version: Optional[str] = None):
             """Decorator to check instance compatibility with workflow features.
-            If the instance is not compatible, the function will not be executed."""
+            If the instance is not compatible, the function will not be executed.
+
+            :param min_instance_version: Determine the minimum instance version that accepts the workflow method.
+            If not specified, the minimum version will be "6.9.31".
+            :type min_instance_version: Optional[str]
+            """
 
             def decorator(func):
                 @wraps(func)
@@ -866,7 +871,9 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_instance_compatibility(min_instance_version="6.11.11")
+        @check_instance_compatibility(
+            min_instance_version="6.11.11"
+        )  # Min instance version that accepts the this method
         def add_input_job(
             self,
             id: int,
@@ -1119,7 +1126,9 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_instance_compatibility(min_instance_version="6.11.11")
+        @check_instance_compatibility(
+            min_instance_version="6.11.11"
+        )  # Min instance version that accepts the this method
         def add_output_job(
             self,
             id: int,
