@@ -383,7 +383,7 @@ class WorkflowSettings:
     :param url_title: Title of the URL.
     :type url_title: Optional[str]
     :param description: Description of the node. It is displayed under the title line.
-                        Do not recommend using it for long texts.
+                        It's not recommended to use it for long texts.
                         Description is formatted with the `<small>` tag and used to clarify specific information.
     :type description: Optional[str]
     """
