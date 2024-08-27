@@ -19,6 +19,7 @@ class ConfusionMatrix(MetricVis):
 
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_confusion_matrix=Widget.Markdown(title="Confusion Matrix", is_header=True),
             chart=Widget.Chart(),
         )

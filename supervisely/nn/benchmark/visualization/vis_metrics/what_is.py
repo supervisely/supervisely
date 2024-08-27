@@ -14,6 +14,7 @@ class WhatIs(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_what_is=Widget.Markdown(title="What is YOLOv8 model", is_header=True),
             markdown_experts=Widget.Markdown(title="Expert Insights", is_header=True),
             markdown_how_to_use=Widget.Markdown(
