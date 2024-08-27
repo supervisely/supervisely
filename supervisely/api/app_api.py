@@ -871,6 +871,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        # pylint: disable=redundant-keyword-arg
         @check_instance_compatibility(
             min_instance_version="6.11.11"
         )  # Min instance version that accepts the this method
@@ -903,6 +904,8 @@ class AppApi(TaskApi):
                     "(this error will not interrupt other code execution)."
                 )
                 return {}
+
+        # pylint: enable=redundant-keyword-arg
 
         @check_instance_compatibility()
         def add_output_project(
@@ -1126,6 +1129,7 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        # pylint: disable=redundant-keyword-arg
         @check_instance_compatibility(
             min_instance_version="6.11.11"
         )  # Min instance version that accepts the this method
@@ -1158,6 +1162,8 @@ class AppApi(TaskApi):
                     "(this error will not interrupt other code execution)."
                 )
                 return {}
+
+        # pylint: enable=redundant-keyword-arg
 
     def __init__(self, api):
         super().__init__(api)
