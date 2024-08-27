@@ -1,9 +1,10 @@
 import os
 import pickle
-from typing import Optional
+from typing import Optional, List
 
 from supervisely.app.widgets import SlyTqdm
 from supervisely.task.progress import tqdm_sly
+from supervisely.project.project import ItemInfo
 
 
 class BaseEvaluator:
@@ -14,6 +15,7 @@ class BaseEvaluator:
         result_dir: str = "./evaluation",
         progress: Optional[SlyTqdm] = None,
         items_count: Optional[int] = None,  # TODO: is it needed?
+        validation_set: List[ItemInfo] = None,
     ):
         self.gt_project_path = gt_project_path
         self.dt_project_path = dt_project_path
@@ -21,6 +23,7 @@ class BaseEvaluator:
         self.total_items = items_count
         self.pbar = progress or tqdm_sly
         os.makedirs(result_dir, exist_ok=True)
+        self.validation_set = validation_set
 
     def evaluate(self):
         raise NotImplementedError()

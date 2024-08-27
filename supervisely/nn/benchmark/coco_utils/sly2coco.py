@@ -1,12 +1,13 @@
 import json
 import os
 from os.path import join as pjoin
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 
 import numpy as np
 
 from supervisely import Bitmap
 from supervisely._utils import batched
+from supervisely.project.project import ItemInfo
 
 
 def sly2coco(
@@ -15,6 +16,7 @@ def sly2coco(
     accepted_shapes: list = None,
     conf_threshold: float = None,
     progress_cb: Optional[Callable] = None,
+    validation_set: List[ItemInfo] = None,
 ):
     from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
@@ -51,7 +53,17 @@ def sly2coco(
     for dataset_name in datasets:
         ann_path = pjoin(sly_project_path, dataset_name, "ann")
         imginfo_path = pjoin(sly_project_path, dataset_name, "img_info")
-        ann_files = sorted(os.listdir(ann_path))
+        if validation_set is not None:
+            ann_files = sorted(
+                [
+                    os.path.basename(x.ann_path)
+                    for x in validation_set
+                    if x.dataset_name == dataset_name
+                ]
+            )
+        else:
+            ann_files = sorted(os.listdir(ann_path))
+
         img_id = 1
         for batch in batched(ann_files, 30):
             for ann_file in batch:
