@@ -108,7 +108,6 @@ class BaseBenchmark:
         inference_info = {
             "gt_project_id": self.gt_project_info.id,
             "gt_dataset_ids": self.gt_dataset_ids,
-            "gt_images_ids": self.gt_images_ids,
             "dt_project_id": output_project_id,
             "batch_size": batch_size,
             **model_info,
