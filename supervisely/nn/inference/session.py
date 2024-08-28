@@ -200,7 +200,7 @@ class SessionJSON:
     def inference_image_ids_async(
         self,
         image_ids: List[int],
-        upload=False,
+        output_project_id=None,
         batch_size: int = 16,
         process_fn=None,
     ) -> Iterator:
@@ -218,7 +218,7 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["images_ids"] = image_ids
-        state["upload"] = upload
+        state["output_project_id"] = output_project_id
         state["batch_size"] = batch_size
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
@@ -714,12 +714,12 @@ class Session(SessionJSON):
     def inference_image_ids_async(
         self,
         image_ids: List[int],
-        upload=False,
+        output_project_id=None,
         batch_size: int = 16,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
-            upload,
+            output_project_id,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
         )

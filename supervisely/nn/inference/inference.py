@@ -1065,10 +1065,14 @@ class Inference:
     def _inference_images_ids(
         self, api: Api, state: dict, images_ids: List[int], async_inference_request_uuid: str = None
     ):
-        """Inference images by ids."""
+        """Inference images by ids.
+        If "output_project_id" in state, upload images and annotations to the output project.
+        If "output_project_id" equal to source project id, upload annotations to the source project.
+        If "output_project_id" is None, write annotations to inference request object.
+        """
         logger.debug("Inferring images...", extra={"state": state})
         batch_size = state.get("batch_size", 16)
-        upload = state.get("upload", False)
+        output_project_id = state.get("output_project_id", None)
         images_infos_dict = {}
         dataset_infos_dict = {}
 
@@ -1143,6 +1147,71 @@ class Inference:
             inference_request["pending_results"].extend(results)
             sly_progress.iters_done(len(results))
 
+        new_dataset_id = {}
+
+        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
+            """Copy dataset in output project if not exists and return its id"""
+            if src_dataset_id in new_dataset_id:
+                return new_dataset_id[src_dataset_id]
+            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+            output_dataset_id = api.dataset.copy(
+                output_project_id, src_dataset_id, dataset_info.name, change_name_if_conflict=True
+            ).id
+            new_dataset_id[src_dataset_id] = output_dataset_id
+            return output_dataset_id
+
+        def _upload_results_to_other(results: List[Dict]):
+            nonlocal output_project_metas_dict
+            if len(results) == 0:
+                return
+            src_dataset_id = results[0]["dataset_id"]
+            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
+            image_names = [result["image_name"] for result in results]
+            image_infos = api.image.get_list(
+                dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
+            )
+            meta_changed = False
+            anns = []
+            for result in results:
+                ann = Annotation.from_json(result["annotation"], self.model_meta)
+                output_project_meta = output_project_metas_dict.get(output_project_id, None)
+                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
+                output_project_metas_dict[output_project_id] = output_project_meta
+                meta_changed = meta_changed or c
+                anns.append(ann)
+            if meta_changed:
+                api.project.update_meta(output_project_id, output_project_meta)
+
+            # upload in batches to update progress with each batch
+            # api.annotation.upload_anns() uploads in same batches anyways
+            for batch in batched(list(zip(anns, results, image_infos))):
+                batch_anns, batch_results, batch_image_infos = zip(*batch)
+                api.annotation.upload_anns(
+                    img_ids=[info.id for info in batch_image_infos],
+                    anns=batch_anns,
+                )
+                if async_inference_request_uuid is not None:
+                    sly_progress.iters_done(len(batch_results))
+                    inference_request["pending_results"].extend(
+                        [{**result, "annotation": None, "data": None} for result in batch_results]
+                    )
+
+        def upload_results_to_source_or_other(results: List[Dict]):
+            if len(results) == 0:
+                return
+            dataset_id = results[0]["dataset_id"]
+            dataset_info: DatasetInfo = dataset_infos_dict[dataset_id]
+            project_id = dataset_info.project_id
+            if project_id == output_project_id:
+                _upload_results_to_source(results)
+            else:
+                _upload_results_to_other(results)
+
+        if output_project_id is None:
+            upload_f = _add_results_to_request
+        else:
+            upload_f = upload_results_to_source_or_other
+
         def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
             try:
                 while True:
@@ -1154,7 +1223,8 @@ class Inference:
                         for batch in items:
                             if len(batch) == 0:
                                 continue
-                            ds_batches.setdefault(batch[0].get("dataset_id"), []).extend(batch)
+                            for each in batch:
+                                ds_batches.setdefault(each["dataset_id"], []).append(each)
                         for _, joined_batch in ds_batches.items():
                             upload_f(joined_batch)
                         continue
@@ -1165,11 +1235,6 @@ class Inference:
             except Exception as e:
                 api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
                 raise
-
-        if upload:
-            upload_f = _upload_results_to_source
-        else:
-            upload_f = _add_results_to_request
 
         upload_queue = Queue()
         stop_upload_event = threading.Event()
