@@ -55,6 +55,7 @@ from supervisely.decorators.inference import (
     process_images_batch_roi,
     process_images_batch_sliding_window,
 )
+from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.utils import (
@@ -2425,7 +2426,10 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
         if meta.get_obj_class(ann_obj_class.name) is None:
             meta = meta.add_obj_class(ann_obj_class)
             meta_changed = True
-        elif meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type:
+        elif (
+            meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type
+            and meta.get_obj_class(ann_obj_class.name).geometry_type != AnyGeometry
+        ):
             found = False
             for suffix in obj_classes_suffixes:
                 new_obj_class_name = ann_obj_class.name + suffix
