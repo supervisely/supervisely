@@ -1073,8 +1073,9 @@ class Inference:
         logger.debug("Inferring images...", extra={"state": state})
         batch_size = state.get("batch_size", 16)
         output_project_id = state.get("output_project_id", None)
-        images_infos_dict = {}
-        dataset_infos_dict = {}
+        images_infos = api.image.get_info_by_id_batch(images_ids)
+        images_infos_dict = {im_info.id: im_info for im_info in images_infos}
+        dataset_infos_dict = {api.dataset.get_info_by_id(ds_id) for ds_id in set([im_info.dataset_id for im_info in images_infos])}
 
         if async_inference_request_uuid is not None:
             try:
@@ -1091,14 +1092,6 @@ class Inference:
             sly_progress.total = len(images_ids)
 
         def _download_images(images_ids):
-            images_infos = api.image.get_info_by_id_batch(images_ids)
-            images_infos_dict.update({im_info.id: im_info for im_info in images_infos})
-            missing_dataset_ids = set([im_info.dataset_id for im_info in images_infos]).difference(
-                set(dataset_infos_dict.keys())
-            )
-            for ds_id in missing_dataset_ids:
-                dataset_infos_dict[ds_id] = api.dataset.get_info_by_id(ds_id)
-
             with ThreadPoolExecutor(batch_size) as executor:
                 for image_id in images_ids:
                     executor.submit(
