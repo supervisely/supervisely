@@ -14,20 +14,30 @@ class ModelSource:
 
 @dataclass
 class CheckpointInfo:
-    checkpoint_name: str = None     # e.g. "YOLOv8-L (COCO)"
-    architecture: str = None        # e.g. "YOLOv8"
-    model_source: str = None        # e.g. "Pretrained models"
-    checkpoint_url: str = None
+    """
+    checkpoint_name: a name for model weights, e.g. "YOLOv8-L COCO
+    model_name: a name of a model for which the weights is applicable, e.g. "YOLOv8-L"
+    architecture: it is a collection for a set of models, e.g. "YOLOv8"
+    model_source: e.g. "Pretrained models"
+    checkpoint_url: a URL to download the model weights
+    custom_checkpoint_path: a path in Team Files to the weights
+    """
+    checkpoint_name: str = None
+    model_name: str = None
+    architecture: str = None
+    checkpoint_url: str = None  # TODO: is it needed?
     custom_checkpoint_path: str = None
+    model_source: str = None
 
 
 @dataclass
 class DeployInfo:
     checkpoint_name: str
+    model_name: str
     architecture: str
-    model_source: str
-    checkpoint_url: str
+    checkpoint_url: str  # TODO: is it needed?
     custom_checkpoint_path: str
+    model_source: str
     task_type: str
     device: str
     runtime: str
