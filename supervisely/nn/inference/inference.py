@@ -1117,6 +1117,8 @@ class Inference:
                 project_id = dataset_info.project_id
                 ann = Annotation.from_json(result["annotation"], self.model_meta)
                 output_project_meta = output_project_metas_dict.get(project_id, None)
+                if output_project_meta is None:
+                    output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
                 output_project_meta, ann, meta_changed = update_meta_and_ann(
                     output_project_meta, ann
                 )
@@ -1180,6 +1182,10 @@ class Inference:
             for result in results:
                 ann = Annotation.from_json(result["annotation"], self.model_meta)
                 output_project_meta = output_project_metas_dict.get(output_project_id, None)
+                if output_project_meta is None:
+                    output_project_meta = ProjectMeta.from_json(
+                        api.project.get_meta(output_project_id)
+                    )
                 output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
                 output_project_metas_dict[output_project_id] = output_project_meta
                 meta_changed = meta_changed or c
