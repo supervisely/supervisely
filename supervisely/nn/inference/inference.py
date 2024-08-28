@@ -1154,17 +1154,20 @@ class Inference:
             if src_dataset_id in new_dataset_id:
                 return new_dataset_id[src_dataset_id]
             dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            output_dataset_id = api.dataset.copy(
-                output_project_id, src_dataset_id, dataset_info.name, change_name_if_conflict=True
+            output_dataset_id = api.dataset.create(
+                output_project_id, dataset_info.name, change_name_if_conflict=True
             ).id
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
 
-        def _copy_images_to_dst(src_dataset_id, dst_dataset_id, image_infos) -> List[ImageInfo]:
+        def _copy_images_to_dst(
+            src_dataset_id, dst_dataset_id, image_infos, dst_names
+        ) -> List[ImageInfo]:
             return api.image.copy_batch_optimized(
                 src_dataset_id,
                 image_infos,
                 dst_dataset_id,
+                dst_names=dst_names,
                 with_annotations=False,
                 skip_validation=True,
             )
@@ -1176,8 +1179,10 @@ class Inference:
             src_dataset_id = results[0]["dataset_id"]
             dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
             src_image_infos = [images_infos_dict[result["image_id"]] for result in results]
-            image_infos = _copy_images_to_dst(src_dataset_id, dataset_id, src_image_infos)
             image_names = [result["image_name"] for result in results]
+            image_infos = _copy_images_to_dst(
+                src_dataset_id, dataset_id, src_image_infos, image_names
+            )
             image_infos.sort(key=lambda x: image_names.index(x.name))
             api.logger.debug(
                 "Uploading results to other project...",
