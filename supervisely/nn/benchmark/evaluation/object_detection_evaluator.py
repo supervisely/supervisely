@@ -34,6 +34,14 @@ class ObjectDetectionEvaluator(BaseEvaluator):
                 progress_cb=pbar.update,
                 classes_whitelist=self.classes_whitelist,
             )
+
+        if len(cocoGt_json["annotations"]) == 0:
+            raise ValueError("Not found any annotations in GT project")
+        if len(cocoDt_json["annotations"]) == 0:
+            raise ValueError(
+                "Not found any predictions. "
+                "Please make sure that your model produces predictions."
+            )
         assert (
             cocoDt_json["categories"] == cocoGt_json["categories"]
         ), "Classes in GT and Pred projects must be the same"
