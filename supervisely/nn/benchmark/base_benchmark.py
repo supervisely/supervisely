@@ -290,7 +290,7 @@ class BaseBenchmark:
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
             total = (
-                self.dt_project_info.items_count * 2
+                self.gt_project_info.items_count * 2
                 if self.gt_images_ids is None
                 else len(self.gt_images_ids) * 2
             )
@@ -309,7 +309,11 @@ class BaseBenchmark:
         else:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
-            total = self.dt_project_info.items_count * 2
+            total = (
+                self.gt_project_info.items_count * 2
+                if self.gt_images_ids is None
+                else len(self.gt_images_ids) * 2
+            )
             with self.pbar(message="Downloading DT annotations", total=total) as p:
                 download_project(
                     self.api,
