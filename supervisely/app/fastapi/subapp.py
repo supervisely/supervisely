@@ -307,6 +307,83 @@ class Event:
                     job_id=data.get(ApiField.JOB_ID),
                 )
 
+    class JobEntity:
+        class StatusChanged:
+            endpoint = "/job_entity_status_changed"
+
+            def __init__(
+                self,
+                dataset_id: int,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                figure_id: int,
+                figure_class_id: int,
+                figure_class_title: str,
+                image_id: int,
+                entity_id: int,
+                tool_class_id: int,
+                session_id: str,
+                tool: str,
+                user_id: int,
+                job_id: int,
+                job_entity_status: str,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.figure_id = figure_id
+                self.figure_class_id = figure_class_id
+                self.figure_class_title = figure_class_title
+                self.image_id = image_id
+                self.entity_id = entity_id
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+                self.job_entity_status = job_entity_status
+
+            @classmethod
+            def from_json(cls, data: dict):
+                return cls(
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    figure_id=data.get(ApiField.FIGURE_ID),
+                    figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    image_id=data.get(ApiField.IMAGE_ID),
+                    entity_id=data.get(ApiField.ENTITY_ID),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                    job_entity_status=data.get(ApiField.JOB_ENTITY_STATUS),
+                )
+
+
+# {
+#     "datasetId": 96067,
+#     "teamId": 448,
+#     "workspaceId": 690,
+#     "projectId": 40899,
+#     "figureId": None,
+#     "figureClassId": None,
+#     "figureClassTitle": None,
+#     "imageId": 31398901,
+#     "entityId": 31398901,
+#     "toolClassId": 9319795,
+#     "sessionId": "858a1d13-715e-434f-a2df-83786c8625c2",
+#     "tool": "moveScene",
+#     "userId": 340,
+#     "jobId": 1128,
+#     "jobEntityStatus": "done",
+# }
+
 
 def create(
     process_id=None,

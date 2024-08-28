@@ -582,6 +582,8 @@ class ApiField:
     """"""
     ANNOTATION_DATA = "annotationData"
     """"""
+    JOB_ENTITY_STATUS = "jobEntityStatus"
+    """"""
 
 
 def _get_single_item(items):
