@@ -366,25 +366,6 @@ class Event:
                 )
 
 
-# {
-#     "datasetId": 96067,
-#     "teamId": 448,
-#     "workspaceId": 690,
-#     "projectId": 40899,
-#     "figureId": None,
-#     "figureClassId": None,
-#     "figureClassTitle": None,
-#     "imageId": 31398901,
-#     "entityId": 31398901,
-#     "toolClassId": 9319795,
-#     "sessionId": "858a1d13-715e-434f-a2df-83786c8625c2",
-#     "tool": "moveScene",
-#     "userId": 340,
-#     "jobId": 1128,
-#     "jobEntityStatus": "done",
-# }
-
-
 def create(
     process_id=None,
     headless=False,
