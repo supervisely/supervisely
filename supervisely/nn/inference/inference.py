@@ -1578,9 +1578,7 @@ class Inference:
             self._task_id = env.task_id() if is_production() else None
 
         if isinstance(self.gui, GUI.InferenceGUI):
-            self._app = Application(
-                layout=self.get_ui(), ready_check_func=self._check_model_is_ready
-            )
+            self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             serving_layout = self.get_ui()
 
@@ -1605,15 +1603,12 @@ class Inference:
             layout = Container(
                 [self._user_layout_card, self._api_request_model_layout, serving_layout]
             )
-            self._app = Application(
-                layout=self.get_ui(), ready_check_func=self._check_model_is_ready
-            )
+            self._app = Application(layout=self.get_ui())
         else:
-            self._app = Application(
-                layout=self.get_ui(), ready_check_func=self._check_model_is_ready
-            )
+            self._app = Application(layout=self.get_ui())
 
         server = self._app.get_server()
+        self._app.set_ready_check_func(self._check_model_is_ready)
 
         @call_on_autostart()
         def autostart_func():
