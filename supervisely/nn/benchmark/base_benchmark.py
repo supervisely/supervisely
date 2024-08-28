@@ -278,6 +278,7 @@ class BaseBenchmark:
             dt_project_info = self.api.project.create(
                 workspace.id, dt_project_name, change_name_if_conflict=True
             )
+            self.api.project.merge_metas(self.gt_project_info.id, dt_project_info.id)
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
