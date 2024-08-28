@@ -3,6 +3,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 
+from supervisely._utils import is_development
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
@@ -15,7 +16,6 @@ from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
-from supervisely._utils import is_development
 
 
 class BaseBenchmark:
@@ -24,6 +24,7 @@ class BaseBenchmark:
         api: Api,
         gt_project_id: int,
         gt_dataset_ids: List[int] = None,
+        gt_images_ids: List[int] = None,
         output_dir: str = "./benchmark",
         progress: Optional[SlyTqdm] = None,
     ):
@@ -33,6 +34,7 @@ class BaseBenchmark:
         self.dt_project_info = None
         self.diff_project_info = None
         self.gt_dataset_ids = gt_dataset_ids
+        self.gt_images_ids = gt_images_ids
         self.output_dir = output_dir
         self.team_id = env.team_id()
         self.evaluator: BaseEvaluator = None
@@ -52,7 +54,7 @@ class BaseBenchmark:
         model_session: Union[int, str, SessionJSON],
         inference_settings=None,
         output_project_id=None,
-        batch_size: int = 8,
+        batch_size: int = 16,
         cache_project_on_agent: bool = False,
     ):
         self.session = self._init_model_session(model_session, inference_settings)
@@ -78,18 +80,25 @@ class BaseBenchmark:
     def _run_inference(
         self,
         output_project_id=None,
-        batch_size: int = 8,
+        batch_size: int = 16,
         cache_project_on_agent: bool = False,
     ):
         model_info = self._fetch_model_info(self.session)
         self.dt_project_info = self._get_or_create_dt_project(output_project_id, model_info)
-        iterator = self.session.inference_project_id_async(
-            self.gt_project_info.id,
-            self.gt_dataset_ids,
-            output_project_id=self.dt_project_info.id,
-            cache_project_on_model=cache_project_on_agent,
-            batch_size=batch_size,
-        )
+        if self.gt_images_ids is None:
+            iterator = self.session.inference_project_id_async(
+                self.gt_project_info.id,
+                self.gt_dataset_ids,
+                output_project_id=self.dt_project_info.id,
+                cache_project_on_model=cache_project_on_agent,
+                batch_size=batch_size,
+            )
+        else:
+            iterator = self.session.inference_image_ids_async(
+                image_ids=self.gt_images_ids,
+                output_project_id=self.dt_project_info.id,
+                batch_size=batch_size,
+            )
         output_project_id = self.dt_project_info.id
         with self.pbar(
             message="Inference in progress", total=self.gt_project_info.items_count
@@ -99,6 +108,7 @@ class BaseBenchmark:
         inference_info = {
             "gt_project_id": self.gt_project_info.id,
             "gt_dataset_ids": self.gt_dataset_ids,
+            "gt_images_ids": self.gt_images_ids,
             "dt_project_id": output_project_id,
             "batch_size": batch_size,
             **model_info,
@@ -118,7 +128,7 @@ class BaseBenchmark:
             dt_project_path=dt_project_path,
             result_dir=eval_results_dir,
             progress=self.pbar,
-            items_count=self.gt_project_info.items_count,
+            items_count=self.dt_project_info.items_count,
         )
         self.evaluator.evaluate()
 
@@ -272,7 +282,11 @@ class BaseBenchmark:
     def _download_projects(self, save_images=False):
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
-            total = self.dt_project_info.items_count * 2
+            total = (
+                self.dt_project_info.items_count * 2
+                if self.gt_images_ids is None
+                else len(self.gt_images_ids) * 2
+            )
             with self.pbar(message="Downloading GT annotations", total=total) as p:
                 download_project(
                     self.api,
@@ -283,11 +297,12 @@ class BaseBenchmark:
                     save_images=save_images,
                     save_image_info=True,
                     progress_cb=p.update,
+                    images_ids=self.gt_images_ids,
                 )
         else:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
-            total = self.gt_project_info.items_count * 2
+            total = self.dt_project_info.items_count * 2
             with self.pbar(message="Downloading DT annotations", total=total) as p:
                 download_project(
                     self.api,
