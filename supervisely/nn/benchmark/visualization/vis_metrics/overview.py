@@ -33,7 +33,6 @@ class Overview(MetricVis):
                     url,
                     link_text,
                     self._loader.docs_link,
-                    self._loader.docs_link,
                     self._loader.gt_project_info.id,
                     self._loader.gt_project_info.name
                 ],
