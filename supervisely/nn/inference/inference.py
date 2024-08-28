@@ -1118,7 +1118,9 @@ class Inference:
                 ann = Annotation.from_json(result["annotation"], self.model_meta)
                 output_project_meta = output_project_metas_dict.get(project_id, None)
                 if output_project_meta is None:
-                    output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
+                    output_project_meta = ProjectMeta.from_json(
+                        api.project.get_meta(output_project_id)
+                    )
                 output_project_meta, ann, meta_changed = update_meta_and_ann(
                     output_project_meta, ann
                 )
@@ -1158,23 +1160,32 @@ class Inference:
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
 
+        def _copy_images_to_dst(src_dataset_id, dst_dataset_id, image_infos) -> List[ImageInfo]:
+            return api.image.copy_batch_optimized(
+                src_dataset_id,
+                image_infos,
+                dst_dataset_id,
+                with_annotations=False,
+                skip_validation=True,
+            )
+
         def _upload_results_to_other(results: List[Dict]):
             nonlocal output_project_metas_dict
             if len(results) == 0:
                 return
             src_dataset_id = results[0]["dataset_id"]
             dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
+            src_image_infos = [images_infos_dict[result["image_id"]] for result in results]
+            image_infos = _copy_images_to_dst(src_dataset_id, dataset_id, src_image_infos)
             image_names = [result["image_name"] for result in results]
-            image_infos = api.image.get_list(
-                dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
-            )
             image_infos.sort(key=lambda x: image_names.index(x.name))
             api.logger.debug(
                 "Uploading results to other project...",
                 extra={
                     "src_dataset_id": src_dataset_id,
+                    "dst_project_id": output_project_id,
+                    "dst_dataset_id": dataset_id,
                     "items_count": len(image_infos),
-                    "image_names": image_names,
                 },
             )
             meta_changed = False
