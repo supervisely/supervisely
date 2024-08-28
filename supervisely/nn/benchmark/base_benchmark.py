@@ -114,6 +114,13 @@ class BaseBenchmark:
             **model_info,
         }
         self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
+        logger.debug(
+            "Inference is finished.",
+            extra={
+                "inference_info": inference_info,
+                "dt_project_info": self.dt_project_info._asdict(),
+            },
+        )
         return inference_info
 
     def evaluate(self, dt_project_id):
