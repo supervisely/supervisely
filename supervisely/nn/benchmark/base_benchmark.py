@@ -41,7 +41,6 @@ class BaseBenchmark:
         self._eval_inference_info = None
         self._speedtest = None
         self.pbar = progress or tqdm_sly
-
         self.classes_whitelist = classes_whitelist
 
     def _get_evaluator_class(self) -> type:
@@ -59,9 +58,6 @@ class BaseBenchmark:
         batch_size: int = 8,
         cache_project_on_agent: bool = False,
     ):
-        if self.classes_whitelist:
-            inference_settings = inference_settings or {}
-            inference_settings["classes"] = self.classes_whitelist
         self.session = self._init_model_session(model_session, inference_settings)
         self._eval_inference_info = self._run_inference(
             output_project_id, batch_size, cache_project_on_agent
@@ -77,9 +73,6 @@ class BaseBenchmark:
         batch_size: int = 8,
         cache_project_on_agent: bool = False,
     ):
-        if self.classes_whitelist:
-            inference_settings = inference_settings or {}
-            inference_settings["classes"] = self.classes_whitelist
         self.session = self._init_model_session(model_session, inference_settings)
         self._eval_inference_info = self._run_inference(
             output_project_id, batch_size, cache_project_on_agent
@@ -346,6 +339,10 @@ class BaseBenchmark:
             session = model_session
         else:
             raise ValueError(f"Unsupported type of 'model_session' argument: {type(model_session)}")
+
+        if self.classes_whitelist:
+            inference_settings = inference_settings or {}
+            inference_settings["classes"] = self.classes_whitelist
 
         if inference_settings is not None:
             session.set_inference_settings(inference_settings)
