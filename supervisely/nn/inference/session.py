@@ -175,8 +175,9 @@ class SessionJSON:
     def _validate_new_inference_settings(self, new_settings: dict) -> None:
         default_settings = self.get_default_inference_settings()
         for key, value in new_settings.items():
-            if key not in default_settings:
-                raise ValueError(f"Key '{key}' is not acceptable. Acceptable keys are: {default_settings}")
+            if key not in default_settings and key != "classes":
+                acceptable_keys = ", ".join(default_settings.keys()) + ", 'classes'"
+                raise ValueError(f"Key '{key}' is not acceptable. Acceptable keys are: {acceptable_keys}")
 
     def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"

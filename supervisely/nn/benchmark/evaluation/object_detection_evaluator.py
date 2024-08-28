@@ -25,13 +25,16 @@ class ObjectDetectionEvaluator(BaseEvaluator):
                 is_dt_dataset=False,
                 accepted_shapes=["rectangle"],
                 progress_cb=pbar.update,
+                classes_whitelist=self.classes_whitelist,
             )
             cocoDt_json = sly2coco(
                 self.dt_project_path,
                 is_dt_dataset=True,
                 accepted_shapes=["rectangle"],
                 progress_cb=pbar.update,
+                classes_whitelist=self.classes_whitelist,
             )
+
         if len(cocoGt_json["annotations"]) == 0:
             raise ValueError("Not found any annotations in GT project")
         if len(cocoDt_json["annotations"]) == 0:
