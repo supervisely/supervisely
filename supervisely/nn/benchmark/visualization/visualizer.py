@@ -366,6 +366,8 @@ class Visualizer:
                         labels.append(label)
 
                     for label in gt_ann.labels:
+                        if label.obj_class.name not in self.classes_whitelist:
+                            continue
                         if label.geometry.sly_id not in matched_gt_ids:
                             if self._is_label_compatible_to_cv_task(label):
                                 new_label = label.add_tags(
