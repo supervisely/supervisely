@@ -93,9 +93,8 @@ class ModelPredictions(MetricVis):
         ]
         click_data = res.setdefault("clickData", {})
 
-        optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
+            {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 

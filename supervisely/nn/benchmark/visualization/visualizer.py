@@ -147,13 +147,12 @@ class Visualizer:
                     p.update(1)
 
         res = {}
-        optimal_conf = round(self.f1_optimal_conf, 1)
         gallery = GridGalleryV2(
             columns_number=3,
             enable_zoom=False,
             annotations_opacity=0.4,
             border_width=4,
-            default_tag_filters=[{"confidence": [optimal_conf, 1]}],
+            default_tag_filters=[{"confidence": [self.f1_optimal_conf, 1]}],
             show_zoom_slider=False,
         )
         gallery._update_filters()

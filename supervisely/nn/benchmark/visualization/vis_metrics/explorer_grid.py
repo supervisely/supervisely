@@ -18,8 +18,7 @@ class ExplorerGrid(MetricVis):
         self.clickable = True
         self.has_diffs_view = True
 
-        optimal_conf = round(self.f1_optimal_conf, 1)
-        filters = [{"confidence": [optimal_conf, 1]}]
+        filters = [{"confidence": [self.f1_optimal_conf, 1]}]
         self.schema = Schema(
             markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
             gallery=Widget.Gallery(filters=filters),
@@ -88,9 +87,8 @@ class ExplorerGrid(MetricVis):
         pred_anns = self._loader.dt_ann_jsons  # {image_id: ann_json}
         diff_anns = self._loader.diff_ann_jsons  # {image_id: ann_json}
 
-        optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
+            {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
         for gt, pred, diff, pred_ann, diff_ann in zip(

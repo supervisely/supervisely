@@ -230,8 +230,6 @@ class MetricVis:
         if not self.clickable:
             return
 
-        optimal_conf = round(self.f1_optimal_conf, 4)
-
         res = {}
 
         res["layoutTemplate"] = [None, None, None]
@@ -254,7 +252,7 @@ class MetricVis:
 
             res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
+                {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
                 {"type": "tag", "tagId": "outcome", "value": "TP"},
                 {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
             ]
