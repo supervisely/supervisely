@@ -1076,7 +1076,7 @@ class Inference:
         images_infos = api.image.get_info_by_id_batch(images_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
         dataset_infos_dict = {
-            api.dataset.get_info_by_id(ds_id)
+            ds_id: api.dataset.get_info_by_id(ds_id)
             for ds_id in set([im_info.dataset_id for im_info in images_infos])
         }
 
