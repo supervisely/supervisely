@@ -3,6 +3,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 
+from supervisely._utils import is_development
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
@@ -15,10 +16,10 @@ from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
-from supervisely._utils import is_development
 
 
 class BaseBenchmark:
+
     def __init__(
         self,
         api: Api,
@@ -26,6 +27,7 @@ class BaseBenchmark:
         gt_dataset_ids: List[int] = None,
         output_dir: str = "./benchmark",
         progress: Optional[SlyTqdm] = None,
+        classes_whitelist: Optional[List[str]] = None,
     ):
         self.api = api
         self.session: SessionJSON = None
@@ -39,6 +41,7 @@ class BaseBenchmark:
         self._eval_inference_info = None
         self._speedtest = None
         self.pbar = progress or tqdm_sly
+        self.classes_whitelist = classes_whitelist
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -119,6 +122,7 @@ class BaseBenchmark:
             result_dir=eval_results_dir,
             progress=self.pbar,
             items_count=self.gt_project_info.items_count,
+            classes_whitelist=self.classes_whitelist,
         )
         self.evaluator.evaluate()
 
@@ -335,6 +339,10 @@ class BaseBenchmark:
             session = model_session
         else:
             raise ValueError(f"Unsupported type of 'model_session' argument: {type(model_session)}")
+
+        if self.classes_whitelist:
+            inference_settings = inference_settings or {}
+            inference_settings["classes"] = self.classes_whitelist
 
         if inference_settings is not None:
             session.set_inference_settings(inference_settings)

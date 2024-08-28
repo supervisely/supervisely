@@ -54,7 +54,7 @@ class ExplorerGrid(MetricVis):
         return res
 
     def get_gallery(self, widget: Widget.Gallery):
-        return self._get_gallery(widget, limit=8)
+        return self._get_gallery(widget, limit=9)
 
     def get_gallery_click_data(self, widget: Widget.Gallery):
         res = {}
