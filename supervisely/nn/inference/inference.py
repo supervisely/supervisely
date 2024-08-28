@@ -1075,7 +1075,10 @@ class Inference:
         output_project_id = state.get("output_project_id", None)
         images_infos = api.image.get_info_by_id_batch(images_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
-        dataset_infos_dict = {api.dataset.get_info_by_id(ds_id) for ds_id in set([im_info.dataset_id for im_info in images_infos])}
+        dataset_infos_dict = {
+            api.dataset.get_info_by_id(ds_id)
+            for ds_id in set([im_info.dataset_id for im_info in images_infos])
+        }
 
         if async_inference_request_uuid is not None:
             try:
@@ -1162,6 +1165,15 @@ class Inference:
             image_names = [result["image_name"] for result in results]
             image_infos = api.image.get_list(
                 dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
+            )
+            image_infos.sort(key=lambda x: image_names.index(x.name))
+            api.logger.debug(
+                "Uploading results to other project...",
+                extra={
+                    "src_dataset_id": src_dataset_id,
+                    "items_count": len(image_infos),
+                    "image_names": image_names,
+                },
             )
             meta_changed = False
             anns = []
