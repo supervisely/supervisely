@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -18,10 +17,11 @@ class PerClassAvgPrecision(MetricVis):
         super().__init__(loader)
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_class_ap=Widget.Markdown(
                 title="Average Precision by Class",
                 is_header=True,
-                formats=[definitions.average_precision],
+                formats=[self._loader.vis_texts.definitions.average_precision],
             ),
             chart=Widget.Chart(),
         )

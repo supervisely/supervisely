@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -17,12 +16,13 @@ class ConfidenceDistribution(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_confidence_distribution=Widget.Markdown(
                 title="Confidence Distribution",
                 is_header=True,
                 formats=[
-                    definitions.true_positives,
-                    definitions.false_positives,
+                    self._loader.vis_texts.definitions.true_positives,
+                    self._loader.vis_texts.definitions.false_positives,
                 ],
             ),
             chart=Widget.Chart(),

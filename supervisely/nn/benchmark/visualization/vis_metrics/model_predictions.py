@@ -15,6 +15,7 @@ class ModelPredictions(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_predictions_gallery=Widget.Markdown(
                 title="Model Predictions", is_header=False
             ),
@@ -93,9 +94,8 @@ class ModelPredictions(MetricVis):
         ]
         click_data = res.setdefault("clickData", {})
 
-        optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
+            {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 

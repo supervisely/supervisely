@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING, Tuple
 import pandas as pd
 from jinja2 import Template
 
+from supervisely import AnyGeometry, Bitmap, Polygon, Rectangle
 from supervisely._utils import batched
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import file_exists, mkdir
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.project.project import Dataset, OpenMode, Project
@@ -21,9 +21,8 @@ from supervisely.project.project_meta import ProjectMeta
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 
-from supervisely.nn.benchmark.evaluation.coco.metric_provider import (
-    MetricProvider,
-)
+from supervisely import Label
+from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
@@ -47,18 +46,18 @@ class Visualizer:
         self.dt_project_info = benchmark.dt_project_info
         self.gt_project_info = benchmark.gt_project_info
         self.diff_project_info = benchmark.diff_project_info
+        self.classes_whitelist = benchmark.classes_whitelist
 
-        self.gt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.gt_project_info.id)
-        )
-        self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_info.id)
-        )
+        self.gt_project_meta = self._get_filtered_project_meta(self.gt_project_info.id)
+        self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         self._docs_link = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_object_detection_loader()
             self.docs_link = self._docs_link + CVTask.OBJECT_DETECTION.value.replace("_", "-")
+        elif benchmark.cv_task == CVTask.INSTANCE_SEGMENTATION:
+            self._initialize_instance_segmentation_loader()
+            self.docs_link = self._docs_link + CVTask.INSTANCE_SEGMENTATION.value.replace("_", "-")
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
@@ -66,6 +65,86 @@ class Visualizer:
 
     def _initialize_object_detection_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
+
+        from supervisely.nn.benchmark.visualization import vis_texts
+
+        self.vis_texts = vis_texts
+
+        cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
+            self.eval_dir + "/cocoGt.json",
+            self.eval_dir + "/cocoDt.json",
+            self.eval_dir + "/eval_data.pkl",
+            self.eval_dir + "/inference_info.json",
+        )
+
+        with open(cocoGt_path, "r") as f:
+            cocoGt_dataset = json.load(f)
+        with open(cocoDt_path, "r") as f:
+            cocoDt_dataset = json.load(f)
+
+        # Remove COCO read logs
+        with HiddenCocoPrints():
+            cocoGt = COCO()
+            cocoGt.dataset = cocoGt_dataset
+            cocoGt.createIndex()
+            cocoDt = cocoGt.loadRes(cocoDt_dataset["annotations"])
+
+        with open(eval_data_path, "rb") as f:
+            eval_data = pickle.load(f)
+
+        inference_info = {}
+        if file_exists(inference_info_path):
+            with open(inference_info_path, "r") as f:
+                inference_info = json.load(f)
+            self.inference_info = inference_info
+        else:
+            self.inference_info = self._benchmark._eval_inference_info
+
+        self.mp = MetricProvider(
+            eval_data["matches"],
+            eval_data["coco_metrics"],
+            eval_data["params"],
+            cocoGt,
+            cocoDt,
+        )
+        self.mp.calculate()
+
+        self.df_score_profile = pd.DataFrame(
+            self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
+        )
+
+        # downsample
+        if len(self.df_score_profile) > 5000:
+            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        else:
+            self.dfsp_down = self.df_score_profile
+
+        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
+        if self.f1_optimal_conf is None:
+            self.f1_optimal_conf = 0.01
+            logger.warn("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
+
+        # Click data
+        gt_id_mapper = IdMapper(cocoGt_dataset)
+        dt_id_mapper = IdMapper(cocoDt_dataset)
+
+        self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
+        self.base_metrics = self.mp.base_metrics
+
+        self._update_pred_dcts()
+        self._update_gt_dcts()
+        self._update_diff_dcts()
+
+        self._objects_bindings = []
+
+    def _initialize_instance_segmentation_loader(self):
+        from pycocotools.coco import COCO  # pylint: disable=import-error
+
+        from supervisely.nn.benchmark.visualization.instance_segmentation import (
+            text_template,
+        )
+
+        self.vis_texts = text_template
 
         cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
             self.eval_dir + "/cocoGt.json",
@@ -152,21 +231,18 @@ class Visualizer:
                     p.update(1)
 
         res = {}
-        optimal_conf = round(self.f1_optimal_conf, 1)
         gallery = GridGalleryV2(
             columns_number=3,
             enable_zoom=False,
             annotations_opacity=0.4,
             border_width=4,
-            default_tag_filters=[{"confidence": [optimal_conf, 1]}],
+            default_tag_filters=[{"confidence": [self.f1_optimal_conf, 1]}],
             show_zoom_slider=False,
         )
         gallery._update_filters()
         res.update(gallery.get_json_state())
 
-        self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_info.id)
-        )
+        self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         res["projectMeta"] = self.dt_project_meta.to_json()
         for basename in ["modal_general.json", "modal_general_diff.json"]:
             local_path = f"{self.layout_dir}/data/{basename}"
@@ -307,7 +383,7 @@ class Visualizer:
 
     def update_diff_annotations(self):
         meta = self._update_pred_meta_with_tags(self.dt_project_info.id, self.dt_project_meta)
-        self._api.project.update_meta(self.diff_project_info.id, meta)
+        self._update_diff_meta(meta)
 
         self.dt_project_meta = meta
         self._add_tags_to_pred_project(self.mp.matches, self.dt_project_info.id)
@@ -373,6 +449,9 @@ class Visualizer:
                         labels.append(label)
 
                     for label in gt_ann.labels:
+                        if self.classes_whitelist:
+                            if label.obj_class.name not in self.classes_whitelist:
+                                continue
                         if label.geometry.sly_id not in matched_gt_ids:
                             if self._is_label_compatible_to_cv_task(label):
                                 new_label = label.add_tags(
@@ -465,6 +544,13 @@ class Visualizer:
 
         # conf_meta = meta.get_tag_meta("confidence")
 
+    def _update_diff_meta(self, meta: ProjectMeta):
+        new_obj_classes = []
+        for obj_class in meta.obj_classes:
+            new_obj_classes.append(obj_class.clone(geometry_type=AnyGeometry))
+        meta = meta.clone(obj_classes=new_obj_classes)
+        self.diff_project_meta = self._api.project.update_meta(self.diff_project_info.id, meta)
+
     def _add_tags_to_pred_project(self, matches: list, pred_project_id: int):
 
         # get tag metas
@@ -526,7 +612,21 @@ class Visualizer:
                 dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
         return dtId2matched_gt_id
 
-    def _is_label_compatible_to_cv_task(self, label):
+    def _is_label_compatible_to_cv_task(self, label: Label):
         if self.cv_task == CVTask.OBJECT_DETECTION:
             return isinstance(label.geometry, Rectangle)
+        if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
+            return isinstance(label.geometry, (Bitmap, Polygon))
         return False
+
+    def _get_filtered_project_meta(self, project_id: int) -> ProjectMeta:
+        meta = self._api.project.get_meta(project_id)
+        meta = ProjectMeta.from_json(meta)
+        remove_classes = []
+        if self.classes_whitelist:
+            for obj_class in meta.obj_classes:
+                if obj_class.name not in self.classes_whitelist:
+                    remove_classes.append(obj_class.name)
+            if remove_classes:
+                meta = meta.delete_obj_classes(remove_classes)
+        return meta
