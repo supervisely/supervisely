@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Tuple
 import pandas as pd
 from jinja2 import Template
 
+from supervisely import Bitmap, Polygon, Rectangle
 from supervisely._utils import batched
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import file_exists, mkdir
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.project.project import Dataset, OpenMode, Project
@@ -612,5 +611,5 @@ class Visualizer:
         if self.cv_task == CVTask.OBJECT_DETECTION:
             return isinstance(label.geometry, Rectangle)
         if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
-            return isinstance(label.geometry, Bitmap)
+            return isinstance(label.geometry, (Bitmap, Polygon))
         return False
