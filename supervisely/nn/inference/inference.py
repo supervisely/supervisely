@@ -1603,7 +1603,7 @@ class Inference:
             layout = Container(
                 [self._user_layout_card, self._api_request_model_layout, serving_layout]
             )
-            self._app = Application(layout=self.get_ui())
+            self._app = Application(layout=layout)
         else:
             self._app = Application(layout=self.get_ui())
 
