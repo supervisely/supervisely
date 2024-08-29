@@ -21,6 +21,8 @@ from supervisely.project.project_meta import ProjectMeta
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 
+from supervisely import Label
+from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
@@ -456,6 +458,7 @@ class Visualizer:
                     for label in gt_ann.labels:
                         if label.geometry.sly_id not in matched_gt_ids:
                             if self._is_label_compatible_to_cv_task(label):
+                                new_label = self._maybe_convert_geometry(label)
                                 new_label = label.add_tags(
                                     [Tag(outcome_tag, "FN"), Tag(conf_meta, 1)]
                                 )
@@ -607,9 +610,20 @@ class Visualizer:
                 dtId2matched_gt_id[dt_ann_mapping[match["dt_id"]]] = gt_ann_mapping[match["gt_id"]]
         return dtId2matched_gt_id
 
-    def _is_label_compatible_to_cv_task(self, label):
+    def _is_label_compatible_to_cv_task(self, label: Label):
         if self.cv_task == CVTask.OBJECT_DETECTION:
             return isinstance(label.geometry, Rectangle)
         if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
             return isinstance(label.geometry, (Bitmap, Polygon))
         return False
+
+    def _maybe_convert_geometry(self, label: Label):
+        if self.cv_task == CVTask.OBJECT_DETECTION:
+            if isinstance(label.geometry, Rectangle):
+                return label
+            return label.clone(geometry=label.geometry.to_bbox())
+        if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
+            if isinstance(label.geometry, Bitmap):
+                return label
+            return label.clone(geometry=geometry_to_bitmap(label.geometry)[0])
+        return label
