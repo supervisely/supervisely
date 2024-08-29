@@ -46,13 +46,10 @@ class Visualizer:
         self.dt_project_info = benchmark.dt_project_info
         self.gt_project_info = benchmark.gt_project_info
         self.diff_project_info = benchmark.diff_project_info
+        self.classes_whitelist = benchmark.classes_whitelist
 
-        self.gt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.gt_project_info.id)
-        )
-        self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_info.id)
-        )
+        self.gt_project_meta = self._get_filtered_project_meta(self.gt_project_info.id)
+        self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         self._docs_link = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
@@ -234,21 +231,18 @@ class Visualizer:
                     p.update(1)
 
         res = {}
-        optimal_conf = round(self.f1_optimal_conf, 1)
         gallery = GridGalleryV2(
             columns_number=3,
             enable_zoom=False,
             annotations_opacity=0.4,
             border_width=4,
-            default_tag_filters=[{"confidence": [optimal_conf, 1]}],
+            default_tag_filters=[{"confidence": [self.f1_optimal_conf, 1]}],
             show_zoom_slider=False,
         )
         gallery._update_filters()
         res.update(gallery.get_json_state())
 
-        self.dt_project_meta = ProjectMeta.from_json(
-            data=self._api.project.get_meta(id=self.dt_project_info.id)
-        )
+        self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         res["projectMeta"] = self.dt_project_meta.to_json()
         for basename in ["modal_general.json", "modal_general_diff.json"]:
             local_path = f"{self.layout_dir}/data/{basename}"
@@ -455,6 +449,9 @@ class Visualizer:
                         labels.append(label)
 
                     for label in gt_ann.labels:
+                        if self.classes_whitelist:
+                            if label.obj_class.name not in self.classes_whitelist:
+                                continue
                         if label.geometry.sly_id not in matched_gt_ids:
                             if self._is_label_compatible_to_cv_task(label):
                                 new_label = label.add_tags(
@@ -621,3 +618,15 @@ class Visualizer:
         if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
             return isinstance(label.geometry, (Bitmap, Polygon))
         return False
+
+    def _get_filtered_project_meta(self, project_id: int) -> ProjectMeta:
+        meta = self._api.project.get_meta(project_id)
+        meta = ProjectMeta.from_json(meta)
+        remove_classes = []
+        if self.classes_whitelist:
+            for obj_class in meta.obj_classes:
+                if obj_class.name not in self.classes_whitelist:
+                    remove_classes.append(obj_class.name)
+            if remove_classes:
+                meta = meta.delete_obj_classes(remove_classes)
+        return meta

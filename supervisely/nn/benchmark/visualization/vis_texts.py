@@ -30,6 +30,7 @@ markdown_overview = """# {}
 - **Hardware**: {}
 - **Checkpoint URL**: <a href="{}" target="_blank">{}</a>
 - Learn metrics details and how to use them in <a href="{}" target="_blank">technical report</a>
+- Ground Truth project: <a href="/projects/{}/datasets" target="_blank">{}</a>
 """
 # - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
@@ -334,3 +335,8 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 """
     + clickable_label
 )
+
+empty = """### {}
+
+> {}
+"""

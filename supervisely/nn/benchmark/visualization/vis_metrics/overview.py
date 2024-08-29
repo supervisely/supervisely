@@ -25,19 +25,16 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get(
-                        "checkpoint_name",
-                    ),
+                    info.get("deploy_params", {}).get("checkpoint_name"),
                     info.get("architecture"),
-                    # info.get("year", "???"),
-                    # info.get("authors", "???"),
                     info.get("task_type"),
                     info.get("runtime"),
                     info.get("hardware"),
                     url,
                     link_text,
                     self._loader.docs_link,
-                    self._loader.docs_link,
+                    self._loader.gt_project_info.id,
+                    self._loader.gt_project_info.name
                 ],
             ),
             markdown_key_metrics=Widget.Markdown(
