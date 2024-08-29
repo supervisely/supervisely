@@ -81,9 +81,9 @@ class ExplorerGrid(MetricVis):
 
         click_data = res.setdefault("clickData", {})
 
-        l1 = list(self._loader.gt_images_dct.values())
-        l2 = list(self._loader.dt_images_dct.values())
-        l3 = list(self._loader.diff_images_dct.values())
+        l1 = sorted(list(self._loader.gt_images_dct.values()), key=lambda x: x.name)
+        l2 = sorted(list(self._loader.dt_images_dct.values()), key=lambda x: x.name)
+        l3 = sorted(list(self._loader.diff_images_dct.values()), key=lambda x: x.name)
 
         pred_anns = self._loader.dt_ann_jsons  # {image_id: ann_json}
         diff_anns = self._loader.diff_ann_jsons  # {image_id: ann_json}
@@ -93,15 +93,14 @@ class ExplorerGrid(MetricVis):
             {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
-        for gt, pred, diff, pred_ann, diff_ann in zip(
-            l1, l2, l3, pred_anns.items(), diff_anns.items()
-        ):
+        for gt, pred, diff in zip(l1, l2, l3):
             assert gt.name == pred.name == diff.name
             key = click_data.setdefault(str(pred.id), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
             key["title"] = f"Image: {pred.name}"
-            image_id, ann_json = pred_ann
+            image_id = pred.id
+            ann_json = pred_anns[image_id]
             assert image_id == pred.id
             object_bindings = []
             for obj in ann_json["objects"]:
@@ -120,7 +119,8 @@ class ExplorerGrid(MetricVis):
                             ]
                         )
 
-            image_id, ann_json = diff_ann
+            image_id = diff.id
+            ann_json = diff_anns[image_id]
             assert image_id == diff.id
             for obj in ann_json["objects"]:
                 for tag in obj["tags"]:
