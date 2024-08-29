@@ -19,7 +19,11 @@ class IOUDistribution(MetricVis):
             title = "Mask Accuracy (IoU)"
         self.schema = Schema(
             self._loader.vis_texts,
-            markdown_localization_accuracy=Widget.Markdown(title=title, is_header=True),
+            markdown_localization_accuracy=Widget.Markdown(
+                title=title,
+                is_header=True,
+                formats=[self._loader.vis_texts.definitions.iou_score],
+            ),
             markdown_iou_distribution=Widget.Markdown(
                 title="IoU Distribution",
                 is_header=True,
