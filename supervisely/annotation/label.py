@@ -62,6 +62,8 @@ class LabelBase:
     :type binding_key: str, optional
     :param smart_tool_input: Smart Tool parameters that were used for labeling.
     :type smart_tool_input: dict, optional
+    :param sly_id: Label unique identifier.
+    :type sly_id: int, optional
 
     :Usage example:
 
@@ -95,6 +97,7 @@ class LabelBase:
         description: Optional[str] = "",
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
+        sly_id: Optional[int] = None,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -108,6 +111,8 @@ class LabelBase:
 
         self._binding_key = binding_key
         self._smart_tool_input = smart_tool_input
+
+        self._sly_id = sly_id
 
     def _validate_geometry(self):
         """
@@ -346,13 +351,22 @@ class LabelBase:
         return cls(
             geometry=geometry,
             obj_class=obj_class,
-            tags=TagCollection.from_json(
-                data[LabelJsonFields.TAGS], project_meta.tag_metas
-            ),
+            tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
+            sly_id=data.get(LabelJsonFields.ID),
         )
+
+    @property
+    def sly_id(self) -> Optional[int]:
+        """Returns the unique identifier of the Label on Supervisely platform.
+        NOTE: This can be None, when working with local project.
+
+        :return: Label unique identifier.
+        :rtype: :class:`int` or :class:`NoneType`
+        """
+        return self._sly_id
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """
@@ -826,9 +840,9 @@ class LabelBase:
         Example:
 
             {
-                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]], 
-                'visible': True, 
-                'negative': [], 
+                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]],
+                'visible': True,
+                'negative': [],
                 'positive': [[597, 933], [474.5072466934964, 1381.6437133813354]]
             }
         """
