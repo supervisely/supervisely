@@ -15,7 +15,7 @@ class IOUDistribution(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         title = "Localization Accuracy (IoU)"
-        if loader.cv_task in [CVTask.INSTANCE_SEGMENTATION, CVTask.SEMANTIC_SEGMENTATION]:
+        if self._loader.cv_task in [CVTask.INSTANCE_SEGMENTATION, CVTask.SEMANTIC_SEGMENTATION]:
             title = "Mask Accuracy (IoU)"
         self.schema = Schema(
             self._loader.vis_texts,
