@@ -12,6 +12,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
+from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.fs import file_exists, mkdir
 from supervisely.nn.benchmark.cv_tasks import CVTask
@@ -610,4 +611,6 @@ class Visualizer:
     def _is_label_compatible_to_cv_task(self, label):
         if self.cv_task == CVTask.OBJECT_DETECTION:
             return isinstance(label.geometry, Rectangle)
+        if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
+            return isinstance(label.geometry, Bitmap)
         return False
