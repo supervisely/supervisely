@@ -52,24 +52,26 @@ def get_version():
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
-    branch_name = get_branch()
-    gh_releases = get_github_releases()
-    commit = get_common_commit_with_master()
-    release_commits = {}
-    while commit:
-        if get_commit_tags(commit):
-            for release in gh_releases:
-                release_commit = release_commits.setdefault(
-                    release["tag_name"], get_release_commit(release["tag_name"])
-                )
-                if release_commit == commit:
-                    if branch_name != "master":
-                        return release["tag_name"] + "+" + branch_name
-                    return release["tag_name"]
-        commit = get_previous_commit(commit)
-
     response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
     version = response.json()["tag_name"]
+    try:
+        branch_name = get_branch()
+        gh_releases = get_github_releases()
+        commit = get_common_commit_with_master()
+        release_commits = {}
+        while commit:
+            if get_commit_tags(commit):
+                for release in gh_releases:
+                    release_commit = release_commits.setdefault(
+                        release["tag_name"], get_release_commit(release["tag_name"])
+                    )
+                    if release_commit == commit:
+                        if branch_name != "master":
+                            return release["tag_name"] + "+" + branch_name
+                        return release["tag_name"]
+            commit = get_previous_commit(commit)
+    except Exception:
+        pass
     return version
 
 
