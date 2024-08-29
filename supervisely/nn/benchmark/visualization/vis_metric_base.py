@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 from jinja2 import Template
 
-import supervisely.nn.benchmark.visualization.vis_texts as contents
 from supervisely._utils import camel_to_snake
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.vis_templates import (
@@ -319,7 +318,7 @@ class MetricVis:
         pass
 
     def get_md_content(self, widget: Widget.Markdown):
-        return getattr(contents, widget.name).format(*widget.formats)
+        return getattr(self._loader.vis_texts, widget.name).format(*widget.formats)
 
     def initialize_formats(self, loader: Visualizer, widget: Widget):
         pass

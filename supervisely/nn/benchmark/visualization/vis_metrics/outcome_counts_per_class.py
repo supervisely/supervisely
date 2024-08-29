@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -20,18 +19,24 @@ class PerClassOutcomeCounts(MetricVis):
         self.clickable: bool = True
         self.switchable: bool = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_class_outcome_counts_1=Widget.Markdown(
                 title="Outcome Counts by Class",
                 is_header=True,
                 formats=[
-                    definitions.true_positives,
-                    definitions.false_positives,
-                    definitions.false_negatives,
+                    self._loader.vis_texts.definitions.true_positives,
+                    self._loader.vis_texts.definitions.false_positives,
+                    self._loader.vis_texts.definitions.false_negatives,
                 ],
             ),
-            markdown_class_outcome_counts_2=Widget.Markdown(formats=[definitions.f1_score]),
+            markdown_class_outcome_counts_2=Widget.Markdown(
+                formats=[self._loader.vis_texts.definitions.f1_score]
+            ),
             collapse_perclass_outcome=Widget.Collapse(
-                Schema(markdown_normalization=Widget.Markdown(title="Normalization"))
+                Schema(
+                    self._loader.vis_texts,
+                    markdown_normalization=Widget.Markdown(title="Normalization"),
+                )
             ),
             chart_01=Widget.Chart(switch_key="normalized"),
             chart_02=Widget.Chart(switch_key="absolute"),
@@ -125,7 +130,9 @@ class PerClassOutcomeCounts(MetricVis):
                 res["clickData"][key] = {}
                 res["clickData"][key]["imagesIds"] = []
 
-                res["clickData"][key]["title"] = f"Images with objects of class '{key1}' and outcome '{key2}'"
+                res["clickData"][key][
+                    "title"
+                ] = f"Images with objects of class '{key1}' and outcome '{key2}'"
 
                 img_ids = set()
                 for x in v2:

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -15,10 +14,11 @@ class ConfidenceScore(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_confidence_score_1=Widget.Markdown(
                 title="Confidence Score Profile",
                 is_header=True,
-                formats=[definitions.confidence_threshold],
+                formats=[self._loader.vis_texts.definitions.confidence_threshold],
             ),
             notification_f1=Widget.Notification(
                 formats_title=[round((self._loader.mp.m_full.get_f1_optimal_conf()[0] or 0.0), 4)]
@@ -27,9 +27,10 @@ class ConfidenceScore(MetricVis):
             markdown_confidence_score_2=Widget.Markdown(),
             collapse_conf_score=Widget.Collapse(
                 Schema(
+                    self._loader.vis_texts,
                     markdown_plot_confidence_profile=Widget.Markdown(
                         title="How to plot Confidence Profile?"
-                    )
+                    ),
                 )
             ),
             markdown_calibration_score_3=Widget.Markdown(),

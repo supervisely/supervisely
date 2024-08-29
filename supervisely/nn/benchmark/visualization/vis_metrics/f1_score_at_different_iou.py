@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -18,10 +17,11 @@ class F1ScoreAtDifferentIOU(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_f1_at_ious=Widget.Markdown(
                 title="Confidence Profile at Different IoU thresholds",
                 is_header=True,
-                formats=[definitions.iou_threshold],
+                formats=[self._loader.vis_texts.definitions.iou_threshold],
             ),
             chart=Widget.Chart(),
         )

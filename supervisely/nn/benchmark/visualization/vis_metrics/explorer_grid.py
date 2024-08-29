@@ -20,6 +20,7 @@ class ExplorerGrid(MetricVis):
 
         filters = [{"confidence": [self.f1_optimal_conf, 1]}]
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
             gallery=Widget.Gallery(filters=filters),
         )

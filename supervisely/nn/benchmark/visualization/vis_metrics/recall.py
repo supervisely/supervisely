@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -17,12 +16,15 @@ class Recall(MetricVis):
         tp_plus_fn = self._loader.mp.TP_count + self._loader.mp.FN_count
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_R=Widget.Markdown(title="Recall", is_header=True),
             notification_recall=Widget.Notification(
                 formats_title=[self._loader.base_metrics()["recall"].round(2)],
                 formats_desc=[self._loader.mp.TP_count, tp_plus_fn],
             ),
-            markdown_R_perclass=Widget.Markdown(formats=[definitions.f1_score]),
+            markdown_R_perclass=Widget.Markdown(
+                formats=[self._loader.vis_texts.definitions.f1_score]
+            ),
             chart=Widget.Chart(),
         )
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -16,8 +15,11 @@ class RecallVsPrecision(MetricVis):
         super().__init__(loader)
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_PR=Widget.Markdown(
-                title="Recall vs Precision", is_header=True, formats=[definitions.f1_score]
+                title="Recall vs Precision",
+                is_header=True,
+                formats=[self._loader.vis_texts.definitions.f1_score],
             ),
             chart=Widget.Chart(),
         )
