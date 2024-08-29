@@ -15,8 +15,8 @@ class ModelSource:
 @dataclass
 class CheckpointInfo:
     """
-    checkpoint_name: a name for model weights, e.g. "YOLOv8-L COCO
-    model_name: a name of a model for which the weights is applicable, e.g. "YOLOv8-L"
+    checkpoint_name: a name for model weights, e.g. "YOLOv8-L COCO (best)"
+    model_name: a name of a model for which the weights is applicable, e.g. "YOLOv8n"
     architecture: it is a collection for a set of models, e.g. "YOLOv8"
     model_source: e.g. "Pretrained models"
     checkpoint_url: a URL to download the model weights
