@@ -62,19 +62,19 @@ class PerClassOutcomeCounts(MetricVis):
         cat_names_sorted = [self._loader.mp.cat_names[i] for i in sort_indices]
         tp_rel, fn_rel, fp_rel = tp_rel[sort_indices], fn_rel[sort_indices], fp_rel[sort_indices]
 
-        images_count = np.concatenate([tp[sort_indices], fn[sort_indices], fp[sort_indices]])
+        objects_count = np.concatenate([tp[sort_indices], fn[sort_indices], fp[sort_indices]])
         data = {
             "Type": ["TP"] * K + ["FN"] * K + ["FP"] * K,
             "category": cat_names_sorted * 3,
         }
         y_label = ""
         if widget.switch_key == "normalized":
-            y_label = "Images Fraction"
+            y_label = "Objects Fraction"
             # Stacked per-class counts
             data["count"] = np.concatenate([tp_rel, fn_rel, fp_rel])
         elif widget.switch_key == "absolute":
-            y_label = "Images Count"
-            data["count"] = images_count
+            y_label = "Objects Count"
+            data["count"] = objects_count
 
         df = pd.DataFrame(data)
 
