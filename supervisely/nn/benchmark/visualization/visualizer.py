@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 
 from supervisely import Label
-from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
