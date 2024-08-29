@@ -9,10 +9,10 @@ import time
 import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 from functools import partial, wraps
 from queue import Queue
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple
-from dataclasses import asdict
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -56,8 +56,13 @@ from supervisely.decorators.inference import (
 )
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.inference.utils import (
+    CheckpointInfo,
+    DeployInfo,
+    RuntimeType,
+    get_hardware_info,
+)
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.inference.utils import DeployInfo, CheckpointInfo, RuntimeType, get_hardware_info
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -450,7 +455,7 @@ class Inference:
                 hr_info[hr_name] = data
 
         return hr_info
-    
+
     def _get_deploy_info(self) -> DeployInfo:
         if self.checkpoint_info is None:
             raise ValueError("Checkpoint info is not set.")
@@ -574,14 +579,19 @@ class Inference:
         settings: Dict[str, Any],
     ) -> Tuple[List[Annotation], List[dict]]:
         inference_mode = settings.get("inference_mode", "full_image")
-        use_raw = inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
-        is_predict_batch_raw_implemented = type(self).predict_batch_raw != Inference.predict_batch_raw
-        if (not use_raw and self.is_batch_inference_supported()) or \
-            (use_raw and is_predict_batch_raw_implemented):
+        use_raw = (
+            inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
+        )
+        is_predict_batch_raw_implemented = (
+            type(self).predict_batch_raw != Inference.predict_batch_raw
+        )
+        if (not use_raw and self.is_batch_inference_supported()) or (
+            use_raw and is_predict_batch_raw_implemented
+        ):
             return self._inference_batched_wrapper(source, settings)
         else:
             return self._inference_one_by_one_wrapper(source, settings)
-    
+
     def _inference_batched_wrapper(
         self,
         source: List[Union[str, np.ndarray]],
@@ -596,7 +606,7 @@ class Inference:
             data_to_return=slides_data,
         )
         return anns, slides_data
-    
+
     @process_images_batch_sliding_window
     @process_images_batch_roi
     def _inference_batched(
@@ -607,7 +617,9 @@ class Inference:
     ) -> List[Annotation]:
         images_np = source
         inference_mode = settings.get("inference_mode", "full_image")
-        use_raw = inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
+        use_raw = (
+            inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
+        )
         if not use_raw:
             predictions = self.predict_batch(images_np=images_np, settings=settings)
         else:
@@ -615,9 +627,7 @@ class Inference:
         anns = []
         for src, prediction in zip(source, predictions):
             ann = self._predictions_to_annotation(
-                src,
-                prediction,
-                classes_whitelist=settings.get("classes", None)
+                src, prediction, classes_whitelist=settings.get("classes", None)
             )
             anns.append(ann)
         return anns
@@ -644,7 +654,7 @@ class Inference:
             anns.append(ann)
             slides_data.append(data_to_return)
         writer.clean()
-        return anns, slides_data 
+        return anns, slides_data
 
     @process_image_sliding_window
     @process_image_roi
@@ -675,10 +685,10 @@ class Inference:
         return ann
 
     def _inference_benchmark(
-            self,
-            images_np: List[np.ndarray],
-            settings: dict,
-        ) -> Tuple[List[Annotation], dict]:
+        self,
+        images_np: List[np.ndarray],
+        settings: dict,
+    ) -> Tuple[List[Annotation], dict]:
         t0 = time.time()
         predictions, benchmark = self.predict_benchmark(images_np, settings)
         total_time = (time.time() - t0) * 1000  # ms
@@ -687,7 +697,7 @@ class Inference:
             "preprocess": benchmark.get("preprocess"),
             "inference": benchmark.get("inference"),
             "postprocess": benchmark.get("postprocess"),
-            }
+        }
         anns = []
         for i, image_np in enumerate(images_np):
             ann = self._predictions_to_annotation(image_np, predictions[i])
@@ -703,27 +713,35 @@ class Inference:
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
-    def predict_batch(self, images_np: List[np.ndarray], settings: Dict[str, Any]) -> List[List[Prediction]]:
+    def predict_batch(
+        self, images_np: List[np.ndarray], settings: Dict[str, Any]
+    ) -> List[List[Prediction]]:
         """Predict batch of images. `images_np` is a list of numpy arrays in RGB format
 
         If this method is not overridden in a subclass, the following fallback logic works:
             - If predict_benchmark is overridden, then call predict_benchmark
             - Otherwise, raise NotImplementedError
         """
-        is_predict_benchmark_overridden = type(self).predict_benchmark != Inference.predict_benchmark
+        is_predict_benchmark_overridden = (
+            type(self).predict_benchmark != Inference.predict_benchmark
+        )
         if is_predict_benchmark_overridden:
             return self.predict_benchmark(images_np, settings)[0]
         else:
             raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_batch_raw(self, images_np: List[np.ndarray], settings: Dict[str, Any]) -> List[List[Prediction]]:
+    def predict_batch_raw(
+        self, images_np: List[np.ndarray], settings: Dict[str, Any]
+    ) -> List[List[Prediction]]:
         """Predict batch of images. `source` is a list of numpy arrays in RGB format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
-    def predict_benchmark(self, images_np: List[np.ndarray], settings: dict) -> Tuple[List[List[Prediction]], dict]:
-        '''
+    def predict_benchmark(
+        self, images_np: List[np.ndarray], settings: dict
+    ) -> Tuple[List[List[Prediction]], dict]:
+        """
         Inference a batch of images with speedtest benchmarking.
 
         :param images_np: list of numpy arrays in RGB format
@@ -742,7 +760,7 @@ class Inference:
             - If predict_batch is overridden, then call it
             - If predict_batch is not overridden but the batch size is 1, then use `predict`
             - If predict_batch is not overridden and the batch size is greater than 1, then raise NotImplementedError
-        '''
+        """
         is_predict_batch_overridden = type(self).predict_batch != Inference.predict_batch
         empty_benchmark = {}
         if is_predict_batch_overridden:
@@ -757,10 +775,12 @@ class Inference:
             return [prediction], empty_benchmark
         else:
             raise NotImplementedError("Have to be implemented in child class")
-        
+
     def is_batch_inference_supported(self) -> bool:
         is_predict_batch_overridden = type(self).predict_batch != Inference.predict_batch
-        is_predict_benchmark_overridden = type(self).predict_benchmark != Inference.predict_benchmark
+        is_predict_benchmark_overridden = (
+            type(self).predict_benchmark != Inference.predict_benchmark
+        )
         return is_predict_batch_overridden or is_predict_benchmark_overridden
 
     # pylint: enable=method-hidden
@@ -802,16 +822,14 @@ class Inference:
         )
 
     def _format_output(
-            self,
-            anns: List[Annotation],
-            slides_data: List[dict] = None,
-        ) -> List[dict]:
+        self,
+        anns: List[Annotation],
+        slides_data: List[dict] = None,
+    ) -> List[dict]:
         if not slides_data:
             slides_data = [{} for _ in range(len(anns))]
         assert len(anns) == len(slides_data)
-        return [
-            {"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)
-        ]
+        return [{"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)]
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
@@ -850,7 +868,7 @@ class Inference:
             anns, slides_data = self._inference_auto(
                 source=images_np,
                 settings=settings,
-                )
+            )
             results.extend(self._format_output(anns, slides_data))
         return results
 
@@ -1330,8 +1348,7 @@ class Inference:
         state: dict,
         async_inference_request_uuid: str = None,
     ):
-        """Run speedtest on project images.
-        """
+        """Run speedtest on project images."""
         logger.debug("Running speedtest...", extra={"state": state})
         project_id = state["projectId"]
         batch_size = state["batch_size"]
@@ -1443,7 +1460,7 @@ class Inference:
         def image_batch_generator(batch_size):
             while True:
                 for dataset_info in datasets_infos:
-                    batch = [] # guarantee the full batch comes from the same dataset.
+                    batch = []  # guarantee the full batch comes from the same dataset.
                     for image_info in images_infos_dict[dataset_info.id]:
                         batch.append(image_info)
                         if len(batch) == batch_size:
@@ -1540,6 +1557,9 @@ class Inference:
     def _set_served_callback(self):
         self._model_served = True
 
+    def is_model_deployed(self):
+        return self._model_served
+
     def serve(self):
         if not self._use_gui:
             Progress("Deploying model ...", 1)
@@ -1588,6 +1608,7 @@ class Inference:
             self._app = Application(layout=self.get_ui())
 
         server = self._app.get_server()
+        self._app.set_ready_check_function(self.is_model_deployed)
 
         @call_on_autostart()
         def autostart_func():
@@ -1771,9 +1792,7 @@ class Inference:
 
         @server.post("/run_speedtest")
         def run_speedtest(response: Response, request: Request):
-            logger.debug(
-                f"'run_speedtest' request in json format:{request.state.state}"
-            )
+            logger.debug(f"'run_speedtest' request in json format:{request.state.state}")
             project_id = request.state.state["projectId"]
             project_info = request.state.api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
@@ -1978,7 +1997,7 @@ class Inference:
                 "deployed": self._model_served,
                 "description:": "Model is ready to receive requests",
             }
-        
+
         @server.post("/get_deploy_info")
         @self._check_serve_before_call
         def _get_deploy_info():
