@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Tuple
 import pandas as pd
 from jinja2 import Template
 
-from supervisely import Bitmap, Polygon, Rectangle
+from supervisely import AnyGeometry, Bitmap, Polygon, Rectangle
 from supervisely._utils import batched
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
@@ -390,7 +390,7 @@ class Visualizer:
 
     def update_diff_annotations(self):
         meta = self._update_pred_meta_with_tags(self.dt_project_info.id, self.dt_project_meta)
-        self._api.project.update_meta(self.diff_project_info.id, meta)
+        self._update_diff_meta(meta)
 
         self.dt_project_meta = meta
         self._add_tags_to_pred_project(self.mp.matches, self.dt_project_info.id)
@@ -458,7 +458,6 @@ class Visualizer:
                     for label in gt_ann.labels:
                         if label.geometry.sly_id not in matched_gt_ids:
                             if self._is_label_compatible_to_cv_task(label):
-                                new_label = self._maybe_convert_geometry(label)
                                 new_label = label.add_tags(
                                     [Tag(outcome_tag, "FN"), Tag(conf_meta, 1)]
                                 )
@@ -549,6 +548,13 @@ class Visualizer:
 
         # conf_meta = meta.get_tag_meta("confidence")
 
+    def _update_diff_meta(self, meta: ProjectMeta):
+        new_obj_classes = []
+        for obj_class in meta.obj_classes:
+            new_obj_classes.append(obj_class.clone(geometry_type=AnyGeometry))
+        meta = meta.clone(obj_classes=new_obj_classes)
+        self.diff_project_meta = self._api.project.update_meta(self.diff_project_info.id, meta)
+
     def _add_tags_to_pred_project(self, matches: list, pred_project_id: int):
 
         # get tag metas
@@ -616,14 +622,3 @@ class Visualizer:
         if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
             return isinstance(label.geometry, (Bitmap, Polygon))
         return False
-
-    def _maybe_convert_geometry(self, label: Label):
-        if self.cv_task == CVTask.OBJECT_DETECTION:
-            if isinstance(label.geometry, Rectangle):
-                return label
-            return label.clone(geometry=label.geometry.to_bbox())
-        if self.cv_task == CVTask.INSTANCE_SEGMENTATION:
-            if isinstance(label.geometry, Bitmap):
-                return label
-            return label.clone(geometry=geometry_to_bitmap(label.geometry)[0])
-        return label
