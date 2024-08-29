@@ -48,11 +48,11 @@ def sly2coco(
     # TODO: progress can be created here:
     # total = len(ann_files) X len(datasets)
     # progress = pbar(total=total, desc="Converting {GT/Pred} to COCO format")
+    img_id = 1
     for dataset_name in datasets:
         ann_path = pjoin(sly_project_path, dataset_name, "ann")
         imginfo_path = pjoin(sly_project_path, dataset_name, "img_info")
         ann_files = sorted(os.listdir(ann_path))
-        img_id = 1
         for batch in batched(ann_files, 30):
             for ann_file in batch:
                 img_name = os.path.splitext(ann_file)[0]
