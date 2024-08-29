@@ -547,7 +547,9 @@ class Application(metaclass=Singleton):
         hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
         session_info_extra_content: "Widget" = None,
         session_info_solid: bool = False,
-        ready_check_func: Optional[Callable] = None,
+        ready_check_function: Optional[
+            Callable
+        ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
     ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
@@ -558,7 +560,7 @@ class Application(metaclass=Singleton):
         self._stop_event = ThreadingEvent()
         # for backward compatibility
         self._graceful_stop_event: Optional[ThreadingEvent] = None
-        self.set_ready_check_func(ready_check_func)
+        self.set_ready_check_function(ready_check_function)
 
         def set_stop_event():
             self._stop_event.set()
@@ -663,8 +665,8 @@ class Application(metaclass=Singleton):
         @server.get("/is_ready")
         async def is_ready(response: Response, request: Request):
             is_ready = True
-            if self._ready_check_func is not None:
-                is_ready = self._ready_check_func()
+            if self._ready_check_function is not None:
+                is_ready = self._ready_check_function()
             if is_ready is False:
                 raise HTTPException(status_code=503, detail="Service not ready")
             return {"status": "ready"}
@@ -746,8 +748,8 @@ class Application(metaclass=Singleton):
 
         return inner
 
-    def set_ready_check_func(self, func: Callable):
-        self._ready_check_func = func
+    def set_ready_check_function(self, func: Callable):
+        self._ready_check_function = func
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
