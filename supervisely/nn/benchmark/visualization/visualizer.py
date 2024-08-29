@@ -21,9 +21,7 @@ from supervisely.project.project_meta import ProjectMeta
 if TYPE_CHECKING:
     from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 
-from supervisely.nn.benchmark.evaluation.coco.metric_provider import (
-    MetricProvider,
-)
+from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
@@ -397,14 +395,16 @@ class Visualizer:
         self._update_pred_dcts()
 
     def _update_gt_dcts(self):
-        datasets = self._api.dataset.get_list(self.gt_project_info.id)
         self.gt_images_dct = {}
         self.gt_images_dct_by_name = {}
-        for d in datasets:
-            images = self._api.image.get_list(d.id)
-            for info in images:
-                self.gt_images_dct[info.id] = info
-                self.gt_images_dct_by_name[info.name] = info
+        gt_path, _ = self._benchmark.get_project_paths()
+        gt_project = Project(gt_path, OpenMode.READ)
+        for dataset in gt_project.datasets:
+            dataset: Dataset
+            for item_name in dataset.get_items_names():
+                image_info = dataset.get_image_info(item_name)
+                self.gt_images_dct[image_info.id] = image_info
+                self.gt_images_dct_by_name[image_info.name] = image_info
 
     def _update_diff_dcts(self):
         datasets = self._api.dataset.get_list(self.diff_project_info.id)
