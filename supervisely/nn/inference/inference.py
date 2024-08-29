@@ -1608,7 +1608,6 @@ class Inference:
             self._app = Application(layout=self.get_ui())
 
         server = self._app.get_server()
-        self._app.set_ready_check_func(self._check_model_is_ready)
 
         @call_on_autostart()
         def autostart_func():
@@ -1631,6 +1630,7 @@ class Inference:
             Progress("Model deployed", 1).iter_done_report()
         else:
             autostart_func()
+        self._app.set_ready_check_func(self._check_model_is_ready)
 
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
