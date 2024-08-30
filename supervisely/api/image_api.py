@@ -583,11 +583,15 @@ class ImageApi(RemoveableBulkModuleApi):
         results = []
         if len(ids) == 0:
             return results
-        dataset_id = self.get_info_by_id(ids[0], force_metadata_for_links=False).dataset_id
-        for batch in batched(ids):
-            filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
-            results.extend(
-                self.get_list_all_pages(
+        infos_dict = {}
+        ids_set = set(ids)
+        while any(ids_set):
+            dataset_id = self.get_info_by_id(
+                ids_set.pop(), force_metadata_for_links=False
+            ).dataset_id
+            for batch in batched(ids):
+                filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                temp_results = self.get_list_all_pages(
                     "images.list",
                     {
                         ApiField.DATASET_ID: dataset_id,
@@ -595,11 +599,13 @@ class ImageApi(RemoveableBulkModuleApi):
                         ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                     },
                 )
-            )
-            if progress_cb is not None:
-                progress_cb(len(batch))
-        temp_map = {info.id: info for info in results}
-        ordered_results = [temp_map[id] for id in ids]
+                results.extend(temp_results)
+                if progress_cb is not None and len(temp_results) > 0:
+                    progress_cb(len(temp_results))
+            ids_set = ids_set - set([info.id for info in results])
+            infos_dict.update({info.id: info for info in results})
+
+        ordered_results = [infos_dict[id] for id in ids]
         return ordered_results
 
     def _download(self, id, is_stream=False):

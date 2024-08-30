@@ -25,6 +25,7 @@ class BaseBenchmark:
         api: Api,
         gt_project_id: int,
         gt_dataset_ids: List[int] = None,
+        gt_images_ids: List[int] = None,
         output_dir: str = "./benchmark",
         progress: Optional[SlyTqdm] = None,
         classes_whitelist: Optional[List[str]] = None,
@@ -32,9 +33,10 @@ class BaseBenchmark:
         self.api = api
         self.session: SessionJSON = None
         self.gt_project_info = api.project.get_info_by_id(gt_project_id)
-        self.dt_project_info = None
-        self.diff_project_info = None
+        self.dt_project_info: ProjectInfo = None
+        self.diff_project_info: ProjectInfo = None
         self.gt_dataset_ids = gt_dataset_ids
+        self.gt_images_ids = gt_images_ids
         self.output_dir = output_dir
         self.team_id = env.team_id()
         self.evaluator: BaseEvaluator = None
@@ -55,7 +57,7 @@ class BaseBenchmark:
         model_session: Union[int, str, SessionJSON],
         inference_settings=None,
         output_project_id=None,
-        batch_size: int = 8,
+        batch_size: int = 16,
         cache_project_on_agent: bool = False,
     ):
         self.session = self._init_model_session(model_session, inference_settings)
@@ -81,18 +83,25 @@ class BaseBenchmark:
     def _run_inference(
         self,
         output_project_id=None,
-        batch_size: int = 8,
+        batch_size: int = 16,
         cache_project_on_agent: bool = False,
     ):
         model_info = self._fetch_model_info(self.session)
         self.dt_project_info = self._get_or_create_dt_project(output_project_id, model_info)
-        iterator = self.session.inference_project_id_async(
-            self.gt_project_info.id,
-            self.gt_dataset_ids,
-            output_project_id=self.dt_project_info.id,
-            cache_project_on_model=cache_project_on_agent,
-            batch_size=batch_size,
-        )
+        if self.gt_images_ids is None:
+            iterator = self.session.inference_project_id_async(
+                self.gt_project_info.id,
+                self.gt_dataset_ids,
+                output_project_id=self.dt_project_info.id,
+                cache_project_on_model=cache_project_on_agent,
+                batch_size=batch_size,
+            )
+        else:
+            iterator = self.session.inference_image_ids_async(
+                image_ids=self.gt_images_ids,
+                output_project_id=self.dt_project_info.id,
+                batch_size=batch_size,
+            )
         output_project_id = self.dt_project_info.id
         with self.pbar(
             message="Inference in progress", total=self.gt_project_info.items_count
@@ -107,6 +116,13 @@ class BaseBenchmark:
             **model_info,
         }
         self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
+        logger.debug(
+            "Inference is finished.",
+            extra={
+                "inference_info": inference_info,
+                "dt_project_info": self.dt_project_info._asdict(),
+            },
+        )
         return inference_info
 
     def evaluate(self, dt_project_id):
@@ -121,7 +137,7 @@ class BaseBenchmark:
             dt_project_path=dt_project_path,
             result_dir=eval_results_dir,
             progress=self.pbar,
-            items_count=self.gt_project_info.items_count,
+            items_count=self.dt_project_info.items_count,
             classes_whitelist=self.classes_whitelist,
         )
         self.evaluator.evaluate()
@@ -265,6 +281,7 @@ class BaseBenchmark:
             dt_project_info = self.api.project.create(
                 workspace.id, dt_project_name, change_name_if_conflict=True
             )
+            self.api.project.merge_metas(self.gt_project_info.id, dt_project_info.id)
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
@@ -276,7 +293,11 @@ class BaseBenchmark:
     def _download_projects(self, save_images=False):
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
-            total = self.dt_project_info.items_count * 2
+            total = (
+                self.gt_project_info.items_count
+                if self.gt_images_ids is None
+                else len(self.gt_images_ids)
+            )
             with self.pbar(message="Downloading GT annotations", total=total) as p:
                 download_project(
                     self.api,
@@ -287,11 +308,16 @@ class BaseBenchmark:
                     save_images=save_images,
                     save_image_info=True,
                     progress_cb=p.update,
+                    images_ids=self.gt_images_ids,
                 )
         else:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
-            total = self.gt_project_info.items_count * 2
+            total = (
+                self.gt_project_info.items_count
+                if self.gt_images_ids is None
+                else len(self.gt_images_ids)
+            )
             with self.pbar(message="Downloading DT annotations", total=total) as p:
                 download_project(
                     self.api,
@@ -392,23 +418,10 @@ class BaseBenchmark:
         return rows
 
     def visualize(self, dt_project_id=None):
-        if dt_project_id is None:
-            if self.dt_project_info is None:
-                raise RuntimeError(
-                    "The prediction dt_project was not initialized. Please run evaluation or find the ready project."
-                )
-        else:
+        if dt_project_id is not None:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
 
-        eval_dir = self.get_eval_results_dir()
-        assert not fs.dir_empty(
-            eval_dir
-        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
-
-        self.diff_project_info, was_before = self._get_or_create_diff_project()
         vis = Visualizer(self)
-        if not was_before:
-            vis.update_diff_annotations()
         vis.visualize()
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:

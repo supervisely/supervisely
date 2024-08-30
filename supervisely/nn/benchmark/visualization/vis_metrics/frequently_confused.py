@@ -20,6 +20,7 @@ class FrequentlyConfused(MetricVis):
         df = self._loader.mp.frequently_confused()
         if df.empty:
             self.schema = Schema(
+                self._loader.vis_texts,
                 empty=Widget.Markdown(
                     title="Frequently Confused Classes",
                     is_header=True,
@@ -27,7 +28,7 @@ class FrequentlyConfused(MetricVis):
                         "Frequently Confused Classes",
                         "No frequently confused class pairs found",
                     ],
-                )
+                ),
             )
             self.empty = True
             return

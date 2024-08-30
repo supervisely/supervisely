@@ -95,23 +95,25 @@ class OutcomeCounts(MetricVis):
 
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
-        for key, v in self._loader.click_data.outcome_counts.items():
-            res["clickData"][key] = {}
-            res["clickData"][key]["imagesIds"] = []
+        for outcome, matches_data in self._loader.click_data.outcome_counts.items():
+            res["clickData"][outcome] = {}
+            res["clickData"][outcome]["imagesIds"] = []
 
             img_ids = set()
-            for x in v:
-                if key == "FN":
-                    dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                    img_ids.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+            for match_data in matches_data:
+                img_comparison_data = self._loader.comparison_data[match_data["gt_img_id"]]
+                if outcome == "FN":
+                    img_ids.add(img_comparison_data.diff_image_info.id)
                 else:
-                    img_ids.add(self._loader.dt_images_dct[x["dt_img_id"]].id)
+                    img_ids.add(img_comparison_data.pred_image_info.id)
 
-            res["clickData"][key]["title"] = f"{key}: {len(v)} object{'s' if len(v) > 1 else ''}"
-            res["clickData"][key]["imagesIds"] = list(img_ids)
-            res["clickData"][key]["filters"] = [
+            res["clickData"][outcome][
+                "title"
+            ] = f"{outcome}: {len(matches_data)} object{'s' if len(matches_data) > 1 else ''}"
+            res["clickData"][outcome]["imagesIds"] = list(img_ids)
+            res["clickData"][outcome]["filters"] = [
                 {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                {"type": "tag", "tagId": "outcome", "value": key},
+                {"type": "tag", "tagId": "outcome", "value": outcome},
             ]
 
         return res
