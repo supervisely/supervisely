@@ -124,26 +124,25 @@ class PerClassOutcomeCounts(MetricVis):
         res["layoutTemplate"] = [None, None, None]
 
         res["clickData"] = {}
-        for key1, v1 in self._loader.click_data.outcome_counts_by_class.items():
-            for key2, v2 in v1.items():
-                key = key1 + self._keypair_sep + key2
+        for class_name, v1 in self._loader.click_data.outcome_counts_by_class.items():
+            for outcome, matches_data in v1.items():
+                key = class_name + self._keypair_sep + outcome
                 res["clickData"][key] = {}
                 res["clickData"][key]["imagesIds"] = []
-
                 res["clickData"][key][
                     "title"
-                ] = f"Images with objects of class '{key1}' and outcome '{key2}'"
+                ] = f"Images with objects of class '{class_name}' and outcome '{outcome}'"
 
                 img_ids = set()
-                for x in v2:
-                    if key2 == "FN":
-                        dt_image = self._loader.dt_images_dct[x["dt_img_id"]]
-                        img_ids.add(self._loader.diff_images_dct_by_name[dt_image.name].id)
+                for match_data in matches_data:
+                    img_comparison_data = self._loader.comparison_data[match_data["gt_img_id"]]
+                    if outcome == "FN":
+                        img_ids.add(img_comparison_data.diff_image_info.id)
                     else:
-                        img_ids.add(self._loader.dt_images_dct[x["dt_img_id"]].id)
+                        img_ids.add(img_comparison_data.pred_image_info.id)
                 res["clickData"][key]["imagesIds"] = list(img_ids)
                 res["clickData"][key]["filters"] = [
                     {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                    {"type": "tag", "tagId": "outcome", "value": key2},
+                    {"type": "tag", "tagId": "outcome", "value": outcome},
                 ]
         return res

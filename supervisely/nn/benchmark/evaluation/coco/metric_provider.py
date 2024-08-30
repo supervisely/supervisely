@@ -287,6 +287,7 @@ class _MetricProvider:
 
     def prediction_table(self):
         img_ids, outcomes_per_image = _get_outcomes_per_image(self.matches, self.cocoGt)
+        sly_ids = [self.cocoGt.imgs[img_id]["sly_id"] for img_id in img_ids]
         image_names = [self.cocoGt.imgs[img_id]["file_name"] for img_id in img_ids]
         n_gt = outcomes_per_image[:, 0] + outcomes_per_image[:, 2]
         n_dt = outcomes_per_image[:, 0] + outcomes_per_image[:, 1]
@@ -302,6 +303,7 @@ class _MetricProvider:
             )
         prediction_table = pd.DataFrame(
             {
+                "Sly ID": sly_ids,
                 "Image name": image_names,
                 "GT objects": n_gt,
                 "Predictions": n_dt,

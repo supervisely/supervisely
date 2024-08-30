@@ -65,8 +65,7 @@ class ExplorerGrid(MetricVis):
         explore["title"] = "Explore all predictions"
         images_ids = explore.setdefault("imagesIds", [])
 
-        images = list(self._loader.dt_images_dct.values())
-        images_ids.extend([x.id for x in images])
+        images_ids.extend([cd.pred_image_info.id for cd in self._loader.comparison_data.values()])
 
         return res
 
@@ -81,25 +80,21 @@ class ExplorerGrid(MetricVis):
 
         click_data = res.setdefault("clickData", {})
 
-        l1 = sorted(list(self._loader.gt_images_dct.values()), key=lambda x: x.name)
-        l2 = sorted(list(self._loader.dt_images_dct.values()), key=lambda x: x.name)
-        l3 = sorted(list(self._loader.diff_images_dct.values()), key=lambda x: x.name)
-
-        pred_anns = self._loader.dt_ann_jsons  # {image_id: ann_json}
-        diff_anns = self._loader.diff_ann_jsons  # {image_id: ann_json}
-
         default_filters = [
             {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
-        for gt, pred, diff in zip(l1, l2, l3):
+        for img_comparison_data in self._loader.comparison_data.values():
+            gt = img_comparison_data.gt_image_info
+            pred = img_comparison_data.pred_image_info
+            diff = img_comparison_data.diff_image_info
             assert gt.name == pred.name == diff.name
             key = click_data.setdefault(str(pred.id), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
             key["title"] = f"Image: {pred.name}"
             image_id = pred.id
-            ann_json = pred_anns[image_id]
+            ann_json = img_comparison_data.pred_annotation.to_json()
             assert image_id == pred.id
             object_bindings = []
             for obj in ann_json["objects"]:
@@ -119,7 +114,7 @@ class ExplorerGrid(MetricVis):
                         )
 
             image_id = diff.id
-            ann_json = diff_anns[image_id]
+            ann_json = img_comparison_data.diff_annotation.to_json()
             assert image_id == diff.id
             for obj in ann_json["objects"]:
                 for tag in obj["tags"]:

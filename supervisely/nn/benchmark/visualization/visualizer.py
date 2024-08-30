@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import pickle
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 import pandas as pd
 from jinja2 import Template
@@ -12,7 +12,9 @@ from supervisely._utils import batched
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
+from supervisely.api.image_api import ImageInfo
 from supervisely.convert.image.coco.coco_helper import HiddenCocoPrints
+from supervisely.io import fs
 from supervisely.io.fs import file_exists, mkdir
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.project.project import Dataset, OpenMode, Project
@@ -32,9 +34,37 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 
+class ImageComparisonData:
+    def __init__(
+        self,
+        gt_image_info: ImageInfo = None,
+        pred_image_info: ImageInfo = None,
+        diff_image_info: ImageInfo = None,
+        gt_annotation: Annotation = None,
+        pred_annotation: Annotation = None,
+        diff_annotation: Annotation = None,
+    ):
+        self.gt_image_info = gt_image_info
+        self.pred_image_info = pred_image_info
+        self.diff_image_info = diff_image_info
+        self.gt_annotation = gt_annotation
+        self.pred_annotation = pred_annotation
+        self.diff_annotation = diff_annotation
+
+
 class Visualizer:
 
     def __init__(self, benchmark: BaseBenchmark) -> None:
+
+        if benchmark.dt_project_info is None:
+            raise RuntimeError(
+                "The benchmark prediction project was not initialized. Please run evaluation or specify dt_project_info property of benchmark object."
+            )
+
+        eval_dir = benchmark.get_eval_results_dir()
+        assert not fs.dir_empty(
+            eval_dir
+        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before visualizing results."
 
         self._benchmark = benchmark
         self._api = benchmark.api
@@ -45,8 +75,13 @@ class Visualizer:
 
         self.dt_project_info = benchmark.dt_project_info
         self.gt_project_info = benchmark.gt_project_info
+        self._benchmark.diff_project_info, existed = self._benchmark._get_or_create_diff_project()
         self.diff_project_info = benchmark.diff_project_info
         self.classes_whitelist = benchmark.classes_whitelist
+        self.diff_project_meta = ProjectMeta.from_json(
+            self._api.project.get_meta(self.diff_project_info.id)
+        )
+        self.comparison_data: Dict[int, ImageComparisonData] = {}  # gt_id -> ImageComparisonData
 
         self.gt_project_meta = self._get_filtered_project_meta(self.gt_project_info.id)
         self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
@@ -62,6 +97,11 @@ class Visualizer:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
         self.pbar = benchmark.pbar
+
+        if not existed:
+            self.update_diff_annotations()
+        else:
+            self.__update_comparison_data()
 
     def _initialize_object_detection_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
@@ -130,10 +170,6 @@ class Visualizer:
 
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
         self.base_metrics = self.mp.base_metrics
-
-        self._update_pred_dcts()
-        self._update_gt_dcts()
-        self._update_diff_dcts()
 
         self._objects_bindings = []
 
@@ -206,10 +242,6 @@ class Visualizer:
 
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
         self.base_metrics = self.mp.base_metrics
-
-        self._update_pred_dcts()
-        self._update_gt_dcts()
-        self._update_diff_dcts()
 
         self._objects_bindings = []
 
@@ -387,49 +419,44 @@ class Visualizer:
 
         self.dt_project_meta = meta
         self._add_tags_to_pred_project(self.mp.matches, self.dt_project_info.id)
-        gt_project_path, pred_project_path = self._benchmark._download_projects()
+        gt_project_path, pred_project_path = self._benchmark._download_projects(save_images=False)
 
         gt_project = Project(gt_project_path, OpenMode.READ)
         pred_project = Project(pred_project_path, OpenMode.READ)
-
-        names_map = {}
-        pred_images_map = {}
-        pred_anns_map = {}
-        total = 0
-
-        for dataset in pred_project.datasets:
-            dataset: Dataset
-            infos = [dataset.get_item_info(name) for name in dataset.get_items_names()]
-            infos = sorted(infos, key=lambda info: info.id)
-            image_names = [x.name for x in sorted(infos, key=lambda info: info.id)]
-            total += len(image_names)
-
-            pred_images_map[dataset.name] = infos
-            names_map[dataset.name] = image_names
-            pred_anns_map[dataset.name] = [dataset.get_ann(name, meta) for name in image_names]
-
-        gt_anns_map = {}
-        for d in gt_project.datasets:
-            gt_anns_map[d.name] = [d.get_ann(name, gt_project.meta) for name in names_map[d.name]]
+        diff_dataset_name_to_info = {
+            ds.name: ds for ds in self._api.dataset.get_list(self.diff_project_info.id)
+        }
 
         matched_id_map = self._get_matched_id_map()  # dt_id -> gt_id
         matched_gt_ids = set(matched_id_map.values())
 
         outcome_tag = meta.get_tag_meta("outcome")
         conf_meta = meta.get_tag_meta("confidence")
+        if conf_meta is None:
+            conf_meta = meta.get_tag_meta("conf")
         match_tag = meta.get_tag_meta("matched_gt_id")
 
         pred_tag_list = []
-        with self.pbar(message="Creating diff_project", total=total) as p:
-            for dataset in self._api.dataset.get_list(self.diff_project_info.id):
-                diff_anns_new = []
-
-                for gt_ann, dt_ann in zip(gt_anns_map[dataset.name], pred_anns_map[dataset.name]):
+        with self.pbar(message="Creating diff_project", total=pred_project.total_items) as progress:
+            for pred_dataset in pred_project.datasets:
+                pred_dataset: Dataset
+                gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
+                diff_dataset_info = diff_dataset_name_to_info[pred_dataset.name]
+                diff_anns = []
+                gt_image_ids = []
+                pred_img_ids = []
+                for item_name in pred_dataset.get_items_names():
+                    gt_image_info = gt_dataset.get_image_info(item_name)
+                    gt_image_ids.append(gt_image_info.id)
+                    pred_image_info = pred_dataset.get_image_info(item_name)
+                    pred_img_ids.append(pred_image_info.id)
+                    gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
+                    pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
                     labels = []
-                    for label in dt_ann.labels:
-                        # match_tag_id = label.tags.get("matched_gt_id")
-                        match_tag_id = matched_id_map.get(label.geometry.sly_id)
 
+                    # TP and FP
+                    for label in pred_ann.labels:
+                        match_tag_id = matched_id_map.get(label.geometry.sly_id)
                         value = "TP" if match_tag_id else "FP"
                         pred_tag_list.append(
                             {
@@ -438,16 +465,22 @@ class Visualizer:
                                 "value": value,
                             }
                         )
-                        conf = label.tags.get("confidence").value
+                        conf = 1
+                        for tag in label.tags.items():
+                            tag: Tag
+                            if tag.name in ["confidence", "conf"]:
+                                conf = tag.value
+                                break
+
                         if conf < self.f1_optimal_conf:
                             continue  # do not add labels with low confidence to diff project
                         if match_tag_id:
                             continue  # do not add TP labels to diff project
                         label = label.add_tag(Tag(outcome_tag, value))
-                        if not match_tag_id:
-                            label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
+                        label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
                         labels.append(label)
 
+                    # FN
                     for label in gt_ann.labels:
                         if self.classes_whitelist:
                             if label.obj_class.name not in self.classes_whitelist:
@@ -459,61 +492,128 @@ class Visualizer:
                                 )
                                 labels.append(new_label)
 
-                    diff_anns_new.append(Annotation(gt_ann.img_size, labels))
+                    diff_ann = Annotation(gt_ann.img_size, labels)
+                    diff_anns.append(diff_ann)
 
-                pred_img_ids = [x.id for x in pred_images_map[dataset.name]]
-                # self._api.annotation.upload_anns(pred_img_ids, dt_anns_new, progress_cb=pbar2)
+                    # comparison data
+                    self._update_comparison_data(
+                        gt_image_info.id,
+                        gt_image_info=gt_image_info,
+                        pred_image_info=pred_image_info,
+                        gt_annotation=gt_ann,
+                        pred_annotation=pred_ann,
+                        diff_annotation=diff_ann,
+                    )
 
-                diff_images = self._api.image.copy_batch(dataset.id, pred_img_ids)
-
-                diff_img_ids = [image.id for image in diff_images]
-                self._api.annotation.upload_anns(diff_img_ids, diff_anns_new, progress_cb=p.update)
+                diff_img_infos = self._api.image.copy_batch(diff_dataset_info.id, pred_img_ids)
+                self._api.annotation.upload_anns(
+                    [img_info.id for img_info in diff_img_infos],
+                    diff_anns,
+                    progress_cb=progress.update,
+                )
+                for gt_img_id, diff_img_info in zip(gt_image_ids, diff_img_infos):
+                    self._update_comparison_data(gt_img_id, diff_image_info=diff_img_info)
 
         self._api.image.tag.add_to_objects(self.dt_project_info.id, pred_tag_list)
 
-        self._update_gt_dcts()
-        self._update_diff_dcts()
-        self._update_pred_dcts()
+    def __update_comparison_data(self):
+        gt_project_path, pred_project_path = self._benchmark._download_projects(save_images=False)
+        gt_project = Project(gt_project_path, OpenMode.READ)
+        pred_project = Project(pred_project_path, OpenMode.READ)
+        diff_dataset_name_to_info = {
+            ds.name: ds for ds in self._api.dataset.get_list(self.diff_project_info.id)
+        }
 
-    def _update_gt_dcts(self):
-        self.gt_images_dct = {}
-        self.gt_images_dct_by_name = {}
-        gt_path, _ = self._benchmark.get_project_paths()
-        gt_project = Project(gt_path, OpenMode.READ)
-        for dataset in gt_project.datasets:
-            dataset: Dataset
-            for item_name in dataset.get_items_names():
-                image_info = dataset.get_image_info(item_name)
-                self.gt_images_dct[image_info.id] = image_info
-                self.gt_images_dct_by_name[image_info.name] = image_info
+        for pred_dataset in pred_project.datasets:
+            pred_dataset: Dataset
+            gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
+            try:
+                diff_dataset_info = diff_dataset_name_to_info[pred_dataset.name]
+            except KeyError:
+                raise RuntimeError(
+                    f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
+                )
 
-    def _update_diff_dcts(self):
-        datasets = self._api.dataset.get_list(self.diff_project_info.id)
-        self.diff_images_dct = {}
-        self.diff_images_dct_by_name = {}
-        self.diff_ann_jsons = {}
-        for d in datasets:
-            images = self._api.image.get_list(d.id)
-            for info in images:
-                self.diff_images_dct[info.id] = info
-                self.diff_images_dct_by_name[info.name] = info
+            for item_names_batch in batched(pred_dataset.get_items_names(), 100):
+                # diff project may be not created yet
+                item_names_batch.sort()
+                try:
+                    diff_img_infos_batch: List[ImageInfo] = sorted(
+                        self._api.image.get_list(
+                            diff_dataset_info.id,
+                            filters=[
+                                {"field": "name", "operator": "in", "value": item_names_batch}
+                            ],
+                        ),
+                        key=lambda x: x.name,
+                    )
+                    diff_anns_batch_dict = {
+                        ann_info.image_id: Annotation.from_json(
+                            ann_info.annotation, self.diff_project_meta
+                        )
+                        for ann_info in self._api.annotation.download_batch(
+                            diff_dataset_info.id, [img_info.id for img_info in diff_img_infos_batch]
+                        )
+                    }
+                    assert (
+                        len(item_names_batch)
+                        == len(diff_img_infos_batch)
+                        == len(diff_anns_batch_dict)
+                    ), "Some images are missing in the difference project"
 
-            diff_anns = self._api.annotation.download_batch(d.id, [x.id for x in images])
-            self.diff_ann_jsons.update({ann.image_id: ann.annotation for ann in diff_anns})
+                    for item_name, diff_img_info in zip(item_names_batch, diff_img_infos_batch):
+                        assert (
+                            item_name == diff_img_info.name
+                        ), "Image names in difference project and prediction project do not match"
+                        gt_image_info = gt_dataset.get_image_info(item_name)
+                        pred_image_info = pred_dataset.get_image_info(item_name)
+                        gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
+                        pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
+                        diff_ann = diff_anns_batch_dict[diff_img_info.id]
 
-    def _update_pred_dcts(self):
-        datasets = self._api.dataset.get_list(self.dt_project_info.id)
-        self.dt_images_dct = {}
-        self.dt_images_dct_by_name = {}
-        self.dt_ann_jsons = {}
-        for d in datasets:
-            images = self._api.image.get_list(d.id)
-            for info in images:
-                self.dt_images_dct[info.id] = info
-                self.dt_images_dct_by_name[info.name] = info
+                        self._update_comparison_data(
+                            gt_image_info.id,
+                            gt_image_info=gt_image_info,
+                            pred_image_info=pred_image_info,
+                            diff_image_info=diff_img_info,
+                            gt_annotation=gt_ann,
+                            pred_annotation=pred_ann,
+                            diff_annotation=diff_ann,
+                        )
+                except Exception:
+                    raise RuntimeError("Difference project was not created properly")
 
-            dt_anns = self._api.annotation.download_batch(d.id, [x.id for x in images])
-            self.dt_ann_jsons.update({ann.image_id: ann.annotation for ann in dt_anns})
+    def _update_comparison_data(
+        self,
+        gt_image_id: int,
+        gt_image_info: ImageInfo = None,
+        pred_image_info: ImageInfo = None,
+        diff_image_info: ImageInfo = None,
+        gt_annotation: Annotation = None,
+        pred_annotation: Annotation = None,
+        diff_annotation: Annotation = None,
+    ):
+        comparison_data = self.comparison_data.get(gt_image_id, None)
+        if comparison_data is None:
+            self.comparison_data[gt_image_id] = ImageComparisonData(
+                gt_image_info=gt_image_info,
+                pred_image_info=pred_image_info,
+                diff_image_info=diff_image_info,
+                gt_annotation=gt_annotation,
+                pred_annotation=pred_annotation,
+                diff_annotation=diff_annotation,
+            )
+        else:
+            for attr, value in {
+                "gt_image_info": gt_image_info,
+                "pred_image_info": pred_image_info,
+                "diff_image_info": diff_image_info,
+                "gt_annotation": gt_annotation,
+                "pred_annotation": pred_annotation,
+                "diff_annotation": diff_annotation,
+            }.items():
+                if value is not None:
+                    setattr(comparison_data, attr, value)
 
     def _update_pred_meta_with_tags(self, project_id: int, meta: ProjectMeta) -> ProjectMeta:
         old_meta = meta
@@ -533,10 +633,18 @@ class Visualizer:
             TagValueType.ANY_NUMBER,
             applicable_to=TagApplicableTo.OBJECTS_ONLY,
         )
+        confidence_tag = TagMeta(
+            "confidence",
+            value_type=TagValueType.ANY_NUMBER,
+            applicable_to=TagApplicableTo.OBJECTS_ONLY,
+        )
 
         for tag in [outcome_tag, match_tag, iou_tag]:
             if meta.get_tag_meta(tag.name) is None:
                 meta = meta.add_tag_meta(tag)
+
+        if meta.get_tag_meta("confidence") is None and meta.get_tag_meta("conf") is None:
+            meta = meta.add_tag_meta(confidence_tag)
 
         if old_meta == meta:
             return meta
@@ -544,7 +652,12 @@ class Visualizer:
         meta = self._api.project.update_meta(project_id, meta)
         return meta
 
-        # conf_meta = meta.get_tag_meta("confidence")
+    def _update_diff_meta(self, meta: ProjectMeta):
+        new_obj_classes = []
+        for obj_class in meta.obj_classes:
+            new_obj_classes.append(obj_class.clone(geometry_type=AnyGeometry))
+        meta = meta.clone(obj_classes=new_obj_classes)
+        self.diff_project_meta = self._api.project.update_meta(self.diff_project_info.id, meta)
 
     def _update_diff_meta(self, meta: ProjectMeta):
         new_obj_classes = []

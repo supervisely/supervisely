@@ -33,8 +33,8 @@ class BaseBenchmark:
         self.api = api
         self.session: SessionJSON = None
         self.gt_project_info = api.project.get_info_by_id(gt_project_id)
-        self.dt_project_info = None
-        self.diff_project_info = None
+        self.dt_project_info: ProjectInfo = None
+        self.diff_project_info: ProjectInfo = None
         self.gt_dataset_ids = gt_dataset_ids
         self.gt_images_ids = gt_images_ids
         self.output_dir = output_dir
@@ -294,9 +294,9 @@ class BaseBenchmark:
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
             total = (
-                self.gt_project_info.items_count * 2
+                self.gt_project_info.items_count
                 if self.gt_images_ids is None
-                else len(self.gt_images_ids) * 2
+                else len(self.gt_images_ids)
             )
             with self.pbar(message="Downloading GT annotations", total=total) as p:
                 download_project(
@@ -314,9 +314,9 @@ class BaseBenchmark:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
             total = (
-                self.gt_project_info.items_count * 2
+                self.gt_project_info.items_count
                 if self.gt_images_ids is None
-                else len(self.gt_images_ids) * 2
+                else len(self.gt_images_ids)
             )
             with self.pbar(message="Downloading DT annotations", total=total) as p:
                 download_project(
@@ -418,23 +418,10 @@ class BaseBenchmark:
         return rows
 
     def visualize(self, dt_project_id=None):
-        if dt_project_id is None:
-            if self.dt_project_info is None:
-                raise RuntimeError(
-                    "The prediction dt_project was not initialized. Please run evaluation or find the ready project."
-                )
-        else:
+        if dt_project_id is not None:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
 
-        eval_dir = self.get_eval_results_dir()
-        assert not fs.dir_empty(
-            eval_dir
-        ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
-
-        self.diff_project_info, was_before = self._get_or_create_diff_project()
         vis = Visualizer(self)
-        if not was_before:
-            vis.update_diff_annotations()
         vis.visualize()
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
