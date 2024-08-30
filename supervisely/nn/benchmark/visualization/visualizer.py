@@ -101,7 +101,7 @@ class Visualizer:
         if not existed:
             self.update_diff_annotations()
         else:
-            self.__update_comparison_data()
+            self._init_comparison_data()
 
     def _initialize_object_detection_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
@@ -516,7 +516,7 @@ class Visualizer:
 
         self._api.image.tag.add_to_objects(self.dt_project_info.id, pred_tag_list)
 
-    def __update_comparison_data(self):
+    def _init_comparison_data(self):
         gt_project_path, pred_project_path = self._benchmark._download_projects(save_images=False)
         gt_project = Project(gt_project_path, OpenMode.READ)
         pred_project = Project(pred_project_path, OpenMode.READ)
