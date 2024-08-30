@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "6.73.172+model-benchmark-stage-2" # ! TODO: ! REMOVE AFTER TESTING!
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
