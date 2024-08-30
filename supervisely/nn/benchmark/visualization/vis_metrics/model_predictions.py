@@ -60,7 +60,7 @@ class ModelPredictions(MetricVis):
         table_model_preds = widget.table(df, columns_options=columns_options)
         tbl = table_model_preds.to_json()
 
-        res["columns"] = tbl["columns"]
+        res["columns"] = tbl["columns"][1:]  # exclude sly_id
         res["columnsOptions"] = columns_options
         res["content"] = []
 
@@ -71,8 +71,8 @@ class ModelPredictions(MetricVis):
         self._row_ids = []
 
         for row in tbl["data"]["data"]:
-            name = row["items"][0]
-            info = self._loader.dt_images_dct_by_name[name]
+            sly_id = row["items"].pop(0)
+            info = self._loader.comparison_data[sly_id].gt_image_info
 
             dct = {
                 "row": {key_mapping[k]: v for k, v in info._asdict().items()},
@@ -99,22 +99,17 @@ class ModelPredictions(MetricVis):
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 
-        l1 = list(self._loader.gt_images_dct.values())
-        l2 = list(self._loader.dt_images_dct.values())
-        l3 = list(self._loader.diff_images_dct.values())
-
-        pred_anns = self._loader.dt_ann_jsons  # {image_id: ann_json}
-        diff_anns = self._loader.diff_ann_jsons  # {image_id: ann_json}
-
-        for gt, pred, diff, pred_ann, diff_ann in zip(
-            l1, l2, l3, pred_anns.items(), diff_anns.items()
-        ):
+        for img_comparison_data in self._loader.comparison_data.values():
+            gt = img_comparison_data.gt_image_info
+            pred = img_comparison_data.pred_image_info
+            diff = img_comparison_data.diff_image_info
             assert gt.name == pred.name == diff.name
             key = click_data.setdefault(str(pred.name), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
             key["title"] = f"Image: {pred.name}"
-            image_id, ann_json = pred_ann
+            image_id = pred.id
+            ann_json = img_comparison_data.pred_annotation.to_json()
             assert image_id == pred.id
             object_bindings = []
             for obj in ann_json["objects"]:
@@ -133,7 +128,8 @@ class ModelPredictions(MetricVis):
                             ]
                         )
 
-            image_id, ann_json = diff_ann
+            image_id = diff.id
+            ann_json = img_comparison_data.diff_annotation.to_json()
             assert image_id == diff.id
             for obj in ann_json["objects"]:
                 for tag in obj["tags"]:

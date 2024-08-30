@@ -67,8 +67,7 @@ class ConfusionMatrix(MetricVis):
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
 
-        for k, val in self._loader.click_data.confusion_matrix.items():
-            pred_key, gt_key = k
+        for (pred_key, gt_key), matches_data in self._loader.click_data.confusion_matrix.items():
             key = gt_key + self._keypair_sep + pred_key
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
@@ -78,14 +77,13 @@ class ConfusionMatrix(MetricVis):
 
             img_ids = set()
             obj_ids = set()
-            for x in val:
-                if x["dt_obj_id"] is not None:
-                    image_id = self._loader.dt_images_dct[x["dt_img_id"]].id
-                    img_ids.add(image_id)
-                    obj_ids.add(x["dt_obj_id"])
+            for match_data in matches_data:
+                if match_data["dt_obj_id"] is not None:
+                    img_ids.add(match_data["dt_img_id"])
+                    obj_ids.add(match_data["dt_obj_id"])
                 else:
-                    img_ids.add(self._loader.gt_images_dct[x["gt_img_id"]].id)
-                    obj_ids.add(x["gt_obj_id"])
+                    img_ids.add(match_data["gt_img_id"])
+                    obj_ids.add(match_data["gt_obj_id"])
 
             res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [
