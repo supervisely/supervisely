@@ -45,8 +45,8 @@ class ConfusionMatrix(MetricVis):
             df,
             labels=dict(x="Ground Truth", y="Predicted", color="Objects Count"),
             # title="Confusion Matrix (log-scale)",
-            width=1000,
-            height=1000,
+            width=1000 if len(cat_names) > 10 else 600,
+            height=1000 if len(cat_names) > 10 else 600,
         )
 
         # Hover text
