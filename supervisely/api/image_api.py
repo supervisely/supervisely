@@ -591,18 +591,17 @@ class ImageApi(RemoveableBulkModuleApi):
             ).dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
-                results.extend(
-                    self.get_list_all_pages(
-                        "images.list",
-                        {
-                            ApiField.DATASET_ID: dataset_id,
-                            ApiField.FILTER: filters,
-                            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                        },
-                    )
+                temp_results = self.get_list_all_pages(
+                    "images.list",
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FILTER: filters,
+                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    },
                 )
-                if progress_cb is not None:
-                    progress_cb(len(batch))
+                results.extend(temp_results)
+                if progress_cb is not None and len(temp_results) > 0:
+                    progress_cb(len(temp_results))
             ids_set = ids_set - set([info.id for info in results])
             infos_dict.update({info.id: info for info in results})
 
