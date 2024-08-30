@@ -16,6 +16,7 @@ from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
+from supervisely.project.project_meta import ProjectMeta
 
 
 class BaseBenchmark:
@@ -123,6 +124,8 @@ class BaseBenchmark:
                 "dt_project_info": self.dt_project_info._asdict(),
             },
         )
+
+        self._merge_metas(self.gt_project_info.id, self.dt_project_info.id)
         return inference_info
 
     def evaluate(self, dt_project_id):
@@ -281,7 +284,6 @@ class BaseBenchmark:
             dt_project_info = self.api.project.create(
                 workspace.id, dt_project_name, change_name_if_conflict=True
             )
-            self.api.project.merge_metas(self.gt_project_info.id, dt_project_info.id)
             output_project_id = dt_project_info.id
         else:
             dt_project_info = self.api.project.get_info_by_id(output_project_id)
@@ -318,7 +320,7 @@ class BaseBenchmark:
                 if self.gt_images_ids is None
                 else len(self.gt_images_ids)
             )
-            with self.pbar(message="Downloading DT annotations", total=total) as p:
+            with self.pbar(message="Downloading Pred annotations", total=total) as p:
                 download_project(
                     self.api,
                     self.dt_project_info.id,
@@ -329,7 +331,8 @@ class BaseBenchmark:
                     progress_cb=p.update,
                 )
         else:
-            logger.info(f"Found DT annotations in {dt_path}")
+            logger.info(f"Found Pred annotations in {dt_path}")
+
         self._dump_project_info(self.gt_project_info, gt_path)
         self._dump_project_info(self.dt_project_info, dt_path)
         return gt_path, dt_path
@@ -487,3 +490,18 @@ class BaseBenchmark:
 
         logger.info(f"Report link: {report_link}")
         return file_info
+
+    def _merge_metas(self, gt_project_id, pred_project_id):
+        gt_meta = self.api.project.get_meta(gt_project_id)
+        gt_meta = ProjectMeta.from_json(gt_meta)
+
+        pred_meta = self.api.project.get_meta(pred_project_id)
+        pred_meta = ProjectMeta.from_json(pred_meta)
+
+        chagned = False
+        for obj_cls in gt_meta.obj_classes:
+            if not pred_meta.obj_classes.has_key(obj_cls.name):
+                pred_meta = pred_meta.add_obj_class(obj_cls)
+                chagned = True
+        if chagned:
+            self.api.project.update_meta(pred_project_id, pred_meta.to_json())
