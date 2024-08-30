@@ -277,7 +277,7 @@ class BaseBenchmark:
                     self.team_id, WORKSPACE_NAME, WORKSPACE_DESCRIPTION
                 )
             visible = is_development()
-            self.api.workspace.change_visibility(workspace.id, visible=True)
+            self.api.workspace.change_visibility(workspace.id, visible=visible)
             dt_project_info = self.api.project.create(
                 workspace.id, dt_project_name, change_name_if_conflict=True
             )
