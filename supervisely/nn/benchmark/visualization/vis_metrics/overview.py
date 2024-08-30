@@ -19,6 +19,18 @@ class Overview(MetricVis):
         if link_text is None:
             link_text = url
         link_text = link_text.replace("_", "\_")
+        if self._loader._is_after_training:
+            if self._loader._benchmark.gt_images_ids is not None:
+                note_about_val_dataset = "Evaluated using validation subset."
+            else:
+                gt_project_id = self._loader.gt_project_info.id
+                val_dataset_id = self._loader._benchmark.gt_dataset_ids[0]
+                val_dataset_name = self._loader._api.dataset.get_info_by_id(val_dataset_id).name
+                link = f'<a href="/projects/{gt_project_id}/datasets/{val_dataset_id}" target="_blank">{val_dataset_name}</a>'
+                note_about_val_dataset = f"Evaluated on the validation dataset: {link}"
+            note_about_val_dataset = "\n" + note_about_val_dataset + "\n"
+        else:
+            note_about_val_dataset = ""
         self.schema = Schema(
             self._loader.vis_texts,
             markdown_overview=Widget.Markdown(
@@ -34,7 +46,8 @@ class Overview(MetricVis):
                     link_text,
                     self._loader.docs_link,
                     self._loader.gt_project_info.id,
-                    self._loader.gt_project_info.name
+                    self._loader.gt_project_info.name,
+                    note_about_val_dataset,
                 ],
             ),
             markdown_key_metrics=Widget.Markdown(

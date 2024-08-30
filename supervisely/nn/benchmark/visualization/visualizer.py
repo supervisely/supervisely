@@ -69,10 +69,8 @@ class Visualizer:
         self._benchmark = benchmark
         self._api = benchmark.api
         self.cv_task = benchmark.cv_task
-
         self.eval_dir = benchmark.get_eval_results_dir()
         self.layout_dir = benchmark.get_layout_results_dir()
-
         self.dt_project_info = benchmark.dt_project_info
         self.gt_project_info = benchmark.gt_project_info
         self._benchmark.diff_project_info, existed = self._benchmark._get_or_create_diff_project()
@@ -102,6 +100,8 @@ class Visualizer:
             self.update_diff_annotations()
         else:
             self.__update_comparison_data()
+        
+        self._is_after_training = False
 
     def _initialize_object_detection_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
