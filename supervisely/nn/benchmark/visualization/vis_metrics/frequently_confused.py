@@ -18,9 +18,24 @@ class FrequentlyConfused(MetricVis):
         self.switchable: bool = True
         self._keypair_sep: str = " - "
         df = self._loader.mp.frequently_confused()
+        if df.empty:
+            self.schema = Schema(
+                empty=Widget.Markdown(
+                    title="Frequently Confused Classes",
+                    is_header=True,
+                    formats=[
+                        "Frequently Confused Classes",
+                        "No frequently confused class pairs found",
+                    ],
+                )
+            )
+            self.empty = True
+            return
+
         pair = df["category_pair"][0]
         prob = df["probability"][0]
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_frequently_confused=Widget.Markdown(
                 title="Frequently Confused Classes",
                 is_header=True,
@@ -42,6 +57,9 @@ class FrequentlyConfused(MetricVis):
         )
 
     def get_figure(self, widget: Widget.Chart):  # -> Optional[Tuple[go.Figure]]:
+        if self.empty:
+            return
+
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         # Frequency of confusion as bar chart
@@ -68,7 +86,7 @@ class FrequentlyConfused(MetricVis):
         return fig
 
     def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
-        if not self.clickable:
+        if not self.clickable or self.empty:
             return
         res = dict(projectMeta=self._loader.dt_project_meta.to_json())
 

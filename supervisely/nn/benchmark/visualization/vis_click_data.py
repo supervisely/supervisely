@@ -34,7 +34,7 @@ class ClickData:
             outcome_counts_by_class[cat_name][match["type"]].append(self._gather(match))
         self.outcome_counts_by_class = dict(outcome_counts_by_class)
 
-        self.objects_by_class = {cat_name: [] for cat_name in self.m.cat_names}  # ! ??? ШТОЭТА???
+        self.objects_by_class = {cat_name: [] for cat_name in self.m.cat_names}
         for match in self.m.matches:
             cat_id = match["category_id"]
             cat_name = self.m.cocoGt.cats[cat_id]["name"]

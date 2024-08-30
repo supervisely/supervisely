@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -21,32 +20,30 @@ class Overview(MetricVis):
             link_text = url
         link_text = link_text.replace("_", "\_")
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_overview=Widget.Markdown(
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get(
-                        "checkpoint_name",
-                    ),
+                    info.get("deploy_params", {}).get("checkpoint_name"),
                     info.get("architecture"),
-                    # info.get("year", "???"),
-                    # info.get("authors", "???"),
                     info.get("task_type"),
                     info.get("runtime"),
                     info.get("hardware"),
                     url,
                     link_text,
                     self._loader.docs_link,
-                    self._loader.docs_link,
+                    self._loader.gt_project_info.id,
+                    self._loader.gt_project_info.name
                 ],
             ),
             markdown_key_metrics=Widget.Markdown(
                 title="Key Metrics",
                 is_header=True,
                 formats=[
-                    definitions.average_precision,
-                    definitions.confidence_threshold,
-                    definitions.confidence_score,
+                    self._loader.vis_texts.definitions.average_precision,
+                    self._loader.vis_texts.definitions.confidence_threshold,
+                    self._loader.vis_texts.definitions.confidence_score,
                 ],
             ),
             chart=Widget.Chart(),

@@ -17,6 +17,7 @@ class PRCurveByClass(MetricVis):
         super().__init__(loader)
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_pr_by_class=Widget.Markdown(title="PR Curve by Class"),
             chart=Widget.Chart(),
         )
