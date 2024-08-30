@@ -140,7 +140,7 @@ class SessionJSON:
 
     def get_deploy_info(self) -> Dict[str, Any]:
         return self._get_from_endpoint("get_deploy_info")
-    
+
     def get_default_inference_settings(self) -> Dict[str, Any]:
         if self._default_inference_settings is None:
             resp = self._get_from_endpoint("get_custom_inference_settings")
@@ -175,8 +175,11 @@ class SessionJSON:
     def _validate_new_inference_settings(self, new_settings: dict) -> None:
         default_settings = self.get_default_inference_settings()
         for key, value in new_settings.items():
-            if key not in default_settings:
-                raise ValueError(f"Key '{key}' is not acceptable. Acceptable keys are: {default_settings}")
+            if key not in default_settings and key != "classes":
+                acceptable_keys = ", ".join(default_settings.keys()) + ", 'classes'"
+                raise ValueError(
+                    f"Key '{key}' is not acceptable. Acceptable keys are: {acceptable_keys}"
+                )
 
     def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
@@ -194,6 +197,40 @@ class SessionJSON:
         json_body["state"]["batch_ids"] = image_ids
         resp = self._post(url, json=json_body)
         return resp.json()
+
+    def inference_image_ids_async(
+        self,
+        image_ids: List[int],
+        output_project_id=None,
+        batch_size: int = 16,
+        process_fn=None,
+    ) -> Iterator:
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "inference_batch_ids_async"
+        url = f"{self._base_url}/{endpoint}"
+        json_body = self._get_default_json_body()
+        state = json_body["state"]
+        state["images_ids"] = image_ids
+        state["output_project_id"] = output_project_id
+        state["batch_size"] = batch_size
+        resp = self._post(url, json=json_body).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=process_fn
+        )
+        return frame_iterator
 
     def inference_image_url(self, url: str) -> Dict[str, Any]:
         endpoint = "inference_image_url"
@@ -395,11 +432,9 @@ class SessionJSON:
         self._stop_async_inference_flag = False
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
-        frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=None
-        )
+        frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self, process_fn=None)
         return frame_iterator
-    
+
     def inference_project_id(
         self,
         project_id: int,
@@ -676,6 +711,20 @@ class Session(SessionJSON):
         pred_list_raw = super().inference_image_ids(image_ids)
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
+
+    def inference_image_ids_async(
+        self,
+        image_ids: List[int],
+        output_project_id=None,
+        batch_size: int = 16,
+    ):
+        frame_iterator = super().inference_image_ids_async(
+            image_ids,
+            output_project_id,
+            batch_size=batch_size,
+            process_fn=self._convert_to_sly_ann_info,
+        )
+        return frame_iterator
 
     def inference_image_paths(self, image_paths: List[str]) -> List[sly.Annotation]:
         pred_list_raw = super().inference_image_paths(image_paths)

@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 from jinja2 import Template
 
-import supervisely.nn.benchmark.visualization.vis_texts as contents
 from supervisely._utils import camel_to_snake
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.vis_templates import (
@@ -31,6 +30,7 @@ class MetricVis:
         self.has_diffs_view: bool = False
         self.switchable: bool = False
         self.schema: Schema = None
+        self.empty = False
 
         self._loader = loader
         self._template_markdown = Template(template_markdown_str)
@@ -229,8 +229,6 @@ class MetricVis:
         if not self.clickable:
             return
 
-        optimal_conf = round(self.f1_optimal_conf, 4)
-
         res = {}
 
         res["layoutTemplate"] = [None, None, None]
@@ -253,7 +251,7 @@ class MetricVis:
 
             res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
+                {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
                 {"type": "tag", "tagId": "outcome", "value": "TP"},
                 {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
             ]
@@ -320,7 +318,7 @@ class MetricVis:
         pass
 
     def get_md_content(self, widget: Widget.Markdown):
-        return getattr(contents, widget.name).format(*widget.formats)
+        return getattr(self._loader.vis_texts, widget.name).format(*widget.formats)
 
     def initialize_formats(self, loader: Visualizer, widget: Widget):
         pass

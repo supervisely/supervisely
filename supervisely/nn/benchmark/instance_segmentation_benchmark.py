@@ -14,7 +14,7 @@ class InstanceSegmentationBenchmark(BaseBenchmark):
 
     def _get_evaluator_class(self) -> type:
         return InstanceSegmentationEvaluator
-    
+
     def _run_inference(
         self,
         output_project_id=None,

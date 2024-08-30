@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -14,19 +14,30 @@ class IOUDistribution(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        title = "Localization Accuracy (IoU)"
+        if self._loader.cv_task in [CVTask.INSTANCE_SEGMENTATION, CVTask.SEMANTIC_SEGMENTATION]:
+            title = "Mask Accuracy (IoU)"
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_localization_accuracy=Widget.Markdown(
-                title="Localization Accuracy (IoU)", is_header=True
+                title=title,
+                is_header=True,
+                formats=[self._loader.vis_texts.definitions.iou_score],
             ),
             markdown_iou_distribution=Widget.Markdown(
-                title="IoU Distribution", is_header=True, formats=[definitions.iou_score]
+                title="IoU Distribution",
+                is_header=True,
+                formats=[self._loader.vis_texts.definitions.iou_score],
             ),
             notification_avg_iou=Widget.Notification(
                 formats_title=[self._loader.base_metrics()["iou"].round(2)]
             ),
             chart=Widget.Chart(),
             collapse_iou=Widget.Collapse(
-                Schema(markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"))
+                Schema(
+                    self._loader.vis_texts,
+                    markdown_iou_calculation=Widget.Markdown(title="How IoU is calculated?"),
+                )
             ),
         )
 
