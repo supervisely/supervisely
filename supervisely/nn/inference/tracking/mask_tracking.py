@@ -220,7 +220,7 @@ class MaskTracking(Inference):
             range(context["frame_index"], context["frame_index"] + context["frames"] + 1)
         )
         geometries = map(self._deserialize_geometry, context["input_geometries"])
-        frames = self.cache.get_frames_from_cache(video_id, frame_indexes)
+        frames = self.cache._get_frames_from_cache(video_id, frame_indexes)
         return self._inference(frames, geometries)
 
     def _track_api_files(

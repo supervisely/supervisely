@@ -64,7 +64,7 @@ class PersistentImageTTLCache(TTLCache):
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
-    
+
     def pop(self, *args, **kwargs):
         try:
             super().pop(*args, **kwargs)
@@ -200,19 +200,38 @@ class InferenceImageCache:
         with self._lock:
             self._cache.clear(False)
 
-    def download_image(self, api: sly.Api, image_id: int):
-        name = self._image_name(image_id)
-        self._wait_if_in_queue(name, api.logger)
+    def _is_cached(self, key: Any) -> bool:
+        with self._lock:
+            try:
+                return key in self._cache
+            except Exception:
+                return False
 
-        if name not in self._cache:
+    def _get_image_from_cache(self, key: Any) -> np.ndarray:
+        with self._lock:
+            if isinstance(self._cache, PersistentImageTTLCache):
+                return self._cache.get_image(key)
+            return self._cache[key]
+
+    def download_image(self, api: sly.Api, image_id: int):
+        img = None
+        name = self._image_name(image_id)
+        try:
+            self._wait_if_in_queue(name, api.logger)
+            if self._is_cached(name):
+                sly.logger.debug(f"Get image #{image_id} from cache")
+                return self._get_image_from_cache(name)
+
             self._load_queue.set(name, image_id)
-            api.logger.debug(f"Add image #{image_id} to cache")
+            sly.logger.debug(f"Add image #{image_id} to cache")
             img = api.image.download_np(image_id)
             self._add_to_cache(name, img)
-            return img
-
-        api.logger.debug(f"Get image #{image_id} from cache")
-        return self._cache.get_image(name)
+        except:
+            self._load_queue.delete(name)
+            api.logger.warning(f"Error downloading image #{image_id} using cache", exc_info=True)
+            if img is None:
+                img = api.image.download_np(image_id)
+        return img
 
     def download_images(self, api: sly.Api, dataset_id: int, image_ids: List[int], **kwargs):
         return_images = kwargs.get("return_images", True)
@@ -229,15 +248,26 @@ class InferenceImageCache:
         )
 
     def download_image_by_hash(self, api: sly.Api, img_hash: str) -> np.ndarray:
+        image = None
         image_key = self._image_name(img_hash)
-        self._wait_if_in_queue(image_key, api.logger)
+        try:
+            self._wait_if_in_queue(image_key, api.logger)
+            if self._is_cached(image_key):
+                api.logger.debug(f"Get image #{img_hash} from cache")
+                return self._get_image_from_cache(image_key)
 
-        if image_key not in self._cache:
             self._load_queue.set(image_key, img_hash)
-            image = api.image.download_nps_by_hashes([img_hash])
+            sly.logger.debug(f"Add image #{img_hash} to cache")
+            image = api.image.download_nps_by_hashes([img_hash])[0]
             self._add_to_cache(image_key, image)
-            return image
-        return self._cache.get_image(image_key)
+        except Exception:
+            self._load_queue.delete(image_key)
+            api.logger.warning(
+                f"Error while downloading image #{img_hash} using cache", exc_info=True
+            )
+            if image is None:
+                image = api.image.download_nps_by_hashes([img_hash])[0]
+        return image
 
     def download_images_by_hashes(
         self, api: sly.Api, img_hashes: List[str], **kwargs
@@ -258,65 +288,71 @@ class InferenceImageCache:
     def _read_frames_from_cached_video(
         self, video_id: int, frame_indexes: List[int]
     ) -> List[np.ndarray]:
-        video_path = self._cache.get_video_path(video_id)
+        with self._lock:
+            video_path = self._cache.get_video_path(video_id)
         if video_path is None or not video_path.exists():
             raise KeyError(f"Video {video_id} not found in cache")
         cap = cv2.VideoCapture(str(video_path))
-        frames = []
-        prev_idx = -1
-        for frame_index in frame_indexes:
-            if frame_index != prev_idx + 1:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-            ret, frame = cap.read()
-            if not ret:
-                raise KeyError(f"Frame {frame_index} not found in video {video_id}")
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            prev_idx = frame_index
-        cap.release()
-        return frames
+        try:
+            frames = []
+            prev_idx = -1
+            for frame_index in frame_indexes:
+                if frame_index != prev_idx + 1:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                ret, frame = cap.read()
+                if not ret:
+                    raise KeyError(
+                        f"Frame {frame_index} not found in cached video #{video_id} file"
+                    )
+                frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                prev_idx = frame_index
+            return frames
+        finally:
+            cap.release()
 
-    def get_frame_from_cache(self, video_id: int, frame_index: int) -> np.ndarray:
+    def _get_frame_from_cache(self, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
-        if isinstance(self._cache, PersistentImageTTLCache):
-            if name in self._cache:
-                return self._cache.get_image(name)
+        if self._is_cached(name):
+            return self._get_image_from_cache(name)
+        if self._is_cached(video_id):
             return self._read_frames_from_cached_video(video_id, [frame_index])[0]
-        frame = self._cache.get(name)
-        if frame is None:
-            raise KeyError(f"Frame {frame_index} not found in video {video_id}")
+        raise KeyError(f"Frame {frame_index} of video #{video_id} not found in cache")
 
-    def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
-        if isinstance(self._cache, PersistentImageTTLCache) and video_id in self._cache:
+    def _get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
+        if isinstance(self._cache, PersistentImageTTLCache) and self._is_cached(video_id):
             return self._read_frames_from_cached_video(video_id, frame_indexes)
         else:
             return [
-                self.get_frame_from_cache(video_id, frame_index) for frame_index in frame_indexes
+                self._get_frame_from_cache(video_id, frame_index) for frame_index in frame_indexes
             ]
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
+        frame = None
+        try:
+            frame = self._get_frame_from_cache(video_id, frame_index)
+            sly.logger.debug(f"Get frame {frame_index} of video #{video_id} from cache")
+            return frame
+        except KeyError:
+            pass
         name = self._frame_name(video_id, frame_index)
-        self._wait_if_in_queue(name, api.logger)
-
-        if name not in self._cache:
-            if video_id in self._cache:
-                api.logger.debug(
-                    f"Get frame #{frame_index} for video #{video_id} from cache (video file)"
-                )
-                try:
-                    return self.get_frame_from_cache(video_id, frame_index)
-                except:
-                    sly.logger.warning(
-                        f"Frame {frame_index} not found in video {video_id}", exc_info=True
-                    )
-
+        try:
+            self._wait_if_in_queue(name, api.logger)
+            if self._is_cached(name):
+                sly.logger.debug(f"Get frame {frame_index} of video #{video_id} from cache")
+                return self._get_image_from_cache(name)
             self._load_queue.set(name, (video_id, frame_index))
             frame = api.video.frame.download_np(video_id, frame_index)
             self._add_to_cache(name, frame)
-            api.logger.debug(f"Add frame #{frame_index} for video #{video_id} to cache")
-            return frame
-
-        api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
-        return self._cache.get_image(name)
+            api.logger.debug(f"Add frame {frame_index} of video #{video_id} to cache")
+        except Exception:
+            self._load_queue.delete(name)
+            sly.logger.debug(
+                f"Error downloading frame {frame_index} of video #{video_id} using cache",
+                exc_info=True,
+            )
+            if frame is None:
+                return api.video.frame.download_np(video_id, frame_index)
+        return frame
 
     def download_frames(
         self, api: sly.Api, video_id: int, frame_indexes: List[int], **kwargs
@@ -324,22 +360,27 @@ class InferenceImageCache:
         return_images = kwargs.get("return_images", True)
         redownload_video = kwargs.get("redownload_video", False)
 
-        if video_id in self._cache:
-            try:
-                return self.get_frames_from_cache(video_id, frame_indexes)
-            except:
-                sly.logger.warning(
-                    f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
-                )
+        try:
+            if self._is_cached(video_id):
+                return self._get_frames_from_cache(video_id, frame_indexes)
+            elif redownload_video:
                 Thread(
                     target=self.download_video,
                     args=(api, video_id),
                     kwargs={"return_images": False},
                 ).start()
-        elif redownload_video:
-            Thread(
-                target=self.download_video, args=(api, video_id), kwargs={"return_images": False}
-            ).start()
+        except Exception:
+            sly.logger.debug(
+                f"Error getting frames from cache",
+                exc_info=True,
+                extra={"video_id": video_id, "frame_indexes": frame_indexes},
+            )
+            if redownload_video:
+                Thread(
+                    target=self.download_video,
+                    args=(api, video_id),
+                    kwargs={"return_images": False},
+                ).start()
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -355,7 +396,7 @@ class InferenceImageCache:
             return_images,
         )
 
-    def add_video_to_cache(self, video_id: int, video_path: Path) -> None:
+    def _add_video_to_cache(self, video_id: int, video_path: Path) -> None:
         """
         Adds video to cache.
         """
@@ -365,21 +406,23 @@ class InferenceImageCache:
                 self._load_queue.delete(video_id)
         else:
             cap = cv2.VideoCapture(str(video_path))
-            frame_index = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            while cap.isOpened():
-                while self._frame_name(video_id, frame_index) in self._cache:
-                    frame_index += 1
-                if frame_index >= total_frames:
-                    break
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame = np.array(frame)
-                self.add_frame_to_cache(frame, video_id, frame_index)
-                frame_index = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-            cap.release()
+            try:
+                frame_index = 0
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                while cap.isOpened():
+                    while self._is_cached(self._frame_name(video_id, frame_index)):
+                        frame_index += 1
+                    if frame_index >= total_frames:
+                        break
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    frame = np.array(frame)
+                    self._add_frame_to_cache(frame, video_id, frame_index)
+                    frame_index = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+            finally:
+                cap.release()
 
     def download_video(self, api: sly.Api, video_id: int, **kwargs) -> None:
         """
@@ -391,16 +434,16 @@ class InferenceImageCache:
 
         video_info = api.video.get_info_by_id(video_id)
         self._wait_if_in_queue(video_id, api.logger)
-        if not video_id in self._cache:
+        if not self._is_cached(video_id):
             self._load_queue.set(video_id, video_id)
             sly.logger.debug("Downloading video #%s", video_id)
             temp_video_path = Path("/tmp/smart_cache").joinpath(
                 f"_{sly.rand_str(6)}_" + video_info.name
             )
             api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
-            self.add_video_to_cache(video_id, temp_video_path)
+            self._add_video_to_cache(video_id, temp_video_path)
         if return_images:
-            return self.get_frames_from_cache(video_id, list(range(video_info.frames_count)))
+            return self._get_frames_from_cache(video_id, list(range(video_info.frames_count)))
 
     def add_cache_endpoint(self, server: FastAPI):
         @server.post("/smart_cache")
@@ -450,7 +493,7 @@ class InferenceImageCache:
             video_id = image_ids
             self.download_video(api, video_id, **kwargs)
 
-    def add_frame_to_cache(self, frame: np.ndarray, video_id: int, frame_index: int):
+    def _add_frame_to_cache(self, frame: np.ndarray, video_id: int, frame_index: int):
         name = self._frame_name(video_id, frame_index)
         self._add_to_cache(name, frame)
 
@@ -470,7 +513,7 @@ class InferenceImageCache:
             video_id = state["video_id"]
             for frame_index, file in zip(image_ids, files):
                 frame = sly.image.read_bytes(file.file.read())
-                self.add_frame_to_cache(frame, video_id, frame_index)
+                self._add_frame_to_cache(frame, video_id, frame_index)
         elif task_type is InferenceImageCache._LoadType.Video:
             video_id = image_ids
             temp_video_path = Path("/tmp/smart_cache").joinpath(
@@ -478,9 +521,7 @@ class InferenceImageCache:
             )
             with open(temp_video_path, "wb") as f:
                 shutil.copyfileobj(files[0].file, f)
-            self._wait_if_in_queue(video_id, sly.logger)
-            self._load_queue.set(video_id, video_id)
-            self.add_video_to_cache(video_id, str(temp_video_path))
+            self._add_video_to_cache(video_id, str(temp_video_path))
 
     def run_cache_task_manually(
         self,
@@ -531,27 +572,41 @@ class InferenceImageCache:
         thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
         thread.start()
 
-    def set_project_meta(self, project_id, project_meta):
+    def _set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
-        if isinstance(self._cache, PersistentImageTTLCache):
-            self._cache.save_project_meta(pr_meta_name, project_meta)
-        else:
-            self._cache[pr_meta_name] = project_meta
+        with self._lock:
+            if isinstance(self._cache, PersistentImageTTLCache):
+                self._cache.save_project_meta(pr_meta_name, project_meta)
+            else:
+                self._cache[pr_meta_name] = project_meta
 
-    def get_project_meta(self, api: sly.Api, project_id: int):
+    def set_project_meta_safe(self, project_id, project_meta):
+        try:
+            self._set_project_meta(project_id, project_meta)
+        except Exception:
+            sly.logger.debug(
+                f"Failed to update meta for project #{project_id} in cache", exc_info=True
+            )
+
+    def _get_project_meta(self, project_id):
         pr_meta_name = self._project_meta_name(project_id)
-        if isinstance(self._cache, PersistentImageTTLCache):
-            if pr_meta_name in self._cache:
+        with self._lock:
+            if isinstance(self._cache, PersistentImageTTLCache):
                 return self._cache.get_project_meta(pr_meta_name)
-            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-            self._cache.save_project_meta(pr_meta_name, project_meta)
-            return project_meta
-        else:
-            if pr_meta_name in self._cache:
-                return self._cache[pr_meta_name]
-            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-            self._cache[pr_meta_name] = project_meta
-            return project_meta
+            return self._cache[pr_meta_name]
+
+    def download_project_meta(self, api: sly.Api, project_id: int):
+        try:
+            pr_meta_name = self._project_meta_name(project_id)
+            if self._is_cached(pr_meta_name):
+                return self._get_project_meta(project_id)
+        except:
+            sly.logger.debug(
+                f"Error getting meta of project #{project_id} from cache", exc_info=True
+            )
+        project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+        self.set_project_meta_safe(project_id, project_meta)
+        return project_meta
 
     @property
     def ttl(self):
@@ -600,10 +655,12 @@ class InferenceImageCache:
                 f"Number of images and names do not match: {len(images)} != {len(names)}"
             )
 
-        for name, img in zip(names, images):
-            with self._lock:
-                self._cache.save_image(name, img)
-                self._load_queue.delete(name)
+        with self._lock:
+            for name, img in zip(names, images):
+                try:
+                    self._cache.save_image(name, img)
+                finally:
+                    self._load_queue.delete(name)
 
     def _image_name(self, id_or_hash: Union[str, int]) -> str:
         if isinstance(id_or_hash, int):
@@ -623,7 +680,7 @@ class InferenceImageCache:
     def _download_many(
         self,
         indexes: List[Union[int, str]],
-        name_cunstructor: Callable[[int], str],
+        name_constructor: Callable[Union[int, str], str],
         load_generator: Callable[
             [List[int]],
             Generator[Tuple[Union[int, str], np.ndarray], None, None],
@@ -631,33 +688,46 @@ class InferenceImageCache:
         logger: Logger,
         return_images: bool = True,
     ) -> Optional[List[np.ndarray]]:
-        indexes_to_load = []
+        ids_to_load = []
+        added_to_cache = []
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
 
         for pos, hash_or_id in enumerate(indexes):
-            name = name_cunstructor(hash_or_id)
+            name = name_constructor(hash_or_id)
             self._wait_if_in_queue(name, logger)
-
-            if name not in self._cache:
+            in_cache = self._is_cached(name)
+            if not in_cache:
                 self._load_queue.set(name, hash_or_id)
-                indexes_to_load.append(hash_or_id)
+                ids_to_load.append(hash_or_id)
                 pos_by_name[name] = pos
             elif return_images is True:
-                all_frames[pos] = self._cache.get_image(name)
+                try:
+                    all_frames[pos] = self._get_image_from_cache(name)
+                except Exception:
+                    logger.debug(f"Error reading item #{hash_or_id} from cache", exc_info=True)
+                    self._load_queue.set(name, hash_or_id)
+                    ids_to_load.append(hash_or_id)
+                    pos_by_name[name] = pos
 
-        if len(indexes_to_load) > 0:
-            for id_or_hash, image in load_generator(indexes_to_load):
-                name = name_cunstructor(id_or_hash)
-                self._add_to_cache(name, image)
+        if len(ids_to_load) > 0:
+            for id_or_hash, image in load_generator(ids_to_load):
+                name = name_constructor(id_or_hash)
+                try:
+                    self._add_to_cache(name, image)
+                    added_to_cache.append(id_or_hash)
+                except Exception:
+                    logger.debug(f"Error adding item #{id_or_hash} to cache", exc_info=True)
+                    self._load_queue.delete(name)
 
                 if return_images:
                     pos = pos_by_name[name]
                     all_frames[pos] = image
 
         logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-        logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
-        logger.debug(f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}")
+        logger.debug(f"Images/Frames loaded: {ids_to_load}")
+        logger.debug(f"Images/Frames added to cache: {added_to_cache}")
+        logger.debug(f"Images/Frames found in cache: {set(indexes).difference(ids_to_load)}")
 
         if return_images:
             return all_frames
