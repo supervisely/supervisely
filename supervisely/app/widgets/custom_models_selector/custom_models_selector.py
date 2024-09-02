@@ -425,7 +425,7 @@ class CustomModelsSelector(Widget):
         self._sort_table_rows(table_rows)
         return table_rows
 
-    def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> Dict[str, List[ModelRow]]:
+    def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
         for task_type in table_rows:
             table_rows[task_type].sort(key=lambda row: row.task_id, reverse=True)
 
