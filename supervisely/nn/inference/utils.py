@@ -15,12 +15,12 @@ class ModelSource:
 @dataclass
 class CheckpointInfo:
     """
-    checkpoint_name: a name for model weights, e.g. "YOLOv8-L COCO (best)"
+    checkpoint_name: a name for model weights, e.g. "YOLOv8n COCO (best)"
     model_name: a name of a model for which the weights is applicable, e.g. "YOLOv8n"
-    architecture: it is a collection for a set of models, e.g. "YOLOv8"
-    model_source: e.g. "Pretrained models"
+    architecture: a collection for a set of models, e.g. "YOLOv8"
     checkpoint_url: a URL to download the model weights
     custom_checkpoint_path: a path in Team Files to the weights
+    model_source: "Pretrained models" or "Custom models"
     """
     checkpoint_name: str = None
     model_name: str = None
