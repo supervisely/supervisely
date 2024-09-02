@@ -25,6 +25,7 @@ class Overview(MetricVis):
             else:
                 gt_project_id = self._loader.gt_project_info.id
                 val_dataset_id = self._loader._benchmark.gt_dataset_ids[0]
+                # can be several datasets
                 val_dataset_name = self._loader._api.dataset.get_info_by_id(val_dataset_id).name
                 link = f'<a href="/projects/{gt_project_id}/datasets/{val_dataset_id}" target="_blank">{val_dataset_name}</a>'
                 note_about_val_dataset = f"Evaluated on the validation dataset: {link}"
