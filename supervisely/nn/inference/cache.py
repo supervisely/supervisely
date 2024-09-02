@@ -696,8 +696,7 @@ class InferenceImageCache:
         for pos, hash_or_id in enumerate(indexes):
             name = name_constructor(hash_or_id)
             self._wait_if_in_queue(name, logger)
-            in_cache = self._is_cached(name)
-            if not in_cache:
+            if not self._is_cached(name):
                 self._load_queue.set(name, hash_or_id)
                 ids_to_load.append(hash_or_id)
                 pos_by_name[name] = pos
