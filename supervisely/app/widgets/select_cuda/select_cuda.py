@@ -30,13 +30,16 @@ class SelectCudaDevice(Select):
         width_percent: Optional[int] = None,
     ):
         cuda_devices = self._get_gpu_infos(sort_by_free_ram)
-
         items = [
-            Select.Item(value=mem["device_idx"], label=device, right_text=f"{mem["reserved"]}/{mem["total"]}")
-            for device, mem in cuda_devices
+            Select.Item(
+                value=mem["device_idx"],
+                label=device,
+                right_text=f"{round(mem['reserved']/1024**3, 1)} GB / {round(mem['total']/1024**3, 1)} GB",
+            )
+            for device, mem in cuda_devices.items()
         ]
         if include_cpu_option:
-            items.append(Select.Item('cpu', 'CPU'))
+            items.append(Select.Item(value="cpu", label="CPU"))
 
         super().__init__(
             items=items,
@@ -51,20 +54,18 @@ class SelectCudaDevice(Select):
     @staticmethod
     def _get_gpu_infos(sort_by_free_ram):
         cuda.init()
-        gpu_info = None
+        devices = None
         try:
-            gpu_info = {}
-            gpu_info["is_available"] = cuda.is_available()
-            if gpu_info["is_available"] is True:
+            if cuda.is_available() is True:
                 devices = {}
                 for idx in range(cuda.device_count()):
                     device_name = cuda.get_device_name(idx)
+                    device_idx = f"cuda:{idx}"
                     try:
                         device_props = cuda.get_device_properties(idx)
                         total_mem = device_props.total_memory
                         reserved_mem = cuda.memory_reserved(idx)
                         free_mem = total_mem - reserved_mem
-                        device_idx = f"cuda:{idx}"
 
                         device_key = f"{device_name} ({device_idx})"
                         devices[device_key] = {
@@ -81,8 +82,6 @@ class SelectCudaDevice(Select):
                         sorted(devices.items(), key=lambda item: item[1]["free"], reverse=True)
                     )
 
-                gpu_info["devices"] = devices
-
         except Exception as e:
             logger.warning(repr(e))
-        return gpu_info
+        return devices
