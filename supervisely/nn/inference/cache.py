@@ -574,7 +574,7 @@ class InferenceImageCache:
             else:
                 self._cache[pr_meta_name] = project_meta
 
-    def set_project_meta_safe(self, project_id, project_meta):
+    def set_project_meta(self, project_id, project_meta):
         try:
             self._set_project_meta(project_id, project_meta)
         except Exception:
@@ -599,7 +599,7 @@ class InferenceImageCache:
                 f"Error getting meta of project #{project_id} from cache", exc_info=True
             )
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-        self.set_project_meta_safe(project_id, project_meta)
+        self.set_project_meta(project_id, project_meta)
         return project_meta
 
     @property
