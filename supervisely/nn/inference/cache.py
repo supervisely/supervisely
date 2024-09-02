@@ -318,7 +318,7 @@ class InferenceImageCache:
             return self._read_frames_from_cached_video(video_id, [frame_index])[0]
         raise KeyError(f"Frame {frame_index} of video #{video_id} not found in cache")
 
-    def _get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
+    def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
         if isinstance(self._cache, PersistentImageTTLCache) and self._is_cached(video_id):
             return self._read_frames_from_cached_video(video_id, frame_indexes)
         else:
@@ -362,7 +362,7 @@ class InferenceImageCache:
 
         try:
             if self._is_cached(video_id):
-                return self._get_frames_from_cache(video_id, frame_indexes)
+                return self.get_frames_from_cache(video_id, frame_indexes)
             elif redownload_video:
                 Thread(
                     target=self.download_video,
@@ -443,7 +443,7 @@ class InferenceImageCache:
             api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
             self._add_video_to_cache(video_id, temp_video_path)
         if return_images:
-            return self._get_frames_from_cache(video_id, list(range(video_info.frames_count)))
+            return self.get_frames_from_cache(video_id, list(range(video_info.frames_count)))
 
     def add_cache_endpoint(self, server: FastAPI):
         @server.post("/smart_cache")
