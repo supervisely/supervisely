@@ -363,24 +363,18 @@ class InferenceImageCache:
         try:
             if self._is_cached(video_id):
                 return self.get_frames_from_cache(video_id, frame_indexes)
-            elif redownload_video:
-                Thread(
-                    target=self.download_video,
-                    args=(api, video_id),
-                    kwargs={"return_images": False},
-                ).start()
         except Exception:
             sly.logger.debug(
                 f"Error getting frames from cache",
                 exc_info=True,
                 extra={"video_id": video_id, "frame_indexes": frame_indexes},
             )
-            if redownload_video:
-                Thread(
-                    target=self.download_video,
-                    args=(api, video_id),
-                    kwargs={"return_images": False},
-                ).start()
+        if redownload_video:
+            Thread(
+                target=self.download_video,
+                args=(api, video_id),
+                kwargs={"return_images": False},
+            ).start()
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
