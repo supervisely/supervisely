@@ -413,7 +413,7 @@ class InferenceImageCache:
                     if not ret:
                         break
                     frame = np.array(frame)
-                    self._add_frame_to_cache(frame, video_id, frame_index)
+                    self.add_frame_to_cache(frame, video_id, frame_index)
                     frame_index = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
             finally:
                 cap.release()
@@ -487,7 +487,7 @@ class InferenceImageCache:
             video_id = image_ids
             self.download_video(api, video_id, **kwargs)
 
-    def _add_frame_to_cache(self, frame: np.ndarray, video_id: int, frame_index: int):
+    def add_frame_to_cache(self, frame: np.ndarray, video_id: int, frame_index: int):
         name = self._frame_name(video_id, frame_index)
         self._add_to_cache(name, frame)
 
@@ -507,7 +507,7 @@ class InferenceImageCache:
             video_id = state["video_id"]
             for frame_index, file in zip(image_ids, files):
                 frame = sly.image.read_bytes(file.file.read())
-                self._add_frame_to_cache(frame, video_id, frame_index)
+                self.add_frame_to_cache(frame, video_id, frame_index)
         elif task_type is InferenceImageCache._LoadType.Video:
             video_id = image_ids
             temp_video_path = Path("/tmp/smart_cache").joinpath(
