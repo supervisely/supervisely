@@ -602,6 +602,10 @@ class InferenceImageCache:
         self.set_project_meta(project_id, project_meta)
         return project_meta
 
+    def get_project_meta(self, api: sly.Api, project_id: int):
+        """Deprecated. Use download_project_meta instead."""
+        return self.download_project_meta(api, project_id)
+
     @property
     def ttl(self):
         return self._ttl
