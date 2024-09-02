@@ -678,7 +678,7 @@ class InferenceImageCache:
     def _download_many(
         self,
         indexes: List[Union[int, str]],
-        name_constructor: Callable[[Union[int, str]], str],
+        name_cunstructor: Callable[[Union[int, str]], str],
         load_generator: Callable[
             [List[int]],
             Generator[Tuple[Union[int, str], np.ndarray], None, None],
@@ -692,7 +692,7 @@ class InferenceImageCache:
         all_frames = [None for _ in range(len(indexes))]
 
         for pos, hash_or_id in enumerate(indexes):
-            name = name_constructor(hash_or_id)
+            name = name_cunstructor(hash_or_id)
             self._wait_if_in_queue(name, logger)
             if not self._is_cached(name):
                 self._load_queue.set(name, hash_or_id)
@@ -709,7 +709,7 @@ class InferenceImageCache:
 
         if len(ids_to_load) > 0:
             for id_or_hash, image in load_generator(ids_to_load):
-                name = name_constructor(id_or_hash)
+                name = name_cunstructor(id_or_hash)
                 try:
                     self._add_to_cache(name, image)
                     added_to_cache.append(id_or_hash)
