@@ -19,6 +19,7 @@ class ConfusionMatrix(MetricVis):
 
         self.clickable = True
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_confusion_matrix=Widget.Markdown(title="Confusion Matrix", is_header=True),
             chart=Widget.Chart(),
         )
@@ -42,16 +43,16 @@ class ConfusionMatrix(MetricVis):
         )
         fig = px.imshow(
             df,
-            labels=dict(x="Ground Truth", y="Predicted", color="Count"),
+            labels=dict(x="Ground Truth", y="Predicted", color="Objects Count"),
             # title="Confusion Matrix (log-scale)",
-            width=1000,
-            height=1000,
+            width=1000 if len(cat_names) > 10 else 600,
+            height=1000 if len(cat_names) > 10 else 600,
         )
 
         # Hover text
         fig.update_traces(
             customdata=confusion_matrix,
-            hovertemplate="Count: %{customdata}<br>Predicted: %{y}<br>Ground Truth: %{x}",
+            hovertemplate="Objects Count: %{customdata}<br>Predicted: %{y}<br>Ground Truth: %{x}",
         )
 
         # Text on cells
@@ -66,30 +67,23 @@ class ConfusionMatrix(MetricVis):
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
 
-        unique_pairs = set()
-        filtered_pairs = []
-        for k, val in self._loader.click_data.confusion_matrix.items():
-            ordered_pair = tuple(sorted(k))
-            if ordered_pair not in unique_pairs:
-                unique_pairs.add(ordered_pair)
-            else:
-                continue
-
-            subkey1, subkey2 = ordered_pair
-            key = subkey1 + self._keypair_sep + subkey2
+        for (pred_key, gt_key), matches_data in self._loader.click_data.confusion_matrix.items():
+            key = gt_key + self._keypair_sep + pred_key
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
-            res["clickData"][key]["title"] = f"Class Pair: {subkey1} - {subkey2}"
-            sub_title_1 = f"{subkey1} (GT)" if subkey1 != "(None)" else "No GT"
-            sub_title_2 = f"{subkey2} (Prediction)" if subkey2 != "(None)" else "No Prediction"
-            res["clickData"][key]["title"] = f"Confusion Matrix: {sub_title_1} – {sub_title_2}"
+            gt_title = f"GT: '{gt_key}'" if gt_key != "(None)" else "No GT Objects"
+            pred_title = f"Predicted: '{pred_key}'" if pred_key != "(None)" else "No Predictions"
+            res["clickData"][key]["title"] = f"Confusion Matrix. {gt_title} – {pred_title}"
 
             img_ids = set()
             obj_ids = set()
-            for x in val:
-                image_id = self._loader.dt_images_dct[x["dt_img_id"]].id
-                img_ids.add(image_id)
-                obj_ids.add(x["dt_obj_id"])
+            for match_data in matches_data:
+                if match_data["dt_obj_id"] is not None:
+                    img_ids.add(match_data["dt_img_id"])
+                    obj_ids.add(match_data["dt_obj_id"])
+                else:
+                    img_ids.add(match_data["gt_img_id"])
+                    obj_ids.add(match_data["gt_obj_id"])
 
             res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [

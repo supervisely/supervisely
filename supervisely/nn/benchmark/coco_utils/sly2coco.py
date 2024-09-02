@@ -1,7 +1,7 @@
 import json
 import os
 from os.path import join as pjoin
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 
@@ -15,6 +15,7 @@ def sly2coco(
     accepted_shapes: list = None,
     conf_threshold: float = None,
     progress_cb: Optional[Callable] = None,
+    classes_whitelist: Optional[List[str]] = None,
 ):
     from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
@@ -29,16 +30,21 @@ def sly2coco(
     with open(meta_path, "r") as f:
         meta = json.load(f)
     classes_sorted = sorted(meta["classes"], key=lambda x: x["title"])
-    if accepted_shapes is None:
-        cat2id = {cat["title"]: i + 1 for i, cat in enumerate(classes_sorted)}
-    else:
-        accepted_shapes: set = set(accepted_shapes)
+    if accepted_shapes is not None:
+        accepted_shapes = set(accepted_shapes)
         accepted_shapes.add("any")
-        cat2id = {
-            cat["title"]: i + 1
-            for i, cat in enumerate(classes_sorted)
-            if cat["shape"] in accepted_shapes
-        }
+
+    cat2id = {}
+    i = 1
+    for obj_cls in classes_sorted:
+        if accepted_shapes is not None and obj_cls["shape"] not in accepted_shapes:
+            continue
+        if classes_whitelist:
+            if obj_cls["title"] not in classes_whitelist:
+                continue
+        cat2id[obj_cls["title"]] = i
+        i += 1
+
     categories = [{"id": id, "name": cat} for cat, id in cat2id.items()]
 
     # Images + Annotations
@@ -48,11 +54,11 @@ def sly2coco(
     # TODO: progress can be created here:
     # total = len(ann_files) X len(datasets)
     # progress = pbar(total=total, desc="Converting {GT/Pred} to COCO format")
+    img_id = 1
     for dataset_name in datasets:
         ann_path = pjoin(sly_project_path, dataset_name, "ann")
         imginfo_path = pjoin(sly_project_path, dataset_name, "img_info")
         ann_files = sorted(os.listdir(ann_path))
-        img_id = 1
         for batch in batched(ann_files, 30):
             for ann_file in batch:
                 img_name = os.path.splitext(ann_file)[0]
@@ -76,6 +82,9 @@ def sly2coco(
                     if accepted_shapes is not None and geometry_type not in accepted_shapes:
                         continue
                     class_name = label["classTitle"]
+                    if classes_whitelist:
+                        if class_name not in classes_whitelist:
+                            continue
                     category_id = cat2id[class_name]
                     sly_id = label["id"]
                     if geometry_type == "rectangle":

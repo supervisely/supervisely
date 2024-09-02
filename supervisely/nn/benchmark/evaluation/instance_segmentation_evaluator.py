@@ -29,16 +29,25 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
             self.gt_project_path,
             is_dt_dataset=False,
             accepted_shapes=["polygon", "bitmap"],
+            classes_whitelist=self.classes_whitelist,
         )
         cocoDt_json = sly2coco(
             self.dt_project_path,
             is_dt_dataset=True,
             accepted_shapes=["polygon", "bitmap"],
+            classes_whitelist=self.classes_whitelist,
         )
+        if len(cocoGt_json["annotations"]) == 0:
+            raise ValueError("Not found any annotations in GT project")
+        if len(cocoDt_json["annotations"]) == 0:
+            raise ValueError(
+                "Not found any predictions. "
+                "Please make sure that your model produces predictions."
+            )
         assert cocoDt_json['categories'] == cocoGt_json['categories']
         assert [x['id'] for x in cocoDt_json['images']] == [x['id'] for x in cocoGt_json['images']]
         return cocoGt_json, cocoDt_json
-    
+
     def _dump_datasets(self):
         cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
         dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
@@ -54,4 +63,3 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
         cocoDt_path = os.path.join(base_dir, "cocoDt.json")
         eval_data_path = os.path.join(base_dir, "eval_data.pkl")
         return cocoGt_path, cocoDt_path, eval_data_path
-    

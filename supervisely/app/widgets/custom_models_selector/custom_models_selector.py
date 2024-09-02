@@ -423,7 +423,12 @@ class CustomModelsSelector(Widget):
                     if task_type is not None and model_row is not None:
                         table_rows[task_type].append(model_row)
 
-        return dict(table_rows)
+        self._sort_table_rows(table_rows)
+        return table_rows
+
+    def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
+        for task_type in table_rows:
+            table_rows[task_type].sort(key=lambda row: row.task_id, reverse=True)
 
     def _filter_task_types(self, task_types: List[str]):
         sorted_tt = []

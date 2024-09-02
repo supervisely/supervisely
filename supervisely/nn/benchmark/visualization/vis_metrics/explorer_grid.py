@@ -18,9 +18,9 @@ class ExplorerGrid(MetricVis):
         self.clickable = True
         self.has_diffs_view = True
 
-        optimal_conf = round(self.f1_optimal_conf, 1)
-        filters = [{"confidence": [optimal_conf, 1]}]
+        filters = [{"confidence": [self.f1_optimal_conf, 1]}]
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_explorer=Widget.Markdown(title="Explore Predictions", is_header=True),
             gallery=Widget.Gallery(filters=filters),
         )
@@ -54,7 +54,7 @@ class ExplorerGrid(MetricVis):
         return res
 
     def get_gallery(self, widget: Widget.Gallery):
-        return self._get_gallery(widget, limit=8)
+        return self._get_gallery(widget, limit=9)
 
     def get_gallery_click_data(self, widget: Widget.Gallery):
         res = {}
@@ -65,8 +65,7 @@ class ExplorerGrid(MetricVis):
         explore["title"] = "Explore all predictions"
         images_ids = explore.setdefault("imagesIds", [])
 
-        images = list(self._loader.dt_images_dct.values())
-        images_ids.extend([x.id for x in images])
+        images_ids.extend([cd.pred_image_info.id for cd in self._loader.comparison_data.values()])
 
         return res
 
@@ -81,27 +80,21 @@ class ExplorerGrid(MetricVis):
 
         click_data = res.setdefault("clickData", {})
 
-        l1 = list(self._loader.gt_images_dct.values())
-        l2 = list(self._loader.dt_images_dct.values())
-        l3 = list(self._loader.diff_images_dct.values())
-
-        pred_anns = self._loader.dt_ann_jsons  # {image_id: ann_json}
-        diff_anns = self._loader.diff_ann_jsons  # {image_id: ann_json}
-
-        optimal_conf = round(self.f1_optimal_conf, 1)
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [optimal_conf, 1]},
+            {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
-        for gt, pred, diff, pred_ann, diff_ann in zip(
-            l1, l2, l3, pred_anns.items(), diff_anns.items()
-        ):
+        for img_comparison_data in self._loader.comparison_data.values():
+            gt = img_comparison_data.gt_image_info
+            pred = img_comparison_data.pred_image_info
+            diff = img_comparison_data.diff_image_info
             assert gt.name == pred.name == diff.name
             key = click_data.setdefault(str(pred.id), {})
             key["imagesIds"] = [gt.id, pred.id, diff.id]
             key["filters"] = default_filters
             key["title"] = f"Image: {pred.name}"
-            image_id, ann_json = pred_ann
+            image_id = pred.id
+            ann_json = img_comparison_data.pred_annotation.to_json()
             assert image_id == pred.id
             object_bindings = []
             for obj in ann_json["objects"]:
@@ -120,7 +113,8 @@ class ExplorerGrid(MetricVis):
                             ]
                         )
 
-            image_id, ann_json = diff_ann
+            image_id = diff.id
+            ann_json = img_comparison_data.diff_annotation.to_json()
             assert image_id == diff.id
             for obj in ann_json["objects"]:
                 for tag in obj["tags"]:
