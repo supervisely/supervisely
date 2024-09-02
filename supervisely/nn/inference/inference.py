@@ -909,7 +909,7 @@ class Inference:
         if upload:
             ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
             output_project_id = ds_info.project_id
-            output_project_meta = self.cache.download_project_meta(api, output_project_id)
+            output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
             logger.debug("Merging project meta...")
 
             output_project_meta, ann, meta_changed = update_meta_and_ann(output_project_meta, ann)
@@ -917,7 +917,6 @@ class Inference:
                 output_project_meta = api.project.update_meta(
                     output_project_id, output_project_meta
                 )
-                self.cache.set_project_meta_safe(output_project_id, output_project_meta)
 
             logger.debug(
                 "Uploading annotation...",
