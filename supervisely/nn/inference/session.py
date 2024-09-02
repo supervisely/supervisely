@@ -134,8 +134,9 @@ class SessionJSON:
         return hr_info
 
     def get_model_meta(self) -> Dict[str, Any]:
-        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-        self._model_meta = meta_json
+        if self._model_meta is None:
+            meta_json = self._get_from_endpoint("get_output_classes_and_tags")
+            self._model_meta = meta_json
         return self._model_meta
 
     def get_deploy_info(self) -> Dict[str, Any]:
@@ -530,6 +531,7 @@ class SessionJSON:
             self._clear_inference_request()
         finally:
             self._async_inference_uuid = None
+            self._model_meta = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
         url = kwargs.get("url") or args[0]
@@ -687,9 +689,10 @@ class Session(SessionJSON):
         return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
-        model_meta_json = super().get_model_meta()
-        model_meta = sly.ProjectMeta.from_json(model_meta_json)
-        self._model_meta = model_meta
+        if self._model_meta is None:
+            model_meta_json = super().get_model_meta()
+            model_meta = sly.ProjectMeta.from_json(model_meta_json)
+            self._model_meta = model_meta
         return self._model_meta
 
     def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
