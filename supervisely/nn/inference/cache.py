@@ -680,7 +680,7 @@ class InferenceImageCache:
     def _download_many(
         self,
         indexes: List[Union[int, str]],
-        name_constructor: Callable[Union[int, str], str],
+        name_constructor: Callable[[Union[int, str]], str],
         load_generator: Callable[
             [List[int]],
             Generator[Tuple[Union[int, str], np.ndarray], None, None],
