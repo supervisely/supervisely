@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-from collections import defaultdict
 from contextlib import contextmanager
 from enum import Enum
 from logging import Logger
