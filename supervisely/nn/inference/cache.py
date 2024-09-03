@@ -7,7 +7,7 @@ from enum import Enum
 from logging import Logger
 from pathlib import Path
 from threading import Lock, RLock, Thread
-from time import sleep
+from time import monotonic, sleep
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 
 import cv2
@@ -63,23 +63,37 @@ class PersistentImageLRUCache(LRUCache):
 
 
 class PersistentImageTTLCache(TTLCache):
+    TIMESTEP = 0.0001
+
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
-        self._locks = defaultdict(RLock)
-
-    def get_lock(self, key):
-        return self._locks[key]
+        self._lock = RLock()
+        self._lockmap = {}
 
     @contextmanager
-    def acquire_lock(self, key):
-        lock = self.get_lock(key)
-        lock.acquire()
+    def acquire_lock(self, key, timeout=None):
+        retry = True
+        start = monotonic()
         try:
+            while retry:
+                retry = False
+                with self._lock:
+                    if not self._lockmap.get(key, False):
+                        self._lockmap[key] = True
+                    else:
+                        retry = True
+                        sleep(self.TIMESTEP)
+                        if timeout is not None:
+                            if monotonic() - start > timeout:
+                                raise TimeoutError()
             yield
         finally:
-            if key in self._locks:
-                lock.release()
+            with self._lock:
+                try:
+                    del self._lockmap[key]
+                except KeyError:
+                    pass
 
     def pop(self, *args, **kwargs):
         try:
@@ -106,7 +120,6 @@ class PersistentImageTTLCache(TTLCache):
         with self.acquire_lock(key):
             self.__del_file(key)
             super().__delitem__(key)
-            del self._locks[key]
 
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
@@ -121,7 +134,7 @@ class PersistentImageTTLCache(TTLCache):
             # pylint: disable=no-member
             link = self._TTLCache__getlink(key)
             # pylint: disable=no-member
-            link.expire = self._TTLCache__timer() + self._TTLCache__ttl
+            link.expire = self._TTLCache__timer() + self.ttl
         except KeyError:
             return
 
