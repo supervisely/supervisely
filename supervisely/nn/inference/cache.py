@@ -1,10 +1,12 @@
 import json
 import os
 import shutil
+from collections import defaultdict
+from contextlib import contextmanager
 from enum import Enum
 from logging import Logger
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock, RLock, Thread
 from time import sleep
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 
@@ -64,6 +66,20 @@ class PersistentImageTTLCache(TTLCache):
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
+        self._locks = defaultdict(RLock)
+
+    def get_lock(self, key):
+        return self._locks[key]
+
+    @contextmanager
+    def acquire_lock(self, key):
+        lock = self.get_lock(key)
+        lock.acquire()
+        try:
+            yield
+        finally:
+            if key in self._locks:
+                lock.release()
 
     def pop(self, *args, **kwargs):
         try:
@@ -87,8 +103,10 @@ class PersistentImageTTLCache(TTLCache):
                     pass
 
     def __delitem__(self, key: Any) -> None:
-        self.__del_file(key)
-        return super().__delitem__(key)
+        with self.acquire_lock(key):
+            self.__del_file(key)
+            super().__delitem__(key)
+            del self._locks[key]
 
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
@@ -136,34 +154,50 @@ class PersistentImageTTLCache(TTLCache):
             shutil.rmtree(self._base_dir)
 
     def save_image(self, key, image: np.ndarray) -> None:
-        if not self._base_dir.exists():
-            self._base_dir.mkdir()
+        with self.acquire_lock(key):
+            if not self._base_dir.exists():
+                self._base_dir.mkdir()
 
-        filepath = self._base_dir / f"{str(key)}.png"
-        self[key] = filepath
+            filepath = self._base_dir / f"{str(key)}.png"
+            self[key] = filepath
 
-        if filepath.exists():
-            sly.logger.debug(f"Rewrite image {str(filepath)}")
-        sly.image.write(str(filepath), image)
+            if filepath.exists():
+                sly.logger.debug(f"Rewrite image {str(filepath)}")
+            sly.image.write(str(filepath), image)
 
     def get_image_path(self, key: Any) -> Path:
         return self[key]
 
     def get_image(self, key: Any):
-        return sly.image.read(str(self[key]))
+        with self.acquire_lock(key):
+            return sly.image.read(str(self[key]))
 
     def save_video(self, video_id: int, src_video_path: str) -> None:
-        video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
-        self[video_id] = video_path
-        if src_video_path != str(video_path):
-            shutil.move(src_video_path, str(video_path))
-        sly.logger.debug(f"Saved video to {video_path}")
+        with self.acquire_lock(video_id):
+            video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
+            self[video_id] = video_path
+            if src_video_path != str(video_path):
+                shutil.move(src_video_path, str(video_path))
+            sly.logger.debug(f"Saved video to {video_path}")
+
+    @contextmanager
+    def open_video(self, video_id: int):
+        with self.acquire_lock(video_id):
+            video_path = self.get_video_path(video_id)
+            if video_path is None or not video_path.exists():
+                raise KeyError(f"Video {video_id} not found in cache")
+            cap = cv2.VideoCapture(str(video_path))
+            try:
+                yield cap
+            finally:
+                cap.release()
 
     def get_video_path(self, video_id: int) -> Path:
-        return self[video_id]
+        return self.get(video_id, None)
 
     def save_project_meta(self, key, value):
-        self[key] = value
+        with self.acquire_lock(key):
+            self[key] = value
 
     def get_project_meta(self, project_meta_name):
         return self[project_meta_name]
@@ -186,7 +220,6 @@ class InferenceImageCache:
         self.is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
-        self._lock = Lock()
         self._load_queue = CacheOut(10 * 60)
 
         if is_persistent:
@@ -197,28 +230,19 @@ class InferenceImageCache:
             self._cache = TTLCache(maxsize, ttl)
 
     def clear_cache(self):
-        with self._lock:
-            self._cache.clear(False)
-
-    def _is_cached(self, key: Any) -> bool:
-        with self._lock:
-            try:
-                return key in self._cache
-            except Exception:
-                return False
+        self._cache.clear(False)
 
     def _get_image_from_cache(self, key: Any) -> np.ndarray:
-        with self._lock:
-            if isinstance(self._cache, PersistentImageTTLCache):
-                return self._cache.get_image(key)
-            return self._cache[key]
+        if isinstance(self._cache, PersistentImageTTLCache):
+            return self._cache.get_image(key)
+        return self._cache[key]
 
     def download_image(self, api: sly.Api, image_id: int):
         img = None
         name = self._image_name(image_id)
         try:
             self._wait_if_in_queue(name, api.logger)
-            if self._is_cached(name):
+            if name in self._cache:
                 sly.logger.debug(f"Get image #{image_id} from cache")
                 return self._get_image_from_cache(name)
 
@@ -252,7 +276,7 @@ class InferenceImageCache:
         image_key = self._image_name(img_hash)
         try:
             self._wait_if_in_queue(image_key, api.logger)
-            if self._is_cached(image_key):
+            if image_key in self._cache:
                 api.logger.debug(f"Get image #{img_hash} from cache")
                 return self._get_image_from_cache(image_key)
 
@@ -288,12 +312,7 @@ class InferenceImageCache:
     def _read_frames_from_cached_video(
         self, video_id: int, frame_indexes: List[int]
     ) -> List[np.ndarray]:
-        with self._lock:
-            video_path = self._cache.get_video_path(video_id)
-        if video_path is None or not video_path.exists():
-            raise KeyError(f"Video {video_id} not found in cache")
-        cap = cv2.VideoCapture(str(video_path))
-        try:
+        with self._cache.open_video(video_id) as cap:
             frames = []
             prev_idx = -1
             for frame_index in frame_indexes:
@@ -307,19 +326,17 @@ class InferenceImageCache:
                 frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 prev_idx = frame_index
             return frames
-        finally:
-            cap.release()
 
     def _get_frame_from_cache(self, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
-        if self._is_cached(name):
+        if name in self._cache:
             return self._get_image_from_cache(name)
-        if self._is_cached(video_id):
+        if video_id in self._cache:
             return self._read_frames_from_cached_video(video_id, [frame_index])[0]
         raise KeyError(f"Frame {frame_index} of video #{video_id} not found in cache")
 
     def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
-        if isinstance(self._cache, PersistentImageTTLCache) and self._is_cached(video_id):
+        if isinstance(self._cache, PersistentImageTTLCache) and video_id in self._cache:
             return self._read_frames_from_cached_video(video_id, frame_indexes)
         else:
             return [
@@ -337,7 +354,7 @@ class InferenceImageCache:
         name = self._frame_name(video_id, frame_index)
         try:
             self._wait_if_in_queue(name, api.logger)
-            if self._is_cached(name):
+            if name in self._cache:
                 sly.logger.debug(f"Get frame {frame_index} of video #{video_id} from cache")
                 return self._get_image_from_cache(name)
             self._load_queue.set(name, (video_id, frame_index))
@@ -361,7 +378,7 @@ class InferenceImageCache:
         redownload_video = kwargs.get("redownload_video", False)
 
         try:
-            if self._is_cached(video_id):
+            if video_id in self._cache:
                 return self.get_frames_from_cache(video_id, frame_indexes)
         except Exception:
             sly.logger.debug(
@@ -395,16 +412,15 @@ class InferenceImageCache:
         Adds video to cache.
         """
         if isinstance(self._cache, PersistentImageTTLCache):
-            with self._lock:
-                self._cache.save_video(video_id, str(video_path))
-                self._load_queue.delete(video_id)
+            self._cache.save_video(video_id, str(video_path))
+            self._load_queue.delete(video_id)
         else:
             cap = cv2.VideoCapture(str(video_path))
             try:
                 frame_index = 0
                 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 while cap.isOpened():
-                    while self._is_cached(self._frame_name(video_id, frame_index)):
+                    while self._frame_name(video_id, frame_index) in self._cache:
                         frame_index += 1
                     if frame_index >= total_frames:
                         break
@@ -428,7 +444,7 @@ class InferenceImageCache:
 
         video_info = api.video.get_info_by_id(video_id)
         self._wait_if_in_queue(video_id, api.logger)
-        if not self._is_cached(video_id):
+        if not video_id in self._cache:
             self._load_queue.set(video_id, video_id)
             sly.logger.debug("Downloading video #%s", video_id)
             temp_video_path = Path("/tmp/smart_cache").joinpath(
@@ -568,11 +584,10 @@ class InferenceImageCache:
 
     def _set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
-        with self._lock:
-            if isinstance(self._cache, PersistentImageTTLCache):
-                self._cache.save_project_meta(pr_meta_name, project_meta)
-            else:
-                self._cache[pr_meta_name] = project_meta
+        if isinstance(self._cache, PersistentImageTTLCache):
+            self._cache.save_project_meta(pr_meta_name, project_meta)
+        else:
+            self._cache[pr_meta_name] = project_meta
 
     def set_project_meta(self, project_id, project_meta):
         try:
@@ -584,15 +599,14 @@ class InferenceImageCache:
 
     def _get_project_meta(self, project_id):
         pr_meta_name = self._project_meta_name(project_id)
-        with self._lock:
-            if isinstance(self._cache, PersistentImageTTLCache):
-                return self._cache.get_project_meta(pr_meta_name)
-            return self._cache[pr_meta_name]
+        if isinstance(self._cache, PersistentImageTTLCache):
+            return self._cache.get_project_meta(pr_meta_name)
+        return self._cache[pr_meta_name]
 
     def download_project_meta(self, api: sly.Api, project_id: int):
         try:
             pr_meta_name = self._project_meta_name(project_id)
-            if self._is_cached(pr_meta_name):
+            if pr_meta_name in self._cache:
                 return self._get_project_meta(project_id)
         except:
             sly.logger.debug(
@@ -653,12 +667,11 @@ class InferenceImageCache:
                 f"Number of images and names do not match: {len(images)} != {len(names)}"
             )
 
-        with self._lock:
-            for name, img in zip(names, images):
-                try:
-                    self._cache.save_image(name, img)
-                finally:
-                    self._load_queue.delete(name)
+        for name, img in zip(names, images):
+            try:
+                self._cache.save_image(name, img)
+            finally:
+                self._load_queue.delete(name)
 
     def _image_name(self, id_or_hash: Union[str, int]) -> str:
         if isinstance(id_or_hash, int):
@@ -694,7 +707,7 @@ class InferenceImageCache:
         for pos, hash_or_id in enumerate(indexes):
             name = name_cunstructor(hash_or_id)
             self._wait_if_in_queue(name, logger)
-            if not self._is_cached(name):
+            if not name in self._cache:
                 self._load_queue.set(name, hash_or_id)
                 ids_to_load.append(hash_or_id)
                 pos_by_name[name] = pos
@@ -715,7 +728,6 @@ class InferenceImageCache:
                     added_to_cache.append(id_or_hash)
                 except Exception:
                     logger.debug(f"Error adding item #{id_or_hash} to cache", exc_info=True)
-                    self._load_queue.delete(name)
 
                 if return_images:
                     pos = pos_by_name[name]
