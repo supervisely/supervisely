@@ -46,6 +46,17 @@
     </el-option-group>
   </div>
 </el-select>
+<el-button
+  :type="data.{{{widget.widget_id}}}.button.button_type"
+  :plain="data.{{{widget.widget_id}}}.button.plain"
+  :loading="data.{{{widget.widget_id}}}.button.loading"
+  :size="data.{{{widget.widget_id}}}.button.button_size"
+  :disabled="data.{{{widget.widget_id}}}.button.disabled"
+  style="margin-left: 10px;"
+>
+  <span v-html="data.{{{widget.widget_id}}}.button.icon"></span>
+  <span v-html="data.{{{widget.widget_id}}}.button.text"></span>
+</el-button>
 <span v-if="data.{{{widget.widget_id}}}.with_link" style="margin-left:10px;">
   <a :href="state.{{{widget.widget_id}}}.links[state.{{{widget.widget_id}}}.value]" target="_blank">Learn more...</a>
 </span>

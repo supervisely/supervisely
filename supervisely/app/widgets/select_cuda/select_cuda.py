@@ -2,7 +2,7 @@ from __future__ import annotations
 from supervisely.app import StateJson, DataJson
 from supervisely.app.widgets import Widget, ConditionalWidget
 from typing import List, Dict, Optional
-from supervisely.app.widgets.select.select import Select
+from supervisely.app.widgets import Select, Button
 
 from supervisely.sly_logger import logger
 
@@ -18,12 +18,17 @@ class SelectCudaDevice(Widget):
 
     def __init__(
         self,
-        get_list_on_init: bool = True,  # подумать
+        get_list_on_init: bool = True,
         sort_by_free_ram: Optional[bool] = False,
         include_cpu_option: Optional[bool] = False,
         widget_id: str = None,
     ):
         self._select = Select([])
+        self._refresh_button = Button(
+            text="", button_type="text", icon="zmdi zmdi-refresh", plain=True, button_size="large"
+        )
+        self._refresh_button.click(self.refresh)
+
         self._sort_by_free_ram = sort_by_free_ram
         self._include_cpu_option = include_cpu_option
         if get_list_on_init:
@@ -35,11 +40,11 @@ class SelectCudaDevice(Widget):
         cuda_devices = self._get_gpu_infos(self._sort_by_free_ram)
         items = [
             Select.Item(
-                value=mem["device_idx"],
+                value=info["device_idx"],
                 label=device,
-                right_text=f"{round(mem['reserved']/1024**3, 1)} GB / {round(mem['total']/1024**3, 1)} GB",
+                right_text=info["right_text"],
             )
-            for device, mem in cuda_devices.items()
+            for device, info in cuda_devices.items()
         ]
 
         if self._include_cpu_option:
@@ -60,11 +65,11 @@ class SelectCudaDevice(Widget):
                         reserved_mem = cuda.memory_reserved(idx)
                         free_mem = total_mem - reserved_mem
 
+                        right_text = f"{round(reserved_mem/1024**3, 1)} GB / {round(total_mem/1024**3, 1)} GB"
                         device_key = f"{device_name} ({device_idx})"
                         devices[device_key] = {
                             "device_idx": device_idx,
-                            "total": total_mem,
-                            "reserved": reserved_mem,
+                            "right_text": right_text,
                             "free": free_mem,
                         }
                     except Exception as e:
@@ -80,7 +85,9 @@ class SelectCudaDevice(Widget):
         return devices
 
     def get_json_data(self):
-        return self._select.get_json_data()
+        select_data = self._select.get_json_data()
+        button_data = self._refresh_button.get_json_data()
+        return {**select_data, "button": button_data}
 
     def get_json_state(self):
         return self._select.get_json_state()
