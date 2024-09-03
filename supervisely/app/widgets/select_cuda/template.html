@@ -1,4 +1,4 @@
-<el-select
+<!-- <el-select
   v-model="state.{{{widget.widget_id}}}.value"
   {% if widget._changes_handled == true %}
   @change="post('/{{{widget.widget_id}}}/value_changed')"
@@ -59,4 +59,8 @@
 </el-button>
 <span v-if="data.{{{widget.widget_id}}}.with_link" style="margin-left:10px;">
   <a :href="state.{{{widget.widget_id}}}.links[state.{{{widget.widget_id}}}.value]" target="_blank">Learn more...</a>
-</span>
+</span> -->
+
+<div>
+    {{{widget._content}}}
+</div>
