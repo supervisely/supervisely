@@ -1860,6 +1860,7 @@ class Inference:
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
             self._task_id = task["id"]
+            os.environ["TASK_ID"] = str(self._task_id)
         else:
             self._task_id = env.task_id() if is_production() else None
 
