@@ -156,6 +156,7 @@ class Inference:
 
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
+            self._initialize_app_layout()
 
         self._inference_requests = {}
         max_workers = 1 if not multithread_inference else None
@@ -228,6 +229,29 @@ class Inference:
             add_content_to_pretrained_tab=self.add_content_to_pretrained_tab,
             add_content_to_custom_tab=self.add_content_to_custom_tab,
             custom_model_link_type=self.get_custom_model_link_type(),
+        )
+    
+    def _initialize_app_layout(self):
+        self._user_layout_card = Card(
+            title="Select Model",
+            description="Select the model to deploy and press the 'Serve' button.",
+            content=self._user_layout,
+            lock_message="Model is deployed. To change the model, stop the serving first.",
+        )
+        self._api_request_model_info = Editor(
+            height_lines=12,
+            language_mode="json",
+            readonly=True,
+            restore_default_button=False,
+            auto_format=True,
+        )
+        self._api_request_model_layout = Card(
+            title="Model was deployed from API request with the following settings",
+            content=self._api_request_model_info,
+        )
+        self._api_request_model_layout.hide()
+        self._app_layout = Container(
+            [self._user_layout_card, self._api_request_model_layout, self.get_ui()]
         )
 
     def support_custom_models(self) -> bool:
@@ -1842,30 +1866,7 @@ class Inference:
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
-            serving_layout = self.get_ui()
-
-            self._user_layout_card = Card(
-                title="Select Model",
-                description="Select the model to deploy and press the 'Serve' button.",
-                content=self._user_layout,
-                lock_message="Model is deployed. To change the model, stop the serving first.",
-            )
-            self._api_request_model_info = Editor(
-                height_lines=12,
-                language_mode="json",
-                readonly=True,
-                restore_default_button=False,
-                auto_format=True,
-            )
-            self._api_request_model_layout = Card(
-                title="Model was deployed from API request with the following settings",
-                content=self._api_request_model_info,
-            )
-            self._api_request_model_layout.hide()
-            layout = Container(
-                [self._user_layout_card, self._api_request_model_layout, serving_layout]
-            )
-            self._app = Application(layout=layout)
+            self._app = Application(layout=self._app_layout)
         else:
             self._app = Application(layout=self.get_ui())
 
