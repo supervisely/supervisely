@@ -19,27 +19,28 @@ class Overview(MetricVis):
         if link_text is None:
             link_text = url
         link_text = link_text.replace("_", "\_")
-        if self._loader.is_after_training:
-            if self._loader._benchmark.gt_images_ids is not None:
-                note_about_val_dataset = "Evaluated using validation subset."
+        
+        # Note about validation dataset
+        gt_project_id = self._loader.gt_project_info.id
+        gt_images_ids = self._loader._benchmark.gt_images_ids
+        gt_dataset_ids = self._loader._benchmark.gt_dataset_ids
+        if gt_images_ids is not None:
+            note_about_val_dataset = "Evaluated using validation subset."
+        elif gt_dataset_ids is not None:
+            links = []
+            for gt_dataset_id in gt_dataset_ids:
+                gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
+                link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
+                links.append(link)
+            if len(links) == 1:
+                note_about_val_dataset = f"Evaluated on the validation dataset: {links[0]}"
             else:
-                gt_project_id = self._loader.gt_project_info.id
-                gt_dataset_ids = self._loader._benchmark.gt_dataset_ids
-                if len(gt_dataset_ids) == 1:
-                    gt_dataset_id = gt_dataset_ids[0]
-                    gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
-                    link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
-                    note_about_val_dataset = f"Evaluated on the validation dataset: {link}"
-                else:
-                    links = []
-                    for gt_dataset_id in gt_dataset_ids:
-                        gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
-                        link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
-                        links.append(link)
-                    note_about_val_dataset = f"Evaluated on the validation datasets: {', '.join(links)}"
-            note_about_val_dataset = "\n" + note_about_val_dataset + "\n"
+                note_about_val_dataset = f"Evaluated on the validation datasets: {', '.join(links)}"
         else:
             note_about_val_dataset = ""
+        if note_about_val_dataset:
+            note_about_val_dataset = "\n" + note_about_val_dataset + "\n"
+        
         checkpoint_name = info.get("deploy_params", {}).get("checkpoint_name", "")
         self.schema = Schema(
             self._loader.vis_texts,
