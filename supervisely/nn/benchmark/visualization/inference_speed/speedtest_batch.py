@@ -13,7 +13,6 @@ class SpeedtestBatch(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
-        self.switchable: bool = True
         self.schema = Schema(
             self._loader.inference_speed_text,
             markdown_batch_inference=Widget.Markdown(title="Batch inference"),
