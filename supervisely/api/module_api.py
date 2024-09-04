@@ -655,6 +655,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         convert_json_info_cb=None,
         limit: int = None,
         return_first_response: bool = False,
+        ensure_paginations: bool = True,
     ):
         """
         Get list of all or limited quantity entities from the Supervisely server.
@@ -671,6 +672,8 @@ class ModuleApiBase(_JsonConvertibleModule):
         :type limit: int, optional
         :param return_first_response: Specify if return first response
         :type return_first_response: bool, optional
+        :param ensure_paginations: Ensure that all pages are retrieved.
+        :type ensure_paginations: bool, optional
         """
 
         if convert_json_info_cb is None:
@@ -706,9 +709,10 @@ class ModuleApiBase(_JsonConvertibleModule):
                     break
 
             if len(results) != total and limit is None:
-                raise RuntimeError(
-                    "Method {!r}: error during pagination, some items are missed".format(method)
-                )
+                if ensure_paginations:
+                    raise RuntimeError(
+                        "Method {!r}: error during pagination, some items are missed".format(method)
+                    )
 
         if limit is not None:
             results = results[:limit]

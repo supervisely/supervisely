@@ -319,6 +319,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         return_first_response: Optional[bool] = False,
         project_id: int = None,
+        only_labelled: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -339,6 +340,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type return_first_response: bool, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
+        :param only_labelled: If True, returns only images with labels.
+        :type only_labelled: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -399,6 +402,18 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
+        if only_labelled:
+            data[ApiField.FILTERS] = [
+                {
+                    "type": "objects_class",
+                    "data": {
+                        "from": 1,
+                        "to": 9999,
+                        "include": True,
+                        "classId": None,
+                    },
+                }
+            ]
 
         return self.get_list_all_pages(
             "images.list",
@@ -2736,9 +2751,7 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
-    def update_tag_value(
-        self, tag_id: int, value: Union[str, float]
-    ) -> Dict:
+    def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
         """
         Update tag value with given ID.
 
