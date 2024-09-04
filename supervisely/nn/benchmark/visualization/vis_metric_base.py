@@ -209,6 +209,7 @@ class MetricVis:
                         "data": "data",
                         "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
                         "table_gallery_id": f"modal_general",
+                        "clickable": self.clickable,
                     }
                 )
 

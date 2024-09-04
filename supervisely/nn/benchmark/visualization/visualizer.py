@@ -306,12 +306,13 @@ class Visualizer:
                     f.write(json.dumps(content))
                 logger.info("Saved: %r", basename)
 
-                content = mv.get_table_click_data(widget)
-                basename = f"{widget.name}_{mv.name}_click_data.json"
-                local_path = f"{self.layout_dir}/data/{basename}"
-                with open(local_path, "w", encoding="utf-8") as f:
-                    f.write(json.dumps(content))
-                logger.info("Saved: %r", basename)
+                if mv.clickable:
+                    content = mv.get_table_click_data(widget)
+                    basename = f"{widget.name}_{mv.name}_click_data.json"
+                    local_path = f"{self.layout_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(json.dumps(content))
+                    logger.info("Saved: %r", basename)
 
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}
