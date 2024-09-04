@@ -476,7 +476,8 @@ class Dataset(KeyObject):
         img_names = [os.path.basename(path) for path in img_paths]
 
         if len(img_names) == 0 and len(raw_ann_names) == 0:
-            raise RuntimeError("Dataset {!r} is empty".format(self.name))
+            logger.info("Dataset {!r} is empty".format(self.name))
+            # raise RuntimeError("Dataset {!r} is empty".format(self.name))
 
         if len(img_names) == 0:  # items_names polyfield
             img_names = [os.path.splitext(ann_name)[0] for ann_name in raw_ann_names]
@@ -3320,6 +3321,10 @@ def upload_project(
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
+            
+            if img_paths == []:
+                # Dataset is empty
+                continue
 
             meta_dir = os.path.join(dir, ds_fs.name, "meta")
             if os.path.isdir(meta_dir):
