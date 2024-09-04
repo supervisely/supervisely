@@ -2,15 +2,14 @@ markdown_speedtest_intro = """# Inference Speed
 
 This is a speed test benchmark for this model. The model was tested with the following configuration:
 
-**Device**: {}
-**Hardware**: {}
-**Runtime**: {}
+- **Device**: {}
+- **Hardware**: {}
+- **Runtime**: {}
 """
 
 markdown_speedtest_overview = """
 The table below shows the speed test results. For each test, the time taken to process one batch of images is shown, as well as the model's throughput (i.e, the number of images processed per second, or FPS). Results are averaged across **{}** iterations.
 """
-
 
 markdown_real_time_inference = """## Real-time Inference
 
