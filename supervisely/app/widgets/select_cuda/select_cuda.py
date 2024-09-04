@@ -19,9 +19,6 @@ class SelectCudaDevice(Widget):
     :type include_cpu_option: bool, optional
     """
 
-    class Routes:
-        VALUE_CHANGED = "value_changed"
-
     def __init__(
         self,
         get_list_on_init: Optional[bool] = True,
@@ -50,6 +47,8 @@ class SelectCudaDevice(Widget):
         """
         cuda_devices = self._get_gpu_infos(self._sort_by_free_ram)
         if cuda_devices is None:
+            self._select.set([Select.Item(None, "No devices available")])
+            self._select.disable()
             return
         items = [
             Select.Item(
