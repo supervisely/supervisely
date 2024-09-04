@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 from supervisely import Label
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
+from supervisely.nn.benchmark.visualization.inference_speed import SPEEDTEST_METRICS
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
@@ -179,6 +180,8 @@ class Visualizer:
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
 
         initialized = [mv(self) for mv in ALL_METRICS]
+        if self.speedtest is not None:
+            initialized = initialized + [mv(self) for mv in SPEEDTEST_METRICS]
         initialized = [mv for mv in initialized if self.cv_task.value in mv.cv_tasks]
         with self.pbar(
             message="Saving visualization files",
