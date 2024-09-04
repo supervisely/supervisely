@@ -46,6 +46,8 @@ class BaseBenchmark:
         self._hardware = None
         self.pbar = progress or tqdm_sly
         self.classes_whitelist = classes_whitelist
+        self.vis_texts = None
+        self.inference_speed_text = None
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
