@@ -8,12 +8,26 @@ from supervisely.sly_logger import logger
 
 
 class SelectCudaDevice(Widget):
+    """
+    A widget for selecting a CUDA device.
+
+    This widget allows to select a CUDA device from a list of detected devices on the machine.
+    It displays the devices along with their reserved/total RAM values.
+
+    :param get_list_on_init: Whether to retrieve and display the list of CUDA devices upon initialization.
+    :type get_list_on_init: bool, optional
+    :param sort_by_free_ram: Whether to sort the CUDA devices by their available free RAM.
+    :type sort_by_free_ram: bool, optional
+    :param include_cpu_option: Whether to include an option to select the CPU in the device list.
+    :type include_cpu_option: bool, optional
+    """
+
     class Routes:
         VALUE_CHANGED = "value_changed"
 
     def __init__(
         self,
-        get_list_on_init: bool = True,
+        get_list_on_init: Optional[bool] = True,
         sort_by_free_ram: Optional[bool] = False,
         include_cpu_option: Optional[bool] = False,
         widget_id: str = None,
@@ -33,6 +47,11 @@ class SelectCudaDevice(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def refresh(self) -> None:
+        """Refreshes the list of available CUDA devices and updates the selector's items.
+
+        :return: None
+        """
+
         cuda_devices = self._get_gpu_infos(self._sort_by_free_ram)
         if cuda_devices is None:
             return
@@ -114,7 +133,21 @@ class SelectCudaDevice(Widget):
         return _click
 
     def get_device(self) -> Optional[str]:
+        """Gets the currently selected device.
+        This method returns the value of the currently selected device.
+
+        :return: The value of the selected device (e.g. 'cuda:0', 'cpu', etc.), or None if no device is selected.
+        :rtype: Optional[str]
+        """
         return self._select.get_value()
 
     def set_device(self, value: str) -> None:
+        """Sets the currently selected device.
+
+        This method updates the selector with the provided device value.
+
+        :param value: The value of the device to be selected.
+        :type value: str
+        :return: None
+        """
         return self._select.set_value(value)
