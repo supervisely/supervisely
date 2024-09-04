@@ -23,6 +23,8 @@ class SpeedtestBatch(MetricVis):
         import plotly.graph_objects as go  # pylint: disable=import-error
         from plotly.subplots import make_subplots  # pylint: disable=import-error
 
+        fig = make_subplots(cols=2)
+
         ms_color = "#e377c2"
         fps_color = "#17becf"
 
@@ -33,88 +35,62 @@ class SpeedtestBatch(MetricVis):
             std = test["benchmark_std"]["total"]
             ms = test["benchmark"]["total"]
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
+            fps_upper = round(1000 / (ms - std) * batch_size)
+            fps_std = round(fps_upper - fps)
 
             ms_line = temp_res.setdefault("ms", {})
             fps_line = temp_res.setdefault("fps", {})
+            ms_std_line = temp_res.setdefault("ms_std", {})
+            fps_std_line = temp_res.setdefault("fps_std", {})
 
             ms_line[batch_size] = ms
             fps_line[batch_size] = fps
+            ms_std_line[batch_size] = round(std, 2)
+            fps_std_line[batch_size] = fps_std
 
-            ms_lower, ms_upper = ms - std, ms + std
-            ms_lower_line = temp_res.setdefault("ms_lower", {})
-            ms_upper_line = temp_res.setdefault("ms_upper", {})
-            ms_lower_line[batch_size] = ms_lower
-            ms_upper_line[batch_size] = ms_upper
-
-            fps_lower = round(1000 / ms_lower * batch_size)
-            fps_upper = round(1000 / ms_upper * batch_size)
-            fps_lower_line = temp_res.setdefault("fps_lower", {})
-            fps_upper_line = temp_res.setdefault("fps_upper", {})
-            fps_lower_line[batch_size] = fps_lower
-            fps_upper_line[batch_size] = fps_upper
-
-        max_y_fps = max(fps_upper_line.values())
-        max_y_ms = max(ms_upper_line.values())
-
-        fig = go.Figure()
-
-        # first add the range lines
-        fig.add_trace(
-            go.Scatter(
-                x=list(temp_res["ms_upper"].keys()) + list(temp_res["ms_lower"].keys())[::-1],
-                y=list(temp_res["ms_upper"].values()) + list(temp_res["ms_lower"].values())[::-1],
-                fill="toself",
-                fillcolor="rgba(240, 184, 223, 0.3)",
-                line_color="rgba(255,255,255,0)",
-                showlegend=False,
-                name="Infrence time (ms)",
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=list(temp_res["fps_upper"].keys()) + list(temp_res["fps_lower"].keys())[::-1],
-                y=list(temp_res["fps_upper"].values()) + list(temp_res["fps_lower"].values())[::-1],
-                fill="toself",
-                yaxis="y2",
-                fillcolor="rgba(184, 241, 247, 0.3)",
-                line_color="rgba(255,255,255,0)",
-                showlegend=False,
-                name="FPS",
-            )
-        )
         fig.add_trace(
             go.Scatter(
                 x=list(temp_res["ms"].keys()),
                 y=list(temp_res["ms"].values()),
                 name="Infrence time (ms)",
                 line=dict(color=ms_color),
-            )
+                customdata=list(temp_res["ms_std"].values()),
+                error_y=dict(
+                    type="data",
+                    array=list(temp_res["ms_std"].values()),
+                    visible=True,
+                    color="rgba(227, 119, 194, 0.7)",
+                ),
+                hovertemplate="Batch Size: %{x}<br>Time: %{y:.2f} ms<br> Standard deviation: %{customdata:.2f} ms<extra></extra>",
+            ),
+            col=1,
+            row=1,
         )
         fig.add_trace(
             go.Scatter(
                 x=list(temp_res["fps"].keys()),
                 y=list(temp_res["fps"].values()),
                 name="FPS",
-                yaxis="y2",
-                line=dict(color=fps_color, dash="dot"),
-            )
-        )
-        fig.update_layout(
-            yaxis=dict(
-                title="Infrence time (ms)",
-                range=[0, max_y_ms * 1.1],
+                line=dict(color=fps_color),
+                customdata=list(temp_res["fps_std"].values()),
+                error_y=dict(
+                    type="data",
+                    array=list(temp_res["fps_std"].values()),
+                    visible=True,
+                    color="rgba(23, 190, 207, 0.7)",
+                ),
+                hovertemplate="Batch Size: %{x}<br>FPS: %{y:.2f}<br> Standard deviation: %{customdata:.2f}<extra></extra>",
             ),
-            yaxis2=dict(
-                title="FPS (Images per second)",
-                overlaying="y",
-                side="right",
-                range=[0, max_y_fps * 1.1],
-            ),
-            xaxis=dict(title="Batch Size", dtick=1),
-            width=700,
-            height=500,
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+            col=2,
+            row=1,
         )
+
+        fig.update_xaxes(title_text="Batch size", col=1, dtick=1)
+        fig.update_xaxes(title_text="Batch size", col=2, dtick=1)
+
+        fig.update_yaxes(title_text="Time (ms)", col=1)
+        fig.update_yaxes(title_text="FPS", col=2)
+        fig.update_layout(height=400)
 
         return fig
 

@@ -17,9 +17,7 @@ class SpeedtestOverview(MetricVis):
         num_iterations = self._loader.speedtest["speedtest"][0]["num_iterations"]
         self.schema = Schema(
             self._loader.inference_speed_text,
-            markdown_speedtest_overview=Widget.Markdown(
-                title="Overview", formats=[num_iterations]
-            ),
+            markdown_speedtest_overview=Widget.Markdown(title="Overview", formats=[num_iterations]),
             table=Widget.Table(),
         )
         self._row_ids = None
@@ -33,24 +31,25 @@ class SpeedtestOverview(MetricVis):
         for test in self._loader.speedtest["speedtest"]:
             batch_size = test["batch_size"]
 
-            row = temp_res.setdefault(batch_size, {})
-            row["Batch size"] = batch_size
-            row["Inference time"] = round(test["benchmark"]["total"], 2)
+            ms = round(test["benchmark"]["total"], 2)
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
+            row = [batch_size, ms, fps]
+            temp_res[batch_size] = row
             max_fps = max(max_fps, fps)
-            row["FPS"] = fps
 
         res["content"] = []
+        # sort by batch size
+        temp_res = dict(sorted(temp_res.items()))
         for row in temp_res.values():
             dct = {
                 "row": row,
-                "id": row["Batch size"],
-                "items": list(row.values()),
+                "id": row[0],
+                "items": row,
             }
             res["content"].append(dct)
 
         columns_options = [
-            {"maxWidth": "225px", "postfix": "images"},
+            {"maxWidth": "225px", "postfix": "batch size"},
             {"subtitle": "ms", "tooltip": "Milliseconds for batch images", "postfix": "ms"},
             {
                 "subtitle": "imgs/sec",
@@ -60,6 +59,7 @@ class SpeedtestOverview(MetricVis):
             },
         ]
 
+        res["options"] = {"fixColumns": 1}
         res["columns"] = columns
         res["columnsOptions"] = columns_options
 
