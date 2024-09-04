@@ -29,12 +29,12 @@ class SpeedtestOverview(MetricVis):
 
         columns = [
             "Runtime",
-            "Batch size 1 (ms)",
-            "Batch size 8 (ms)",
-            "Batch size 16 (ms)",
-            "Batch size 1 (FPS)",
-            "Batch size 8 (FPS)",
-            "Batch size 16 (FPS)",
+            "Batch size 1",
+            "Batch size 8",
+            "Batch size 16",
+            "Batch size 1",
+            "Batch size 8",
+            "Batch size 16",
         ]
         temp_res = {}
         for test in self._loader.speedtest["speedtest"]:
@@ -43,9 +43,9 @@ class SpeedtestOverview(MetricVis):
             batch_size = test["batch_size"]
             row_name = f"{device} {runtime}"
 
-            row = temp_res.setdefault(row_name, {col: None for col in columns})
+            row = temp_res.setdefault(row_name, {})
             row["Runtime"] = row_name
-            row[f"Batch size {batch_size} (ms)"] = test["benchmark"]["total"]
+            row[f"Batch size {batch_size} (ms)"] = round(test["benchmark"]["total"], 2)
             row[f"Batch size {batch_size} (FPS)"] = round(
                 1000 / test["benchmark"]["total"] * batch_size
             )
@@ -61,12 +61,12 @@ class SpeedtestOverview(MetricVis):
 
         columns_options = [
             {"maxWidth": "225px"},
-            {"subtitle": "ms", "tooltip": "Milliseconds"},
-            {"subtitle": "ms", "tooltip": "Milliseconds"},
-            {"subtitle": "ms", "tooltip": "Milliseconds"},
-            {"subtitle": "FPS", "tooltip": "Frames per second"},
-            {"subtitle": "FPS", "tooltip": "Frames per second"},
-            {"subtitle": "FPS", "tooltip": "Frames per second"},
+            {"subtitle": "ms", "tooltip": "Milliseconds for 1 image"},
+            {"subtitle": "ms", "tooltip": "Milliseconds for 8 images"},
+            {"subtitle": "ms", "tooltip": "Milliseconds for 16 images"},
+            {"subtitle": "FPS", "tooltip": "Frames (images) per second"},
+            {"subtitle": "FPS", "tooltip": "Frames (images) per second"},
+            {"subtitle": "FPS", "tooltip": "Frames (images) per second"},
         ]
 
         res["columns"] = columns

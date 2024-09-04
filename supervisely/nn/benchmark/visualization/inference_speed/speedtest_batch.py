@@ -59,7 +59,7 @@ class SpeedtestBatch(MetricVis):
             )
 
         fig.update_layout(
-            xaxis_title="Runtime",
+            xaxis_title="Batch Size",
             yaxis_title="Time (ms)" if widget.switch_key == "ms" else "Images per second (FPS)",
             legend=dict(x=min_x_idx, y=max_y * 0.7),
             width=700,
