@@ -71,7 +71,10 @@ class SelectCudaDevice(Widget):
         try:
             from torch import cuda
         except ImportError as ie:
-            logger.warn("Unable to import Torch", extra={"error message": str(ie)})
+            logger.warn(
+                "Unable to import Torch. Please, run 'pip install torch' to resolve the issue.",
+                extra={"error message": str(ie)},
+            )
             return
 
         devices = {}
@@ -136,7 +139,7 @@ class SelectCudaDevice(Widget):
 
         This method updates the selector with the provided device value.
 
-        :param value: The value of the device to be selected.
+        :param value: The value of the device to be selected (e.g. 'cuda:0', 'cpu', etc.).
         :type value: str
         :return: None
         """
