@@ -3,10 +3,6 @@ from supervisely.app.widgets import Widget, ConditionalWidget
 from typing import List, Dict, Optional, Union
 from supervisely.app.widgets import Select, Button, Flexbox
 from supervisely.sly_logger import logger
-from supervisely.api.api import Api
-from supervisely.io import env
-
-# from supervisely.decorators.profile import timeit
 
 
 class SelectCudaDevice(Widget):
@@ -36,15 +32,13 @@ class SelectCudaDevice(Widget):
     ):
         self._select = Select([])
         self._refresh_button = Button(
-            text="", button_type="text", icon="zmdi zmdi-refresh", plain=True, button_size="large"
+            text="", button_type="text", button_size="large", icon="zmdi zmdi-refresh"
         )
         self._refresh_button.click(self.refresh)
         self._content = Flexbox([self._select, self._refresh_button])
 
         self._sort_by_free_ram = sort_by_free_ram
         self._include_cpu_option = include_cpu_option
-        self._agent_info = self._get_agent_info(Api())
-
         if get_list_on_init:
             self.refresh()
 
@@ -55,65 +49,60 @@ class SelectCudaDevice(Widget):
 
         :return: None
         """
-
         cuda_devices = self._get_gpu_infos(self._sort_by_free_ram)
-        items = []
-        if cuda_devices is not None:
-            for info in cuda_devices:
-                item = Select.Item(
-                    value=info["value"],
-                    label=info["label"],
-                    right_text=info["right_text"],
-                )
-                items.append(item)
+        if cuda_devices is None:
+            return
+        items = [
+            Select.Item(
+                value=info["device_idx"],
+                label=device,
+                right_text=info["right_text"],
+            )
+            for device, info in cuda_devices.items()
+        ]
 
         if self._include_cpu_option:
             items.append(Select.Item(value="cpu", label="CPU"))
-
-        if len(items) == 0:
-            self._select.set([Select.Item(None, "No devices found")])
-            self._select.disable()
-            return
         self._select.set(items)
-
-    def _get_agent_info(self, api: Api):
-        available_agents = api.agent.get_list_available(env.team_id(), True)
-        current_agent_id = api.task.get_info_by_id(env.task_id())["agentId"]
-        agent_info = None
-        for agent in available_agents:
-            if agent.id == current_agent_id:
-                agent_info = agent
-                break
-        return agent_info
 
     def _get_gpu_infos(
         self, sort_by_free_ram: bool
     ) -> Optional[Dict[str, Dict[str, Union[str, int]]]]:
-
-        gpu_info = self._agent_info.gpu_info
-        device_count = gpu_info["device_count"]
-        if device_count == 0:
+        try:
+            from torch import cuda
+        except ImportError as ie:
+            logger.warn("Unable to import Torch", extra={"error message": str(ie)})
             return
 
-        devices_names = gpu_info["device_names"]
-        devices_id = [f"cuda:{i}" for i in range(device_count)]
-        devices_memory = gpu_info["device_memory"]
+        devices = {}
+        cuda.init()
+        if not cuda.is_available():
+            logger.warn("CUDA is not available")
+            return
+        try:
+            for idx in range(cuda.device_count()):
+                current_device = f"cuda:{idx}"
+                full_device_name = f"{cuda.get_device_name(idx)} ({current_device})"
+                free_mem, total_mem = cuda.mem_get_info(current_device)
 
-        devices = []
-        convert_to_gb = lambda number: round(number / 1024**3, 1)
-        for device_name, device_id, device_memory in zip(devices_names, devices_id, devices_memory):
-            device_info = {
-                "value": device_id,
-                "label": f"{device_name} ({device_id})",
-                "right_text": f"{convert_to_gb(device_memory['available'])} / {convert_to_gb(device_memory['total'])} GB",
-                "free": convert_to_gb(device_memory["available"]),
-            }
-            devices.append(device_info)
+                convert_to_gb = lambda number: round(number / 1024**3, 1)
+                right_text = (
+                    f"{convert_to_gb(total_mem - free_mem)} GB / {convert_to_gb(total_mem)} GB"
+                )
 
-        if sort_by_free_ram:
-            devices.sort(key=lambda x: x["free"], reverse=True)
-
-        return devices
+                devices[full_device_name] = {
+                    "device_idx": current_device,
+                    "right_text": right_text,
+                    "free": free_mem,
+                }
+            if sort_by_free_ram:
+                devices = dict(
+                    sorted(devices.items(), key=lambda item: item[1]["free"], reverse=True)
+                )
+        except Exception as e:
+            logger.warning(repr(e))
+        finally:
+            return devices
 
     def get_json_data(self):
         return {}
