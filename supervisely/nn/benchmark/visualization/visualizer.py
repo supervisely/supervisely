@@ -69,6 +69,7 @@ class Visualizer:
         self._benchmark = benchmark
         self._api = benchmark.api
         self.cv_task = benchmark.cv_task
+        self.hardware = benchmark.hardware
 
         self.eval_dir = benchmark.get_eval_results_dir()
         self.layout_dir = benchmark.get_layout_results_dir()
@@ -86,6 +87,9 @@ class Visualizer:
         self.gt_project_meta = self._get_filtered_project_meta(self.gt_project_info.id)
         self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         self._docs_link = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
+        self.vis_texts = benchmark.vis_texts
+        self.inference_speed_text = benchmark.inference_speed_text
+        self.speedtest = benchmark._speedtest
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_object_detection_loader()
