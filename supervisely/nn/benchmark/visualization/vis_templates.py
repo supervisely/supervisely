@@ -153,7 +153,8 @@ template_gallery_str = """<sly-iw-gallery
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
                 style="cursor: pointer;"
-                :options="{ isRowClickable: {{ clickable }} }"
+                :options="{ isRowClickable: '{{ clickable }}'
+                 }"
                 :actions="{
                   'init': {
                     'dataSource': '{{ init_data_source }}',
