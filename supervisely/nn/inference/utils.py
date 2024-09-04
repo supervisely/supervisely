@@ -25,7 +25,7 @@ class CheckpointInfo:
     checkpoint_name: str = None
     model_name: str = None
     architecture: str = None
-    checkpoint_url: str = None  # TODO: is it needed?
+    checkpoint_url: str = None
     custom_checkpoint_path: str = None
     model_source: str = None
 
@@ -35,7 +35,7 @@ class DeployInfo:
     checkpoint_name: str
     model_name: str
     architecture: str
-    checkpoint_url: str  # TODO: is it needed?
+    checkpoint_url: str
     custom_checkpoint_path: str
     model_source: str
     task_type: str

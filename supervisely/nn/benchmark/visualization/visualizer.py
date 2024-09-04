@@ -107,7 +107,7 @@ class Visualizer:
         else:
             self._init_comparison_data()
         
-        self._is_after_training = False
+        self.is_after_training = False
 
     def _initialize_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error

@@ -19,36 +19,46 @@ class Overview(MetricVis):
         if link_text is None:
             link_text = url
         link_text = link_text.replace("_", "\_")
-        if self._loader._is_after_training:
+        if self._loader.is_after_training:
             if self._loader._benchmark.gt_images_ids is not None:
                 note_about_val_dataset = "Evaluated using validation subset."
             else:
                 gt_project_id = self._loader.gt_project_info.id
-                val_dataset_id = self._loader._benchmark.gt_dataset_ids[0]
-                # can be several datasets
-                val_dataset_name = self._loader._api.dataset.get_info_by_id(val_dataset_id).name
-                link = f'<a href="/projects/{gt_project_id}/datasets/{val_dataset_id}" target="_blank">{val_dataset_name}</a>'
-                note_about_val_dataset = f"Evaluated on the validation dataset: {link}"
+                gt_dataset_ids = self._loader._benchmark.gt_dataset_ids
+                if len(gt_dataset_ids) == 1:
+                    gt_dataset_id = gt_dataset_ids[0]
+                    gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
+                    link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
+                    note_about_val_dataset = f"Evaluated on the validation dataset: {link}"
+                else:
+                    links = []
+                    for gt_dataset_id in gt_dataset_ids:
+                        gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
+                        link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
+                        links.append(link)
+                    note_about_val_dataset = f"Evaluated on the validation datasets: {', '.join(links)}"
             note_about_val_dataset = "\n" + note_about_val_dataset + "\n"
         else:
             note_about_val_dataset = ""
+        checkpoint_name = info.get("deploy_params", {}).get("checkpoint_name", "")
         self.schema = Schema(
             self._loader.vis_texts,
             markdown_overview=Widget.Markdown(
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get("checkpoint_name", "").replace("_", "\_"),
+                    f'{str(info.get("model_name"))} - {checkpoint_name}',  # Title
+                    info.get("model_name"),
+                    checkpoint_name,
                     info.get("architecture"),
                     info.get("task_type"),
                     info.get("runtime"),
-                    info.get("hardware"),
                     url,
                     link_text,
-                    self._loader.docs_link,
                     self._loader.gt_project_info.id,
                     self._loader.gt_project_info.name,
                     note_about_val_dataset,
+                    self._loader.docs_link,
                 ],
             ),
             markdown_key_metrics=Widget.Markdown(

@@ -20,15 +20,16 @@ clickable_label = """
 > </span>
 """
 
-markdown_overview = """# {}
+markdown_overview = """# Model Benchmark: "{}"
 
 ## Overview
 
+- **Model**: {}
+- **Checkpoint**: {}
 - **Architecture**: {}
 - **Task type**: {}
 - **Runtime**: {}
-- **Hardware**: {}
-- **Checkpoint**: <a href="{}" target="_blank">{}</a>
+- **Checkpoint file**: <a href="{}" target="_blank">{}</a>
 - **Ground Truth project**: <a href="/projects/{}/datasets" target="_blank">{}</a>
 {}
 Learn more about Model Benchmark, implementation details, and how to use the charts in our <a href="{}" target="_blank">Technical Report</a>.
