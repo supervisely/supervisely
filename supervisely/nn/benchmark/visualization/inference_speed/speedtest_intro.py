@@ -13,11 +13,16 @@ class SpeedtestIntro(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        speedtest = self._loader.speedtest["speedtest"][0]
         self.schema = Schema(
             self._loader.inference_speed_text,
             markdown_speedtest_intro=Widget.Markdown(
                 title="Inference Speed",
                 is_header=True,
-                formats=[self._loader.docs_link + "#inference-speed"],
+                formats=[
+                    speedtest["device"],
+                    self._loader.hardware,
+                    speedtest["runtime"]
+                ],
             ),
         )
