@@ -14,6 +14,6 @@ from supervisely.nn.benchmark.visualization.inference_speed.speedtest_real_time 
 SPEEDTEST_METRICS = [
     SpeedtestIntro,
     SpeedtestOverview,
-    SpeedtestRealTime,
+    # SpeedtestRealTime,
     SpeedtestBatch,
 ]
