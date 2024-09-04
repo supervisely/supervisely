@@ -7,13 +7,13 @@ from supervisely.nn.benchmark.visualization.inference_speed.speedtest_intro impo
 # from supervisely.nn.benchmark.visualization.inference_speed.speedtest_overview import (
 #     SpeedtestOverview,
 # )
-# from supervisely.nn.benchmark.visualization.inference_speed.speedtest_real_time import (
-#     SpeedtestRealTime,
-# )
+from supervisely.nn.benchmark.visualization.inference_speed.speedtest_real_time import (
+    SpeedtestRealTime,
+)
 
 SPEEDTEST_METRICS = [
     SpeedtestIntro,
     # SpeedtestOverview,
-    # SpeedtestRealTime,
+    SpeedtestRealTime,
     # SpeedtestBatch,
 ]
