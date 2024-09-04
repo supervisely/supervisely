@@ -54,9 +54,10 @@ class SpeedtestRealTime(MetricVis):
                 )
             )
 
+
         y_title = "Time (ms)" if measure == "ms" else "Images per second (FPS)"
-        range_y = [0, 1000] if measure == "ms" else [0, 100]
         fig.update_xaxes(title_text="Runtime")
-        fig.update_yaxes(title_text=y_title, range=range_y)
+        fig.update_yaxes(title_text=y_title)
+        fig.update_layout(height=400, width=800)
 
         return fig
