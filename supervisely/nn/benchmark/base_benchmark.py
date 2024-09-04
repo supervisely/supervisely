@@ -14,9 +14,9 @@ from supervisely.nn.benchmark.utils import WORKSPACE_DESCRIPTION, WORKSPACE_NAME
 from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
-from supervisely.project.project_meta import ProjectMeta
 
 
 class BaseBenchmark:
@@ -43,8 +43,11 @@ class BaseBenchmark:
         self.evaluator: BaseEvaluator = None
         self._eval_inference_info = None
         self._speedtest = None
+        self._hardware = None
         self.pbar = progress or tqdm_sly
         self.classes_whitelist = classes_whitelist
+        self.vis_texts = None
+        self.inference_speed_text = None
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -52,6 +55,10 @@ class BaseBenchmark:
     @property
     def cv_task(self) -> str:
         raise NotImplementedError()
+
+    @property
+    def hardware(self) -> str:
+        return self._hardware
 
     def run_evaluation(
         self,
@@ -180,6 +187,7 @@ class BaseBenchmark:
             "hardware": model_info["hardware"],
             "num_iterations": num_iterations,
         }
+        self._hardware = model_info["hardware"]
         benchmarks = []
         for bs in batch_sizes:
             logger.debug(f"Running speedtest for batch_size={bs}")
@@ -225,10 +233,8 @@ class BaseBenchmark:
         return dir
 
     def get_speedtest_results_dir(self) -> str:
-        checkpoint_name = self._speedtest["model_info"]["model_name"]
-        dir = os.path.join(
-            self.output_dir, "speedtest", checkpoint_name
-        )  # TODO: use checkpoint_name instead of model_name
+        checkpoint_name = self._speedtest["model_info"]["checkpoint_name"]
+        dir = os.path.join(self.output_dir, "speedtest", checkpoint_name)
         os.makedirs(dir, exist_ok=True)
         return dir
 

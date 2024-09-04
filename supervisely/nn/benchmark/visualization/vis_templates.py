@@ -153,16 +153,19 @@ template_gallery_str = """<sly-iw-gallery
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
                 style="cursor: pointer;"
-                :options="{ isRowClickable: true }" 
+                :options="{ isRowClickable: '{{ clickable }}'
+                 }"
                 :actions="{
                   'init': {
                     'dataSource': '{{ init_data_source }}',
                   },
+                    {% if clickable %}
                   'chart-click': {
                     'dataSource': '{{ table_click_data }}',
-                    'galleryId': '{{ table_gallery_id }}',                    
+                    'galleryId': '{{ table_gallery_id }}',
                     'getKey':(payload)=>payload.row[0],
                    },
+                    {% endif %}
                 }"
               :command="{{ command }}"
               :data="{{ data }}"

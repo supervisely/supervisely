@@ -38,7 +38,7 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("deploy_params", {}).get("checkpoint_name"),
+                    info.get("deploy_params", {}).get("checkpoint_name", "").replace("_", "\_"),
                     info.get("architecture"),
                     info.get("task_type"),
                     info.get("runtime"),

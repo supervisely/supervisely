@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 from supervisely import Label
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
+from supervisely.nn.benchmark.visualization.inference_speed import SPEEDTEST_METRICS
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
@@ -69,6 +70,8 @@ class Visualizer:
         self._benchmark = benchmark
         self._api = benchmark.api
         self.cv_task = benchmark.cv_task
+        self.hardware = benchmark.hardware
+
         self.eval_dir = benchmark.get_eval_results_dir()
         self.layout_dir = benchmark.get_layout_results_dir()
         self.dt_project_info = benchmark.dt_project_info
@@ -84,12 +87,15 @@ class Visualizer:
         self.gt_project_meta = self._get_filtered_project_meta(self.gt_project_info.id)
         self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         self._docs_link = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
+        self.vis_texts = benchmark.vis_texts
+        self.inference_speed_text = benchmark.inference_speed_text
+        self.speedtest = benchmark._speedtest
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
-            self._initialize_object_detection_loader()
+            self._initialize_loader()
             self.docs_link = self._docs_link + CVTask.OBJECT_DETECTION.value.replace("_", "-")
         elif benchmark.cv_task == CVTask.INSTANCE_SEGMENTATION:
-            self._initialize_instance_segmentation_loader()
+            self._initialize_loader()
             self.docs_link = self._docs_link + CVTask.INSTANCE_SEGMENTATION.value.replace("_", "-")
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
@@ -103,84 +109,8 @@ class Visualizer:
         
         self._is_after_training = False
 
-    def _initialize_object_detection_loader(self):
+    def _initialize_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
-
-        from supervisely.nn.benchmark.visualization import vis_texts
-
-        self.vis_texts = vis_texts
-
-        cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
-            self.eval_dir + "/cocoGt.json",
-            self.eval_dir + "/cocoDt.json",
-            self.eval_dir + "/eval_data.pkl",
-            self.eval_dir + "/inference_info.json",
-        )
-
-        with open(cocoGt_path, "r") as f:
-            cocoGt_dataset = json.load(f)
-        with open(cocoDt_path, "r") as f:
-            cocoDt_dataset = json.load(f)
-
-        # Remove COCO read logs
-        with HiddenCocoPrints():
-            cocoGt = COCO()
-            cocoGt.dataset = cocoGt_dataset
-            cocoGt.createIndex()
-            cocoDt = cocoGt.loadRes(cocoDt_dataset["annotations"])
-
-        with open(eval_data_path, "rb") as f:
-            eval_data = pickle.load(f)
-
-        inference_info = {}
-        if file_exists(inference_info_path):
-            with open(inference_info_path, "r") as f:
-                inference_info = json.load(f)
-            self.inference_info = inference_info
-        else:
-            self.inference_info = self._benchmark._eval_inference_info
-
-        self.mp = MetricProvider(
-            eval_data["matches"],
-            eval_data["coco_metrics"],
-            eval_data["params"],
-            cocoGt,
-            cocoDt,
-        )
-        self.mp.calculate()
-
-        self.df_score_profile = pd.DataFrame(
-            self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
-        )
-
-        # downsample
-        if len(self.df_score_profile) > 5000:
-            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
-        else:
-            self.dfsp_down = self.df_score_profile
-
-        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
-        if self.f1_optimal_conf is None:
-            self.f1_optimal_conf = 0.01
-            logger.warn("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
-
-        # Click data
-        gt_id_mapper = IdMapper(cocoGt_dataset)
-        dt_id_mapper = IdMapper(cocoDt_dataset)
-
-        self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
-        self.base_metrics = self.mp.base_metrics
-
-        self._objects_bindings = []
-
-    def _initialize_instance_segmentation_loader(self):
-        from pycocotools.coco import COCO  # pylint: disable=import-error
-
-        from supervisely.nn.benchmark.visualization.instance_segmentation import (
-            text_template,
-        )
-
-        self.vis_texts = text_template
 
         cocoGt_path, cocoDt_path, eval_data_path, inference_info_path = (
             self.eval_dir + "/cocoGt.json",
@@ -251,6 +181,8 @@ class Visualizer:
         mkdir(f"{self.layout_dir}/data", remove_content_if_exists=True)
 
         initialized = [mv(self) for mv in ALL_METRICS]
+        if self.speedtest is not None:
+            initialized = initialized + [mv(self) for mv in SPEEDTEST_METRICS]
         initialized = [mv for mv in initialized if self.cv_task.value in mv.cv_tasks]
         with self.pbar(
             message="Saving visualization files",
@@ -375,12 +307,13 @@ class Visualizer:
                     f.write(json.dumps(content))
                 logger.info("Saved: %r", basename)
 
-                content = mv.get_table_click_data(widget)
-                basename = f"{widget.name}_{mv.name}_click_data.json"
-                local_path = f"{self.layout_dir}/data/{basename}"
-                with open(local_path, "w", encoding="utf-8") as f:
-                    f.write(json.dumps(content))
-                logger.info("Saved: %r", basename)
+                if mv.clickable:
+                    content = mv.get_table_click_data(widget)
+                    basename = f"{widget.name}_{mv.name}_click_data.json"
+                    local_path = f"{self.layout_dir}/data/{basename}"
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(json.dumps(content))
+                    logger.info("Saved: %r", basename)
 
     def _generate_template(self, metric_visualizations: Tuple[MetricVis]) -> str:
         html_snippets = {}

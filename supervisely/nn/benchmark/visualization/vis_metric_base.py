@@ -209,6 +209,7 @@ class MetricVis:
                         "data": "data",
                         "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
                         "table_gallery_id": f"modal_general",
+                        "clickable": self.clickable,
                     }
                 )
 
@@ -318,7 +319,12 @@ class MetricVis:
         pass
 
     def get_md_content(self, widget: Widget.Markdown):
-        return getattr(self._loader.vis_texts, widget.name).format(*widget.formats)
+        if hasattr(self._loader.vis_texts, widget.name):
+            return getattr(self._loader.vis_texts, widget.name).format(*widget.formats)
+        elif hasattr(self._loader.inference_speed_text, widget.name):
+            return getattr(self._loader.inference_speed_text, widget.name).format(*widget.formats)
+        else:
+            raise AttributeError(f"Not found texts template for {widget.name}")
 
     def initialize_formats(self, loader: Visualizer, widget: Widget):
         pass

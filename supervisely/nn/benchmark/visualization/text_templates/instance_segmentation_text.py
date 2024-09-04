@@ -151,13 +151,16 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 )
 
 
-markdown_PR = """## Recall vs. Precision
+markdown_PR = (
+    """## Recall vs. Precision
 
 This section compares Precision and Recall in one graph, identifying **imbalance** between these two.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-""" + clickable_label
+"""
+    + clickable_label
+)
 
 
 markdown_pr_curve = """## Precision-Recall Curve
