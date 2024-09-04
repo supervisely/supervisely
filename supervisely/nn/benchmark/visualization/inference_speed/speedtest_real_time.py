@@ -21,10 +21,7 @@ class SpeedtestRealTime(MetricVis):
                 charts[f"chart_{key}"] = Widget.Chart(switch_key=key)
         self.schema = Schema(
             self._loader.inference_speed_text,
-            markdown_real_time_inference=Widget.Markdown(
-                title="Real-time inference",
-                is_header=True,
-            ),
+            markdown_real_time_inference=Widget.Markdown(title="Real-time inference"),
             **charts,
         )
 
