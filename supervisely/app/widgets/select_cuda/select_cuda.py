@@ -1,7 +1,6 @@
 from __future__ import annotations
-from supervisely.app.widgets import Widget, ConditionalWidget
 from typing import List, Dict, Optional, Union
-from supervisely.app.widgets import Select, Button, Flexbox
+from supervisely.app.widgets import Widget, Select, Button, Flexbox
 from supervisely.sly_logger import logger
 
 
@@ -114,16 +113,11 @@ class SelectCudaDevice(Widget):
         return {}
 
     def value_changed(self, func):
-        route_path = self.get_route_path(SelectCudaDevice.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
-        self._changes_handled = True
+        @self._select.value_changed
+        def value_cb(value):
+            func(value)
 
-        @server.post(route_path)
-        async def _click():
-            res = self._select.get_value()
-            func(res)
-
-        return _click
+        return value_cb
 
     def get_device(self) -> Optional[str]:
         """Gets the currently selected device.
