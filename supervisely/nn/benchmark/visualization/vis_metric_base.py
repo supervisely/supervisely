@@ -31,6 +31,7 @@ class MetricVis:
         self.switchable: bool = False
         self.schema: Schema = None
         self.empty = False
+        self._is_overview = False
 
         self._loader = loader
         self._template_markdown = Template(template_markdown_str)
@@ -64,6 +65,16 @@ class MetricVis:
     @property
     def template_main_str(self) -> str:
         res = ""
+
+        if self._is_overview:
+            title, me, date = self.get_main_info()
+            res += f"""
+            <h1>{title}</h1>
+
+            <div class="model-info-block">
+                <div>Created by <b>{me}</b></div>
+                <div><i class="zmdi zmdi-calendar-alt" /><span>{date}</span></div>
+            </div>"""
         _is_before_chart = True
 
         def _add_radio_buttons():
@@ -116,6 +127,7 @@ class MetricVis:
                         "data_source": f"/data/{widget.name}.md",
                         "command": "command",
                         "data": "data",
+                        "is_overview": widget.title == "Overview",
                     }
                 )
 

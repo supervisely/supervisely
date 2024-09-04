@@ -17,7 +17,7 @@ class SpeedtestOverview(MetricVis):
         num_iterations = self._loader.speedtest["speedtest"][0]["num_iterations"]
         self.schema = Schema(
             self._loader.inference_speed_text,
-            markdown_speedtest_overview=Widget.Markdown(title="Overview", formats=[num_iterations]),
+            markdown_speedtest_overview=Widget.Markdown(title="Info", formats=[num_iterations]),
             table=Widget.Table(),
         )
         self._row_ids = None

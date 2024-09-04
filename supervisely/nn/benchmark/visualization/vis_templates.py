@@ -2,7 +2,25 @@ from typing import List
 
 
 def generate_main_template(metric_visualizations: List):
-    template_str = """<div>
+    template_str = """<div class="model-benchmark-body">
+
+    <sly-style>
+    .model-benchmark-body .sly-markdown-widget .markdown-body { padding: 0; font-family: inherit; }
+    .model-benchmark-body .sly-markdown-widget .markdown-body h2 { font-size: 18px; font-weight: 600; margin-bottom: 0px; border: 0; }
+    .model-benchmark-body .sly-markdown-widget .markdown-body h3 { color: #949bab; font-size: 18px; margin-bottom: 7px; }
+    .model-benchmark-body .sly-markdown-widget .markdown-body p { margin-bottom: 12px; }
+    .model-benchmark-body .el-collapse { margin: 15px 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); border-radius: 7px; width: fit-content; }
+    .model-benchmark-body .el-collapse .el-collapse-item__header { background: transparent; padding-right: 15px; }
+    .model-benchmark-body .model-info-block { display: flex; gap: 10px; align-items: center; margin: 0 0 15px; color: #778592; font-size: 13px; }
+    .model-benchmark-body .model-info-block > div { display: flex; gap: 4px; align-items: center; }
+    /* , .model-benchmark-body .sly-markdown-widget .markdown-body>*:last-child */
+    .model-benchmark-body .sly-iw-notification-box .notification-box.notification-box-info { width: fit-content; }
+    .model-benchmark-body h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+    .model-benchmark-body .overview-info-block { background: #f4f7fb; width: fit-content; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    .model-benchmark-body .overview-info-block ul { list-style: none; padding: 0; }
+    .model-benchmark-body .overview-info-block ul p { padding: 0; }
+    </sly-style>
+
     <sly-iw-sidebar :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false,  disableResize: true, sidebarWidth: 300 }">
         <div slot="sidebar">"""
 
@@ -10,11 +28,11 @@ def generate_main_template(metric_visualizations: List):
         template_str += vis.template_sidebar_str
 
     template_str += """\n        </div>
-      
-        <div style="padding: 0 15px;">"""
+
+        <div style="padding-right: 35px;">"""
 
     for vis in metric_visualizations:
-        template_str += """\n                <div style="margin-top: 20px;">"""
+        template_str += """\n                <div>"""
         template_str += vis.template_main_str
         template_str += """\n                </div>"""
 
@@ -60,18 +78,20 @@ def generate_main_template(metric_visualizations: List):
 
 
 template_markdown_str = """
-            <sly-iw-markdown
-              id="{{ widget_id }}"
-              class="markdown-no-border"
-              iw-widget-id="{{ widget_id }}"
-              :actions="{
-                'init': {
-                  'dataSource': '{{ data_source }}',
-                },
-              }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            />
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown
+                id="{{ widget_id }}"
+                class="markdown-no-border {{ 'overview-info-block' if is_overview else '' }}"
+                iw-widget-id="{{ widget_id }}"
+                :actions="{
+                    'init': {
+                    'dataSource': '{{ data_source }}',
+                    },
+                }"
+                :command="{{ command }}"
+                :data="{{ data }}"
+                />
+            </div>
 """
 
 template_chart_str = """

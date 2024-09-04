@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import TYPE_CHECKING
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
@@ -13,6 +14,7 @@ class Overview(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        self._is_overview = True
         info = loader.inference_info
         url = info.get("checkpoint_url")
         link_text = info.get("custom_checkpoint_path")
@@ -96,3 +98,11 @@ class Overview(MetricVis):
             )
         )
         return fig
+
+    def get_main_info(self) -> tuple:
+        inference_info = self._loader.inference_info
+        title = inference_info.get("deploy_params", {}).get("checkpoint_name", "")
+        title = title.replace("_", "\_")
+        me = self._loader._api.user.get_my_info().login
+        current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
+        return title, me, current_date
