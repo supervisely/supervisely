@@ -1,4 +1,4 @@
-markdown_speedtest_intro = """# Inference Speed
+markdown_speedtest_intro = """## Inference Speed
 
 This is a speed test benchmark for this model. The model was tested with the following configuration:
 
