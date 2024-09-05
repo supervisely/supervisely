@@ -106,7 +106,7 @@ class Visualizer:
             self.update_diff_annotations()
         else:
             self._init_comparison_data()
-        
+
     def _initialize_loader(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
@@ -183,7 +183,7 @@ class Visualizer:
             initialized = initialized + [mv(self) for mv in SPEEDTEST_METRICS]
         initialized = [mv for mv in initialized if self.cv_task.value in mv.cv_tasks]
         with self.pbar(
-            message="Saving visualization files",
+            message="Visualizations: Saving visualization files",
             total=len([w for mv in initialized for w in mv.schema]),
         ) as p:
             for mv in initialized:
@@ -368,7 +368,9 @@ class Visualizer:
         match_tag = meta.get_tag_meta("matched_gt_id")
 
         pred_tag_list = []
-        with self.pbar(message="Creating diff_project", total=pred_project.total_items) as progress:
+        with self.pbar(
+            message="Visualizations: Creating diff_project", total=pred_project.total_items
+        ) as progress:
             for pred_dataset in pred_project.datasets:
                 pred_dataset: Dataset
                 gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
@@ -611,7 +613,7 @@ class Visualizer:
         # add tags to objects
         logger.info("Adding tags to DT project")
 
-        with self.pbar(message="Adding tags to DT project", total=len(matches)) as p:
+        with self.pbar(message="Visualizations: Adding tags to DT project", total=len(matches)) as p:
             for batch in batched(matches, 100):
                 pred_tag_list = []
                 for match in batch:

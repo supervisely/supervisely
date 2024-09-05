@@ -112,7 +112,7 @@ class BaseBenchmark:
             )
         output_project_id = self.dt_project_info.id
         with self.pbar(
-            message="Inference in progress", total=self.gt_project_info.items_count
+            message="Evaluation: Running inference", total=self.gt_project_info.items_count
         ) as p:
             for _ in iterator:
                 p.update(1)
@@ -189,29 +189,33 @@ class BaseBenchmark:
         }
         self._hardware = model_info["hardware"]
         benchmarks = []
-        for bs in batch_sizes:
-            logger.debug(f"Running speedtest for batch_size={bs}")
-            speedtest_results = []
-            iterator = self.session.run_speedtest(
-                project_id,
-                batch_size=bs,
-                num_iterations=num_iterations,
-                num_warmup=num_warmup,
-                cache_project_on_model=cache_project_on_agent,
-            )
-            for speedtest in tqdm_sly(iterator):
-                speedtest_results.append(speedtest)
-            assert (
-                len(speedtest_results) == num_iterations
-            ), "Speedtest failed to run all iterations."
-            avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(speedtest_results)
-            benchmark = {
-                "benchmark": avg_speedtest,
-                "benchmark_std": std_speedtest,
-                "batch_size": bs,
-                **speedtest_info,
-            }
-            benchmarks.append(benchmark)
+        with self.pbar(message="Speedtest: Running speedtest", total=len(batch_sizes)) as p:
+            for bs in batch_sizes:
+                logger.debug(f"Running speedtest for batch_size={bs}")
+                speedtest_results = []
+                iterator = self.session.run_speedtest(
+                    project_id,
+                    batch_size=bs,
+                    num_iterations=num_iterations,
+                    num_warmup=num_warmup,
+                    cache_project_on_model=cache_project_on_agent,
+                )
+                for speedtest in tqdm_sly(iterator):
+                    speedtest_results.append(speedtest)
+                assert (
+                    len(speedtest_results) == num_iterations
+                ), "Speedtest failed to run all iterations."
+                avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(
+                    speedtest_results
+                )
+                benchmark = {
+                    "benchmark": avg_speedtest,
+                    "benchmark_std": std_speedtest,
+                    "batch_size": bs,
+                    **speedtest_info,
+                }
+                benchmarks.append(benchmark)
+                p.update(1)
         speedtest = {
             "model_info": model_info,
             "speedtest": benchmarks,
@@ -244,7 +248,7 @@ class BaseBenchmark:
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         with self.pbar(
-            message="Uploading evaluation results",
+            message="Evaluation: Uploading evaluation results",
             total=fs.get_directory_size(eval_dir),
             unit="B",
             unit_scale=True,
@@ -306,7 +310,7 @@ class BaseBenchmark:
                 if self.gt_images_ids is None
                 else len(self.gt_images_ids)
             )
-            with self.pbar(message="Downloading GT annotations", total=total) as p:
+            with self.pbar(message="Evaluation: Downloading GT annotations", total=total) as p:
                 download_project(
                     self.api,
                     self.gt_project_info.id,
@@ -326,7 +330,7 @@ class BaseBenchmark:
                 if self.gt_images_ids is None
                 else len(self.gt_images_ids)
             )
-            with self.pbar(message="Downloading Pred annotations", total=total) as p:
+            with self.pbar(message="Evaluation: Downloading Pred annotations", total=total) as p:
                 download_project(
                     self.api,
                     self.dt_project_info.id,
@@ -459,7 +463,7 @@ class BaseBenchmark:
 
         remote_dir = dest_dir
         with self.pbar(
-            message="Uploading visualizations",
+            message="Visualizations: Uploading layout",
             total=get_directory_size(layout_dir),
             unit="B",
             unit_scale=True,
