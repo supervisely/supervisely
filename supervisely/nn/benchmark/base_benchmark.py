@@ -189,7 +189,9 @@ class BaseBenchmark:
         }
         self._hardware = model_info["hardware"]
         benchmarks = []
-        with self.pbar(message="Speedtest: Running speedtest", total=len(batch_sizes)) as p:
+        with self.pbar(
+            message="Speedtest: Running speedtest for batch sizes", total=len(batch_sizes)
+        ) as p:
             for bs in batch_sizes:
                 logger.debug(f"Running speedtest for batch_size={bs}")
                 speedtest_results = []
