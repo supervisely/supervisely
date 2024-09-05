@@ -25,7 +25,7 @@ class SpeedtestOverview(MetricVis):
     def get_table(self, widget: Widget.Table) -> dict:
         res = {}
 
-        columns = ["Batch size", "Infrence time", "FPS"]
+        columns = [" ", "Infrence time", "FPS"]
         temp_res = {}
         max_fps = 0
         for test in self._loader.speedtest["speedtest"]:
@@ -33,14 +33,14 @@ class SpeedtestOverview(MetricVis):
 
             ms = round(test["benchmark"]["total"], 2)
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
-            row = [batch_size, ms, fps]
+            row = [f"Batch size {batch_size}", ms, fps]
             temp_res[batch_size] = row
             max_fps = max(max_fps, fps)
 
         res["content"] = []
         # sort by batch size
         temp_res = dict(sorted(temp_res.items()))
-        for row in temp_res.values():
+        for key, row in temp_res.values():
             dct = {
                 "row": row,
                 "id": row[0],
@@ -49,7 +49,7 @@ class SpeedtestOverview(MetricVis):
             res["content"].append(dct)
 
         columns_options = [
-            {"maxWidth": "225px", "postfix": "batch size"},
+            {"customCell": True, "disableSort": True},
             {"subtitle": "ms", "tooltip": "Milliseconds for batch images", "postfix": "ms"},
             {
                 "subtitle": "imgs/sec",
@@ -59,10 +59,12 @@ class SpeedtestOverview(MetricVis):
             },
         ]
 
-        res["options"] = {"fixColumns": 1}
         res["columns"] = columns
         res["columnsOptions"] = columns_options
 
+        widget.main_column = columns[0]
+        widget.fixed_columns = 1
+        widget.show_header_controls = False
         return res
 
     def get_table_click_data(self, widget: Widget.Table) -> dict:

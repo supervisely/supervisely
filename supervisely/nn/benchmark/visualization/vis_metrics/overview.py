@@ -44,13 +44,23 @@ class Overview(MetricVis):
             note_about_val_dataset = "\n" + note_about_val_dataset + "\n"
         
         checkpoint_name = info.get("deploy_params", {}).get("checkpoint_name", "").replace("_", "\_")
+        me = self._loader._api.user.get_my_info().login
+        current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
         self.schema = Schema(
             self._loader.vis_texts,
+            markdown_header=Widget.Markdown(
+                title="Header",
+                is_header=False,
+                formats=[
+                    checkpoint_name,  # Title
+                    me,
+                    current_date
+                ]
+            ),
             markdown_overview=Widget.Markdown(
                 title="Overview",
                 is_header=True,
                 formats=[
-                    checkpoint_name,  # Title
                     info.get("model_name"),
                     checkpoint_name,
                     info.get("architecture"),
@@ -123,11 +133,3 @@ class Overview(MetricVis):
             )
         )
         return fig
-
-    def get_main_info(self) -> tuple:
-        inference_info = self._loader.inference_info
-        title = inference_info.get("deploy_params", {}).get("checkpoint_name", "")
-        title = title.replace("_", "\_")
-        me = self._loader._api.user.get_my_info().login
-        current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
-        return title, me, current_date

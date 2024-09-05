@@ -66,15 +66,6 @@ class MetricVis:
     def template_main_str(self) -> str:
         res = ""
 
-        if self._is_overview:
-            title, me, date = self.get_main_info()
-            res += f"""
-            <h1>{title}</h1>
-
-            <div class="model-info-block">
-                <div>Created by <b>{me}</b></div>
-                <div><i class="zmdi zmdi-calendar-alt" /><span>{date}</span></div>
-            </div>"""
         _is_before_chart = True
 
         def _add_radio_buttons():
@@ -222,6 +213,9 @@ class MetricVis:
                         "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
                         "table_gallery_id": f"modal_general",
                         "clickable": self.clickable,
+                        "mainColumn": widget.main_column,
+                        "fixColumns": widget.fixed_columns,
+                        "showHeaderControls": widget.show_header_controls,
                     }
                 )
 

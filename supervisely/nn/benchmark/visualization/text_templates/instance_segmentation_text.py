@@ -20,8 +20,16 @@ clickable_label = """
 > </span>
 """
 
-markdown_overview = """# Model Benchmark ({})
+markdown_header = """
+<h1>Model Benchmark ({})</h1>
 
+<div class="model-info-block">
+    <div>Created by <b>{}</b></div>
+    <div><i class="zmdi zmdi-calendar-alt"></i><span>{}</span></div>
+</div>
+"""
+
+markdown_overview = """
 ## Overview
 
 - **Model**: {}

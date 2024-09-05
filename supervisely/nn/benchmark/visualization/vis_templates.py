@@ -172,9 +172,14 @@ template_gallery_str = """<sly-iw-gallery
 
 template_table_str = """<sly-iw-table
                 iw-widget-id="{{ widget_id }}"
-                style="cursor: pointer;"
-                :options="{ isRowClickable: '{{ clickable }}'
-                 }"
+                {% if clickable %}
+                    style="cursor: pointer;"
+                {% endif %}
+                :options="{
+                    isRowClickable: '{{ clickable }}' === 'True',
+                    fixColumns: {{ fixColumns }}, 
+                    showHeaderControls: '{{ showHeaderControls }}' === 'True',
+                }"
                 :actions="{
                   'init': {
                     'dataSource': '{{ init_data_source }}',
@@ -189,7 +194,20 @@ template_table_str = """<sly-iw-table
                 }"
               :command="{{ command }}"
               :data="{{ data }}"
-            />"""
+            >
+                <span
+                  slot="custom-cell-content"
+                  slot-scope="{ row, column, cellValue }"
+                >
+                  <div
+                    v-if="column === '{{ mainColumn }}'"
+                    class="fflex"
+                  >
+                      <b>{{ '{{ cellValue }}' }}</b>
+                  </div>
+                </span>
+            </sly-iw-table>
+            """
 
 template_notification_str = """
             <div style="margin-top: 20px; margin-bottom: 20px;">
