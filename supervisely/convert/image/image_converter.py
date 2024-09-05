@@ -199,9 +199,7 @@ class ImageConverter(BaseConverter):
 
         def _is_meta_dir(dirpath: str) -> bool:
             if os.path.basename(dirpath).lower() == "meta":
-                jsons = list_files(
-                    dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True
-                )
+                jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
                 return len(jsons) > 0
             return False
 
