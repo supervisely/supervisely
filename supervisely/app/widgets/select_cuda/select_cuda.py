@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Callable
 from supervisely.app.widgets import Widget, Select, Button, Flexbox
 from supervisely.sly_logger import logger
 
@@ -66,6 +66,15 @@ class SelectCudaDevice(Widget):
     def _get_gpu_infos(
         self, sort_by_free_ram: bool
     ) -> Optional[Dict[str, Dict[str, Union[str, int]]]]:
+        """
+        Gets list of all available CUDA devices on current machine and returns a dictionary designed to construct selector widget.
+        Optionally, could be sorted by free ram amount.
+
+        :param sort_by_free_ram: Whether to sort the CUDA devices dictionary by device's available free RAM.
+        :type sort_by_free_ram: bool, optional
+        :return: The dictionary with full device name as a key, and a dictionary with device's info as a value.
+        :rtype: Optional[Dict[str, Dict[str, Union[str, int]]]]
+        """
         try:
             from torch import cuda
         except ImportError as ie:
@@ -105,13 +114,29 @@ class SelectCudaDevice(Widget):
         finally:
             return devices
 
-    def get_json_data(self):
+    def get_json_data(self) -> Dict:
+        """Get the JSON data of the widget.
+
+        :return: The JSON data.
+        :rtype: Dict
+        """
         return {}
 
-    def get_json_state(self):
+    def get_json_state(self) -> Dict:
+        """Get the JSON state of the widget.
+
+        :return: The JSON data.
+        :rtype: Dict
+        """
         return {}
 
-    def value_changed(self, func):
+    def value_changed(self, func: Callable) -> Callable:
+        """
+        This decorator function allows to handle the value change event of the widget.
+
+        :return: Callable
+        """
+
         @self._select.value_changed
         def value_cb(value):
             func(value)
