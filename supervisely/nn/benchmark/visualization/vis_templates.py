@@ -203,7 +203,7 @@ template_table_str = """<sly-iw-table
                     v-if="column === '{{ mainColumn }}'"
                     class="fflex"
                   >
-                      <b>{{ '{{ cellValue }}' }}</b>
+                      <b>Batch size {{ '{{ cellValue }}' }}</b>
                   </div>
                 </span>
             </sly-iw-table>

@@ -33,14 +33,14 @@ class SpeedtestOverview(MetricVis):
 
             ms = round(test["benchmark"]["total"], 2)
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
-            row = [f"Batch size {batch_size}", ms, fps]
+            row = [batch_size, ms, fps]
             temp_res[batch_size] = row
             max_fps = max(max_fps, fps)
 
         res["content"] = []
         # sort by batch size
         temp_res = dict(sorted(temp_res.items()))
-        for key, row in temp_res.values():
+        for row in temp_res.values():
             dct = {
                 "row": row,
                 "id": row[0],
