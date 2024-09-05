@@ -35,18 +35,18 @@ class SpeedtestBatch(MetricVis):
             std = test["benchmark_std"]["total"]
             ms = test["benchmark"]["total"]
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
-            fps_upper = round(1000 / (ms - std) * batch_size)
-            fps_std = round(fps_upper - fps)
+            # fps_upper = round(1000 / (ms - std) * batch_size)
+            # fps_std = round(fps_upper - fps)
 
             ms_line = temp_res.setdefault("ms", {})
             fps_line = temp_res.setdefault("fps", {})
             ms_std_line = temp_res.setdefault("ms_std", {})
-            fps_std_line = temp_res.setdefault("fps_std", {})
+            # fps_std_line = temp_res.setdefault("fps_std", {})
 
             ms_line[batch_size] = ms
             fps_line[batch_size] = fps
             ms_std_line[batch_size] = round(std, 2)
-            fps_std_line[batch_size] = fps_std
+            # fps_std_line[batch_size] = fps_std
 
         fig.add_trace(
             go.Scatter(
@@ -72,14 +72,14 @@ class SpeedtestBatch(MetricVis):
                 y=list(temp_res["fps"].values()),
                 name="FPS",
                 line=dict(color=fps_color),
-                customdata=list(temp_res["fps_std"].values()),
-                error_y=dict(
-                    type="data",
-                    array=list(temp_res["fps_std"].values()),
-                    visible=True,
-                    color="rgba(23, 190, 207, 0.7)",
-                ),
-                hovertemplate="Batch Size: %{x}<br>FPS: %{y:.2f}<br> Standard deviation: %{customdata:.2f}<extra></extra>",
+                # customdata=list(temp_res["fps_std"].values()),
+                # error_y=dict(
+                #     type="data",
+                #     array=list(temp_res["fps_std"].values()),
+                #     visible=True,
+                #     color="rgba(23, 190, 207, 0.7)",
+                # ),
+                hovertemplate="Batch Size: %{x}<br>FPS: %{y:.2f}<extra></extra>",  # <br> Standard deviation: %{customdata:.2f}<extra></extra>",
             ),
             col=2,
             row=1,
