@@ -48,6 +48,7 @@ class BaseBenchmark:
         self.classes_whitelist = classes_whitelist
         self.vis_texts = None
         self.inference_speed_text = None
+        self.train_info = None
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
