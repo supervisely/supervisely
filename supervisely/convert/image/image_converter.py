@@ -155,7 +155,13 @@ class ImageConverter(BaseConverter):
                 upload_method = (
                     api.image.upload_links if self.upload_as_links else api.image.upload_paths
                 )
-                img_infos = upload_method(dataset_id, item_names, item_paths, metas=item_metas)
+                img_infos = upload_method(
+                    dataset_id,
+                    item_names,
+                    item_paths,
+                    metas=item_metas,
+                    conflict_resolution="rename",
+                )
                 img_ids = [img_info.id for img_info in img_infos]
                 if len(anns) == len(img_ids):
                     api.annotation.upload_anns(img_ids, anns)
@@ -193,7 +199,9 @@ class ImageConverter(BaseConverter):
 
         def _is_meta_dir(dirpath: str) -> bool:
             if os.path.basename(dirpath).lower() == "meta":
-                jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
+                jsons = list_files(
+                    dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True
+                )
                 return len(jsons) > 0
             return False
 
