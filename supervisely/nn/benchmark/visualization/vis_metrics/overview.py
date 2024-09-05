@@ -21,22 +21,47 @@ class Overview(MetricVis):
         if link_text is None:
             link_text = url
         link_text = link_text.replace("_", "\_")
+        
+        # Note about validation dataset
+        gt_project_id = self._loader.gt_project_info.id
+        gt_images_ids = self._loader._benchmark.gt_images_ids
+        gt_dataset_ids = self._loader._benchmark.gt_dataset_ids
+        if gt_images_ids is not None:
+            note_about_val_dataset = "Evaluated using validation subset."
+        elif gt_dataset_ids is not None:
+            links = []
+            for gt_dataset_id in gt_dataset_ids:
+                gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
+                link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
+                links.append(link)
+            if len(links) == 1:
+                note_about_val_dataset = f"Evaluated on the validation dataset: {links[0]}"
+            else:
+                note_about_val_dataset = f"Evaluated on the validation datasets: {', '.join(links)}"
+        else:
+            note_about_val_dataset = ""
+        if note_about_val_dataset:
+            note_about_val_dataset = "\n" + note_about_val_dataset + "\n"
+        
+        checkpoint_name = info.get("deploy_params", {}).get("checkpoint_name", "").replace("_", "\_")
         self.schema = Schema(
             self._loader.vis_texts,
             markdown_overview=Widget.Markdown(
                 title="Overview",
                 is_header=True,
                 formats=[
-                    # info.get("deploy_params", {}).get("checkpoint_name", "").replace("_", "\_"),
+                    checkpoint_name,  # Title
+                    info.get("model_name"),
+                    checkpoint_name,
                     info.get("architecture"),
                     info.get("task_type"),
                     info.get("runtime"),
-                    info.get("hardware"),
                     url,
                     link_text,
-                    self._loader.docs_link,
                     self._loader.gt_project_info.id,
                     self._loader.gt_project_info.name,
+                    note_about_val_dataset,
+                    self._loader.docs_link,
                 ],
             ),
             markdown_key_metrics=Widget.Markdown(
