@@ -95,28 +95,30 @@ template_markdown_str = """
 """
 
 template_chart_str = """
-            <sly-iw-chart
-              iw-widget-id="{{ widget_id }}"{% if switchable %}
-              v-show="state.{{ radio_group }} === '{{ switch_key }}'"
-              {% endif %}:actions="{
-                'init': {
-                  'dataSource': '{{ init_data_source }}',
-                },{% if chart_click_data_source %}
-                'chart-click': {
-                  'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
-                  'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
-                  'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['pr_curve_by_class'] %}
-                  'getKey': (payload) => payload.points[0].data.legendgroup,{% endif %}{% if cls_name in ['per_class_avg_precision'] %}
-                  'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
-                  'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
-                  'keySeparator': '{{ key_separator }}',{% endif %}
-                  'galleryId': 'modal_general',
-                  'limit': 9
-                },{% endif %}
-              }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            />
+            <div style="margin-top: 20px; margin-bottom: 20px;">
+                <sly-iw-chart
+                iw-widget-id="{{ widget_id }}"{% if switchable %}
+                v-show="state.{{ radio_group }} === '{{ switch_key }}'"
+                {% endif %}:actions="{
+                    'init': {
+                    'dataSource': '{{ init_data_source }}',
+                    },{% if chart_click_data_source %}
+                    'chart-click': {
+                    'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
+                    'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
+                    'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['pr_curve_by_class'] %}
+                    'getKey': (payload) => payload.points[0].data.legendgroup,{% endif %}{% if cls_name in ['per_class_avg_precision'] %}
+                    'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
+                    'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
+                    'keySeparator': '{{ key_separator }}',{% endif %}
+                    'galleryId': 'modal_general',
+                    'limit': 9
+                    },{% endif %}
+                }"
+                :command="{{ command }}"
+                :data="{{ data }}"
+                />
+            </div>
 
 
 """
@@ -125,13 +127,13 @@ template_radiogroup_str = """<el-radio v-model="state.{{ radio_group }}" label="
 
 
 template_gallery_str = """<sly-iw-gallery
-              iw-widget-id="{{ widget_id }}"
-              {% if is_table_gallery %}
-              ref='{{ widget_id }}'
-              {% endif %}
-              :actions="{
+            iw-widget-id="{{ widget_id }}"
+            {% if is_table_gallery %}
+            ref='{{ widget_id }}'
+            {% endif %}
+            :actions="{
                 'init': {
-                  'dataSource': '{{ init_data_source }}',
+                'dataSource': '{{ init_data_source }}',
                 },
                 {% if gallery_diff_data_source %}
                 'chart-click': {
@@ -141,9 +143,9 @@ template_gallery_str = """<sly-iw-gallery
                         'limit': 3,
                 },
                 {% endif %}
-              }"
-              :command="{{ command }}"
-              :data="{{ data }}"
+            }"
+            :command="{{ command }}"
+            :data="{{ data }}"
             >
                 {% if gallery_diff_data_source %}
                     <span slot="image-left-header">
@@ -170,43 +172,46 @@ template_gallery_str = """<sly-iw-gallery
 """
 
 
-template_table_str = """<sly-iw-table
-                iw-widget-id="{{ widget_id }}"
-                {% if clickable %}
-                    style="cursor: pointer;"
-                {% endif %}
-                :options="{
-                    isRowClickable: '{{ clickable }}' === 'True',
-                    fixColumns: {{ fixColumns }}, 
-                    showHeaderControls: '{{ showHeaderControls }}' === 'True',
-                }"
-                :actions="{
-                  'init': {
-                    'dataSource': '{{ init_data_source }}',
-                  },
+template_table_str = """
+            <div style="margin-top: 20px; margin-bottom: 30px;">
+                <sly-iw-table
+                    iw-widget-id="{{ widget_id }}"
                     {% if clickable %}
-                  'chart-click': {
-                    'dataSource': '{{ table_click_data }}',
-                    'galleryId': '{{ table_gallery_id }}',
-                    'getKey':(payload)=>payload.row[0],
-                   },
+                        style="cursor: pointer;"
                     {% endif %}
-                }"
-              :command="{{ command }}"
-              :data="{{ data }}"
-            >
-                <span
-                  slot="custom-cell-content"
-                  slot-scope="{ row, column, cellValue }"
+                    :options="{
+                        isRowClickable: '{{ clickable }}' === 'True',
+                        fixColumns: {{ fixColumns }}, 
+                        showHeaderControls: '{{ showHeaderControls }}' === 'True',
+                    }"
+                    :actions="{
+                    'init': {
+                        'dataSource': '{{ init_data_source }}',
+                    },
+                        {% if clickable %}
+                    'chart-click': {
+                        'dataSource': '{{ table_click_data }}',
+                        'galleryId': '{{ table_gallery_id }}',
+                        'getKey':(payload)=>payload.row[0],
+                    },
+                        {% endif %}
+                    }"
+                :command="{{ command }}"
+                :data="{{ data }}"
                 >
-                  <div
-                    v-if="column === '{{ mainColumn }}'"
-                    class="fflex"
-                  >
-                      <b>Batch size {{ '{{ cellValue }}' }}</b>
-                  </div>
-                </span>
-            </sly-iw-table>
+                    <span
+                    slot="custom-cell-content"
+                    slot-scope="{ row, column, cellValue }"
+                    >
+                    <div
+                        v-if="column === '{{ mainColumn }}'"
+                        class="fflex"
+                    >
+                        <b>Batch size {{ '{{ cellValue }}' }}</b>
+                    </div>
+                    </span>
+                </sly-iw-table>
+            </div>
             """
 
 template_notification_str = """
