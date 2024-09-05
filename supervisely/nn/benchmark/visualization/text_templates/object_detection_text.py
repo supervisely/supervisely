@@ -20,8 +20,7 @@ clickable_label = """
 > </span>
 """
 
-markdown_overview = """# {}
-
+markdown_overview = """
 ## Overview
 
 - **Architecture**: {}
