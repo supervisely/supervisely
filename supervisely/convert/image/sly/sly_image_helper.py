@@ -53,7 +53,7 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
             f"Key '{AnnotationJsonFields.IMG_TAGS}' for image tags is missing in the annotation file. Tags will not be added to the meta."
         )
         img_tags = []
-        meta = create_tags_from_annotation(img_tags, meta)
+    meta = create_tags_from_annotation(img_tags, meta)
     return meta
 
 
