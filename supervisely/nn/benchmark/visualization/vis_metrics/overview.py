@@ -118,9 +118,20 @@ class Overview(MetricVis):
         classes_cnt = len(self._loader._benchmark.classes_whitelist)
         classes_str = "classes" if classes_cnt > 1 else "class"
         classes_str = f"{classes_cnt} {classes_str}"
-        train_session, note_about_val_dataset = "", ""
 
+        train_session, images_str = "", ""
+        gt_project_id = self._loader.gt_project_info.id
+        gt_images_ids = self._loader._benchmark.gt_images_ids
+        gt_dataset_ids = self._loader._benchmark.gt_dataset_ids
         train_info = self._loader._benchmark.train_info
+        if gt_images_ids is not None:
+            val_imgs_cnt = len(gt_images_ids)
+        elif gt_dataset_ids is not None:
+            datasets = [self._loader._api.dataset.get_info_by_id(ds) for ds in gt_dataset_ids]
+            val_imgs_cnt = sum(ds.items_count for ds in datasets)
+        else:
+            val_imgs_cnt = self._loader.gt_project_info.items_count
+
         if train_info:
             train_task_id = train_info.get("app_session_id")
             if train_task_id:
@@ -128,26 +139,20 @@ class Overview(MetricVis):
                 app_id = task_info["meta"]["app"]["id"]
                 train_session = f'- **Training dashboard**:  <a href="/apps/{app_id}/sessions/{train_task_id}" target="_blank">open</a>'
 
-            images_count = train_info.get("images_count")
-            train_images_ids = train_info.get("train_images_ids")
-            note_about_val_dataset = (
-                f", {len(train_images_ids)} images in train, {images_count} images in validation"
+            train_imgs_cnt = train_info.get("images_count")
+            images_str = f", {train_imgs_cnt} images in train, {val_imgs_cnt} images in validation"
+
+        if gt_images_ids is not None:
+            images_str += f". Evaluated using subset - {val_imgs_cnt} images"
+        elif gt_dataset_ids is not None:
+            links = [
+                f'<a href="/projects/{gt_project_id}/datasets/{ds.id}" target="_blank">{ds.name}</a>'
+                for ds in datasets
+            ]
+            images_str += (
+                f". Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
             )
         else:
-            gt_project_id = self._loader.gt_project_info.id
-            gt_images_ids = self._loader._benchmark.gt_images_ids
-            gt_dataset_ids = self._loader._benchmark.gt_dataset_ids
-            if gt_images_ids is not None:
-                note_about_val_dataset = (
-                    f". Evaluated using validation subset - {len(gt_images_ids)} images"
-                )
-            elif gt_dataset_ids is not None:
-                links = []
-                for gt_dataset_id in gt_dataset_ids:
-                    gt_dataset_name = self._loader._api.dataset.get_info_by_id(gt_dataset_id).name
-                    link = f'<a href="/projects/{gt_project_id}/datasets/{gt_dataset_id}" target="_blank">{gt_dataset_name}</a>'
-                    links.append(link)
-                note_about_val_dataset = (
-                    f". Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
-                )
-        return classes_str, note_about_val_dataset, train_session
+            images_str += f". Evaluated on the whole project ({val_imgs_cnt} images)"
+
+        return classes_str, images_str, train_session
