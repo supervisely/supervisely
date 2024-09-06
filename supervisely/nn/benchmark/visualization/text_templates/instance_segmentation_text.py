@@ -20,16 +20,26 @@ clickable_label = """
 > </span>
 """
 
-markdown_overview = """# {}
+markdown_header = """
+<h1>{}</h1>
 
-## Overview
+<div class="model-info-block">
+    <div>Created by <b>{}</b></div>
+    <div><i class="zmdi zmdi-calendar-alt"></i><span>{}</span></div>
+</div>
+"""
 
+markdown_overview = """
+- **Model**: {}
+- **Checkpoint**: {}
 - **Architecture**: {}
 - **Task type**: {}
 - **Runtime**: {}
-- **Hardware**: {}
-- **Checkpoint URL**: <a href="{}" target="_blank">{}</a>
-- Learn metrics details and how to use them in <a href="{}" target="_blank">technical report</a>
+- **Checkpoint file**: <a href="{}" target="_blank">{}</a>
+- **Ground Truth project**: <a href="/projects/{}/datasets" target="_blank">{}</a>, {}{}
+{}
+
+Learn more about Model Benchmark, implementation details, and how to use the charts in our <a href="{}" target="_blank">Technical Report</a>.
 """
 # - **Model**: {}
 # - **Training dataset (?)**: COCO 2017 train
@@ -149,13 +159,16 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 )
 
 
-markdown_PR = """## Recall vs. Precision
+markdown_PR = (
+    """## Recall vs. Precision
 
 This section compares Precision and Recall in one graph, identifying **imbalance** between these two.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
-""" + clickable_label
+"""
+    + clickable_label
+)
 
 
 markdown_pr_curve = """## Precision-Recall Curve

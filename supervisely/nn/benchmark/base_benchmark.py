@@ -14,9 +14,9 @@ from supervisely.nn.benchmark.utils import WORKSPACE_DESCRIPTION, WORKSPACE_NAME
 from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
-from supervisely.project.project_meta import ProjectMeta
 
 
 class BaseBenchmark:
@@ -43,8 +43,12 @@ class BaseBenchmark:
         self.evaluator: BaseEvaluator = None
         self._eval_inference_info = None
         self._speedtest = None
+        self._hardware = None
         self.pbar = progress or tqdm_sly
         self.classes_whitelist = classes_whitelist
+        self.vis_texts = None
+        self.inference_speed_text = None
+        self.train_info = None
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -52,6 +56,10 @@ class BaseBenchmark:
     @property
     def cv_task(self) -> str:
         raise NotImplementedError()
+
+    @property
+    def hardware(self) -> str:
+        return self._hardware
 
     def run_evaluation(
         self,
@@ -105,7 +113,7 @@ class BaseBenchmark:
             )
         output_project_id = self.dt_project_info.id
         with self.pbar(
-            message="Inference in progress", total=self.gt_project_info.items_count
+            message="Evaluation: Running inference", total=self.gt_project_info.items_count
         ) as p:
             for _ in iterator:
                 p.update(1)
@@ -180,30 +188,37 @@ class BaseBenchmark:
             "hardware": model_info["hardware"],
             "num_iterations": num_iterations,
         }
+        self._hardware = model_info["hardware"]
         benchmarks = []
-        for bs in batch_sizes:
-            logger.debug(f"Running speedtest for batch_size={bs}")
-            speedtest_results = []
-            iterator = self.session.run_speedtest(
-                project_id,
-                batch_size=bs,
-                num_iterations=num_iterations,
-                num_warmup=num_warmup,
-                cache_project_on_model=cache_project_on_agent,
-            )
-            for speedtest in tqdm_sly(iterator):
-                speedtest_results.append(speedtest)
-            assert (
-                len(speedtest_results) == num_iterations
-            ), "Speedtest failed to run all iterations."
-            avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(speedtest_results)
-            benchmark = {
-                "benchmark": avg_speedtest,
-                "benchmark_std": std_speedtest,
-                "batch_size": bs,
-                **speedtest_info,
-            }
-            benchmarks.append(benchmark)
+        with self.pbar(
+            message="Speedtest: Running speedtest for batch sizes", total=len(batch_sizes)
+        ) as p:
+            for bs in batch_sizes:
+                logger.debug(f"Running speedtest for batch_size={bs}")
+                speedtest_results = []
+                iterator = self.session.run_speedtest(
+                    project_id,
+                    batch_size=bs,
+                    num_iterations=num_iterations,
+                    num_warmup=num_warmup,
+                    cache_project_on_model=cache_project_on_agent,
+                )
+                for speedtest in tqdm_sly(iterator):
+                    speedtest_results.append(speedtest)
+                assert (
+                    len(speedtest_results) == num_iterations
+                ), "Speedtest failed to run all iterations."
+                avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(
+                    speedtest_results
+                )
+                benchmark = {
+                    "benchmark": avg_speedtest,
+                    "benchmark_std": std_speedtest,
+                    "batch_size": bs,
+                    **speedtest_info,
+                }
+                benchmarks.append(benchmark)
+                p.update(1)
         speedtest = {
             "model_info": model_info,
             "speedtest": benchmarks,
@@ -225,10 +240,8 @@ class BaseBenchmark:
         return dir
 
     def get_speedtest_results_dir(self) -> str:
-        checkpoint_name = self._speedtest["model_info"]["model_name"]
-        dir = os.path.join(
-            self.output_dir, "speedtest", checkpoint_name
-        )  # TODO: use checkpoint_name instead of model_name
+        checkpoint_name = self._speedtest["model_info"]["checkpoint_name"]
+        dir = os.path.join(self.output_dir, "speedtest", checkpoint_name)
         os.makedirs(dir, exist_ok=True)
         return dir
 
@@ -238,7 +251,7 @@ class BaseBenchmark:
             eval_dir
         ), f"The result dir {eval_dir!r} is empty. You should run evaluation before uploading results."
         with self.pbar(
-            message="Uploading evaluation results",
+            message="Evaluation: Uploading evaluation results",
             total=fs.get_directory_size(eval_dir),
             unit="B",
             unit_scale=True,
@@ -300,7 +313,7 @@ class BaseBenchmark:
                 if self.gt_images_ids is None
                 else len(self.gt_images_ids)
             )
-            with self.pbar(message="Downloading GT annotations", total=total) as p:
+            with self.pbar(message="Evaluation: Downloading GT annotations", total=total) as p:
                 download_project(
                     self.api,
                     self.gt_project_info.id,
@@ -320,7 +333,7 @@ class BaseBenchmark:
                 if self.gt_images_ids is None
                 else len(self.gt_images_ids)
             )
-            with self.pbar(message="Downloading Pred annotations", total=total) as p:
+            with self.pbar(message="Evaluation: Downloading Pred annotations", total=total) as p:
                 download_project(
                     self.api,
                     self.dt_project_info.id,
@@ -453,7 +466,7 @@ class BaseBenchmark:
 
         remote_dir = dest_dir
         with self.pbar(
-            message="Uploading visualizations",
+            message="Visualizations: Uploading layout",
             total=get_directory_size(layout_dir),
             unit="B",
             unit_scale=True,
