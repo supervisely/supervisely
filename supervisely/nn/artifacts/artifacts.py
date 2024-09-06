@@ -360,8 +360,6 @@ class BaseTrainArtifacts:
                 {ApiField.TEAM_ID: self.team_id, ApiField.PATH: remote_path},
                 stream=True,
             )
-
-            # response = self._http_session.get(metadata_url, headers={"x-api-key": self._api.token})
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             logger.debug(f"Failed to fetch train metadata from '{remote_path}': {e}")
