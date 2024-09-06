@@ -26,6 +26,11 @@ if TYPE_CHECKING:
 from supervisely import Label
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.inference_speed import SPEEDTEST_METRICS
+from supervisely.nn.benchmark.visualization.text_templates import (
+    inference_speed_text,
+    instance_segmentation_text,
+    object_detection_text,
+)
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
 from supervisely.nn.benchmark.visualization.vis_metrics import ALL_METRICS
@@ -87,16 +92,18 @@ class Visualizer:
         self.gt_project_meta = self._get_filtered_project_meta(self.gt_project_info.id)
         self.dt_project_meta = self._get_filtered_project_meta(self.dt_project_info.id)
         self._docs_link = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
-        self.vis_texts = benchmark.vis_texts
-        self.inference_speed_text = benchmark.inference_speed_text
+
         self.speedtest = benchmark._speedtest
+        self.inference_speed_text = inference_speed_text
 
         if benchmark.cv_task == CVTask.OBJECT_DETECTION:
             self._initialize_loader()
             self.docs_link = self._docs_link + CVTask.OBJECT_DETECTION.value.replace("_", "-")
+            self.vis_texts = object_detection_text
         elif benchmark.cv_task == CVTask.INSTANCE_SEGMENTATION:
             self._initialize_loader()
             self.docs_link = self._docs_link + CVTask.INSTANCE_SEGMENTATION.value.replace("_", "-")
+            self.vis_texts = instance_segmentation_text
         else:
             raise NotImplementedError(f"CV task {benchmark.cv_task} is not supported yet")
 
@@ -613,7 +620,9 @@ class Visualizer:
         # add tags to objects
         logger.info("Adding tags to DT project")
 
-        with self.pbar(message="Visualizations: Adding tags to DT project", total=len(matches)) as p:
+        with self.pbar(
+            message="Visualizations: Adding tags to DT project", total=len(matches)
+        ) as p:
             for batch in batched(matches, 100):
                 pred_tag_list = []
                 for match in batch:

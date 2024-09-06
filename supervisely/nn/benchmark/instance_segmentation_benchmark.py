@@ -2,20 +2,11 @@ from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.evaluation import InstanceSegmentationEvaluator
 from supervisely.nn.benchmark.utils import try_set_conf_auto
-from supervisely.nn.benchmark.visualization.text_templates import (
-    inference_speed_text,
-    instance_segmentation_text,
-)
 
 CONF_THRES = 0.05
 
 
 class InstanceSegmentationBenchmark(BaseBenchmark):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.vis_texts = instance_segmentation_text
-        self.inference_speed_text = inference_speed_text
 
     @property
     def cv_task(self) -> str:

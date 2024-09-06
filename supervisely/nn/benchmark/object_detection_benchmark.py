@@ -4,20 +4,11 @@ from supervisely.nn.benchmark.evaluation.object_detection_evaluator import (
     ObjectDetectionEvaluator,
 )
 from supervisely.nn.benchmark.utils import try_set_conf_auto
-from supervisely.nn.benchmark.visualization.text_templates import (
-    inference_speed_text,
-    object_detection_text,
-)
 
 CONF_THRES = 0.05
 
 
 class ObjectDetectionBenchmark(BaseBenchmark):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.vis_texts = object_detection_text
-        self.inference_speed_text = inference_speed_text
 
     @property
     def cv_task(self) -> str:
