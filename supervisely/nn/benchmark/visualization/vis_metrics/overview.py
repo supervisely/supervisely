@@ -28,6 +28,8 @@ class Overview(MetricVis):
         checkpoint_name = info.get("deploy_params", {}).get("checkpoint_name", "")
         me = self._loader._api.user.get_my_info().login
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
+        model_name = info.get("model_name") or "Custom"
+
         self.schema = Schema(
             self._loader.vis_texts,
             markdown_header=Widget.Markdown(
@@ -39,7 +41,7 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("model_name", "Custom").replace("_", "\_"),
+                    model_name.replace("_", "\_"),
                     checkpoint_name.replace("_", "\_"),
                     info.get("architecture"),
                     info.get("task_type"),
