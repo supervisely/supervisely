@@ -1,22 +1,33 @@
 from typing import List
 
-from supervisely.geometry.helpers import GET_GEOMETRY_FROM_STR
-from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.graph import GraphNodes, KeypointsTemplate, NODES
+from supervisely import ObjClass, ProjectMeta, TagMeta, TagValueType, logger
+from supervisely.annotation.annotation import AnnotationJsonFields
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.tag import TagJsonFields
-from supervisely import ObjClass, ProjectMeta, TagMeta, TagValueType, logger
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.constants import LOC
+from supervisely.geometry.graph import NODES, GraphNodes, KeypointsTemplate
+from supervisely.geometry.helpers import GET_GEOMETRY_FROM_STR
 
-SLY_IMAGE_ANN_KEYS = ["objects", "tags", "size"]
-SLY_OBJECT_KEYS = [LabelJsonFields.OBJ_CLASS_NAME, LabelJsonFields.TAGS, "geometryType"]  #, LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
+SLY_IMAGE_ANN_KEYS = [
+    AnnotationJsonFields.LABELS,
+    AnnotationJsonFields.IMG_TAGS,
+    AnnotationJsonFields.IMG_SIZE,
+]
+SLY_OBJECT_KEYS = [
+    LabelJsonFields.OBJ_CLASS_NAME,
+    LabelJsonFields.TAGS,
+    LabelJsonFields.GEOMETRY_TYPE,
+]
 SLY_TAG_KEYS = [TagJsonFields.TAG_NAME, TagJsonFields.VALUE]
+
 
 # Check the annotation format documentation at
 def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
     """Generate sly.ProjectMeta from JSON annotation file."""
 
     if "annotation" in ann_json:
-        ann_json = ann_json["annotation"]
+        ann_json = ann_json.get("annotation", {})
 
     if not all(key in ann_json for key in SLY_IMAGE_ANN_KEYS):
         logger.warn(
@@ -26,10 +37,23 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
         )
         return meta
 
-    for object in ann_json["objects"]:
-        meta = create_tags_from_annotation(object["tags"], meta)
+    ann_objects = ann_json.get(AnnotationJsonFields.LABELS, [])
+    for object in ann_objects:
+        obj_tags = object.get(LabelJsonFields.TAGS, None)
+        if obj_tags is None:
+            logger.warn(
+                f"Key '{LabelJsonFields.TAGS}' for object tags is missing in the annotation file. Tags will not be added to the meta."
+            )
+            obj_tags = []
+        meta = create_tags_from_annotation(obj_tags, meta)
         meta = create_classes_from_annotation(object, meta)
-    meta = create_tags_from_annotation(ann_json["tags"], meta)
+    img_tags = ann_json.get(AnnotationJsonFields.IMG_TAGS, None)
+    if img_tags is None:
+        logger.warn(
+            f"Key '{AnnotationJsonFields.IMG_TAGS}' for image tags is missing in the annotation file. Tags will not be added to the meta."
+        )
+        img_tags = []
+    meta = create_tags_from_annotation(img_tags, meta)
     return meta
 
 
@@ -66,8 +90,8 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
             "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/04_supervisely_format_objects"
         )
         return meta
-    class_name = object["classTitle"]
-    geometry_type_str = object["geometryType"]
+    class_name = object[LabelJsonFields.OBJ_CLASS_NAME]
+    geometry_type_str = object[LabelJsonFields.GEOMETRY_TYPE]
     obj_class = None
 
     try:
@@ -82,13 +106,17 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
         if NODES in object:
             geometry_config = KeypointsTemplate()
             for uuid, node in object[NODES].items():
-                if "loc" in node and len(node["loc"]) == 2:
-                    geometry_config.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
-    obj_class = ObjClass(name=class_name, geometry_type=geometry_type, geometry_config=geometry_config)
+                if LOC in node and len(node[LOC]) == 2:
+                    geometry_config.add_point(label=uuid, row=node[LOC][0], col=node[LOC][1])
+    obj_class = ObjClass(
+        name=class_name, geometry_type=geometry_type, geometry_config=geometry_config
+    )
     existing_class = meta.get_obj_class(class_name)
 
     if obj_class is None:
-        logger.warn(f"Failed to create object class for {class_name} with geometry type {geometry_type_str}")
+        logger.warn(
+            f"Failed to create object class for {class_name} with geometry type {geometry_type_str}"
+        )
         return meta
 
     if existing_class is None:
@@ -100,16 +128,24 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
             meta = meta.add_obj_class(obj_class)
     return meta
 
+
 def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
     if renamed_classes:
-        for obj in ann_json["objects"]:
-            obj["classTitle"] = renamed_classes.get(obj["classTitle"], obj["classTitle"])
-            for tag in obj["tags"]:
-                tag["name"] = renamed_tags.get(tag["name"], tag["name"])
+        for obj in ann_json[AnnotationJsonFields.LABELS]:
+            obj[LabelJsonFields.OBJ_CLASS_NAME] = renamed_classes.get(
+                obj[LabelJsonFields.OBJ_CLASS_NAME], obj[LabelJsonFields.OBJ_CLASS_NAME]
+            )
+            for tag in obj[LabelJsonFields.TAGS]:
+                tag[TagJsonFields.TAG_NAME] = renamed_tags.get(
+                    tag[TagJsonFields.TAG_NAME], tag[TagJsonFields.TAG_NAME]
+                )
     if renamed_tags:
-        for tag in ann_json["tags"]:
-            tag["name"] = renamed_tags.get(tag["name"], tag["name"])
+        for tag in ann_json[AnnotationJsonFields.IMG_TAGS]:
+            tag[TagJsonFields.TAG_NAME] = renamed_tags.get(
+                tag[TagJsonFields.TAG_NAME], tag[TagJsonFields.TAG_NAME]
+            )
     return ann_json
+
 
 def annotation_high_level_validator(ann_json: dict) -> bool:
     """Check if annotation is probably in Supervisely format."""
@@ -118,16 +154,17 @@ def annotation_high_level_validator(ann_json: dict) -> bool:
         ann_json = ann_json["annotation"]
     if not all(key in ann_json for key in SLY_IMAGE_ANN_KEYS):
         return False
-    for obj in ann_json["objects"]:
+    for obj in ann_json[AnnotationJsonFields.LABELS]:
         if not all(key in obj for key in SLY_OBJECT_KEYS):
             return False
-        for tag in obj["tags"]:
+        for tag in obj[LabelJsonFields.TAGS]:
             if not all(key in tag for key in SLY_TAG_KEYS):
                 return False
-    for tag in ann_json["tags"]:
+    for tag in ann_json[AnnotationJsonFields.IMG_TAGS]:
         if not all(key in tag for key in SLY_TAG_KEYS):
             return False
     return True
+
 
 def get_image_size_from_annotation(ann_json: dict) -> tuple:
     """Get image size from annotation."""
@@ -136,7 +173,10 @@ def get_image_size_from_annotation(ann_json: dict) -> tuple:
         ann_json = ann_json["annotation"]
     if "size" not in ann_json:
         return None
-    size = ann_json["size"]
-    if "height" not in size or "width" not in size:
+    size = ann_json[AnnotationJsonFields.IMG_SIZE]
+    if (
+        AnnotationJsonFields.IMG_SIZE_HEIGHT not in size
+        or AnnotationJsonFields.IMG_SIZE_WIDTH not in size
+    ):
         return None
-    return size["height"], size["width"]
+    return size[AnnotationJsonFields.IMG_SIZE_HEIGHT], size[AnnotationJsonFields.IMG_SIZE_WIDTH]
