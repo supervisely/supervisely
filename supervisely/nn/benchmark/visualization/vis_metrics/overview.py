@@ -39,7 +39,7 @@ class Overview(MetricVis):
                 title="Overview",
                 is_header=True,
                 formats=[
-                    info.get("model_name"),
+                    info.get("model_name", "Custom").replace("_", "\_"),
                     checkpoint_name.replace("_", "\_"),
                     info.get("architecture"),
                     info.get("task_type"),
