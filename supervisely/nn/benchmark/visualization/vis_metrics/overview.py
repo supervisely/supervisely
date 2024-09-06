@@ -21,13 +21,11 @@ class Overview(MetricVis):
         if link_text is None:
             link_text = url
         link_text = link_text.replace("_", "\_")
-        
+
         # Note about validation dataset
         classes_str, note_about_val_dataset, train_session = self.get_overview_info()
 
-        checkpoint_name = (
-            info.get("deploy_params", {}).get("checkpoint_name", "").replace("_", "\_")
-        )
+        checkpoint_name = info.get("deploy_params", {}).get("checkpoint_name", "")
         me = self._loader._api.user.get_my_info().login
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
         self.schema = Schema(
@@ -42,7 +40,7 @@ class Overview(MetricVis):
                 is_header=True,
                 formats=[
                     info.get("model_name"),
-                    checkpoint_name,
+                    checkpoint_name.replace("_", "\_"),
                     info.get("architecture"),
                     info.get("task_type"),
                     info.get("runtime"),
