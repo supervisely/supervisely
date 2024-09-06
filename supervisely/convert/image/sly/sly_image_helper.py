@@ -18,7 +18,7 @@ SLY_OBJECT_KEYS = [
     LabelJsonFields.OBJ_CLASS_NAME,
     LabelJsonFields.TAGS,
     LabelJsonFields.GEOMETRY_TYPE,
-]  # , LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
+]
 SLY_TAG_KEYS = [TagJsonFields.TAG_NAME, TagJsonFields.VALUE]
 
 
@@ -27,7 +27,7 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
     """Generate sly.ProjectMeta from JSON annotation file."""
 
     if "annotation" in ann_json:
-        ann_json = ann_json.get("annotation")
+        ann_json = ann_json.get("annotation", {})
 
     if not all(key in ann_json for key in SLY_IMAGE_ANN_KEYS):
         logger.warn(
@@ -39,12 +39,20 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
 
     ann_objects = ann_json.get(AnnotationJsonFields.LABELS, [])
     for object in ann_objects:
-        obj_tags = object.get(LabelJsonFields.TAGS, [])
-        if len(obj_tags) > 0:
-            meta = create_tags_from_annotation(obj_tags, meta)
+        obj_tags = object.get(LabelJsonFields.TAGS, None)
+        if obj_tags is None:
+            logger.warn(
+                f"Key '{LabelJsonFields.TAGS}' for object tags is missing in the annotation file. Tags will not be added to the meta."
+            )
+            obj_tags = []
+        meta = create_tags_from_annotation(obj_tags, meta)
         meta = create_classes_from_annotation(object, meta)
-    img_tags = ann_json.get(AnnotationJsonFields.IMG_TAGS, [])
-    if len(img_tags) > 0:
+    img_tags = ann_json.get(AnnotationJsonFields.IMG_TAGS, None)
+    if img_tags is None:
+        logger.warn(
+            f"Key '{AnnotationJsonFields.IMG_TAGS}' for image tags is missing in the annotation file. Tags will not be added to the meta."
+        )
+        img_tags = []
         meta = create_tags_from_annotation(img_tags, meta)
     return meta
 
