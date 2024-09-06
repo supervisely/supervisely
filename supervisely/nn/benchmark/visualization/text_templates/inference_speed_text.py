@@ -19,5 +19,5 @@ This chart compares different runtimes and devices (CPU or GPU)."""
 
 
 markdown_batch_inference = """
-This chart shows how the model's speed changes with different batch sizes . As the batch size increases, you can observe an increase in FPS (images per second). Each line represents one environment-device setting.
+This chart shows how the model's speed changes with different batch sizes . As the batch size increases, you can observe an increase in FPS (images per second).
 """
