@@ -269,8 +269,6 @@ class NodesFlow(Widget):
         StateJson()[self.widget_id]["flowState"] = {}
 
         self._nodes = []
-        self.set_edges([])
-
         StateJson().send_changes()
 
     def set_edges(self, edges: List[dict]):
