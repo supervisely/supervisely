@@ -31,6 +31,7 @@ class MetricVis:
         self.switchable: bool = False
         self.schema: Schema = None
         self.empty = False
+        self._is_overview = False
 
         self._loader = loader
         self._template_markdown = Template(template_markdown_str)
@@ -64,6 +65,7 @@ class MetricVis:
     @property
     def template_main_str(self) -> str:
         res = ""
+
         _is_before_chart = True
 
         def _add_radio_buttons():
@@ -116,6 +118,7 @@ class MetricVis:
                         "data_source": f"/data/{widget.name}.md",
                         "command": "command",
                         "data": "data",
+                        "is_overview": widget.title == "Overview",
                     }
                 )
 
@@ -209,6 +212,10 @@ class MetricVis:
                         "data": "data",
                         "table_click_data": f"/data/{widget.name}_{self.name}_click_data.json",
                         "table_gallery_id": f"modal_general",
+                        "clickable": self.clickable,
+                        "mainColumn": widget.main_column,
+                        "fixColumns": widget.fixed_columns,
+                        "showHeaderControls": widget.show_header_controls,
                     }
                 )
 
@@ -318,7 +325,12 @@ class MetricVis:
         pass
 
     def get_md_content(self, widget: Widget.Markdown):
-        return getattr(self._loader.vis_texts, widget.name).format(*widget.formats)
+        if hasattr(self._loader.vis_texts, widget.name):
+            return getattr(self._loader.vis_texts, widget.name).format(*widget.formats)
+        elif hasattr(self._loader.inference_speed_text, widget.name):
+            return getattr(self._loader.inference_speed_text, widget.name).format(*widget.formats)
+        else:
+            raise AttributeError(f"Not found texts template for {widget.name}")
 
     def initialize_formats(self, loader: Visualizer, widget: Widget):
         pass

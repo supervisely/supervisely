@@ -7,6 +7,7 @@ import numpy as np
 
 from supervisely import Bitmap
 from supervisely._utils import batched
+from supervisely.project.project import Project, OpenMode
 
 
 def sly2coco(
@@ -14,7 +15,7 @@ def sly2coco(
     is_dt_dataset: bool,
     accepted_shapes: list = None,
     conf_threshold: float = None,
-    progress_cb: Optional[Callable] = None,
+    progress: Optional[Callable] = None,
     classes_whitelist: Optional[List[str]] = None,
 ):
     from pycocotools import mask as maskUtils  # pylint: disable=import-error
@@ -51,96 +52,95 @@ def sly2coco(
     images = []
     annotations = []
     annotation_id = 1
-    # TODO: progress can be created here:
-    # total = len(ann_files) X len(datasets)
-    # progress = pbar(total=total, desc="Converting {GT/Pred} to COCO format")
-    img_id = 1
-    for dataset_name in datasets:
-        ann_path = pjoin(sly_project_path, dataset_name, "ann")
-        imginfo_path = pjoin(sly_project_path, dataset_name, "img_info")
-        ann_files = sorted(os.listdir(ann_path))
-        for batch in batched(ann_files, 30):
-            for ann_file in batch:
-                img_name = os.path.splitext(ann_file)[0]
-                with open(os.path.join(ann_path, ann_file), "r") as f:
-                    ann = json.load(f)
-                with open(os.path.join(imginfo_path, ann_file), "r") as f:
-                    img_info = json.load(f)
-                img_w = ann["size"]["width"]
-                img_h = ann["size"]["height"]
-                img = {
-                    "id": img_id,
-                    "file_name": img_name,
-                    "width": img_w,
-                    "height": img_h,
-                    "sly_id": img_info["id"],
-                    "dataset": dataset_name,
-                }
-                images.append(img)
-                for label in ann["objects"]:
-                    geometry_type = label["geometryType"]
-                    if accepted_shapes is not None and geometry_type not in accepted_shapes:
-                        continue
-                    class_name = label["classTitle"]
-                    if classes_whitelist:
-                        if class_name not in classes_whitelist:
+    project = Project(sly_project_path, mode=OpenMode.READ)
+    total = project.total_items
+    with progress(message="Evaluation: Converting to COCO format", total=total) as pbar:
+        img_id = 1
+        for dataset_name in datasets:
+            ann_path = pjoin(sly_project_path, dataset_name, "ann")
+            imginfo_path = pjoin(sly_project_path, dataset_name, "img_info")
+            ann_files = sorted(os.listdir(ann_path))
+            for batch in batched(ann_files, 30):
+                for ann_file in batch:
+                    img_name = os.path.splitext(ann_file)[0]
+                    with open(os.path.join(ann_path, ann_file), "r") as f:
+                        ann = json.load(f)
+                    with open(os.path.join(imginfo_path, ann_file), "r") as f:
+                        img_info = json.load(f)
+                    img_w = ann["size"]["width"]
+                    img_h = ann["size"]["height"]
+                    img = {
+                        "id": img_id,
+                        "file_name": img_name,
+                        "width": img_w,
+                        "height": img_h,
+                        "sly_id": img_info["id"],
+                        "dataset": dataset_name,
+                    }
+                    images.append(img)
+                    for label in ann["objects"]:
+                        geometry_type = label["geometryType"]
+                        if accepted_shapes is not None and geometry_type not in accepted_shapes:
                             continue
-                    category_id = cat2id[class_name]
-                    sly_id = label["id"]
-                    if geometry_type == "rectangle":
-                        ((left, top), (right, bottom)) = label["points"]["exterior"]
-                        width = right - left + 1
-                        height = bottom - top + 1
-                        annotation = {
-                            "id": annotation_id,
-                            "image_id": img_id,
-                            "category_id": category_id,
-                            "bbox": [left, top, width, height],
-                            "area": float(width * height),
-                            "iscrowd": 0,
-                            "sly_id": sly_id,
-                        }
-                    elif geometry_type in ["polygon", "bitmap"]:
-                        if geometry_type == "bitmap":
-                            bitmap = Bitmap.from_json(label)
-                            mask_np = _uncrop_bitmap(bitmap, img_w, img_h)
-                            segmentation = maskUtils.encode(np.asfortranarray(mask_np))
+                        class_name = label["classTitle"]
+                        if classes_whitelist:
+                            if class_name not in classes_whitelist:
+                                continue
+                        category_id = cat2id[class_name]
+                        sly_id = label["id"]
+                        if geometry_type == "rectangle":
+                            ((left, top), (right, bottom)) = label["points"]["exterior"]
+                            width = right - left + 1
+                            height = bottom - top + 1
+                            annotation = {
+                                "id": annotation_id,
+                                "image_id": img_id,
+                                "category_id": category_id,
+                                "bbox": [left, top, width, height],
+                                "area": float(width * height),
+                                "iscrowd": 0,
+                                "sly_id": sly_id,
+                            }
+                        elif geometry_type in ["polygon", "bitmap"]:
+                            if geometry_type == "bitmap":
+                                bitmap = Bitmap.from_json(label)
+                                mask_np = _uncrop_bitmap(bitmap, img_w, img_h)
+                                segmentation = maskUtils.encode(np.asfortranarray(mask_np))
+                            else:
+                                polygon = label["points"]["exterior"]
+                                polygon = [[coord for sublist in polygon for coord in sublist]]
+                                rles = maskUtils.frPyObjects(polygon, img_h, img_w)
+                                segmentation = maskUtils.merge(rles)
+                            segmentation["counts"] = segmentation["counts"].decode()
+                            annotation = {
+                                "id": annotation_id,
+                                "image_id": img_id,
+                                "category_id": category_id,
+                                "segmentation": segmentation,
+                                "iscrowd": 0,
+                                "sly_id": sly_id,
+                            }
+                            if not is_dt_dataset:
+                                area = int(maskUtils.area(segmentation))
+                                bbox = maskUtils.toBbox(segmentation)
+                                bbox = [int(coord) for coord in bbox]
+                                annotation["area"] = area
+                                annotation["bbox"] = bbox
                         else:
-                            polygon = label["points"]["exterior"]
-                            polygon = [[coord for sublist in polygon for coord in sublist]]
-                            rles = maskUtils.frPyObjects(polygon, img_h, img_w)
-                            segmentation = maskUtils.merge(rles)
-                        segmentation["counts"] = segmentation["counts"].decode()
-                        annotation = {
-                            "id": annotation_id,
-                            "image_id": img_id,
-                            "category_id": category_id,
-                            "segmentation": segmentation,
-                            "iscrowd": 0,
-                            "sly_id": sly_id,
-                        }
-                        if not is_dt_dataset:
-                            area = int(maskUtils.area(segmentation))
-                            bbox = maskUtils.toBbox(segmentation)
-                            bbox = [int(coord) for coord in bbox]
-                            annotation["area"] = area
-                            annotation["bbox"] = bbox
-                    else:
-                        raise NotImplementedError(
-                            f"Geometry type '{geometry_type}' is not implemented."
-                        )
-                    # Extract confidence score from the tag
-                    if is_dt_dataset:
-                        conf = _extract_confidence(label)
-                        annotation["score"] = conf
-                        if conf_threshold is not None and conf < conf_threshold:
-                            continue
-                    annotations.append(annotation)
-                    annotation_id += 1
-                img_id += 1
+                            raise NotImplementedError(
+                                f"Geometry type '{geometry_type}' is not implemented."
+                            )
+                        # Extract confidence score from the tag
+                        if is_dt_dataset:
+                            conf = _extract_confidence(label)
+                            annotation["score"] = conf
+                            if conf_threshold is not None and conf < conf_threshold:
+                                continue
+                        annotations.append(annotation)
+                        annotation_id += 1
+                    img_id += 1
 
-            if progress_cb is not None:
-                progress_cb(len(batch))
+                pbar.update(len(batch))
 
     coco_dataset = {"images": images, "annotations": annotations, "categories": categories}
     return coco_dataset
