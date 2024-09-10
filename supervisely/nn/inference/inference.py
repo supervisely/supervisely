@@ -96,7 +96,7 @@ class Inference:
             fs.mkdir(model_dir)
         self.device: str = None
         self.runtime: str = None
-        self.checkpoint_info: CheckpointInfo = None  
+        self.checkpoint_info: CheckpointInfo = None
         self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
         self._model_dir = model_dir
         self._model_served = False
@@ -238,7 +238,7 @@ class Inference:
             add_content_to_custom_tab=self.add_content_to_custom_tab,
             custom_model_link_type=self.get_custom_model_link_type(),
         )
-    
+
     def _initialize_app_layout(self):
         self._user_layout_card = Card(
             title="Select Model",
@@ -440,7 +440,7 @@ class Inference:
         self.max_batch_size = None
         clean_up_cuda()
         logger.info("Model has been stopped")
-    
+
     def _on_model_deployed(self):
         pass
 
