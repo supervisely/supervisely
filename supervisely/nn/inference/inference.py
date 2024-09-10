@@ -474,6 +474,7 @@ class Inference:
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
             "tracking_algorithms": ["bot", "deepsort"],
+            "batch_inference_support": self.is_batch_inference_supported(),
         }
 
     # pylint: enable=method-hidden
