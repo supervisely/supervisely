@@ -497,6 +497,7 @@ class ImageApi(RemoveableBulkModuleApi):
             "objects_annotator",
             "tagged_by_annotator",
             "issues_count",
+            "job",
         ]
         if not all([filter["type"] in allowed_filter_types for filter in filters]):
             raise ValueError(f"'type' field must be one of: {allowed_filter_types}")
@@ -597,11 +598,15 @@ class ImageApi(RemoveableBulkModuleApi):
         results = []
         if len(ids) == 0:
             return results
-        dataset_id = self.get_info_by_id(ids[0], force_metadata_for_links=False).dataset_id
-        for batch in batched(ids):
-            filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
-            results.extend(
-                self.get_list_all_pages(
+        infos_dict = {}
+        ids_set = set(ids)
+        while any(ids_set):
+            dataset_id = self.get_info_by_id(
+                ids_set.pop(), force_metadata_for_links=False
+            ).dataset_id
+            for batch in batched(ids):
+                filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                temp_results = self.get_list_all_pages(
                     "images.list",
                     {
                         ApiField.DATASET_ID: dataset_id,
@@ -609,11 +614,13 @@ class ImageApi(RemoveableBulkModuleApi):
                         ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                     },
                 )
-            )
-            if progress_cb is not None:
-                progress_cb(len(batch))
-        temp_map = {info.id: info for info in results}
-        ordered_results = [temp_map[id] for id in ids]
+                results.extend(temp_results)
+                if progress_cb is not None and len(temp_results) > 0:
+                    progress_cb(len(temp_results))
+            ids_set = ids_set - set([info.id for info in results])
+            infos_dict.update({info.id: info for info in results})
+
+        ordered_results = [infos_dict[id] for id in ids]
         return ordered_results
 
     def _download(self, id, is_stream=False):
@@ -1849,7 +1856,9 @@ class ImageApi(RemoveableBulkModuleApi):
         # ordered_results = [name_to_res[name] for name in names]
 
         if len(idx_to_id) > 0:
-            logger.info("Inserting skipped image infos")
+            logger.info(
+                "Adding ImageInfo of images with the same name that already exist in the dataset to the response."
+            )
 
             idx_to_id = dict(reversed(list(idx_to_id.items())))
             image_infos = self._api.image.get_info_by_id_batch(list(idx_to_id.values()))
@@ -2932,9 +2941,11 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         links: Optional[List[str]] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
+        At least one of `paths` or `links` must be provided.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -2952,6 +2963,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param links: List of links to images.
         :type links: Optional[List[str]]
+        :param conflict_resolution: The strategy to resolve upload conflicts.
+            Options:
+                - 'replace': Replaces the existing images in the dataset with the new ones if there is a conflict and logs the deletion of existing images.
+                - 'skip': Ignores uploading the new images if there is a conflict; the original image's ImageInfo list will be returned instead.
+                - 'rename': (default) Renames the new images to prevent name conflicts.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -2981,6 +2998,10 @@ class ImageApi(RemoveableBulkModuleApi):
             image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
         """
+
+        if paths is None and links is None:
+            raise ValueError("At least one of 'paths' or 'links' must be provided.")
+
         group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
@@ -2998,6 +3019,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 paths=paths,
                 progress_cb=progress_cb,
                 metas=metas,
+                conflict_resolution=conflict_resolution,
             )
             image_infos.extend(image_infos_by_paths)
 
@@ -3008,7 +3030,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 names=names,
                 links=links,
                 progress_cb=progress_cb,
-                conflict_resolution="rename",
+                conflict_resolution=conflict_resolution,
             )
             image_infos.extend(image_infos_by_links)
 

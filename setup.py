@@ -97,7 +97,7 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <4.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.5.0",
+    "pydantic>=1.7.4, <=2.8.2",
     "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "fastapi>=0.79.0, <=0.109.0",
     "websockets>=10.3, <11.0",
@@ -120,7 +120,7 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.0",
+    "urllib3>=1.26.15, <=2.2.2",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
@@ -258,18 +258,6 @@ setup(
             "plotly>=4.11.0, <6.0.0",
             "psutil>=5.4.5, <6.0.0",
         ],
-        # legacy dependencies
-        "plugins": [
-            "jsonschema>=2.6.0,<3.0.0",
-        ],
-        "sdk-nn-plugins": [
-            "flask-restful>=0.3.7, <1.0.0",
-            "Werkzeug>=1.0.1, <3.0.0",
-        ],
-        "aug": [
-            "imgaug>=0.4.0, <1.0.0",
-            "imagecorruptions>=1.1.2, <2.0.0",
-        ],
         "tracking": [
             "yacs",
             "matplotlib>=3.3.2, <4.0.0",
@@ -281,6 +269,23 @@ setup(
             "faiss-gpu",
             "tabulate",
             "tensorboard",
+        ],
+        "model-benchmark": [
+            "pycocotools",
+            "scikit-learn",
+            "plotly==5.22.0",
+        ],
+        # legacy dependencies
+        "plugins": [
+            "jsonschema>=2.6.0,<3.0.0",
+        ],
+        "sdk-nn-plugins": [
+            "flask-restful>=0.3.7, <1.0.0",
+            "Werkzeug>=1.0.1, <3.0.0",
+        ],
+        "aug": [
+            "imgaug>=0.4.0, <1.0.0",
+            "imagecorruptions>=1.1.2, <2.0.0",
         ],
     },
 )

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import is_community, take_with_default
+from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 
@@ -150,7 +150,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
         _workflow_compatibility_version_cache[min_instance_version] = is_compatible
 
         if not is_compatible:
-            message = f"Supervisely instance version '{instance_version}' does not support workflow features."
+            message = f"Supervisely instance version '{instance_version}' does not support the following workflow features."
             if not is_community():
                 message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
 
@@ -368,17 +368,24 @@ class WorkflowSettings:
     """Used to customize the appearance and behavior of the workflow node.
 
     :param title: Title of the node. It is displayed in the node header.
+                  Title is formatted with the `<h4>` tag.
     :type title: Optional[str]
     :param icon: Icon of the node. It is displayed in the node body.
+                 The icon name should be from the Material Design Icons set.
+                 Do not include the 'zmdi-' prefix.
     :type icon: Optional[str]
-    :param icon_color: Color of the icon.
+    :param icon_color: Color of the icon in hexadecimal format.
     :type icon_color: Optional[str]
-    :param icon_bg_color: Background color of the icon.
+    :param icon_bg_color: Background color of the icon in hexadecimal format.
     :type icon_bg_color: Optional[str]
-    :param url: URL to be opened when the user clicks on it.
+    :param url: URL to be opened when the user clicks on it. Must start with a slash and be relative to the instance.
     :type url: Optional[str]
     :param url_title: Title of the URL.
     :type url_title: Optional[str]
+    :param description: Description of the node. It is displayed under the title line.
+                        It's not recommended to use it for long texts.
+                        Description is formatted with the `<small>` tag and used to clarify specific information.
+    :type description: Optional[str]
     """
 
     title: Optional[str] = None
@@ -387,6 +394,7 @@ class WorkflowSettings:
     icon_bg_color: Optional[str] = None
     url: Optional[str] = None
     url_title: Optional[str] = None
+    description: Optional[str] = None
 
     def __post_init__(self):
         if (self.url and not self.url_title) or (not self.url and self.url_title):
@@ -412,6 +420,8 @@ class WorkflowSettings:
         result = {}
         if self.title is not None:
             result["title"] = f"<h4>{self.title}</h4>"
+        if self.description is not None:
+            result["description"] = f"<small>{self.description}</small>"
         if self.icon is not None and self.icon_color is not None and self.icon_bg_color is not None:
             result["icon"] = {}
             result["icon"]["icon"] = f"zmdi-{self.icon}"
@@ -496,6 +506,7 @@ class AppApi(TaskApi):
                             "additionalProperties": False,
                         },
                         "title": {"type": "string"},  # html
+                        "description": {"type": "string"},  # html
                         "mainLink": {
                             "type": "object",
                             "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
@@ -521,11 +532,39 @@ class AppApi(TaskApi):
             self._api = api
             # minimum instance version that supports workflow features
             self._min_instance_version = "6.9.31"
+            # for development purposes
+            self._enabled = True
+            if is_development():
+                self._enabled = False
+                logger.warning(
+                    "Workflow is disabled in development mode. "
+                    "To enable it, use `api.app.workflow.enable()` right after Api initialization."
+                )
+
+        def enable(self):
+            """Enable the workflow functionality."""
+            self._enabled = True
+            logger.info("Workflow is enabled.")
+
+        def disable(self):
+            """Disable the workflow functionality."""
+            self._enabled = False
+            logger.info("Workflow is disabled.")
+
+        def is_enabled(self) -> bool:
+            """Check if the workflow functionality is enabled."""
+            logger.info(f"Workflow check: is {'enabled' if self._enabled else 'disabled'}.")
+            return self._enabled
 
         # pylint: disable=no-self-argument
         def check_instance_compatibility(min_instance_version: Optional[str] = None):
             """Decorator to check instance compatibility with workflow features.
-            If the instance is not compatible, the function will not be executed."""
+            If the instance is not compatible, the function will not be executed.
+
+            :param min_instance_version: Determine the minimum instance version that accepts the workflow method.
+            If not specified, the minimum version will be "6.9.31".
+            :type min_instance_version: Optional[str]
+            """
 
             def decorator(func):
                 @wraps(func)
@@ -535,7 +574,11 @@ class AppApi(TaskApi):
                         if min_instance_version is not None
                         else self._min_instance_version
                     )
-                    if not check_workflow_compatibility(self._api, version_to_check):
+                    if (
+                        not check_workflow_compatibility(self._api, version_to_check)
+                        or not self._enabled
+                    ):
+                        logger.info(f"Workflow method `{func.__name__}` is disabled.")
                         return
                     return func(self, *args, **kwargs)
 
@@ -622,14 +665,16 @@ class AppApi(TaskApi):
             Add input type "project" to the workflow node.
             The project version can be specified to indicate that the project version was used especially for this task.
             Arguments project and version_id are mutually exclusive. If both are specified, version_id will be used.
-            Argument version_num can be used only with project.
+            Argument version_num can only be used in conjunction with the project.
             This type is used to show that the application has used the specified project.
+            Customization of the project node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
             :type project: Optional[Union[int, ProjectInfo]]
             :param version_id: Version ID of the project.
             :type version_id: Optional[int]
-            :param version_num: Version number of the project. Can be used only with project.
+            :param version_num: Version number of the project. This argument can only be used in conjunction with the project.
             :type version_num: Optional[int]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
@@ -637,23 +682,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 if project is None and version_id is None and version_num is None:
@@ -699,6 +727,8 @@ class AppApi(TaskApi):
             """
             Add input type "dataset" to the workflow node.
             This type is used to show that the application has used the specified dataset.
+            Customization of the dataset node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
             :type dataset: Union[int, DatasetInfo]
@@ -708,23 +738,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "dataset"
@@ -743,7 +756,7 @@ class AppApi(TaskApi):
         def add_input_file(
             self,
             file: Union[int, FileInfo, str],
-            model_weight=False,
+            model_weight: bool = False,
             task_id: Optional[int] = None,
             meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
@@ -751,7 +764,7 @@ class AppApi(TaskApi):
             Add input type "file" to the workflow node.
             This type is used to show that the application has used the specified file.
 
-            :param file: File ID, FileInfo object or file path int Team Files.
+            :param file: File ID, FileInfo object or file path in team Files.
             :type file: Union[int, FileInfo, str]
             :param model_weight: Flag to indicate if the file is a model weight.
             :type model_weight: bool
@@ -761,23 +774,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data = {}
@@ -824,23 +820,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 from pathlib import Path
@@ -880,23 +859,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "task"
@@ -908,6 +870,42 @@ class AppApi(TaskApi):
                     "(this error will not interrupt other code execution)."
                 )
                 return {}
+
+        # pylint: disable=redundant-keyword-arg
+        @check_instance_compatibility(
+            min_instance_version="6.11.11"
+        )  # Min instance version that accepts this method
+        def add_input_job(
+            self,
+            id: int,
+            task_id: Optional[int] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
+        ) -> dict:
+            """
+            Add input type "job" to the workflow node. Job is a Labeling Job.
+            This type indicates that the application has utilized a labeling job during its operation.
+
+            :param id: Labeling Job ID.
+            :type id: int
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            """
+            try:
+                data_type = "job"
+                data = {"data_type": data_type, "data_id": id}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input job node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        # pylint: enable=redundant-keyword-arg
 
         @check_instance_compatibility()
         def add_output_project(
@@ -921,6 +919,8 @@ class AppApi(TaskApi):
             Add output type "project" to the workflow node.
             The project version can be specified with "version" argument to indicate that the project version was created especially as result of this task.
             This type is used to show that the application has created a project with the result of its work.
+            Customization of the project node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
             :type project: Union[int, ProjectInfo]
@@ -932,23 +932,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 if project is None and version_id is None:
@@ -984,6 +967,8 @@ class AppApi(TaskApi):
             """
             Add output type "dataset" to the workflow node.
             This type is used to show that the application has created a dataset with the result of its work.
+            Customization of the dataset node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
             :type dataset: Union[int, DatasetInfo]
@@ -993,23 +978,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "dataset"
@@ -1046,23 +1014,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "file"
@@ -1099,23 +1050,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 from pathlib import Path
@@ -1152,23 +1086,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "app_session"
@@ -1200,23 +1117,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "task"
@@ -1229,7 +1129,10 @@ class AppApi(TaskApi):
                 )
                 return {}
 
-        @check_instance_compatibility()
+        # pylint: disable=redundant-keyword-arg
+        @check_instance_compatibility(
+            min_instance_version="6.11.11"
+        )  # Min instance version that accepts this method
         def add_output_job(
             self,
             id: int,
@@ -1248,23 +1151,6 @@ class AppApi(TaskApi):
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "job"
@@ -1276,6 +1162,8 @@ class AppApi(TaskApi):
                     "(this error will not interrupt other code execution)."
                 )
                 return {}
+
+        # pylint: enable=redundant-keyword-arg
 
     def __init__(self, api):
         super().__init__(api)
