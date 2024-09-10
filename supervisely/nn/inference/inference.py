@@ -79,6 +79,8 @@ except ImportError:
 
 
 class Inference:
+    DEFAULT_BATCH_SIZE = 16
+
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -94,7 +96,8 @@ class Inference:
             fs.mkdir(model_dir)
         self.device: str = None
         self.runtime: str = None
-        self.checkpoint_info: CheckpointInfo = None
+        self.checkpoint_info: CheckpointInfo = None  
+        self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
         self._model_dir = model_dir
         self._model_served = False
         self._deploy_params: dict = None
@@ -171,6 +174,11 @@ class Inference:
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
         )
+
+    def get_batch_size(self):
+        if self.max_batch_size is not None:
+            return min(self.DEFAULT_BATCH_SIZE, self.max_batch_size)
+        return self.DEFAULT_BATCH_SIZE
 
     def _prepare_device(self, device):
         if device is None:
@@ -429,9 +437,10 @@ class Inference:
         self.device = None
         self.runtime = None
         self.checkpoint_info = None
+        self.max_batch_size = None
         clean_up_cuda()
         logger.info("Model has been stopped")
-
+    
     def _on_model_deployed(self):
         pass
 
@@ -492,6 +501,7 @@ class Inference:
             "runtime": self.runtime,
             "hardware": get_hardware_info(),
             "deploy_params": self._deploy_params,
+            "max_batch_size": self.max_batch_size,
         }
         return DeployInfo(**deploy_info)
 
@@ -1043,7 +1053,7 @@ class Inference:
             tracker = None
 
         results = []
-        batch_size = 16
+        batch_size = state.get("batch_size", self.get_batch_size())
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
@@ -1096,7 +1106,7 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring images...", extra={"state": state})
-        batch_size = state.get("batch_size", 16)
+        batch_size = state.get("batch_size", self.get_batch_size())
         output_project_id = state.get("output_project_id", None)
         images_infos = api.image.get_info_by_id_batch(images_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -1120,7 +1130,7 @@ class Inference:
             sly_progress.total = len(images_ids)
 
         def _download_images(images_ids):
-            with ThreadPoolExecutor(batch_size) as executor:
+            with ThreadPoolExecutor(8) as executor:
                 for image_id in images_ids:
                     executor.submit(
                         self.cache.download_image,
@@ -1364,7 +1374,7 @@ class Inference:
             project_info = api.project.get_info_by_id(state["projectId"])
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
-        batch_size = state.get("batch_size", 16)
+        batch_size = state.get("batch_size", self.get_batch_size())
 
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         if dataset_ids is not None:
@@ -1432,7 +1442,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(batch_size) as executor:
+                with ThreadPoolExecutor(8) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -1691,7 +1701,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(batch_size) as executor:
+                with ThreadPoolExecutor(8) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -1920,16 +1930,32 @@ class Inference:
             return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
-        def inference_batch_ids(request: Request):
+        def inference_batch_ids(response: Response, request: Request):
+            # check batch size
+            batch_size = len(request.state.state["batch_ids"])
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
             return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids_async")
-        def inference_batch_ids_async(request: Request):
+        def inference_batch_ids_async(response: Response, request: Request):
             logger.debug(
                 f"'inference_batch_ids_async' request in json format:{request.state.state}"
             )
             images_ids = request.state.state["images_ids"]
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -1957,8 +1983,16 @@ class Inference:
             }
 
         @server.post("/inference_video_id")
-        def inference_video_id(request: Request):
+        def inference_video_id(response: Response, request: Request):
             logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             return self._inference_video_id(request.state.api, request.state.state)
 
         @server.post("/inference_image")
@@ -1990,6 +2024,14 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
+                # check batch size
+                batch_size = len(files)
+                if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return {
+                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                        "success": False,
+                    }
                 return self._inference_batch(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
@@ -2027,8 +2069,16 @@ class Inference:
             }
 
         @server.post("/inference_video_id_async")
-        def inference_video_id_async(request: Request):
+        def inference_video_id_async(response: Response, request: Request):
             logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2055,7 +2105,7 @@ class Inference:
             }
 
         @server.post("/inference_project_id_async")
-        def inference_project_id_async(request: Request):
+        def inference_project_id_async(response: Response, request: Request):
             logger.debug(
                 f"'inference_project_id_async' request in json format:{request.state.state}"
             )
@@ -2063,7 +2113,14 @@ class Inference:
             project_info = request.state.api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
                 raise ValueError("Only images projects are supported.")
-
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2100,6 +2157,13 @@ class Inference:
                 response.status_code = status.HTTP_501_NOT_IMPLEMENTED
                 return {
                     "message": "Batch inference is not implemented for this model.",
+                    "success": False,
+                }
+            # check batch size
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
             inference_request_uuid = uuid.uuid5(

@@ -201,8 +201,8 @@ class SessionJSON:
     def inference_image_ids_async(
         self,
         image_ids: List[int],
-        output_project_id=None,
-        batch_size: int = 16,
+        output_project_id: int = None,
+        batch_size: int = None,
         process_fn=None,
     ) -> Iterator:
         if self._async_inference_uuid:
@@ -271,12 +271,14 @@ class SessionJSON:
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> Dict[str, Any]:
         endpoint = "inference_video_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
+        state["batch_size"] = batch_size
         state.update(
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
@@ -293,6 +295,7 @@ class SessionJSON:
         process_fn=None,
         preparing_cb=None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -308,6 +311,7 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
+        state["batch_size"] = batch_size
         state.update(
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
@@ -364,7 +368,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
         process_fn=None,
     ):
         if self._async_inference_uuid:
@@ -399,7 +403,7 @@ class SessionJSON:
     def run_speedtest(
         self,
         project_id: int,
-        batch_size: int = 1,
+        batch_size: int,
         num_iterations: int = 100,
         num_warmup: int = 3,
         dataset_ids: List[int] = None,
@@ -441,7 +445,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
     ):
         return [
             pred
@@ -715,8 +719,8 @@ class Session(SessionJSON):
     def inference_image_ids_async(
         self,
         image_ids: List[int],
-        output_project_id=None,
-        batch_size: int = 16,
+        output_project_id: int = None,
+        batch_size: int = None,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
@@ -738,9 +742,10 @@ class Session(SessionJSON):
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
-            video_id, start_frame_index, frames_count, frames_direction, tracker
+            video_id, start_frame_index, frames_count, frames_direction, tracker, batch_size
         )
         pred_list_raw = pred_list_raw["ann"]
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
@@ -753,6 +758,7 @@ class Session(SessionJSON):
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
@@ -761,6 +767,7 @@ class Session(SessionJSON):
             frames_direction,
             process_fn=self._convert_to_sly_annotation,
             tracker=tracker,
+            batch_size=batch_size,
         )
         return frame_iterator
 
@@ -770,7 +777,7 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
@@ -788,7 +795,7 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
     ):
         return [
             pred
