@@ -43,15 +43,3 @@ class DeployInfo:
     runtime: str
     hardware: str
     deploy_params: dict
-
-
-def get_hardware_info(idx: int = 0) -> str:
-    import subprocess
-    try:
-        gpus = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]).decode("utf-8").strip()
-        gpu_list = gpus.split("\n")
-        if idx >= len(gpu_list):
-            raise ValueError(f"No GPU found at index {idx}")
-        return gpu_list[idx]
-    except subprocess.CalledProcessError:
-        return "CPU"

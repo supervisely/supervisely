@@ -58,11 +58,10 @@ from supervisely.decorators.inference import (
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
-from supervisely.nn.inference.utils import (
+from supervisely.nn.utils import (
     CheckpointInfo,
     DeployInfo,
     RuntimeType,
-    get_hardware_info,
 )
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.project import ProjectType
@@ -475,6 +474,7 @@ class Inference:
             "async_image_inference_support": True,
             "tracking_algorithms": ["bot", "deepsort"],
             "batch_inference_support": self.is_batch_inference_supported(),
+            "max_batch_size": self.max_batch_size,
         }
 
     # pylint: enable=method-hidden
@@ -502,7 +502,6 @@ class Inference:
             "runtime": self.runtime,
             "hardware": get_hardware_info(),
             "deploy_params": self._deploy_params,
-            "max_batch_size": self.max_batch_size,
         }
         return DeployInfo(**deploy_info)
 
@@ -1702,7 +1701,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(8) as executor:
+                with ThreadPoolExecutor(16) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -2609,3 +2608,15 @@ class TempImageWriter:
 
     def clean(self):
         fs.remove_dir(self.temp_dir)
+
+
+def get_hardware_info(idx: int = 0) -> str:
+    import subprocess
+    try:
+        gpus = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]).decode("utf-8").strip()
+        gpu_list = gpus.split("\n")
+        if idx >= len(gpu_list):
+            raise ValueError(f"No GPU found at index {idx}")
+        return gpu_list[idx]
+    except subprocess.CalledProcessError:
+        return "CPU"

@@ -17,6 +17,7 @@ import supervisely as sly
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.sly_logger import logger
+from supervisely.nn.utils import DeployInfo
 
 
 class SessionJSON:
@@ -536,9 +537,11 @@ class SessionJSON:
             self._async_inference_uuid = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
+        retries = min(self.api.retry_count, retries)
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
         for retry_idx in range(retries):
+            response = None
             try:
                 response = requests.post(*args, **kwargs)
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
@@ -553,6 +556,7 @@ class SessionJSON:
                     verbose=True,
                     swallow_exc=True,
                     sleep_sec=5,
+                    response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
                 if retry_idx + 1 == retries:
@@ -695,6 +699,9 @@ class Session(SessionJSON):
         model_meta = sly.ProjectMeta.from_json(model_meta_json)
         self._model_meta = model_meta
         return self._model_meta
+
+    def get_deploy_info(self) -> DeployInfo:
+        return DeployInfo(**super().get_deploy_info())
 
     def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
         pred_json = super().inference_image_id(image_id, upload)
