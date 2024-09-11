@@ -259,6 +259,7 @@ class IssuesApi(ModuleApiBase):
         :type status: str, optional
         :param is_pinned: Whether the issue is pinned.
         :type is_pinned: bool, optional
+        :raises ValueError: If the status is incorrect.
         :return: Information about the issue.
         :rtype: IssueInfo
 
