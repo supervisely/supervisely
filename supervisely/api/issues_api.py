@@ -145,7 +145,7 @@ class IssuesApi(ModuleApiBase):
         return self.get_list_all_pages(
             "issues.list",
             {ApiField.FILTER: filters or [], ApiField.TEAM_ID: team_id},
-            ensure_paginations=False,
+            ensure_paginations=False,  # ! WARNING! Remove this parameter after bugfix on the API!
         )
 
     def get_info_by_id(self, id: int) -> IssueInfo:
