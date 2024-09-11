@@ -19,12 +19,12 @@ def generate_main_template(metric_visualizations: List):
     .model-benchmark-body .overview-info-block { background: #f4f7fb; width: fit-content; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
     .model-benchmark-body .overview-info-block ul { list-style: none; padding: 0; }
     .model-benchmark-body .overview-info-block ul p { padding: 0; }
+    .model-benchmark-body .sly-sidebar-widget .main-wrapper .sidebar-panel { top: 10px; }
 
     </sly-style>
 
     <sly-iw-sidebar
         :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false,  disableResize: true, sidebarWidth: 300 }"
-        style="top: 10px;"
     >
         <div slot="sidebar">"""
 
