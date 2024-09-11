@@ -62,6 +62,7 @@ from supervisely.nn.utils import (
     CheckpointInfo,
     DeployInfo,
     RuntimeType,
+    ModelPrecision,
 )
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.project import ProjectType
@@ -95,6 +96,7 @@ class Inference:
             fs.mkdir(model_dir)
         self.device: str = None
         self.runtime: str = None
+        self.model_precision: str = None
         self.checkpoint_info: CheckpointInfo = None
         self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
         self._model_dir = model_dir
@@ -108,6 +110,7 @@ class Inference:
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
+        self._hardware: str = None
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -423,7 +426,9 @@ class Inference:
 
     def _load_model(self, deploy_params: dict):
         self.device = deploy_params.get("device")
-        self.runtime = deploy_params.get("runtime")
+        self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
+        self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
+        self._hardware = get_hardware_info(self.device)
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
@@ -435,6 +440,7 @@ class Inference:
         self._model_served = False
         self.device = None
         self.runtime = None
+        self.model_precision = None
         self.checkpoint_info = None
         self.max_batch_size = None
         clean_up_cuda()
@@ -500,7 +506,8 @@ class Inference:
             "task_type": self.get_info()["task type"],
             "device": self.device,
             "runtime": self.runtime,
-            "hardware": get_hardware_info(),
+            "model_precision": self.model_precision,
+            "hardware": self._hardware,
             "deploy_params": self._deploy_params,
         }
         return DeployInfo(**deploy_info)
@@ -2610,13 +2617,33 @@ class TempImageWriter:
         fs.remove_dir(self.temp_dir)
 
 
-def get_hardware_info(idx: int = 0) -> str:
-    import subprocess
+def get_hardware_info(device: str) -> str:
+    import platform
+    device = device.lower()
     try:
-        gpus = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]).decode("utf-8").strip()
-        gpu_list = gpus.split("\n")
-        if idx >= len(gpu_list):
-            raise ValueError(f"No GPU found at index {idx}")
-        return gpu_list[idx]
-    except subprocess.CalledProcessError:
-        return "CPU"
+        if device == "cpu":
+            system = platform.system()
+            if system == "Linux":
+                with open('/proc/cpuinfo', 'r') as f:
+                    for line in f:
+                        if "model name" in line:
+                            return line.split(':')[1].strip()
+            elif system == "Darwin":  # macOS
+                command = "/usr/sbin/sysctl -n machdep.cpu.brand_string"
+                return subprocess.check_output(command, shell=True).strip().decode()
+            elif system == "Windows":
+                command = "wmic cpu get name"
+                output = subprocess.check_output(command, shell=True).decode()
+                return output.strip().split('\n')[1].strip()
+        elif "cuda" in device:
+            idx = 0
+            if ":" in device:
+                idx = int(device.split(":")[1])
+            gpus = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]).decode("utf-8").strip()
+            gpu_list = gpus.split("\n")
+            if idx >= len(gpu_list):
+                raise ValueError(f"No GPU found at index {idx}")
+            return gpu_list[idx]
+    except Exception as e:
+        logger.error("Error while getting hardware info", exc_info=True)
+    return "Unknown"
