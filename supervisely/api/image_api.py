@@ -318,7 +318,7 @@ class ImageApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         force_metadata_for_links: Optional[bool] = True,
         return_first_response: Optional[bool] = False,
-        project_id: int = None,
+        project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """

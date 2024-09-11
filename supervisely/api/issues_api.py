@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, Literal, NamedTuple, Optional, Union
 
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.module_api import ApiField, ModuleApiBase
@@ -81,8 +81,8 @@ class IssuesApi(ModuleApiBase):
         # Get list of issues in specified team.
         issues = api.issues.get_list(team_id=1)
 
-        # Get information about the first issue in the list.
-        issue_info = api.issues.get_info_by_id(issues[0].id)
+        # Get information about the some issue.
+        issue_info = api.issues.get_info_by_id(id=1)
 
         # Add new issue.
         new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
@@ -189,6 +189,41 @@ class IssuesApi(ModuleApiBase):
         assignees: Optional[List[int]] = None,
         is_local: bool = False,
     ) -> IssueInfo:
+        """Add a new issue and return information about it.
+
+        :param team_id: Team ID.
+        :type team_id: int
+        :param issue_name: Name of the issue.
+        :type issue_name: str
+        :param comment: Comment for the issue.
+        :type comment: str, optional
+        :param assignees: List of user IDs to assign the issue.
+        :type assignees: List[int], optional
+        :param is_local: Whether the issue is local.
+        :type is_local: bool
+        :return: Information about the added issue.
+        :rtype: IssueInfo
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import os
+
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            # Add new issue.
+            new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
+        """
         response = self._api.post(
             "issues.add",
             {
@@ -209,7 +244,9 @@ class IssuesApi(ModuleApiBase):
         self,
         issue_id: int,
         issue_name: Optional[str] = None,
-        status: Optional[str] = None,
+        status: Optional[
+            Literal["REPLACEME", "REPLACEME2"]
+        ] = None,  # TODO: Update with real statuses.
         is_pinned: Optional[bool] = None,
     ) -> IssueInfo:
         """Update information about the issue.
@@ -243,6 +280,11 @@ class IssuesApi(ModuleApiBase):
 
             # Update information about the issue.
             updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")"""
+        available_statuses = ["REPLACEME", "REPLACEME2"]  # TODO: Update with real statuses.
+        if status is not None and status not in available_statuses:
+            raise ValueError(
+                f"Incorrect status, expected one of {available_statuses}, got {status}"
+            )
         payload = {
             ApiField.ID: issue_id,
             ApiField.NAME: issue_name,
