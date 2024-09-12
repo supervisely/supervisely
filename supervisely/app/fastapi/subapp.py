@@ -256,6 +256,8 @@ class Event:
                 )
 
         class ImageChanged:
+            """This event is triggered when the user changes the image in the Image Labeling Tooolbox."""
+
             endpoint = "/manual_selected_image_changed"
 
             def __init__(
