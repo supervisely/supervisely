@@ -634,7 +634,7 @@ class InferenceImageCache:
                     pos = pos_by_name[name]
                     all_frames[pos] = image
 
-        logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
+        # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
         logger.debug(f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}")
 

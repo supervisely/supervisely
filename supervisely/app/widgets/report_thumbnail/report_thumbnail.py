@@ -19,7 +19,7 @@ class ReportThumbnail(Widget):
     def get_json_data(self):
         return {
             "id": self._id,
-            "name": "Report",
+            "name": "Evaluation Report",
             "description": self._description,
             "url": self._url,
             "description": self._description,
@@ -42,7 +42,7 @@ class ReportThumbnail(Widget):
             return
         self._id = info.id
         self._info = info
-        self._description = "Open the Model Benchmark report for the best model"
+        self._description = "Open the Model Benchmark evaluation report."
         lnk = f"/model-benchmark?id={info.id}"
         lnk = abs_url(lnk) if is_development() or is_debug_with_sly_net() else lnk
         # self._description = info.path
