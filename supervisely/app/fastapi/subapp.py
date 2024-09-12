@@ -202,7 +202,6 @@ class Event:
                 workspace_id: int,
                 project_id: int,
                 figure_id: int,
-                # points: int,
                 figure_class_id: int,
                 figure_class_title: str,
                 image_id: int,
@@ -276,16 +275,12 @@ class Event:
                 tool: str,
                 user_id: int,
                 job_id: int,
-                # previous_figure: dict = None,
             ):
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
                 self.project_id = project_id
                 self.image_id = image_id
-                # self.figure_id = figure_id
-                # self.figure_class_id = figure_class_id
-                # self.figure_class_title = figure_class_title
                 self.video_id = video_id
                 self.frame = frame
                 self.object_id = object_id
@@ -294,7 +289,6 @@ class Event:
                 self.tool = tool
                 self.user_id = user_id
                 self.job_id = job_id
-                # self.previous_figure = previous_figure
 
             @classmethod
             def from_json(cls, data: dict):
@@ -304,9 +298,6 @@ class Event:
                     workspace_id=data.get(ApiField.WORKSPACE_ID),
                     project_id=data.get(ApiField.PROJECT_ID),
                     image_id=data.get(ApiField.IMAGE_ID),
-                    # figure_id=data.get(ApiField.FIGURE_ID),
-                    # figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
-                    # figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
                     video_id=data.get(ApiField.ENTITY_ID),
                     frame=data.get(ApiField.FRAME),
                     object_id=data.get("annotationObjectId"),  # there is no such field in ApiField
@@ -315,9 +306,6 @@ class Event:
                     tool=data.get(ApiField.LABELING_TOOL),
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
-                    # previous_figure=data.get(
-                    #     "previousFigure", None
-                    # ),  # there is no such field in ApiField
                 )
 
     class FigureCreated:
