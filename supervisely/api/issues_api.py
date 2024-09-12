@@ -80,7 +80,7 @@ class IssuesApi(ModuleApiBase):
         # Get list of issues in specified team.
         issues = api.issues.get_list(team_id=1)
 
-        # Get information about the some issue.
+        # Get information about issue by its ID.
         issue_info = api.issues.get_info_by_id(id=1)
 
         # Add new issue.
