@@ -659,7 +659,6 @@ class ModuleApiBase(_JsonConvertibleModule):
         convert_json_info_cb=None,
         limit: int = None,
         return_first_response: bool = False,
-        ensure_paginations: bool = True,  # ! WARNING! Remove this parameter after bugfix on the API!
     ):
         """
         Get list of all or limited quantity entities from the Supervisely server.
@@ -711,11 +710,9 @@ class ModuleApiBase(_JsonConvertibleModule):
                     break
 
             if len(results) != total and limit is None:
-                if ensure_paginations:
-                    # ! WARNING! Remove this parameter after bugfix on the API!
-                    raise RuntimeError(
-                        "Method {!r}: error during pagination, some items are missed".format(method)
-                    )
+                raise RuntimeError(
+                    "Method {!r}: error during pagination, some items are missed".format(method)
+                )
 
         if limit is not None:
             results = results[:limit]

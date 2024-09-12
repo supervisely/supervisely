@@ -47,7 +47,6 @@ class IssueInfo(NamedTuple):
 
     id: int
     status: str
-    parent_id: int
     user_login: str
     image_id: int
     created_by: int
@@ -94,7 +93,6 @@ class IssuesApi(ModuleApiBase):
         return [
             ApiField.ID,
             ApiField.STATUS,
-            ApiField.PARENT_ID,
             ApiField.USER_LOGIN,
             ApiField.IMAGE_ID,
             ApiField.CREATED_BY_ID,
@@ -145,7 +143,6 @@ class IssuesApi(ModuleApiBase):
         return self.get_list_all_pages(
             "issues.list",
             {ApiField.FILTER: filters or [], ApiField.TEAM_ID: team_id},
-            ensure_paginations=False,  # ! WARNING! Remove this parameter after bugfix on the API!
         )
 
     def get_info_by_id(self, id: int) -> IssueInfo:
@@ -278,7 +275,8 @@ class IssuesApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Update information about the issue.
-            updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")"""
+            updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")
+        """
         available_statuses = ["open", "closed"]
         if status is not None and status not in available_statuses:
             raise ValueError(
@@ -353,7 +351,8 @@ class IssuesApi(ModuleApiBase):
             # Add a comment to the issue with the specified ID.
             comment_info = api.issues.add_comment(issue_id=1, comment="Some comment")"""
         response = self._api.post(
-            "issues.comments.add", {ApiField.ISSUE_ID: issue_id, ApiField.COMMENT: comment}
+            "issues.comments.add",
+            {ApiField.ISSUE_ID: issue_id, ApiField.COMMENT: comment},
         )
 
         return CommentInfo.from_json(response.json())
@@ -387,7 +386,8 @@ class IssuesApi(ModuleApiBase):
             # Update the comment with the specified ID.
             api.issues.update_comment(comment_id=1, comment="Updated comment")"""
         response = self._api.post(
-            "issues.comments.editInfo", {ApiField.ID: comment_id, ApiField.COMMENT: comment}
+            "issues.comments.editInfo",
+            {ApiField.ID: comment_id, ApiField.COMMENT: comment},
         )
 
         return CommentInfo.from_json(response.json())
