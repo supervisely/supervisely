@@ -289,6 +289,9 @@ class LabelBase:
         if self._smart_tool_input is not None:
             res[LabelJsonFields.SMART_TOOL_INPUT] = self._smart_tool_input
 
+        if self.sly_id is not None:
+            res[LabelJsonFields.ID] = self.sly_id
+
         return res
 
     @classmethod
