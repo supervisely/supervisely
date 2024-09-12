@@ -585,10 +585,11 @@ class Inference:
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
-            ann = Annotation.from_img_path(image_path)
+            img = sly_image.read(image_path)
+            img_size = img.shape[:2]
         else:
-            ann = Annotation(image_path.shape[:2])
-        ann = ann.add_labels(labels)
+            img_size = image_path.shape[:2]
+        ann = Annotation(img_size, labels)
         return ann
 
     @property
