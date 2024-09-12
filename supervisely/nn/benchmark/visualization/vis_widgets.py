@@ -4,18 +4,17 @@ from typing import Iterator, List, Optional
 
 from jinja2 import Template
 
-import supervisely.nn.benchmark.visualization.vis_texts as contents
 from supervisely._utils import camel_to_snake, rand_str
 
 
 class Schema:
 
-    def __init__(self, **kw_widgets: Widget) -> None:
+    def __init__(self, vis_texts, **kw_widgets: Widget) -> None:
         for argname, widget in kw_widgets.items():
             widget.name = argname
             if isinstance(widget, Widget.Notification):
-                widget.title = getattr(contents, argname)["title"]
-                widget.description = getattr(contents, argname)["description"]
+                widget.title = getattr(vis_texts, argname)["title"]
+                widget.description = getattr(vis_texts, argname)["description"]
             setattr(self, argname, widget)
 
     def __iter__(self) -> Iterator:
@@ -101,6 +100,9 @@ class Widget:
 
             self.table = FastTable
             self.gallery_id = None
+            self.main_column = ""
+            self.fixed_columns = 0
+            self.show_header_controls = True
             super().__init__()
 
     class Gallery(BaseWidget):

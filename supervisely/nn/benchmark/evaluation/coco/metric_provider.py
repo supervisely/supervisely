@@ -225,12 +225,18 @@ class _MetricProvider:
         tp_count = true_positives[:, 0]
         # FN
         cats_fn = np.array([catId2idx[match["category_id"]] for match in self.fn_matches])
-        fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
+        if cats_fn.size == 0:
+            fn_count = np.zeros((len(cat_ids),), dtype=int)
+        else:
+            fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
         gt_count = fn_count + tp_count
         false_negatives = gt_count[:, None] - true_positives
         # FP
         cats_fp = np.array([catId2idx[match["category_id"]] for match in self.fp_matches])
-        fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
+        if cats_fp.size == 0:
+            fp_count = np.zeros((len(cat_ids),), dtype=int)
+        else:
+            fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
         dt_count = fp_count + tp_count
         false_positives = dt_count[:, None] - true_positives
 
@@ -281,6 +287,7 @@ class _MetricProvider:
 
     def prediction_table(self):
         img_ids, outcomes_per_image = _get_outcomes_per_image(self.matches, self.cocoGt)
+        sly_ids = [self.cocoGt.imgs[img_id]["sly_id"] for img_id in img_ids]
         image_names = [self.cocoGt.imgs[img_id]["file_name"] for img_id in img_ids]
         n_gt = outcomes_per_image[:, 0] + outcomes_per_image[:, 2]
         n_dt = outcomes_per_image[:, 0] + outcomes_per_image[:, 1]
@@ -296,6 +303,7 @@ class _MetricProvider:
             )
         prediction_table = pd.DataFrame(
             {
+                "Sly ID": sly_ids,
                 "Image name": image_names,
                 "GT objects": n_gt,
                 "Predictions": n_dt,

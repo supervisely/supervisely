@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_texts import definitions
 from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
 
 if TYPE_CHECKING:
@@ -17,20 +16,24 @@ class PRCurve(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self.schema = Schema(
+            self._loader.vis_texts,
             markdown_pr_curve=Widget.Markdown(
-                title="Precision-Recall Curve", is_header=True, formats=[definitions.f1_score]
+                title="Precision-Recall Curve",
+                is_header=True,
+                formats=[self._loader.vis_texts.definitions.f1_score],
             ),
             collapse_pr=Widget.Collapse(
                 schema=Schema(
+                    self._loader.vis_texts,
                     markdown_trade_offs=Widget.Markdown(
                         title="About Trade-offs between precision and recall"
                     ),
                     markdown_what_is_pr_curve=Widget.Markdown(
                         title="How the PR curve is built?",
                         formats=[
-                            definitions.confidence_score,
-                            definitions.true_positives,
-                            definitions.false_positives,
+                            self._loader.vis_texts.definitions.confidence_score,
+                            self._loader.vis_texts.definitions.true_positives,
+                            self._loader.vis_texts.definitions.false_positives,
                         ],
                     ),
                 )

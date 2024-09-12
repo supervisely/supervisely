@@ -1,3 +1,4 @@
+import requests
 import random
 import string
 from abc import abstractmethod
@@ -8,11 +9,9 @@ from os.path import dirname, join
 from time import time
 from typing import Any, Dict, List, Literal, NamedTuple
 
-import requests
-
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
@@ -51,7 +50,6 @@ class BaseTrainArtifacts:
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
         self._metadata_file_name: str = "train_info.json"
-        self._http_session = requests.Session()
 
         self._app_name: str = None
         self._framework_folder: str = None
@@ -355,18 +353,22 @@ class BaseTrainArtifacts:
             train_json = None
         return train_json
 
-    def _fetch_json_from_url(self, metadata_url: str):
+    def _fetch_json_from_path(self, remote_path: str):
         try:
-            response = self._http_session.get(metadata_url)
+            response = self._api.post(
+                "file-storage.download",
+                {ApiField.TEAM_ID: self.team_id, ApiField.PATH: remote_path},
+                stream=True,
+            )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Failed to fetch train metadata from '{metadata_url}': {e}")
+            logger.debug(f"Failed to fetch train metadata from '{remote_path}': {e}")
             return None
 
         try:
             response_json = response.json()
         except JSONDecodeError as e:
-            logger.debug(f"Failed to decode JSON from '{metadata_url}': {e}")
+            logger.debug(f"Failed to decode JSON from '{remote_path}': {e}")
             return None
 
         checkpoints = response_json.get("checkpoints", [])
@@ -403,7 +405,7 @@ class BaseTrainArtifacts:
             start_find_time = time()
             for file_info in file_infos:
                 if file_info.path == metadata_path:
-                    json_data = self._fetch_json_from_url(file_info.full_storage_url)
+                    json_data = self._fetch_json_from_path(file_info.path)
                     break
             end_find_time = time()
             logger.debug(

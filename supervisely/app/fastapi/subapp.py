@@ -49,8 +49,6 @@ from supervisely.sly_logger import logger
 
 # from supervisely.app.fastapi.request import Request
 
-IS_RUNNING = False
-
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
@@ -714,14 +712,15 @@ class Application(metaclass=Singleton):
     def __init__(
         self,
         layout: "Widget" = None,
-        templates_dir: str = None,
-        static_dir: str = None,
+        templates_dir: Optional[str] = None,
+        static_dir: Optional[str] = None,
         hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
         session_info_extra_content: "Widget" = None,
         session_info_solid: bool = False,
+        ready_check_function: Optional[
+            Callable
+        ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
     ):
-        global IS_RUNNING
-
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -731,6 +730,7 @@ class Application(metaclass=Singleton):
         self._stop_event = ThreadingEvent()
         # for backward compatibility
         self._graceful_stop_event: Optional[ThreadingEvent] = None
+        self.set_ready_check_function(ready_check_function)
 
         def set_stop_event():
             self._stop_event.set()
@@ -783,8 +783,6 @@ class Application(metaclass=Singleton):
         else:
             logger.info("Application is running on localhost in development mode")
 
-        IS_RUNNING = True
-
         self._process_id = os.getpid()
         logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
@@ -822,13 +820,26 @@ class Application(metaclass=Singleton):
 
         server = self.get_server()
 
+        @server.get("/livez")
+        @server.get("/is_alive")
         @server.post("/is_running")
         async def is_running(request: Request):
+            is_running = True
             if is_production():
                 # @TODO: set task status to running
-                return {"running": IS_RUNNING, "mode": "production"}
+                return {"running": is_running, "mode": "production"}
             else:
-                return {"running": IS_RUNNING, "mode": "development"}
+                return {"running": is_running, "mode": "development"}
+
+        @server.get("/readyz")
+        @server.get("/is_ready")
+        async def is_ready(response: Response, request: Request):
+            is_ready = True
+            if self._ready_check_function is not None:
+                is_ready = self._ready_check_function()
+            if is_ready is False:
+                raise HTTPException(status_code=503, detail="Service not ready")
+            return {"status": "ready"}
 
     def get_server(self):
         return self._fastapi
@@ -906,6 +917,9 @@ class Application(metaclass=Singleton):
             return wrapper
 
         return inner
+
+    def set_ready_check_function(self, func: Callable):
+        self._ready_check_function = func
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):

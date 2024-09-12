@@ -9,15 +9,20 @@ if TYPE_CHECKING:
     from supervisely.nn.benchmark.visualization.visualizer import Visualizer
 
 
-class WhatIs(MetricVis):
+class SpeedtestIntro(MetricVis):
 
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
+        speedtest = self._loader.speedtest["speedtest"][0]
         self.schema = Schema(
-            self._loader.vis_texts,
-            markdown_what_is=Widget.Markdown(title="What is YOLOv8 model", is_header=True),
-            markdown_experts=Widget.Markdown(title="Expert Insights", is_header=True),
-            markdown_how_to_use=Widget.Markdown(
-                title="How To Use: Training, Inference, Evaluation Loop", is_header=True
+            self._loader.inference_speed_text,
+            markdown_speedtest_intro=Widget.Markdown(
+                title="Inference Speed",
+                is_header=True,
+                formats=[
+                    speedtest["device"],
+                    self._loader.hardware,
+                    speedtest["runtime"]
+                ],
             ),
         )

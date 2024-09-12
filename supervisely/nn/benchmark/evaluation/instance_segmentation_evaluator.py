@@ -10,7 +10,7 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
         self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
         self._dump_datasets()
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
-        with self.pbar(message="Calculating metrics", total=10) as p:
+        with self.pbar(message="Evaluation: Calculating metrics", total=10) as p:
             self.eval_data = calculate_metrics(
                 self.cocoGt,
                 self.cocoDt,
@@ -20,25 +20,31 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
         self._dump_eval_results()
 
     def _convert_to_coco(self):
-        # with self.pbar(
-        #     message="Converting GT and DT to COCO format",
-        #     total=self.total_items * 2
-        # ) as pbar:
-        # TODO: self.total_items can be None
         cocoGt_json = sly2coco(
             self.gt_project_path,
             is_dt_dataset=False,
             accepted_shapes=["polygon", "bitmap"],
+            progress=self.pbar,
+            classes_whitelist=self.classes_whitelist,
         )
         cocoDt_json = sly2coco(
             self.dt_project_path,
             is_dt_dataset=True,
             accepted_shapes=["polygon", "bitmap"],
+            progress=self.pbar,
+            classes_whitelist=self.classes_whitelist,
         )
+        if len(cocoGt_json["annotations"]) == 0:
+            raise ValueError("Not found any annotations in GT project")
+        if len(cocoDt_json["annotations"]) == 0:
+            raise ValueError(
+                "Not found any predictions. "
+                "Please make sure that your model produces predictions."
+            )
         assert cocoDt_json['categories'] == cocoGt_json['categories']
         assert [x['id'] for x in cocoDt_json['images']] == [x['id'] for x in cocoGt_json['images']]
         return cocoGt_json, cocoDt_json
-    
+
     def _dump_datasets(self):
         cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
         dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
@@ -54,4 +60,3 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
         cocoDt_path = os.path.join(base_dir, "cocoDt.json")
         eval_data_path = os.path.join(base_dir, "eval_data.pkl")
         return cocoGt_path, cocoDt_path, eval_data_path
-    
