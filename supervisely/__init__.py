@@ -126,6 +126,8 @@ from supervisely.api.workspace_api import WorkspaceInfo
 from supervisely.api.team_api import TeamInfo
 from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.app_api import WorkflowSettings, WorkflowMeta
+from supervisely.api.annotation_api import AnnotationInfo
+
 
 from supervisely.cli import _handle_creds_error_to_console
 
