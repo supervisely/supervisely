@@ -196,7 +196,8 @@ class IssuesApi(ModuleApiBase):
         :type comment: str, optional
         :param assignees: List of user IDs to assign the issue.
         :type assignees: List[int], optional
-        :param is_local: Whether the issue is local.
+        :param is_local: The local issue will be available only for the members of the team, where it was
+            created. If set to False, the issue will be available for all users from all teams.
         :type is_local: bool
         :return: Information about the added issue.
         :rtype: IssueInfo
