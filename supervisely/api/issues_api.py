@@ -244,9 +244,7 @@ class IssuesApi(ModuleApiBase):
         self,
         issue_id: int,
         issue_name: Optional[str] = None,
-        status: Optional[
-            Literal["REPLACEME", "REPLACEME2"]
-        ] = None,  # TODO: Update with real statuses.
+        status: Optional[Literal["open", "closed"]] = None,
         is_pinned: Optional[bool] = None,
     ) -> IssueInfo:
         """Update information about the issue.
@@ -281,7 +279,7 @@ class IssuesApi(ModuleApiBase):
 
             # Update information about the issue.
             updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")"""
-        available_statuses = ["REPLACEME", "REPLACEME2"]  # TODO: Update with real statuses.
+        available_statuses = ["open", "closed"]
         if status is not None and status not in available_statuses:
             raise ValueError(
                 f"Incorrect status, expected one of {available_statuses}, got {status}"
