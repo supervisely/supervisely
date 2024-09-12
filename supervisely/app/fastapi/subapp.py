@@ -202,6 +202,7 @@ class Event:
                 figure_id: int,
                 figure_class_id: int,
                 figure_class_title: str,
+                image_id: int,
                 video_id: int,
                 frame: int,
                 object_id: int,
@@ -217,6 +218,7 @@ class Event:
                 self.workspace_id = workspace_id
                 self.project_id = project_id
                 self.figure_id = figure_id
+                self.image_id = image_id
                 self.figure_class_id = figure_class_id
                 self.figure_class_title = figure_class_title
                 self.video_id = video_id
@@ -239,6 +241,7 @@ class Event:
                     figure_id=data.get(ApiField.FIGURE_ID),
                     figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
                     figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    image_id=data.get(ApiField.ENTITY_ID),
                     video_id=data.get(ApiField.ENTITY_ID),
                     frame=data.get(ApiField.FRAME),
                     object_id=data.get("annotationObjectId"),  # there is no such field in ApiField
@@ -263,10 +266,10 @@ class Event:
                 team_id: int,
                 workspace_id: int,
                 project_id: int,
+                image_id: int,
                 figure_id: int,
                 figure_class_id: int,
                 figure_class_title: str,
-                image_id: int,
                 tool_class_id: int,
                 session_id: str,
                 tool: str,
@@ -277,10 +280,10 @@ class Event:
                 self.team_id = team_id
                 self.workspace_id = workspace_id
                 self.project_id = project_id
+                self.image_id = image_id
                 self.figure_id = figure_id
                 self.figure_class_id = figure_class_id
                 self.figure_class_title = figure_class_title
-                self.image_id = image_id
                 self.tool_class_id = tool_class_id
                 self.session_id = session_id
                 self.tool = tool
@@ -294,16 +297,132 @@ class Event:
                     team_id=data.get(ApiField.TEAM_ID),
                     workspace_id=data.get(ApiField.WORKSPACE_ID),
                     project_id=data.get(ApiField.PROJECT_ID),
+                    image_id=data.get(ApiField.IMAGE_ID),
                     figure_id=data.get(ApiField.FIGURE_ID),
                     figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
                     figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
-                    image_id=data.get(ApiField.IMAGE_ID),
                     tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
                     session_id=data.get(ApiField.SESSION_ID),
                     tool=data.get(ApiField.LABELING_TOOL),
                     user_id=data.get(ApiField.USER_ID),
                     job_id=data.get(ApiField.JOB_ID),
                 )
+
+    class FigureCreated:
+        endpoint = "/figure_created"
+
+        def __init__(
+            self,
+            dataset_id: int,
+            team_id: int,
+            workspace_id: int,
+            project_id: int,
+            figure_id: int,
+            figure_class_id: int,
+            figure_class_title: str,
+            image_id: int,
+            tool_class_id: int,
+            session_id: str,
+            tool: str,
+            user_id: int,
+            job_id: int,
+            tool_state: dict,
+            figure_state: dict,
+        ):
+            self.dataset_id = dataset_id
+            self.team_id = team_id
+            self.workspace_id = workspace_id
+            self.project_id = project_id
+            self.figure_id = figure_id
+            self.figure_class_id = figure_class_id
+            self.figure_class_title = figure_class_title
+            self.image_id = image_id
+            self.tool_class_id = tool_class_id
+            self.session_id = session_id
+            self.tool = tool
+            self.user_id = user_id
+            self.job_id = job_id
+            self.tool_state = tool_state
+            self.figure_state = figure_state
+
+        @classmethod
+        def from_json(cls, data: dict):
+            return cls(
+                dataset_id=data.get(ApiField.DATASET_ID),
+                team_id=data.get(ApiField.TEAM_ID),
+                workspace_id=data.get(ApiField.WORKSPACE_ID),
+                project_id=data.get(ApiField.PROJECT_ID),
+                figure_id=data.get(ApiField.FIGURE_ID),
+                figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                image_id=data.get(ApiField.IMAGE_ID),
+                tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                session_id=data.get(ApiField.SESSION_ID),
+                tool=data.get(ApiField.LABELING_TOOL),
+                user_id=data.get(ApiField.USER_ID),
+                job_id=data.get(ApiField.JOB_ID),
+                tool_state=data.get(ApiField.JOB_ID),
+                figure_state=data.get(ApiField.FIGURE_STATE),
+            )
+
+    class Tools:
+        class Rectangle:
+            class FigureChanged:
+                endpoint = "/tools_rectangle_figure_changed"
+
+                def __init__(
+                    self,
+                    dataset_id: int,
+                    team_id: int,
+                    workspace_id: int,
+                    project_id: int,
+                    figure_id: int,
+                    figure_class_id: int,
+                    figure_class_title: str,
+                    image_id: int,
+                    tool_class_id: int,
+                    session_id: str,
+                    tool: str,
+                    user_id: int,
+                    job_id: int,
+                    tool_state: dict,
+                    figure_state: dict,
+                ):
+                    self.dataset_id = dataset_id
+                    self.team_id = team_id
+                    self.workspace_id = workspace_id
+                    self.project_id = project_id
+                    self.figure_id = figure_id
+                    self.figure_class_id = figure_class_id
+                    self.figure_class_title = figure_class_title
+                    self.image_id = image_id
+                    self.tool_class_id = tool_class_id
+                    self.session_id = session_id
+                    self.tool = tool
+                    self.user_id = user_id
+                    self.job_id = job_id
+                    self.tool_state = tool_state
+                    self.figure_state = figure_state
+
+                @classmethod
+                def from_json(cls, data: dict):
+                    return cls(
+                        dataset_id=data.get(ApiField.DATASET_ID),
+                        team_id=data.get(ApiField.TEAM_ID),
+                        workspace_id=data.get(ApiField.WORKSPACE_ID),
+                        project_id=data.get(ApiField.PROJECT_ID),
+                        figure_id=data.get(ApiField.FIGURE_ID),
+                        figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                        figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                        image_id=data.get(ApiField.IMAGE_ID),
+                        tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                        session_id=data.get(ApiField.SESSION_ID),
+                        tool=data.get(ApiField.LABELING_TOOL),
+                        user_id=data.get(ApiField.USER_ID),
+                        job_id=data.get(ApiField.JOB_ID),
+                        tool_state=data.get(ApiField.JOB_ID),
+                        figure_state=data.get(ApiField.FIGURE_STATE),
+                    )
 
     class JobEntity:
         class StatusChanged:
