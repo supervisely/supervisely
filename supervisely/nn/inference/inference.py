@@ -1137,7 +1137,7 @@ class Inference:
             sly_progress.total = len(images_ids)
 
         def _download_images(images_ids):
-            with ThreadPoolExecutor(8) as executor:
+            with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
                 for image_id in images_ids:
                     executor.submit(
                         self.cache.download_image,
@@ -1449,7 +1449,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(8) as executor:
+                with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -1708,7 +1708,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(16) as executor:
+                with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
