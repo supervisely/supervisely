@@ -1,9 +1,10 @@
 # coding: utf-8
+from __future__ import annotations
 
 import warnings
 from copy import deepcopy
 from math import ceil, floor
-from typing import Dict, List, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 import numpy as np
 
@@ -29,6 +30,9 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
+
+if TYPE_CHECKING:
+    from supervisely.geometry.rectangle import Rectangle
 
 
 # @TODO: use properties instead of field if it makes sense
@@ -214,7 +218,7 @@ class Geometry(JsonSerializable):
         """
         raise NotImplementedError()
 
-    def to_bbox(self):
+    def to_bbox(self) -> Rectangle:
         """
         :return: Rectangle
         """
