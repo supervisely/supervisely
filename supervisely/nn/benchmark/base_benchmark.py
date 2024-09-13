@@ -29,6 +29,7 @@ class BaseBenchmark:
         gt_images_ids: List[int] = None,
         output_dir: str = "./benchmark",
         progress: Optional[SlyTqdm] = None,
+        preparing_progress: Optional[SlyTqdm] = None,
         classes_whitelist: Optional[List[str]] = None,
     ):
         self.api = api
@@ -45,6 +46,7 @@ class BaseBenchmark:
         self._speedtest = None
         self._hardware = None
         self.pbar = progress or tqdm_sly
+        self.preparing_pbar = preparing_progress or tqdm_sly
         self.classes_whitelist = classes_whitelist
         self.vis_texts = None
         self.inference_speed_text = None
@@ -201,6 +203,7 @@ class BaseBenchmark:
                     batch_size=bs,
                     num_iterations=num_iterations,
                     num_warmup=num_warmup,
+                    preparing_cb=self.preparing_pbar,
                     cache_project_on_model=cache_project_on_agent,
                 )
                 for speedtest in tqdm_sly(iterator):
@@ -208,6 +211,7 @@ class BaseBenchmark:
                 assert (
                     len(speedtest_results) == num_iterations
                 ), "Speedtest failed to run all iterations."
+                logger.info(f"Inference finished for batch_size={bs}. Calculating statistics.")
                 avg_speedtest, std_speedtest = self._calculate_speedtest_statistics(
                     speedtest_results
                 )

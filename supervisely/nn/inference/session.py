@@ -408,8 +408,8 @@ class SessionJSON:
         num_iterations: int = 100,
         num_warmup: int = 3,
         dataset_ids: List[int] = None,
-        preparing_cb=None,
         cache_project_on_model: bool = False,
+        preparing_cb=None,
     ):
         if self._async_inference_uuid:
             logger.info(

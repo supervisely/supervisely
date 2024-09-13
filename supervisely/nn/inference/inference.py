@@ -1696,7 +1696,7 @@ class Inference:
 
         if cache_project_on_model:
 
-            def _progress_cb(count: int):
+            def _progress_cb(count: int = 1):
                 preparing_progress["current"] += count
 
             preparing_progress["current"] = 0
