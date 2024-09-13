@@ -474,6 +474,14 @@ class SessionJSON:
                     prev_current = current
                     resp = self._get_preparing_progress()
 
+                if resp["status"] == "warmup":
+                    progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
+                while resp["status"] == "warmup":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
+
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self, process_fn=None)
@@ -805,6 +813,7 @@ class Session(SessionJSON):
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
+        preparing_cb = None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
@@ -814,6 +823,7 @@ class Session(SessionJSON):
             process_fn=self._convert_to_sly_annotation,
             tracker=tracker,
             batch_size=batch_size,
+            preparing_cb=preparing_cb,
         )
         return frame_iterator
 

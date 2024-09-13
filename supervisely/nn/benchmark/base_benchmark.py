@@ -29,7 +29,7 @@ class BaseBenchmark:
         gt_images_ids: List[int] = None,
         output_dir: str = "./benchmark",
         progress: Optional[SlyTqdm] = None,
-        preparing_progress: Optional[SlyTqdm] = None,
+        progress_secondary: Optional[SlyTqdm] = None,
         classes_whitelist: Optional[List[str]] = None,
     ):
         self.api = api
@@ -46,7 +46,7 @@ class BaseBenchmark:
         self._speedtest = None
         self._hardware = None
         self.pbar = progress or tqdm_sly
-        self.preparing_pbar = preparing_progress or tqdm_sly
+        self.progress_secondary = progress_secondary or tqdm_sly
         self.classes_whitelist = classes_whitelist
         self.vis_texts = None
         self.inference_speed_text = None
@@ -203,10 +203,14 @@ class BaseBenchmark:
                     batch_size=bs,
                     num_iterations=num_iterations,
                     num_warmup=num_warmup,
-                    preparing_cb=self.preparing_pbar,
+                    preparing_cb=self.progress_secondary,
                     cache_project_on_model=cache_project_on_agent,
                 )
-                for speedtest in tqdm_sly(iterator):
+                for speedtest in self.progress_secondary(
+                    iterator,
+                    msessage="Speedtest: Running inference",
+                    total=len(iterator),
+                ):
                     speedtest_results.append(speedtest)
                 assert (
                     len(speedtest_results) == num_iterations
