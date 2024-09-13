@@ -1768,11 +1768,13 @@ class Inference:
         stop = False
 
         def image_batch_generator(batch_size):
+            logger.debug(f"image_batch_generator. images_infos={len(images_infos)}, batch_size={batch_size}")
             batch = []
             while True:
                 for image_info in images_infos:
                     batch.append(image_info)
                     if len(batch) == batch_size:
+                        logger.debug("yield batch")
                         yield batch
                         batch = []
 
@@ -1796,6 +1798,7 @@ class Inference:
                     preparing_progress["status"] = "inference"
 
                 images_infos_batch: List[ImageInfo] = next(batch_generator)
+
                 images_infos_batch_by_dataset = {}
                 for image_info in images_infos_batch:
                     images_infos_batch_by_dataset.setdefault(image_info.dataset_id, []).append(
