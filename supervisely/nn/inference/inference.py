@@ -588,10 +588,11 @@ class Inference:
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
-            ann = Annotation.from_img_path(image_path)
+            img = sly_image.read(image_path)
+            img_size = img.shape[:2]
         else:
-            ann = Annotation(image_path.shape[:2])
-        ann = ann.add_labels(labels)
+            img_size = image_path.shape[:2]
+        ann = Annotation(img_size, labels)
         return ann
 
     @property
@@ -1662,17 +1663,19 @@ class Inference:
         num_warmup = state.get("num_warmup", 3)
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
+        max_images_number = 100
 
         datasets_infos = api.dataset.get_list(project_id, recursive=True)
+        datasets_infos_dict = {ds_info.id: ds_info for ds_info in datasets_infos}
         if dataset_ids is not None:
-            datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
+            datasets_infos = [
+                datasets_infos_dict[dataset_id]
+                for dataset_id in dataset_ids
+                if dataset_id in datasets_infos_dict
+            ]
 
         # progress
         preparing_progress = {"current": 0, "total": 1}
-        preparing_progress["status"] = "download_info"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
-        progress_cb = None
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -1685,44 +1688,52 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
+            sly_progress.total = num_iterations
+            sly_progress.current = 0
 
-            inference_request["preparing_progress"]["total"] = len(datasets_infos)
             preparing_progress = inference_request["preparing_progress"]
 
-            if cache_project_on_model:
-                progress_cb = sly_progress.iters_done
-                preparing_progress["total"] = sly_progress.total
-                preparing_progress["status"] = "download_project"
-
-        if cache_project_on_model:
-            download_to_cache(api, project_id, datasets_infos, progress_cb=progress_cb)
-
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = len(datasets_infos)
+        preparing_progress["status"] = "download_info"
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
             if not cache_project_on_model:
                 preparing_progress["current"] += 1
 
-        preparing_progress["status"] = "inference"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = num_iterations
+        if cache_project_on_model:
 
-        def _download_images(datasets_infos: List[DatasetInfo]):
-            for dataset_info in datasets_infos:
-                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
-                    for image_id in image_ids:
-                        executor.submit(
-                            self.cache.download_image,
-                            api,
-                            dataset_info.id,
-                            image_id,
-                        )
+            def _progress_cb(count: int = 1):
+                preparing_progress["current"] += count
+
+            preparing_progress["current"] = 0
+            preparing_progress["total"] = sum(
+                dataset_info.items_count for dataset_info in datasets_infos
+            )
+            preparing_progress["status"] = "download_project"
+            download_to_cache(api, project_id, datasets_infos, progress_cb=_progress_cb)
+
+        preparing_progress["status"] = "warmup"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = num_warmup
+
+        images_infos: List[ImageInfo] = [
+            image_info for infos in images_infos_dict.values() for image_info in infos
+        ][:max_images_number]
+
+        def _download_images():
+            with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
+                for image_info in images_infos:
+                    executor.submit(
+                        self.cache.download_image,
+                        api,
+                        image_info.id,
+                    )
 
         if not cache_project_on_model:
             # start downloading in parallel
-            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+            threading.Thread(target=_download_images, daemon=True).start()
 
         def _add_results_to_request(results: List[Dict]):
             if async_inference_request_uuid is None:
@@ -1764,14 +1775,15 @@ class Inference:
         stop = False
 
         def image_batch_generator(batch_size):
+            logger.debug(f"image_batch_generator. images_infos={len(images_infos)}, batch_size={batch_size}")
+            batch = []
             while True:
-                for dataset_info in datasets_infos:
-                    batch = []  # guarantee the full batch comes from the same dataset.
-                    for image_info in images_infos_dict[dataset_info.id]:
-                        batch.append(image_info)
-                        if len(batch) == batch_size:
-                            yield dataset_info, batch
-                            batch = []
+                for image_info in images_infos:
+                    batch.append(image_info)
+                    if len(batch) == batch_size:
+                        logger.debug("yield batch")
+                        yield batch
+                        batch = []
 
         batch_generator = image_batch_generator(batch_size)
         try:
@@ -1789,26 +1801,41 @@ class Inference:
                     results = []
                     stop = True
                     break
+                if i == num_warmup:
+                    preparing_progress["status"] = "inference"
 
-                dataset_info, images_infos_batch = next(batch_generator)
+                images_infos_batch: List[ImageInfo] = next(batch_generator)
+
+                images_infos_batch_by_dataset = {}
+                for image_info in images_infos_batch:
+                    images_infos_batch_by_dataset.setdefault(image_info.dataset_id, []).append(
+                        image_info
+                    )
 
                 # Read images
                 if cache_project_on_model:
-                    images_paths, _ = zip(
-                        *read_from_cached_project(
-                            project_id,
-                            dataset_info.name,
-                            [ii.name for ii in images_infos_batch],
+                    images_nps = []
+                    for dataset_id, images_infos in images_infos_batch_by_dataset.items():
+                        dataset_info = datasets_infos_dict[dataset_id]
+                        images_paths, _ = zip(
+                            *read_from_cached_project(
+                                project_id,
+                                dataset_info.name,
+                                [ii.name for ii in images_infos],
+                            )
                         )
-                    )
-                    images_nps = [sly_image.read(path) for path in images_paths]
+                        images_nps.extend([sly_image.read(path) for path in images_paths])
                 else:
-                    images_nps = self.cache.download_images(
-                        api,
-                        dataset_info.id,
-                        [info.id for info in images_infos_batch],
-                        return_images=True,
-                    )
+                    images_nps = []
+                    for dataset_id, images_infos in images_infos_batch_by_dataset.items():
+                        images_nps.extend(
+                            self.cache.download_images(
+                                api,
+                                dataset_id,
+                                [info.id for info in images_infos],
+                                return_images=True,
+                            )
+                        )
                 # Inference
                 anns, benchmark = self._inference_benchmark(
                     images_np=images_nps,
@@ -1818,6 +1845,8 @@ class Inference:
                 if i >= num_warmup:
                     results.append(benchmark)
                     upload_queue.put(benchmark)
+                else:
+                    preparing_progress["current"] += 1
         except Exception:
             stop_upload_event.set()
             raise
