@@ -1711,7 +1711,7 @@ class Inference:
         preparing_progress["total"] = num_warmup
 
         images_infos: List[ImageInfo] = [
-            image_info for image_info in images_infos_dict[dataset_info.id]
+            image_info for infos in images_infos_dict.values() for image_info in infos
         ][:max_images_number]
 
         def _download_images():
