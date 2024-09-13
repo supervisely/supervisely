@@ -58,13 +58,8 @@ from supervisely.decorators.inference import (
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
-from supervisely.nn.utils import (
-    CheckpointInfo,
-    DeployInfo,
-    RuntimeType,
-    ModelPrecision,
-)
 from supervisely.nn.prediction_dto import Prediction
+from supervisely.nn.utils import CheckpointInfo, DeployInfo, ModelPrecision, RuntimeType
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -242,12 +237,20 @@ class Inference:
         )
 
     def _initialize_app_layout(self):
-        self._user_layout_card = Card(
-            title="Select Model",
-            description="Select the model to deploy and press the 'Serve' button.",
-            content=self._user_layout,
-            lock_message="Model is deployed. To change the model, stop the serving first.",
-        )
+        if hasattr(self, "_user_layout"):
+            self._user_layout_card = Card(
+                title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
+                content=self._user_layout,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
+        else:
+            self._user_layout_card = Card(
+                title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
+                content=self._gui,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
         self._api_request_model_info = Editor(
             height_lines=12,
             language_mode="json",
@@ -2619,27 +2622,34 @@ class TempImageWriter:
 
 def get_hardware_info(device: str) -> str:
     import platform
+
     device = device.lower()
     try:
         if device == "cpu":
             system = platform.system()
             if system == "Linux":
-                with open('/proc/cpuinfo', 'r') as f:
+                with open("/proc/cpuinfo", "r") as f:
                     for line in f:
                         if "model name" in line:
-                            return line.split(':')[1].strip()
+                            return line.split(":")[1].strip()
             elif system == "Darwin":  # macOS
                 command = "/usr/sbin/sysctl -n machdep.cpu.brand_string"
                 return subprocess.check_output(command, shell=True).strip().decode()
             elif system == "Windows":
                 command = "wmic cpu get name"
                 output = subprocess.check_output(command, shell=True).decode()
-                return output.strip().split('\n')[1].strip()
+                return output.strip().split("\n")[1].strip()
         elif "cuda" in device:
             idx = 0
             if ":" in device:
                 idx = int(device.split(":")[1])
-            gpus = subprocess.check_output(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]).decode("utf-8").strip()
+            gpus = (
+                subprocess.check_output(
+                    ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]
+                )
+                .decode("utf-8")
+                .strip()
+            )
             gpu_list = gpus.split("\n")
             if idx >= len(gpu_list):
                 raise ValueError(f"No GPU found at index {idx}")
