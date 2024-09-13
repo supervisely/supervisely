@@ -16,8 +16,8 @@ from requests import HTTPError, Timeout
 import supervisely as sly
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.io.network_exceptions import process_requests_exception
-from supervisely.sly_logger import logger
 from supervisely.nn.utils import DeployInfo
+from supervisely.sly_logger import logger
 
 
 class SessionJSON:
@@ -408,6 +408,7 @@ class SessionJSON:
         num_iterations: int = 100,
         num_warmup: int = 3,
         dataset_ids: List[int] = None,
+        preparing_cb=None,
         cache_project_on_model: bool = False,
     ):
         if self._async_inference_uuid:
@@ -435,6 +436,44 @@ class SessionJSON:
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
+
+        current = 0
+        prev_current = 0
+        if preparing_cb:
+            # wait for inference status
+            resp = self._get_preparing_progress()
+            awaiting_preparing_progress = 0
+            break_flag = False
+            while resp.get("status") is None:
+                time.sleep(1)
+                awaiting_preparing_progress += 1
+                if awaiting_preparing_progress > 30:
+                    break_flag = True
+                resp = self._get_preparing_progress()
+            if break_flag:
+                logger.warning(
+                    "Unable to get preparing progress. Continue without prepaing progress status."
+                )
+            if not break_flag:
+                if resp["status"] == "download_info":
+                    progress_widget = preparing_cb(
+                        message="Downloading infos", total=resp["total"], unit="it"
+                    )
+
+                while resp["status"] == "download_info":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
+
+                if resp["status"] == "download_project":
+                    progress_widget = preparing_cb(message="Download project", total=resp["total"])
+                while resp["status"] == "download_project":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
+
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self, process_fn=None)
