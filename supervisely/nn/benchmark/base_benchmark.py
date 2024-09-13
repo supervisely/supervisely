@@ -206,12 +206,12 @@ class BaseBenchmark:
                     preparing_cb=self.progress_secondary,
                     cache_project_on_model=cache_project_on_agent,
                 )
-                for speedtest in self.progress_secondary(
-                    iterator,
-                    msessage="Speedtest: Running inference",
-                    total=len(iterator),
-                ):
+                p2 = self.progress_secondary(
+                    message="Speedtest: Running inference", total=len(iterator)
+                )
+                for speedtest in iterator:
                     speedtest_results.append(speedtest)
+                    p2.update(1)
                 assert (
                     len(speedtest_results) == num_iterations
                 ), "Speedtest failed to run all iterations."
