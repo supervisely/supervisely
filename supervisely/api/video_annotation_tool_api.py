@@ -11,6 +11,14 @@ class VideoAnnotationToolAction(StrEnum):
     """"""
     JOBS_ENABLE_CONTROLS = "jobs/enableControls"
     """"""
+    JOBS_DISABLE_SUBMIT = "jobs/disableSubmit"
+    """"""
+    JOBS_ENABLE_SUBMIT = "jobs/enableSubmit"
+    """"""
+    JOBS_DISABLE_CONFIRM = "jobs/disableConfirm"
+    """"""
+    JOBS_ENABLE_CONFIRM = "jobs/enableConfirm"
+    """"""
     ENTITIES_SET_INTITY = "entities/setEntity"
     """"""
 
@@ -41,6 +49,62 @@ class VideoAnnotationToolApi(ModuleApiBase):
         return self._act(
             session_id,
             VideoAnnotationToolAction.JOBS_ENABLE_CONTROLS,
+            {},
+        )
+        
+    def disable_submit_button(self, session_id: str) -> Dict[str, Any]:
+        """Disables submit button of the labeling jobs.
+
+        :param session_id: ID of the session in the Video Labeling Tool which submit button should be disabled.
+        :type session_id: str
+        :return: Response from API server in JSON format.
+        :rtype: Dict[str, Any]
+        """
+        return self._act(
+            session_id,
+            VideoAnnotationToolAction.JOBS_DISABLE_SUBMIT,
+            {},
+        )
+        
+    def enable_submit_button(self, session_id: str) -> Dict[str, Any]:
+        """Enables submit button of the labeling jobs.
+
+        :param session_id: ID of the session in the Video Labeling Tool which submit button should be enabled.
+        :type session_id: str
+        :return: Response from API server in JSON format.
+        :rtype: Dict[str, Any]
+        """
+        return self._act(
+            session_id,
+            VideoAnnotationToolAction.JOBS_ENABLE_SUBMIT,
+            {},
+        )
+        
+    def disable_confirm_button(self, session_id: str) -> Dict[str, Any]:
+        """Disables confirm button of the labeling jobs.
+
+        :param session_id: ID of the session in the Video Labeling Tool which confirm button should be disabled.
+        :type session_id: str
+        :return: Response from API server in JSON format.
+        :rtype: Dict[str, Any]
+        """
+        return self._act(
+            session_id,
+            VideoAnnotationToolAction.JOBS_DISABLE_CONFIRM,
+            {},
+        )
+    
+    def enable_confirm_button(self, session_id: str) -> Dict[str, Any]:
+        """Enables confirm button of the labeling jobs.
+        
+        :param session_id: ID of the session in the Video Labeling Tool which confirm button should be enabled.
+        :type session_id: str
+        :return: Response from API server in JSON format.
+        :rtype: Dict[str, Any]
+        """
+        return self._act(
+            session_id,
+            VideoAnnotationToolAction.JOBS_ENABLE_CONFIRM,
             {},
         )
 
