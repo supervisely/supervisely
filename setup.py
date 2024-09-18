@@ -274,6 +274,7 @@ setup(
             "pycocotools",
             "scikit-learn",
             "plotly==5.22.0",
+            "kaleido==0.2.1",
         ],
         # legacy dependencies
         "plugins": [
