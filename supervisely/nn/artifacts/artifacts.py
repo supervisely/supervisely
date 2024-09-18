@@ -324,6 +324,14 @@ class BaseTrainArtifacts:
             silent_remove(json_data_path)
 
         checkpoint_file_infos = _get_checkpoint_file_infos(weights_folder)
+        if hasattr(self, "legacy_weights_folder"):
+            if self._legacy_weights_folder is not None:
+                legacy_checkpoint_file_infos = _get_checkpoint_file_infos(
+                    self._legacy_weights_folder
+                )
+                if len(legacy_checkpoint_file_infos) > 0:
+                    checkpoint_file_infos.extend(legacy_checkpoint_file_infos)
+
         if len(checkpoint_file_infos) == 0:
             logger.info(f"No checkpoints found in '{weights_folder}'")
             return None
