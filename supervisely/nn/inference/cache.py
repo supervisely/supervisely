@@ -12,7 +12,7 @@ from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 from cacheout import Cache as CacheOut
-from cachetools import Cache, LRUCache, TTLCache, _Link
+from cachetools import Cache, LRUCache, TTLCache
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
@@ -94,26 +94,17 @@ class PersistentImageTTLCache(TTLCache):
                 except KeyError:
                     pass
 
+    def __clear_cache(self):
+        sly.logger.warn("Clearing the cache due to an error...")
+        shutil.rmtree(self._base_dir, ignore_errors=True)
+        self.__init__(self.maxsize, self.ttl, self._base_dir)
+
     def pop(self, *args, **kwargs):
         try:
             super().pop(*args, **kwargs)
         except Exception:
-            sly.logger.warn("Cache data corrupted. Cleaning the cache...", exc_info=True)
-
-            def _delitem(self, key):
-                try:
-                    size = self._Cache__size.pop(key)
-                except:
-                    size = 0
-                self._Cache__data.pop(key, None)
-                self._Cache__currsize -= size
-
-            shutil.rmtree(self._base_dir, ignore_errors=True)
-            for key in self.keys():
-                try:
-                    super().__delitem__(key, cache_delitem=_delitem)
-                except:
-                    pass
+            sly.logger.warn("Cache data corrupted", exc_info=True)
+            self.__clear_cache()
 
     def __delitem__(self, key: Any) -> None:
         with self.acquire_lock(key):
@@ -133,7 +124,7 @@ class PersistentImageTTLCache(TTLCache):
             # pylint: disable=no-member
             link = self._TTLCache__getlink(key)
             # pylint: disable=no-member
-            link.expire = self._TTLCache__timer() + self.ttl
+            link.expire = self.timer() + self.ttl
         except KeyError:
             return
 
@@ -149,7 +140,11 @@ class PersistentImageTTLCache(TTLCache):
         """Remove expired items from the cache."""
         # pylint: disable=no-member
         existing_items = self._Cache__data.copy()
-        super().expire(time)
+        try:
+            super().expire(time)
+        except:
+            sly.logger.warn("Cache data corrupted", exc_info=True)
+            self.__clear_cache()
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
             for key in deleted:
