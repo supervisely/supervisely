@@ -222,6 +222,8 @@ class ApiField:
     """"""
     OBJECT_ID = "objectId"
     """"""
+    ANNOTATION_OBJECT_ID = "annotationObjectId"
+    """"""
     FRAME = "frame"
     """"""
     # FIGURES_COUNT = (['labelsCount'], 'figures_count')
