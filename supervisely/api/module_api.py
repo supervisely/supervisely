@@ -588,6 +588,8 @@ class ApiField:
     """"""
     HIDDEN = "hidden"
     """"""
+    PRIORITY = "priority"
+    """"""
 
 
 def _get_single_item(items):
