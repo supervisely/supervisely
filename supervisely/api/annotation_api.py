@@ -1304,6 +1304,7 @@ class AnnotationApi(ModuleApi):
 
     def update_label_priority(self, label_id: int, priority: int) -> None:
         """Updates label's priority with given ID in Supervisely.
+        Priority increases with the number: a higher number indicates a higher priority.
         The higher priority means that the label will be displayed on top of the others.
         The lower priority means that the label will be displayed below the others.
         
