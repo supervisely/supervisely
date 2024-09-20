@@ -28,6 +28,7 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.api.entity_annotation.figure_api import FigureInfo
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -1230,17 +1231,28 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return job_meta
 
     def get_annotations(
-        self, id: int, image_ids: List[int], project_meta: ProjectMeta = None
+        self,
+        id: int,
+        image_ids: Optional[List[int]] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        image_infos: Optional[List[ImageInfo]] = None,
     ) -> List[Annotation]:
         """
         Return annotations for given image ids from labeling job with given id.
+        To speed up the process, you can provide image infos, which will be used instead of fetching them from the API.
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :param image_ids: Image IDs in Supervisely.
-        :type image_ids: int
+                        If not provided, you must provide :param:`image_infos`.
+                        Have lower priority than :param:`image_infos`.
+        :type image_ids: List[int], optional
         :param project_meta: Project meta of the labeling job with given id. Can be retrieved with :func:`get_project_meta`.
         :type project_meta: :class:`ProjectMeta`, optional
+        :param image_infos: List of ImageInfo objects.
+                            If not provided, will be retrieved from the API.
+                            Have higher priority than :param:`image_ids`.
+        :type image_infos: List[ImageInfo], optional
         :return: Annotation for given image id from labeling job with given id.
         :rtype: :class:`Annotation`
         """
@@ -1283,20 +1295,27 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 labels.append(label)
             return labels
 
-        self._api.add_header("x-job-id", str(id))
+        if image_ids is None and image_infos is None:
+            raise ValueError("Either 'image_ids' or 'image_infos' must be provided.")
+        if image_infos is not None:
+            image_ids = [image_info.id for image_info in image_infos]
+        if self._api.headers.get("x-job-id") != str(id):
+            self._api.add_header("x-job-id", str(id))
         job_info = self.get_info_by_id(id)
+        if image_infos is None:
+            image_infos = self._api.image.get_list(
+                job_info.dataset_id,
+                filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
+            )
         figures_map = self._api.image.figure.download(job_info.dataset_id, image_ids)
-        images = self._api.image.get_list(
-            job_info.dataset_id,
-            filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
-        )
-        self._api.pop_header("x-job-id")
+        if self._api.headers.get("x-job-id") == str(id):
+            self._api.pop_header("x-job-id")
 
         if project_meta is None:
             project_meta = self.get_project_meta(id)
 
         anns = []
-        for image in images:
+        for image in image_infos:
             img_figures = figures_map.get(image.id, [])
             img_tags = _create_tags_from_labeling_job(image.tags, project_meta)
             labels = _create_labels_from_labeling_job(img_figures, project_meta)
