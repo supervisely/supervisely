@@ -330,6 +330,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_ids: Optional[List[int]] = [],
         dynamic_classes: Optional[bool] = False,
         dynamic_tags: Optional[bool] = False,
+        disable_confirm: Optional[bool] = False,
+        disable_submit: Optional[bool] = False,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -520,21 +522,28 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if tags_limit_per_image is None:
             tags_limit_per_image = 0
 
+        meta = {
+            "classes": classes_to_label,
+            "projectTags": tags_to_label,
+            "imageTags": filter_images_by_tags,
+            "imageFiguresLimit": objects_limit_per_image,
+            "imageTagsLimit": tags_limit_per_image,
+            "entityIds": images_ids,
+            "dynamicClasses": dynamic_classes,
+            "dynamicTags": dynamic_tags,
+        }
+
+        if disable_confirm is True:
+            meta.update({"disableConfirm": disable_confirm})
+        if disable_submit is True:
+            meta.update({"disableSubmit": disable_submit})
+
         data = {
             ApiField.NAME: name,
             ApiField.DATASET_ID: dataset_id,
             ApiField.USER_IDS: user_ids,
             # ApiField.DESCRIPTION: description,
-            ApiField.META: {
-                "classes": classes_to_label,
-                "projectTags": tags_to_label,
-                "imageTags": filter_images_by_tags,
-                "imageFiguresLimit": objects_limit_per_image,
-                "imageTagsLimit": tags_limit_per_image,
-                "entityIds": images_ids,
-                "dynamicClasses": dynamic_classes,
-                "dynamicTags": dynamic_tags,
-            },
+            ApiField.META: meta,
         }
 
         if readme is not None:
