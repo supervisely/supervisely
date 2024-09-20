@@ -368,9 +368,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type dynamic_classes: bool, optional
         :param dynamic_tags: If True, tags created after creating the job will be available for annotators
         :type dynamic_tags: bool, optional
-        :param disable_confirm: If True, the Confirm button will be disabled in the labeling tool. Note, the button will be disabled until the next API call re-enables it again.
+        :param disable_confirm: If True, the Confirm button will be disabled in the labeling tool. It will remain disabled until the next API call sets the parameter to False, re-enabling the button.
         :type disable_confirm: bool, optional
-        :param disable_submit: If True, the Submit button will be disabled in the labeling tool. Note, the button will be disabled until the next API call re-enables it again.
+        :param disable_submit: If True, the Submit button will be disabled in the labeling tool. It will remain disabled until the next API call sets the parameter to False, re-enabling the button.
         :type disable_submit: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
