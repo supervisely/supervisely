@@ -23,7 +23,6 @@ class FigureInfo(NamedTuple):
     updated_at: str
     created_at: str
     entity_id: int
-    priority: int
     object_id: int
     project_id: int
     dataset_id: int
@@ -86,7 +85,6 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.UPDATED_AT,
             ApiField.CREATED_AT,
             ApiField.ENTITY_ID,
-            ApiField.PRIORITY,
             ApiField.OBJECT_ID,
             ApiField.PROJECT_ID,
             ApiField.DATASET_ID,
@@ -170,7 +168,6 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
@@ -320,7 +317,6 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
@@ -443,7 +439,6 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
@@ -461,13 +456,7 @@ class FigureApi(RemoveableBulkModuleApi):
         if image_ids is None:
             filters = []
         else:
-            filters = [
-                {
-                    ApiField.FIELD: ApiField.ENTITY_ID,
-                    "operator": "in",
-                    "value": image_ids,
-                }
-            ]
+            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
@@ -573,10 +562,7 @@ class FigureApi(RemoveableBulkModuleApi):
             for figure_id, geometry in zip(batch_ids, batch_geometries):
                 fields.append((ApiField.FIGURE_ID, str(figure_id)))
                 fields.append(
-                    (
-                        ApiField.GEOMETRY,
-                        (str(figure_id), geometry, "application/octet-stream"),
-                    )
+                    (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
                 )
             encoder = MultipartEncoder(fields=fields)
             self._api.post("figures.bulk.upload.geometry", encoder)
