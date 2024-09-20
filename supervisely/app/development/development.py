@@ -154,7 +154,7 @@ def supervisely_vpn_network(
 
 
 def create_debug_task(
-    team_id: int, port: int = 8000, update_status: bool = False
+    team_id: int, port: int = 8000, update_status: bool = True
 ) -> Dict[str, Any]:
     """Gets or creates a debug task for the current user.
 

@@ -16,6 +16,7 @@ from requests import HTTPError, Timeout
 import supervisely as sly
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.io.network_exceptions import process_requests_exception
+from supervisely.nn.utils import DeployInfo
 from supervisely.sly_logger import logger
 
 
@@ -201,8 +202,8 @@ class SessionJSON:
     def inference_image_ids_async(
         self,
         image_ids: List[int],
-        output_project_id=None,
-        batch_size: int = 16,
+        output_project_id: int = None,
+        batch_size: int = None,
         process_fn=None,
     ) -> Iterator:
         if self._async_inference_uuid:
@@ -271,12 +272,14 @@ class SessionJSON:
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> Dict[str, Any]:
         endpoint = "inference_video_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
+        state["batch_size"] = batch_size
         state.update(
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
@@ -293,6 +296,7 @@ class SessionJSON:
         process_fn=None,
         preparing_cb=None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -308,6 +312,7 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
+        state["batch_size"] = batch_size
         state.update(
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
@@ -364,7 +369,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
         process_fn=None,
     ):
         if self._async_inference_uuid:
@@ -399,11 +404,12 @@ class SessionJSON:
     def run_speedtest(
         self,
         project_id: int,
-        batch_size: int = 1,
+        batch_size: int,
         num_iterations: int = 100,
         num_warmup: int = 3,
         dataset_ids: List[int] = None,
         cache_project_on_model: bool = False,
+        preparing_cb=None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -430,6 +436,52 @@ class SessionJSON:
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
+
+        current = 0
+        prev_current = 0
+        if preparing_cb:
+            # wait for inference status
+            resp = self._get_preparing_progress()
+            awaiting_preparing_progress = 0
+            break_flag = False
+            while resp.get("status") is None:
+                time.sleep(1)
+                awaiting_preparing_progress += 1
+                if awaiting_preparing_progress > 30:
+                    break_flag = True
+                resp = self._get_preparing_progress()
+            if break_flag:
+                logger.warning(
+                    "Unable to get preparing progress. Continue without prepaing progress status."
+                )
+            if not break_flag:
+                if resp["status"] == "download_info":
+                    progress_widget = preparing_cb(
+                        message="Downloading infos", total=resp["total"], unit="it"
+                    )
+
+                while resp["status"] == "download_info":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
+
+                if resp["status"] == "download_project":
+                    progress_widget = preparing_cb(message="Download project", total=resp["total"])
+                while resp["status"] == "download_project":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
+
+                if resp["status"] == "warmup":
+                    progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
+                while resp["status"] == "warmup":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
+
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self, process_fn=None)
@@ -441,7 +493,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
     ):
         return [
             pred
@@ -532,9 +584,11 @@ class SessionJSON:
             self._async_inference_uuid = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
+        retries = min(self.api.retry_count, retries)
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
         for retry_idx in range(retries):
+            response = None
             try:
                 response = requests.post(*args, **kwargs)
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
@@ -549,6 +603,7 @@ class SessionJSON:
                     verbose=True,
                     swallow_exc=True,
                     sleep_sec=5,
+                    response=response,
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
                 if retry_idx + 1 == retries:
@@ -692,6 +747,9 @@ class Session(SessionJSON):
         self._model_meta = model_meta
         return self._model_meta
 
+    def get_deploy_info(self) -> DeployInfo:
+        return DeployInfo(**super().get_deploy_info())
+
     def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
         pred_json = super().inference_image_id(image_id, upload)
         pred_ann = self._convert_to_sly_annotation(pred_json)
@@ -715,8 +773,8 @@ class Session(SessionJSON):
     def inference_image_ids_async(
         self,
         image_ids: List[int],
-        output_project_id=None,
-        batch_size: int = 16,
+        output_project_id: int = None,
+        batch_size: int = None,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
@@ -738,9 +796,10 @@ class Session(SessionJSON):
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
-            video_id, start_frame_index, frames_count, frames_direction, tracker
+            video_id, start_frame_index, frames_count, frames_direction, tracker, batch_size
         )
         pred_list_raw = pred_list_raw["ann"]
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
@@ -753,6 +812,8 @@ class Session(SessionJSON):
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
+        batch_size: int = None,
+        preparing_cb = None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
@@ -761,6 +822,8 @@ class Session(SessionJSON):
             frames_direction,
             process_fn=self._convert_to_sly_annotation,
             tracker=tracker,
+            batch_size=batch_size,
+            preparing_cb=preparing_cb,
         )
         return frame_iterator
 
@@ -770,7 +833,7 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
@@ -788,7 +851,7 @@ class Session(SessionJSON):
         dataset_ids: List[int] = None,
         output_project_id: int = None,
         cache_project_on_model: bool = False,
-        batch_size: int = 16,
+        batch_size: int = None,
     ):
         return [
             pred

@@ -5,6 +5,7 @@ from enum import Enum
 from logging import Logger
 from pathlib import Path
 from threading import Lock, Thread
+from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 
@@ -613,6 +614,7 @@ class InferenceImageCache:
         indexes_to_load = []
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
+        items = []
 
         for pos, hash_or_id in enumerate(indexes):
             name = name_cunstructor(hash_or_id)
@@ -623,7 +625,16 @@ class InferenceImageCache:
                 indexes_to_load.append(hash_or_id)
                 pos_by_name[name] = pos
             elif return_images is True:
-                all_frames[pos] = self._cache.get_image(name)
+                items.append((pos, name))
+        
+        def get_one_image(item):
+            pos, name = item
+            return pos, self._cache.get_image(name)
+        
+        if len(items) > 0:
+            with ThreadPoolExecutor(min(64, len(items))) as executor:
+                for pos, image in executor.map(get_one_image, items):
+                    all_frames[pos] = image
 
         if len(indexes_to_load) > 0:
             for id_or_hash, image in load_generator(indexes_to_load):
@@ -634,7 +645,7 @@ class InferenceImageCache:
                     pos = pos_by_name[name]
                     all_frames[pos] = image
 
-        logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
+        # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
         logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
         logger.debug(f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}")
 

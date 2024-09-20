@@ -58,13 +58,8 @@ from supervisely.decorators.inference import (
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
-from supervisely.nn.inference.utils import (
-    CheckpointInfo,
-    DeployInfo,
-    RuntimeType,
-    get_hardware_info,
-)
 from supervisely.nn.prediction_dto import Prediction
+from supervisely.nn.utils import CheckpointInfo, DeployInfo, ModelPrecision, RuntimeType
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -79,6 +74,8 @@ except ImportError:
 
 
 class Inference:
+    DEFAULT_BATCH_SIZE = 16
+
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -94,7 +91,9 @@ class Inference:
             fs.mkdir(model_dir)
         self.device: str = None
         self.runtime: str = None
+        self.model_precision: str = None
         self.checkpoint_info: CheckpointInfo = None
+        self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
         self._model_dir = model_dir
         self._model_served = False
         self._deploy_params: dict = None
@@ -106,6 +105,7 @@ class Inference:
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
+        self._hardware: str = None
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -172,6 +172,11 @@ class Inference:
             base_folder=env.smart_cache_container_dir(),
         )
 
+    def get_batch_size(self):
+        if self.max_batch_size is not None:
+            return min(self.DEFAULT_BATCH_SIZE, self.max_batch_size)
+        return self.DEFAULT_BATCH_SIZE
+
     def _prepare_device(self, device):
         if device is None:
             try:
@@ -230,14 +235,22 @@ class Inference:
             add_content_to_custom_tab=self.add_content_to_custom_tab,
             custom_model_link_type=self.get_custom_model_link_type(),
         )
-    
+
     def _initialize_app_layout(self):
-        self._user_layout_card = Card(
-            title="Select Model",
-            description="Select the model to deploy and press the 'Serve' button.",
-            content=self._user_layout,
-            lock_message="Model is deployed. To change the model, stop the serving first.",
-        )
+        if hasattr(self, "_user_layout"):
+            self._user_layout_card = Card(
+                title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
+                content=self._user_layout,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
+        else:
+            self._user_layout_card = Card(
+                title="Select Model",
+                description="Select the model to deploy and press the 'Serve' button.",
+                content=self._gui,
+                lock_message="Model is deployed. To change the model, stop the serving first.",
+            )
         self._api_request_model_info = Editor(
             height_lines=12,
             language_mode="json",
@@ -416,7 +429,9 @@ class Inference:
 
     def _load_model(self, deploy_params: dict):
         self.device = deploy_params.get("device")
-        self.runtime = deploy_params.get("runtime")
+        self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
+        self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
+        self._hardware = get_hardware_info(self.device)
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
@@ -428,7 +443,9 @@ class Inference:
         self._model_served = False
         self.device = None
         self.runtime = None
+        self.model_precision = None
         self.checkpoint_info = None
+        self.max_batch_size = None
         clean_up_cuda()
         logger.info("Model has been stopped")
 
@@ -465,6 +482,8 @@ class Inference:
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
             "tracking_algorithms": ["bot", "deepsort"],
+            "batch_inference_support": self.is_batch_inference_supported(),
+            "max_batch_size": self.max_batch_size,
         }
 
     # pylint: enable=method-hidden
@@ -490,7 +509,8 @@ class Inference:
             "task_type": self.get_info()["task type"],
             "device": self.device,
             "runtime": self.runtime,
-            "hardware": get_hardware_info(),
+            "model_precision": self.model_precision,
+            "hardware": self._hardware,
             "deploy_params": self._deploy_params,
         }
         return DeployInfo(**deploy_info)
@@ -568,10 +588,11 @@ class Inference:
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
-            ann = Annotation.from_img_path(image_path)
+            img = sly_image.read(image_path)
+            img_size = img.shape[:2]
         else:
-            ann = Annotation(image_path.shape[:2])
-        ann = ann.add_labels(labels)
+            img_size = image_path.shape[:2]
+        ann = Annotation(img_size, labels)
         return ann
 
     @property
@@ -1043,7 +1064,7 @@ class Inference:
             tracker = None
 
         results = []
-        batch_size = 16
+        batch_size = state.get("batch_size", self.get_batch_size())
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
@@ -1096,7 +1117,7 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring images...", extra={"state": state})
-        batch_size = state.get("batch_size", 16)
+        batch_size = state.get("batch_size", self.get_batch_size())
         output_project_id = state.get("output_project_id", None)
         images_infos = api.image.get_info_by_id_batch(images_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -1120,7 +1141,7 @@ class Inference:
             sly_progress.total = len(images_ids)
 
         def _download_images(images_ids):
-            with ThreadPoolExecutor(batch_size) as executor:
+            with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
                 for image_id in images_ids:
                     executor.submit(
                         self.cache.download_image,
@@ -1364,7 +1385,7 @@ class Inference:
             project_info = api.project.get_info_by_id(state["projectId"])
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
-        batch_size = state.get("batch_size", 16)
+        batch_size = state.get("batch_size", self.get_batch_size())
 
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         if dataset_ids is not None:
@@ -1432,7 +1453,7 @@ class Inference:
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
                 image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(batch_size) as executor:
+                with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
                     for image_id in image_ids:
                         executor.submit(
                             self.cache.download_image,
@@ -1642,17 +1663,19 @@ class Inference:
         num_warmup = state.get("num_warmup", 3)
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
+        max_images_number = 100
 
         datasets_infos = api.dataset.get_list(project_id, recursive=True)
+        datasets_infos_dict = {ds_info.id: ds_info for ds_info in datasets_infos}
         if dataset_ids is not None:
-            datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
+            datasets_infos = [
+                datasets_infos_dict[dataset_id]
+                for dataset_id in dataset_ids
+                if dataset_id in datasets_infos_dict
+            ]
 
         # progress
         preparing_progress = {"current": 0, "total": 1}
-        preparing_progress["status"] = "download_info"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
-        progress_cb = None
         if async_inference_request_uuid is not None:
             try:
                 inference_request = self._inference_requests[async_inference_request_uuid]
@@ -1665,44 +1688,52 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
+            sly_progress.total = num_iterations
+            sly_progress.current = 0
 
-            inference_request["preparing_progress"]["total"] = len(datasets_infos)
             preparing_progress = inference_request["preparing_progress"]
 
-            if cache_project_on_model:
-                progress_cb = sly_progress.iters_done
-                preparing_progress["total"] = sly_progress.total
-                preparing_progress["status"] = "download_project"
-
-        if cache_project_on_model:
-            download_to_cache(api, project_id, datasets_infos, progress_cb=progress_cb)
-
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = len(datasets_infos)
+        preparing_progress["status"] = "download_info"
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
             if not cache_project_on_model:
                 preparing_progress["current"] += 1
 
-        preparing_progress["status"] = "inference"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = num_iterations
+        if cache_project_on_model:
 
-        def _download_images(datasets_infos: List[DatasetInfo]):
-            for dataset_info in datasets_infos:
-                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(batch_size) as executor:
-                    for image_id in image_ids:
-                        executor.submit(
-                            self.cache.download_image,
-                            api,
-                            dataset_info.id,
-                            image_id,
-                        )
+            def _progress_cb(count: int = 1):
+                preparing_progress["current"] += count
+
+            preparing_progress["current"] = 0
+            preparing_progress["total"] = sum(
+                dataset_info.items_count for dataset_info in datasets_infos
+            )
+            preparing_progress["status"] = "download_project"
+            download_to_cache(api, project_id, datasets_infos, progress_cb=_progress_cb)
+
+        preparing_progress["status"] = "warmup"
+        preparing_progress["current"] = 0
+        preparing_progress["total"] = num_warmup
+
+        images_infos: List[ImageInfo] = [
+            image_info for infos in images_infos_dict.values() for image_info in infos
+        ][:max_images_number]
+
+        def _download_images():
+            with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
+                for image_info in images_infos:
+                    executor.submit(
+                        self.cache.download_image,
+                        api,
+                        image_info.id,
+                    )
 
         if not cache_project_on_model:
             # start downloading in parallel
-            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+            threading.Thread(target=_download_images, daemon=True).start()
 
         def _add_results_to_request(results: List[Dict]):
             if async_inference_request_uuid is None:
@@ -1744,14 +1775,15 @@ class Inference:
         stop = False
 
         def image_batch_generator(batch_size):
+            logger.debug(f"image_batch_generator. images_infos={len(images_infos)}, batch_size={batch_size}")
+            batch = []
             while True:
-                for dataset_info in datasets_infos:
-                    batch = []  # guarantee the full batch comes from the same dataset.
-                    for image_info in images_infos_dict[dataset_info.id]:
-                        batch.append(image_info)
-                        if len(batch) == batch_size:
-                            yield dataset_info, batch
-                            batch = []
+                for image_info in images_infos:
+                    batch.append(image_info)
+                    if len(batch) == batch_size:
+                        logger.debug("yield batch")
+                        yield batch
+                        batch = []
 
         batch_generator = image_batch_generator(batch_size)
         try:
@@ -1769,26 +1801,41 @@ class Inference:
                     results = []
                     stop = True
                     break
+                if i == num_warmup:
+                    preparing_progress["status"] = "inference"
 
-                dataset_info, images_infos_batch = next(batch_generator)
+                images_infos_batch: List[ImageInfo] = next(batch_generator)
+
+                images_infos_batch_by_dataset = {}
+                for image_info in images_infos_batch:
+                    images_infos_batch_by_dataset.setdefault(image_info.dataset_id, []).append(
+                        image_info
+                    )
 
                 # Read images
                 if cache_project_on_model:
-                    images_paths, _ = zip(
-                        *read_from_cached_project(
-                            project_id,
-                            dataset_info.name,
-                            [ii.name for ii in images_infos_batch],
+                    images_nps = []
+                    for dataset_id, images_infos in images_infos_batch_by_dataset.items():
+                        dataset_info = datasets_infos_dict[dataset_id]
+                        images_paths, _ = zip(
+                            *read_from_cached_project(
+                                project_id,
+                                dataset_info.name,
+                                [ii.name for ii in images_infos],
+                            )
                         )
-                    )
-                    images_nps = [sly_image.read(path) for path in images_paths]
+                        images_nps.extend([sly_image.read(path) for path in images_paths])
                 else:
-                    images_nps = self.cache.download_images(
-                        api,
-                        dataset_info.id,
-                        [info.id for info in images_infos_batch],
-                        return_images=True,
-                    )
+                    images_nps = []
+                    for dataset_id, images_infos in images_infos_batch_by_dataset.items():
+                        images_nps.extend(
+                            self.cache.download_images(
+                                api,
+                                dataset_id,
+                                [info.id for info in images_infos],
+                                return_images=True,
+                            )
+                        )
                 # Inference
                 anns, benchmark = self._inference_benchmark(
                     images_np=images_nps,
@@ -1798,6 +1845,8 @@ class Inference:
                 if i >= num_warmup:
                     results.append(benchmark)
                     upload_queue.put(benchmark)
+                else:
+                    preparing_progress["current"] += 1
         except Exception:
             stop_upload_event.set()
             raise
@@ -1920,16 +1969,32 @@ class Inference:
             return self._inference_image_url(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids")
-        def inference_batch_ids(request: Request):
+        def inference_batch_ids(response: Response, request: Request):
+            # check batch size
+            batch_size = len(request.state.state["batch_ids"])
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
             return self._inference_batch_ids(request.state.api, request.state.state)
 
         @server.post("/inference_batch_ids_async")
-        def inference_batch_ids_async(request: Request):
+        def inference_batch_ids_async(response: Response, request: Request):
             logger.debug(
                 f"'inference_batch_ids_async' request in json format:{request.state.state}"
             )
             images_ids = request.state.state["images_ids"]
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -1957,8 +2022,16 @@ class Inference:
             }
 
         @server.post("/inference_video_id")
-        def inference_video_id(request: Request):
+        def inference_video_id(response: Response, request: Request):
             logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             return self._inference_video_id(request.state.api, request.state.state)
 
         @server.post("/inference_image")
@@ -1990,6 +2063,14 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
+                # check batch size
+                batch_size = len(files)
+                if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return {
+                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                        "success": False,
+                    }
                 return self._inference_batch(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
@@ -2027,8 +2108,16 @@ class Inference:
             }
 
         @server.post("/inference_video_id_async")
-        def inference_video_id_async(request: Request):
+        def inference_video_id_async(response: Response, request: Request):
             logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2055,7 +2144,7 @@ class Inference:
             }
 
         @server.post("/inference_project_id_async")
-        def inference_project_id_async(request: Request):
+        def inference_project_id_async(response: Response, request: Request):
             logger.debug(
                 f"'inference_project_id_async' request in json format:{request.state.state}"
             )
@@ -2063,7 +2152,14 @@ class Inference:
             project_info = request.state.api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
                 raise ValueError("Only images projects are supported.")
-
+            # check batch size
+            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2100,6 +2196,13 @@ class Inference:
                 response.status_code = status.HTTP_501_NOT_IMPLEMENTED
                 return {
                     "message": "Batch inference is not implemented for this model.",
+                    "success": False,
+                }
+            # check batch size
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
             inference_request_uuid = uuid.uuid5(
@@ -2544,3 +2647,42 @@ class TempImageWriter:
 
     def clean(self):
         fs.remove_dir(self.temp_dir)
+
+
+def get_hardware_info(device: str) -> str:
+    import platform
+
+    device = device.lower()
+    try:
+        if device == "cpu":
+            system = platform.system()
+            if system == "Linux":
+                with open("/proc/cpuinfo", "r") as f:
+                    for line in f:
+                        if "model name" in line:
+                            return line.split(":")[1].strip()
+            elif system == "Darwin":  # macOS
+                command = "/usr/sbin/sysctl -n machdep.cpu.brand_string"
+                return subprocess.check_output(command, shell=True).strip().decode()
+            elif system == "Windows":
+                command = "wmic cpu get name"
+                output = subprocess.check_output(command, shell=True).decode()
+                return output.strip().split("\n")[1].strip()
+        elif "cuda" in device:
+            idx = 0
+            if ":" in device:
+                idx = int(device.split(":")[1])
+            gpus = (
+                subprocess.check_output(
+                    ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"]
+                )
+                .decode("utf-8")
+                .strip()
+            )
+            gpu_list = gpus.split("\n")
+            if idx >= len(gpu_list):
+                raise ValueError(f"No GPU found at index {idx}")
+            return gpu_list[idx]
+    except Exception as e:
+        logger.error("Error while getting hardware info", exc_info=True)
+    return "Unknown"

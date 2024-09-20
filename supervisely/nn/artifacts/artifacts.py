@@ -1,4 +1,3 @@
-import requests
 import random
 import string
 from abc import abstractmethod
@@ -8,6 +7,8 @@ from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
 from typing import Any, Dict, List, Literal, NamedTuple
+
+import requests
 
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
@@ -323,8 +324,16 @@ class BaseTrainArtifacts:
             silent_remove(json_data_path)
 
         checkpoint_file_infos = _get_checkpoint_file_infos(weights_folder)
+        if hasattr(self, "_legacy_weights_folder"):
+            if self._legacy_weights_folder is not None:
+                legacy_checkpoint_file_infos = _get_checkpoint_file_infos(
+                    self._legacy_weights_folder
+                )
+                if len(legacy_checkpoint_file_infos) > 0:
+                    checkpoint_file_infos.extend(legacy_checkpoint_file_infos)
+
         if len(checkpoint_file_infos) == 0:
-            logger.info(f"No checkpoints found in '{artifacts_folder}'")
+            logger.info(f"No checkpoints found in '{weights_folder}'")
             return None
 
         logger.info(f"Generating '{self._metadata_file_name}' for '{artifacts_folder}'")
