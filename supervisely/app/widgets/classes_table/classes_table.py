@@ -294,7 +294,8 @@ class ClassesTable(Widget):
         self.loading = True
         self._project_fs = None
         self._project_id = project_id
-        self._dataset_ids = dataset_ids
+        if dataset_ids is not None:
+            self._dataset_ids = dataset_ids
         if self._api is None:
             self._api = sly.Api()
         project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
