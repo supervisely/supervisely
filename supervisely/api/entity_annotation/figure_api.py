@@ -43,7 +43,7 @@ class FigureInfo(NamedTuple):
         :rtype: :class: `sly.Rectangle`
         """
         if self.geometry_meta is not None:
-            return Rectangle(*self.geometry_meta["bbox"])
+            return Rectangle(*self.geometry_meta["bbox"], sly_id=self.id)
 
 
 class FigureApi(RemoveableBulkModuleApi):
