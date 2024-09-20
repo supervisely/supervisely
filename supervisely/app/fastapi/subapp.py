@@ -203,7 +203,6 @@ class Event:
                 figure_class_id: int,
                 figure_class_title: str,
                 image_id: int,
-                image_id: int,
                 video_id: int,
                 frame: int,
                 object_id: int,
@@ -219,7 +218,6 @@ class Event:
                 self.workspace_id = workspace_id
                 self.project_id = project_id
                 self.figure_id = figure_id
-                self.image_id = image_id
                 self.image_id = image_id
                 self.figure_class_id = figure_class_id
                 self.figure_class_title = figure_class_title
@@ -243,7 +241,6 @@ class Event:
                     figure_id=data.get(ApiField.FIGURE_ID),
                     figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
                     figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
-                    image_id=data.get(ApiField.ENTITY_ID),
                     image_id=data.get(ApiField.ENTITY_ID),
                     video_id=data.get(ApiField.ENTITY_ID),
                     frame=data.get(ApiField.FRAME),
