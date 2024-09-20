@@ -330,8 +330,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_ids: Optional[List[int]] = [],
         dynamic_classes: Optional[bool] = False,
         dynamic_tags: Optional[bool] = False,
-        disable_confirm: Optional[bool] = False,
-        disable_submit: Optional[bool] = False,
+        disable_confirm: Optional[bool] = None,
+        disable_submit: Optional[bool] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -368,6 +368,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type dynamic_classes: bool, optional
         :param dynamic_tags: If True, tags created after creating the job will be available for annotators
         :type dynamic_tags: bool, optional
+        :param disable_confirm: If True, the Confirm button will be disabled in the labeling tool. Note, the button will be disabled until the next API call re-enables it again.
+        :type disable_confirm: bool, optional
+        :param disable_submit: If True, the Submit button will be disabled in the labeling tool. Note, the button will be disabled until the next API call re-enables it again.
+        :type disable_submit: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -533,9 +537,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "dynamicTags": dynamic_tags,
         }
 
-        if disable_confirm is True:
+        if disable_confirm is not None:
             meta.update({"disableConfirm": disable_confirm})
-        if disable_submit is True:
+        if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
 
         data = {
