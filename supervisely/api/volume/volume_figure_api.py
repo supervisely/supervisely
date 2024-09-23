@@ -11,13 +11,13 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 import supervisely.volume_annotation.constants as constants
 from supervisely._utils import batched
-from supervisely.api.entity_annotation.figure_api import FigureApi
+from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, file_exists
-from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume.nrrd_encoder import encode
+from supervisely.volume_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.plane import Plane
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 
@@ -637,3 +637,23 @@ class VolumeFigureApi(FigureApi):
         if geometry._space_origin is not None:
             header["space origin"] = geometry._space_origin.to_json()["space_origin"]
         return header
+
+    def download(
+        self, dataset_id: int, volume_ids: List[int] = None, skip_geometry: bool = False, **kwargs
+    ) -> Dict[int, List[FigureInfo]]:
+        """
+        Method returns a dictionary with pairs of volume ID and list of FigureInfo for the given dataset ID. Can be filtered by volume IDs.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param volume_ids: Specify the list of volume IDs within the given dataset ID. If volume_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
+        :type volume_ids: List[int], optional
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
+        :type skip_geometry: bool
+
+        :return: A dictionary where keys are volume IDs and values are lists of figures.
+        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        """
+        if kwargs.get("image_ids", False) is not False:
+            volume_ids = kwargs["image_ids"]  # backward compatibility
+        return super().download(dataset_id, volume_ids, skip_geometry)

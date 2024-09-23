@@ -170,7 +170,6 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
@@ -181,6 +180,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "priority",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -320,7 +320,6 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
@@ -331,6 +330,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "priority",
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -419,11 +419,7 @@ class FigureApi(RemoveableBulkModuleApi):
         return figure_ids
 
     def download(
-        self,
-        dataset_id: int,
-        image_ids: List[int] = None,
-        skip_geometry: bool = False,
-        **kwargs,
+        self, dataset_id: int, image_ids: List[int] = None, skip_geometry: bool = False
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -432,7 +428,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
         :type image_ids: List[int], optional
-        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
@@ -443,7 +439,6 @@ class FigureApi(RemoveableBulkModuleApi):
             "createdAt",
             "updatedAt",
             "imageId",
-            "priority",
             "objectId",
             "classId",
             "projectId",
@@ -454,6 +449,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "priority",
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != "geometry"]

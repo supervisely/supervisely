@@ -73,9 +73,7 @@ class VideoFigureApi(FigureApi):
             track_id,
         )
 
-    def append_bulk(
-        self, video_id: int, figures: List[VideoFigure], key_id_map: KeyIdMap
-    ) -> None:
+    def append_bulk(self, video_id: int, figures: List[VideoFigure], key_id_map: KeyIdMap) -> None:
         """
         Add VideoFigures to given Video by ID.
 
@@ -152,20 +150,21 @@ class VideoFigureApi(FigureApi):
         )
 
     def download(
-        self, dataset_id: int, video_ids: List[int] = None, skip_geometry: bool = False
+        self, dataset_id: int, video_ids: List[int] = None, skip_geometry: bool = False, **kwargs
     ) -> Dict[int, List[FigureInfo]]:
         """
-        Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
+        Method returns a dictionary with pairs of video ID and list of FigureInfo for the given dataset ID. Can be filtered by video IDs.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param video_ids: Specify the list of video IDs within the given dataset ID. If video_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
         :type video_ids: List[int], optional
-        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
         :return: A dictionary where keys are video IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
-
+        if kwargs.get("image_ids", False) is not False:
+            video_ids = kwargs["image_ids"]  # backward compatibility
         return super().download(dataset_id, video_ids, skip_geometry)
