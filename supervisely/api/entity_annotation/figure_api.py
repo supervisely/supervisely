@@ -23,7 +23,6 @@ class FigureInfo(NamedTuple):
     updated_at: str
     created_at: str
     entity_id: int
-    priority: int
     object_id: int
     project_id: int
     dataset_id: int
@@ -34,6 +33,7 @@ class FigureInfo(NamedTuple):
     tags: list
     meta: dict
     area: str
+    priority: int
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -86,7 +86,6 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.UPDATED_AT,
             ApiField.CREATED_AT,
             ApiField.ENTITY_ID,
-            ApiField.PRIORITY,
             ApiField.OBJECT_ID,
             ApiField.PROJECT_ID,
             ApiField.DATASET_ID,
@@ -97,6 +96,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.TAGS,
             ApiField.META,
             ApiField.AREA,
+            ApiField.PRIORITY,
         ]
 
     @staticmethod
@@ -423,6 +423,7 @@ class FigureApi(RemoveableBulkModuleApi):
         dataset_id: int,
         image_ids: List[int] = None,
         skip_geometry: bool = False,
+        **kwargs,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -430,7 +431,6 @@ class FigureApi(RemoveableBulkModuleApi):
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
-
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
         :type skip_geometry: bool

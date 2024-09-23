@@ -67,6 +67,8 @@ class LabelBase:
     :type smart_tool_input: dict, optional
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
+    :param priority: Position of the label relative to other overlapping or underlying labels.
+    :type priority: int, optional
 
     :Usage example:
 
