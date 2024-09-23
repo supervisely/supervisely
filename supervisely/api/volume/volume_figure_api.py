@@ -16,8 +16,8 @@ from supervisely.api.module_api import ApiField
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, file_exists
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume.nrrd_encoder import encode
-from supervisely.volume_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.plane import Plane
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 
