@@ -28,10 +28,10 @@ class FigureInfo(NamedTuple):
         updated_at (str): Timestamp of the last update.
         created_at (str): Timestamp of creation.
         entity_id (int): Identifier for the entity. Possible entities: image, video, volume, pointcloud, etc.
-        object_id (int): Identifier for the object (applicable to videos).
+        object_id (int): Identifier for the object (applicable to videos, volumes, pointclouds).
         project_id (int): Identifier for the project.
         dataset_id (int): Identifier for the dataset.
-        frame_index (int): Index of the frame (applicable to videos).
+        frame_index (int): Index of the frame (applicable to videos, volumes (as a slice_index), pointclouds).
         geometry_type (str): Type of geometry.
         geometry (dict): Geometry data.
         geometry_meta (dict): Metadata for the geometry.
