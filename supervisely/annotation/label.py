@@ -45,8 +45,6 @@ class LabelJsonFields:
     """"""
     SMART_TOOL_INPUT = "smartToolInput"
     """"""
-    PRIORITY = "priority"
-    """"""
 
 
 class LabelBase:
@@ -67,8 +65,6 @@ class LabelBase:
     :type smart_tool_input: dict, optional
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
-    :param priority: Position of the label relative to other overlapping or underlying labels.
-    :type priority: int, optional
 
     :Usage example:
 
@@ -103,7 +99,6 @@ class LabelBase:
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         sly_id: Optional[int] = None,
-        priority: Optional[int] = None,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -119,7 +114,6 @@ class LabelBase:
         self._smart_tool_input = smart_tool_input
 
         self._sly_id = sly_id
-        self._priority = priority
 
     def _validate_geometry(self):
         """
@@ -298,9 +292,6 @@ class LabelBase:
         if self.sly_id is not None:
             res[LabelJsonFields.ID] = self.sly_id
 
-        if self.priority is not None:
-            res[LabelJsonFields.PRIORITY] = self.priority
-
         return res
 
     @classmethod
@@ -369,7 +360,6 @@ class LabelBase:
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
             sly_id=data.get(LabelJsonFields.ID),
-            priority=data.get(LabelJsonFields.PRIORITY),
         )
 
     @property
@@ -381,15 +371,6 @@ class LabelBase:
         :rtype: :class:`int` or :class:`NoneType`
         """
         return self._sly_id
-
-    @property
-    def priority(self) -> Optional[int]:
-        """Returns the position of the label relative to other overlapping or underlying labels.
-
-        :return: Label stacking position.
-        :rtype: :class:`int` or :class:`NoneType`
-        """
-        return self._priority
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """
@@ -461,7 +442,6 @@ class LabelBase:
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         sly_id: Optional[int] = None,
-        priority: Optional[int] = None,
     ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -480,8 +460,6 @@ class LabelBase:
         :type smart_tool_input: dict, optional
         :param sly_id: The unique identifier of the Label on Supervisely platform.
         :type sly_id: int, optional
-        :param priority: The position of the label relative to other overlapping or underlying labels.
-        :type priority: int, optional
 
         :return: New instance of Label
         :rtype: :class:`Label<LabelBase>`
@@ -528,7 +506,6 @@ class LabelBase:
             binding_key=take_with_default(binding_key, self.binding_key),
             smart_tool_input=take_with_default(smart_tool_input, self.smart_tool_input),
             sly_id=take_with_default(sly_id, self.sly_id),
-            priority=take_with_default(priority, self.priority),
         )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:

@@ -18,6 +18,29 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class FigureInfo(NamedTuple):
+    """
+    Represents detailed information about a figure in a scene within the labeling tool.
+    It is designed to handle multimodal data.
+
+    Attributes:
+        id (int): Unique identifier for the figure.
+        class_id (int): Identifier for the class of the figure.
+        updated_at (str): Timestamp of the last update.
+        created_at (str): Timestamp of creation.
+        entity_id (int): Identifier for the entity. Possible entities: image, video, volume, pointcloud, etc.
+        object_id (int): Identifier for the object (applicable to videos).
+        project_id (int): Identifier for the project.
+        dataset_id (int): Identifier for the dataset.
+        frame_index (int): Index of the frame (applicable to videos).
+        geometry_type (str): Type of geometry.
+        geometry (dict): Geometry data.
+        geometry_meta (dict): Metadata for the geometry.
+        tags (list): List of tags associated with the figure.
+        meta (dict): Additional metadata.
+        area (str): Area information.
+        priority (int): Position of the figure relative to other overlapping or underlying figures.
+    """
+
     id: int
     class_id: int
     updated_at: str
