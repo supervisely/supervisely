@@ -64,9 +64,7 @@ class Node(JsonSerializable):
         row: Optional[int] = None,
         col: Optional[int] = None,
     ):
-        if None not in (location, row, col) or all(
-            item is None for item in (location, row, col)
-        ):
+        if None not in (location, row, col) or all(item is None for item in (location, row, col)):
             raise ValueError("Either location or row and col must be specified")
         self._location = location
         self._disabled = disabled
@@ -365,9 +363,7 @@ class GraphNodes(Geometry):
 
             rel_crop_figures = figure.relative_crop(sly.Rectangle(0, 0, 300, 350))
         """
-        return [
-            geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)
-        ]
+        return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
 
     def transform(self, transform_fn) -> GraphNodes:
         """
@@ -559,9 +555,7 @@ class GraphNodes(Geometry):
         nodes_config = self._get_nested_or_default(config, [self.items_json_field])
         for node_id, node in self._nodes.items():
             if not node.disabled:
-                effective_color = self._get_nested_or_default(
-                    nodes_config, [node_id, COLOR], color
-                )
+                effective_color = self._get_nested_or_default(nodes_config, [node_id, COLOR], color)
                 Point.from_point_location(node.location).draw(
                     bitmap=bitmap,
                     color=effective_color,
@@ -626,17 +620,15 @@ class GraphNodes(Geometry):
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
-        if len(self._nodes.keys()) != len(settings[self.items_json_field].keys()):
-            raise ValueError("Graph contains different number of nodes than declared in the template.")
-
-        # Old implementation
-        # nodes_not_in_template = set(self._nodes.keys()) - set(settings[self.items_json_field].keys())
-        # if len(nodes_not_in_template) > 0:
-        #     raise ValueError(
-        #         "Graph contains nodes not declared in the template: {!r}.".format(
-        #             nodes_not_in_template
-        #         )
-        #     )
+        nodes_not_in_template = set(self._nodes.keys()) - set(
+            settings[self.items_json_field].keys()
+        )
+        if len(nodes_not_in_template) > 0:
+            raise ValueError(
+                "Graph contains nodes not declared in the template: {!r}.".format(
+                    nodes_not_in_template
+                )
+            )
 
     @staticmethod
     def _transform_config_colors(config, transform_fn):
