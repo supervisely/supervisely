@@ -5,7 +5,7 @@ import inspect
 import math
 import re
 from functools import partial, wraps
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 
 from tqdm import tqdm
 
@@ -561,7 +561,7 @@ class tqdm_sly(tqdm, Progress):
                 kwargs_tqdm["unit_scale"] = True
         return kwargs_tqdm
 
-    def _handle_args_and_kwargs_prod(self, args: tuple, kwargs: dict) -> dict:
+    def _handle_args_and_kwargs_prod(self, args: tuple, kwargs: dict) -> Dict[str, str]:
         # pop and convert every possible (and relevant) kwarg from tqdm
         # mention that tqdm is a prior parent class
         if len(args) < 2:  # i.e. 'desc' not set as a positional argument
