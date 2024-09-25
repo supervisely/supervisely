@@ -46,7 +46,6 @@ class LabelJsonFields:
     SMART_TOOL_INPUT = "smartToolInput"
     """"""
 
-
 class LabelBase:
     """
     Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
