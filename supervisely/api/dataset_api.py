@@ -14,6 +14,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
     _get_single_item,
 )
+from supervisely.project.project_type import ProjectType
 
 
 class DatasetInfo(NamedTuple):
@@ -418,6 +419,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             raise RuntimeError(
                 'Can not match "ids" and "new_names" lists, len(ids) != len(new_names)'
             )
+        project_info = self._api.project.get_info_by_id(dst_project_id)
+        if project_info.type == str(ProjectType.IMAGES):
+            items_api = self._api.image
+        elif project_info.type == str(ProjectType.VIDEOS):
+            items_api = self._api.video
+        else:
+            raise RuntimeError(f"Unsupported project type: {project_info.type}")
 
         new_datasets = []
         for idx, dataset_id in enumerate(ids):
@@ -425,16 +433,16 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_dataset_name = dataset.name
             if new_names is not None:
                 new_dataset_name = new_names[idx]
-            src_images = self._api.image.get_list(dataset.id)
-            src_image_ids = [image.id for image in src_images]
+            src_items = items_api.get_list(dataset.id)
+            src_item_ids = [item.id for item in src_items]
             new_dataset = self._api.dataset.create(
                 dst_project_id,
                 new_dataset_name,
                 dataset.description,
                 change_name_if_conflict=change_name_if_conflict,
             )
-            self._api.image.copy_batch(
-                new_dataset.id, src_image_ids, change_name_if_conflict, with_annotations
+            items_api.copy_batch(
+                new_dataset.id, src_item_ids, change_name_if_conflict, with_annotations
             )
             new_datasets.append(new_dataset)
         return new_datasets
