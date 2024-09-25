@@ -366,7 +366,7 @@ class VideoFigure:
             data_json[ApiField.SMART_TOOL_INPUT] = self._smart_tool_input
 
         if self._priority is not None:
-            data_json[ApiField.PRIORITY] = self.priority
+            data_json[ApiField.PRIORITY] = self._priority
 
         self._add_creation_info(data_json)
         return data_json
