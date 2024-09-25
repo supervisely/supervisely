@@ -500,7 +500,7 @@ class LabelBase:
             tags=take_with_default(tags, self.tags),
             description=take_with_default(description, self.description),
             binding_key=take_with_default(binding_key, self.binding_key),
-            smart_tool_input=take_with_default(smart_tool_input, self.smart_tool_input),
+            smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
         )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
