@@ -3327,7 +3327,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if project_id is not None and dataset_id is not None:
             raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
 
-    def set_remote(self, images: List[int], links: List[str]) -> bool:
+    def set_remote(self, images: List[int], links: List[str]):
         """
         This method helps to change local source to remote for images without re-uploading them as new.
 
