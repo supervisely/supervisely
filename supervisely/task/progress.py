@@ -424,7 +424,7 @@ class tqdm_sly(tqdm, Progress):
             self.offset = 0  # to prevent overfilling of tqdm in console
         else:
             for k, v in {
-                "disable": False,  # do not disable for now
+                "disable": True,  # do not disable for now
                 "delay": 0,  # sec init delay
                 "mininterval": 3,  # sec between reports
                 "miniters": 0,
