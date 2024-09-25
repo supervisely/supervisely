@@ -3352,9 +3352,6 @@ class ImageApi(RemoveableBulkModuleApi):
                         "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
                     ]
                     result = api.image.set_remote(images, links)
-
-                    Returns:
-                        True
         """
 
         if len(images) == 0:

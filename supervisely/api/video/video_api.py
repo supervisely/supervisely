@@ -2204,9 +2204,6 @@ class VideoApi(RemoveableBulkModuleApi):
                         "s3://bucket/f1champ/ds1/lap_3.mp4",
                     ]
                     result = api.video.set_remote(videos, links)
-
-                    Returns:
-                        True
         """
 
         if len(videos) == 0:
