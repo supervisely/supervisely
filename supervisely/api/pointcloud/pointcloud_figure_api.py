@@ -2,6 +2,7 @@
 
 from typing import Dict, List, Optional
 
+from supervisely.api.module_api import ApiField
 from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.video_annotation.key_id_map import KeyIdMap
