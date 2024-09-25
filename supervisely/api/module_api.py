@@ -592,6 +592,8 @@ class ApiField:
     """"""
     PRIORITY = "priority"
     """"""
+    CLEAR_LOCAL_DATA_SOURCE = "clearLocalDataSource"
+    """"""
 
 
 def _get_single_item(items):
