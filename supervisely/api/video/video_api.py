@@ -1405,13 +1405,16 @@ class VideoApi(RemoveableBulkModuleApi):
                     res = self.upload_hash(dataset_id, name, hash, stream_index)
                     video_info_results.append(res)
             except Exception as e:
-                from supervisely.io.exception_handlers import ErrorHandler, handle_exception
+                from supervisely.io.exception_handlers import (
+                    ErrorHandler,
+                    handle_exception,
+                )
 
                 msg = f"File skipped {name}: error occurred during processing: "
                 handled_exc = handle_exception(e)
                 if handled_exc is not None:
                     if isinstance(handled_exc, ErrorHandler.API.PaymentRequired):
-                        raise e # re-raise original exception (will be handled in the UI)
+                        raise e  # re-raise original exception (will be handled in the UI)
                     else:
                         msg += handled_exc.get_message_for_exception()
                 else:
@@ -2175,3 +2178,44 @@ class VideoApi(RemoveableBulkModuleApi):
                 )
             )
         return video_infos
+
+    def set_remote(self, videos: List[int], links: List[str]):
+        """
+        This method helps to change local source to remote for videos without re-uploading them as new.
+
+        :param videos: List of video ids.
+        :type videos: List[int]
+        :param links: List of remote links.
+        :type links: List[str]
+        :return: json-encoded content of a response.
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+
+                    api = sly.Api.from_env()
+
+                    videos = [123, 124, 125]
+                    links = [
+                        "s3://bucket/f1champ/ds1/lap_1.mp4",
+                        "s3://bucket/f1champ/ds1/lap_2.mp4",
+                        "s3://bucket/f1champ/ds1/lap_3.mp4",
+                    ]
+                    result = api.video.set_remote(videos, links)
+        """
+
+        if len(videos) == 0:
+            raise ValueError("List of videos can not be empty.")
+
+        if len(videos) != len(links):
+            raise ValueError("Length of 'videos' and 'links' should be equal.")
+
+        videos_list = []
+        for vid, lnk in zip(videos, links):
+            videos_list.append({ApiField.ID: vid, ApiField.LINK: lnk})
+
+        data = {ApiField.VIDEOS: videos_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
+        r = self._api.post("videos.update.links", data)
+        return r.json()

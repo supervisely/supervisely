@@ -164,7 +164,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type project_id: int
         :param filters: List of params to sort output Datasets.
         :type filters: List[dict], optional
-        :recursive: If True, returns all Datasets from the given Project including nested Datasets.
+        :param recursive: If True, returns all Datasets from the given Project including nested Datasets.
         :type recursive: bool, optional
         :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the Project,
             otherwise the search will be performed in the specified Dataset.
