@@ -73,7 +73,7 @@ def get_version():
     return version
 
 
-version = get_version()
+version = "v6.73.194+create.dataset"
 
 
 INSTALL_REQUIRES = [
