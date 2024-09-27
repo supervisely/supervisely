@@ -950,6 +950,91 @@ class VideoApi(RemoveableBulkModuleApi):
 
         return result
 
+    def copy_batch(
+        self,
+        dst_dataset_id: int,
+        ids: List[int],
+        change_name_if_conflict: Optional[bool] = False,
+        with_annotations: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[VideoInfo]:
+        """
+        Copies Videos with given IDs to Dataset.
+
+        :param dst_dataset_id: Destination Dataset ID in Supervisely.
+        :type dst_dataset_id: int
+        :param ids: Videos IDs in Supervisely.
+        :type ids: List[int]
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
+        :type with_annotations: bool, optional
+        :param progress_cb: Function for tracking the progress of copying.
+        :type progress_cb: tqdm or callable, optional
+        :raises: :class:`TypeError` if type of ids is not list
+        :raises: :class:`ValueError` if videos ids are from the destination Dataset
+        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[VideoInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 1780
+
+            video_infos = api.video.get_list(dataset_id)
+
+            video_ids = [video_info.id for video_info in video_infos]
+
+            destination_dataset_id = 2574
+            destination_video_infos = api.video.copy_batch(destination_dataset_id, video_ids, with_annotations=True)
+        """
+        if type(ids) is not list:
+            raise TypeError(
+                "ids parameter has type {!r}. but has to be of type {!r}".format(type(ids), list)
+            )
+
+        if len(ids) == 0:
+            return
+
+        ids_info = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
+        if len(set(vid_info.dataset_id for vid_info in ids_info)) > 1:
+            raise ValueError("Videos ids have to be from the same dataset")
+
+        existing_videos = self.get_list(dst_dataset_id)
+        existing_names = {video.name for video in existing_videos}
+
+        if change_name_if_conflict:
+            new_names = [
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
+                for info in ids_info
+            ]
+        else:
+            new_names = [info.name for info in ids_info]
+            names_intersection = existing_names.intersection(set(new_names))
+            if len(names_intersection) != 0:
+                raise ValueError(
+                    "Videos with the same names already exist in destination dataset. "
+                    'Please, use argument "change_name_if_conflict=True" to automatically resolve '
+                    "names intersection"
+                )
+
+        new_videos = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb=progress_cb)
+        new_ids = [new_video.id for new_video in new_videos]
+
+        if with_annotations:
+            src_project_id = self._api.dataset.get_info_by_id(ids_info[0].dataset_id).project_id
+            dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
+            self._api.project.merge_metas(src_project_id, dst_project_id)
+            self._api.video.annotation.copy_batch(ids, new_ids)
+
+        return new_videos
+
     def _upload_bulk_add(
         self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
     ):
