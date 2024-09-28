@@ -42,6 +42,7 @@ class Precision(MetricVis):
             y="precision",
             # title="Per-class Precision (Sorted by F1)",
             color="precision",
+            range_color=[0, 1],
             color_continuous_scale="Plasma",
         )
         fig.update_traces(hovertemplate="Class: %{x}<br>Precision: %{y:.2f}<extra></extra>")
