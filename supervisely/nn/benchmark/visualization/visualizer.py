@@ -378,6 +378,13 @@ class Visualizer:
         with self.pbar(
             message="Visualizations: Creating diff_project", total=pred_project.total_items
         ) as progress:
+            logger.debug(
+                "Creating diff project data",
+                extra={
+                    "pred_project": [ds.name for ds in pred_project.datasets],
+                    "gt_project": [ds.name for ds in gt_project.datasets],
+                },
+            )
             for pred_dataset in pred_project.datasets:
                 pred_dataset: Dataset
                 gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
