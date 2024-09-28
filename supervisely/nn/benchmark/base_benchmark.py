@@ -449,6 +449,28 @@ class BaseBenchmark:
         vis.visualize()
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
+
+        dt_ds_id_to_diff_ds_info = {}
+
+        def _get_or_create_diff_dataset(dt_dataset_id, dt_datasets):
+            if dt_dataset_id in dt_ds_id_to_diff_ds_info:
+                return dt_ds_id_to_diff_ds_info[dt_dataset_id]
+            dt_dataset = dt_datasets[dt_dataset_id]
+            if dt_dataset.parent_id is None:
+                diff_dataset = self.api.dataset.create(
+                    diff_project_info.id,
+                    dt_dataset.name,
+                )
+            else:
+                parent_dataset = _get_or_create_diff_dataset(dt_dataset.parent_id, dt_datasets)
+                diff_dataset = self.api.dataset.create(
+                    diff_project_info.id,
+                    dt_dataset.name,
+                    parent_id=parent_dataset.id,
+                )
+            dt_ds_id_to_diff_ds_info[dt_dataset_id] = diff_dataset
+            return diff_dataset
+
         diff_project_name = self._generate_diff_project_name(self.dt_project_info.name)
         diff_workspace_id = self.dt_project_info.workspace_id
         diff_project_info = self.api.project.get_info_by_name(
@@ -460,8 +482,12 @@ class BaseBenchmark:
             diff_project_info = self.api.project.create(
                 diff_workspace_id, diff_project_name, change_name_if_conflict=True
             )
-            for dataset in self.api.dataset.get_list(self.dt_project_info.id):
-                self.api.dataset.create(diff_project_info.id, dataset.name)
+            dt_datasets = {
+                ds.id: ds
+                for ds in self.api.dataset.get_list(self.dt_project_info.id, recursive=True)
+            }
+            for dataset in dt_datasets:
+                _get_or_create_diff_dataset(dataset, dt_datasets)
         return diff_project_info, is_existed
 
     def upload_visualizations(self, dest_dir: str):

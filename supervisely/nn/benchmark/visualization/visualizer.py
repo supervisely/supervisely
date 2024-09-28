@@ -361,8 +361,19 @@ class Visualizer:
 
         gt_project = Project(gt_project_path, OpenMode.READ)
         pred_project = Project(pred_project_path, OpenMode.READ)
+        diff_dataset_id_to_info = {
+            ds.id: ds
+            for ds in self._api.dataset.get_list(self.diff_project_info.id, recursive=True)
+        }
+
+        def _get_full_name(ds_id: int):
+            ds_info = diff_dataset_id_to_info[ds_id]
+            if ds_info.parent_id is None:
+                return ds_info.name
+            return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
+
         diff_dataset_name_to_info = {
-            ds.name: ds for ds in self._api.dataset.get_list(self.diff_project_info.id)
+            _get_full_name(ds_id): ds_info for ds_id, ds_info in diff_dataset_id_to_info.items()
         }
 
         matched_id_map = self._get_matched_id_map()  # dt_id -> gt_id
@@ -467,8 +478,19 @@ class Visualizer:
         gt_project_path, pred_project_path = self._benchmark._download_projects(save_images=False)
         gt_project = Project(gt_project_path, OpenMode.READ)
         pred_project = Project(pred_project_path, OpenMode.READ)
+        diff_dataset_id_to_info = {
+            ds.id: ds
+            for ds in self._api.dataset.get_list(self.diff_project_info.id, recursive=True)
+        }
+
+        def _get_full_name(ds_id: int):
+            ds_info = diff_dataset_id_to_info[ds_id]
+            if ds_info.parent_id is None:
+                return ds_info.name
+            return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
+
         diff_dataset_name_to_info = {
-            ds.name: ds for ds in self._api.dataset.get_list(self.diff_project_info.id)
+            _get_full_name(ds_id): ds_info for ds_id, ds_info in diff_dataset_id_to_info.items()
         }
 
         for pred_dataset in pred_project.datasets:
