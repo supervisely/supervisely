@@ -51,7 +51,7 @@ def sly2coco(
     total = project.total_items
     with progress(message="Evaluation: Converting to COCO format", total=total) as pbar:
         img_id = 1
-        for dataset in project.datasets:
+        for dataset in sorted(project.datasets, key=lambda x: x.name):
             dataset: Dataset
             ann_path = dataset.ann_dir
             imginfo_path = dataset.img_info_dir
