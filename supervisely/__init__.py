@@ -1,11 +1,11 @@
 # coding: utf-8
 # isort: skip_file
-import pkg_resources  # isort: skip
 import os
+import importlib.metadata
 
 try:
-    __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
+    __version__ = importlib.metadata.version("package_name")
+except importlib.metadata.PackageNotFoundError:
     __version__ = "development"
 
 from supervisely.sly_logger import (

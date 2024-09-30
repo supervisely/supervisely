@@ -6,7 +6,7 @@ import tempfile
 import threading
 import traceback
 from collections import namedtuple
-from distutils.dir_util import copy_tree
+from shutil import copytree
 
 from fastapi import FastAPI
 from starlette.routing import Mount
@@ -67,10 +67,10 @@ def dump_statics_to_dir(static_dir_path: pathlib.Path, static_paths: list):
 
         if current_local_path.is_dir():
             current_url_path.mkdir(parents=True, exist_ok=True)
-            copy_tree(
+            copytree(
                 current_local_path.as_posix(),
                 current_url_path.as_posix(),
-                preserve_symlinks=True,
+                symlinks=True,
             )
 
             _filter_static_files(current_url_path)
