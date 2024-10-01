@@ -40,6 +40,7 @@ class Recall(MetricVis):
             y="recall",
             # title="Per-class Recall (Sorted by F1)",
             color="recall",
+            range_color=[0, 1],
             color_continuous_scale="Plasma",
         )
         fig.update_traces(hovertemplate="Class: %{x}<br>Recall: %{y:.2f}<extra></extra>")

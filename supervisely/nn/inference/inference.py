@@ -1498,9 +1498,27 @@ class Inference:
             if src_dataset_id in new_dataset_id:
                 return new_dataset_id[src_dataset_id]
             dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            output_dataset_id = api.dataset.copy(
-                output_project_id, src_dataset_id, dataset_info.name, change_name_if_conflict=True
-            ).id
+            if dataset_info.parent_id is None:
+                output_dataset_id = api.dataset.copy(
+                    output_project_id,
+                    src_dataset_id,
+                    dataset_info.name,
+                    change_name_if_conflict=True,
+                ).id
+            else:
+                parent_dataset_id = _get_or_create_new_dataset(
+                    output_project_id, dataset_info.parent_id
+                )
+                output_dataset_info = api.dataset.create(
+                    output_project_id, dataset_info.name, parent_id=parent_dataset_id
+                )
+                api.image.copy_batch_optimized(
+                    dataset_info.id,
+                    images_infos_dict[dataset_info.id],
+                    output_dataset_info.id,
+                    with_annotations=False,
+                )
+                output_dataset_id = output_dataset_info.id
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
 
@@ -1775,7 +1793,9 @@ class Inference:
         stop = False
 
         def image_batch_generator(batch_size):
-            logger.debug(f"image_batch_generator. images_infos={len(images_infos)}, batch_size={batch_size}")
+            logger.debug(
+                f"image_batch_generator. images_infos={len(images_infos)}, batch_size={batch_size}"
+            )
             batch = []
             while True:
                 for image_info in images_infos:

@@ -33,7 +33,7 @@ class ModelPredictions(MetricVis):
         dt_project_id = self._loader.dt_project_info.id
 
         tmp = set()
-        for dt_dataset in self._loader._api.dataset.get_list(dt_project_id):
+        for dt_dataset in self._loader._api.dataset.get_list(dt_project_id, recursive=True):
             names = [x.name for x in self._loader._api.image.get_list(dt_dataset.id)]
             tmp.update(names)
         df = self._loader.mp.prediction_table().round(2)

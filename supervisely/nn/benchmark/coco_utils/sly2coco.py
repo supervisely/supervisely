@@ -7,7 +7,7 @@ import numpy as np
 
 from supervisely import Bitmap
 from supervisely._utils import batched
-from supervisely.project.project import Project, OpenMode
+from supervisely.project.project import Dataset, OpenMode, Project
 
 
 def sly2coco(
@@ -20,11 +20,7 @@ def sly2coco(
 ):
     from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
-    datasets = [
-        name
-        for name in os.listdir(sly_project_path)
-        if os.path.isdir(pjoin(sly_project_path, name))
-    ]
+    project = Project(sly_project_path, mode=OpenMode.READ)
 
     # Categories
     meta_path = pjoin(sly_project_path, "meta.json")
@@ -52,13 +48,13 @@ def sly2coco(
     images = []
     annotations = []
     annotation_id = 1
-    project = Project(sly_project_path, mode=OpenMode.READ)
     total = project.total_items
     with progress(message="Evaluation: Converting to COCO format", total=total) as pbar:
         img_id = 1
-        for dataset_name in datasets:
-            ann_path = pjoin(sly_project_path, dataset_name, "ann")
-            imginfo_path = pjoin(sly_project_path, dataset_name, "img_info")
+        for dataset in sorted(project.datasets, key=lambda x: x.name):
+            dataset: Dataset
+            ann_path = dataset.ann_dir
+            imginfo_path = dataset.img_info_dir
             ann_files = sorted(os.listdir(ann_path))
             for batch in batched(ann_files, 30):
                 for ann_file in batch:
@@ -75,7 +71,7 @@ def sly2coco(
                         "width": img_w,
                         "height": img_h,
                         "sly_id": img_info["id"],
-                        "dataset": dataset_name,
+                        "dataset": dataset.name,
                     }
                     images.append(img)
                     for label in ann["objects"]:
