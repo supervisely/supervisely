@@ -70,6 +70,7 @@ class PersistentImageTTLCache(TTLCache):
         self._base_dir = filepath
         self._lock = RLock()
         self._lockmap = {}
+        self._timer_lock = Lock()
 
     @contextmanager
     def acquire_lock(self, key, timeout=None):
@@ -126,6 +127,12 @@ class PersistentImageTTLCache(TTLCache):
             link = self._TTLCache__getlink(key)
             # pylint: disable=no-member
             link.expire = self.timer() + self.ttl
+            with self._timer_lock:
+                link.unlink()
+                # pylint: disable=no-member
+                link.next = root = self._TTLCache__root
+                link.prev = prev = root.prev
+                prev.next = root.prev = link
         except KeyError:
             return
 
