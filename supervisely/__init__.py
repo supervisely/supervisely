@@ -4,7 +4,7 @@ import os
 import importlib.metadata
 
 try:
-    __version__ = importlib.metadata.version("package_name")
+    __version__ = importlib.metadata.version("supervisely")
 except importlib.metadata.PackageNotFoundError:
     __version__ = "development"
 
