@@ -110,6 +110,7 @@ INSTALL_REQUIRES = [
     "pandas>=1.1.3, <=2.1.4",
     "async_asgi_testclient",
     "PyYAML",
+    "packaging",
     "distinctipy",
     "beautifulsoup4",
     "numerize",
