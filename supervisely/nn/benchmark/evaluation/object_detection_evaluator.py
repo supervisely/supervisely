@@ -10,30 +10,27 @@ class ObjectDetectionEvaluator(BaseEvaluator):
     def evaluate(self):
         self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
-        with self.pbar(message="Calculating metrics", total=10) as p:
+        with self.pbar(message="Evaluation: Calculating metrics", total=10) as p:
             self.eval_data = calculate_metrics(
                 self.cocoGt, self.cocoDt, iouType="bbox", progress_cb=p.update
             )
         self._dump_eval_results()
 
     def _convert_to_coco(self):
-        with self.pbar(
-            message="Converting GT and DT to COCO format", total=self.total_items * 2
-        ) as pbar:
-            cocoGt_json = sly2coco(
-                self.gt_project_path,
-                is_dt_dataset=False,
-                accepted_shapes=["rectangle"],
-                progress_cb=pbar.update,
-                classes_whitelist=self.classes_whitelist,
-            )
-            cocoDt_json = sly2coco(
-                self.dt_project_path,
-                is_dt_dataset=True,
-                accepted_shapes=["rectangle"],
-                progress_cb=pbar.update,
-                classes_whitelist=self.classes_whitelist,
-            )
+        cocoGt_json = sly2coco(
+            self.gt_project_path,
+            is_dt_dataset=False,
+            accepted_shapes=["rectangle"],
+            progress=self.pbar,
+            classes_whitelist=self.classes_whitelist,
+        )
+        cocoDt_json = sly2coco(
+            self.dt_project_path,
+            is_dt_dataset=True,
+            accepted_shapes=["rectangle"],
+            progress=self.pbar,
+            classes_whitelist=self.classes_whitelist,
+        )
 
         if len(cocoGt_json["annotations"]) == 0:
             raise ValueError("Not found any annotations in GT project")

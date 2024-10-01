@@ -31,6 +31,21 @@ class AnnotationInfo(NamedTuple):
     created_at: str
     updated_at: str
 
+    def to_json(self) -> Dict[str, Any]:
+        """
+        Convert AnnotationInfo to JSON format.
+
+        :return: AnnotationInfo in JSON format.
+        :rtype: :class:`Dict[str, Any]`
+        """
+        return {
+            ApiField.IMAGE_ID: self.image_id,
+            ApiField.IMAGE_NAME: self.image_name,
+            ApiField.ANNOTATION: self.annotation,
+            ApiField.CREATED_AT: self.created_at,
+            ApiField.UPDATED_AT: self.updated_at,
+        }
+
 
 class AnnotationApi(ModuleApi):
     """
@@ -1284,5 +1299,49 @@ class AnnotationApi(ModuleApi):
                 ApiField.ID: label_id,
                 ApiField.TAGS: [tag.to_json() for tag in label.tags],
                 ApiField.GEOMETRY: label.geometry.to_json(),
+            },
+        )
+
+    def update_label_priority(self, label_id: int, priority: int) -> None:
+        """Updates label's priority with given ID in Supervisely.
+        Priority increases with the number: a higher number indicates a higher priority.
+        The higher priority means that the label will be displayed on top of the others.
+        The lower priority means that the label will be displayed below the others.
+        
+        :param label_id: ID of the label to update
+        :type label_id: int
+        :param priority: New priority of the label
+        :type priority: int
+        
+        :Usage example: 
+        
+            .. code-block:: python
+            
+            import os
+            from dotenv import load_dotenv
+            
+            import supervisely as sly
+            
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            
+            api = sly.Api.from_env()
+            
+            label_ids = [123, 456, 789]
+            priorities = [1, 2, 3]
+            
+            for label_id, priority in zip(label_ids, priorities):
+                api.annotation.update_label_priority(label_id, priority)
+                
+            # The label with ID 789 will be displayed on top of the others.
+            # The label with ID 123 will be displayed below the others.
+        
+        """
+        self._api.post(
+            "figures.priority.update",
+            {
+                ApiField.ID: label_id,
+                ApiField.PRIORITY: priority,
             },
         )

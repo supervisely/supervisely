@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from enum import Enum
 from logging import Logger
@@ -710,6 +711,7 @@ class InferenceImageCache:
         added_to_cache = []
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
+        items = []
 
         for pos, hash_or_id in enumerate(indexes):
             name = name_cunstructor(hash_or_id)
@@ -719,13 +721,22 @@ class InferenceImageCache:
                 ids_to_load.append(hash_or_id)
                 pos_by_name[name] = pos
             elif return_images is True:
-                try:
-                    all_frames[pos] = self._get_image_from_cache(name)
-                except Exception:
-                    logger.debug(f"Error reading item #{hash_or_id} from cache", exc_info=True)
-                    self._load_queue.set(name, hash_or_id)
-                    ids_to_load.append(hash_or_id)
-                    pos_by_name[name] = pos
+                items.append((pos, name))
+
+        def get_one_image(item):
+            pos, name = item
+            try:
+                return pos, self._get_image_from_cache(name)
+            except Exception:
+                logger.debug(f"Error reading item #{hash_or_id} from cache", exc_info=True)
+                self._load_queue.set(name, hash_or_id)
+                ids_to_load.append(hash_or_id)
+                return pos, None
+
+        if len(items) > 0:
+            with ThreadPoolExecutor(min(64, len(items))) as executor:
+                for pos, image in executor.map(get_one_image, items):
+                    all_frames[pos] = image
 
         if len(ids_to_load) > 0:
             for id_or_hash, image in load_generator(ids_to_load):
@@ -740,7 +751,6 @@ class InferenceImageCache:
                     pos = pos_by_name[name]
                     all_frames[pos] = image
 
-        logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
         logger.debug(f"Images/Frames loaded: {ids_to_load}")
         logger.debug(f"Images/Frames added to cache: {added_to_cache}")
         logger.debug(f"Images/Frames found in cache: {set(indexes).difference(ids_to_load)}")

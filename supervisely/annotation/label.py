@@ -63,6 +63,8 @@ class LabelBase:
     :type binding_key: str, optional
     :param smart_tool_input: Smart Tool parameters that were used for labeling.
     :type smart_tool_input: dict, optional
+    :param sly_id: Label unique identifier.
+    :type sly_id: int, optional
 
     :Usage example:
 
@@ -96,6 +98,7 @@ class LabelBase:
         description: Optional[str] = "",
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
+        sly_id: Optional[int] = None,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -109,6 +112,8 @@ class LabelBase:
 
         self._binding_key = binding_key
         self._smart_tool_input = smart_tool_input
+
+        self._sly_id = sly_id
 
     def _validate_geometry(self):
         """
@@ -284,6 +289,9 @@ class LabelBase:
         if self._smart_tool_input is not None:
             res[LabelJsonFields.SMART_TOOL_INPUT] = self._smart_tool_input
 
+        if self.sly_id is not None:
+            res[LabelJsonFields.ID] = self.sly_id
+
         return res
 
     @classmethod
@@ -351,7 +359,18 @@ class LabelBase:
             description=data.get(LabelJsonFields.DESCRIPTION, ""),
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
+            sly_id=data.get(LabelJsonFields.ID),
         )
+
+    @property
+    def sly_id(self) -> Optional[int]:
+        """Returns the unique identifier of the Label on Supervisely platform.
+        NOTE: This can be None, when working with local project.
+
+        :return: Label unique identifier.
+        :rtype: :class:`int` or :class:`NoneType`
+        """
+        return self._sly_id
 
     def add_tag(self, tag: Tag) -> LabelBase:
         """
@@ -481,7 +500,7 @@ class LabelBase:
             tags=take_with_default(tags, self.tags),
             description=take_with_default(description, self.description),
             binding_key=take_with_default(binding_key, self.binding_key),
-            smart_tool_input=take_with_default(smart_tool_input, self.smart_tool_input),
+            smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
         )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:

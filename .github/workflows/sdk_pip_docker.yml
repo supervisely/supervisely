@@ -37,7 +37,7 @@ jobs:
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Delay for PyPI publish
+      - name: Delay after PyPI publish
         uses: jakejarvis/wait-action@master
         with:
           time: "300s"

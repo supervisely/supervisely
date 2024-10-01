@@ -318,7 +318,8 @@ class ImageApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         force_metadata_for_links: Optional[bool] = True,
         return_first_response: Optional[bool] = False,
-        project_id: int = None,
+        project_id: Optional[int] = None,
+        only_labelled: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -339,6 +340,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type return_first_response: bool, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
+        :param only_labelled: If True, returns only images with labels.
+        :type only_labelled: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -399,6 +402,18 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
+        if only_labelled:
+            data[ApiField.FILTERS] = [
+                {
+                    "type": "objects_class",
+                    "data": {
+                        "from": 1,
+                        "to": 9999,
+                        "include": True,
+                        "classId": None,
+                    },
+                }
+            ]
 
         return self.get_list_all_pages(
             "images.list",
@@ -3311,3 +3326,44 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if project_id is not None and dataset_id is not None:
             raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
+
+    def set_remote(self, images: List[int], links: List[str]):
+        """
+        This method helps to change local source to remote for images without re-uploading them as new.
+
+        :param images: List of image ids.
+        :type images: List[int]
+        :param links: List of remote links.
+        :type links: List[str]
+        :return: json-encoded content of a response.
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+
+                    api = sly.Api.from_env()
+
+                    images = [123, 124, 125]
+                    links = [
+                        "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
+                        "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
+                        "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
+                    ]
+                    result = api.image.set_remote(images, links)
+        """
+
+        if len(images) == 0:
+            raise ValueError("List of images can not be empty.")
+
+        if len(images) != len(links):
+            raise ValueError("Length of 'images' and 'links' should be equal.")
+
+        images_list = []
+        for img, lnk in zip(images, links):
+            images_list.append({ApiField.ID: img, ApiField.LINK: lnk})
+
+        data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
+        r = self._api.post("images.update.links", data)
+        return r.json()
