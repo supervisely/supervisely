@@ -1,10 +1,40 @@
 from collections import defaultdict
-from typing import Callable, Optional, Literal
+from typing import Callable, List, Literal, Optional
 
 import numpy as np
 
+# pylint: disable=import-error
+from pycocotools.cocoeval import COCOeval
 
-def calculate_metrics(cocoGt, cocoDt, iouType: Literal["bbox", "segm"], progress_cb: Optional[Callable] = None):
+
+def set_cocoeval_params(
+    cocoeval: COCOeval,
+    parameters: dict,
+):
+    if parameters is None:
+        return
+    param_names = (
+        "iouThrs",
+        "recThrs",
+        "maxDets",
+        "areaRng",
+        "areaRngLbl",
+        # "kpt_oks_sigmas" # For keypoints
+    )
+    for param_name in param_names:
+        cocoeval.params.__setattr__(
+            param_name, parameters.get(param_name, cocoeval.params.__getattribute__(param_name))
+        )
+    cocoeval.params.setDetParams()
+
+
+def calculate_metrics(
+    cocoGt,
+    cocoDt,
+    iouType: Literal["bbox", "segm"],
+    progress_cb: Optional[Callable] = None,
+    parameters: Optional[dict] = None,
+):
     """
     Calculate COCO metrics.
 
@@ -19,10 +49,10 @@ def calculate_metrics(cocoGt, cocoDt, iouType: Literal["bbox", "segm"], progress
     :return: Results of the evaluation
     :rtype: dict
     """
-    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
 
     progress_cb(1) if progress_cb is not None else None
     cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
+    set_cocoeval_params(cocoEval, parameters)
     progress_cb(1) if progress_cb is not None else None
     cocoEval.evaluate()
     progress_cb(1) if progress_cb is not None else None
@@ -33,6 +63,7 @@ def calculate_metrics(cocoGt, cocoDt, iouType: Literal["bbox", "segm"], progress
 
     # For classification metrics
     cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType=iouType)
+    set_cocoeval_params(cocoEval_cls, parameters)
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.params.useCats = 0
     cocoEval_cls.evaluate()

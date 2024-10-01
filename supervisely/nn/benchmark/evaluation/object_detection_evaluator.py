@@ -19,7 +19,11 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
         with self.pbar(message="Evaluation: Calculating metrics", total=10) as p:
             self.eval_data = calculate_metrics(
-                self.cocoGt, self.cocoDt, iouType="bbox", progress_cb=p.update
+                self.cocoGt,
+                self.cocoDt,
+                iouType="bbox",
+                progress_cb=p.update,
+                parameters=self.parameters,
             )
         self._dump_eval_results()
 
