@@ -1,5 +1,6 @@
 import os
 import pickle
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import yaml
@@ -44,6 +45,11 @@ class BaseEvaluator:
                 )
                 return None
         return parameters
+
+    @staticmethod
+    def default_parameters() -> str:
+        with open(f"{Path(__file__).parent}/default_parameters.yml", "r") as f:
+            return f.read()
 
     def evaluate(self):
         raise NotImplementedError()

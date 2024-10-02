@@ -198,6 +198,7 @@ setup(
             "imaging/colors.json.gz",
             "nn/tracker/bot_sort/configs/MOT17/*.yml",
             "nn/tracker/bot_sort/configs/MOT20/*.yml",
+            "nn/benchmark/evaluation/default_parameters.yml",
         ],
     },
     entry_points={
