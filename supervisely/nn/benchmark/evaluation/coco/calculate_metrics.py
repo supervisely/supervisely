@@ -25,7 +25,6 @@ def set_cocoeval_params(
         cocoeval.params.__setattr__(
             param_name, parameters.get(param_name, cocoeval.params.__getattribute__(param_name))
         )
-    cocoeval.params.setDetParams()
 
 
 def calculate_metrics(
@@ -52,7 +51,7 @@ def calculate_metrics(
 
     progress_cb(1) if progress_cb is not None else None
     cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
-    set_cocoeval_params(cocoEval, parameters)
+    # set_cocoeval_params(cocoEval, parameters) # Decided to always use default parameters
     progress_cb(1) if progress_cb is not None else None
     cocoEval.evaluate()
     progress_cb(1) if progress_cb is not None else None
@@ -63,7 +62,7 @@ def calculate_metrics(
 
     # For classification metrics
     cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType=iouType)
-    set_cocoeval_params(cocoEval_cls, parameters)
+    # set_cocoeval_params(cocoEval_cls, parameters) # Decided to always use default parameters
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.params.useCats = 0
     cocoEval_cls.evaluate()
@@ -73,9 +72,16 @@ def calculate_metrics(
     cocoEval_cls.summarize()
     progress_cb(1) if progress_cb is not None else None
 
+    iou_t = 0
+    if "iou_threshold" in parameters:
+        if parameters["iou_threshold"] in cocoEval.params.iouThrs:
+            iou_t = np.where(cocoEval.params.iouThrs == parameters["iou_threshold"])[0][0]
+        # TODO: update matches for nondefault iou threshold
+        pass
+
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
-    matches = get_matches(eval_img_dict, eval_img_dict_cls, cocoEval_cls, iou_t=0)
+    matches = get_matches(eval_img_dict, eval_img_dict_cls, cocoEval_cls, iou_t=iou_t)
 
     params = {"iouThrs": cocoEval.params.iouThrs, "recThrs": cocoEval.params.recThrs}
     coco_metrics = {"mAP": cocoEval.stats[0], "precision": cocoEval.eval["precision"]}
