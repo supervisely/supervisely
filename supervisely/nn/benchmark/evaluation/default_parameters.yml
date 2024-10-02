@@ -10,13 +10,13 @@
 # A list of lists representing different area ranges to consider during evaluation
 # areaRng:
 # - - 0
-#   - 1e10
+#   - 10000000000.0
 # - - 0
 #   - 1024
 # - - 1024
 #   - 9216
 # - - 9216
-#   - 1e10
+#   - 10000000000.0
 
 # A list of labels for each area range defined in areaRng
 # areaRngLbl: ["all", "small", "medium", "large"]
