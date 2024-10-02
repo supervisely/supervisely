@@ -776,7 +776,7 @@ class FileApi(ModuleApiBase):
         src_paths: List[str],
         dst_paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-    ):
+    ) -> List[FileInfo]:
         """
         Upload Files to Team Files.
 
@@ -827,8 +827,10 @@ class FileApi(ModuleApiBase):
             if total_size > 0:
                 yield group_src, group_dst
 
+        file_infos = []
         for src, dst in _group_files_generator(src_paths, dst_paths):
-            self._upload_bulk(team_id, src, dst, progress_cb)
+            file_infos.extend(self._upload_bulk(team_id, src, dst, progress_cb))
+        return file_infos
 
     def _upload_bulk(
         self,
