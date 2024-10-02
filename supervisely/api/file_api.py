@@ -806,22 +806,29 @@ class FileApi(ModuleApiBase):
             api.file.upload_bulk(8, src_paths, dst_remote_paths)
         """
 
-        def _group_files_generator(paths: List[str], limit: int = 20 * 1024 * 1024):
-            group = []
+        def _group_files_generator(
+            src_paths: List[str], dst_paths: List[str], limit: int = 20 * 1024 * 1024
+        ):
+            if limit is None:
+                return src_paths, dst_paths
+            group_src = []
+            group_dst = []
             total_size = 0
-            for path in paths:
-                size = os.path.getsize(path)
+            for src, dst in zip(src_paths, dst_paths):
+                size = os.path.getsize(src)
                 if total_size > 0 and total_size + size > limit:
-                    yield group
-                    group = []
+                    yield group_src, group_dst
+                    group_src = []
+                    group_dst = []
                     total_size = 0
-                group.append(path)
+                group_src.append(src)
+                group_dst.append(dst)
                 total_size += size
-            if len(group) > 0:
-                yield group
+            if total_size > 0:
+                yield group_src, group_dst
 
-        for group in _group_files_generator(src_paths):
-            self._upload_bulk(team_id, group, dst_paths, progress_cb)
+        for src, dst in _group_files_generator(src_paths, dst_paths):
+            self._upload_bulk(team_id, src, dst, progress_cb)
 
     def _upload_bulk(
         self,

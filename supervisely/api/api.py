@@ -9,6 +9,7 @@ import glob
 import json
 import os
 import shutil
+import traceback
 from logging import Logger
 from pathlib import Path
 from typing import Dict, Optional, Union
@@ -667,6 +668,7 @@ class Api:
                         retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                     )
             except Exception as exc:
+                traceback.print_exc()
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
