@@ -362,7 +362,7 @@ class FastTable(Widget):
         if active_page is True:
             temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
         else:
-            temp_parsed_data = self._parsed_source_data
+            temp_parsed_data = [d["items"] for d in self._parsed_source_data["data"]]
         packed_data = pd.DataFrame(data=temp_parsed_data, columns=self._columns_first_idx)
         return packed_data
 
@@ -792,7 +792,7 @@ class FastTable(Widget):
         failed_column_idxs = []
         failed_column_idx = 0
         for column, value in zip(self._source_data.columns, row):
-            col_type = type(self._source_data[column][0])
+            col_type = type(self._source_data[column].values[0])
             if col_type == str and not isinstance(value, str):
                 failed_column_idxs.append(
                     {
