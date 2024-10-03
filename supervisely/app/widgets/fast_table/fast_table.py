@@ -339,7 +339,7 @@ class FastTable(Widget):
         if active_page is True:
             temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
         else:
-            temp_parsed_data = self._parsed_source_data
+            temp_parsed_data = [d["items"] for d in self._parsed_source_data["data"]]
         widget_data = {}
         widget_data["data"] = temp_parsed_data
         widget_data["columns"] = DataJson()[self.widget_id]["columns"]
