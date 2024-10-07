@@ -3326,3 +3326,44 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if project_id is not None and dataset_id is not None:
             raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
+
+    def set_remote(self, images: List[int], links: List[str]):
+        """
+        This method helps to change local source to remote for images without re-uploading them as new.
+
+        :param images: List of image ids.
+        :type images: List[int]
+        :param links: List of remote links.
+        :type links: List[str]
+        :return: json-encoded content of a response.
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+
+                    api = sly.Api.from_env()
+
+                    images = [123, 124, 125]
+                    links = [
+                        "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
+                        "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
+                        "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
+                    ]
+                    result = api.image.set_remote(images, links)
+        """
+
+        if len(images) == 0:
+            raise ValueError("List of images can not be empty.")
+
+        if len(images) != len(links):
+            raise ValueError("Length of 'images' and 'links' should be equal.")
+
+        images_list = []
+        for img, lnk in zip(images, links):
+            images_list.append({ApiField.ID: img, ApiField.LINK: lnk})
+
+        data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
+        r = self._api.post("images.update.links", data)
+        return r.json()

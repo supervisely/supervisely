@@ -222,6 +222,8 @@ class ApiField:
     """"""
     OBJECT_ID = "objectId"
     """"""
+    ANNOTATION_OBJECT_ID = "annotationObjectId"
+    """"""
     FRAME = "frame"
     """"""
     # FIGURES_COUNT = (['labelsCount'], 'figures_count')
@@ -587,6 +589,10 @@ class ApiField:
     INTEGER_COORDS = "integerCoords"
     """"""
     HIDDEN = "hidden"
+    """"""
+    PRIORITY = "priority"
+    """"""
+    CLEAR_LOCAL_DATA_SOURCE = "clearLocalDataSource"
     """"""
 
 

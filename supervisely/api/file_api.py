@@ -806,6 +806,40 @@ class FileApi(ModuleApiBase):
             api.file.upload_bulk(8, src_paths, dst_remote_paths)
         """
 
+        def _group_files_generator(
+            src_paths: List[str], dst_paths: List[str], limit: int = 20 * 1024 * 1024
+        ):
+            if limit is None:
+                return src_paths, dst_paths
+            group_src = []
+            group_dst = []
+            total_size = 0
+            for src, dst in zip(src_paths, dst_paths):
+                size = os.path.getsize(src)
+                if total_size > 0 and total_size + size > limit:
+                    yield group_src, group_dst
+                    group_src = []
+                    group_dst = []
+                    total_size = 0
+                group_src.append(src)
+                group_dst.append(dst)
+                total_size += size
+            if total_size > 0:
+                yield group_src, group_dst
+
+        file_infos = []
+        for src, dst in _group_files_generator(src_paths, dst_paths):
+            file_infos.extend(self._upload_bulk(team_id, src, dst, progress_cb))
+        return file_infos
+
+    def _upload_bulk(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[FileInfo]:
+
         def path_to_bytes_stream(path):
             return open(path, "rb")
 
@@ -1338,7 +1372,7 @@ class FileApi(ModuleApiBase):
         """
         if not remote_dir.startswith("/"):
             remote_dir = "/" + remote_dir
-            
+
         if self.dir_exists(team_id, remote_dir):
             if change_name_if_conflict is True:
                 res_remote_dir = self.get_free_dir_name(team_id, remote_dir)

@@ -291,7 +291,7 @@ class MetricVis:
                 zip(image_infos, ann_infos, project_metas)
             ):
                 image_name = image_info.name
-                image_url = image_info.full_storage_url
+                image_url = image_info.preview_url
                 is_ignore = True if idx in [0, 1] else False
                 widget.gallery.append(
                     title=image_name,

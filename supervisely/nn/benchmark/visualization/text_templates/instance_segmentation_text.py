@@ -49,7 +49,7 @@ Learn more about Model Benchmark, implementation details, and how to use the cha
 
 markdown_key_metrics = """## Key Metrics
 
-Here, we comprehensively assess the model's performance by presenting a broad set of metrics, including mAP (mean Average Precision), Precision, Recall, IoU (Intersection over Union), Classification Accuracy, Calibration Score, and Inference Speed.
+Here, we comprehensively assess the model's performance by presenting a broad set of metrics, including mAP (mean Average Precision), Precision, Recall, IoU (Intersection over Union), Classification Accuracy and Calibration Score.
 
 - **Mean Average Precision (mAP)**: A comprehensive metric of detection and instance segmentation performance. mAP calculates the <abbr title="{}">average precision</abbr> across all classes at different levels of <abbr title="{}">IoU thresholds</abbr> and precision-recall trade-offs. In other words, it evaluates the performance of a model by considering its ability to detect and localize objects accurately across multiple IoU thresholds and object categories.
 - **Precision**: Precision indicates how often the model's predictions are actually correct when it predicts an object. This calculates the ratio of correct predictions to the total number of predictions made by the model.
@@ -57,7 +57,6 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Intersection over Union (IoU)**: IoU measures the overlap between two masks: one predicted by the model and one from the ground truth. It is calculated as the area of intersection between the predicted mask and the ground truth mask, divided by the area of their union. A higher IoU score indicates better alignment between the predicted and ground truth masks.
 - **Classification Accuracy**: We additionally measure the classification accuracy of an instance segmentation model. This metric represents the percentage of correctly labeled instances among all instances where the predicted segmentation masks accurately match the ground truth masks (with an IoU greater than 0.5, regardless of class).
 - **Calibration Score**: This score represents the consistency of predicted probabilities (or <abbr title="{}">confidence scores</abbr>) made by the model. We evaluate how well predicted probabilities align with actual outcomes. A well-calibrated model means that when it predicts an object with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
-- **Inference Speed**: The number of frames per second (FPS) the model can process, measured with a batch size of 1. The inference speed is important in applications, where real-time inference is required. Additionally, slower models pour more GPU resources, so their inference cost is higher.
 """
 
 markdown_explorer = """## Explore Predictions

@@ -245,7 +245,7 @@ class Event:
                     image_id=data.get(ApiField.ENTITY_ID),
                     video_id=data.get(ApiField.ENTITY_ID),
                     frame=data.get(ApiField.FRAME),
-                    object_id=data.get("annotationObjectId"),  # there is no such field in ApiField
+                    object_id=data.get(ApiField.ANNOTATION_OBJECT_ID),
                     tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
                     session_id=data.get(ApiField.SESSION_ID),
                     tool=data.get(ApiField.LABELING_TOOL),
@@ -322,6 +322,9 @@ class Event:
             figure_class_id: int,
             figure_class_title: str,
             image_id: int,
+            video_id: int,
+            frame: int,
+            object_id: int,
             tool_class_id: int,
             session_id: str,
             tool: str,
@@ -338,6 +341,9 @@ class Event:
             self.figure_class_id = figure_class_id
             self.figure_class_title = figure_class_title
             self.image_id = image_id
+            self.video_id = video_id
+            self.frame = frame
+            self.object_id = object_id
             self.tool_class_id = tool_class_id
             self.session_id = session_id
             self.tool = tool
@@ -357,6 +363,9 @@ class Event:
                 figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
                 figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
                 image_id=data.get(ApiField.IMAGE_ID),
+                video_id=data.get(ApiField.ENTITY_ID),
+                frame=data.get(ApiField.FRAME),
+                object_id=data.get(ApiField.ANNOTATION_OBJECT_ID),
                 tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
                 session_id=data.get(ApiField.SESSION_ID),
                 tool=data.get(ApiField.LABELING_TOOL),
@@ -424,6 +433,64 @@ class Event:
                         tool_state=data.get(ApiField.JOB_ID),
                         figure_state=data.get(ApiField.FIGURE_STATE),
                     )
+
+    class Entity:
+        class FrameChanged:
+            endpoint = "/entity_frame_changed"
+
+            def __init__(
+                self,
+                dataset_id: int,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                figure_id: int,
+                figure_class_id: int,
+                figure_class_title: str,
+                video_id: int,
+                frame: int,
+                object_id: int,
+                tool_class_id: int,
+                session_id: str,
+                tool: str,
+                user_id: int,
+                job_id: int,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.figure_id = figure_id
+                self.figure_class_id = figure_class_id
+                self.figure_class_title = figure_class_title
+                self.video_id = video_id
+                self.frame = frame
+                self.object_id = object_id
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+
+            @classmethod
+            def from_json(cls, data: dict):
+                return cls(
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    figure_id=data.get(ApiField.FIGURE_ID),
+                    figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    video_id=data.get(ApiField.ENTITY_ID),
+                    frame=data.get(ApiField.FRAME),
+                    object_id=data.get(ApiField.ANNOTATION_OBJECT_ID),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                )
 
     class JobEntity:
         class StatusChanged:

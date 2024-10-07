@@ -37,7 +37,7 @@ class ExplorerGrid(MetricVis):
 
         for idx, (pred_image, ann_info) in enumerate(zip(pred_image_infos, ann_infos)):
             image_name = pred_image.name
-            image_url = pred_image.full_storage_url
+            image_url = pred_image.preview_url
             widget.gallery.append(
                 title=image_name,
                 image_url=image_url,

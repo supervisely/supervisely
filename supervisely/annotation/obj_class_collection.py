@@ -304,42 +304,6 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
                 continue
             my_class._set_id(new_class.sly_id)
 
-    def merge(self, other: ObjClassCollection) -> ObjClassCollection:
-        """
-        Merge collection and other KeyIndexedCollection object.
-        """
-        new_items = []
-        for other_item in other.items():
-            our_item = self.get(other_item.key())
-            if our_item is None:
-                new_items.append(other_item)
-            elif our_item != other_item:
-                # Check if both items have geometry type GraphNodes and if they have the same labels in geometry_config
-                if our_item.geometry_type == other_item.geometry_type == GraphNodes:
-                    our_geom_config_nodes = our_item.geometry_config["nodes"]
-                    other_geom_config_nodes = other_item.geometry_config["nodes"]
-                    if len(our_geom_config_nodes) == len(other_geom_config_nodes):
-                        our_labels = sorted(
-                            [node["label"] for node in our_geom_config_nodes.values()]
-                        )
-                        other_labels = sorted(
-                            [node["label"] for node in other_geom_config_nodes.values()]
-                        )
-                        if our_labels == other_labels:
-                            continue
-                        else:
-                            raise ValueError(
-                                f"Classes '{our_item.name}' and '{other_item.name}' have different labels in geometry_config."
-                            )
-                    else:
-                        raise ValueError(
-                            f"Classes '{our_item.name}' and '{other_item.name}' have different number of labels in geometry_config."
-                        )
-                raise ValueError(
-                    f"Error during merge for key '{other_item.key()}': values are different"
-                )
-        return self.clone(new_items + self.items())
-
 
 def make_renamed_classes(
     src_obj_classes: ObjClassCollection,
