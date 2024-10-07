@@ -1442,9 +1442,9 @@ class Dataset(KeyObject):
             ds_items_link = Dataset.get_url(project_id, dataset_id)
 
             print(ds_items_link)
-            # Output: "/projects/10093/datasets/45330/entities"
+            # Output: "/projects/10093/datasets/45330"
         """
-        res = f"/projects/{project_id}/datasets/{dataset_id}/entities"
+        res = f"/projects/{project_id}/datasets/{dataset_id}"
         if is_development():
             res = abs_url(res)
         return res
