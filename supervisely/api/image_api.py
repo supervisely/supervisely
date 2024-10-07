@@ -1811,7 +1811,7 @@ class ImageApi(RemoveableBulkModuleApi):
                         results.append(self._convert_json_info(info_json_copy))
                     break
                 except HTTPError as e:
-                    error_details = e.response.json().get("details")
+                    error_details = e.response.json().get("details", {})
                     if (
                         conflict_resolution is not None
                         and e.response.status_code == 400
