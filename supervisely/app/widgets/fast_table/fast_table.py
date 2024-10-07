@@ -322,6 +322,7 @@ class FastTable(Widget):
         self._sorted_data = self._sort_table_data(self._source_data)
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["total"] = len(self._source_data)
