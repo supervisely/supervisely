@@ -1,68 +1,75 @@
-import os
-from typing import Optional, Tuple
+from typing import Dict, List, Optional
 
 from supervisely.api.api import Api
 from supervisely.app.widgets import SlyTqdm
-from supervisely.io.env import team_id
-from supervisely.io.fs import dir_exists, mkdir
+from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
+from supervisely.nn.benchmark.comparison.visualization.visualizer import (
+    ComparisonVisualizer,
+)
 from supervisely.task.progress import tqdm_sly
 
 
 class BaseComparison:
+
     def __init__(
         self,
         api: Api,
-        eval_dir_1: str,
-        eval_dir_2: str,
+        remote_eval_dirs: List[str],
         progress: Optional[SlyTqdm] = None,
-        output_dir: Optional[str] = "./comparison",  # ?
+        output_dir: Optional[str] = "./benchmark/comparison",
     ):
         self.api = api
-        self.team_id = team_id()
-        self._output_dir = output_dir
-        self._eval_dir_1 = eval_dir_1
-        self._eval_dir_2 = eval_dir_2
-        self.pbar = progress or tqdm_sly
+        self.progress = progress or tqdm_sly
+        self.output_dir = output_dir
+        self.remote_eval_dirs = remote_eval_dirs
+        self.evaluation_results: List[EvalResult] = []
+        for eval_dir in remote_eval_dirs:
+            self.evaluation_results.append(
+                EvalResult(eval_dir, self.output_dir, self.api, self.progress)
+            )
 
-        self._load_eval_data()
-        self.layout_dir = None
+        self.task_type = self.evaluation_results[0].inference_info.get("task_type")
+        self._validate_eval_data()
+
+        self.visualizer: ComparisonVisualizer = None
 
     def run_compare(self):
         raise NotImplementedError()
 
-    def _load_eval_data(self):
-        if dir_exists(self._eval_dir_1) and dir_exists(self._eval_dir_2):
-            return
-        dir_1_exists = self.api.storage.dir_exists(self.team_id, self._eval_dir_1)
-        dir_2_exists = self.api.storage.dir_exists(self.team_id, self._eval_dir_2)
-        if not dir_1_exists or not dir_2_exists:
-            raise ValueError("One or both evaluation directories not found.")
-        eval_dir_1, eval_dir_2 = self._get_eval_dirs()
+    def _validate_eval_data(self):
+        """
+        Validate the evaluation data before running the comparison.
+        Make sure the benchmarks are done on the same project and datasets.
+        """
+        task_type = None
+        img_names = None
+        cat_names = None
+        for eval_result in self.evaluation_results:
+            next_task_type = eval_result.inference_info.get("task_type")
+            if not task_type is None:
+                assert task_type == next_task_type, "Task types are different in the evaluations."
+            task_type = next_task_type
+            next_img_names = set(
+                [img.get("file_name") for img in eval_result.coco_gt.imgs.values()]
+            )
+            if not img_names is None:
+                assert img_names == next_img_names, "Images are different in the evaluations."
+            img_names = next_img_names
+            next_cat_names = set([cat.get("name") for cat in eval_result.coco_gt.cats.values()])
+            if not cat_names is None:
+                assert cat_names == next_cat_names, "Categories are different in the evaluations."
+            cat_names = next_cat_names
 
-        self.api.storage.download_directory(self.team_id, self._eval_dir_1, eval_dir_1)
-        self.api.storage.download_directory(self.team_id, self._eval_dir_2, eval_dir_2)
+    def get_metrics(self):
+        pass
 
-        self._eval_dir_1 = eval_dir_1
-        self._eval_dir_2 = eval_dir_2
+    def visualize(self):
+        if self.visualizer is None:
+            self.visualizer = ComparisonVisualizer(self)
+        self.visualizer.visualize()
 
-    def _get_base_dir(self):
-        base_dir = os.path.join(self.output_dir)
-        if not dir_exists(base_dir):
-            mkdir(base_dir)
-        return base_dir
+    def upload_results(self, team_id: int, remote_dir: str) -> str:
+        return self.visualizer.upload_results(team_id, remote_dir)
 
-    def _get_eval_dirs(self) -> Tuple[str, str]:
-        eval_dir_1 = os.path.join(self._get_base_dir(), "eval_1")
-        if not dir_exists(eval_dir_1):
-            mkdir(eval_dir_1)
-
-        eval_dir_2 = os.path.join(self._get_base_dir(), "eval_2")
-        if not dir_exists(eval_dir_2):
-            mkdir(eval_dir_2)
-
-        return eval_dir_1, eval_dir_2
-
-    def _get_layout_dir(self):
-        self.layout_dir = os.path.join(self._get_base_dir(), "layout")
-        os.makedirs(self.layout_dir, exist_ok=True)
-        return self.layout_dir
+    def get_report_link(self, team_id: int, remote_dir: str) -> str:
+        return ""  # TODO: implement
