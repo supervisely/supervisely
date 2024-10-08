@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import mimetypes
 import os
 import re
@@ -13,6 +14,8 @@ import urllib
 from pathlib import Path
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
+import aiofiles
+import httpx
 import requests
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
@@ -430,6 +433,154 @@ class FileApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
+    async def _async_download(
+        self,
+        team_id: int,
+        remote_path: str,
+        local_save_path: str,
+        loop: asyncio.AbstractEventLoop,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: dict = None,
+        show_progress: bool = False,
+        progress_cb=None,
+    ):
+        async with semaphore:
+            url = f"{self._api.api_server_address}/v3/file-storage.download"
+            logger.trace(f"POST {url}")
+            await loop.run_in_executor(None, self._api._check_https_redirect)
+            await loop.run_in_executor(None, ensure_base_path, local_save_path)
+            if headers is None:
+                headers = self._api.headers
+            else:
+                headers.update(self._api.headers)
+
+            if range_start is not None or range_end is not None:
+                headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+
+            if range_start not in [0, None]:
+                writing_method = "ab"
+            else:
+                writing_method = "wb"
+            json_body = {
+                ApiField.TEAM_ID: team_id,
+                ApiField.PATH: remote_path,
+                **self._api.additional_fields,
+            }
+            async with httpx.AsyncClient(http2=False) as client:
+                async with client.stream(
+                    "POST",
+                    url,
+                    json=json_body,
+                    headers=headers,
+                ) as response:
+                    if response.status_code != httpx.codes.OK:
+                        await loop.run_in_executor(None, self._api._check_version)
+                        await loop.run_in_executor(None, self._api._raise_for_status, response)
+
+                    if show_progress is False:
+                        progress_cb = None
+                    elif show_progress and progress_cb is None:
+                        total_size = int(response.headers.get("Content-Length", 0))
+                        progress_cb = tqdm_sly(
+                            total=total_size,
+                            unit="B",
+                            unit_scale=True,
+                            desc="Downloading file",
+                            leave=True,
+                        )
+                    async with aiofiles.open(local_save_path, writing_method) as fd:
+                        async for chunk in response.aiter_bytes():
+                            await fd.write(chunk)
+                            if progress_cb is not None:
+                                progress_cb(len(chunk))
+
+    async def async_download(
+        self,
+        team_id: int,
+        remote_path: str,
+        local_save_path: str,
+        cache: Optional[FileCache] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Download File from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Path to File in Team Files.
+        :type remote_path: str
+        :param local_save_path: Local save path.
+        :type local_save_path: str
+        :param cache: optional
+        :type cache: FileCache, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            path_to_file = "/999_App_Test/ds1/01587.json"
+            local_save_path = "/home/admin/Downloads/01587.json"
+
+            api.file.download(8, path_to_file, local_save_path)
+        """
+        loop = asyncio.get_running_loop()
+
+        if await loop.run_in_executor(None, self.is_on_agent, remote_path):
+            await loop.run_in_executor(
+                None, self.download_from_agent, remote_path, local_save_path, progress_cb
+            )
+            return
+
+        if cache is None:
+            await self._async_download(
+                team_id, remote_path, local_save_path, loop, progress_cb=progress_cb
+            )
+        else:
+            file_info = await loop.run_in_executor(
+                None, self.get_info_by_path, team_id, remote_path
+            )
+            if file_info.hash is None:
+                await self._async_download(
+                    team_id, remote_path, local_save_path, loop, progress_cb=progress_cb
+                )
+            else:
+                cache_path = await loop.run_in_executor(
+                    None, cache.check_storage_object, file_info.hash, get_file_ext(remote_path)
+                )
+                if cache_path is None:
+                    # file not in cache
+                    await self._async_download(
+                        team_id, remote_path, local_save_path, loop, progress_cb=progress_cb
+                    )
+                    if file_info.hash != await loop.run_in_executor(
+                        None, get_file_hash, local_save_path
+                    ):
+                        raise KeyError(
+                            f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})"
+                        )
+                    await loop.run_in_executor(
+                        None, cache.write_object, local_save_path, file_info.hash
+                    )
+                else:
+                    await loop.run_in_executor(
+                        None, cache.read_object, file_info.hash, local_save_path
+                    )
+                    if progress_cb is not None:
+                        progress_cb(
+                            await loop.run_in_executor(None, get_file_size, local_save_path)
+                        )
+
     def download(
         self,
         team_id: int,
@@ -603,7 +754,7 @@ class FileApi(ModuleApiBase):
         log_progress: bool = False,
     ) -> None:
         """Downloads data for application from input using environment variables.
-        Automatically detects is data is a file or a directory and saves it to the specified directory.
+        Automatically detects if data is a file or a directory and saves it to the specified directory.
         If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
 
         :param save_path: path to a directory where data will be saved
@@ -616,9 +767,11 @@ class FileApi(ModuleApiBase):
         :type force: Optional[bool]
         :param log_progress: if True, progress bar will be displayed
         :type log_progress: bool
-        :raises RuntimeError: if both file and folder paths not found in environment variables
-        :raises RuntimeError: if both file and folder paths found in environment variables (debug)
-        :raises RuntimeError: if team id not found in environment variables
+        :raises RuntimeError:
+            - if both file and folder paths not found in environment variables \n
+            - if both file and folder paths found in environment variables (debug)
+            - if team id not found in environment variables
+
         :Usage example:
 
          .. code-block:: python
@@ -682,7 +835,13 @@ class FileApi(ModuleApiBase):
             if self.is_on_agent(remote_file_path):
                 self.download_from_agent(remote_file_path, local_file_path, progress_cb=progress_cb)
             else:
-                self.download(team_id, remote_file_path, local_file_path, progress_cb=progress_cb)
+                asyncio.run(
+                    self.async_download(
+                        self.download(
+                            team_id, remote_file_path, local_file_path, progress_cb=progress_cb
+                        )
+                    )
+                )
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 sly_fs.unpack_archive(local_file_path, save_path)
                 if remove_archive:

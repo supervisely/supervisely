@@ -11,9 +11,10 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Iterator, Optional, Union
 from urllib.parse import urljoin, urlparse
 
+import httpx
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
@@ -670,6 +671,88 @@ class Api:
                 process_unhandled_request(self.logger, exc)
         raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
 
+    def post_v2(
+        self,
+        method: str,
+        data: Dict,
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        stream: Optional[bool] = False,
+        raise_error: Optional[bool] = False,
+    ) -> Union[httpx.Response, Iterator[httpx.Response]]:
+        """
+        Performs POST request to server with given parameters using httpx.
+
+        :param method: Method name.
+        :type method: str
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param stream: Define, if you'd like to get the raw socket response from the server.
+        :type stream: bool, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
+        :type raise_error: bool, optional
+        :return: Response object
+        :rtype: :class:`httpx.Response`
+        """
+        self._check_https_redirect()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"POST {url}")
+
+        if headers is None:
+            headers = self.headers
+        else:
+            headers = {**self.headers, **headers}
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                if stream:
+                    if type(data) is bytes:
+                        return httpx.stream("POST", url, data=data, headers=headers)
+                    elif type(data) is dict:
+                        json_body = {**data, **self.additional_fields}
+                        return httpx.stream("POST", url, json=json_body, headers=headers)
+                    else:
+                        return httpx.stream("POST", url, data=data, headers=headers)
+                else:
+                    if type(data) is bytes:
+                        response = httpx.post(url, data=data, headers=headers)
+                    elif type(data) is dict:
+                        json_body = {**data, **self.additional_fields}
+                        response = httpx.post(url, json=json_body, headers=headers)
+                    else:
+                        response = httpx.post(url, data=data, headers=headers)
+
+                if response.status_code != httpx.codes.OK:
+                    self._check_version()
+                    Api._raise_for_status(response)
+                return response
+            except httpx.RequestError as exc:
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.HTTPStatusError("Retry limit exceeded ({!r})".format(url))
+
     def get(
         self,
         method: str,
@@ -736,20 +819,34 @@ class Api:
         :param response: Request class object
         """
         http_error_msg = ""
-        if isinstance(response.reason, bytes):
-            try:
-                reason = response.reason.decode("utf-8")
-            except UnicodeDecodeError:
-                reason = response.reason.decode("iso-8859-1")
+        if hasattr(response, "reason"):
+            if isinstance(response.reason, bytes):
+                try:
+                    reason = response.reason.decode("utf-8")
+                except UnicodeDecodeError:
+                    reason = response.reason.decode("iso-8859-1")
+            else:
+                reason = response.reason
+        elif hasattr(response, "reason_phrase"):
+            reason = response.reason_phrase
         else:
-            reason = response.reason
+            reason = "Can't get reason"
+
+        def decode_response_content(response):
+            if hasattr(response, "iter_bytes"):
+                content = b""
+                for chunk in response.iter_bytes():
+                    content += chunk
+                return content.decode("utf-8")
+            else:
+                return response.content.decode("utf-8")
 
         if 400 <= response.status_code < 500:
             http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
                 response.status_code,
                 reason,
                 response.url,
-                response.content.decode("utf-8"),
+                decode_response_content(response),
             )
 
         elif 500 <= response.status_code < 600:
@@ -757,11 +854,11 @@ class Api:
                 response.status_code,
                 reason,
                 response.url,
-                response.content.decode("utf-8"),
+                decode_response_content(response),
             )
 
         if http_error_msg:
-            raise requests.exceptions.HTTPError(http_error_msg, response=response)
+            raise httpx.HTTPError(http_error_msg, response=response)
 
     @staticmethod
     def parse_error(
