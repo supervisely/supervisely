@@ -8,6 +8,7 @@ from supervisely._utils import generate_free_name
 from supervisely.imaging.image import fliplr
 from supervisely.io.fs import get_file_ext
 
+
 def read_high_color_images(image_path: str) -> np.ndarray:
     """Read high color images"""
 
@@ -24,14 +25,15 @@ def read_high_color_images(image_path: str) -> np.ndarray:
 
     return image
 
+
 def convert_to_nrrd(image: np.ndarray) -> np.ndarray:
     """Convert image to nrrd format"""
     from PIL import Image
 
     image = Image.fromarray(image)
-    image = image.rotate(90, expand=True)
-    image = fliplr(np.asarray(image))
-    return image
+    # image = image.rotate(90, expand=True)
+    # image = fliplr(np.asarray(image))
+    return np.asarray(image)
 
 
 def save_nrrd(image: np.ndarray, save_path: str) -> str:

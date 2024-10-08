@@ -19,9 +19,9 @@ from supervisely.team_files import RECOMMENDED_IMPORT_BACKUP_PATH
 
 
 class HighColorDepthImageConverter(ImageConverter):
-    allowed_exts = [".png", ".tiff", ".tif", ".bmp", ".exr", ".hdr"]
-    # allowed_exts = [".tiff", ".tif", ".exr", ".hdr"]
-    team_files_back_up_dir = " /system/imports"
+    # allowed_exts = [".png", ".tiff", ".tif", ".bmp", ".exr", ".hdr"]
+    allowed_exts = [".exr", ".hdr"]
+    team_files_back_up_dir = "/system/imports"
 
     class Item(ImageConverter.Item):
 
@@ -47,7 +47,7 @@ class HighColorDepthImageConverter(ImageConverter):
     def validate_labeling_interface(self) -> bool:
         """Only multi_view labeling interface can be used to group images on single screen."""
         return self._labeling_interface in [
-            # LabelingInterface.DEFAULT,
+            LabelingInterface.DEFAULT,
             LabelingInterface.IMAGES_WITH_16_COLOR,
         ]
 
@@ -119,7 +119,8 @@ class HighColorDepthImageConverter(ImageConverter):
                 nrrd_path = helpers.save_nrrd(image, nrrd_path)
                 item.path = nrrd_path
 
-            api.storage.upload_bulk(self.team_id, local_paths, remote_paths, progress_cb)
+            api.storage.upload_bulk(self.team_id, local_paths, remote_paths)  # , progress_cb)
+            # api.file.upload
 
         if log_progress and is_development():
             progress.close()
