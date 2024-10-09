@@ -53,6 +53,7 @@ class BaseBenchmark:
         self.inference_speed_text = None
         self.train_info = None
         self.evaluation_params = evaluation_params
+        self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -555,3 +556,7 @@ class BaseBenchmark:
                 chagned = True
         if chagned:
             self.api.project.update_meta(pred_project_id, pred_meta.to_json())
+
+    def _validate_evaluation_params(self):
+        if self.evaluation_params:
+            self._get_evaluator_class().validate_evaluation_params(self.evaluation_params)

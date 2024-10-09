@@ -32,6 +32,8 @@ class BaseEvaluator:
         if evaluation_params is None:
             evaluation_params = self._get_default_evaluation_params()
         self.evaluation_params = evaluation_params
+        if self.evaluation_params:
+            self.validate_evaluation_params(self.evaluation_params)
 
     def evaluate(self):
         raise NotImplementedError()
@@ -46,6 +48,10 @@ class BaseEvaluator:
         with open(cls.EVALUATION_PARAMS_YAML_PATH, "r") as f:
             return f.read()
         
+    @classmethod
+    def validate_evaluation_params(cls, evaluation_params: dict) -> None:
+        pass
+
     def _get_default_evaluation_params(self) -> dict:
         if self.EVALUATION_PARAMS_YAML_PATH is None:
             return {}

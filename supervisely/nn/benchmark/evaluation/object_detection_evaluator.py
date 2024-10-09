@@ -30,6 +30,15 @@ class ObjectDetectionEvaluator(BaseEvaluator):
             )
         self._dump_eval_results()
 
+    @classmethod
+    def validate_evaluation_params(cls, evaluation_params: dict) -> None:
+        iou_threshold = evaluation_params.get("iou_threshold")
+        if iou_threshold is not None:
+            assert iou_threshold in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], (
+                f"iou_threshold must be one of [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], "
+                f"but got {iou_threshold}"
+            )
+
     def _convert_to_coco(self):
         cocoGt_json = sly2coco(
             self.gt_project_path,

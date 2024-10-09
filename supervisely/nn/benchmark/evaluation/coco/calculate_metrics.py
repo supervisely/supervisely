@@ -66,7 +66,9 @@ def calculate_metrics(
     cocoEval_cls.summarize()
 
     iou_t = 0
-    is_custom_iou_threshold = evaluation_params and evaluation_params.get("iou_threshold") != 0.5
+    is_custom_iou_threshold = (
+        evaluation_params is not None and evaluation_params.get("iou_threshold") and evaluation_params["iou_threshold"] != 0.5
+    )
     if is_custom_iou_threshold:
         iou_t = np.where(cocoEval.params.iouThrs == evaluation_params["iou_threshold"])[0][0]
 
