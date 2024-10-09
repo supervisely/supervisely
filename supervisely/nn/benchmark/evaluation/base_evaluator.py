@@ -4,7 +4,6 @@ from typing import List, Optional, Union
 
 import yaml
 
-from supervisely import logger
 from supervisely.app.widgets import SlyTqdm
 from supervisely.task.progress import tqdm_sly
 
@@ -31,7 +30,11 @@ class BaseEvaluator:
         self.classes_whitelist = classes_whitelist
         if evaluation_params is None:
             evaluation_params = self._get_default_evaluation_params()
+
+        if isinstance(evaluation_params, str):
+            evaluation_params = yaml.safe_load(evaluation_params)
         self.evaluation_params = evaluation_params
+
         if self.evaluation_params:
             self.validate_evaluation_params(self.evaluation_params)
 
@@ -40,24 +43,25 @@ class BaseEvaluator:
 
     def get_result_dir(self) -> str:
         return self.result_dir
-    
+
     @classmethod
     def load_yaml_evaluation_params(cls) -> Union[str, None]:
         if cls.EVALUATION_PARAMS_YAML_PATH is None:
             return None
         with open(cls.EVALUATION_PARAMS_YAML_PATH, "r") as f:
             return f.read()
-        
+
     @classmethod
     def validate_evaluation_params(cls, evaluation_params: dict) -> None:
         pass
 
-    def _get_default_evaluation_params(self) -> dict:
-        if self.EVALUATION_PARAMS_YAML_PATH is None:
+    @classmethod
+    def _get_default_evaluation_params(cls) -> dict:
+        if cls.EVALUATION_PARAMS_YAML_PATH is None:
             return {}
         else:
-            return yaml.safe_load(self.load_yaml_evaluation_params())
-        
+            return yaml.safe_load(cls.load_yaml_evaluation_params())
+
     def _dump_pickle(self, data, file_path):
         with open(file_path, "wb") as f:
             pickle.dump(data, f)
