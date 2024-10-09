@@ -15,6 +15,7 @@ from supervisely.convert.image.high_color import high_color_helper as helpers
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.env import task_id
 from supervisely.io.fs import list_files_recursively
+from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.team_files import RECOMMENDED_IMPORT_BACKUP_PATH
 
@@ -115,13 +116,20 @@ class HighColorDepthImageConverter(ImageConverter):
                     remote_paths.append(remote_path)
 
                     item.original_path = remote_path
-
                     image = helpers.read_high_color_images(item.path)
-                    # image = helpers.convert_to_nrrd(image)
 
                     nrrd_path = item.path + ".nrrd"
                     nrrd_path = helpers.save_nrrd(image, nrrd_path)
                     item.path = nrrd_path
+
+                    item_meta = {}
+                    # Add original file path to image meta
+                    item_meta["original_file_path"] = os.path.join(
+                        RECOMMENDED_IMPORT_BACKUP_PATH, task_id, item.name[:-5]  # remove .nrrd
+                    )
+                    if item.meta:
+                        item_meta.update(load_json_file(item.meta))
+                    item.set_meta(item_meta)
 
                 api.file.upload_bulk(self.team_id, local_paths, remote_paths, pbar)
 

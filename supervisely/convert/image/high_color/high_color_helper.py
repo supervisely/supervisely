@@ -35,16 +35,6 @@ def read_high_color_images(image_path: str) -> np.ndarray:
     return image
 
 
-def convert_to_nrrd(image: np.ndarray) -> np.ndarray:
-    """Convert image to nrrd format"""
-    from PIL import Image
-
-    image = Image.fromarray(image)
-    # image = image.rotate(90, expand=True)
-    # image = fliplr(np.asarray(image))
-    return np.asarray(image)
-
-
 def save_nrrd(image: np.ndarray, save_path: str) -> str:
     """Save numpy image as nrrd file"""
 

@@ -23,7 +23,6 @@ from supervisely.io.env import task_id as get_task_id
 from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
-from supervisely.team_files import RECOMMENDED_IMPORT_BACKUP_PATH
 
 
 class ImageConverter(BaseConverter):
@@ -149,17 +148,7 @@ class ImageConverter(BaseConverter):
                 )
                 item_names.append(name)
                 item_paths.append(item.path)
-
-                item_meta = {}
-                # Add original file path if high_color_depth converter is used
-                if self.__str__() == "high_color_depth":
-                    item_meta["original_file_path"] = os.path.join(
-                        RECOMMENDED_IMPORT_BACKUP_PATH, task_id, item.name[:-5]  # remove .nrrd
-                    )
-                if item.meta:
-                    item_meta.update(load_json_file(item.meta))
-                item_metas.append(item_meta)
-
+                item_metas.append(load_json_file(item.meta) if item.meta else {})
                 if ann is not None:
                     anns.append(ann)
 
