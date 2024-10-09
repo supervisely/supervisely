@@ -1,5 +1,3 @@
-from typing import List
-
 from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
@@ -12,26 +10,14 @@ class OutcomeCounts(BaseVisMetric):
     CHART_MAIN = "chart_outcome_counts"
     CHART_COMPARISON = "chart_outcome_counts_comparison"
 
-    def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
-        """
-        Class to create widgets for the outcome counts section.
-
-        chart_widget_main property returns ChartWidget with Bar charts for each model with TP, FP, FN counts.
-        chart_widget_comparison property returns ChartWidget with Bar charts with common and different TP, FP, FN counts.
-        """
-        super().__init__(vis_texts, eval_results)
-
-        self.figure_main = self.get_main_figure()
-        self.figure_comparison = self.get_comparison_figure()
-
     @property
     def chart_widget_main(self) -> ChartWidget:
-        return ChartWidget(name=self.CHART_MAIN, figure=self.figure_main)
+        return ChartWidget(name=self.CHART_MAIN, figure=self.self.get_main_figure())
         # TODO: add click_data
 
     @property
     def chart_widget_comparison(self) -> ChartWidget:
-        return ChartWidget(name=self.CHART_COMPARISON, figure=self.figure_comparison)
+        return ChartWidget(name=self.CHART_COMPARISON, figure=self.self.get_comparison_figure())
         # TODO: add click_data
 
     def update_figure_layout(self, fig):
