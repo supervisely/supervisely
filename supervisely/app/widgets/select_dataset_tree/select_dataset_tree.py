@@ -320,6 +320,9 @@ class SelectDatasetTree(Widget):
             :param checked: The value of the checkbox.
             :type checked: bool
             """
+            if self._project_id is None:
+                return
+
             if checked:
                 self._select_dataset.select_all()
                 self._select_dataset.hide()

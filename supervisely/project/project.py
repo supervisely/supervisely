@@ -476,7 +476,8 @@ class Dataset(KeyObject):
         img_names = [os.path.basename(path) for path in img_paths]
 
         if len(img_names) == 0 and len(raw_ann_names) == 0:
-            raise RuntimeError("Dataset {!r} is empty".format(self.name))
+            logger.info("Dataset {!r} is empty".format(self.name))
+            # raise RuntimeError("Dataset {!r} is empty".format(self.name))
 
         if len(img_names) == 0:  # items_names polyfield
             img_names = [os.path.splitext(ann_name)[0] for ann_name in raw_ann_names]
@@ -1441,9 +1442,9 @@ class Dataset(KeyObject):
             ds_items_link = Dataset.get_url(project_id, dataset_id)
 
             print(ds_items_link)
-            # Output: "/projects/10093/datasets/45330/entities"
+            # Output: "/projects/10093/datasets/45330"
         """
-        res = f"/projects/{project_id}/datasets/{dataset_id}/entities"
+        res = f"/projects/{project_id}/datasets/{dataset_id}"
         if is_development():
             res = abs_url(res)
         return res
@@ -3156,6 +3157,7 @@ def _download_project(
     save_images: Optional[bool] = True,
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
+    images_ids: Optional[List[int]] = None,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
@@ -3169,6 +3171,10 @@ def _download_project(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
+    images_filter = None
+    if images_ids is not None:
+        images_filter = [{"field": "id", "operator": "in", "value": images_ids}]
+
     for parents, dataset in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
         dataset_id = dataset.id
@@ -3176,20 +3182,22 @@ def _download_project(
             continue
 
         dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
-        images = api.image.get_list(dataset_id)
+
+        images = api.image.get_list(dataset_id, filters=images_filter)
+        ds_total = len(images)
 
         ds_progress = progress_cb
         if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Downloading images from {!r}".format(dataset.name),
-                total=dataset.images_count,
+                total=ds_total,
             )
 
         anns_progress = None
         if log_progress or progress_cb is not None:
             anns_progress = tqdm_sly(
                 desc="Downloading annotations from {!r}".format(dataset.name),
-                total=dataset.images_count,
+                total=ds_total,
                 leave=False,
             )
 
@@ -3313,6 +3321,10 @@ def upload_project(
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
+            
+            if img_paths == []:
+                # Dataset is empty
+                continue
 
             meta_dir = os.path.join(dir, ds_fs.name, "meta")
             if os.path.isdir(meta_dir):
@@ -3410,6 +3422,7 @@ def download_project(
     save_image_info: Optional[bool] = False,
     save_images: bool = True,
     save_image_meta: bool = False,
+    images_ids: Optional[List[int]] = None,
 ) -> None:
     """
     Download image project to the local directory.
@@ -3488,6 +3501,7 @@ def download_project(
             save_images=save_images,
             progress_cb=progress_cb,
             save_image_meta=save_image_meta,
+            images_ids=images_ids,
         )
     else:
         _download_project_optimized(
@@ -3501,6 +3515,7 @@ def download_project(
             save_image_info=save_image_info,
             save_images=save_images,
             log_progress=log_progress,
+            images_ids=images_ids,
         )
 
 
@@ -3515,6 +3530,7 @@ def _download_project_optimized(
     save_image_info=False,
     save_images=True,
     log_progress=True,
+    images_ids:List[int]=None,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -3536,9 +3552,17 @@ def _download_project_optimized(
         if need_download is True:
             ds_progress = progress_cb
             if log_progress:
+                ds_total = dataset.images_count
+                if images_ids is not None:
+                    ds_total = len(
+                        api.image.get_list(
+                            dataset.id,
+                            filters=[{"field": "id", "operator": "in", "value": images_ids}],
+                        )
+                    )
                 ds_progress = tqdm_sly(
                     desc="Downloading images from {!r}".format(dataset.name),
-                    total=dataset.images_count,
+                    total=ds_total,
                 )
             dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
             _download_dataset(
@@ -3551,6 +3575,7 @@ def _download_project_optimized(
                 only_image_tags=only_image_tags,
                 save_image_info=save_image_info,
                 save_images=save_images,
+                images_ids=images_ids,
             )
 
     try:
@@ -3598,8 +3623,12 @@ def _download_dataset(
     only_image_tags=False,
     save_image_info=False,
     save_images=True,
+    images_ids: List[int] = None,
 ):
-    images = api.image.get_list(dataset_id)
+    image_filters = None
+    if images_ids is not None:
+        image_filters = [{"field": "id", "operator": "in", "value": images_ids}]
+    images = api.image.get_list(dataset_id, filters=image_filters)
     images_to_download = images
     if only_image_tags is True:
         if project_meta is None:

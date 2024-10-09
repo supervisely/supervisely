@@ -692,7 +692,7 @@ class VideoDataset(Dataset):
             ds_items_link = VideoDataset.get_url(project_id, dataset_id)
 
             print(ds_items_link)
-            # Output: "/projects/10093/datasets/45330/entities"
+            # Output: "/projects/10093/datasets/45330"
         """
         return super().get_url(project_id, dataset_id)
 

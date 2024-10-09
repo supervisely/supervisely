@@ -113,7 +113,8 @@ class Node(JsonSerializable):
         # TODO validations
         loc = data[LOC]
         return cls(
-            location=PointLocation(row=loc[1], col=loc[0]), disabled=data.get(DISABLED, False)
+            location=PointLocation(row=loc[1], col=loc[0]),
+            disabled=data.get(DISABLED, False),
         )
 
     def to_json(self) -> Dict:
@@ -262,7 +263,10 @@ class GraphNodes(Geometry):
             from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
-        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data[cls.items_json_field].items()}
+        nodes = {
+            node_id: Node.from_json(node_json)
+            for node_id, node_json in data[cls.items_json_field].items()
+        }
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
@@ -312,7 +316,11 @@ class GraphNodes(Geometry):
             #    }
             # }
         """
-        res = {self.items_json_field: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        res = {
+            self.items_json_field: {
+                node_id: node.to_json() for node_id, node in self._nodes.items()
+            }
+        }
         self._add_creation_info(res)
         return res
 
@@ -549,7 +557,10 @@ class GraphNodes(Geometry):
             if not node.disabled:
                 effective_color = self._get_nested_or_default(nodes_config, [node_id, COLOR], color)
                 Point.from_point_location(node.location).draw(
-                    bitmap=bitmap, color=effective_color, thickness=thickness, config=None
+                    bitmap=bitmap,
+                    color=effective_color,
+                    thickness=thickness,
+                    config=None,
                 )
 
     @property
@@ -609,7 +620,9 @@ class GraphNodes(Geometry):
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
-        nodes_not_in_template = set(self._nodes.keys()) - set(settings[self.items_json_field].keys())
+        nodes_not_in_template = set(self._nodes.keys()) - set(
+            settings[self.items_json_field].keys()
+        )
         if len(nodes_not_in_template) > 0:
             raise ValueError(
                 "Graph contains nodes not declared in the template: {!r}.".format(

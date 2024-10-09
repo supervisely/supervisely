@@ -26,6 +26,7 @@ LABEL = "label"
 COLOR = "color"
 TEMPLATE = "template"
 LOCATION = "location"
+LOC = "loc"
 
 X = "x"
 Y = "y"

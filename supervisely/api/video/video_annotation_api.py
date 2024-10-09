@@ -6,6 +6,7 @@ from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
+from supervisely._utils import batched
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
@@ -182,3 +183,67 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             self.append(video_id, ann)
             if progress_cb is not None:
                 progress_cb(1)
+
+    def copy_batch(
+        self,
+        src_video_ids: List[int],
+        dst_video_ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Copy annotations from one images IDs to another in API.
+
+        :param src_video_ids: Images IDs in Supervisely.
+        :type src_video_ids: List[int]
+        :param dst_video_ids: Unique IDs of images in API.
+        :type dst_video_ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :raises: :class:`RuntimeError`, if len(src_video_ids) != len(dst_video_ids)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from tqdm import tqdm
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            src_ids = [121236918, 121236919]
+            dst_ids = [547837053, 547837054]
+            p = tqdm(desc="Annotations copy: ", total=len(src_ids))
+
+            copy_anns = api.annotation.copy_batch(src_ids, dst_ids, progress_cb=p)
+            # Output:
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:24:31.286Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations copy: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:24:31.288Z", "level": "info"}
+        """
+        if len(src_video_ids) != len(dst_video_ids):
+            raise RuntimeError(
+                'Can not match "src_video_ids" and "dst_video_ids" lists, '
+                "len(src_video_ids) != len(dst_video_ids)"
+            )
+        if len(src_video_ids) == 0:
+            return
+
+        src_dataset_id = self._api.video.get_info_by_id(src_video_ids[0]).dataset_id
+        dst_dataset_id = self._api.video.get_info_by_id(dst_video_ids[0]).dataset_id
+        dst_dataset_info = self._api.dataset.get_info_by_id(dst_dataset_id)
+        dst_project_meta = ProjectMeta.from_json(
+            self._api.project.get_meta(dst_dataset_info.project_id)
+        )
+        for src_ids_batch, dst_ids_batch in batched(list(zip(src_video_ids, dst_video_ids))):
+            ann_jsons = self.download_bulk(src_dataset_id, src_ids_batch)
+            for dst_id, ann_json in zip(dst_ids_batch, ann_jsons):
+                try:
+                    ann = VideoAnnotation.from_json(ann_json, dst_project_meta)
+                except Exception as e:
+                    raise RuntimeError("Failed to validate Annotation") from e
+                self.append(dst_id, ann)
+                if progress_cb is not None:
+                    progress_cb(1)

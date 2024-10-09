@@ -950,6 +950,91 @@ class VideoApi(RemoveableBulkModuleApi):
 
         return result
 
+    def copy_batch(
+        self,
+        dst_dataset_id: int,
+        ids: List[int],
+        change_name_if_conflict: Optional[bool] = False,
+        with_annotations: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[VideoInfo]:
+        """
+        Copies Videos with given IDs to Dataset.
+
+        :param dst_dataset_id: Destination Dataset ID in Supervisely.
+        :type dst_dataset_id: int
+        :param ids: Videos IDs in Supervisely.
+        :type ids: List[int]
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset raises error.
+        :type change_name_if_conflict: bool, optional
+        :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
+        :type with_annotations: bool, optional
+        :param progress_cb: Function for tracking the progress of copying.
+        :type progress_cb: tqdm or callable, optional
+        :raises: :class:`TypeError` if type of ids is not list
+        :raises: :class:`ValueError` if videos ids are from the destination Dataset
+        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[VideoInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 1780
+
+            video_infos = api.video.get_list(dataset_id)
+
+            video_ids = [video_info.id for video_info in video_infos]
+
+            destination_dataset_id = 2574
+            destination_video_infos = api.video.copy_batch(destination_dataset_id, video_ids, with_annotations=True)
+        """
+        if type(ids) is not list:
+            raise TypeError(
+                "ids parameter has type {!r}. but has to be of type {!r}".format(type(ids), list)
+            )
+
+        if len(ids) == 0:
+            return
+
+        ids_info = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
+        if len(set(vid_info.dataset_id for vid_info in ids_info)) > 1:
+            raise ValueError("Videos ids have to be from the same dataset")
+
+        existing_videos = self.get_list(dst_dataset_id)
+        existing_names = {video.name for video in existing_videos}
+
+        if change_name_if_conflict:
+            new_names = [
+                generate_free_name(existing_names, info.name, with_ext=True, extend_used_names=True)
+                for info in ids_info
+            ]
+        else:
+            new_names = [info.name for info in ids_info]
+            names_intersection = existing_names.intersection(set(new_names))
+            if len(names_intersection) != 0:
+                raise ValueError(
+                    "Videos with the same names already exist in destination dataset. "
+                    'Please, use argument "change_name_if_conflict=True" to automatically resolve '
+                    "names intersection"
+                )
+
+        new_videos = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb=progress_cb)
+        new_ids = [new_video.id for new_video in new_videos]
+
+        if with_annotations:
+            src_project_id = self._api.dataset.get_info_by_id(ids_info[0].dataset_id).project_id
+            dst_project_id = self._api.dataset.get_info_by_id(dst_dataset_id).project_id
+            self._api.project.merge_metas(src_project_id, dst_project_id)
+            self._api.video.annotation.copy_batch(ids, new_ids)
+
+        return new_videos
+
     def _upload_bulk_add(
         self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
     ):
@@ -1405,13 +1490,16 @@ class VideoApi(RemoveableBulkModuleApi):
                     res = self.upload_hash(dataset_id, name, hash, stream_index)
                     video_info_results.append(res)
             except Exception as e:
-                from supervisely.io.exception_handlers import ErrorHandler, handle_exception
+                from supervisely.io.exception_handlers import (
+                    ErrorHandler,
+                    handle_exception,
+                )
 
                 msg = f"File skipped {name}: error occurred during processing: "
                 handled_exc = handle_exception(e)
                 if handled_exc is not None:
                     if isinstance(handled_exc, ErrorHandler.API.PaymentRequired):
-                        raise e # re-raise original exception (will be handled in the UI)
+                        raise e  # re-raise original exception (will be handled in the UI)
                     else:
                         msg += handled_exc.get_message_for_exception()
                 else:
@@ -2175,3 +2263,44 @@ class VideoApi(RemoveableBulkModuleApi):
                 )
             )
         return video_infos
+
+    def set_remote(self, videos: List[int], links: List[str]):
+        """
+        This method helps to change local source to remote for videos without re-uploading them as new.
+
+        :param videos: List of video ids.
+        :type videos: List[int]
+        :param links: List of remote links.
+        :type links: List[str]
+        :return: json-encoded content of a response.
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+
+                    api = sly.Api.from_env()
+
+                    videos = [123, 124, 125]
+                    links = [
+                        "s3://bucket/f1champ/ds1/lap_1.mp4",
+                        "s3://bucket/f1champ/ds1/lap_2.mp4",
+                        "s3://bucket/f1champ/ds1/lap_3.mp4",
+                    ]
+                    result = api.video.set_remote(videos, links)
+        """
+
+        if len(videos) == 0:
+            raise ValueError("List of videos can not be empty.")
+
+        if len(videos) != len(links):
+            raise ValueError("Length of 'videos' and 'links' should be equal.")
+
+        videos_list = []
+        for vid, lnk in zip(videos, links):
+            videos_list.append({ApiField.ID: vid, ApiField.LINK: lnk})
+
+        data = {ApiField.VIDEOS: videos_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
+        r = self._api.post("videos.update.links", data)
+        return r.json()

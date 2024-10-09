@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 
 import requests
 from pkg_resources import DistributionNotFound, get_distribution
@@ -13,8 +14,66 @@ def read(fname):
         return fin.read()
 
 
-response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
-version = response.json()["tag_name"]
+def get_common_commit_with_master():
+    result = subprocess.run(["git", "merge-base", "HEAD", "master"], stdout=subprocess.PIPE)
+    return result.stdout.decode("utf-8").strip()
+
+
+def get_previous_commit(sha: str):
+    result = subprocess.run(["git", "rev-parse", sha + "^"], stdout=subprocess.PIPE)
+    return result.stdout.decode("utf-8").strip()
+
+
+def get_branch():
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE)
+    return result.stdout.decode("utf-8").strip()
+
+
+def get_commit_tags(sha: str):
+    result = subprocess.run(["git", "tag", "--points-at", sha], stdout=subprocess.PIPE)
+    return [t for t in result.stdout.decode("utf-8").strip().split("\n") if t]
+
+
+def get_github_releases():
+    response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases")
+    response.raise_for_status()
+    return response.json()
+
+
+def get_release_commit(tag: str):
+    response = requests.get(
+        "https://api.github.com/repos/supervisely/supervisely/git/ref/tags/" + tag
+    )
+    response.raise_for_status()
+    return response.json()["object"]["sha"]
+
+
+def get_version():
+    version = os.getenv("RELEASE_VERSION", None)
+    if version is not None:
+        return version
+    branch_name = get_branch()
+    gh_releases = get_github_releases()
+    commit = get_common_commit_with_master()
+    release_commits = {}
+    while commit:
+        if get_commit_tags(commit):
+            for release in gh_releases:
+                release_commit = release_commits.setdefault(
+                    release["tag_name"], get_release_commit(release["tag_name"])
+                )
+                if release_commit == commit:
+                    if branch_name != "master":
+                        return release["tag_name"] + "+" + branch_name
+                    return release["tag_name"]
+        commit = get_previous_commit(commit)
+
+    response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
+    version = response.json()["tag_name"]
+    return version
+
+
+version = get_version()
 
 
 INSTALL_REQUIRES = [
@@ -38,7 +97,7 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <4.0.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.5.0",
+    "pydantic>=1.7.4, <=2.8.2",
     "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "fastapi>=0.79.0, <=0.109.0",
     "websockets>=10.3, <11.0",
@@ -61,7 +120,7 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.0",
+    "urllib3>=1.26.15, <=2.2.2",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
@@ -126,7 +185,13 @@ setup(
         include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
     ),
     package_data={
-        "": ["*.html", "*.css", "*.js", "*.md"],
+        "": [
+            "*.html",
+            "*.css",
+            "*.js",
+            "*.md",
+            "versions.json",
+        ],
         "supervisely": [
             "video/*.sh",
             "app/development/*.sh",
@@ -193,18 +258,6 @@ setup(
             "plotly>=4.11.0, <6.0.0",
             "psutil>=5.4.5, <6.0.0",
         ],
-        # legacy dependencies
-        "plugins": [
-            "jsonschema>=2.6.0,<3.0.0",
-        ],
-        "sdk-nn-plugins": [
-            "flask-restful>=0.3.7, <1.0.0",
-            "Werkzeug>=1.0.1, <3.0.0",
-        ],
-        "aug": [
-            "imgaug>=0.4.0, <1.0.0",
-            "imagecorruptions>=1.1.2, <2.0.0",
-        ],
         "tracking": [
             "yacs",
             "matplotlib>=3.3.2, <4.0.0",
@@ -216,6 +269,23 @@ setup(
             "faiss-gpu",
             "tabulate",
             "tensorboard",
+        ],
+        "model-benchmark": [
+            "pycocotools",
+            "scikit-learn",
+            "plotly==5.22.0",
+        ],
+        # legacy dependencies
+        "plugins": [
+            "jsonschema>=2.6.0,<3.0.0",
+        ],
+        "sdk-nn-plugins": [
+            "flask-restful>=0.3.7, <1.0.0",
+            "Werkzeug>=1.0.1, <3.0.0",
+        ],
+        "aug": [
+            "imgaug>=0.4.0, <1.0.0",
+            "imagecorruptions>=1.1.2, <2.0.0",
         ],
     },
 )
