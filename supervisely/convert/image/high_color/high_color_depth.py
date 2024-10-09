@@ -100,7 +100,7 @@ class HighColorDepthImageConverter(ImageConverter):
         #         "Backing up original files and converting images to nrrd...",
         #     )
 
-        # back up original files to avoid data loss and convert images to nrrd format
+        # Back up original files to avoid data loss and convert images to nrrd format
         with tqdm.tqdm(
             total=len(self.get_items()),
             desc="Backing up original files and converting images to nrrd...",
@@ -118,13 +118,12 @@ class HighColorDepthImageConverter(ImageConverter):
                     item.original_path = remote_path
 
                     image = helpers.read_high_color_images(item.path)
-                    image = helpers.convert_to_nrrd(image)
+                    # image = helpers.convert_to_nrrd(image)
 
                     nrrd_path = item.path + ".nrrd"
                     nrrd_path = helpers.save_nrrd(image, nrrd_path)
                     item.path = nrrd_path
 
-                # api.storage.upload_bulk(self.team_id, local_paths, remote_paths)  # , progress_cb)
                 api.file.upload_bulk(self.team_id, local_paths, remote_paths, pbar)
 
         if log_progress and is_development():
