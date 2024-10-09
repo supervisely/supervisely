@@ -45,6 +45,11 @@ class EvalResult:
         self._read_eval_data()
 
     @property
+    def name(self) -> str:
+        model_name = self.inference_info.get("model_name", self.eval_dir)
+        return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
+
+    @property
     def gt_project_id(self) -> int:
         return self.inference_info.get("gt_project_id")
 

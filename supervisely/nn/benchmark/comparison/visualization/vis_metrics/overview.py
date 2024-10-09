@@ -23,8 +23,11 @@ class Overview(BaseVisMetric):
         evaluation result metrics displayed
         """
         super().__init__(vis_texts, eval_results)
+
+    @property
+    def overview_widgets(self) -> List[MarkdownWidget]:
         self.formats = []
-        for eval_result in eval_results:
+        for eval_result in self.eval_results:
 
             url = eval_result.inference_info.get("checkpoint_url")
             link_text = eval_result.inference_info.get("custom_checkpoint_path")
@@ -57,10 +60,6 @@ class Overview(BaseVisMetric):
             ]
             self.formats.append(formats)
 
-        self.figure = self.get_figure()
-
-    @property
-    def overview_widgets(self) -> List[MarkdownWidget]:
         text_template: str = getattr(self.vis_texts, self.MARKDOWN_OVERVIEW)
         return [
             MarkdownWidget(
@@ -71,7 +70,7 @@ class Overview(BaseVisMetric):
 
     @property
     def chart_widget(self) -> ChartWidget:
-        return ChartWidget(name=self.CHART, figure=self.figure, click_data=None)
+        return ChartWidget(name=self.CHART, figure=self.get_figure(), click_data=None)
 
     def get_overview_info(self, eval_result: EvalResult):
         classes_cnt = len(eval_result.classes_whitelist)

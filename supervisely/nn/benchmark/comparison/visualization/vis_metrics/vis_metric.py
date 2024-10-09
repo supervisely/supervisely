@@ -5,13 +5,6 @@ from supervisely.nn.benchmark.comparison.visualization.widgets.widget import Bas
 
 
 class BaseVisMetric:
-
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
         self.vis_texts = vis_texts
         self.eval_results = eval_results
-
-    def get_widgets(self) -> List[BaseWidget]:
-        return []
-
-    def save_data(self):
-        return

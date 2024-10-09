@@ -1,0 +1,25 @@
+<sly-iw-gallery
+    ref="{{ widget_id }}"
+    iw-widget-id="{{ widget_id }}"
+    :options="{'isModalWindow': {{ is_modal }}}"
+    :actions="{
+        'init': {
+            'dataSource': '{{ init_data_source }}',
+        },
+        {{% if click_hadnled %}}
+        'chart-click': {
+            'dataSource': '{{ click_data_source }}',
+            'galleryId': '{{ click_gallery_id }}',
+            'limit': {{ click_gallery_items_limit }},
+        },
+        {{% endif %}}
+    }"
+    :command="command"
+    :data="data"
+>
+    {{% if image_left_header %}}
+    <span slot="image-left-header">
+        {{ image_left_header }}
+    </span>
+    {{% endif %}}
+</sly-iw-gallery>

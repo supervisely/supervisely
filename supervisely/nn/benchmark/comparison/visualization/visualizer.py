@@ -5,10 +5,10 @@ from pathlib import Path
 from jinja2 import Template
 
 from supervisely.api.api import Api
-from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
-    Overview,
+    AveragePrecisionByClass,
     OutcomeCounts,
+    Overview,
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     BaseWidget,
@@ -83,14 +83,24 @@ class ComparisonVisualizer:
         return self.viz.upload_results(self.api, team_id, remote_dir)
 
     def _create_widgets(self):
+        # TODO: add modal galleries
+        # Overview
         self.header = self._create_header()
         self.overviews = self._create_overviews()
         self.key_metrics = self._create_key_metrics()
         self.overview_chart = self._create_overview_chart()
-        # TODO: add 2 explore gallery widgets
+        # TODO: Explore Predictions
+        # Outcome Counts
         self.outcome_counts_md = self._create_outcome_counts_md()
         self.outcome_counts_main = self._create_outcome_counts_main()
         self.outcome_counts_comparison = self._create_outcome_counts_comparison()
+        # Precision-Recall Curve
+        # TODO: Almaz
+
+        # Average Precision by Class
+        # TODO: Niko
+        self.avg_prec_by_class_md = self._create_avg_precision_by_class_md()
+        self.avg_prec_by_class_chart = self._create_avg_precision_by_class_chart()
 
     def _create_layout(self):
         is_anchors_widgets = [
@@ -99,6 +109,17 @@ class ComparisonVisualizer:
             (1, self.overviews),
             (1, self.key_metrics),
             (0, self.overview_chart),
+            # Explore Predictions # TODO
+            # Outcome Counts
+            (1, self.outcome_counts_md),
+            (0, self.outcome_counts_main),
+            (0, self.outcome_counts_comparison),
+            # Precision-Recall Curve
+            # TODO: Almaz
+            # Average Precision by Class
+            (1, self.avg_prec_by_class_md),
+            (0, self.avg_prec_by_class_chart),
+            #
         ]
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
@@ -109,17 +130,10 @@ class ComparisonVisualizer:
         return layout
 
     def _create_header(self) -> MarkdownWidget:
-
-        def _get_model_name(eval_result: EvalResult) -> str:
-            model_name = eval_result.inference_info.get("model_name", eval_result.eval_dir)
-            return eval_result.inference_info.get("deploy_params", {}).get(
-                "checkpoint_name", model_name
-            )
-
         me = self.api.user.get_my_info().login
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
         header_main_text = " vs. ".join(
-            _get_model_name(eval_res) for eval_res in self.comparison.evaluation_results
+            eval_res.name for eval_res in self.comparison.evaluation_results
         )
         header_text = self.vis_texts.markdown_header.format(header_main_text, me, current_date)
         header = MarkdownWidget("markdown_header", "Header", text=header_text)
@@ -155,10 +169,28 @@ class ComparisonVisualizer:
 
     def _create_outcome_counts_main(self) -> ChartWidget:
         chart = OutcomeCounts(self.vis_texts, self.comparison.evaluation_results).chart_widget_main
-        chart.save_data(self.comparison.output_dir) # TODO: the same as in _create_overview_chart
+        chart.save_data(self.comparison.output_dir)  # TODO: the same as in _create_overview_chart
         return chart
 
     def _create_outcome_counts_comparison(self) -> ChartWidget:
-        chart = OutcomeCounts(self.vis_texts, self.comparison.evaluation_results).chart_widget_comparison
+        chart = OutcomeCounts(
+            self.vis_texts, self.comparison.evaluation_results
+        ).chart_widget_comparison
         chart.save_data(self.comparison.output_dir)  # TODO: the same as in _create_overview_chart
         return chart
+
+    def _create_avg_precision_by_class_md(self):
+        return AveragePrecisionByClass(
+            self.vis_texts, self.comparison.evaluation_results
+        ).markdown_widget
+
+    def _create_avg_precision_by_class_chart(self):
+        return AveragePrecisionByClass(
+            self.vis_texts, self.comparison.evaluation_results
+        ).chart_widget
+
+    def _create_modal_tables(self):
+        # TODO: table for each evaluation?
+        all_predictions_modal_gallery = GalleryWidget(
+            "all_predictions_modal_gallery", is_modal=True
+        )
