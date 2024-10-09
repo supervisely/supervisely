@@ -31,7 +31,7 @@ class BaseBenchmark:
         progress: Optional[SlyTqdm] = None,
         progress_secondary: Optional[SlyTqdm] = None,
         classes_whitelist: Optional[List[str]] = None,
-        evaluation_parameters: Optional[Union[str, dict]] = None,
+        evaluation_params: Optional[dict] = None,
     ):
         self.api = api
         self.session: SessionJSON = None
@@ -52,7 +52,7 @@ class BaseBenchmark:
         self.vis_texts = None
         self.inference_speed_text = None
         self.train_info = None
-        self.evaluation_parameters = evaluation_parameters
+        self.evaluation_params = evaluation_params
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -154,7 +154,7 @@ class BaseBenchmark:
             progress=self.pbar,
             items_count=self.dt_project_info.items_count,
             classes_whitelist=self.classes_whitelist,
-            parameters=self.evaluation_parameters,
+            evaluation_params=self.evaluation_params,
         )
         self.evaluator.evaluate()
 

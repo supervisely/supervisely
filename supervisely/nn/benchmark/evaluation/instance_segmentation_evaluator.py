@@ -4,9 +4,12 @@ from supervisely.io.json import dump_json_file
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
+from pathlib import Path
 
 
 class InstanceSegmentationEvaluator(BaseEvaluator):
+    EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/coco/evaluation_params.yaml"
+
     def evaluate(self):
         try:
             self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
@@ -19,13 +22,13 @@ class InstanceSegmentationEvaluator(BaseEvaluator):
 
         self._dump_datasets()
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
-        with self.pbar(message="Evaluation: Calculating metrics", total=10) as p:
+        with self.pbar(message="Evaluation: Calculating metrics", total=5) as p:
             self.eval_data = calculate_metrics(
                 self.cocoGt,
                 self.cocoDt,
                 iouType="segm",
                 progress_cb=p.update,
-                parameters=self.parameters,
+                evaluation_params=self.evaluation_params,
             )
         self._dump_eval_results()
 

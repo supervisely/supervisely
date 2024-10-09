@@ -1,7 +1,6 @@
 import os
 import pickle
-from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import yaml
 
@@ -11,6 +10,7 @@ from supervisely.task.progress import tqdm_sly
 
 
 class BaseEvaluator:
+    EVALUATION_PARAMS_YAML_PATH: str = None
 
     def __init__(
         self,
@@ -20,7 +20,7 @@ class BaseEvaluator:
         progress: Optional[SlyTqdm] = None,
         items_count: Optional[int] = None,  # TODO: is it needed?
         classes_whitelist: Optional[List[str]] = None,
-        parameters: Optional[Union[Dict, str]] = None,
+        evaluation_params: Optional[dict] = None,
     ):
         self.gt_project_path = gt_project_path
         self.dt_project_path = dt_project_path
@@ -29,34 +29,29 @@ class BaseEvaluator:
         self.pbar = progress or tqdm_sly
         os.makedirs(result_dir, exist_ok=True)
         self.classes_whitelist = classes_whitelist
-        self.parameters = self._read_parameters(parameters)
-
-    def _read_parameters(self, parameters: Union[str, Dict]) -> Dict:
-        if isinstance(parameters, str):
-            try:
-                if os.path.exists(parameters):
-                    with open(parameters, "r") as f:
-                        return yaml.safe_load(f)
-                else:
-                    return yaml.safe_load(parameters)
-            except Exception as e:
-                logger.warning(
-                    f"Failed to load evaluation parameters: {e}. Using default parameters."
-                )
-                return None
-        return parameters
-
-    @staticmethod
-    def default_parameters() -> str:
-        with open(f"{Path(__file__).parent}/default_parameters.yml", "r") as f:
-            return f.read()
+        if evaluation_params is None:
+            evaluation_params = self._get_default_evaluation_params()
+        self.evaluation_params = evaluation_params
 
     def evaluate(self):
         raise NotImplementedError()
 
     def get_result_dir(self) -> str:
         return self.result_dir
-
+    
+    @classmethod
+    def load_yaml_evaluation_params(cls) -> Union[str, None]:
+        if cls.EVALUATION_PARAMS_YAML_PATH is None:
+            return None
+        with open(cls.EVALUATION_PARAMS_YAML_PATH, "r") as f:
+            return f.read()
+        
+    def _get_default_evaluation_params(self) -> dict:
+        if self.EVALUATION_PARAMS_YAML_PATH is None:
+            return {}
+        else:
+            return yaml.safe_load(self.load_yaml_evaluation_params())
+        
     def _dump_pickle(self, data, file_path):
         with open(file_path, "wb") as f:
             pickle.dump(data, f)
