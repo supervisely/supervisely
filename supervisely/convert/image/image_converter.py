@@ -146,7 +146,17 @@ class ImageConverter(BaseConverter):
                 )
                 item_names.append(name)
                 item_paths.append(item.path)
-                item_metas.append(load_json_file(item.meta) if item.meta else {})
+
+                item_meta = {}
+                # Add original file path if high_color_depth converter is used
+                if self.__str__() == "high_color_depth":
+                    item_meta["original_file_path"] = os.path.join(
+                        self.team_files_back_up_dir, item.name[:-5]  # remove .nrrd
+                    )
+                if item.meta:
+                    item_meta.update(load_json_file(item.meta))
+                item_metas.append(item_meta)
+
                 if ann is not None:
                     anns.append(ann)
 
@@ -195,7 +205,9 @@ class ImageConverter(BaseConverter):
         def _is_meta_dir(dirpath: str) -> bool:
             if os.path.basename(dirpath).lower() == "meta":
                 jsons = list_files(
-                    dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True
+                    dirpath,
+                    valid_extensions=[".json"],
+                    ignore_valid_extensions_case=True,
                 )
                 return len(jsons) > 0
             return False

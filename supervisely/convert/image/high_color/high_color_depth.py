@@ -4,6 +4,7 @@ from typing import Dict, Generator, Union
 
 import cv2
 import numpy as np
+import tqdm
 
 from supervisely import ProjectMeta, generate_free_name, is_development, logger
 from supervisely._utils import batched
@@ -92,37 +93,41 @@ class HighColorDepthImageConverter(ImageConverter):
         """Upload converted data to Supervisely"""
         backup_dir = os.path.join(RECOMMENDED_IMPORT_BACKUP_PATH, str(task_id()))
 
-        progress, progress_cb = None, None
-        if log_progress:
-            progress, progress_cb = self.get_progress(
-                len(self.get_items()),
-                "Backing up original files and converting images to nrrd...",
-            )
+        # progress, progress_cb = None, None
+        # if log_progress:
+        #     progress, progress_cb = self.get_progress(
+        #         len(self.get_items()),
+        #         "Backing up original files and converting images to nrrd...",
+        #     )
 
         # back up original files to avoid data loss and convert images to nrrd format
-        for batch_items in batched(self.get_items(), batch_size=batch_size):
+        with tqdm.tqdm(
+            total=len(self.get_items()),
+            desc="Backing up original files and converting images to nrrd...",
+        ) as pbar:
+            for batch_items in batched(self.get_items(), batch_size=batch_size):
 
-            local_paths, remote_paths = [], []
+                local_paths, remote_paths = [], []
 
-            for item in batch_items:
-                local_paths.append(item.path)
+                for item in batch_items:
+                    local_paths.append(item.path)
 
-                remote_path = os.path.join(backup_dir, item.name)
-                remote_paths.append(remote_path)
+                    remote_path = os.path.join(backup_dir, item.name)
+                    remote_paths.append(remote_path)
 
-                item.original_path = remote_path
+                    item.original_path = remote_path
 
-                image = helpers.read_high_color_images(item.path)
-                image = helpers.convert_to_nrrd(image)
+                    image = helpers.read_high_color_images(item.path)
+                    image = helpers.convert_to_nrrd(image)
 
-                nrrd_path = item.path + ".nrrd"
-                nrrd_path = helpers.save_nrrd(image, nrrd_path)
-                item.path = nrrd_path
+                    nrrd_path = item.path + ".nrrd"
+                    nrrd_path = helpers.save_nrrd(image, nrrd_path)
+                    item.path = nrrd_path
 
-            api.storage.upload_bulk(self.team_id, local_paths, remote_paths)  # , progress_cb)
-            # api.file.upload
+                # api.storage.upload_bulk(self.team_id, local_paths, remote_paths)  # , progress_cb)
+                api.file.upload_bulk(self.team_id, local_paths, remote_paths, pbar)
 
         if log_progress and is_development():
-            progress.close()
+            pbar.close()
 
         super().upload_dataset(api, dataset_id, batch_size, log_progress, self.get_items())
