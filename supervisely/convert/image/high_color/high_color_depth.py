@@ -130,7 +130,8 @@ class HighColorDepthImageConverter(ImageConverter):
                         item_meta.update(item.meta)
                     item.set_meta_data(item_meta)
 
-                api.file.upload_bulk(self.team_id, local_paths, remote_paths, pbar)
+                api.file.upload_bulk(self.team_id, local_paths, remote_paths)
+                pbar.update(len(batch_items))
 
         if log_progress and is_development():
             pbar.close()
