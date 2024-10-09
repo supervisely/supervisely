@@ -66,6 +66,7 @@ class Overview(MetricVis):
                     self._loader.vis_texts.definitions.confidence_score,
                 ],
             ),
+            table_key_metrics=Widget.Table(),
             chart=Widget.Chart(),
         )
 
@@ -159,3 +160,41 @@ class Overview(MetricVis):
             images_str += f". Evaluated on the whole project ({val_imgs_cnt} images)"
 
         return classes_str, images_str, train_session
+
+    def get_table(self, widget: Widget.Table) -> dict:
+        res = {}
+
+        columns = ["metrics", "values"]
+        res["content"] = []
+        for metric, value in self._loader.mp.metric_table().items():
+            row = [metric, round(value, 2)]
+            dct = {
+                "row": row,
+                "id": metric,
+                "items": row,
+            }
+            res["content"].append(dct)
+
+        columns_options = [
+            {"customCell": True, "disableSort": True},
+            {"disableSort": True, "maxValue": 1},
+        ]
+
+        res["columns"] = columns
+        res["columnsOptions"] = columns_options
+
+        widget.main_column = columns[0]
+        widget.show_header_controls = False
+        return res
+
+        # columns = list(self._loader.mp.metric_table().keys())
+        # row = [round(v, 2) for v in self._loader.mp.metric_table().values()]
+        # res["content"] = [{"row": row, "items": row}]
+        # columns_options = [{"disableSort": True, "maxValue": 1} for _ in columns]
+
+        # res["columns"] = columns
+        # res["columnsOptions"] = columns_options
+
+        # widget.main_column = columns[0]
+        # widget.show_header_controls = False
+        # return res

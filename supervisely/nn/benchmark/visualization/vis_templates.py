@@ -208,10 +208,16 @@ template_table_str = """
                     slot-scope="{ row, column, cellValue }"
                     >
                     <div
-                        v-if="column === '{{ mainColumn }}'"
+                        v-if="column === ' ' && '{{ mainColumn }}' === 'Batch size'"
                         class="fflex"
                     >
                         <b>Batch size {{ '{{ cellValue }}' }}</b>
+                    </div>
+                    <div
+                        v-if="column === '{{ mainColumn }}'"
+                        class="fflex"
+                    >
+                        <b>{{ '{{ cellValue }}' }}</b>
                     </div>
                     </span>
                 </sly-iw-table>
