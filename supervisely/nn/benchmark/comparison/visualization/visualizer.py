@@ -9,6 +9,7 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
     OutcomeCounts,
     Overview,
+    PrCurve,
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     BaseWidget,
@@ -89,13 +90,19 @@ class ComparisonVisualizer:
         self.overviews = self._create_overviews()
         self.key_metrics = self._create_key_metrics()
         self.overview_chart = self._create_overview_chart()
+
         # TODO: Explore Predictions
+
         # Outcome Counts
         self.outcome_counts_md = self._create_outcome_counts_md()
         self.outcome_counts_main = self._create_outcome_counts_main()
         self.outcome_counts_comparison = self._create_outcome_counts_comparison()
+
         # Precision-Recall Curve
-        # TODO: Almaz
+        self.pr_curve_md = self._create_pr_curve_md()
+        self.pr_curve_collapsed_widgets = self._create_pr_curve_collapsed_widgets()
+        self.pr_curve_notification = self._create_pr_curve_notification()
+        self.pr_curve_chart = self._create_pr_curve_chart()
 
         # Average Precision by Class
         # TODO: Niko
@@ -116,6 +123,10 @@ class ComparisonVisualizer:
             (0, self.outcome_counts_comparison),
             # Precision-Recall Curve
             # TODO: Almaz
+            (1, self.pr_curve_md),
+            (0, self.pr_curve_collapsed_widgets),
+            (0, self.pr_curve_notification),
+            (0, self.pr_curve_chart),
             # Average Precision by Class
             (1, self.avg_prec_by_class_md),
             (0, self.avg_prec_by_class_chart),
@@ -194,3 +205,15 @@ class ComparisonVisualizer:
         all_predictions_modal_gallery = GalleryWidget(
             "all_predictions_modal_gallery", is_modal=True
         )
+
+    def _create_pr_curve_md(self):
+        return PrCurve(self.vis_texts, self.comparison.evaluation_results).markdown_widget
+
+    def _create_pr_curve_collapsed_widgets(self):
+        return PrCurve(self.vis_texts, self.comparison.evaluation_results).collapsed_widget
+
+    def _create_pr_curve_notification(self):
+        return PrCurve(self.vis_texts, self.comparison.evaluation_results).notification_widget
+
+    def _create_pr_curve_chart(self):
+        return PrCurve(self.vis_texts, self.comparison.evaluation_results).chart_widget

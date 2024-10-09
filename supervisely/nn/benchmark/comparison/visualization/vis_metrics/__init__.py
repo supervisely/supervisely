@@ -7,3 +7,6 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics.outcome_count
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.overview import (
     Overview,
 )
+from supervisely.nn.benchmark.comparison.visualization.vis_metrics.pr_curve import (
+    PrCurve,
+)
