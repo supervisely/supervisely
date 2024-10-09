@@ -128,7 +128,7 @@ class HighColorDepthImageConverter(ImageConverter):
                     item_meta["original_file_path"] = os.path.join(backup_dir, orig_item_name)
                     if item.meta:
                         item_meta.update(load_json_file(item.meta))
-                    item.set_meta(item_meta)
+                    item.set_meta_data(item_meta)
 
                 api.file.upload_bulk(self.team_id, local_paths, remote_paths, pbar)
 
