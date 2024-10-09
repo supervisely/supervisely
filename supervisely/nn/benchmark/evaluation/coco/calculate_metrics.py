@@ -32,7 +32,7 @@ def calculate_metrics(
     cocoDt,
     iouType: Literal["bbox", "segm"],
     progress_cb: Optional[Callable] = None,
-    parameters: Optional[dict] = None,
+    evaluation_params: Optional[dict] = None,
 ):
     """
     Calculate COCO metrics.
@@ -49,42 +49,39 @@ def calculate_metrics(
     :rtype: dict
     """
 
-    progress_cb(1) if progress_cb is not None else None
     cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
-    # set_cocoeval_params(cocoEval, parameters) # Decided to always use default parameters
-    progress_cb(1) if progress_cb is not None else None
     cocoEval.evaluate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval.accumulate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval.summarize()
-    progress_cb(1) if progress_cb is not None else None
 
     # For classification metrics
     cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType=iouType)
-    # set_cocoeval_params(cocoEval_cls, parameters) # Decided to always use default parameters
-    progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.params.useCats = 0
     cocoEval_cls.evaluate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.accumulate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.summarize()
-    progress_cb(1) if progress_cb is not None else None
 
     iou_t = 0
-    if "iou_threshold" in parameters:
-        if parameters["iou_threshold"] in cocoEval.params.iouThrs:
-            iou_t = np.where(cocoEval.params.iouThrs == parameters["iou_threshold"])[0][0]
-        # TODO: update matches for nondefault iou threshold
-        pass
+    is_custom_iou_threshold = evaluation_params and evaluation_params.get("iou_threshold") != 0.5
+    if is_custom_iou_threshold:
+        iou_t = np.where(cocoEval.params.iouThrs == evaluation_params["iou_threshold"])[0][0]
 
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
     matches = get_matches(eval_img_dict, eval_img_dict_cls, cocoEval_cls, iou_t=iou_t)
 
-    params = {"iouThrs": cocoEval.params.iouThrs, "recThrs": cocoEval.params.recThrs}
+    params = {
+        "iouThrs": cocoEval.params.iouThrs,
+        "recThrs": cocoEval.params.recThrs,
+        "evaluation_params": evaluation_params or {},
+    }
     coco_metrics = {"mAP": cocoEval.stats[0], "precision": cocoEval.eval["precision"]}
+    coco_metrics["AP50"] = cocoEval.stats[1]
+    coco_metrics["AP75"] = cocoEval.stats[2]
     eval_data = {
         "matches": matches,
         "coco_metrics": coco_metrics,
