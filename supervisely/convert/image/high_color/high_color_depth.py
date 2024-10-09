@@ -118,15 +118,14 @@ class HighColorDepthImageConverter(ImageConverter):
                     item.original_path = remote_path
                     image = helpers.read_high_color_images(item.path)
 
+                    orig_item_name = item.name
                     nrrd_path = item.path + ".nrrd"
                     nrrd_path = helpers.save_nrrd(image, nrrd_path)
                     item.path = nrrd_path
 
                     item_meta = {}
                     # Add original file path to image meta
-                    item_meta["original_file_path"] = os.path.join(
-                        RECOMMENDED_IMPORT_BACKUP_PATH, task_id, item.name[:-5]  # remove .nrrd
-                    )
+                    item_meta["original_file_path"] = os.path.join(backup_dir, orig_item_name)
                     if item.meta:
                         item_meta.update(load_json_file(item.meta))
                     item.set_meta(item_meta)
