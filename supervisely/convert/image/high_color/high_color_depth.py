@@ -22,7 +22,6 @@ from supervisely.team_files import RECOMMENDED_IMPORT_BACKUP_PATH
 class HighColorDepthImageConverter(ImageConverter):
     # allowed_exts = [".png", ".tiff", ".tif", ".bmp", ".exr", ".hdr"]
     allowed_exts = [".exr", ".hdr"]
-    team_files_back_up_dir = "/system/imports"
 
     class Item(ImageConverter.Item):
 
