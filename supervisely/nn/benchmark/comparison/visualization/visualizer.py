@@ -6,8 +6,9 @@ from jinja2 import Template
 
 from supervisely.api.api import Api
 from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
-from supervisely.nn.benchmark.comparison.visualization.vis_metrics.overview import (
+from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     Overview,
+    OutcomeCounts,
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     BaseWidget,
@@ -86,6 +87,10 @@ class ComparisonVisualizer:
         self.overviews = self._create_overviews()
         self.key_metrics = self._create_key_metrics()
         self.overview_chart = self._create_overview_chart()
+        # TODO: add 2 explore gallery widgets
+        self.outcome_counts_md = self._create_outcome_counts_md()
+        self.outcome_counts_main = self._create_outcome_counts_main()
+        self.outcome_counts_comparison = self._create_outcome_counts_comparison()
 
     def _create_layout(self):
         is_anchors_widgets = [
@@ -138,4 +143,22 @@ class ComparisonVisualizer:
         chart.save_data(
             self.comparison.output_dir
         )  # TODO: maybe save_data should be called once in the end and save all data recursively
+        return chart
+
+    def _create_outcome_counts_md(self) -> MarkdownWidget:
+        outcome_counts_text = self.vis_texts.markdown_outcome_counts.format(
+            self.vis_texts.definitions.true_positives,
+            self.vis_texts.definitions.false_positives,
+            self.vis_texts.definitions.false_negatives,
+        )
+        return MarkdownWidget("markdown_outcome_counts", "Outcome Counts", text=outcome_counts_text)
+
+    def _create_outcome_counts_main(self) -> ChartWidget:
+        chart = OutcomeCounts(self.vis_texts, self.comparison.evaluation_results).chart_widget_main
+        chart.save_data(self.comparison.output_dir) # TODO: the same as in _create_overview_chart
+        return chart
+
+    def _create_outcome_counts_comparison(self) -> ChartWidget:
+        chart = OutcomeCounts(self.vis_texts, self.comparison.evaluation_results).chart_widget_comparison
+        chart.save_data(self.comparison.output_dir)  # TODO: the same as in _create_overview_chart
         return chart
