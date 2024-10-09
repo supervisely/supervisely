@@ -19,6 +19,7 @@ from supervisely import (
 from supervisely.api.api import ApiContext
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
+from supervisely.io.env import task_id as get_task_id
 from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
@@ -116,6 +117,7 @@ class ImageConverter(BaseConverter):
         entities: List[Item] = None,
     ) -> None:
         """Upload converted data to Supervisely"""
+        task_id = str(get_task_id())
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
 
@@ -151,7 +153,7 @@ class ImageConverter(BaseConverter):
                 # Add original file path if high_color_depth converter is used
                 if self.__str__() == "high_color_depth":
                     item_meta["original_file_path"] = os.path.join(
-                        self.team_files_back_up_dir, item.name[:-5]  # remove .nrrd
+                        self.team_files_back_up_dir, task_id, item.name[:-5]  # remove .nrrd
                     )
                 if item.meta:
                     item_meta.update(load_json_file(item.meta))
