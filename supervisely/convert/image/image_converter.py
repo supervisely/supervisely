@@ -148,7 +148,14 @@ class ImageConverter(BaseConverter):
                 )
                 item_names.append(name)
                 item_paths.append(item.path)
-                item_metas.append(load_json_file(item.meta) if item.meta else {})
+
+                if isinstance(item.meta, str):  # path to file
+                    item_metas.append(load_json_file(item.meta))
+                elif isinstance(item.meta, dict):
+                    item_metas.append(item.meta)
+                else:
+                    item_metas.append({})
+
                 if ann is not None:
                     anns.append(ann)
 
