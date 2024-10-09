@@ -19,7 +19,6 @@ from supervisely import (
 from supervisely.api.api import ApiContext
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.env import task_id as get_task_id
 from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
@@ -117,7 +116,6 @@ class ImageConverter(BaseConverter):
         entities: List[Item] = None,
     ) -> None:
         """Upload converted data to Supervisely"""
-        task_id = str(get_task_id())
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
 

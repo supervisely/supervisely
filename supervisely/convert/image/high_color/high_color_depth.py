@@ -13,7 +13,8 @@ from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.high_color import high_color_helper as helpers
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.env import task_id, team_id
+from supervisely.io.env import task_id as get_task_id
+from supervisely.io.env import team_id as get_team_id
 from supervisely.io.fs import list_files_recursively
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
@@ -91,8 +92,8 @@ class HighColorDepthImageConverter(ImageConverter):
         log_progress=True,
     ) -> None:
         """Upload converted data to Supervisely"""
-        curr_team_id = team_id()
-        backup_dir = os.path.join(RECOMMENDED_IMPORT_BACKUP_PATH, str(task_id()))
+        team_id = get_team_id()
+        backup_dir = os.path.join(RECOMMENDED_IMPORT_BACKUP_PATH, str(get_task_id()))
 
         # progress, progress_cb = None, None
         # if log_progress:
@@ -131,7 +132,7 @@ class HighColorDepthImageConverter(ImageConverter):
                         item_meta.update(item.meta)
                     item.set_meta_data(item_meta)
 
-                api.file.upload_bulk(curr_team_id, local_paths, remote_paths)
+                api.file.upload_bulk(team_id, local_paths, remote_paths)
                 pbar.update(len(batch_items))
 
         if log_progress and is_development():
