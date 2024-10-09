@@ -181,16 +181,18 @@ class MetricProvider:
 
     def AP_per_class(self):
         s = self.coco_precision[:, :, :, 0, 2]
-        ap = np.mean(s[s > -1], axis=(0, 1))
+        s[s == -1] = np.nan
+        ap = np.nanmean(s, axis=(0, 1))
         return ap
 
     def AP_custom_per_class(self):
         s = self.coco_precision[self.iou_threshold_idx, :, :, 0, 2]
-        ap = np.mean(s[s > -1], axis=0)
+        s[s == -1] = np.nan
+        ap = np.nanmean(s, axis=0)
         return ap
     
     def AP_custom(self):
-        return np.mean(self.AP_custom_per_class())
+        return np.nanmean(self.AP_custom_per_class())
     
     def base_metrics(self):
         base = self._base_metrics

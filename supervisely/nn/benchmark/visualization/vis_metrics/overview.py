@@ -15,12 +15,13 @@ class Overview(MetricVis):
     def __init__(self, loader: Visualizer) -> None:
         super().__init__(loader)
         self._is_overview = True
-        info = loader.inference_info
+        info = loader.inference_info or {}
         url = info.get("checkpoint_url")
         link_text = info.get("custom_checkpoint_path")
         if link_text is None:
             link_text = url
-        link_text = link_text.replace("_", "\_")
+        if link_text is not None:
+            link_text = link_text.replace("_", "\_")
 
         # Note about validation dataset
         classes_str, note_about_val_dataset, train_session = self.get_overview_info()
@@ -117,7 +118,7 @@ class Overview(MetricVis):
         return fig
 
     def get_overview_info(self):
-        classes_cnt = len(self._loader._benchmark.classes_whitelist)
+        classes_cnt = len(self._loader._benchmark.classes_whitelist or [])
         classes_str = "classes" if classes_cnt > 1 else "class"
         classes_str = f"{classes_cnt} {classes_str}"
 
