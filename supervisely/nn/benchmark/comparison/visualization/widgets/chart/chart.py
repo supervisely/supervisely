@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Dict
 
 from jinja2 import Template
 
@@ -57,5 +58,5 @@ class ChartWidget(BaseWidget):
             "chartContent": json.loads(self.figure.to_json()),
         }
 
-    def save_state(self, basepath: str) -> None:
-        return
+    def get_state(self) -> Dict:
+        return {}

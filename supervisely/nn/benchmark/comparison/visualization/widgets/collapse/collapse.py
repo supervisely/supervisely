@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
 
@@ -12,8 +12,8 @@ class CollapseWidget(BaseWidget):
         for widget in self.widgets:
             widget.save_data(basepath)
 
-    def save_state(self, basepath: str) -> None:
-        return
+    def get_state(self) -> Dict:
+        return {}
 
     def to_html(self) -> str:
         items = "\n".join(

@@ -1,3 +1,5 @@
+from typing import Dict
+
 from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
 
 
@@ -15,8 +17,8 @@ class NotificationWidget(BaseWidget):
     def save_data(self, basepath: str) -> None:
         return
 
-    def save_state(self, basepath: str) -> None:
-        return
+    def get_state(self) -> Dict:
+        return {}
 
     def to_html(self) -> str:
         return f"""

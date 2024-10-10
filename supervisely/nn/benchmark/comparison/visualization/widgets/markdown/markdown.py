@@ -1,4 +1,5 @@
 import json
+from typing import Dict
 
 from supervisely.io.fs import ensure_base_path
 from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
@@ -23,8 +24,8 @@ class MarkdownWidget(BaseWidget):
         with open(basepath + self.data_source, "w") as f:
             json.dump(self.text, f)
 
-    def save_state(self, basepath: str) -> None:
-        return
+    def get_state(self) -> Dict:
+        return {}
 
     def to_html(self) -> str:
         is_overview = self.title == "Overview"

@@ -15,7 +15,7 @@ class BaseWidget:
     def save_data(self, basepath: str) -> None:
         raise NotImplementedError
 
-    def save_state(self, basepath: str) -> None:
+    def get_state(self, basepath: str) -> None:
         raise NotImplementedError
 
     def to_html(self) -> str:

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
 
@@ -19,6 +19,8 @@ class ContainerWidget(BaseWidget):
         for widget in self.widgets:
             widget.save_data(basepath)
 
-    def save_state(self, basepath: str) -> None:
+    def get_state(self) -> Dict:
+        state = {}
         for widget in self.widgets:
-            widget.save_state(basepath)
+            state.update(widget.get_state())
+        return state

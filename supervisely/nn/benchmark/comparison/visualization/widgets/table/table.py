@@ -42,8 +42,8 @@ class TableWidget(BaseWidget):
             with open(basepath + self.click_data_source, "w") as f:
                 json.dump(self.click_data, f)
 
-    def save_state(self, basepath: str) -> None:
-        return
+    def get_state(self) -> Dict:
+        return {}
 
     def get_render_data(self) -> Dict:
         return {

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from jinja2 import Template
 
@@ -56,10 +56,12 @@ class SidebarWidget(BaseWidget):
     def to_html(self) -> str:
         return Template(self.html_str).render()
 
-    def save_data(self, path: str) -> None:
+    def save_data(self, basepath: str) -> None:
         for widget in self.widgets:
-            widget.save_data(path)
+            widget.save_data(basepath)
 
-    def save_state(self, path: str) -> None:
+    def get_state(self) -> Dict:
+        state = {}
         for widget in self.widgets:
-            widget.save_state(path)
+            state.update(widget.get_state())
+        return state
