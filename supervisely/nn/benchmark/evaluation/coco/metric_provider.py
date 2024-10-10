@@ -89,6 +89,8 @@ class MetricProvider:
         self.coco_precision = coco_metrics["precision"]
         self.iouThrs = params["iouThrs"]
         self.recThrs = params["recThrs"]
+        self.iou_threshold = params["evaluation_params"]["iou_threshold"]
+        self.iou_threshold_idx = np.searchsorted(self.iouThrs, self.iou_threshold)
 
     def calculate(self):
         self.m_full = _MetricProvider(
@@ -134,7 +136,64 @@ class MetricProvider:
         self._scores_tp_and_fp = self.m_full.scores_tp_and_fp()
         self._maximum_calibration_error = self.m_full.maximum_calibration_error()
         self._expected_calibration_error = self.m_full.expected_calibration_error()
+    
+    def json_metrics(self):
+        base = self.base_metrics()
+        iou_name = int(self.iou_threshold * 100)
+        ap_by_class = self.AP_per_class().tolist()
+        ap_by_class = dict(zip(self.cat_names, ap_by_class))
+        ap_custom_by_class = self.AP_custom_per_class().tolist()
+        ap_custom_by_class = dict(zip(self.cat_names, ap_custom_by_class))
+        return {
+            "mAP": base["mAP"],
+            "AP50": self.coco_metrics["AP50"],
+            "AP75": self.coco_metrics["AP75"],
+            f"AP{iou_name}": self.AP_custom(),
+            "f1": base["f1"],
+            "precision": base["precision"],
+            "recall": base["recall"],
+            "iou": base["iou"],
+            "classification_accuracy": base["classification_accuracy"],
+            "calibration_score": base["calibration_score"],
+            "f1_optimal_conf": self.f1_optimal_conf,
+            "expected_calibration_error": self.expected_calibration_error(),
+            "maximum_calibration_error": self.maximum_calibration_error(),
+            "AP_by_class": ap_by_class,
+            f"AP{iou_name}_by_class": ap_custom_by_class,
+        }
+    
+    def metric_table(self):
+        table = self.json_metrics()
+        iou_name = int(self.iou_threshold * 100)
+        return {
+            "mAP": table["mAP"],
+            "AP50": table["AP50"],
+            "AP75": table["AP75"],
+            f"AP{iou_name}": table[f"AP{iou_name}"],
+            "f1": table["f1"],
+            "precision": table["precision"],
+            "recall": table["recall"],
+            "Avg. IoU": table["iou"],
+            "Classification Acc.": table["classification_accuracy"],
+            "Calibration Score": table["calibration_score"],
+            "optimal confidence threshold": table["f1_optimal_conf"],
+        }
 
+    def AP_per_class(self):
+        s = self.coco_precision[:, :, :, 0, 2]
+        s[s == -1] = np.nan
+        ap = np.nanmean(s, axis=(0, 1))
+        return ap
+
+    def AP_custom_per_class(self):
+        s = self.coco_precision[self.iou_threshold_idx, :, :, 0, 2]
+        s[s == -1] = np.nan
+        ap = np.nanmean(s, axis=0)
+        return ap
+    
+    def AP_custom(self):
+        return np.nanmean(self.AP_custom_per_class())
+    
     def base_metrics(self):
         base = self._base_metrics
         calibration_score = 1 - self._expected_calibration_error
