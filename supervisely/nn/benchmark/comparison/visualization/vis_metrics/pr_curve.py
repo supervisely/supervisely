@@ -8,6 +8,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
     CollapseWidget,
     MarkdownWidget,
     NotificationWidget,
+    TableWidget,
 )
 
 
@@ -51,6 +52,43 @@ class PrCurve(BaseVisMetric):
     def notification_widget(self) -> NotificationWidget:
         desc = "".join(f"{ev.name}: {ev.mp.base_metrics()['mAP']:.2f}" for ev in self.eval_results)
         return NotificationWidget(title="mAP", desc=desc)
+
+    @property
+    def table_widget(self) -> TableWidget:
+        res = {}
+
+        columns = [" ", "mAP (0.5:0.95)", "mAP (0.75)"]
+        res["content"] = []
+        for eval_result in self.eval_results:
+            value_range = round(eval_result.mp.base_metrics()["mAP"], 2)
+            value_75 = round(eval_result.mp.base_metrics()["AP75"], 2)
+            model_name = eval_result.name
+            row = [model_name, value_range, value_75]
+            dct = {
+                "row": row,
+                "id": model_name,
+                "items": row,
+            }
+            res["content"].append(dct)
+        res["content"] = []
+        for metric, value in self._loader.mp.metric_table().items():
+            row = [metric, round(value, 2)]
+            dct = {
+                "row": row,
+                "id": metric,
+                "items": row,
+            }
+            res["content"].append(dct)
+
+        columns_options = [
+            {"customCell": True, "disableSort": True},
+            {"disableSort": True},
+        ]
+
+        res["columns"] = columns
+        res["columnsOptions"] = columns_options
+
+        return TableWidget(data_source=res, show_header_controls=False, main_column=" ")
 
     def get_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error

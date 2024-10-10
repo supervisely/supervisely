@@ -101,6 +101,7 @@ class ComparisonVisualizer:
         # Precision-Recall Curve
         self.pr_curve_md = self._create_pr_curve_md()
         self.pr_curve_collapsed_widgets = self._create_pr_curve_collapsed_widgets()
+        self.pr_curve_table = self._create_pr_curve_table()
         self.pr_curve_notification = self._create_pr_curve_notification()
         self.pr_curve_chart = self._create_pr_curve_chart()
 
@@ -125,6 +126,7 @@ class ComparisonVisualizer:
             # TODO: Almaz
             (1, self.pr_curve_md),
             (0, self.pr_curve_collapsed_widgets),
+            (0, self.pr_curve_table),
             (0, self.pr_curve_notification),
             (0, self.pr_curve_chart),
             # Average Precision by Class
@@ -211,6 +213,9 @@ class ComparisonVisualizer:
 
     def _create_pr_curve_collapsed_widgets(self):
         return PrCurve(self.vis_texts, self.comparison.evaluation_results).collapsed_widget
+
+    def _create_pr_curve_table(self):
+        return PrCurve(self.vis_texts, self.comparison.evaluation_results).table_widget
 
     def _create_pr_curve_notification(self):
         return PrCurve(self.vis_texts, self.comparison.evaluation_results).notification_widget
