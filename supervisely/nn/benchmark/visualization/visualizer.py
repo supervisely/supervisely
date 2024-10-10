@@ -189,6 +189,8 @@ class Visualizer:
 
         initialized = [mv(self) for mv in ALL_METRICS]
         if self.speedtest is not None:
+            if len(self.speedtest["speedtest"]) < 2:
+                SPEEDTEST_METRICS.pop()
             initialized = initialized + [mv(self) for mv in SPEEDTEST_METRICS]
         initialized = [mv for mv in initialized if self.cv_task.value in mv.cv_tasks]
         with self.pbar(
