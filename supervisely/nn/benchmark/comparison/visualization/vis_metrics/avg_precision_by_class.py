@@ -21,7 +21,7 @@ class AveragePrecisionByClass(BaseVisMetric):
             ap_per_class = eval_result.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
             ap_per_class[ap_per_class == -1] = 0  # -1 is a placeholder for no GT
 
-            trace_name = EvalResult.name
+            trace_name = eval_result.name
             fig.add_trace(
                 go.Scatterpolar(
                     r=ap_per_class,
