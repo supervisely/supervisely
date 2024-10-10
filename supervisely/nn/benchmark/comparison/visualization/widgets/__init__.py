@@ -5,4 +5,5 @@ from .markdown.markdown import MarkdownWidget
 from .sidebar.sidebar import SidebarWidget
 from .collapse.collapse import CollapseWidget
 from .notification.notification import NotificationWidget
+from .table.table import TableWidget
 from .widget import BaseWidget
