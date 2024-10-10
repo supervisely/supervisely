@@ -1,29 +1,33 @@
+from typing import List
+
 from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
 
 
 class CollapseWidget(BaseWidget):
-    def __init__(self, widgets: list) -> None:
+    def __init__(self, widgets: List[BaseWidget]) -> None:
         super().__init__()
         self.widgets = widgets
 
     def save_data(self, basepath: str) -> None:
-        return
+        for widget in self.widgets:
+            widget.save_data(basepath)
 
     def save_state(self, basepath: str) -> None:
         return
 
     def to_html(self) -> str:
+        items = "\n".join(
+            [
+                f"""
+                    <el-collapse-item title="{widget.title}">
+                        {widget.to_html()}
+                    </el-collapse-item>
+                """
+                for widget in self.widgets
+            ]
+        )
         return f"""
                     <el-collapse class='mb-6'>
-                        {
-                            "".join([
-                                f"""
-                                    <el-collapse-item title="{subwidget.title}">
-                                        {{ {subwidget.name}_html }}
-                                    </el-collapse-item>
-                                """
-                                for subwidget in self.widgets
-                            ])
-                        }
+                        {items}
                     </el-collapse>
-        """
+                """
