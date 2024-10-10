@@ -4,7 +4,7 @@ import itertools
 from collections import defaultdict
 from copy import deepcopy
 import numpy as np
-import pkg_resources
+import importlib.resources as resources
 
 from supervisely.metric.common import safe_ratio
 from supervisely.project.project_meta import ProjectMeta
@@ -156,7 +156,7 @@ class InferenceModeBase:
         }
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
-        validation_schema_path = pkg_resources.resource_filename(
+        validation_schema_path = resources.path(
             __name__, 'inference_modes_schemas/{}.json'.format(self.mode_name()))
         MultiTypeValidator(validation_schema_path).val(INFERENCE_MODE_CONFIG, config)
         self._config = deepcopy(config)
