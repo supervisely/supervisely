@@ -40,9 +40,11 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def table(self) -> TableWidget:
-        columns = [" ", "confidence threshold", "ECE", "MCE"]
+        columns = ["name", "confidence threshold", "ECE", "MCE"]
         columns_options = [
-            {"customCell": True, "disableSort": True},
+            {"disableSort": True},
+            {"disableSort": True},
+            {"disableSort": True},
             {"disableSort": True},
         ]
         content = []
