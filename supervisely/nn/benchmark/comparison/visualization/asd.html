@@ -1,0 +1,537 @@
+<div class="model-benchmark-body"></div>
+
+<sly-style>
+    .model-benchmark-body .sly-markdown-widget .markdown-body { padding: 0; font-family: inherit; }
+    .model-benchmark-body .sly-markdown-widget .markdown-body h2 { font-size: 18px; font-weight: 600; margin-bottom:
+    0px; border: 0; }
+    .model-benchmark-body .sly-markdown-widget .markdown-body h3 { color: #949bab; font-size: 18px; margin-bottom: 7px;
+    }
+    .model-benchmark-body .sly-markdown-widget .markdown-body p { margin-bottom: 12px; }
+    .model-benchmark-body .el-collapse { margin: 15px 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); border-radius: 7px;
+    width: fit-content; }
+    .model-benchmark-body .el-collapse .el-collapse-item__header { background: transparent; padding-right: 15px; }
+    .model-benchmark-body .model-info-block { display: flex; gap: 10px; align-items: center; margin: 0 0 15px; color:
+    #778592; font-size: 13px; }
+    .model-benchmark-body .model-info-block > div { display: flex; gap: 4px; align-items: center; }
+    /* , .model-benchmark-body .sly-markdown-widget .markdown-body>*:last-child */
+    .model-benchmark-body .sly-iw-notification-box .notification-box.notification-box-info { width: fit-content; }
+    .model-benchmark-body h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+    .model-benchmark-body .overview-info-block { background: #f4f7fb; width: fit-content; border-radius: 12px; padding:
+    16px; margin-bottom: 20px; }
+    .model-benchmark-body .overview-info-block ul { list-style: none; padding: 0; }
+    .model-benchmark-body .overview-info-block ul p { padding: 0; }
+    .model-benchmark-body .sly-sidebar-widget .main-wrapper .sidebar-panel { top: 10px; }
+
+</sly-style>
+
+
+<sly-iw-sidebar
+    :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false, disableResize: true, sidebarWidth: 300 }">
+    <div slot="sidebar">
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='container_widget_mepOg'"
+                :style="{fontWeight: data.scrollIntoView === 'container_widget_mepOg' ? 'bold' : 'normal'}">
+                None
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_Pwsuu'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_Pwsuu' ? 'bold' : 'normal'}">
+                Key Metrics
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_wlemL'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_wlemL' ? 'bold' : 'normal'}">
+                Outcome Counts
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_BjbFk'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_BjbFk' ? 'bold' : 'normal'}">
+                Precision-Recall Curve
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_fkh2Z'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_fkh2Z' ? 'bold' : 'normal'}">
+                Overview
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_SW3HL'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_SW3HL' ? 'bold' : 'normal'}">
+                Localization Accuracy (IoU)
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_IUMFd'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_IUMFd' ? 'bold' : 'normal'}">
+                IoU Distribution
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_cU2VO'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_cU2VO' ? 'bold' : 'normal'}">
+                Calibration Score
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_wbw6p'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_wbw6p' ? 'bold' : 'normal'}">
+                Reliability Diagram
+            </el-button>
+        </div>
+
+        <div>
+            <el-button type="text" @click="data.scrollIntoView='markdown_widget_aGcf6'"
+                :style="{fontWeight: data.scrollIntoView === 'markdown_widget_aGcf6' ? 'bold' : 'normal'}">
+                Confidence Score Profile
+            </el-button>
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_tvjVQ" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_tvjVQ" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_header_markdown_widget_tvjVQ.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div>
+                <div>
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_s116k" class="markdown-no-border overview-info-block"
+                            iw-widget-id="markdown_widget_s116k" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_overview_markdown_widget_s116k.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+                </div>
+                <div>
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_FVz0s" class="markdown-no-border overview-info-block"
+                            iw-widget-id="markdown_widget_FVz0s" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_overview_markdown_widget_FVz0s.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_Pwsuu" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_Pwsuu" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_key_metrics_markdown_widget_Pwsuu.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_wlemL" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_wlemL" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_outcome_counts_markdown_widget_wlemL.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_BjbFk" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_BjbFk" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_pr_curve_markdown_widget_BjbFk.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <el-collapse class='mb-6'>
+
+                <el-collapse-item title="About Trade-offs between precision and recall">
+
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_P9wO3" class="markdown-no-border "
+                            iw-widget-id="markdown_widget_P9wO3" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_trade_offs_markdown_widget_P9wO3.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+
+                </el-collapse-item>
+
+
+                <el-collapse-item title="How the PR curve is built?">
+
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_Ce3tP" class="markdown-no-border "
+                            iw-widget-id="markdown_widget_Ce3tP" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_what_is_pr_curve_markdown_widget_Ce3tP.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+
+                </el-collapse-item>
+
+            </el-collapse>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 20px; margin-bottom: 30px;">
+                <sly-iw-table iw-widget-id="table_widget_3klBL" :options="{
+                        isRowClickable: 'False' === 'True',
+                        fixColumns: 0, 
+                        showHeaderControls: 'False' === 'True',
+                    }" :actions="{
+                    'init': {
+                        'dataSource': '/data/None_table_widget_3klBL.json',
+                    },
+                        
+                    }" :command="command" :data="data">
+                    <span slot="custom-cell-content" slot-scope="{ row, column, cellValue }">
+                        <div v-if="column === ' '" class="fflex">
+                            <b>Batch size </b>
+                        </div>
+                    </span>
+                </sly-iw-table>
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 20px; margin-bottom: 20px;">
+                <sly-iw-notification iw-widget-id="notification_widget_qDaPG">
+                    <span slot="title">
+                        mAP
+                    </span>
+
+                    <span slot="description">
+                        yolov8n-det (coco).pt: 0.68yolov8n-det (coco).pt: 0.68
+                    </span>
+                </sly-iw-notification>
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_fkh2Z" class="markdown-no-border overview-info-block"
+                    iw-widget-id="markdown_widget_fkh2Z" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_class_ap_markdown_widget_fkh2Z.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_SW3HL" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_SW3HL" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_localization_accuracy_markdown_widget_SW3HL.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_IUMFd" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_IUMFd" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_iou_distribution_markdown_widget_IUMFd.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 20px; margin-bottom: 20px;">
+                <sly-iw-notification iw-widget-id="notification_widget_RIZ8w">
+                    <span slot="title">
+                        Avg. IoU
+                    </span>
+
+                    <span slot="description">
+                        yolov8n-det (coco).pt: 0.93
+                        yolov8n-det (coco).pt: 0.93
+                    </span>
+                </sly-iw-notification>
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <el-collapse class='mb-6'>
+
+                <el-collapse-item title="How IoU is calculated?">
+
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_lExIT" class="markdown-no-border "
+                            iw-widget-id="markdown_widget_lExIT" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_iou_calculation_markdown_widget_lExIT.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+
+                </el-collapse-item>
+
+            </el-collapse>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_cU2VO" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_cU2VO" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_calibration_score_markdown_widget_cU2VO.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_9o7lk" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_9o7lk" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_calibration_score_2_markdown_widget_9o7lk.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <el-collapse class='mb-6'>
+
+                <el-collapse-item title="What is calibration?">
+
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_juuwN" class="markdown-no-border "
+                            iw-widget-id="markdown_widget_juuwN" :actions="{
+                    'init': {
+                    'dataSource': '/data/what_is_calibration_markdown_widget_juuwN.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+
+                </el-collapse-item>
+
+            </el-collapse>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 20px; margin-bottom: 30px;">
+                <sly-iw-table iw-widget-id="table_widget_4TgQm" :options="{
+                        isRowClickable: 'False' === 'True',
+                        fixColumns: 0, 
+                        showHeaderControls: 'False' === 'True',
+                    }" :actions="{
+                    'init': {
+                        'dataSource': '/data/None_table_widget_4TgQm.json',
+                    },
+                        
+                    }" :command="command" :data="data">
+                    <span slot="custom-cell-content" slot-scope="{ row, column, cellValue }">
+                        <div v-if="column === 'None'" class="fflex">
+                            <b>Batch size </b>
+                        </div>
+                    </span>
+                </sly-iw-table>
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_wbw6p" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_wbw6p" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_reliability_diagram_markdown_widget_wbw6p.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <el-collapse class='mb-6'>
+
+                <el-collapse-item title="How to interpret the Calibration curve">
+
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_W9JNR" class="markdown-no-border "
+                            iw-widget-id="markdown_widget_W9JNR" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_calibration_curve_interpretation_markdown_widget_W9JNR.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+
+                </el-collapse-item>
+
+            </el-collapse>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_aGcf6" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_aGcf6" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_confidence_score_1_markdown_widget_aGcf6.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            /home/niko/Supervisely/SDK/supervisely/supervisely/nn/benchmark/comparison/visualization/widgets/chart/template.html
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <div style="margin-top: 10px;">
+                <sly-iw-markdown id="markdown_widget_p1mYi" class="markdown-no-border "
+                    iw-widget-id="markdown_widget_p1mYi" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_confidence_score_2_markdown_widget_p1mYi.md',
+                    },
+                }" :command="command" :data="data" />
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+
+            <el-collapse class='mb-6'>
+
+                <el-collapse-item title="How to plot Confidence Profile?">
+
+                    <div style="margin-top: 10px;">
+                        <sly-iw-markdown id="markdown_widget_NnwcN" class="markdown-no-border "
+                            iw-widget-id="markdown_widget_NnwcN" :actions="{
+                    'init': {
+                    'dataSource': '/data/markdown_plot_confidence_profile_markdown_widget_NnwcN.md',
+                    },
+                }" :command="command" :data="data" />
+                    </div>
+
+                </el-collapse-item>
+
+            </el-collapse>
+
+        </div>
+
+    </div>
+</sly-iw-sidebar>
+
+
+
+<sly-iw-gallery ref='modal_general' iw-widget-id='modal_general' :options="{'isModalWindow': true}" :actions="{
+            'init': {
+            'dataSource': '/data/modal_general.json',
+            },
+        }" :command="command" :data="data" />
+<sly-iw-gallery ref='modal_general_diff' iw-widget-id='modal_general_diff' :options="{'isModalWindow': true}" :actions="{
+            'init': {
+            'dataSource': '/data/modal_general_diff.json',
+            },
+            'chart-click': {
+                'dataSource': '/data/gallery_explorer_grid_diff_data.json',
+                'galleryId': 'modal_general',
+                    'limit': 3,
+            },
+        }" :command="command" :data="data">
+    <span slot="image-left-header">
+        <i class="zmdi zmdi-collection-image"></i> Compare with GT
+    </span>
+</sly-iw-gallery>
+</div>
