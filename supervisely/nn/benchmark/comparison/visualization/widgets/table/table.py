@@ -10,6 +10,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets.widget import Bas
 class TableWidget(BaseWidget):
     def __init__(
         self,
+        name: str,
         data: Dict = None,
         click_data: Any = None,
         click_gellery_id: str = "",
@@ -17,7 +18,7 @@ class TableWidget(BaseWidget):
         show_header_controls: bool = True,
         main_column: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(name=name)
         self.data = data
         self.fix_columns = fix_columns
         self.show_header_controls = show_header_controls

@@ -63,7 +63,7 @@ class CalibrationScore(BaseVisMetric):
             "columnsOptions": columns_options,
             "content": content,
         }
-        return TableWidget(data, show_header_controls=False)
+        return TableWidget(name="table_reliability", data, show_header_controls=False)
 
     @property
     def reliability_diagram_md(self) -> MarkdownWidget:
@@ -75,7 +75,7 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def reliability_chart(self) -> ChartWidget:
-        return ChartWidget(name="reliability_chart", figure=self.get_rel_figure(), click_data=None)
+        return ChartWidget(name="chart_reliability", figure=self.get_rel_figure(), click_data=None)
 
     @property
     def collapse_ece(self) -> CollapseWidget:
@@ -99,7 +99,7 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def confidence_chart(self) -> ChartWidget:
-        return ChartWidget(name="confidence_chart", figure=self.get_conf_figure(), click_data=None)
+        return ChartWidget(name="chart_confidence", figure=self.get_conf_figure(), click_data=None)
 
     @property
     def confidence_score_md_2(self) -> MarkdownWidget:

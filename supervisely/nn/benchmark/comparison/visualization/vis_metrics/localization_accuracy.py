@@ -42,11 +42,11 @@ class LocalizationAccuracyIoU(BaseVisMetric):
         description = "\n".join(
             f"{ev.name}: {ev.mp.base_metrics()['iou']:.2f}" for ev in self.eval_results
         )
-        return NotificationWidget(name="avg_iou", title="Avg. IoU", desc=description)
+        return NotificationWidget(name="notification_avg_iou", title="Avg. IoU", desc=description)
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget(name="chart", figure=self.get_figure(), click_data=None)
+        return ChartWidget(name="chart_iou_distribution", figure=self.get_figure(), click_data=None)
 
     @property
     def collapse_tip(self) -> CollapseWidget:

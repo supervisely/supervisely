@@ -13,7 +13,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
 class Overview(BaseVisMetric):
 
     MARKDOWN_OVERVIEW = "markdown_overview"
-    CHART = "chart"
+    CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
         """

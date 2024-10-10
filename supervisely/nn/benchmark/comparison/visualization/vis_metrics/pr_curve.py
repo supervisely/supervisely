@@ -28,7 +28,7 @@ class PrCurve(BaseVisMetric):
 
     @property
     def chart_widget(self) -> ChartWidget:
-        return ChartWidget(name="chart", figure=self.get_figure(), click_data=None)
+        return ChartWidget(name="chart_pr_curve", figure=self.get_figure(), click_data=None)
 
     @property
     def collapsed_widget(self) -> CollapseWidget:
@@ -53,7 +53,7 @@ class PrCurve(BaseVisMetric):
     @property
     def notification_widget(self) -> NotificationWidget:
         desc = "".join(f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}" for ev in self.eval_results)
-        return NotificationWidget(name="map", title="mAP", desc=desc)
+        return NotificationWidget(name="notification_map", title="mAP", desc=desc)
 
     @property
     def table_widget(self) -> TableWidget:
@@ -81,7 +81,9 @@ class PrCurve(BaseVisMetric):
         res["columns"] = columns
         res["columnsOptions"] = columns_options
 
-        return TableWidget(data=res, show_header_controls=False, main_column=" ")
+        return TableWidget(
+            name="table_pr_curve", data=res, show_header_controls=False, main_column=" "
+        )
 
     def get_figure(self):  # -> Optional[go.Figure]:
         import plotly.express as px  # pylint: disable=import-error
