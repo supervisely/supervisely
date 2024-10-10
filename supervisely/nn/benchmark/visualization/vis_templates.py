@@ -177,7 +177,7 @@ template_gallery_str = """<sly-iw-gallery
 
 
 template_table_str = """
-            <div style="margin-top: 20px; margin-bottom: 30px;">
+            <div style="margin-top: 20px; margin-bottom: 30px; {{ width }}">
                 <sly-iw-table
                     iw-widget-id="{{ widget_id }}"
                     {% if clickable %}

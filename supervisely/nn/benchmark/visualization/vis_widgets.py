@@ -103,6 +103,7 @@ class Widget:
             self.main_column = ""
             self.fixed_columns = 0
             self.show_header_controls = True
+            self.width = None
             super().__init__()
 
     class Gallery(BaseWidget):

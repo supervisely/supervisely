@@ -177,7 +177,7 @@ class Overview(MetricVis):
 
         columns_options = [
             {"customCell": True, "disableSort": True},
-            {"disableSort": True, "maxValue": 1},
+            {"disableSort": True},
         ]
 
         res["columns"] = columns
@@ -185,6 +185,7 @@ class Overview(MetricVis):
 
         widget.main_column = columns[0]
         widget.show_header_controls = False
+        widget.width = "50%"
         return res
 
         # columns = list(self._loader.mp.metric_table().keys())
