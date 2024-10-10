@@ -120,7 +120,8 @@ class Overview(BaseVisMetric):
 
         # Overall Metrics
         fig = go.Figure()
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results):
+            name = f"[{i}] {eval_result.name}"
             base_metrics = eval_result.mp.base_metrics()
             r = list(base_metrics.values())
             theta = [eval_result.mp.metric_names[k] for k in base_metrics.keys()]
@@ -129,8 +130,8 @@ class Overview(BaseVisMetric):
                     r=r + [r[0]],
                     theta=theta + [theta[0]],
                     fill="toself",
-                    name="Overall Metrics",
-                    hovertemplate="%{theta}: %{r:.2f}<extra></extra>",
+                    name=name,
+                    hovertemplate=name + "<br>%{theta}: %{r:.2f}<extra></extra>",
                 )
             )
         fig.update_layout(
