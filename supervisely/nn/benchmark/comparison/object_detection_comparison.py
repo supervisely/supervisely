@@ -56,5 +56,5 @@ class ObjectDetectionComparison(BaseComparison):
 # bm_comparison = ObjectDetectionComparison(api, [eval_dir_1, eval_dir_2])  # ? , local=True)
 # bm_comparison.run_compare()
 # bm_comparison.visualize()
-# bm_comparison.upload_results(team_id, res_remote_dir)
+# remote_dir = bm_comparison.upload_results(team_id, res_remote_dir)
 # bm_comparison.get_report_link(team_id, res_remote_dir)

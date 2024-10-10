@@ -1,10 +1,12 @@
 import datetime
 import importlib
+import os
 from pathlib import Path
 
 from jinja2 import Template
 
 from supervisely.api.api import Api
+from supervisely.io.fs import dir_empty
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
@@ -53,9 +55,28 @@ class BaseVisualizer:
         return self.save()
 
     def upload_results(self, api: Api, team_id: int, remote_dir: str) -> str:
-        return api.file.upload_directory(
-            team_id, self.output_dir, remote_dir, change_name_if_conflict=False
+        if dir_empty(self.output_dir):
+            raise RuntimeError(
+                "No visualizations to upload. You should call visualize method first."
+            )
+        remote_dir = api.file.upload_directory(
+            team_id, self.output_dir, remote_dir, change_name_if_conflict=True
         )
+        self.save_report_link(api, team_id, remote_dir)
+        return remote_dir
+
+    def save_report_link(self, api: Api, team_id: int, remote_dir: str):
+        report_link = self.get_report_link(api, team_id, remote_dir)
+        with open(Path(self.output_dir).joinpath("report_link.txt"), "w") as f:
+            f.write(report_link)
+        return report_link
+
+    def get_report_link(self, api: Api, team_id: int, remote_dir: str):
+        template_path = remote_dir.rstrip("/") + "/" + "template.vue"
+        vue_template_info = api.file.get_info_by_path(team_id, template_path)
+
+        report_link = "/model-benchmark?id=" + str(vue_template_info.id)
+        return report_link
 
 
 class ComparisonVisualizer:
