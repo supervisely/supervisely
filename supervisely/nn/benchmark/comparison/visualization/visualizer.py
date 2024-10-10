@@ -46,7 +46,7 @@ class BaseVisualizer:
 
     def save(self) -> None:
         self.layout.save_data(self.output_dir)
-        state = self.layout.get_state(self.output_dir)
+        state = self.layout.get_state()
         with open(Path(self.output_dir).joinpath("state.json"), "w") as f:
             json.dump(state, f)
         template = self.render()

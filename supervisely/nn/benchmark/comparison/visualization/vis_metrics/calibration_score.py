@@ -63,7 +63,7 @@ class CalibrationScore(BaseVisMetric):
             "columnsOptions": columns_options,
             "content": content,
         }
-        return TableWidget(name="table_reliability", data, show_header_controls=False)
+        return TableWidget("table_reliability", data, show_header_controls=False)
 
     @property
     def reliability_diagram_md(self) -> MarkdownWidget:
