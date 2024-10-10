@@ -100,6 +100,66 @@ class VideoConverter(BaseConverter):
     def validate_ann_file(ann_path, meta=None):
         return False
 
+    def _detect_format(self):
+        found_formats = []
+        all_converters = self.__class__.__subclasses__()
+
+        progress, progress_cb = self.get_progress(1, "Detecting annotation format")
+        for converter in all_converters:
+            if converter.__name__ == "BaseConverter":
+                continue
+            converter = converter(
+                self._input_data,
+                self._labeling_interface,
+                self._upload_as_links,
+                self._remote_files_map,
+            )
+
+            if not converter.validate_labeling_interface():
+                continue
+
+            if self.upload_as_links and not converter.supports_links:
+                continue
+
+            if converter.validate_format():
+                logger.info(f"Detected format: {str(converter)}")
+                found_formats.append(converter)
+                if len(found_formats) > 1:
+                    raise RuntimeError(
+                        f"Multiple formats detected: {[str(f) for f in found_formats]}. "
+                        "Mixed formats are not supported yet."
+                    )
+
+        progress_cb(1)
+
+        if len(found_formats) == 0:
+            self._items, only_modality_items, unsupported_exts = (
+                self._collect_items_if_format_not_detected()
+            )
+
+            if self.items_count == 0:
+                if unsupported_exts:
+                    raise RuntimeError(
+                        f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
+                        f"Unsupported file extensions detected: {unsupported_exts}. "
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
+                    )
+                raise RuntimeError(
+                    "Please refer to the app overview and documentation for annotation formats, "
+                    "and ensure that your data contains valid information"
+                )
+            # if not only_modality_items:
+            #     logger.warn(
+            #         "Annotations not found. "  # pylint: disable=no-member
+            #         f"Uploading {self.modality} without annotations. "
+            #         "If you need assistance to upload data with annotations, please contact our support team."
+            #     )
+            return self
+
+    def detect_format(self):
+        self._converter = self._detect_format()
+        return self._converter
+
     def upload_dataset(
         self,
         api: Api,
@@ -283,5 +343,5 @@ class VideoConverter(BaseConverter):
                     )
                 )
             upload_progress[0].set_current_value(monitor)
-        
+
         return lambda m: _print_progress(m, upload_progress)
