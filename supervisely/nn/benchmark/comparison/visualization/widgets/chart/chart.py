@@ -41,12 +41,13 @@ class ChartWidget(BaseWidget):
             "radio_group": self.radio_group,
             "switch_key": self.switch_key,
             "init_data_source": self.data_source,
+            "click_handled": self.click_data is not None,
             "chart_click_data_source": self.click_data_source,
         }
 
     def to_html(self) -> str:
         template_str = Path(__file__).parent / "template.html"
-        return Template(template_str.read_text()).render()
+        return Template(template_str.read_text()).render(self._get_template_data())
 
     def get_init_data(self):
         return {
