@@ -22,7 +22,9 @@ class PrCurve(BaseVisMetric):
         text: str = getattr(self.vis_texts, self.MARKDOWN_PR_CURVE).format(
             self.vis_texts.definitions.f1_score
         )
-        MarkdownWidget(name=self.MARKDOWN_PR_CURVE, title="Precision-Recall Curve", text=text)
+        return MarkdownWidget(
+            name=self.MARKDOWN_PR_CURVE, title="Precision-Recall Curve", text=text
+        )
 
     @property
     def chart_widget(self) -> ChartWidget:
@@ -50,7 +52,7 @@ class PrCurve(BaseVisMetric):
 
     @property
     def notification_widget(self) -> NotificationWidget:
-        desc = "".join(f"{ev.name}: {ev.mp.base_metrics()['mAP']:.2f}" for ev in self.eval_results)
+        desc = "".join(f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}" for ev in self.eval_results)
         return NotificationWidget(name="map", title="mAP", desc=desc)
 
     @property
@@ -60,22 +62,13 @@ class PrCurve(BaseVisMetric):
         columns = [" ", "mAP (0.5:0.95)", "mAP (0.75)"]
         res["content"] = []
         for eval_result in self.eval_results:
-            value_range = round(eval_result.mp.base_metrics()["mAP"], 2)
-            value_75 = round(eval_result.mp.base_metrics()["AP75"], 2)
+            value_range = round(eval_result.mp.json_metrics()["mAP"], 2)
+            value_75 = round(eval_result.mp.json_metrics()["AP75"], 2)
             model_name = eval_result.name
             row = [model_name, value_range, value_75]
             dct = {
                 "row": row,
                 "id": model_name,
-                "items": row,
-            }
-            res["content"].append(dct)
-        res["content"] = []
-        for metric, value in self._loader.mp.metric_table().items():
-            row = [metric, round(value, 2)]
-            dct = {
-                "row": row,
-                "id": metric,
                 "items": row,
             }
             res["content"].append(dct)

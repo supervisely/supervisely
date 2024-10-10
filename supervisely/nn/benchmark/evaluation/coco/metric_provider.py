@@ -86,7 +86,7 @@ class MetricProvider:
         # eval_data
         self.matches = matches
         self.coco_mAP = coco_metrics["mAP"]
-        self.coco_precision = coco_metrics["precision"]
+        self.coco_precision = coco_metrics["precision"]  # TODO: provide default params
         self.iouThrs = params["iouThrs"]
         self.recThrs = params["recThrs"]
         self.iou_threshold = params["evaluation_params"]["iou_threshold"]
@@ -136,7 +136,7 @@ class MetricProvider:
         self._scores_tp_and_fp = self.m_full.scores_tp_and_fp()
         self._maximum_calibration_error = self.m_full.maximum_calibration_error()
         self._expected_calibration_error = self.m_full.expected_calibration_error()
-    
+
     def json_metrics(self):
         base = self.base_metrics()
         iou_name = int(self.iou_threshold * 100)
@@ -161,7 +161,7 @@ class MetricProvider:
             "AP_by_class": ap_by_class,
             f"AP{iou_name}_by_class": ap_custom_by_class,
         }
-    
+
     def metric_table(self):
         table = self.json_metrics()
         iou_name = int(self.iou_threshold * 100)
@@ -190,10 +190,10 @@ class MetricProvider:
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=0)
         return ap
-    
+
     def AP_custom(self):
         return np.nanmean(self.AP_custom_per_class())
-    
+
     def base_metrics(self):
         base = self._base_metrics
         calibration_score = 1 - self._expected_calibration_error
