@@ -28,12 +28,7 @@ class SidebarWidget(BaseWidget):
             [widget for widget in self.widgets if widget.id in self.anchors],
             key=lambda x: self.anchors.index(x.id),
         )
-        sidebar_options = """
-        <sly-iw-sidebar
-            :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false, disableResize: true, sidebarWidth: 300 }"
-        >
-            <div slot="sidebar">
-        """
+
         sidebar_content = "".join(self.sidebar_template_str(widget) for widget in anchored_widgets)
         main_content = "".join(
             f"""
@@ -43,9 +38,20 @@ class SidebarWidget(BaseWidget):
             """
             for widget in self.widgets
         )
-        closing_tags = "\n    </div>\n</sly-iw-sidebar>"
+        template = f"""
+            <sly-iw-sidebar
+                :options="{{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false, disableResize: true, sidebarWidth: 300 }}"
+            >
+                <div slot="sidebar">
+                    {sidebar_content}
+                </div>
+                <div style="padding-right: 35px;">
+                    {main_content}
+                </div>
+            </sly-iw-sidebar>
+        """
 
-        return sidebar_options + sidebar_content + main_content + closing_tags
+        return template
 
     def to_html(self) -> str:
         return Template(self.html_str).render()
