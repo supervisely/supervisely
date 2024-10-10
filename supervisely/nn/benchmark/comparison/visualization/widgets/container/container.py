@@ -13,6 +13,7 @@ class ContainerWidget(BaseWidget):
         for widget in self.widgets:
             s += "<div>" + widget.to_html() + "</div>"
         s += "</div>"
+        return s
 
     def save_data(self, basepath: str) -> None:
         for widget in self.widgets:

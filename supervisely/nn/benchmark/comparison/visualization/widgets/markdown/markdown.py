@@ -39,8 +39,8 @@ class MarkdownWidget(BaseWidget):
                     'dataSource': '{ self.data_source }',
                     }},
                 }}"
-                :command="{{ command }}"
-                :data="{{ data }}"
+                :command="command"
+                :data="data"
                 />
             </div>
         """

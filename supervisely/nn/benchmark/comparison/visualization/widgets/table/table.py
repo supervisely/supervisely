@@ -100,4 +100,4 @@ class TableWidget(BaseWidget):
                 </sly-iw-table>
             </div>
         """
-        Template(template_str).render(self.get_render_data())
+        return Template(template_str).render(self.get_render_data())

@@ -45,7 +45,7 @@ class ChartWidget(BaseWidget):
         }
 
     def to_html(self) -> str:
-        Template(f"{Path(__file__).parent}/template.html").render()
+        return Template(f"{Path(__file__).parent}/template.html").render()
 
     def get_init_data(self):
         return {

@@ -48,7 +48,7 @@ class SidebarWidget(BaseWidget):
         return sidebar_options + sidebar_content + main_content + closing_tags
 
     def to_html(self) -> str:
-        Template(self.html_str).render()
+        return Template(self.html_str).render()
 
     def save_data(self, path: str) -> None:
         for widget in self.widgets:
