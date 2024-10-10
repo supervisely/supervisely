@@ -185,17 +185,5 @@ class Overview(MetricVis):
 
         widget.main_column = columns[0]
         widget.show_header_controls = False
-        widget.width = "50%"
+        widget.width = "60%"
         return res
-
-        # columns = list(self._loader.mp.metric_table().keys())
-        # row = [round(v, 2) for v in self._loader.mp.metric_table().values()]
-        # res["content"] = [{"row": row, "items": row}]
-        # columns_options = [{"disableSort": True, "maxValue": 1} for _ in columns]
-
-        # res["columns"] = columns
-        # res["columnsOptions"] = columns_options
-
-        # widget.main_column = columns[0]
-        # widget.show_header_controls = False
-        # return res
