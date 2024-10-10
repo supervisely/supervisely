@@ -12,6 +12,7 @@ SPECIAL_RECONNECT_ERROR = "Agent should call AgentConnected or AgentPing before 
 RETRY_STATUS_CODES = {
     408,  # Request Timeout
     429,  # Too Many Requests
+    499,  # Client Closed Request (Nginx)
     500,  # Internal Server Error
     502,  # Bad Gateway
     503,  # Service Unavailable
