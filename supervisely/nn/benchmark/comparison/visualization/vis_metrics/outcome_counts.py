@@ -12,12 +12,12 @@ class OutcomeCounts(BaseVisMetric):
 
     @property
     def chart_widget_main(self) -> ChartWidget:
-        return ChartWidget(name=self.CHART_MAIN, figure=self.self.get_main_figure())
+        return ChartWidget(name=self.CHART_MAIN, figure=self.get_main_figure())
         # TODO: add click_data
 
     @property
     def chart_widget_comparison(self) -> ChartWidget:
-        return ChartWidget(name=self.CHART_COMPARISON, figure=self.self.get_comparison_figure())
+        return ChartWidget(name=self.CHART_COMPARISON, figure=self.get_comparison_figure())
         # TODO: add click_data
 
     def update_figure_layout(self, fig):

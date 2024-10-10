@@ -13,7 +13,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
 class CalibrationScore(BaseVisMetric):
     @property
     def header_md(self) -> MarkdownWidget:
-        text_template = self.vis_texts.markdown_calibration_score
+        text_template = self.vis_texts.markdown_calibration_score_1
         text = text_template.format(self.vis_texts.definitions.confidence_score)
         return MarkdownWidget(
             name="markdown_calibration_score",
@@ -131,7 +131,7 @@ class CalibrationScore(BaseVisMetric):
                     x=eval_result.dfsp_down["scores"],
                     y=eval_result.dfsp_down["f1"],
                     mode="lines",
-                    name=f"Eval Result {eval_result.id}",
+                    name=f"Eval Result: {eval_result.name}",
                     hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>",
                 )
             )
@@ -145,7 +145,7 @@ class CalibrationScore(BaseVisMetric):
                     y0=0,
                     y1=eval_result.mp.best_f1,
                     line=dict(color="gray", width=2, dash="dash"),
-                    name=f"F1-optimal threshold {eval_result.id}",
+                    name=f"F1-optimal threshold ({eval_result.name})",
                 )
                 fig.add_annotation(
                     x=eval_result.mp.f1_optimal_conf,

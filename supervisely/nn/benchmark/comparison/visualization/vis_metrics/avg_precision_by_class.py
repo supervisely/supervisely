@@ -26,9 +26,9 @@ class AveragePrecisionByClass(BaseVisMetric):
                 go.Scatterpolar(
                     r=ap_per_class,
                     theta=eval_result.mp.cat_names,
-                    name=trace_name,
+                    name=f"{trace_name}",
                     fill="toself",
-                    hovertemplate=trace_name
+                    hovertemplate=f"{trace_name}"
                     + "<br>"
                     + labels["theta"]
                     + ": %{theta}<br>"
@@ -39,10 +39,10 @@ class AveragePrecisionByClass(BaseVisMetric):
             )
 
         fig.update_layout(
-            polar=dict(
-                radialaxis=dict(range=[0, 1], title=labels["r"]),
-                angularaxis=dict(title=labels["theta"]),
-            ),
+            # polar=dict(
+            #     radialaxis=dict(range=[0, 1]),#, title=labels["r"]),
+            #     angularaxis=dict(title=labels["theta"]),
+            # ),
             width=800,
             height=800,
             margin=dict(l=80, r=80, t=0, b=0),
@@ -57,7 +57,7 @@ class AveragePrecisionByClass(BaseVisMetric):
         text: str = getattr(self.vis_texts, self.MARKDOWN_CLASS_AP).format(
             self.vis_texts.definitions.average_precision
         )
-        MarkdownWidget(name=self.MARKDOWN_CLASS_AP, title="Overview", text=text)
+        return MarkdownWidget(name=self.MARKDOWN_CLASS_AP, title="Overview", text=text)
 
     @property
     def chart_widget(self) -> ChartWidget:
