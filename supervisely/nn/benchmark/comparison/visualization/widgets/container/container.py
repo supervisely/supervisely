@@ -4,8 +4,8 @@ from supervisely.nn.benchmark.comparison.visualization.widgets.widget import Bas
 
 
 class ContainerWidget(BaseWidget):
-    def __init__(self, widgets: List[BaseWidget]):
-        super().__init__("container")
+    def __init__(self, widgets: List[BaseWidget], name: str = "container", title: str = None):
+        super().__init__(name, title)
         self.widgets = widgets
 
     def to_html(self) -> str:

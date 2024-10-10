@@ -175,7 +175,7 @@ class ComparisonVisualizer:
     def _create_layout(self):
         is_anchors_widgets = [
             # Overview
-            (1, self.header),
+            (0, self.header),
             (1, self.overviews),
             (1, self.key_metrics),
             (0, self.overview_chart),
@@ -233,7 +233,7 @@ class ComparisonVisualizer:
         return header
 
     def _create_overviews(self, vm: Overview) -> ContainerWidget:
-        return ContainerWidget(vm.overview_widgets)
+        return ContainerWidget(vm.overview_widgets, name="overview_container", title="Overview")
 
     def _create_key_metrics(self) -> MarkdownWidget:
         key_metrics_text = self.vis_texts.markdown_key_metrics.format(
