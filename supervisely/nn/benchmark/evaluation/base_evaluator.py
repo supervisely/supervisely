@@ -28,13 +28,10 @@ class BaseEvaluator:
         self.pbar = progress or tqdm_sly
         os.makedirs(result_dir, exist_ok=True)
         self.classes_whitelist = classes_whitelist
+
         if evaluation_params is None:
             evaluation_params = self._get_default_evaluation_params()
-
-        if isinstance(evaluation_params, str):
-            evaluation_params = yaml.safe_load(evaluation_params)
         self.evaluation_params = evaluation_params
-
         if self.evaluation_params:
             self.validate_evaluation_params(self.evaluation_params)
 

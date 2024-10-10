@@ -53,8 +53,6 @@ class BaseBenchmark:
         self.vis_texts = None
         self.inference_speed_text = None
         self.train_info = None
-        if isinstance(evaluation_params, str):
-            evaluation_params = yaml.safe_load(evaluation_params)
         self.evaluation_params = evaluation_params
         self._validate_evaluation_params()
 
