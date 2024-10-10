@@ -62,14 +62,16 @@ class BaseVisualizer:
         remote_dir = api.file.upload_directory(
             team_id, self.output_dir, remote_dir, change_name_if_conflict=True
         )
-        self.save_report_link(api, team_id, remote_dir)
+        src = self.save_report_link(api, team_id, remote_dir)
+        api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
         return remote_dir
 
     def save_report_link(self, api: Api, team_id: int, remote_dir: str):
         report_link = self.get_report_link(api, team_id, remote_dir)
-        with open(Path(self.output_dir).joinpath("report_link.txt"), "w") as f:
+        pth = Path(self.output_dir).joinpath("open.lnk")
+        with open(pth, "w") as f:
             f.write(report_link)
-        return report_link
+        return str(pth)
 
     def get_report_link(self, api: Api, team_id: int, remote_dir: str):
         template_path = remote_dir.rstrip("/") + "/" + "template.vue"
