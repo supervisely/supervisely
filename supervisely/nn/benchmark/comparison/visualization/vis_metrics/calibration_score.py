@@ -40,7 +40,30 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def table(self) -> TableWidget:
-        TableWidget()
+        columns = [" ", "confidence threshold", "ECE", "MCE"]
+        columns_options = [
+            {"customCell": True, "disableSort": True},
+            {"disableSort": True},
+        ]
+        content = []
+        for eval_result in self.eval_results:
+            name = eval_result.name
+            conf_threshold = eval_result.mp.m_full.get_f1_optimal_conf()[0] or 0.0
+            ece = eval_result.mp.m_full.expected_calibration_error()
+            mce = eval_result.mp.m_full.maximum_calibration_error()
+            row = [name, conf_threshold, ece, mce]
+            dct = {
+                "row": row,
+                "id": name,
+                "items": row,
+            }
+            content.append(dct)
+        data = {
+            "columns": columns,
+            "columnsOptions": columns_options,
+            "content": content,
+        }
+        return TableWidget(data, show_header_controls=False)
 
     @property
     def reliability_diagram_md(self) -> MarkdownWidget:
@@ -51,20 +74,8 @@ class CalibrationScore(BaseVisMetric):
         )
 
     @property
-    def notification_ece(self) -> NotificationWidget:
-        desc = "\n".join(
-            f"{ev.name}: {ev.mp.m_full.expected_calibration_error():.4f}"
-            for ev in self.eval_results
-        )
-        return NotificationWidget(
-            name="notification_ece",
-            title="Expected Calibration Error (ECE):",
-            desc=desc,
-        )
-
-    @property
-    def chart(self) -> ChartWidget:
-        return ChartWidget(name="chart", figure=self.get_figure(), click_data=None)
+    def reliability_chart(self) -> ChartWidget:
+        return ChartWidget(name="reliability_chart", figure=self.get_rel_figure(), click_data=None)
 
     @property
     def collapse_ece(self) -> CollapseWidget:
@@ -75,7 +86,98 @@ class CalibrationScore(BaseVisMetric):
         )
         return CollapseWidget([md])
 
-    def get_figure(self):
+    @property
+    def confidence_score_md(self) -> MarkdownWidget:
+        text = self.vis_texts.markdown_confidence_score_1.format(
+            self.vis_texts.definitions.confidence_threshold
+        )
+        return MarkdownWidget(
+            "markdown_confidence_score_1",
+            "Confidence Score Profile",
+            text,
+        )
+
+    @property
+    def confidence_chart(self) -> ChartWidget:
+        return ChartWidget(name="confidence_chart", figure=self.get_conf_figure(), click_data=None)
+
+    @property
+    def confidence_score_md_2(self) -> MarkdownWidget:
+        return MarkdownWidget(
+            name="markdown_confidence_score_2",
+            title="",
+            text=self.vis_texts.markdown_confidence_score_2,
+        )
+
+    @property
+    def collapse_conf_score(self) -> CollapseWidget:
+        md = MarkdownWidget(
+            name="markdown_plot_confidence_profile",
+            title="How to plot Confidence Profile?",
+            text=self.vis_texts.markdown_plot_confidence_profile,
+        )
+        return CollapseWidget([md])
+
+    def get_conf_figure(self):
+        import plotly.graph_objects as go  # pylint: disable=import-error
+
+        # Create an empty figure
+        fig = go.Figure()
+
+        for eval_result in self.eval_results:
+            # Add a line trace for each eval_result
+            fig.add_trace(
+                go.Scatter(
+                    x=eval_result.dfsp_down["scores"],
+                    y=eval_result.dfsp_down["f1"],
+                    mode="lines",
+                    name=f"Eval Result {eval_result.id}",
+                    hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>",
+                )
+            )
+
+            # Add a vertical line and annotation for F1-optimal threshold if available
+            if eval_result.mp.f1_optimal_conf is not None and eval_result.mp.best_f1 is not None:
+                fig.add_shape(
+                    type="line",
+                    x0=eval_result.mp.f1_optimal_conf,
+                    x1=eval_result.mp.f1_optimal_conf,
+                    y0=0,
+                    y1=eval_result.mp.best_f1,
+                    line=dict(color="gray", width=2, dash="dash"),
+                    name=f"F1-optimal threshold {eval_result.id}",
+                )
+                fig.add_annotation(
+                    x=eval_result.mp.f1_optimal_conf,
+                    y=eval_result.mp.best_f1 + 0.04,
+                    text=f"F1-optimal threshold: {eval_result.mp.f1_optimal_conf:.2f}",
+                    showarrow=False,
+                )
+
+        # Update the layout
+        fig.update_layout(
+            yaxis=dict(range=[0, 1], title="Value"),
+            xaxis=dict(range=[0, 1], tick0=0, dtick=0.1, title="Confidence Score"),
+            height=500,
+            dragmode=False,
+            modebar=dict(
+                remove=[
+                    "zoom2d",
+                    "pan2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+            showlegend=True,  # Show legend to differentiate between results
+        )
+
+        return fig
+
+    def get_rel_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()

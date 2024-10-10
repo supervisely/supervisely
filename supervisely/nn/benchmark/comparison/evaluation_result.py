@@ -2,6 +2,8 @@ import pickle
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import pandas as pd
+
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
@@ -37,6 +39,8 @@ class EvalResult:
         self.inference_info: Dict = None
         self.eval_data: Dict = None
         self.mp: MetricProvider = None
+        self.df_score_profile: pd.DataFrame = None
+        self.dfsp_down: pd.DataFrame = None
 
         self._gt_project_info = None
         self._gt_dataset_infos = None
@@ -127,3 +131,13 @@ class EvalResult:
             self.coco_dt,
         )
         self.mp.calculate()
+
+        self.df_score_profile = pd.DataFrame(
+            self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
+        )
+
+        # downsample
+        if len(self.df_score_profile) > 5000:
+            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        else:
+            self.dfsp_down = self.df_score_profile

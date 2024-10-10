@@ -1,6 +1,9 @@
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.avg_precision_by_class import (
     AveragePrecisionByClass,
 )
+from supervisely.nn.benchmark.comparison.visualization.vis_metrics.calibration_score import (
+    CalibrationScore,
+)
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.localization_accuracy import (
     LocalizationAccuracyIoU,
 )
