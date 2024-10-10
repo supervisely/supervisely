@@ -22,7 +22,7 @@ class MarkdownWidget(BaseWidget):
         ensure_base_path(basepath + self.data_source)
 
         with open(basepath + self.data_source, "w") as f:
-            json.dump(self.text, f)
+            f.write(self.text)
 
     def get_state(self) -> Dict:
         return {}
