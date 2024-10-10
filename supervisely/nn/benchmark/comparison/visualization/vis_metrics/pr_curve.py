@@ -51,7 +51,7 @@ class PrCurve(BaseVisMetric):
     @property
     def notification_widget(self) -> NotificationWidget:
         desc = "".join(f"{ev.name}: {ev.mp.base_metrics()['mAP']:.2f}" for ev in self.eval_results)
-        return NotificationWidget(title="mAP", desc=desc)
+        return NotificationWidget(name="map", title="mAP", desc=desc)
 
     @property
     def table_widget(self) -> TableWidget:

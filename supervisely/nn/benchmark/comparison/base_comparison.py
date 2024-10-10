@@ -45,7 +45,7 @@ class BaseComparison:
         img_names = None
         cat_names = None
         for eval_result in self.evaluation_results:
-            next_task_type = eval_result.inference_info.get("task_type")
+            next_task_type = eval_result.cv_task
             if not task_type is None:
                 assert task_type == next_task_type, "Task types are different in the evaluations."
             task_type = next_task_type

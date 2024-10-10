@@ -5,10 +5,11 @@ class NotificationWidget(BaseWidget):
 
     def __init__(
         self,
+        name: str,
         title: str,
         desc: str = None,
     ) -> None:
-        super().__init__(title=title)
+        super().__init__(name, title=title)
         self.desc = desc
 
     def save_data(self, basepath: str) -> None:

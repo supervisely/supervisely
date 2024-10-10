@@ -45,6 +45,10 @@ class EvalResult:
         self._read_eval_data()
 
     @property
+    def cv_task(self):
+        return self.inference_info.get("task_type")
+
+    @property
     def name(self) -> str:
         model_name = self.inference_info.get("model_name", self.eval_dir)
         return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
