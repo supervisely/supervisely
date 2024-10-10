@@ -88,7 +88,7 @@ class PrCurve(BaseVisMetric):
         res["columns"] = columns
         res["columnsOptions"] = columns_options
 
-        return TableWidget(data_source=res, show_header_controls=False, main_column=" ")
+        return TableWidget(data=res, show_header_controls=False, main_column=" ")
 
     def get_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error

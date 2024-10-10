@@ -17,8 +17,6 @@ class ChartWidget(BaseWidget):
         super().__init__(name)
         self.radio_group = "radio_group"  # TODO: fix
         self.switch_key = "switch_key"  # TODO: fix
-        self.init_data_source = f"/data/{self.name}_{self.id}.json"
-        self.chart_click_data_source = f"/data/{self.name}_{self.id}_click_data.json"
 
         self.figure = figure
         self.click_data = click_data
@@ -26,15 +24,15 @@ class ChartWidget(BaseWidget):
     def save_data(self, basepath: str) -> None:
         # init data
         basepath = basepath.rstrip("/")
-        ensure_base_path(basepath + self.init_data_source)
+        ensure_base_path(basepath + self.data_source)
 
-        with open(basepath + self.init_data_source, "w") as f:
+        with open(basepath + self.data_source, "w") as f:
             json.dump(self.get_init_data(), f)
 
         # click data
         if self.click_data is not None:
-            ensure_base_path(basepath + self.chart_click_data_source)
-            with open(basepath + self.chart_click_data_source, "w") as f:
+            ensure_base_path(basepath + self.click_data_source)
+            with open(basepath + self.click_data_source, "w") as f:
                 json.dump(self.click_data, f)
 
     def _get_template_data(self):
@@ -42,8 +40,8 @@ class ChartWidget(BaseWidget):
             "widget_id": self.id,
             "radio_group": self.radio_group,
             "switch_key": self.switch_key,
-            "init_data_source": self.init_data_source,
-            "chart_click_data_source": self.chart_click_data_source,
+            "init_data_source": self.data_source,
+            "chart_click_data_source": self.click_data_source,
         }
 
     def to_html(self) -> str:

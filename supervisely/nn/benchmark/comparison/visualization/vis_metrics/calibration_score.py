@@ -6,6 +6,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
     CollapseWidget,
     MarkdownWidget,
     NotificationWidget,
+    TableWidget,
 )
 
 
@@ -36,9 +37,10 @@ class CalibrationScore(BaseVisMetric):
             title="",
             text=self.vis_texts.markdown_calibration_score_2,
         )
-    
+
     @property
-    def table(self) -> Table
+    def table(self) -> TableWidget:
+        TableWidget()
 
     @property
     def reliability_diagram_md(self) -> MarkdownWidget:

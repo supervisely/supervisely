@@ -9,6 +9,8 @@ class BaseWidget:
         self.id = f"{self.type}_{rand_str(5)}"
         self.name = name
         self.title = title
+        self.data_source = f"/data/{self.name}_{self.id}.json"
+        self.click_data_source = f"/data/{self.name}_{self.id}_click_data.json"
 
     def save_data(self, basepath: str) -> None:
         raise NotImplementedError
