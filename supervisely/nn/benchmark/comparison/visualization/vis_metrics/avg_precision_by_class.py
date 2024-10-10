@@ -57,7 +57,9 @@ class AveragePrecisionByClass(BaseVisMetric):
         text: str = getattr(self.vis_texts, self.MARKDOWN_CLASS_AP).format(
             self.vis_texts.definitions.average_precision
         )
-        return MarkdownWidget(name=self.MARKDOWN_CLASS_AP, title="Overview", text=text)
+        return MarkdownWidget(
+            name=self.MARKDOWN_CLASS_AP, title="Average Precision by Class", text=text
+        )
 
     @property
     def chart_widget(self) -> ChartWidget:
