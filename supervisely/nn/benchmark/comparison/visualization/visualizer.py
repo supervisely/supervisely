@@ -176,43 +176,43 @@ class ComparisonVisualizer:
         is_anchors_widgets = [
             # Overview
             (1, self.header),
-            # (1, self.overviews),
-            # (1, self.key_metrics),
-            # (0, self.overview_chart),
-            # # Explore Predictions # TODO
-            # # Outcome Counts
-            # (1, self.outcome_counts_md),
-            # (0, self.outcome_counts_main),
-            # (0, self.outcome_counts_comparison),
-            # # Precision-Recall Curve
-            # (1, self.pr_curve_md),
-            # (0, self.pr_curve_collapsed_widgets),
-            # (0, self.pr_curve_table),
-            # (0, self.pr_curve_notification),
-            # (0, self.pr_curve_chart),
-            # # Average Precision by Class
-            # (1, self.avg_prec_by_class_md),
-            # (0, self.avg_prec_by_class_chart),
-            # # Precision, Recall, F1 # TODO
-            # # Classification Accuracy # TODO
-            # # Localization Accuracy (IoU)
-            # (1, self.loc_acc_header_md),
-            # (1, self.loc_acc_iou_distribution_md),
-            # (0, self.loc_acc_notification),
-            # (0, self.loc_acc_chart),
-            # (0, self.loc_acc_collapse_tip),
-            # # Calibration Score
-            # (1, self.cal_score_md),
-            # (0, self.cal_score_md_2),
-            # (0, self.cal_score_collapse_tip),
-            # (0, self.cal_score_table),
-            # (1, self.cal_score_reliability_diagram_md),
-            # (0, self.cal_score_reliability_chart),
-            # (0, self.cal_score_collapse_ece),
-            # (1, self.cal_score_confidence_score_md),
-            # (0, self.cal_score_confidence_chart),
-            # (0, self.cal_score_confidence_score_md_2),
-            # (0, self.cal_score_collapse_conf_score),
+            (1, self.overviews),
+            (1, self.key_metrics),
+            (0, self.overview_chart),
+            # Explore Predictions # TODO
+            # Outcome Counts
+            (1, self.outcome_counts_md),
+            (0, self.outcome_counts_main),
+            (0, self.outcome_counts_comparison),
+            # Precision-Recall Curve
+            (1, self.pr_curve_md),
+            (0, self.pr_curve_collapsed_widgets),
+            (0, self.pr_curve_table),
+            (0, self.pr_curve_notification),
+            (0, self.pr_curve_chart),
+            # Average Precision by Class
+            (1, self.avg_prec_by_class_md),
+            (0, self.avg_prec_by_class_chart),
+            # Precision, Recall, F1 # TODO
+            # Classification Accuracy # TODO
+            # Localization Accuracy (IoU)
+            (1, self.loc_acc_header_md),
+            (1, self.loc_acc_iou_distribution_md),
+            (0, self.loc_acc_notification),
+            (0, self.loc_acc_chart),
+            (0, self.loc_acc_collapse_tip),
+            # Calibration Score
+            (1, self.cal_score_md),
+            (0, self.cal_score_md_2),
+            (0, self.cal_score_collapse_tip),
+            (0, self.cal_score_table),
+            (1, self.cal_score_reliability_diagram_md),
+            (0, self.cal_score_reliability_chart),
+            (0, self.cal_score_collapse_ece),
+            (1, self.cal_score_confidence_score_md),
+            (0, self.cal_score_confidence_chart),
+            (0, self.cal_score_confidence_score_md_2),
+            (0, self.cal_score_collapse_conf_score),
         ]
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
