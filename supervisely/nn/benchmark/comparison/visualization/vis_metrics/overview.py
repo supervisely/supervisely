@@ -56,7 +56,7 @@ class Overview(BaseVisMetric):
                 classes_str,
                 note_about_val_dataset,
                 train_session,
-                "",  # self._loader.docs_link,  # TODO: self._loader.docs_link is not defined
+                self.vis_texts.docs_url,
             ]
             self.formats.append(formats)
 

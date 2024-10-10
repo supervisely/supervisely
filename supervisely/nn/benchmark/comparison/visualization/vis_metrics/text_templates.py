@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+docs_url = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
+
 definitions = SimpleNamespace(
     true_positives="True Positives (TP): These are correctly detected objects. For a prediction to be counted as a true positive, the predicted bounding box must align with a ground truth bounding box with an Intersection over Union (IoU) of 0.5 or more, and the object must be correctly classified",
     false_positives="False Positives (FP): These are incorrect detections made by the model. They occur when the model predicts a bounding box that either does not overlap sufficiently with any ground truth box (IoU less than 0.5) or incorrectly classifies the object within the bounding box. For example, the model detects a car in the image, but there is no car in the ground truth.",
