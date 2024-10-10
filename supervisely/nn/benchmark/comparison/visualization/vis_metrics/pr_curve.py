@@ -90,51 +90,39 @@ class PrCurve(BaseVisMetric):
 
         return TableWidget(data=res, show_header_controls=False, main_column=" ")
 
-    def get_figure(self):
+    def get_figure(self):  # -> Optional[go.Figure]:
+        import plotly.express as px  # pylint: disable=import-error
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        annotations_y = 0.92
+
+        rec_thr = self.eval_results[0].mp.recThrs
         for eval_result in self.eval_results:
-            # Precision-Recall curve
             pr_curve = eval_result.mp.pr_curve().copy()
-            pr_curve[pr_curve == -1] = np.nan  # -1 is a placeholder for no GT
+            pr_curve[pr_curve == -1] = np.nan
             pr_curve = np.nanmean(pr_curve, axis=-1)
-            fig.add_trace(
-                go.Scatter(
-                    x=eval_result.mp.recThrs,
-                    y=pr_curve,
-                    mode="lines",
-                    name=eval_result.name,
-                    line=dict(color="#1f77b4"),
-                    fill="tozeroy",
-                    hovertemplate="Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>",
-                    showlegend=True,
-                )
-            )
-            # fig.data[0].showlegend = True
-            fig.update_traces(fill="tozeroy", line=dict(color="#1f77b4"))
-            fig.add_trace(
-                go.Scatter(
-                    x=eval_result.mp.recThrs,
-                    y=[1] * len(eval_result.mp.recThrs),
-                    name="Perfect",
-                    line=dict(color="orange", dash="dash"),
-                    showlegend=True,
-                )
-            )
 
-            fig.add_annotation(
-                text=f"mAP = {eval_result.mp.base_metrics()['mAP']:.2f}",
-                xref="paper",
-                yref="paper",
-                x=0.98,
-                y=annotations_y,
-                showarrow=False,
-                bgcolor="white",
+            line = go.Scatter(
+                x=eval_result.mp.recThrs,
+                y=pr_curve,
+                mode="lines",
+                name=eval_result.name,
+                fill="tozeroy",
+                hovertemplate=eval_result.name
+                + "<br>Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>",
+                showlegend=True,
             )
-            annotations_y -= 0.05
+            fig.add_trace(line)
 
+        fig.add_trace(
+            go.Scatter(
+                x=rec_thr,
+                y=[1] * len(rec_thr),
+                name="Perfect",
+                line=dict(color="orange", dash="dash"),
+                showlegend=True,
+            )
+        )
         fig.update_layout(
             dragmode=False,
             modebar=dict(
@@ -149,7 +137,5 @@ class PrCurve(BaseVisMetric):
                     "resetScale2d",
                 ]
             ),
-            width=600,
-            height=500,
         )
         return fig
