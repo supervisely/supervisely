@@ -77,32 +77,19 @@ class OutcomeCounts(BaseVisMetric):
 
         fig = go.Figure()
 
-        common_tp, common_fp, common_fn, diff_tp, diff_fp, diff_fn = self.get_common_and_diffs()
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
+        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)] + ["Common"]
 
-        for idx in range(1, len(self.eval_results) + 1):
-            y = f"Model {idx}"
-            for metric, values, color in zip(
-                ["TP", "FN", "FP"], [diff_tp, diff_fn, diff_fp], colors
-            ):
-                fig.add_trace(
-                    go.Bar(
-                        x=[len(values.get(f"Model {idx}", []))],
-                        y=[y],
-                        name=metric,
-                        orientation="h",
-                        marker=dict(color=color),
-                        hovertemplate=f"{metric}: %{{x}} objects<extra></extra>",
-                    )
-                )
+        common_tp, common_fp, common_fn, diff_tp, diff_fp, diff_fn = self.get_common_and_diffs()
+        tps_cnt = [len(v) for v in diff_tp.values()] + [len(common_tp)]
+        fns_cnt = [len(v) for v in diff_fn.values()] + [len(common_fn)]
+        fps_cnt = [len(v) for v in diff_fp.values()] + [len(common_fp)]
 
-        for metric, values, color in zip(
-            ["TP", "FN", "FP"], [common_tp, common_fn, common_fp], colors
-        ):
+        for metric, values, color in zip(["TP", "FN", "FP"], [tps_cnt, fns_cnt, fps_cnt], colors):
             fig.add_trace(
                 go.Bar(
-                    x=[len(values)],
-                    y=["Common"],
+                    x=values,
+                    y=model_names,
                     name=metric,
                     orientation="h",
                     marker=dict(color=color),
