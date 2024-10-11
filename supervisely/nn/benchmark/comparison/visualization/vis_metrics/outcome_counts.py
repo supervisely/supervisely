@@ -1,4 +1,3 @@
-from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
@@ -50,38 +49,26 @@ class OutcomeCounts(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        for idx, eval_result in enumerate(self.eval_results, 1):
-            y = f"Model {idx}"
+        tp_counts = [eval_result.mp.TP_count for eval_result in self.eval_results]
+        fn_counts = [eval_result.mp.FN_count for eval_result in self.eval_results]
+        fp_counts = [eval_result.mp.FP_count for eval_result in self.eval_results]
+        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)]
+        counts = [tp_counts, fn_counts, fp_counts]
+        names = ["TP", "FN", "FP"]
+        colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
+
+        for metric, values, color in zip(names, counts, colors):
             fig.add_trace(
                 go.Bar(
-                    x=[eval_result.mp.TP_count],
-                    y=[y],
-                    name="TP",
+                    x=values,
+                    y=model_names,
+                    name=metric,
                     orientation="h",
-                    marker=dict(color="#8ACAA1"),
-                    hovertemplate="TP: %{x} objects<extra></extra>",
+                    marker=dict(color=color),
+                    hovertemplate=f"{metric}: %{{x}} objects<extra></extra>",
                 )
             )
-            fig.add_trace(
-                go.Bar(
-                    x=[eval_result.mp.FN_count],
-                    y=[y],
-                    name="FN",
-                    orientation="h",
-                    marker=dict(color="#dd3f3f"),
-                    hovertemplate="FN: %{x} objects<extra></extra>",
-                )
-            )
-            fig.add_trace(
-                go.Bar(
-                    x=[eval_result.mp.FP_count],
-                    y=[y],
-                    name="FP",
-                    orientation="h",
-                    marker=dict(color="#F7ADAA"),
-                    hovertemplate="FP: %{x} objects<extra></extra>",
-                )
-            )
+
         fig = self.update_figure_layout(fig)
         return fig
 
@@ -91,69 +78,37 @@ class OutcomeCounts(BaseVisMetric):
         fig = go.Figure()
 
         common_tp, common_fp, common_fn, diff_tp, diff_fp, diff_fn = self.get_common_and_diffs()
-        for idx, eval_result in enumerate(self.eval_results, 1):
-            y = f"Model {idx}"
-            fig.add_trace(
-                go.Bar(
-                    x=[len(diff_tp.get(f"Model {idx}", []))],
-                    y=[y],
-                    name="TP",
-                    orientation="h",
-                    marker=dict(color="#8ACAA1"),
-                    hovertemplate="TP: %{x} objects<extra></extra>",
-                )
-            )
-            fig.add_trace(
-                go.Bar(
-                    x=[len(diff_fn.get(f"Model {idx}", []))],
-                    y=[y],
-                    name="FN",
-                    orientation="h",
-                    marker=dict(color="#dd3f3f"),
-                    hovertemplate="FN: %{x} objects<extra></extra>",
-                )
-            )
-            fig.add_trace(
-                go.Bar(
-                    x=[len(diff_fp.get(f"Model {idx}", []))],
-                    y=[y],
-                    name="FP",
-                    orientation="h",
-                    marker=dict(color="#F7ADAA"),
-                    hovertemplate="FP: %{x} objects<extra></extra>",
-                )
-            )
+        colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
 
-        fig.add_trace(
-            go.Bar(
-                x=[len(common_tp)],
-                y=["Common"],
-                name="TP",
-                orientation="h",
-                marker=dict(color="#8ACAA1"),
-                hovertemplate="TP: %{x} objects<extra></extra>",
+        for idx in range(1, len(self.eval_results) + 1):
+            y = f"Model {idx}"
+            for metric, values, color in zip(
+                ["TP", "FN", "FP"], [diff_tp, diff_fn, diff_fp], colors
+            ):
+                fig.add_trace(
+                    go.Bar(
+                        x=[len(values.get(f"Model {idx}", []))],
+                        y=[y],
+                        name=metric,
+                        orientation="h",
+                        marker=dict(color=color),
+                        hovertemplate=f"{metric}: %{{x}} objects<extra></extra>",
+                    )
+                )
+
+        for metric, values, color in zip(
+            ["TP", "FN", "FP"], [common_tp, common_fn, common_fp], colors
+        ):
+            fig.add_trace(
+                go.Bar(
+                    x=[len(values)],
+                    y=["Common"],
+                    name=metric,
+                    orientation="h",
+                    marker=dict(color=color),
+                    hovertemplate=f"{metric}: %{{x}} objects<extra></extra>",
+                )
             )
-        )
-        fig.add_trace(
-            go.Bar(
-                x=[len(common_fn)],
-                y=["Common"],
-                name="FN",
-                orientation="h",
-                marker=dict(color="#dd3f3f"),
-                hovertemplate="FN: %{x} objects<extra></extra>",
-            )
-        )
-        fig.add_trace(
-            go.Bar(
-                x=[len(common_fp)],
-                y=["Common"],
-                name="FP",
-                orientation="h",
-                marker=dict(color="#F7ADAA"),
-                hovertemplate="FP: %{x} objects<extra></extra>",
-            )
-        )
 
         fig = self.update_figure_layout(fig)
         return fig
@@ -170,12 +125,17 @@ class OutcomeCounts(BaseVisMetric):
                 img_id = m["image_id"]
                 category_id = m["category_id"]
                 key = f"{img_id}_{category_id}"
-                if m["type"] == "TP":
-                    curr_model_tp[key] = m
-                elif m["type"] == "FP":
-                    curr_model_fp[key] = m
-                elif m["type"] == "FN":
-                    curr_model_fn[key] = m
+                curr_model_tp[key] = m
+            for m in eval_result.mp.m.fp_matches:
+                img_id = m["image_id"]
+                category_id = m["category_id"]
+                key = f"{img_id}_{category_id}"
+                curr_model_fp[key] = m
+            for m in eval_result.mp.m.fn_matches:
+                img_id = m["image_id"]
+                category_id = m["category_id"]
+                key = f"{img_id}_{category_id}"
+                curr_model_fn[key] = m
 
         common_tp = []  # list of tuples (match1, match2, ...)
         common_fp = []  # list of tuples (match1, match2, ...)
