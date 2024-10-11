@@ -119,7 +119,8 @@ class ComparisonVisualizer:
         overview = Overview(self.vis_texts, self.comparison.evaluation_results)
         self.header = self._create_header()
         self.overviews = self._create_overviews(overview)
-        self.key_metrics = self._create_key_metrics()
+        self.key_metrics_md = self._create_key_metrics()
+        self.key_metrics_table = overview.table_widget
         self.overview_chart = overview.chart_widget
 
         # TODO: Explore Predictions
@@ -184,7 +185,8 @@ class ComparisonVisualizer:
             # Overview
             (0, self.header),
             (1, self.overviews),
-            (1, self.key_metrics),
+            (1, self.key_metrics_md),
+            (0, self.key_metrics_table),
             (0, self.overview_chart),
             # Explore Predictions # TODO
             # Outcome Counts

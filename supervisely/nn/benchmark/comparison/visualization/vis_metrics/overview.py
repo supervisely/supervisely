@@ -7,6 +7,7 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric im
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
+    TableWidget,
 )
 
 
@@ -67,6 +68,36 @@ class Overview(BaseVisMetric):
             )
             for formats in self.formats
         ]
+
+    @property
+    def table_widget(self) -> TableWidget:
+        res = {}
+
+        columns = ["metrics"] + [eval_result.name for eval_result in self.eval_results]
+
+        all_metrics = [eval_result.mp.base_metrics() for eval_result in self.eval_results]
+        res["content"] = []
+
+        for metric in all_metrics[0].keys():
+            row = [metric] + [round(metrics[metric], 2) for metrics in all_metrics]
+            dct = {
+                "row": row,
+                "id": metric,
+                "items": row,
+            }
+            res["content"].append(dct)
+
+        columns_options = [{"disableSort": True} for _ in columns]
+
+        res["columns"] = columns
+        res["columnsOptions"] = columns_options
+
+        return TableWidget(
+            name="table_key_metrics",
+            data=res,
+            show_header_controls=False,
+            fix_columns=1,
+        )
 
     @property
     def chart_widget(self) -> ChartWidget:
