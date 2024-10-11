@@ -45,21 +45,21 @@ def process_requests_exception(
             requests.exceptions.TooManyRedirects,
             requests.exceptions.ChunkedEncodingError,
             httpx.ConnectError,
-            httpx.Timeout,
             httpx.TimeoutException,
             httpx.TooManyRedirects,
+            httpx.ProtocolError,
         ),
     )
 
     is_server_retryable_error = (
-        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPError))
+        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError))
         and hasattr(exc, "response")
         and (exc.response.status_code in RETRY_STATUS_CODES)
     )
 
     is_need_ping_error = False
     if (
-        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPError))
+        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError))
         and hasattr(exc, "response")
         and (exc.response.status_code == 400)
     ):
@@ -93,7 +93,7 @@ def process_requests_exception(
             sleep_sec=sleep_sec,
             retry_info=retry_info,
         )
-    elif isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPError)):
+    elif isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError)):
         process_invalid_request(external_logger, exc, response, verbose)
     else:
         process_unhandled_request(external_logger, exc)

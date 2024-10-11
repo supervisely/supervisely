@@ -11,7 +11,7 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Iterator, Literal, Optional, Union
+from typing import ContextManager, Dict, Generator, Literal, Optional, Tuple, Union
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -679,7 +679,7 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         raise_error: Optional[bool] = False,
-    ) -> Union[httpx.Response, Iterator[httpx.Response]]:
+    ) -> Union[httpx.Response, ContextManager[httpx.Response]]:
         """
         Performs POST request to server with given parameters using httpx.
 
@@ -812,22 +812,176 @@ class Api:
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
 
-    async def async_stream(
+    def get_v2(
         self,
-        api_method: str,
-        data: Dict,
-        http_method: Literal["GET", "POST"] = "POST",
-        headers: Optional[Dict[str, str]] = None,
+        method: str,
+        params: Dict,
         retries: Optional[int] = None,
-        raise_error: Optional[bool] = False,
-        http2: Optional[bool] = False,
-    ):
+        use_public_api: Optional[bool] = True,
+    ) -> httpx.Response:
+        """
+        Performs GET request to server with given parameters.
+
+        :param method:
+        :type method: str
+        :param params: Dictionary to send in the body of the :class:`Request`.
+        :type method: dict
+        :param retries: The number of attempts to connect to the server.
+        :type method: int, optional
+        :param use_public_api:
+        :type method: bool, optional
+        :return: Response object
+        :rtype: :class:`Response<Response>`
+        """
         self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
-        url = self.api_server_address + "/v3/" + api_method
-        logger.trace(f"{http_method} {url}")
+        url = self.api_server_address + "/v3/" + method
+        if use_public_api is False:
+            url = os.path.join(self.server_address, method)
+        logger.trace(f"GET {url}")
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                json_body = params
+                if type(params) is dict:
+                    json_body = {**params, **self.additional_fields}
+                response = httpx.get(url, params=json_body, headers=self.headers)
+
+                if response.status_code != httpx.codes.OK:  # pylint: disable=no-member
+                    Api._raise_for_status(response)
+                return response
+            except httpx.RequestError as exc:
+                process_requests_exception(
+                    self.logger,
+                    exc,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                    response=response,
+                    retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
+                )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+
+    def stream(
+        self,
+        method: str,
+        method_type: Literal["GET", "POST"],
+        content_or_params: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        use_public_api: Optional[bool] = True,
+        http2: Optional[bool] = False,
+    ) -> Generator[bytes]:
+        """
+        Performs streaming GET or POST request to server with given parameters.
+
+        :param method: Method name for the request.
+        :type method: str
+        :param method_type: Request type ('GET' or 'POST').
+        :type method_type: str
+        :param data_or_params: Dictionary with data (for POST) or params (for GET).
+        :type data_or_params: dict
+        :param retries: The number of retry attempts.
+        :type retries: int, optional
+        :param stream: If True, stream the response.
+        :type stream: bool, optional
+        :param raise_error: If True, raise an error if the request fails.
+        :type raise_error: bool, optional
+        :param use_public_api: Define if public API should be used.
+        :type use_public_api: bool, optional
+        :return: Generator of bytes.
+        :rtype: :class:`Generator[bytes]`
+        """
+        self._check_https_redirect()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if not use_public_api:
+            url = os.path.join(self.server_address, method)
+
+        logger.trace(f"{method_type} {url}")
+        client = httpx.Client(http2=http2)
+        for retry_idx in range(retries):
+            exc_response = None
+            try:
+                if headers is None:
+                    headers = self.headers
+                else:
+                    headers = {**self.headers, **headers}
+                if method_type == "POST":
+                    if isinstance(content_or_params, bytes):
+                        response = client.stream(
+                            method_type, url, content=content_or_params, headers=headers
+                        )
+                    else:
+                        json_body = (
+                            {**content_or_params, **self.additional_fields}
+                            if isinstance(content_or_params, dict)
+                            else content_or_params
+                        )
+                        response = client.stream(method_type, url, json=json_body, headers=headers)
+                elif method_type == "GET":
+                    json_body = (
+                        {**content_or_params, **self.additional_fields}
+                        if isinstance(content_or_params, dict)
+                        else content_or_params
+                    )
+                    response = client.stream(method_type, url, params=json_body, headers=headers)
+
+                with response as resp:
+                    exc_response = resp
+                    size = int(resp.headers.get("content-length", 0))
+                    if resp.status_code != httpx.codes.OK:
+                        Api._raise_for_status(resp)
+                    for chunk in resp.iter_raw(8192):
+                        yield chunk
+                        if resp.num_bytes_downloaded >= size:
+                            break
+                    return client.close(), resp.close()
+            except httpx.RequestError as exc:
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=exc_response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.RequestError(f"Retry limit exceeded ({url})")
+
+    async def async_stream(
+        self,
+        method: str,
+        method_type: Literal["GET", "POST"],
+        content_or_param: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        use_public_api: Optional[bool] = True,
+        http2: Optional[bool] = False,
+    ) -> Tuple[httpx.AsyncClient, ContextManager[httpx.Response]]:
+        self._check_https_redirect()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"{method_type} {url}")
 
         client = httpx.AsyncClient(http2=http2)
         for retry_idx in range(retries):
@@ -838,21 +992,23 @@ class Api:
                 else:
                     headers = {**self.headers, **headers}
 
-                json_body = data
-                if type(data) is dict:
-                    json_body = {**data, **self.additional_fields}
-                    return client, client.stream(http_method, url, json=json_body, headers=headers)
-                if type(data) is bytes:
-                    return client, client.stream(http_method, url, data=data, headers=headers)
+                json_body = content_or_param
+                if type(content_or_param) is dict:
+                    json_body = {**content_or_param, **self.additional_fields}
+                    return client, client.stream(method_type, url, json=json_body, headers=headers)
+                if type(content_or_param) is bytes:
+                    return client, client.stream(
+                        method_type, url, data=content_or_param, headers=headers
+                    )
 
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            except httpx.RequestError as e:
                 if raise_error:
                     raise e
                 else:
                     process_requests_exception(
                         self.logger,
                         e,
-                        api_method,
+                        method,
                         url,
                         verbose=True,
                         swallow_exc=True,
