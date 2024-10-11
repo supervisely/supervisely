@@ -40,7 +40,7 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def table(self) -> TableWidget:
-        columns = ["name", "confidence threshold", "ECE", "MCE"]
+        columns = [" ", "confidence threshold", "ECE", "MCE"]
         columns_options = [
             {"disableSort": True},
             {"disableSort": True},
@@ -48,8 +48,8 @@ class CalibrationScore(BaseVisMetric):
             {"disableSort": True},
         ]
         content = []
-        for eval_result in self.eval_results:
-            name = eval_result.name
+        for i, eval_result in enumerate(self.eval_results):
+            name = f"[{i+1}] {eval_result.name}"
             conf_threshold = eval_result.mp.m_full.get_f1_optimal_conf()[0] or 0.0
             ece = eval_result.mp.m_full.expected_calibration_error()
             mce = eval_result.mp.m_full.maximum_calibration_error()
@@ -132,14 +132,14 @@ class CalibrationScore(BaseVisMetric):
         # Create an empty figure
         fig = go.Figure()
 
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results):
             # Add a line trace for each eval_result
             fig.add_trace(
                 go.Scatter(
                     x=eval_result.dfsp_down["scores"],
                     y=eval_result.dfsp_down["f1"],
                     mode="lines",
-                    name=f"Eval Result: {eval_result.name}",
+                    name=f"[{i+1}] {eval_result.name}",
                     hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>",
                 )
             )
@@ -158,7 +158,7 @@ class CalibrationScore(BaseVisMetric):
                 fig.add_annotation(
                     x=eval_result.mp.f1_optimal_conf,
                     y=eval_result.mp.best_f1 + 0.04,
-                    text=f"F1-optimal threshold: {eval_result.mp.f1_optimal_conf:.2f}",
+                    text=f"[{i+1}] {eval_result.name}<br>F1-optimal threshold: {eval_result.mp.f1_optimal_conf:.2f}",
                     showarrow=False,
                 )
 
@@ -190,7 +190,7 @@ class CalibrationScore(BaseVisMetric):
 
         fig = go.Figure()
 
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results):
             # Calibration curve (only positive predictions)
             true_probs, pred_probs = eval_result.mp.m_full.calibration_curve()
 
@@ -199,7 +199,7 @@ class CalibrationScore(BaseVisMetric):
                     x=pred_probs,
                     y=true_probs,
                     mode="lines+markers",
-                    name="Calibration plot (Model)",
+                    name=f"[{i+1}] {eval_result.name}",
                     hovertemplate=f"{eval_result.name}<br>"
                     + "Confidence Score: %{x:.2f}<br>Fraction of True Positives: %{y:.2f}<extra></extra>",
                 )

@@ -39,7 +39,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
 
     @property
     def notification(self) -> NotificationWidget:
-        description = "\n".join(
+        description = "<br>".join(
             f"{ev.name}: {ev.mp.base_metrics()['iou']:.2f}" for ev in self.eval_results
         )
         return NotificationWidget(name="notification_avg_iou", title="Avg. IoU", desc=description)
@@ -62,13 +62,14 @@ class LocalizationAccuracyIoU(BaseVisMetric):
 
         fig = go.Figure()
         nbins = 40
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results):
+            name = f"[{i+1}]{eval_result.name}"
             fig.add_trace(
                 go.Histogram(
                     x=eval_result.mp.ious,
                     nbinsx=nbins,
-                    hovertemplate=eval_result.name
-                    + "<br>IoU: %{x:.2f}<br>Count: %{y}<extra></extra>",
+                    name=name,
+                    hovertemplate=name + "<br>IoU: %{x:.2f}<br>Count: %{y}<extra></extra>",
                 )
             )
 
@@ -81,7 +82,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
         )
 
         # Add annotation for mean IoU as vertical line
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results):
             mean_iou = eval_result.mp.ious.mean()
             y1 = len(eval_result.mp.ious) // nbins
             fig.add_shape(
@@ -95,7 +96,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
             fig.add_annotation(
                 x=mean_iou,
                 y=y1,
-                text=f"{eval_result.name}<br>Mean IoU: {mean_iou:.2f}",
+                text=f"[{i+1}] {eval_result.name}<br>Mean IoU: {mean_iou:.2f}",
                 showarrow=False,
             )
 
