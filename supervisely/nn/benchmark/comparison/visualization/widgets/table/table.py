@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from jinja2 import Template
 
@@ -17,6 +17,7 @@ class TableWidget(BaseWidget):
         fix_columns: int = 0,
         show_header_controls: bool = True,
         main_column: Optional[str] = None,
+        width: Optional[Union[int, str]] = None,
     ) -> None:
         super().__init__(name=name)
         self.data = data
@@ -25,6 +26,12 @@ class TableWidget(BaseWidget):
         self.main_column = main_column
         self.click_data = click_data
         self.click_gellery_id = click_gellery_id
+        
+        if isinstance(width, int):
+            width = f"width: {width}px"
+        elif isinstance(width, str):
+            width = f"width: {width.rstrip('%')}%"
+        self.width = width
 
         self.clickable = self.click_data is not None
 
@@ -55,13 +62,14 @@ class TableWidget(BaseWidget):
             "table_gallery_id": self.click_gellery_id,
             "mainColumn": self.main_column,
             "clickable": self.clickable,
+            "width": self.width or "",
             "data": "data",
             "command": "command",
         }
 
     def to_html(self) -> str:
         template_str = """
-            <div style="margin-top: 20px; margin-bottom: 30px;">
+            <div style="margin-top: 20px; margin-bottom: 30px; {{ width }}">
                 <sly-iw-table
                     iw-widget-id="{{ widget_id }}"
                     {% if clickable %}
@@ -95,7 +103,7 @@ class TableWidget(BaseWidget):
                         v-if="column === '{{ mainColumn }}'"
                         class="fflex"
                     >
-                        <b>Batch size {{ '{{ cellValue }}' }}</b>
+                        <b>cellValue</b>
                     </div>
                     </span>
                 </sly-iw-table>
