@@ -201,7 +201,7 @@ class ComparisonVisualizer:
             (1, self.avg_prec_by_class_md),
             (0, self.avg_prec_by_class_chart),
             # Precision, Recall, F1
-            (0, self.precision_recall_f1_md),
+            (1, self.precision_recall_f1_md),
             (0, self.precision_recall_f1_table),
             (0, self.precision_recall_f1_chart),
             (0, self.precision_per_class_chart),

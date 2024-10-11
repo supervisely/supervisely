@@ -220,8 +220,8 @@ class CalibrationScore(BaseVisMetric):
             xaxis_title="Confidence Score",
             yaxis_title="Fraction of True Positives",
             legend=dict(x=0.6, y=0.1),
-            xaxis=dict(range=[0, 1]),
-            yaxis=dict(range=[0, 1]),
+            xaxis=dict(range=[0, 1.1]),
+            yaxis=dict(range=[0, 1.1]),
             width=700,
             height=500,
         )

@@ -40,7 +40,8 @@ class LocalizationAccuracyIoU(BaseVisMetric):
     @property
     def notification(self) -> NotificationWidget:
         description = "<br>".join(
-            f"{ev.name}: {ev.mp.base_metrics()['iou']:.2f}" for ev in self.eval_results
+            f"[{i+1}] {ev.name}: {ev.mp.base_metrics()['iou']:.2f}"
+            for i, ev in enumerate(self.eval_results)
         )
         return NotificationWidget(name="notification_avg_iou", title="Avg. IoU", desc=description)
 
@@ -77,8 +78,6 @@ class LocalizationAccuracyIoU(BaseVisMetric):
             # title="IoU Distribution",
             xaxis_title="IoU",
             yaxis_title="Count",
-            width=600,
-            height=500,
         )
 
         # Add annotation for mean IoU as vertical line
