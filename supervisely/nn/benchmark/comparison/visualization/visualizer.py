@@ -7,7 +7,8 @@ from pathlib import Path
 from jinja2 import Template
 
 from supervisely.api.api import Api
-from supervisely.io.fs import dir_empty
+from supervisely.app.widgets import SlyTqdm
+from supervisely.io.fs import dir_empty, get_directory_size
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
@@ -58,14 +59,23 @@ class BaseVisualizer:
     def visualize(self):
         return self.save()
 
-    def upload_results(self, api: Api, team_id: int, remote_dir: str) -> str:
+    def upload_results(self, api: Api, team_id: int, remote_dir: str, progress=None) -> str:
         if dir_empty(self.output_dir):
             raise RuntimeError(
                 "No visualizations to upload. You should call visualize method first."
             )
-        remote_dir = api.file.upload_directory(
-            team_id, self.output_dir, remote_dir, change_name_if_conflict=True
-        )
+        progress = progress or SlyTqdm()
+        dir_total = get_directory_size(self.output_dir)
+        with progress(
+            f"Uploading visualizations to {remote_dir}", total=dir_total, is_size=True
+        ) as pbar:
+            remote_dir = api.file.upload_directory(
+                team_id,
+                self.output_dir,
+                remote_dir,
+                change_name_if_conflict=True,
+                progress_size_cb=pbar.update,
+            )
         src = self.save_report_link(api, team_id, remote_dir)
         api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
         return remote_dir
@@ -110,7 +120,7 @@ class ComparisonVisualizer:
     def visualize(self):
         return self.viz.visualize()
 
-    def upload_results(self, team_id: int, remote_dir: str):
+    def upload_results(self, team_id: int, remote_dir: str, progress=None):
         return self.viz.upload_results(self.api, team_id, remote_dir)
 
     def _create_widgets(self):

@@ -68,8 +68,8 @@ class BaseComparison:
             self.visualizer = ComparisonVisualizer(self)
         self.visualizer.visualize()
 
-    def upload_results(self, team_id: int, remote_dir: str) -> str:
-        return self.visualizer.upload_results(team_id, remote_dir)
+    def upload_results(self, team_id: int, remote_dir: str, progress=None) -> str:
+        return self.visualizer.upload_results(team_id, remote_dir, progress)
 
     def get_report_link(self, team_id: int, remote_dir: str) -> str:
         return ""  # TODO: implement
