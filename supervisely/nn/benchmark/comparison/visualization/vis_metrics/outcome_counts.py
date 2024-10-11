@@ -49,10 +49,10 @@ class OutcomeCounts(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        tp_counts = [eval_result.mp.TP_count for eval_result in self.eval_results]
-        fn_counts = [eval_result.mp.FN_count for eval_result in self.eval_results]
-        fp_counts = [eval_result.mp.FP_count for eval_result in self.eval_results]
-        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)]
+        tp_counts = [eval_result.mp.TP_count for eval_result in self.eval_results][::-1]
+        fn_counts = [eval_result.mp.FN_count for eval_result in self.eval_results][::-1]
+        fp_counts = [eval_result.mp.FP_count for eval_result in self.eval_results][::-1]
+        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1]
         counts = [tp_counts, fn_counts, fp_counts]
         names = ["TP", "FN", "FP"]
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
@@ -78,12 +78,14 @@ class OutcomeCounts(BaseVisMetric):
         fig = go.Figure()
 
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
-        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)] + ["Common"]
+        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1] + [
+            "Common"
+        ]
 
         common_tp, common_fp, common_fn, diff_tp, diff_fp, diff_fn = self.get_common_and_diffs()
-        tps_cnt = [len(v) for v in diff_tp.values()] + [len(common_tp)]
-        fns_cnt = [len(v) for v in diff_fn.values()] + [len(common_fn)]
-        fps_cnt = [len(v) for v in diff_fp.values()] + [len(common_fp)]
+        tps_cnt = [len(v) for v in diff_tp.values()][::-1] + [len(common_tp)]
+        fns_cnt = [len(v) for v in diff_fn.values()][::-1] + [len(common_fn)]
+        fps_cnt = [len(v) for v in diff_fp.values()][::-1] + [len(common_fp)]
 
         for metric, values, color in zip(["TP", "FN", "FP"], [tps_cnt, fns_cnt, fps_cnt], colors):
             fig.add_trace(

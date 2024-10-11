@@ -73,7 +73,9 @@ class Overview(BaseVisMetric):
     def table_widget(self) -> TableWidget:
         res = {}
 
-        columns = ["metrics"] + [eval_result.name for eval_result in self.eval_results]
+        columns = ["metrics"] + [
+            f"[{i+1}] {eval_result.name}" for i, eval_result in enumerate(self.eval_results)
+        ]
 
         all_metrics = [eval_result.mp.base_metrics() for eval_result in self.eval_results]
         res["content"] = []
@@ -152,7 +154,7 @@ class Overview(BaseVisMetric):
         # Overall Metrics
         fig = go.Figure()
         for i, eval_result in enumerate(self.eval_results):
-            name = f"[{i}] {eval_result.name}"
+            name = f"[{i + 1}] {eval_result.name}"
             base_metrics = eval_result.mp.base_metrics()
             r = list(base_metrics.values())
             theta = [eval_result.mp.metric_names[k] for k in base_metrics.keys()]
