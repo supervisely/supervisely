@@ -11,7 +11,7 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Union
+from typing import Dict, Iterator, Literal, Optional, Union
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -812,6 +812,58 @@ class Api:
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
 
+    async def async_stream(
+        self,
+        api_method: str,
+        data: Dict,
+        http_method: Literal["GET", "POST"] = "POST",
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        http2: Optional[bool] = False,
+    ):
+        self._check_https_redirect()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + api_method
+        logger.trace(f"{http_method} {url}")
+
+        client = httpx.AsyncClient(http2=http2)
+        for retry_idx in range(retries):
+            response = None
+            try:
+                if headers is None:
+                    headers = self.headers
+                else:
+                    headers = {**self.headers, **headers}
+
+                json_body = data
+                if type(data) is dict:
+                    json_body = {**data, **self.additional_fields}
+                    return client, client.stream(http_method, url, json=json_body, headers=headers)
+                if type(data) is bytes:
+                    return client, client.stream(http_method, url, data=data, headers=headers)
+
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                if raise_error:
+                    raise e
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        e,
+                        api_method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as e:
+                process_unhandled_request(self.logger, e)
+        raise httpx.HTTPStatusError("Retry limit exceeded ({!r})".format(url))
+
     @staticmethod
     def _raise_for_status(response):
         """
@@ -827,17 +879,14 @@ class Api:
                     reason = response.reason.decode("iso-8859-1")
             else:
                 reason = response.reason
-        elif hasattr(response, "reason_phrase"):
+        elif hasattr(response, "reason_phrase"):  # httpx
             reason = response.reason_phrase
         else:
             reason = "Can't get reason"
 
         def decode_response_content(response):
-            if hasattr(response, "iter_bytes"):
-                content = b""
-                for chunk in response.iter_bytes():
-                    content += chunk
-                return content.decode("utf-8")
+            if hasattr(response, "is_stream_consumed"):  # httpx
+                return "Content is not acessible for streaming responses"
             else:
                 return response.content.decode("utf-8")
 
@@ -858,7 +907,7 @@ class Api:
             )
 
         if http_error_msg:
-            raise httpx.HTTPError(http_error_msg, response=response)
+            raise httpx.HTTPError(http_error_msg)
 
     @staticmethod
     def parse_error(

@@ -46,6 +46,7 @@ def process_requests_exception(
             requests.exceptions.ChunkedEncodingError,
             httpx.ConnectError,
             httpx.Timeout,
+            httpx.TimeoutException,
             httpx.TooManyRedirects,
         ),
     )
@@ -126,13 +127,25 @@ def process_retryable_request(
 
 
 def process_invalid_request(external_logger, exc, response, verbose=True):
+    if type(response) in (httpx.Response, requests.Response):
+        reason = (
+            response.content.decode("utf-8")
+            if not hasattr(response, "is_stream_consumed")
+            else "Content is not acessible for streaming responses"
+        )
+        status_code = response.status_code
+        url = response.url
+    else:
+        reason = "Reason is unknown"
+        status_code = None
+        url = None
     if verbose:
         external_logger.warn(
             REQUEST_FAILED,
             extra={
-                "reason": response.content.decode("utf-8"),
-                "status_code": response.status_code,
-                "url": response.url,
+                "reason": reason,
+                "status_code": status_code,
+                "url": url,
             },
         )
     raise exc
