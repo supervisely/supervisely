@@ -37,7 +37,7 @@ markdown_overview = """
 - **Architecture**: {}
 - **Task type**: {}
 - **Runtime**: {}
-- **Checkpoint file**: <a href="{}" target="_blank">{}</a>
+- **Checkpoint file**: <a class="checkpoint-url" href="{}" target="_blank">{}</a>
 - **Ground Truth project**: <a href="/projects/{}/datasets" target="_blank">{}</a>, {}{}
 {}
 

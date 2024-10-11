@@ -19,10 +19,6 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
 class PrecisionRecallF1(BaseVisMetric):
     MARKDOWN = "markdown_PR"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.used_colors = {}
-
     @property
     def markdown_widget(self) -> MarkdownWidget:
         text: str = getattr(self.vis_texts, self.MARKDOWN).format(
@@ -89,7 +85,7 @@ class PrecisionRecallF1(BaseVisMetric):
             name="table_precision_recall_f1",
             data=res,
             show_header_controls=False,
-            main_column=columns[0],
+            # main_column=columns[0],
             fix_columns=1,
         )
 
@@ -113,9 +109,9 @@ class PrecisionRecallF1(BaseVisMetric):
 
         fig.update_layout(
             barmode="group",
-            title="Precision, Recall, F1-score",
             xaxis_title="Metric",
             yaxis_title="Value",
+            yaxis=dict(range=[0, 1.1]),
         )
 
         return fig
@@ -126,11 +122,6 @@ class PrecisionRecallF1(BaseVisMetric):
         fig = go.Figure()
         for eval_result in self.eval_results:
             model_name = eval_result.name
-            color = self.used_colors.get(model_name)
-            if color is None:
-                color = generate_rgb(list(self.used_colors.values()))
-                self.used_colors[model_name] = color
-            color_hex = rgb2hex(color)
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -138,7 +129,6 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["recall"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Recall",
-                    marker=dict(color=color_hex),
                 )
             )
 
@@ -153,11 +143,6 @@ class PrecisionRecallF1(BaseVisMetric):
         fig = go.Figure()
         for eval_result in self.eval_results:
             model_name = eval_result.name
-            color = self.used_colors.get(model_name)
-            if color is None:
-                color = generate_rgb(list(self.used_colors.values()))
-                self.used_colors[model_name] = color
-            color_hex = rgb2hex(color)
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -165,7 +150,6 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["precision"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Precision",
-                    marker=dict(color=color_hex),
                 )
             )
 
@@ -180,11 +164,6 @@ class PrecisionRecallF1(BaseVisMetric):
         fig = go.Figure()
         for eval_result in self.eval_results:
             model_name = eval_result.name
-            color = self.used_colors.get(model_name)
-            if color is None:
-                color = generate_rgb(list(self.used_colors.values()))
-                self.used_colors[model_name] = color
-            color_hex = rgb2hex(color)
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -192,7 +171,6 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["f1"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} F1-score",
-                    marker=dict(color=color_hex),
                 )
             )
 

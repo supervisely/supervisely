@@ -26,7 +26,7 @@ class TableWidget(BaseWidget):
         self.main_column = main_column
         self.click_data = click_data
         self.click_gellery_id = click_gellery_id
-        
+
         if isinstance(width, int):
             width = f"width: {width}px"
         elif isinstance(width, str):
@@ -97,13 +97,13 @@ class TableWidget(BaseWidget):
                 >
                     <span
                     slot="custom-cell-content"
-                    slot-scope="{ row, column, cellValue }"
+                    slot-scope='{ row, column, cellValue }'
                     >
                     <div
                         v-if="column === '{{ mainColumn }}'"
                         class="fflex"
                     >
-                        <b>cellValue</b>
+                        <b>{{ '{{cellValue}}' }}</b>
                     </div>
                     </span>
                 </sly-iw-table>

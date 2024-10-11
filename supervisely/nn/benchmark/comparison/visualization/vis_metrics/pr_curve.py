@@ -87,7 +87,7 @@ class PrCurve(BaseVisMetric):
             name="table_pr_curve",
             data=res,
             show_header_controls=False,
-            main_column=columns[0],
+            # main_column=columns[0],
             fix_columns=1,
         )
 

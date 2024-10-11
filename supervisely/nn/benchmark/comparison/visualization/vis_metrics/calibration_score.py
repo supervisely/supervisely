@@ -69,7 +69,7 @@ class CalibrationScore(BaseVisMetric):
             "table_reliability",
             data,
             show_header_controls=False,
-            main_column=columns[0],
+            # main_column=columns[0],
             fix_columns=1,
         )
 
