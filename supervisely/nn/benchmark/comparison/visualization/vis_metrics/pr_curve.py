@@ -52,7 +52,9 @@ class PrCurve(BaseVisMetric):
 
     @property
     def notification_widget(self) -> NotificationWidget:
-        desc = "".join(f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}\n" for ev in self.eval_results)
+        desc = "".join(
+            f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}\n" for ev in self.eval_results
+        )
         return NotificationWidget(name="notification_map", title="mAP", desc=desc)
 
     @property
@@ -74,7 +76,7 @@ class PrCurve(BaseVisMetric):
             res["content"].append(dct)
 
         columns_options = [
-            {"customCell": True, "disableSort": True},
+            {"disableSort": True},
             {"disableSort": True},
         ]
 

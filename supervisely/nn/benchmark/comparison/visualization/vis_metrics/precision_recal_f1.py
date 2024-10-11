@@ -76,7 +76,7 @@ class PrecisionRecallF1(BaseVisMetric):
             res["content"].append(dct)
 
         columns_options = [
-            {"customCell": True, "disableSort": True},
+            {"disableSort": True},
             {"disableSort": True},
             {"disableSort": True},
             {"disableSort": True},
