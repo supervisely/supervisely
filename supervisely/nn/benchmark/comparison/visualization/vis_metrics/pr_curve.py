@@ -52,7 +52,7 @@ class PrCurve(BaseVisMetric):
 
     @property
     def notification_widget(self) -> NotificationWidget:
-        desc = "".join(f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}" for ev in self.eval_results)
+        desc = "".join(f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}\n" for ev in self.eval_results)
         return NotificationWidget(name="notification_map", title="mAP", desc=desc)
 
     @property
@@ -82,7 +82,11 @@ class PrCurve(BaseVisMetric):
         res["columnsOptions"] = columns_options
 
         return TableWidget(
-            name="table_pr_curve", data=res, show_header_controls=False, main_column=" "
+            name="table_pr_curve",
+            data=res,
+            show_header_controls=False,
+            main_column=columns[0],
+            fix_columns=1,
         )
 
     def get_figure(self):  # -> Optional[go.Figure]:

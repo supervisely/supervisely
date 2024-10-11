@@ -53,7 +53,7 @@ class CalibrationScore(BaseVisMetric):
             conf_threshold = eval_result.mp.m_full.get_f1_optimal_conf()[0] or 0.0
             ece = eval_result.mp.m_full.expected_calibration_error()
             mce = eval_result.mp.m_full.maximum_calibration_error()
-            row = [name, conf_threshold, ece, mce]
+            row = [name, round(conf_threshold, 2), round(ece, 2), round(mce, 2)]
             dct = {
                 "row": row,
                 "id": name,
@@ -65,7 +65,13 @@ class CalibrationScore(BaseVisMetric):
             "columnsOptions": columns_options,
             "content": content,
         }
-        return TableWidget("table_reliability", data, show_header_controls=False)
+        return TableWidget(
+            "table_reliability",
+            data,
+            show_header_controls=False,
+            main_column=columns[0],
+            fix_columns=1,
+        )
 
     @property
     def reliability_diagram_md(self) -> MarkdownWidget:
@@ -194,8 +200,6 @@ class CalibrationScore(BaseVisMetric):
                     y=true_probs,
                     mode="lines+markers",
                     name="Calibration plot (Model)",
-                    line=dict(color="blue"),
-                    marker=dict(color="blue"),
                     hovertemplate=f"{eval_result.name}<br>"
                     + "Confidence Score: %{x:.2f}<br>Fraction of True Positives: %{y:.2f}<extra></extra>",
                 )
