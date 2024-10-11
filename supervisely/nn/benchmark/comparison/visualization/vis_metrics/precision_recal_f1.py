@@ -1,9 +1,3 @@
-from typing import List
-
-import numpy as np
-
-from supervisely.imaging.color import generate_rgb, rgb2hex
-from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
