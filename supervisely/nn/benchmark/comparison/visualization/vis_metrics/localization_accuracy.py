@@ -64,7 +64,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
         fig = go.Figure()
         nbins = 40
         for i, eval_result in enumerate(self.eval_results):
-            name = f"[{i+1}]{eval_result.name}"
+            name = f"[{i+1}] {eval_result.name}"
             fig.add_trace(
                 go.Histogram(
                     x=eval_result.mp.ious,

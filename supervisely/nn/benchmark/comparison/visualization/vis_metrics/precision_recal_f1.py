@@ -52,11 +52,11 @@ class PrecisionRecallF1(BaseVisMetric):
 
         columns = [" ", "Precision", "Recall", "F1-score"]
         res["content"] = []
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results, 1):
             precision = round(eval_result.mp.json_metrics()["precision"], 2)
             recall = round(eval_result.mp.json_metrics()["recall"], 2)
             f1 = round(eval_result.mp.json_metrics()["f1"], 2)
-            model_name = eval_result.name
+            model_name = f"[{i}] {eval_result.name}"
             row = [model_name, precision, recall, f1]
             dct = {
                 "row": row,
@@ -88,11 +88,11 @@ class PrecisionRecallF1(BaseVisMetric):
 
         fig = go.Figure()
 
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results, 1):
             precision = eval_result.mp.json_metrics()["precision"]
             recall = eval_result.mp.json_metrics()["recall"]
             f1 = eval_result.mp.json_metrics()["f1"]
-            model_name = eval_result.name
+            model_name = f"[{i}] {eval_result.name}"
             fig.add_trace(
                 go.Bar(
                     x=["Precision", "Recall", "F1-score"],
@@ -114,8 +114,8 @@ class PrecisionRecallF1(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        for eval_result in self.eval_results:
-            model_name = eval_result.name
+        for i, eval_result in enumerate(self.eval_results, 1):
+            model_name = f"[{i}] {eval_result.name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -135,8 +135,8 @@ class PrecisionRecallF1(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        for eval_result in self.eval_results:
-            model_name = eval_result.name
+        for i, eval_result in enumerate(self.eval_results, 1):
+            model_name = f"[{i}] {eval_result.name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -156,8 +156,8 @@ class PrecisionRecallF1(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        for eval_result in self.eval_results:
-            model_name = eval_result.name
+        for i, eval_result in enumerate(self.eval_results, 1):
+            model_name = f"[{i}] {eval_result.name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(

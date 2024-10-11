@@ -16,19 +16,19 @@ class AveragePrecisionByClass(BaseVisMetric):
 
         fig = go.Figure()
         labels = dict(r="Average Precision", theta="Class")
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results, 1):
             # AP per-class
             ap_per_class = eval_result.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
             ap_per_class[ap_per_class == -1] = 0  # -1 is a placeholder for no GT
 
-            trace_name = eval_result.name
+            trace_name = f"[{i}] {eval_result.name}"
             fig.add_trace(
                 go.Scatterpolar(
                     r=ap_per_class,
                     theta=eval_result.mp.cat_names,
-                    name=f"{trace_name}",
+                    name=trace_name,
                     fill="toself",
-                    hovertemplate=f"{trace_name}"
+                    hovertemplate=trace_name
                     + "<br>"
                     + labels["theta"]
                     + ": %{theta}<br>"
