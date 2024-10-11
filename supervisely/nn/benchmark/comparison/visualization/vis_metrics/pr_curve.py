@@ -52,8 +52,9 @@ class PrCurve(BaseVisMetric):
 
     @property
     def notification_widget(self) -> NotificationWidget:
-        desc = "".join(
-            f"{ev.name}: {ev.mp.json_metrics()['mAP']:.2f}\n" for ev in self.eval_results
+        desc = "<br>".join(
+            f"{i} {ev.name}: {ev.mp.json_metrics()['mAP']:.2f}\n"
+            for i, ev in enumerate(self.eval_results, 1)
         )
         return NotificationWidget(name="notification_map", title="mAP", desc=desc)
 
@@ -63,10 +64,10 @@ class PrCurve(BaseVisMetric):
 
         columns = [" ", "mAP (0.5:0.95)", "mAP (0.75)"]
         res["content"] = []
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results, 1):
             value_range = round(eval_result.mp.json_metrics()["mAP"], 2)
             value_75 = round(eval_result.mp.json_metrics()["AP75"], 2)
-            model_name = eval_result.name
+            model_name = f"[{i}] {eval_result.name}"
             row = [model_name, value_range, value_75]
             dct = {
                 "row": row,
@@ -98,19 +99,19 @@ class PrCurve(BaseVisMetric):
         fig = go.Figure()
 
         rec_thr = self.eval_results[0].mp.recThrs
-        for eval_result in self.eval_results:
+        for i, eval_result in enumerate(self.eval_results, 1):
             pr_curve = eval_result.mp.pr_curve().copy()
             pr_curve[pr_curve == -1] = np.nan
             pr_curve = np.nanmean(pr_curve, axis=-1)
 
+            name = f"[{i}] {eval_result.name}"
             line = go.Scatter(
                 x=eval_result.mp.recThrs,
                 y=pr_curve,
                 mode="lines",
-                name=eval_result.name,
+                name=name,
                 fill="tozeroy",
-                hovertemplate=eval_result.name
-                + "<br>Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>",
+                hovertemplate=name + "<br>Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>",
                 showlegend=True,
             )
             fig.add_trace(line)
