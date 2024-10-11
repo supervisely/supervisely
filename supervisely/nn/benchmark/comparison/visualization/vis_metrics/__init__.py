@@ -16,3 +16,6 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics.overview impo
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.pr_curve import (
     PrCurve,
 )
+from supervisely.nn.benchmark.comparison.visualization.vis_metrics.precision_recal_f1 import (
+    PrecisionRecallF1,
+)

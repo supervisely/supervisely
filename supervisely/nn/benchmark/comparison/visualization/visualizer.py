@@ -15,6 +15,7 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     OutcomeCounts,
     Overview,
     PrCurve,
+    PrecisionRecallF1,
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     BaseWidget,
@@ -145,7 +146,13 @@ class ComparisonVisualizer:
         self.avg_prec_by_class_chart = avg_prec_by_class.chart_widget
 
         # Precision, Recall, F1
-        # TODO: Almaz
+        precision_recall_f1 = PrecisionRecallF1(self.vis_texts, self.comparison.evaluation_results)
+        self.precision_recall_f1_md = precision_recall_f1.markdown_widget
+        self.precision_recall_f1_table = precision_recall_f1.table_widget
+        self.precision_recall_f1_chart = precision_recall_f1.chart_main_widget
+        self.precision_per_class_chart = precision_recall_f1.chart_precision_per_class_widget
+        self.recall_per_class_chart = precision_recall_f1.chart_recall_per_class_widget
+        self.f1_per_class_chart = precision_recall_f1.chart_f1_per_class_widget
 
         # Classification Accuracy
         # TODO: ???
@@ -193,7 +200,13 @@ class ComparisonVisualizer:
             # Average Precision by Class
             (1, self.avg_prec_by_class_md),
             (0, self.avg_prec_by_class_chart),
-            # Precision, Recall, F1 # TODO
+            # Precision, Recall, F1
+            (0, self.precision_recall_f1_md),
+            (0, self.precision_recall_f1_table),
+            (0, self.precision_recall_f1_chart),
+            (0, self.precision_per_class_chart),
+            (0, self.recall_per_class_chart),
+            (0, self.f1_per_class_chart),
             # Classification Accuracy # TODO
             # Localization Accuracy (IoU)
             (1, self.loc_acc_header_md),
@@ -233,7 +246,9 @@ class ComparisonVisualizer:
         return header
 
     def _create_overviews(self, vm: Overview) -> ContainerWidget:
-        return ContainerWidget(vm.overview_widgets, name="overview_container", title="Overview")
+        return ContainerWidget(
+            vm.overview_widgets, name="overview_container", title="Overview", grid=True
+        )
 
     def _create_key_metrics(self) -> MarkdownWidget:
         key_metrics_text = self.vis_texts.markdown_key_metrics.format(
