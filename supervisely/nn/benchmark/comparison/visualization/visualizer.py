@@ -69,7 +69,7 @@ class BaseVisualizer:
             progress = tqdm_sly
         dir_total = get_directory_size(self.output_dir)
         with progress(
-            message=f"Uploading visualizations to {remote_dir}",
+            message=f"Uploading visualizations",
             total=dir_total,
             unit="B",
             unit_scale=True,
@@ -144,6 +144,7 @@ class ComparisonVisualizer:
         # Outcome Counts
         outcome_counts = OutcomeCounts(self.vis_texts, self.comparison.evaluation_results)
         self.outcome_counts_md = self._create_outcome_counts_md()
+        self.outcome_counts_diff_md = self._create_outcome_counts_diff_md()
         self.outcome_counts_main = outcome_counts.chart_widget_main
         self.outcome_counts_comparison = outcome_counts.chart_widget_comparison
 
@@ -208,6 +209,7 @@ class ComparisonVisualizer:
             # Outcome Counts
             (1, self.outcome_counts_md),
             (0, self.outcome_counts_main),
+            (0, self.outcome_counts_diff_md),
             (0, self.outcome_counts_comparison),
             # Precision-Recall Curve
             (1, self.pr_curve_md),
@@ -283,6 +285,16 @@ class ComparisonVisualizer:
             self.vis_texts.definitions.false_negatives,
         )
         return MarkdownWidget("markdown_outcome_counts", "Outcome Counts", text=outcome_counts_text)
+
+    def _create_outcome_counts_diff_md(self) -> MarkdownWidget:
+        outcome_counts_text = self.vis_texts.markdown_outcome_counts_diff.format(
+            self.vis_texts.definitions.true_positives,
+            self.vis_texts.definitions.false_positives,
+            self.vis_texts.definitions.false_negatives,
+        )
+        return MarkdownWidget(
+            "markdown_outcome_counts_diff", "Outcome Counts Differences", text=outcome_counts_text
+        )
 
     def _create_modal_tables(self):
         # TODO: table for each evaluation?

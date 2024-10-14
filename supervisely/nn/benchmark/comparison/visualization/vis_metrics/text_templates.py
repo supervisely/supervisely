@@ -109,6 +109,15 @@ This chart is used to evaluate the overall model performance by breaking down al
     + clickable_label
 )
 
+markdown_outcome_counts_diff = (
+    """### Outcome Counts Differences
+
+This chart compares the outcome counts between different models. It helps to identify which model performs better in terms of <abbr title="{}">True Positives</abbr>, <abbr title="{}">False Positives</abbr>, and <abbr title="{}">False Negatives</abbr>. Common bars show the number of matches between models, while separated bars show unique outcomes for each model.
+
+"""
+    + clickable_label
+)
+
 markdown_R = """## Recall
 
 This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, it answers the question: “Of all instances in the dataset, how many of them is the model managed to find out?”

@@ -103,7 +103,7 @@ class EvalResult:
             raise ValueError(f"Directory {self.eval_dir} not found in storage.")
         mkdir(self.local_dir)
         with self.progress(
-            f"Downloading evaluation data at {self.eval_dir}",
+            message=f"Downloading evaluation data at {self.eval_dir}",
             total=self.api.storage.get_directory_size(self.team_id, self.eval_dir),
         ) as pbar:
             self.api.storage.download_directory(
