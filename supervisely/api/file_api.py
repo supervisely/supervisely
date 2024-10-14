@@ -895,8 +895,8 @@ class FileApi(ModuleApiBase):
             try:
                 progress_cb = progress_cb.get_partial()
             except AttributeError:
-                pass
-            data = MultipartEncoderMonitor(encoder, _get_progress_callback(progress_cb))
+                progress_cb = _get_progress_callback(progress_cb)
+            data = MultipartEncoderMonitor(encoder, progress_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
