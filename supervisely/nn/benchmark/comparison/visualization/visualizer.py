@@ -1,14 +1,12 @@
 import datetime
 import importlib
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
 from jinja2 import Template
 
 from supervisely.api.api import Api
-from supervisely.app.widgets import SlyTqdm
 from supervisely.io.fs import dir_empty, get_directory_size
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
@@ -21,7 +19,6 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     BaseWidget,
-    ChartWidget,
     ContainerWidget,
     GalleryWidget,
     MarkdownWidget,
@@ -62,16 +59,21 @@ class BaseVisualizer:
         return self.save()
 
     def upload_results(
-        self, api: Api, team_id: int, remote_dir: str, progress: Optional[SlyTqdm] = None
+        self, api: Api, team_id: int, remote_dir: str, progress: Optional[tqdm_sly] = None
     ) -> str:
         if dir_empty(self.output_dir):
             raise RuntimeError(
                 "No visualizations to upload. You should call visualize method first."
             )
-        progress = progress or tqdm_sly
+        if progress is None:
+            progress = tqdm_sly
         dir_total = get_directory_size(self.output_dir)
         with progress(
-            f"Uploading visualizations to {remote_dir}", total=dir_total
+            message=f"Uploading visualizations to {remote_dir}",
+            total=dir_total,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as pbar:
             remote_dir = api.file.upload_directory(
                 team_id,
@@ -125,7 +127,7 @@ class ComparisonVisualizer:
         return self.viz.visualize()
 
     def upload_results(self, team_id: int, remote_dir: str, progress=None):
-        return self.viz.upload_results(self.api, team_id, remote_dir)
+        return self.viz.upload_results(self.api, team_id, remote_dir, progress)
 
     def _create_widgets(self):
         # TODO: add modal galleries
