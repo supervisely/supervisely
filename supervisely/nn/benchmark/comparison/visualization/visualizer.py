@@ -3,6 +3,7 @@ import importlib
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 from jinja2 import Template
 
@@ -27,6 +28,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
     SidebarWidget,
 )
 from supervisely.nn.benchmark.cv_tasks import CVTask
+from supervisely.task.progress import tqdm_sly
 
 
 class BaseVisualizer:
@@ -59,22 +61,24 @@ class BaseVisualizer:
     def visualize(self):
         return self.save()
 
-    def upload_results(self, api: Api, team_id: int, remote_dir: str, progress=None) -> str:
+    def upload_results(
+        self, api: Api, team_id: int, remote_dir: str, progress: Optional[SlyTqdm] = None
+    ) -> str:
         if dir_empty(self.output_dir):
             raise RuntimeError(
                 "No visualizations to upload. You should call visualize method first."
             )
-        progress = progress or SlyTqdm()
+        progress = progress or tqdm_sly
         dir_total = get_directory_size(self.output_dir)
         with progress(
-            f"Uploading visualizations to {remote_dir}", total=dir_total, is_size=True
+            f"Uploading visualizations to {remote_dir}", total=dir_total
         ) as pbar:
             remote_dir = api.file.upload_directory(
                 team_id,
                 self.output_dir,
                 remote_dir,
                 change_name_if_conflict=True,
-                progress_size_cb=pbar.update,
+                progress_size_cb=pbar,
             )
         src = self.save_report_link(api, team_id, remote_dir)
         api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
