@@ -20,12 +20,14 @@ class ModelComparison:
     ):
         self.api = api
         self.progress = progress or tqdm_sly
-        self.output_dir = output_dir
+        self.base_dir = output_dir
+        self.eval_dir = self.base_dir + "/temp"
+        self.output_dir = self.base_dir + "/results"
         self.remote_eval_dirs = remote_eval_dirs
         self.evaluation_results: List[EvalResult] = []
         for eval_dir in remote_eval_dirs:
             self.evaluation_results.append(
-                EvalResult(eval_dir, self.output_dir, self.api, self.progress)
+                EvalResult(eval_dir, self.eval_dir, self.api, self.progress)
             )
 
         self.task_type = self.evaluation_results[0].inference_info.get("task_type")
