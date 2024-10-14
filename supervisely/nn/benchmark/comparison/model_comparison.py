@@ -9,7 +9,7 @@ from supervisely.nn.benchmark.comparison.visualization.visualizer import (
 from supervisely.task.progress import tqdm_sly
 
 
-class BaseComparison:
+class ModelComparison:
 
     def __init__(
         self,
@@ -32,6 +32,7 @@ class BaseComparison:
         self._validate_eval_data()
 
         self.visualizer: ComparisonVisualizer = None
+        self.remote_dir = None
 
     def run_compare(self):
         raise NotImplementedError()
@@ -69,7 +70,11 @@ class BaseComparison:
         self.visualizer.visualize()
 
     def upload_results(self, team_id: int, remote_dir: str, progress=None) -> str:
-        return self.visualizer.upload_results(team_id, remote_dir, progress)
+        self.remote_dir = self.visualizer.upload_results(team_id, remote_dir, progress)
+        return self.remote_dir
 
-    def get_report_link(self, team_id: int, remote_dir: str) -> str:
-        return ""  # TODO: implement
+    def get_report_link(self) -> str:
+        if self.remote_dir is None:
+            raise ValueError("Results are not uploaded yet.")
+        report_link = self.remote_dir.rstrip("/") + "/template.vue"
+        return report_link
