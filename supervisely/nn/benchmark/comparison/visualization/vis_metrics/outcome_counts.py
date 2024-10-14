@@ -1,3 +1,8 @@
+from collections import defaultdict
+from typing import List
+
+import numpy as np
+
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
@@ -78,14 +83,12 @@ class OutcomeCounts(BaseVisMetric):
         fig = go.Figure()
 
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
-        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1] + [
-            "Common"
-        ]
+        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1]
+        model_names.append("Common")
 
-        common_tp, common_fp, common_fn, diff_tp, diff_fp, diff_fn = self.get_common_and_diffs()
-        tps_cnt = [len(v) for v in diff_tp.values()][::-1] + [len(common_tp)]
-        fns_cnt = [len(v) for v in diff_fn.values()][::-1] + [len(common_fn)]
-        fps_cnt = [len(v) for v in diff_fp.values()][::-1] + [len(common_fp)]
+        tps_cnt = self.find_common_and_diff_tp()
+        fns_cnt = self.find_common_and_diff_fn()
+        fps_cnt = self.find_common_and_diff_fp()
 
         for metric, values, color in zip(["TP", "FN", "FP"], [tps_cnt, fns_cnt, fps_cnt], colors):
             fig.add_trace(
@@ -102,56 +105,70 @@ class OutcomeCounts(BaseVisMetric):
         fig = self.update_figure_layout(fig)
         return fig
 
-    def get_common_and_diffs(self):
-        all_models_tp = {}
-        all_models_fp = {}
-        all_models_fn = {}
-        for idx, eval_result in enumerate(self.eval_results, 1):
-            curr_model_tp = all_models_tp.setdefault(f"Model {idx}", {})
-            curr_model_fp = all_models_fp.setdefault(f"Model {idx}", {})
-            curr_model_fn = all_models_fn.setdefault(f"Model {idx}", {})
-            for m in eval_result.mp.m.tp_matches:
-                img_id = m["image_id"]
-                category_id = m["category_id"]
-                key = f"{img_id}_{category_id}"
-                curr_model_tp[key] = m
-            for m in eval_result.mp.m.fp_matches:
-                img_id = m["image_id"]
-                category_id = m["category_id"]
-                key = f"{img_id}_{category_id}"
-                curr_model_fp[key] = m
-            for m in eval_result.mp.m.fn_matches:
-                img_id = m["image_id"]
-                category_id = m["category_id"]
-                key = f"{img_id}_{category_id}"
-                curr_model_fn[key] = m
+    def find_common_and_diff_fn(self) -> List[int]:
+        ids_list = [set([x["gt_id"] for x in r.mp.m.fn_matches]) for r in self.eval_results]
 
-        common_tp = []  # list of tuples (match1, match2, ...)
-        common_fp = []  # list of tuples (match1, match2, ...)
-        common_fn = []  # list of tuples (match1, match2, ...)
-        diff_tp = {}  # {model1: [match1, match2, ...], model2: [match1, match2, ...], ...}
-        diff_fp = {}  # {model1: [match1, match2, ...], model2: [match1, match2, ...], ...}
-        diff_fn = {}  # {model1: [match1, match2, ...], model2: [match1, match2, ...], ...}
+        same_fn_matches = set.intersection(*ids_list)
+        diff_fn_matches = [ids - same_fn_matches for ids in ids_list]
+        return [len(x) for x in diff_fn_matches][::-1] + [len(same_fn_matches)]
 
-        for model, tp_matches in all_models_tp.items():
-            for key, match in tp_matches.items():
-                if all(key in others_tp for others_tp in all_models_tp.values()):
-                    common_tp.append([match] + [matches[key] for matches in all_models_tp.values()])
-                else:
-                    diff_tp.setdefault(model, []).append(match)
+    def find_common_and_diff_fp(self) -> List[int]:
+        from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
-        for model, fp_matches in all_models_fp.items():
-            for key, match in fp_matches.items():
-                if all(key in others_fp for others_fp in all_models_fp.values()):
-                    common_fp.append([match] + [matches[key] for matches in all_models_fp.values()])
-                else:
-                    diff_fp.setdefault(model, []).append(match)
+        iouType = "bbox"
+        iouThr = 0.75
 
-        for model, fn_matches in all_models_fn.items():
-            for key, match in fn_matches.items():
-                if all(key in others_fn for others_fn in all_models_fn.values()):
-                    common_fn.append([match] + [matches[key] for matches in all_models_fn.values()])
-                else:
-                    diff_fn.setdefault(model, []).append(match)
+        key_name = "bbox" if iouType == "bbox" else "segmentation"
 
-        return common_tp, common_fp, common_fn, diff_tp, diff_fp, diff_fn
+        # TODO: add support for more models
+        assert len(self.eval_results) == 2, "Currently only 2 models are supported"
+
+        imgId2ann1 = defaultdict(list)
+        imgId2ann2 = defaultdict(list)
+        for m in self.eval_results[0].mp.m.fp_matches:
+            ann = self.eval_results[0].mp.cocoDt.anns[m["dt_id"]]
+            imgId2ann1[m["image_id"]].append(ann)
+        for m in self.eval_results[1].mp.m.fp_matches:
+            ann = self.eval_results[1].mp.cocoDt.anns[m["dt_id"]]
+            imgId2ann2[m["image_id"]].append(ann)
+
+        same_fp_matches = []
+        for img_id in imgId2ann1:
+            anns1 = imgId2ann1[img_id]
+            anns2 = imgId2ann2[img_id]
+            geoms1 = [x[key_name] for x in anns1]
+            geoms2 = [x[key_name] for x in anns2]
+
+            ious = maskUtils.iou(geoms1, geoms2, [0] * len(geoms2))
+            if len(ious) == 0:
+                continue
+            indxs = np.nonzero(ious > iouThr)
+            if len(indxs[0]) == 0:
+                continue
+            indxs = list(zip(*indxs))
+            indxs = sorted(indxs, key=lambda x: ious[x[0], x[1]], reverse=True)
+            id1, id2 = list(zip(*indxs))
+            id1, id2 = set(id1), set(id2)
+            for i, j in indxs:
+                if i in id1 and j in id2:
+                    same_fp_matches.append((anns1[i], anns2[j], ious[i, j]))
+                    id1.remove(i)
+                    id2.remove(j)
+
+        # Find different FP matches for each model
+        id1, id2 = zip(*[(x[0]["id"], x[1]["id"]) for x in same_fp_matches])
+        id1 = set(id1)
+        id2 = set(id2)
+
+        diff_fp_matches_1 = set([x["dt_id"] for x in self.eval_results[0].mp.m.fp_matches]) - id1
+        diff_fp_matches_2 = set([x["dt_id"] for x in self.eval_results[1].mp.m.fp_matches]) - id2
+
+        return [len(diff_fp_matches_2), len(diff_fp_matches_1), len(same_fp_matches)]
+
+    def find_common_and_diff_tp(self) -> List[int]:
+        ids_list = [set([x["gt_id"] for x in r.mp.m.tp_matches]) for r in self.eval_results]
+
+        same_tp_matches = set.intersection(*ids_list)
+        diff_tp_matches = [ids - same_tp_matches for ids in ids_list]
+
+        return [len(x) for x in diff_tp_matches][::-1] + [len(same_tp_matches)]
