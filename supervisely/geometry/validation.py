@@ -63,3 +63,20 @@ def validate_geometry_points_fields(json_obj: dict) -> None:
         _is_2d_numeric_coords_valid(interior_component) for interior_component in interior
     ):
         raise TypeError("{} field must be a list of lists of 2 numbers lists.".format(INTERIOR))
+
+
+def validate_img_bounds(labels_json, img_size):
+    def _validate_point(point, img_size):
+        if point[1] > img_size[0] or point[0] > img_size[1]:
+            raise Exception("Figure points are out of image bounds.")
+
+    for label_json in labels_json:
+        points = label_json.get(POINTS)
+        if not points:
+            continue
+
+        for point in points[EXTERIOR]:
+            _validate_point(point, img_size)
+        for figure in points[INTERIOR]:
+            for point in figure:
+                _validate_point(point, img_size)
