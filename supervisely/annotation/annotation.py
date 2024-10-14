@@ -33,8 +33,6 @@ from supervisely.imaging import image as sly_image
 from supervisely.io.fs import ensure_base_path
 from supervisely.project.project_meta import ProjectMeta
 
-from supervisely.geometry.validation import validate_img_bounds
-
 if TYPE_CHECKING:
     try:
         from imgaug.augmentables.bbs import BoundingBoxesOnImage
@@ -399,7 +397,6 @@ class Annotation:
         try:
             labels_json = data[AnnotationJsonFields.LABELS]
             labels = [Label.from_json(label_json, project_meta) for label_json in labels_json]
-            validate_img_bounds(labels_json, img_size)
         except Exception as e:
             raise RuntimeError(
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"

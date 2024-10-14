@@ -2,7 +2,7 @@ import os
 from typing import Dict, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
-from supervisely import Annotation, Dataset, OpenMode, Project, ProjectMeta, logger
+from supervisely import Annotation, Dataset, OpenMode, Project, ProjectMeta, Rectangle, logger
 from supervisely._utils import generate_free_name
 from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
@@ -52,6 +52,9 @@ class SLYImageConverter(ImageConverter):
             if "annotation" in ann_json:
                 ann_json = ann_json["annotation"]
             ann = Annotation.from_json(ann_json, meta)
+            image_rect = Rectangle.from_size(ann.img_size)
+            if any([not image_rect.contains(label.geometry.to_bbox()) for label in ann.labels]):
+                return False
             return True
         except:
             return False
