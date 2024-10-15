@@ -1,6 +1,15 @@
 import os
 
-from supervisely import Annotation, Api, ProjectMeta, batched, is_development, logger
+from supervisely import (
+    Annotation,
+    Api,
+    ProjectMeta,
+    Label,
+    Rectangle,
+    batched,
+    is_development,
+    logger,
+)
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
 import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely.convert.image.image_converter import ImageConverter
@@ -57,8 +66,12 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            ann_json = validate_image_bounds(ann_json, meta)
-            return Annotation.from_json(ann_json, meta)
+            img_size = list(ann_json["size"].values())
+            labels = validate_image_bounds(
+                [Label.from_json(obj) for obj in ann_json["objects"]],
+                Rectangle.from_size(img_size),
+            )
+            return Annotation(img_size, labels)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
             return None

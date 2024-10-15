@@ -147,8 +147,12 @@ class SLYImageConverter(ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            ann_json = validate_image_bounds(ann_json, meta)
-            return Annotation.from_json(ann_json, meta)
+            img_size = list(ann_json["size"].values())
+            labels = validate_image_bounds(
+                [Label.from_json(obj) for obj in ann_json["objects"]],
+                Rectangle.from_size(img_size),
+            )
+            return Annotation(img_size, labels)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()

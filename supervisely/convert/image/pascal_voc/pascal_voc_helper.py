@@ -2,7 +2,7 @@ import os
 from typing import List, Tuple
 
 import numpy as np
-
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely import (
     Annotation,
     Label,
@@ -87,16 +87,6 @@ def read_colors(colors_file: str) -> Tuple[ObjClassCollection, dict]:
     color2class_name = {v: k for k, v in cls2col.items()}
     return obj_classes, color2class_name
 
-
-def validate_image_bounds(labels, img_rect: Rectangle):
-    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
-    if new_labels != labels:
-        logger.warning(
-            f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
-        )
-    return new_labels
-
-
 def get_ann(
     item,
     color2class_name: dict,
@@ -110,8 +100,9 @@ def get_ann(
     ann = Annotation(img_size=(height, width))
 
     if item.ann_data is not None:
-        bbox_labels = xml_to_sly_labels(item.ann_data, meta, bbox_classes_map, renamed_classes)
-        bbox_labels = validate_image_bounds(bbox_labels, img_rect)
+        bbox_labels = xml_to_sly_labels(
+            item.ann_data, meta, bbox_classes_map, img_rect, renamed_classes
+        )
         ann = ann.add_labels(bbox_labels)
 
     if segm_path is None:
@@ -170,6 +161,7 @@ def xml_to_sly_labels(
     xml_path: str,
     meta: ProjectMeta,
     bbox_classes_map: dict,
+    img_rect: Rectangle,
     renamed_classes=None,
 ) -> List[Label]:
     import xml.etree.ElementTree as ET
@@ -193,6 +185,7 @@ def xml_to_sly_labels(
             bbox = Rectangle(*bbox_coords)
             label = Label(bbox, obj_cls)
             labels.append(label)
+    labels = validate_image_bounds(labels, img_rect)
 
     return labels
 

@@ -16,7 +16,7 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import file_exists, dirs_with_marker, dir_exists, get_file_name, list_files, dirs_filter, remove_junk_from_dir, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
-
+from supervisely.convert.image.image_helper import validate_image_bounds
 
 class ImagesWithMasksConverter(ImageConverter):
     def __init__(
@@ -122,14 +122,6 @@ class ImagesWithMasksConverter(ImageConverter):
 
         return detected_ann_cnt > 0
 
-    def validate_image_bounds(self, labels, img_rect: Rectangle):
-        new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
-        if new_labels != labels:
-            logger.warning(
-                f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
-            )
-        return new_labels
-
     def to_supervisely(
         self,
         item: ImageConverter.Item,
@@ -158,7 +150,7 @@ class ImagesWithMasksConverter(ImageConverter):
                 instance_labels = helper.read_instance_labels(
                     instance_masks_paths, meta.obj_classes, renamed_classes
                 )
-            all_labels = self.validate_image_bounds(
+            all_labels = validate_image_bounds(
                 semantic_labels + instance_labels, Rectangle.from_size(item.shape)
             )
 

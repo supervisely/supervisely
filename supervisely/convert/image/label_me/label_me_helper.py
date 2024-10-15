@@ -21,6 +21,7 @@ from supervisely.io.fs import file_exists
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
+from supervisely.convert.image.image_helper import validate_image_bounds
 
 labelme_shape_types_to_sly_map = {
     "polygon": Polygon,
@@ -201,7 +202,6 @@ def create_supervisely_annotation(
 ) -> Annotation:
     ann = Annotation.from_img_path(item.path)
     h, w = ann.img_size
-    img_rect = Rectangle.from_size(ann.img_size)
     if item.ann_data is None:
         return ann
     raw_json = load_json_file(item.ann_data)
@@ -221,10 +221,8 @@ def create_supervisely_annotation(
 
         label = convert_labelme_to_sly(shape, obj_class)
         if label is not None:
-            if img_rect.contains(label.geometry.to_bbox()):
-                labels.append(label)
-            else:
-                logger.warning("Annotation geometry is out of image bounds. Skipping...")
+            labels.append(label)
+    labels = validate_image_bounds(labels, Rectangle.from_size(ann.img_size))
     ann = ann.add_labels(labels)
 
     return ann

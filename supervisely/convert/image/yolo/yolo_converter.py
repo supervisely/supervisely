@@ -240,7 +240,6 @@ class YOLOConverter(ImageConverter):
             labels = []
             item.set_shape()
             height, width = item.shape
-            img_rect = Rectangle.from_size(item.shape)
             with open(item.ann_data, "r") as ann_file:
                 lines = ann_file.readlines()
                 for line in lines:
@@ -260,11 +259,6 @@ class YOLOConverter(ImageConverter):
                             coords,
                         )
                         if geometry is None:
-                            continue
-                        if not img_rect.contains(geometry.to_bbox()):
-                            logger.warning(
-                                f"Annotation geometry is out of image bounds. Skipping..."
-                            )
                             continue
 
                         class_name = self._coco_classes_dict[class_index]

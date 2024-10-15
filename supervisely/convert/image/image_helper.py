@@ -4,7 +4,7 @@ from pathlib import Path
 import magic
 import numpy as np
 from PIL import Image
-from typing import Union
+from typing import Union, List
 
 from supervisely import Rectangle, Label, logger
 from supervisely.imaging.image import read, write
@@ -101,15 +101,13 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     return image
 
 
-def validate_image_bounds(ann_json: dict, meta):
-    img_rect = Rectangle.from_size(list(ann_json["size"].values()))
-    objects = ann_json["objects"]
-    to_box = lambda x: Label.from_json(x, meta).geometry.to_bbox()
-    new_objects = [obj for obj in objects if img_rect.contains(to_box(obj))]
-
-    if new_objects != objects:
+def validate_image_bounds(labels: List[Label], img_rect: Rectangle) -> List[Label]:
+    """
+    Check if labels are localed inside the image canvas, print a warning and skip them if not.
+    """
+    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+    if new_labels != labels:
         logger.warning(
-            f"{len(objects) - len(new_objects)} annotation objects are out of image bounds. Skipping..."
+            f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
         )
-        ann_json["objects"] = new_objects
-    return ann_json
+    return new_labels
