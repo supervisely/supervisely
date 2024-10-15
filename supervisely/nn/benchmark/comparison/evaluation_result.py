@@ -154,9 +154,13 @@ class EvalResult:
         if not self.api.storage.dir_exists(self.team_id, self.eval_dir):
             raise ValueError(f"Directory {self.eval_dir} not found in storage.")
         mkdir(self.local_dir)
+        dir_name = Path(self.eval_dir).name
         with self.progress(
-            message=f"Downloading evaluation data at {self.eval_dir}",
+            message=f"Downloading evaluation data from {dir_name}",
             total=self.api.storage.get_directory_size(self.team_id, self.eval_dir),
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as pbar:
             self.api.storage.download_directory(
                 self.team_id, self.eval_dir, self.local_dir, progress_cb=pbar.update
@@ -168,7 +172,7 @@ class EvalResult:
         if items_total is None:
             items_total = sum(self.gt_dataset_infos, key=lambda x: x.items_count)
         with self.progress(
-            f"Downloading GT project {self.gt_project_info.name} and datasets",
+            message=f"Downloading GT project {self.gt_project_info.name} and datasets",
             total=items_total,
         ) as pbar:
             download_project(

@@ -68,8 +68,9 @@ class BaseVisualizer:
         if progress is None:
             progress = tqdm_sly
         dir_total = get_directory_size(self.output_dir)
+        dir_name = Path(remote_dir).name
         with progress(
-            message=f"Uploading visualizations",
+            message=f"Uploading visualizations to {dir_name}",
             total=dir_total,
             unit="B",
             unit_scale=True,
