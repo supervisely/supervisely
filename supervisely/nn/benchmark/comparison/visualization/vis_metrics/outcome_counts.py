@@ -7,6 +7,7 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric im
     BaseVisMetric,
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import ChartWidget
+from supervisely.nn.task_type import TaskType
 
 
 class OutcomeCounts(BaseVisMetric):
@@ -115,10 +116,16 @@ class OutcomeCounts(BaseVisMetric):
     def find_common_and_diff_fp(self) -> List[int]:
         from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
-        iouType = "bbox"
         iouThr = 0.75
 
-        key_name = "bbox" if iouType == "bbox" else "segmentation"
+        if self.eval_results[0].cv_task == TaskType.OBJECT_DETECTION:
+            key_name = "bbox"
+        elif self.eval_results[0].cv_task in [
+            TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION
+        ]:
+            key_name = "segmentation"
+        else:
+            raise NotImplementedError("Not implemented for this task type")
 
         # TODO: add support for more models
         assert len(self.eval_results) == 2, "Currently only 2 models are supported"
