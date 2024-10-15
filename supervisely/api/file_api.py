@@ -520,15 +520,13 @@ class FileApi(ModuleApiBase):
                 if show_progress is False:
                     progress_cb = None
                 elif show_progress and progress_cb is None:
-                    progress_cb = tqdm(
+                    progress_cb = tqdm_sly(
                         total=total_size,
                         unit="B",
                         unit_scale=True,
                         desc="Downloading file",
-                        leave=True,
                         initial=downloaded_size,
                     )
-
                 if retry_range_start not in [0, None]:
                     writing_method = "ab"
                 else:
