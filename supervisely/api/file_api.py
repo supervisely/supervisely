@@ -36,7 +36,10 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import load_json_file
-from supervisely.io.network_exceptions import process_requests_exception
+from supervisely.io.network_exceptions import (
+    process_requests_exception,
+    process_unhandled_request,
+)
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, handle_original_tqdm, tqdm_sly
 
@@ -459,83 +462,124 @@ class FileApi(ModuleApiBase):
         show_progress: bool = False,
         progress_cb=None,
     ):
-        api_method_name = "file-storage.download"
+        """
+        Download File from Team Files or connected Cloud Storage.
 
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Path to File in Team Files.
+        :type remote_path: str
+        :param local_save_path: Local save path.
+        :type local_save_path: str
+        :param range_start: Start byte position for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte position for partial download.
+        :type range_end: int, optional
+        :param headers: Additional headers for request.
+        :type headers: dict, optional
+        :param show_progress: If True show download progress. If False, progress_cb will be None.
+        :type show_progress: bool
+        :param progress_cb: Function for tracking download progress. If None, tqdm will be used.
+        :type progress_cb: tqdm or callable, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        api_method_name = "file-storage.download"
+        url = self._api.api_server_address + "/v3/" + api_method_name
         if headers is None:
-            headers = self._api.headers
+            headers = self._api.headers.copy()
         else:
             headers.update(self._api.headers)
 
         downloaded_size = 0
+        retry_range_start = range_start
 
         if range_start is not None or range_end is not None:
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"File: {remote_path}. Setting Range header: {headers['Range']}")
 
         json_body = {
             ApiField.TEAM_ID: team_id,
             ApiField.PATH: remote_path,
             **self._api.additional_fields,
         }
+        if range_start is not None and range_end is not None:
+            total_size = range_end - range_start
+        elif range_start is not None:
+            total_size = self.get_info_by_path(team_id, remote_path).sizeb - range_start
+        elif range_end is not None:
+            total_size = range_end
+        else:
+            total_size = self.get_info_by_path(team_id, remote_path).sizeb
+
+        logger.debug(f"Starting download: {remote_path}, total size: {total_size}")
 
         for retry_idx in range(self._api.retry_count):
             try:
-                client, response = await self._api.async_stream(
-                    api_method_name, json_body, "POST", headers
-                )
-                async with response as response:
-                    if response.status_code not in [
-                        httpx.codes.OK,
-                        httpx.codes.PARTIAL_CONTENT,
-                    ]:
-                        self._api._check_version()
-                        self._api._raise_for_status(response)
+                ensure_base_path(local_save_path)
+                if show_progress is False:
+                    progress_cb = None
+                elif show_progress and progress_cb is None:
+                    progress_cb = tqdm(
+                        total=total_size,
+                        unit="B",
+                        unit_scale=True,
+                        desc="Downloading file",
+                        leave=True,
+                        initial=downloaded_size,
+                    )
 
-                    ensure_base_path(local_save_path)
-                    if show_progress is False:
-                        progress_cb = None
-                    elif show_progress and progress_cb is None:
-                        total_size = (
-                            int(response.headers.get("Content-Length", 0)) + downloaded_size
+                if retry_range_start not in [0, None]:
+                    writing_method = "ab"
+                else:
+                    writing_method = "wb"
+
+                async with aiofiles.open(local_save_path, writing_method) as fd:
+                    async for chunk in self._api.async_stream(
+                        method=api_method_name,
+                        method_type="POST",
+                        data=json_body,
+                        headers=headers,
+                    ):
+                        await fd.write(chunk)
+                        downloaded_size += len(chunk)
+                        logger.debug(
+                            f"File: {remote_path}. Downloaded chunk size: {len(chunk)}, total downloaded: {downloaded_size}"
                         )
-                        progress_cb = tqdm_sly(
-                            total=total_size,
-                            unit="B",
-                            unit_scale=True,
-                            desc="Downloading file",
-                            leave=True,
-                            initial=downloaded_size,
-                        )
+                        if progress_cb is not None:
+                            progress_cb.update(len(chunk))
+                    await fd.flush()
 
-                    if range_start not in [0, None]:
-                        writing_method = "ab"
-                    else:
-                        writing_method = "wb"
+                downloaded_file_size = os.path.getsize(local_save_path)
+                if total_size != downloaded_file_size:
+                    raise RuntimeError(
+                        f"Downloaded {remote_path} file size does not match the expected size: {downloaded_file_size} != {total_size}"
+                    )
 
-                    async with aiofiles.open(local_save_path, writing_method) as fd:
-                        async for chunk in response.aiter_raw(8192):
-                            await fd.write(chunk)
-                            downloaded_size += len(chunk)
-                            if progress_cb is not None:
-                                progress_cb(len(chunk))
-                        return await client.aclose()
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
-                await client.aclose()
-                range_start = downloaded_size
-                headers["Range"] = f"bytes={range_start}-"
+            except httpx.RequestError as e:
+                retry_range_start = downloaded_size + (range_start or 0)
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"File: {remote_path}. Retrying with Range header: {headers['Range']}")
                 process_requests_exception(
                     self._api.logger,
                     e,
                     api_method_name,
-                    self._api.api_server_address + "/v3/" + api_method_name,
+                    url,
                     verbose=True,
                     swallow_exc=True,
                     sleep_sec=min(self._api.retry_sleep_sec * (2**retry_idx), 60),
-                    response=response,
-                    retry_info={
-                        "retry_idx": retry_idx + 1,
-                        "retry_limit": self._api.retry_count,
-                    },
+                    response=None,
+                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": self._api.retry_count},
                 )
+            except Exception as e:
+                process_unhandled_request(self._api.logger, e)
+            else:
+                if progress_cb is not None:
+                    progress_cb.close()
+                return
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})", request=None, response=None
+        )
 
     async def async_download(
         self,
@@ -544,8 +588,8 @@ class FileApi(ModuleApiBase):
         local_save_path: str,
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
         cache: Optional[FileCache] = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
         show_file_progress: bool = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download File from Team Files.
@@ -556,8 +600,12 @@ class FileApi(ModuleApiBase):
         :type remote_path: str
         :param local_save_path: Local save path.
         :type local_save_path: str
-        :param cache: optional
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore
+        :param cache: Cache object for storing files.
         :type cache: FileCache, optional
+        :param show_file_progress: If True show download progress. If False, progress_cb will be None.
+        :type show_file_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :return: None
