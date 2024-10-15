@@ -62,9 +62,6 @@ class SLYImageConverter(ImageConverter):
             if "annotation" in ann_json:
                 ann_json = ann_json["annotation"]
             ann = Annotation.from_json(ann_json, meta)
-            image_rect = Rectangle.from_size(ann.img_size)
-            if any([not image_rect.contains(label.geometry.to_bbox()) for label in ann.labels]):
-                return False
             return True
         except:
             return False
