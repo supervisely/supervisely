@@ -1,4 +1,4 @@
-from supervisely import Annotation, Label, PointLocation, Polygon, ProjectMeta, logger, ObjClass
+from supervisely import Annotation, Label, PointLocation, Polygon, ProjectMeta, logger, Rectangle
 from supervisely.io.json import load_json_file
 
 COLOR_MAP_FILE_NAME = "class_to_id.json"
@@ -63,6 +63,7 @@ def convert_points(simple_points):
 
 
 def create_ann_from_file(ann: Annotation, ann_path: str, meta: ProjectMeta, renamed_classes: dict) -> Annotation:
+    img_rect = Rectangle.from_size(ann.img_size)
     ann_data = load_json_file(ann_path)
     for obj in ann_data["objects"]:
         class_name = obj["label"]
@@ -83,5 +84,8 @@ def create_ann_from_file(ann: Annotation, ann_path: str, meta: ProjectMeta, rena
         interiors = [convert_points(interior) for interior in interiors]
         polygon = Polygon(convert_points(polygon), interiors)
         obj_class = meta.get_obj_class(class_name)
-        ann = ann.add_label(Label(polygon, obj_class))
+        if img_rect.contains(polygon.to_bbox()):
+            ann = ann.add_label(Label(polygon, obj_class))
+        else:
+            logger.warning("Polygon is out of image bounds. Skipping...")
     return ann

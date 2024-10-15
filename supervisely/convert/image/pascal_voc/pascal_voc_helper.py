@@ -88,6 +88,15 @@ def read_colors(colors_file: str) -> Tuple[ObjClassCollection, dict]:
     return obj_classes, color2class_name
 
 
+def validate_image_bounds(labels, img_rect: Rectangle):
+    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+    if new_labels != labels:
+        logger.warning(
+            f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
+        )
+    return new_labels
+
+
 def get_ann(
     item,
     color2class_name: dict,
@@ -97,11 +106,12 @@ def get_ann(
 ) -> Annotation:
     segm_path, inst_path = item.segm_path, item.inst_path
     height, width = item.shape
-
+    img_rect = Rectangle.from_size(item.shape)
     ann = Annotation(img_size=(height, width))
 
     if item.ann_data is not None:
         bbox_labels = xml_to_sly_labels(item.ann_data, meta, bbox_classes_map, renamed_classes)
+        bbox_labels = validate_image_bounds(bbox_labels, img_rect)
         ann = ann.add_labels(bbox_labels)
 
     if segm_path is None:
@@ -136,14 +146,17 @@ def get_ann(
                     cls_name = renamed_classes[cls_name]
             curr_col2cls[color] = cls_name
 
+    labels = []
     for color, class_name in curr_col2cls.items():
         mask = np.all(colored_img == color, axis=2)  # exact match (3-channel img & rgb color)
         bitmap = Bitmap(data=mask)
         obj_class = ObjClass(name=class_name, geometry_type=Bitmap)
-
-        ann = ann.add_label(Label(bitmap, obj_class))
+        labels.append(Label(bitmap, obj_class))
         #  clear used pixels in mask to check missing colors, see below
         colored_img[mask] = (0, 0, 0)
+
+    labels = validate_image_bounds(labels, img_rect)
+    ann = ann.add_labels(labels)
 
     if np.sum(colored_img) > 0:
         logger.warn(

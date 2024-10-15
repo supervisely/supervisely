@@ -2,7 +2,15 @@ import os
 from typing import Dict, Optional, Union
 
 import supervisely.convert.image.masks.image_with_masks_helper as helper
-from supervisely import Annotation, ProjectMeta, logger, ObjClass, Bitmap, ObjClassCollection
+from supervisely import (
+    Annotation,
+    ProjectMeta,
+    logger,
+    ObjClass,
+    Bitmap,
+    ObjClassCollection,
+    Rectangle,
+)
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import file_exists, dirs_with_marker, dir_exists, get_file_name, list_files, dirs_filter, remove_junk_from_dir, get_file_ext
@@ -59,7 +67,7 @@ class ImagesWithMasksConverter(ImageConverter):
             return False
         self._meta = key_file_result
 
-        # possible_dss 
+        # possible_dss
         def _search_for_dss(dir_path):
             if any([d in os.listdir(dir_path) for d in helper.MASK_DIRS]):
                 return True
@@ -114,6 +122,14 @@ class ImagesWithMasksConverter(ImageConverter):
 
         return detected_ann_cnt > 0
 
+    def validate_image_bounds(self, labels, img_rect: Rectangle):
+        new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+        if new_labels != labels:
+            logger.warning(
+                f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
+            )
+        return new_labels
+
     def to_supervisely(
         self,
         item: ImageConverter.Item,
@@ -142,8 +158,11 @@ class ImagesWithMasksConverter(ImageConverter):
                 instance_labels = helper.read_instance_labels(
                     instance_masks_paths, meta.obj_classes, renamed_classes
                 )
+            all_labels = self.validate_image_bounds(
+                semantic_labels + instance_labels, Rectangle.from_size(item.shape)
+            )
 
-            ann = ann.add_labels(labels=semantic_labels + instance_labels)
+            ann = ann.add_labels(labels=all_labels)
 
             return ann
         except Exception as e:

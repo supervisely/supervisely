@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from typing import Union
 
-from supervisely import logger
+from supervisely import Rectangle, Label, logger
 from supervisely.imaging.image import read, write
 from supervisely.io.fs import (
     get_file_ext,
@@ -99,3 +99,17 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
                 )
 
     return image
+
+
+def validate_image_bounds(ann_json: dict, meta):
+    img_rect = Rectangle.from_size(list(ann_json["size"].values()))
+    objects = ann_json["objects"]
+    to_box = lambda x: Label.from_json(x, meta).geometry.to_bbox()
+    new_objects = [obj for obj in objects if img_rect.contains(to_box(obj))]
+
+    if new_objects != objects:
+        logger.warning(
+            f"{len(objects) - len(new_objects)} annotation objects are out of image bounds. Skipping..."
+        )
+        ann_json["objects"] = new_objects
+    return ann_json

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from tqdm import tqdm
 
 import supervisely.convert.image.csv.csv_helper as csv_helper
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely import (
     Annotation,
     batched,
@@ -190,6 +191,7 @@ class CSVConverter(ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = csv_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
+            ann_json = validate_image_bounds(ann_json, meta)
             return Annotation.from_json(ann_json, meta)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

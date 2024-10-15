@@ -2,6 +2,7 @@ import os
 from typing import Dict, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely import (
     Annotation,
     Dataset,
@@ -126,19 +127,6 @@ class SLYImageConverter(ImageConverter):
         self._meta = meta
         return detected_ann_cnt > 0
 
-    def _validate_image_bounds(self, ann_json: Dict, meta):
-        img_rect = Rectangle.from_size(list(ann_json["size"].values()))
-        objects = ann_json["objects"]
-        to_box = lambda x: Label.from_json(x, meta).geometry.to_bbox()
-        new_objects = [obj for obj in objects if img_rect.contains(to_box(obj))]
-
-        if new_objects != objects:
-            logger.warning(
-                f"{len(objects) - len(new_objects)} annotation objects are out of image bounds. Skipping..."
-            )
-            ann_json["objects"] = new_objects
-        return ann_json
-
     def to_supervisely(
         self,
         item: ImageConverter.Item,
@@ -159,7 +147,7 @@ class SLYImageConverter(ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            ann_json = self._validate_image_bounds(ann_json, meta)
+            ann_json = validate_image_bounds(ann_json, meta)
             return Annotation.from_json(ann_json, meta)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

@@ -41,6 +41,17 @@ from supervisely.imaging.color import generate_rgb
 conflict_classes = []
 
 
+def validate_labels(labels: List[Label], img_size: tuple[int, int]) -> List[Label]:
+    img_rect = Rectangle.from_size(img_size)
+    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+
+    if new_labels != labels:
+        logger.warning(
+            f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
+        )
+    return new_labels
+
+
 # COCO Convert funcs
 def create_supervisely_annotation(
     item: ImageConverter.Item,
@@ -149,6 +160,7 @@ def create_supervisely_annotation(
                     Rectangle(y, x, y + h, x + w), obj_class_rectangle, binding_key=key
                 )
                 labels.append(rectangle)
+    labels = validate_labels(labels, item.shape)
     return Annotation(item.shape, labels=labels, img_tags=imag_tags)
 
 

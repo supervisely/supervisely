@@ -174,6 +174,7 @@ def create_supervisely_annotation(image_path: str, ann: Dict, meta: ProjectMeta)
     """Create Supervisely annotation from Label Studio annotation."""
 
     sly_ann = Annotation.from_img_path(image_path)
+    img_rect = Rectangle.from_size(sly_ann.img_size)
     h, w = sly_ann.img_size
 
     relations = []  # list of relations (from_id, to_id)
@@ -197,7 +198,10 @@ def create_supervisely_annotation(image_path: str, ann: Dict, meta: ProjectMeta)
             if geom is None:
                 continue
             obj_cls, meta = get_or_create_obj_cls(meta, item_name, geom.geometry_name())
-            key_label_map[item_id].append(Label(geom, obj_cls))
+            if img_rect.contains(geom.to_bbox()):
+                key_label_map[item_id].append(Label(geom, obj_cls))
+            else:
+                logger.warning("Annotation geometry is out of image bounds. Skipping...")
         elif item_type in POSSIBLE_TAGS_TYPES:
             tag_meta, meta = get_or_create_tag_meta(meta, item_name)
             img_tags.append(Tag(tag_meta))
