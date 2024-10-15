@@ -80,7 +80,7 @@ class BaseVisualizer:
                 self.output_dir,
                 remote_dir,
                 change_name_if_conflict=True,
-                progress_size_cb=pbar,
+                progress_size_cb=pbar.update,
             )
         src = self.save_report_link(api, team_id, remote_dir)
         api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
@@ -130,7 +130,10 @@ class ComparisonVisualizer:
         return self.viz.upload_results(self.api, team_id, remote_dir, progress)
 
     def _create_widgets(self):
-        # TODO: add modal galleries
+        # Modal Gellery
+        self.diff_modal_table = self._create_diff_modal_table()
+        self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
+
         # Overview
         overview = Overview(self.vis_texts, self.comparison.evaluation_results)
         self.header = self._create_header()
@@ -164,7 +167,11 @@ class ComparisonVisualizer:
         self.avg_prec_by_class_chart = avg_prec_by_class.chart_widget
 
         # Precision, Recall, F1
-        precision_recall_f1 = PrecisionRecallF1(self.vis_texts, self.comparison.evaluation_results)
+        precision_recall_f1 = PrecisionRecallF1(
+            self.vis_texts,
+            self.comparison.evaluation_results,
+            explore_modal_table=self.explore_modal_table,
+        )
         self.precision_recall_f1_md = precision_recall_f1.markdown_widget
         self.precision_recall_f1_table = precision_recall_f1.table_widget
         self.precision_recall_f1_chart = precision_recall_f1.chart_main_widget
@@ -252,7 +259,8 @@ class ComparisonVisualizer:
             if is_anchor:
                 anchors.append(widget.id)
 
-        layout = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
+        sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
+        layout = ContainerWidget(widgets=[sidebar, self.explore_modal_table], name="main_container")
         return layout
 
     def _create_header(self) -> MarkdownWidget:
@@ -296,8 +304,16 @@ class ComparisonVisualizer:
             "markdown_outcome_counts_diff", "Outcome Counts Differences", text=outcome_counts_text
         )
 
-    def _create_modal_tables(self):
+    def _create_explore_modal_table(self, diff_modal_table_id):
         # TODO: table for each evaluation?
         all_predictions_modal_gallery = GalleryWidget(
             "all_predictions_modal_gallery", is_modal=True
         )
+        all_predictions_modal_gallery.set_project_meta(
+            self.comparison.evaluation_results[0].dt_project_meta
+        )
+        return all_predictions_modal_gallery
+
+    def _create_diff_modal_table(self) -> GalleryWidget:
+        diff_modal_gallery = GalleryWidget("diff_predictions_modal_gallery", is_modal=True)
+        return diff_modal_gallery

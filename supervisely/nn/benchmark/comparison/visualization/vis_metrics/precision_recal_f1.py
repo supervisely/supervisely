@@ -22,29 +22,31 @@ class PrecisionRecallF1(BaseVisMetric):
 
     @property
     def chart_main_widget(self) -> ChartWidget:
-        return ChartWidget(name="chart_pr_curve", figure=self.get_main_figure(), click_data=None)
+        return ChartWidget(name="chart_pr_curve", figure=self.get_main_figure())
 
     @property
     def chart_recall_per_class_widget(self) -> ChartWidget:
-        return ChartWidget(
+        chart = ChartWidget(
             name="chart_recall_per_class",
             figure=self.get_recall_per_class_figure(),
-            click_data=None,
         )
+        chart.set_click_data(
+            gallery_id=self.explore_modal_table.id,
+            click_data=self.get_recall_per_class_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].curveNumber}${'_'}${payload.points[0].label}`,",
+        )
+        return chart
 
     @property
     def chart_precision_per_class_widget(self) -> ChartWidget:
         return ChartWidget(
             name="chart_precision_per_class",
             figure=self.get_precision_per_class_figure(),
-            click_data=None,
         )
 
     @property
     def chart_f1_per_class_widget(self) -> ChartWidget:
-        return ChartWidget(
-            name="chart_f1_per_class", figure=self.get_f1_per_class_figure(), click_data=None
-        )
+        return ChartWidget(name="chart_f1_per_class", figure=self.get_f1_per_class_figure())
 
     @property
     def table_widget(self) -> TableWidget:
@@ -130,6 +132,41 @@ class PrecisionRecallF1(BaseVisMetric):
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Value", range=[0, 1])
         return fig
+
+    def get_recall_per_class_click_data(self):
+        click_data = {}
+        for i, eval_result in enumerate(self.eval_results):
+            for key, v in eval_result.click_data.objects_by_class.items():
+                class_name = key
+                key = f"{i}_{key}"
+                click_data[key] = {}
+                click_data[key]["imagesIds"] = []
+                img_ids = set()
+                obj_ids = set()
+                click_data[key][
+                    "title"
+                ] = f"Model# {i+1}. {class_name} class: {len(v)} object{'s' if len(v) > 1 else ''}"
+
+                for x in v:
+                    img_ids.add(x["dt_img_id"])
+                    obj_ids.add(x["dt_obj_id"])
+
+                click_data[key]["imagesIds"] = list(img_ids)
+                click_data[key]["filters"] = [
+                    {
+                        "type": "tag",
+                        "tagId": "confidence",
+                        "value": [eval_result.f1_optimal_conf, 1],
+                    },
+                    {"type": "tag", "tagId": "outcome", "value": "TP"},
+                    {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
+                ]
+
+        res = {
+            "layoutTemplate": [None, None, None],
+            "clickData": click_data,
+        }
+        return res
 
     def get_precision_per_class_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error

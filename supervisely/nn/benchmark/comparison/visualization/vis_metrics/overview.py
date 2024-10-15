@@ -103,7 +103,7 @@ class Overview(BaseVisMetric):
 
     @property
     def chart_widget(self) -> ChartWidget:
-        return ChartWidget(name=self.CHART, figure=self.get_figure(), click_data=None)
+        return ChartWidget(name=self.CHART, figure=self.get_figure())
 
     def get_overview_info(self, eval_result: EvalResult):
         classes_cnt = len(eval_result.classes_whitelist)

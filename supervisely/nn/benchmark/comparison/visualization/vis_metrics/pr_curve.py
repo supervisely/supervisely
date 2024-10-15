@@ -28,7 +28,7 @@ class PrCurve(BaseVisMetric):
 
     @property
     def chart_widget(self) -> ChartWidget:
-        return ChartWidget(name="chart_pr_curve", figure=self.get_figure(), click_data=None)
+        return ChartWidget(name="chart_pr_curve", figure=self.get_figure())
 
     @property
     def collapsed_widget(self) -> CollapseWidget:

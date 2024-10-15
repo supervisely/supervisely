@@ -4,8 +4,10 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.env import team_id
@@ -13,7 +15,28 @@ from supervisely.io.fs import dir_empty, mkdir
 from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
+from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
+from supervisely.project.download import download as download_project
+from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
+
+
+class ImageComparisonData:
+    def __init__(
+        self,
+        gt_image_info: ImageInfo = None,
+        pred_image_info: ImageInfo = None,
+        diff_image_info: ImageInfo = None,
+        gt_annotation: Annotation = None,
+        pred_annotation: Annotation = None,
+        diff_annotation: Annotation = None,
+    ):
+        self.gt_image_info = gt_image_info
+        self.pred_image_info = pred_image_info
+        self.diff_image_info = diff_image_info
+        self.gt_annotation = gt_annotation
+        self.pred_annotation = pred_annotation
+        self.diff_annotation = diff_annotation
 
 
 class EvalResult:
@@ -41,9 +64,15 @@ class EvalResult:
         self.mp: MetricProvider = None
         self.df_score_profile: pd.DataFrame = None
         self.dfsp_down: pd.DataFrame = None
+        self.f1_optimal_conf: float = None
+        self.click_data: ClickData = None
+        self.comparison_data: Dict[int, ImageComparisonData] = {}
 
         self._gt_project_info = None
+        self._gt_project_meta = None
         self._gt_dataset_infos = None
+        self._dt_project_id = None
+        self._dt_project_meta = None
 
         self._load_eval_data()
         self._read_eval_data()
@@ -69,20 +98,43 @@ class EvalResult:
         return self._gt_project_info
 
     @property
+    def gt_project_meta(self) -> ProjectMeta:
+        if self._gt_project_meta is None:
+            self._gt_project_meta = ProjectMeta.from_json(
+                self.api.project.get_meta(self.gt_project_id)
+            )
+        return self._gt_project_meta
+
+    @property
     def gt_dataset_ids(self) -> List[int]:
         return self.inference_info.get("gt_dataset_ids", None)
 
     @property
     def gt_dataset_infos(self) -> List[DatasetInfo]:
-        if self.gt_dataset_ids is None:
-            return None
         if self._gt_dataset_infos is None:
+            filters = None
+            if self.gt_dataset_ids is not None:
+                filters = [{"field": "id", "operator": "in", "value": self.gt_dataset_ids}]
             self._gt_dataset_infos = self.api.dataset.get_list(
                 self.gt_project_id,
-                filters=[{"field": "id", "operator": "in", "value": self.gt_dataset_ids}],
+                filters=filters,
                 recursive=True,
             )
         return self._gt_dataset_infos
+
+    @property
+    def dt_project_id(self):
+        if self._dt_project_id is None:
+            self._dt_project_id = self.inference_info.get("dt_project_id")
+        return self._dt_project_id
+
+    @property
+    def dt_project_meta(self):
+        if self._dt_project_meta is None:
+            self._dt_project_meta = ProjectMeta.from_json(
+                self.api.project.get_meta(self.dt_project_id)
+            )
+        return self._dt_project_meta
 
     @property
     def train_info(self):
@@ -108,6 +160,23 @@ class EvalResult:
         ) as pbar:
             self.api.storage.download_directory(
                 self.team_id, self.eval_dir, self.local_dir, progress_cb=pbar.update
+            )
+
+    def _load_projects(self):
+        projects_dir = Path(self.local_dir, "projects")
+        items_total = self.gt_images_ids
+        if items_total is None:
+            items_total = sum(self.gt_dataset_infos, key=lambda x: x.items_count)
+        with self.progress(
+            f"Downloading GT project {self.gt_project_info.name} and datasets",
+            total=items_total,
+        ) as pbar:
+            download_project(
+                self.api,
+                self.gt_project_info.id,
+                str(projects_dir),
+                dataset_ids=self.gt_dataset_ids,
+                progress_cb=pbar.update,
             )
 
     def _read_eval_data(self):
@@ -141,3 +210,46 @@ class EvalResult:
             self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
         else:
             self.dfsp_down = self.df_score_profile
+
+        self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
+        if self.f1_optimal_conf is None:
+            self.f1_optimal_conf = 0.01
+            logger.warning("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
+
+        # Click data
+        gt_id_mapper = IdMapper(self.coco_gt.dataset)
+        dt_id_mapper = IdMapper(self.coco_dt.dataset)
+
+        self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
+
+    def _update_comparison_data(
+        self,
+        gt_image_id: int,
+        gt_image_info: ImageInfo = None,
+        pred_image_info: ImageInfo = None,
+        diff_image_info: ImageInfo = None,
+        gt_annotation: Annotation = None,
+        pred_annotation: Annotation = None,
+        diff_annotation: Annotation = None,
+    ):
+        comparison_data = self.comparison_data.get(gt_image_id, None)
+        if comparison_data is None:
+            self.comparison_data[gt_image_id] = ImageComparisonData(
+                gt_image_info=gt_image_info,
+                pred_image_info=pred_image_info,
+                diff_image_info=diff_image_info,
+                gt_annotation=gt_annotation,
+                pred_annotation=pred_annotation,
+                diff_annotation=diff_annotation,
+            )
+        else:
+            for attr, value in {
+                "gt_image_info": gt_image_info,
+                "pred_image_info": pred_image_info,
+                "diff_image_info": diff_image_info,
+                "gt_annotation": gt_annotation,
+                "pred_annotation": pred_annotation,
+                "diff_annotation": diff_annotation,
+            }.items():
+                if value is not None:
+                    setattr(comparison_data, attr, value)

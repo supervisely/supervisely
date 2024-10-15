@@ -83,7 +83,7 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def reliability_chart(self) -> ChartWidget:
-        return ChartWidget(name="chart_reliability", figure=self.get_rel_figure(), click_data=None)
+        return ChartWidget(name="chart_reliability", figure=self.get_rel_figure())
 
     @property
     def collapse_ece(self) -> CollapseWidget:
@@ -107,7 +107,7 @@ class CalibrationScore(BaseVisMetric):
 
     @property
     def confidence_chart(self) -> ChartWidget:
-        return ChartWidget(name="chart_confidence", figure=self.get_conf_figure(), click_data=None)
+        return ChartWidget(name="chart_confidence", figure=self.get_conf_figure())
 
     @property
     def confidence_score_md_2(self) -> MarkdownWidget:

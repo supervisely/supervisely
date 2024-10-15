@@ -47,7 +47,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget(name="chart_iou_distribution", figure=self.get_figure(), click_data=None)
+        return ChartWidget(name="chart_iou_distribution", figure=self.get_figure())
 
     @property
     def collapse_tip(self) -> CollapseWidget:

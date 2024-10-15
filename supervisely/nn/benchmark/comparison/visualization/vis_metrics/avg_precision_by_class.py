@@ -63,4 +63,4 @@ class AveragePrecisionByClass(BaseVisMetric):
 
     @property
     def chart_widget(self) -> ChartWidget:
-        return ChartWidget(name="chart_class_ap", figure=self.get_figure(), click_data=None)
+        return ChartWidget(name="chart_class_ap", figure=self.get_figure())

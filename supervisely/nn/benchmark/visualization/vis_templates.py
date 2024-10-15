@@ -109,11 +109,11 @@ template_chart_str = """
                     },{% if chart_click_data_source %}
                     'chart-click': {
                     'dataSource': '{{ chart_click_data_source }}',{% if cls_name in ['outcome_counts'] %}
-                    'getKey': (payload) => { console.log(payload); return payload.points[0].data.name; },{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
-                    'getKey': (payload) => { console.log(payload); return payload.points[0].label; },{% endif %}{% if cls_name in ['pr_curve_by_class'] %}
-                    'getKey': (payload) => { console.log(payload); return payload.points[0].data.legendgroup; },{% endif %}{% if cls_name in ['per_class_avg_precision'] %}
-                    'getKey': (payload) => { console.log(payload); return payload.points[0].theta; },{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
-                    'getKey': (payload) => { console.log(payload); return `${payload.points[0].label}${'-'}${payload.points[0].data.name}`; },{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
+                    'getKey': (payload) => payload.points[0].data.name,{% endif %}{% if cls_name in ['frequently_confused', 'recall', 'precision', 'recall_vs_precision'] %}
+                    'getKey': (payload) => payload.points[0].label,{% endif %}{% if cls_name in ['pr_curve_by_class'] %}
+                    'getKey': (payload) => payload.points[0].data.legendgroup,{% endif %}{% if cls_name in ['per_class_avg_precision'] %}
+                    'getKey': (payload) => payload.points[0].theta,{% endif %}{% if cls_name in ['per_class_outcome_counts'] %}
+                    'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`,{% endif %}{% if cls_name in ['confusion_matrix', 'per_class_outcome_counts'] %}
                     'keySeparator': '{{ key_separator }}',{% endif %}
                     'galleryId': 'modal_general',
                     'limit': 9

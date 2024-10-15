@@ -13,14 +13,15 @@ class ChartWidget(BaseWidget):
         self,
         name: str,
         figure,  # plotly figure
-        click_data: dict = None,
     ) -> None:
         super().__init__(name)
         self.radio_group = "radio_group"  # TODO: fix
         self.switch_key = "switch_key"  # TODO: fix
 
         self.figure = figure
-        self.click_data = click_data
+        self.click_data = None
+        self.click_gallery_id = None
+        self.chart_click_extra = None
 
     def save_data(self, basepath: str) -> None:
         # init data
@@ -36,6 +37,13 @@ class ChartWidget(BaseWidget):
             with open(basepath + self.click_data_source, "w") as f:
                 json.dump(self.click_data, f)
 
+    def set_click_data(
+        self, gallery_id: str, click_data: Dict, chart_click_extra: str = ""
+    ) -> None:
+        self.click_data = click_data
+        self.click_gallery_id = gallery_id
+        self.chart_click_extra = chart_click_extra
+
     def _get_template_data(self):
         return {
             "widget_id": self.id,
@@ -44,6 +52,8 @@ class ChartWidget(BaseWidget):
             "init_data_source": self.data_source,
             "click_handled": self.click_data is not None,
             "chart_click_data_source": self.click_data_source,
+            "gallery_id": self.click_gallery_id,
+            "chart_click_extra": self.chart_click_extra,
         }
 
     def to_html(self) -> str:
