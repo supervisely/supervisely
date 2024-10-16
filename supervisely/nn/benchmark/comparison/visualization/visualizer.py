@@ -146,7 +146,11 @@ class ComparisonVisualizer:
         # TODO: Explore Predictions
 
         # Outcome Counts
-        outcome_counts = OutcomeCounts(self.vis_texts, self.comparison.evaluation_results)
+        outcome_counts = OutcomeCounts(
+            self.vis_texts,
+            self.comparison.evaluation_results,
+            explore_modal_table=self.explore_modal_table,
+        )
         self.outcome_counts_md = self._create_outcome_counts_md()
         self.outcome_counts_diff_md = self._create_outcome_counts_diff_md()
         self.outcome_counts_main = outcome_counts.chart_widget_main
