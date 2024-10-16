@@ -762,7 +762,7 @@ class Api:
         logger.trace(f"POST {url}")
 
         if headers is None:
-            headers = self.headers
+            headers = self.headers.copy()
         else:
             headers = {**self.headers, **headers}
 
@@ -925,7 +925,7 @@ class Api:
             for retry_idx in range(retries):
                 try:
                     if headers is None:
-                        headers = self.headers
+                        headers = self.headers.copy()
                     else:
                         headers = {**self.headers, **headers}
                     if method_type == "POST":
@@ -992,6 +992,82 @@ class Api:
             response=locals().get("resp"),
         )
 
+    async def async_post(
+        self,
+        method: str,
+        data: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+    ) -> httpx.Response:
+        """
+        Performs POST request to server with given parameters using httpx.
+
+        :param method: Method name.
+        :type method: str
+        :param data: Bytes with data content or dictionary with params.
+        :type data: bytes or dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :type raise_error: bool, optional
+        :return: Response object
+        :rtype: :class:`httpx.Response`
+        """
+        self._check_https_redirect()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"POST {url}")
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        if isinstance(data, bytes):
+            request_params = {"content": data}
+        elif isinstance(data, Dict):
+            json_body = {**data, **self.additional_fields}
+            request_params = {"json": json_body}
+        else:
+            request_params = {"params": data}
+
+        client = httpx.AsyncClient()
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = await client.post(url, headers=headers, **request_params)
+                if response.status_code != httpx.codes.OK:
+                    self._check_version()
+                    Api._raise_for_status(response)
+                return response
+            except httpx.RequestError as exc:
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.HTTPStatusError(
+            "Retry limit exceeded ({!r})".format(url),
+            response=response,
+            request=getattr(response, "request", None),
+        )
+
     async def async_stream(
         self,
         method: str,
@@ -1049,7 +1125,7 @@ class Api:
             json_body = None
 
         if headers is None:
-            headers = self.headers
+            headers = self.headers.copy()
         else:
             headers = {**self.headers, **headers}
         if method_type == "POST":
@@ -1134,7 +1210,9 @@ class Api:
             )
 
         if http_error_msg:
-            raise httpx.HTTPError(http_error_msg)
+            raise httpx.HTTPStatusError(
+                message=http_error_msg, response=response, request=response.request
+            )
 
     @staticmethod
     def parse_error(
@@ -1190,7 +1268,7 @@ class Api:
                     "Supervisely automatically changed the server address to HTTPS for you. "
                     f"Consider updating your server address to {self.server_address}"
                 )
-                self.logger.warn(msg)
+                self.logger.warning(msg)
 
             self._require_https_redirect_check = False
 

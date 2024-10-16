@@ -541,9 +541,6 @@ class FileApi(ModuleApiBase):
                     ):
                         await fd.write(chunk)
                         downloaded_size += len(chunk)
-                        logger.debug(
-                            f"File: {remote_path}. Downloaded chunk size: {len(chunk)}, total downloaded: {downloaded_size}"
-                        )
                         if progress_cb is not None:
                             progress_cb.update(len(chunk))
                     await fd.flush()

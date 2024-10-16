@@ -4,8 +4,10 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import io
 import json
+import os
 import re
 import urllib.parse
 from collections import defaultdict
@@ -29,6 +31,8 @@ from typing import (
 )
 from uuid import uuid4
 
+import aiofiles
+import httpx
 import numpy as np
 import requests
 from requests.exceptions import HTTPError
@@ -61,6 +65,10 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     list_files,
     list_files_recursively,
+)
+from supervisely.io.network_exceptions import (
+    process_requests_exception,
+    process_unhandled_request,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
@@ -3367,3 +3375,177 @@ class ImageApi(RemoveableBulkModuleApi):
         data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("images.update.links", data)
         return r.json()
+
+    async def _async_download(
+        self,
+        id,
+        is_stream=False,
+        headers: dict = None,
+    ):
+        """
+        Download Image with given ID asynchronously.
+
+        :param id: int
+        :param is_stream: bool
+        :return: Response class object contain metadata of image with given id
+        """
+        api_method_name = "images.download"
+        json_body = {ApiField.ID: id}
+
+        if headers is None:
+            headers = self._api.headers.copy()
+        else:
+            headers.update(self._api.headers)
+
+        if is_stream:
+            async for chunk in self._api.async_stream(
+                api_method_name, "POST", json_body, headers=headers
+            ):
+                yield chunk
+        else:
+            response = await self._api.async_post(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def async_download_np(
+        self,
+        id: int,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        keep_alpha: Optional[bool] = False,
+    ) -> np.ndarray:
+        """
+        Downloads Image with given ID in NumPy format asynchronously.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param keep_alpha: If True keeps alpha mask for image, otherwise don't.
+        :type keep_alpha: bool, optional
+        :return: Image in RGB numpy matrix format
+        :rtype: :class:`np.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+            from tqdm.asyncio import tqdm
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            DATASET_ID = 98357
+            semaphore = asyncio.Semaphore(10)
+            images = api.image.get_list(DATASET_ID)
+            tasks = []
+            for image in images:
+                task = api.image.async_download_np(image.id, semaphore)
+                tasks.append(task)
+            with tqdm(total=len(tasks), desc="Downloading images", unit="image") as pbar:
+                results = []
+                for f in asyncio.as_completed(tasks):
+                    result = await f
+                    results.append(result)
+                    pbar.update(1)
+        """
+        async with semaphore:
+            response = await self._async_download(id)
+            loop = asyncio.get_event_loop()
+            img = loop.run_in_executor(None, sly_image.read_bytes, response.content, keep_alpha)
+            return img
+
+    async def async_download_path(
+        self,
+        id: int,
+        path: str,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+    ) -> None:
+        """
+        Downloads Image with given ID to local path.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Image.
+        :type path: str
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_info = api.image.get_info_by_id(770918)
+            save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
+
+            api.image.download_path(770918, save_path)
+        """
+        downloaded_size = 0
+        retry_range_start = range_start
+        headers = {}
+
+        url = self._api.api_server_address + "/v3/" + "images.download"
+
+        if range_start is not None or range_end is not None:
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        if range_start is not None and range_end is not None:
+            total_size = range_end - range_start
+        elif range_start is not None:
+            total_size = self.get_info_by_id(id).size - range_start
+        elif range_end is not None:
+            total_size = range_end
+        else:
+            total_size = self.get_info_by_id(id).size
+
+        for retry_idx in range(self._api.retry_count):
+            try:
+                ensure_base_path(path)
+                if retry_range_start not in [0, None]:
+                    writing_method = "ab"
+                else:
+                    writing_method = "wb"
+                async with semaphore:
+                    async with aiofiles.open(path, writing_method) as fd:
+                        async for chunk in self._async_download(
+                            id, is_stream=True, headers=headers,
+                        ):
+                            await fd.write(chunk)
+                            downloaded_size += len(chunk)
+
+                downloaded_file_size = os.path.getsize(path)
+                if total_size != downloaded_file_size:
+                    raise RuntimeError(
+                        f"Downloaded size of image with ID:{id} does not match the expected size: {downloaded_file_size} != {total_size}"
+                    )
+            except httpx.RequestError as e:
+                retry_range_start = downloaded_size + (range_start or 0)
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"Image ID: {id}. Retrying with Range header: {headers['Range']}")
+                process_requests_exception(
+                    self._api.logger,
+                    e,
+                    "images.download",
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self._api.retry_sleep_sec * (2**retry_idx), 60),
+                    response=None,
+                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": self._api.retry_count},
+                )
+            except Exception as e:
+                process_unhandled_request(self._api.logger, e)
+            else:
+                return
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})", request=None, response=None
+        )
