@@ -33,6 +33,7 @@ class OutcomeCounts(BaseVisMetric):
             click_data=self.get_comparison_click_data(),
             chart_click_extra="'getKey': (payload) => `${payload.points[0].curveNumber}${'_'}${payload.points[0].data.name}`,",
         )
+        return chart
 
     def update_figure_layout(self, fig):
         fig.update_layout(
