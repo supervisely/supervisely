@@ -26,22 +26,11 @@ jobs:
         with:
           repository: ${{ github.repository }}
           token: ${{ secrets.PYLINT_TOKEN }}
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
-          
-      - name: Install GitHub CLI
-        run: |
-          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
-          && sudo mkdir -p -m 755 /etc/apt/keyrings \
-          && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-          && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-          && sudo apt update \
-          && sudo apt install gh -y
+          python-version: 3.8      
           
       - name: Install dependencies
         run: |
@@ -51,16 +40,16 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v42
+        uses: tj-actions/changed-files@v45
       - run: |
-          for changed_file in ${{ steps.changed-files.outputs.all_changed_and_modified_files }}; do
+          for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo "File modified in PR: ${changed_file}"
           done
 
       - name: Run check with pylint
         run: |
           python_files=()
-          for changed_file in ${{ steps.changed-files.outputs.all_changed_and_modified_files }}; do
+          for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [[ $changed_file == *.py ]] && [ -f "$changed_file" ]; then
               python_files+=("$changed_file")
             fi
@@ -79,7 +68,17 @@ jobs:
             echo "File checked: $file"
           done
         id: pylint
-
+      
+      - name: Install GitHub CLI
+        run: |
+          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+          && sudo mkdir -p -m 755 /etc/apt/keyrings \
+          && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+          && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
+          
       - name: Fail if pylint errors detected
         if: ${{ env.ERRORS_DETECTED == 'true' }}
         run: |
