@@ -135,8 +135,9 @@ class SessionJSON:
         return hr_info
 
     def get_model_meta(self) -> Dict[str, Any]:
-        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-        self._model_meta = meta_json
+        if self._model_meta is None:
+            meta_json = self._get_from_endpoint("get_output_classes_and_tags")
+            self._model_meta = meta_json
         return self._model_meta
 
     def get_deploy_info(self) -> Dict[str, Any]:
@@ -296,6 +297,7 @@ class SessionJSON:
         process_fn=None,
         preparing_cb=None,
         tracker: Literal["bot", "deepsort"] = None,
+        on_end_callback=None,
         batch_size: int = None,
     ) -> Iterator:
         if self._async_inference_uuid:
@@ -359,7 +361,7 @@ class SessionJSON:
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn
+            resp["progress"]["total"], self, process_fn=process_fn, on_end_callback=on_end_callback
         )
         return frame_iterator
 
@@ -572,16 +574,24 @@ class SessionJSON:
             )
         return pending_results
 
-    def _on_async_inference_end(self):
+    def _on_async_inference_end(self, on_end_callback=None):
         logger.debug("callback: on_async_inference_end()")
         try:
             try:
                 self.inference_result = self._get_inference_result()
             except Exception:
                 pass
+            try:
+                if on_end_callback is not None:
+                    self.inference_result = on_end_callback(self.inference_result)
+            except Exception:
+                logger.error(
+                    "An error occurred while executing the on_end_callback.", exc_info=True
+                )
             self._clear_inference_request()
         finally:
             self._async_inference_uuid = None
+            self._model_meta = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
         retries = min(self.api.retry_count, retries)
@@ -656,11 +666,12 @@ class SessionJSON:
 
 
 class AsyncInferenceIterator:
-    def __init__(self, total, nn_api: SessionJSON, process_fn=None):
+    def __init__(self, total, nn_api: SessionJSON, process_fn=None, on_end_callback=None):
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
         self.process_fn = process_fn
+        self.on_end_callback = on_end_callback
 
     def __len__(self) -> int:
         return self.total
@@ -679,12 +690,12 @@ class AsyncInferenceIterator:
                 raise StopIteration
 
         except StopIteration as stop_iteration:
-            self.nn_api._on_async_inference_end()
+            self.nn_api._on_async_inference_end(self.on_end_callback)
             raise stop_iteration
         except Exception as ex:
             # Any exceptions will be handled here
             self.nn_api.stop_async_inference()
-            self.nn_api._on_async_inference_end()
+            self.nn_api._on_async_inference_end(self.on_end_callback)
             raise ex
 
         pred = self.results_queue.pop(0)
@@ -742,9 +753,10 @@ class Session(SessionJSON):
         return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
-        model_meta_json = super().get_model_meta()
-        model_meta = sly.ProjectMeta.from_json(model_meta_json)
-        self._model_meta = model_meta
+        if self._model_meta is None:
+            model_meta_json = super().get_model_meta()
+            model_meta = sly.ProjectMeta.from_json(model_meta_json)
+            self._model_meta = model_meta
         return self._model_meta
 
     def get_deploy_info(self) -> DeployInfo:
@@ -822,6 +834,7 @@ class Session(SessionJSON):
             frames_direction,
             process_fn=self._convert_to_sly_annotation,
             tracker=tracker,
+            on_end_callback=self._convert_to_video_annotation,
             batch_size=batch_size,
             preparing_cb=preparing_cb,
         )
@@ -884,3 +897,8 @@ class Session(SessionJSON):
             meta = get_meta_from_annotation(pred["annotation"], meta)
         predictions = [sly.Annotation.from_json(pred["annotation"], meta) for pred in pred_list_raw]
         return predictions
+
+    def _convert_to_video_annotation(self, pred_json: dict):
+        meta = self.get_model_meta()
+        video_annotation = sly.VideoAnnotation.from_json(pred_json["video_ann"], project_meta=meta)
+        return video_annotation
