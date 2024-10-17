@@ -2,6 +2,7 @@ import asyncio
 from time import sleep, time
 
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio as tqdm
 
 import supervisely as sly
 
@@ -25,7 +26,7 @@ async def download_files(api: sly.Api, team_id, files):
     save_path = "/home/ganpoweird/Work/supervisely/video/"
     tasks = []
     for name, path in files:
-        task = api.file.async_download(
+        task = api.file.download_async(
             team_id, path, save_path + name, sema, show_file_progress=True
         )
         tasks.append(task)
