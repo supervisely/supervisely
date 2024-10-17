@@ -11,9 +11,35 @@ from supervisely.nn.task_type import TaskType
 
 
 class OutcomeCounts(BaseVisMetric):
-
     CHART_MAIN = "chart_outcome_counts"
     CHART_COMPARISON = "chart_outcome_counts_comparison"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.imgIds_to_anns = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        self.coco_to_sly_ids = defaultdict(lambda: defaultdict(lambda: defaultdict(tuple)))
+
+        self._initialize_ids_mapping()
+
+        self.common_and_diff_tp = self._find_common_and_diff_tp()
+        self.common_and_diff_fn = self._find_common_and_diff_fn()
+        self.common_and_diff_fp = self._find_common_and_diff_fp()
+
+    def _initialize_ids_mapping(self):
+        for idx, r in enumerate(self.eval_results):
+            l = {
+                "TP": (r.mp.cocoDt.anns, r.mp.m.tp_matches, r.click_data.outcome_counts),
+                "FN": (r.mp.cocoGt.anns, r.mp.m.fn_matches, r.click_data.outcome_counts),
+                "FP": (r.mp.cocoDt.anns, r.mp.m.fp_matches, r.click_data.outcome_counts),
+            }
+            for outcome, (coco_anns, matches_data, sly_data) in l.items():
+                for m, sly_m in zip(matches_data, sly_data[outcome]):
+                    key = m["dt_id"] if outcome != "FN" else m["gt_id"]
+                    gt_key = m["gt_id"] if outcome != "FP" else m["dt_id"]
+                    ann = coco_anns[key]
+                    self.imgIds_to_anns[idx][outcome][key].append(ann)
+                    self.coco_to_sly_ids[idx][outcome][gt_key] = sly_m
 
     @property
     def chart_widget_main(self) -> ChartWidget:
@@ -21,21 +47,24 @@ class OutcomeCounts(BaseVisMetric):
         chart.set_click_data(
             gallery_id=self.explore_modal_table.id,
             click_data=self.get_main_click_data(),
-            chart_click_extra="'getKey': (payload) => `${payload.points[0].curveNumber}${'_'}${payload.points[0].data.name}`,",
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].y}${'_'}${payload.points[0].data.name}`,",
         )
         return chart
 
     @property
     def chart_widget_comparison(self) -> ChartWidget:
-        chart = ChartWidget(name=self.CHART_COMPARISON, figure=self.get_comparison_figure(),)
+        chart = ChartWidget(
+            name=self.CHART_COMPARISON,
+            figure=self.get_comparison_figure(),
+        )
         chart.set_click_data(
             gallery_id=self.explore_modal_table.id,
             click_data=self.get_comparison_click_data(),
-            chart_click_extra="'getKey': (payload) => `${payload.points[0].curveNumber}${'_'}${payload.points[0].data.name}`,",
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].y}${'_'}${payload.points[0].data.name}`,",
         )
         return chart
 
-    def update_figure_layout(self, fig):
+    def _update_figure_layout(self, fig):
         fig.update_layout(
             barmode="stack",
             width=600,
@@ -85,7 +114,7 @@ class OutcomeCounts(BaseVisMetric):
                 )
             )
 
-        fig = self.update_figure_layout(fig)
+        fig = self._update_figure_layout(fig)
         return fig
 
     def get_comparison_figure(self):  #  -> Optional[go.Figure]
@@ -97,9 +126,12 @@ class OutcomeCounts(BaseVisMetric):
         model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1]
         model_names.append("Common")
 
-        tps_cnt = [len(x) for x in self.find_common_and_diff_tp()]
-        fns_cnt = [len(x) for x in self.find_common_and_diff_fn()]
-        fps_cnt = [len(x) for x in self.find_common_and_diff_fp()]
+        diff_tps, common_tps = self.common_and_diff_tp
+        diff_fns, common_fns = self.common_and_diff_fn
+        diff_fps, common_fps = self.common_and_diff_fp
+        tps_cnt = [len(x) for x in diff_tps[::-1]] + [len(common_tps)]
+        fns_cnt = [len(x) for x in diff_fns[::-1]] + [len(common_fns)]
+        fps_cnt = [len(x) for x in diff_fps[::-1]] + [len(common_fps)]
 
         for metric, values, color in zip(["TP", "FN", "FP"], [tps_cnt, fns_cnt, fps_cnt], colors):
             fig.add_trace(
@@ -113,42 +145,44 @@ class OutcomeCounts(BaseVisMetric):
                 )
             )
 
-        fig = self.update_figure_layout(fig)
+        fig = self._update_figure_layout(fig)
         return fig
 
-    def find_common_and_diff_fn(self) -> List[int]:
-        ids_list = [set([x["gt_id"] for x in r.mp.m.fn_matches]) for r in self.eval_results]
+    def _find_common_and_diff_fn(self) -> List[int]:
+        ids = [
+            dict([(x["gt_obj_id"], x["gt_img_id"]) for x in r.click_data.outcome_counts["FN"]])
+            for r in self.eval_results
+        ]
+        same = set.intersection(*[set(x.keys()) for x in ids])
+        diffs = [set(x.keys()) - same for x in ids]
 
-        same_fn_matches = set.intersection(*ids_list)
-        diff_fn_matches = [ids - same_fn_matches for ids in ids_list]
-        return diff_fn_matches[::-1] + [same_fn_matches]
+        same = {i: ids[0][i] for i in same}
+        diffs = [{i: s[i] for i in d} for s, d in zip(ids, diffs)]
 
-    def find_common_and_diff_fp(self) -> List[int]:
+        return diffs, same
+
+    def _get_coco_key_name(self):
+        task_type_to_key_name = {
+            TaskType.OBJECT_DETECTION: "bbox",
+            TaskType.INSTANCE_SEGMENTATION: "segmentation",
+            TaskType.SEMANTIC_SEGMENTATION: "segmentation",
+        }
+        key_name = task_type_to_key_name.get(self.eval_results[0].cv_task)
+        if key_name is None:
+            raise NotImplementedError("Not implemented for this task type")
+        return key_name
+
+    def _find_common_and_diff_fp(self) -> List[int]:
         from pycocotools import mask as maskUtils  # pylint: disable=import-error
 
         iouThr = 0.75
+        key_name = self._get_coco_key_name()
 
-        if self.eval_results[0].cv_task == TaskType.OBJECT_DETECTION:
-            key_name = "bbox"
-        elif self.eval_results[0].cv_task in [
-            TaskType.INSTANCE_SEGMENTATION,
-            TaskType.SEMANTIC_SEGMENTATION,
-        ]:
-            key_name = "segmentation"
-        else:
-            raise NotImplementedError("Not implemented for this task type")
-
-        # TODO: add support for more models
+        # TODO: add support for more models and refactor this method
         assert len(self.eval_results) == 2, "Currently only 2 models are supported"
 
-        imgId2ann1 = defaultdict(list)
-        imgId2ann2 = defaultdict(list)
-        for m in self.eval_results[0].mp.m.fp_matches:
-            ann = self.eval_results[0].mp.cocoDt.anns[m["dt_id"]]
-            imgId2ann1[m["image_id"]].append(ann)
-        for m in self.eval_results[1].mp.m.fp_matches:
-            ann = self.eval_results[1].mp.cocoDt.anns[m["dt_id"]]
-            imgId2ann2[m["image_id"]].append(ann)
+        imgId2ann1 = self.imgIds_to_anns[0]["FP"]
+        imgId2ann2 = self.imgIds_to_anns[1]["FP"]
 
         same_fp_matches = []
         for img_id in imgId2ann1:
@@ -178,28 +212,58 @@ class OutcomeCounts(BaseVisMetric):
         id1 = set(id1)
         id2 = set(id2)
 
+        sly_ids_list = [
+            {x["dt_obj_id"]: x["dt_img_id"] for x in r.click_data.outcome_counts["FP"]}
+            for r in self.eval_results
+        ]
+
         diff_fp_matches_1 = set([x["dt_id"] for x in self.eval_results[0].mp.m.fp_matches]) - id1
         diff_fp_matches_2 = set([x["dt_id"] for x in self.eval_results[1].mp.m.fp_matches]) - id2
 
-        return [diff_fp_matches_2, diff_fp_matches_1, same_fp_matches]
+        diff_fp_matches_1_dict = {}
+        for x in diff_fp_matches_1:
+            obj_id = self.coco_to_sly_ids[0]["FP"][x]["dt_obj_id"]
+            img_id = sly_ids_list[0][obj_id]
+            diff_fp_matches_1_dict[obj_id] = img_id
 
-    def find_common_and_diff_tp(self) -> List[int]:
-        ids_list = [set([x["gt_id"] for x in r.mp.m.tp_matches]) for r in self.eval_results]
+        diff_fp_matches_2_dict = {}
+        for x in diff_fp_matches_2:
+            obj_id = self.coco_to_sly_ids[1]["FP"][x]["dt_obj_id"]
+            img_id = sly_ids_list[1][obj_id]
+            diff_fp_matches_2_dict[obj_id] = img_id
 
-        same_tp_matches = set.intersection(*ids_list)
-        diff_tp_matches = [ids - same_tp_matches for ids in ids_list]
+        same_fp_matches_dict = {}
+        for x in same_fp_matches:
+            obj_id = self.coco_to_sly_ids[0]["FP"][x[0]["id"]]["dt_obj_id"]
+            img_id = sly_ids_list[0][obj_id]
+            same_fp_matches_dict[obj_id] = img_id
 
-        return diff_tp_matches[::-1] + [same_tp_matches]
+        return [diff_fp_matches_1_dict, diff_fp_matches_2_dict], same_fp_matches_dict
+
+    def _find_common_and_diff_tp(self) -> tuple:
+
+        ids = [
+            dict([(x["gt_obj_id"], x) for x in r.click_data.outcome_counts["TP"]])
+            for r in self.eval_results
+        ]
+
+        same = set.intersection(*[set(x.keys()) for x in ids])
+        diffs = [set(x.keys()) - same for x in ids]
+
+        same = {s["dt_obj_id"]: s["dt_img_id"] for s in [ids[0][i] for i in same]}
+        diffs = [{s[i]["dt_obj_id"]: s[i]["dt_img_id"] for i in d} for s, d in zip(ids, diffs)]
+
+        return diffs, same
 
     def get_main_click_data(self):
         res = {}
 
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
-        for i, eval_result in enumerate(self.eval_results):
-            model_name = f"Model {i+1}"
+        for i, eval_result in enumerate(self.eval_results, 1):
+            model_name = f"Model {i}"
             for outcome, matches_data in eval_result.click_data.outcome_counts.items():
-                key = f"{i}_{outcome}"
+                key = f"{model_name}_{outcome}"
                 outcome_dict = res["clickData"].setdefault(key, {})
                 outcome_dict["imagesIds"] = []
 
@@ -227,54 +291,39 @@ class OutcomeCounts(BaseVisMetric):
 
         res["clickData"] = {}
 
-        tp_matches = self.find_common_and_diff_tp()
-        fn_matches = self.find_common_and_diff_fn()
-        fp_matches = self.find_common_and_diff_fp()
-        outcomes_matches = {"TP": tp_matches, "FN": fn_matches, "FP": fp_matches}
+        outcomes_ids = {
+            "TP": self.common_and_diff_tp,
+            "FN": self.common_and_diff_fn,
+            "FP": self.common_and_diff_fp,
+        }
 
-        common_img_ids = defaultdict(set)
-        common_obj_ids = defaultdict(set)
-        for i, eval_result in enumerate(self.eval_results):
-            model_name = f"Model {i+1}"
-            for outcome, matches_data in eval_result.click_data.outcome_counts.items():
-                key = f"{i}_{outcome}"
-                outcome_dict = res["clickData"].setdefault(key, {})
-                outcome_dict["imagesIds"] = []
+        def _update_outcome_dict(title, outcome, outcome_dict, ids):
+            img_ids = set()
+            obj_ids = set()
+            for obj_id, img_id in ids.items():
+                img_ids.add(img_id)
+                obj_ids.add(obj_id)
 
-                compared_matches = outcomes_matches[outcome][i]
-                img_ids = set()
-                obj_ids = set()
-                for x in matches_data:
-                    img_id = x["dt_img_id"] if outcome != "FN" else x["gt_img_id"]
-                    obj_id = x["dt_obj_id"] if outcome != "FN" else x["gt_obj_id"]
-                    if img_id in compared_matches:
-                        img_ids.add(img_id)
-                        obj_ids.add(obj_id)
-                    if img_id in outcomes_matches[outcome][-1]:
-                        common_img_ids[outcome].add(img_id)
-                        common_obj_ids[outcome].add(obj_id)
-
-                title = f"{model_name}. {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
-                outcome_dict["title"] = title
-                outcome_dict["imagesIds"] = list(img_ids)
-                outcome_dict["filters"] = [
-                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                    {"type": "tag", "tagId": "outcome", "value": outcome},
-                    {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
-                ]
-
-        # Add common matches
-        for outcome in ["TP", "FN", "FP"]:
-            key = f"{len(self.eval_results)}_{outcome}"
-            outcome_dict = res["clickData"].setdefault(key, {})
-            obj_ids = list(common_obj_ids[outcome])
-            outcome_dict["imagesIds"] = list(common_img_ids[outcome])
-            title = f"Common {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
+            title = f"{title}. {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
             outcome_dict["title"] = title
+            outcome_dict["imagesIds"] = list(img_ids)
             outcome_dict["filters"] = [
                 {"type": "tag", "tagId": "confidence", "value": [0, 1]},
                 {"type": "tag", "tagId": "outcome", "value": outcome},
                 {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
             ]
+
+        for outcome, (diff_ids, common_ids) in outcomes_ids.items():
+            key = f"Common_{outcome}"
+            outcome_dict = res["clickData"].setdefault(key, {})
+
+            _update_outcome_dict("Common", outcome, outcome_dict, common_ids)
+
+            for i, diff_ids in enumerate(diff_ids, 1):
+                name = f"Model {i}"
+                key = f"{name}_{outcome}"
+                outcome_dict = res["clickData"].setdefault(key, {})
+
+                _update_outcome_dict(name, outcome, outcome_dict, diff_ids)
 
         return res
