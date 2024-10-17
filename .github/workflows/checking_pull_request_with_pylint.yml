@@ -21,6 +21,15 @@ jobs:
       ERRORS_DETECTED: false
       GH_TOKEN: ${{ github.token }}
     steps:
+
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.PYLINT_TOKEN }}
+          ref: master
+          path: base
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -30,7 +39,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8      
+          python-version: 3.8
           
       - name: Install dependencies
         run: |
@@ -38,22 +47,33 @@ jobs:
           pip install pylint
           pip install .[extras,sdk-nn-plugins,aug]
 
+      # - name: Get changed files
+      #   id: changed-files
+      #   uses: tj-actions/changed-files@v45
+      # - run: |
+      #     for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+      #       echo "File modified in PR: ${changed_file}"
+      #     done
+      
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        run: |
+          git diff --name-only base/master...HEAD > changed_files.txt
+          cat changed_files.txt
+
       - run: |
-          for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          for changed_file in $(cat changed_files.txt); do
             echo "File modified in PR: ${changed_file}"
           done
 
       - name: Run check with pylint
         run: |
           python_files=()
-          for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          while IFS= read -r changed_file; do
             if [[ $changed_file == *.py ]] && [ -f "$changed_file" ]; then
               python_files+=("$changed_file")
             fi
-          done
+          done < changed_files.txt
           if [ "${#python_files[@]}" -gt 0 ]; then
             pylint_output=$(pylint --ignore=tests "${python_files[@]}" --generated-members=cv2.*,signal.*,zstd.*) || true
             if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
@@ -78,7 +98,7 @@ jobs:
           && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
           && sudo apt update \
           && sudo apt install gh -y
-          
+
       - name: Fail if pylint errors detected
         if: ${{ env.ERRORS_DETECTED == 'true' }}
         run: |
