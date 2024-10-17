@@ -391,10 +391,11 @@ class CustomModelsSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> Dict[str, List[ModelRow]]:
+    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> List[Dict]:
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_train_info(train_info):
+
             try:
                 model_row = CustomModelsSelector.ModelRow(
                     api=self._api,
