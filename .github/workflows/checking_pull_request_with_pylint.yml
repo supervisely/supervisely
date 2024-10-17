@@ -22,20 +22,20 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
 
-      - name: Checkout base branch
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository }}
-          token: ${{ secrets.PYLINT_TOKEN }}
-          ref: master
-          path: base
-
+      
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           token: ${{ secrets.PYLINT_TOKEN }}
+      
+      - name: Fetch master branch
+        run: git fetch origin master
 
+      - name: Get merge base
+        id: merge-base
+        run: echo "::set-output name=base::$(git merge-base origin/master HEAD)"
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -58,7 +58,7 @@ jobs:
       - name: Get changed files
         id: changed-files
         run: |
-          git diff --name-only base/master...HEAD > changed_files.txt
+          git diff --name-only ${{ steps.merge-base.outputs.base }} HEAD > changed_files.txt
           cat changed_files.txt
 
       - run: |
