@@ -19,6 +19,7 @@ jobs:
       ORG_PROJECT_ID: ""
       ORG_LOGIN: "supervisely"
       ERRORS_DETECTED: false
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,7 +31,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
-
+          
+      - name: Install GitHub CLI
+        run: |
+          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+          && sudo mkdir -p -m 755 /etc/apt/keyrings \
+          && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+          && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
+          
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -76,6 +87,26 @@ jobs:
           echo "RESULT=failure" >> $GITHUB_ENV
           exit 1
 
+      - name: Set status to success
+        if: success()
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -f state=success \
+            -f context="Checking modified files in PR with pylint" \
+            -f description="Pylint checks passed" \
+            -f target_url="${{ github.event.pull_request.html_url }}"       
+
+      - name: Set status to failure
+        if: failure()
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -f state=failure \
+            -f context="Checking modified files in PR with pylint" \
+            -f description="Pylint checks failed" \
+            -f target_url="${{ github.event.pull_request.html_url }}"
+            
     # - name: Create GitHub issue
     #   run: |
     #     if [[ "${{ env.ERRORS_DETECTED }}" == "true" ]]; then
