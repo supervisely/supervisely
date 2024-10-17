@@ -36,12 +36,12 @@ jobs:
       - name: Get merge base
         id: merge-base
         run: |
-          echo "base=$(git merge-base origin/master HEAD)" >> $GITHUB_ENV
+          echo "BASE=$(git merge-base origin/master HEAD)" >> $GITHUB_ENV
 
       - name: Get changed files
         id: changed-files
         run: |
-          git diff --name-only ${{ steps.merge-base.outputs.base }} HEAD > changed_files.txt
+          git diff --name-only ${{ env.BASE }} HEAD > changed_files.txt
           cat changed_files.txt
         
       - name: Echo changed files
@@ -68,7 +68,7 @@ jobs:
       #     for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
       #       echo "File modified in PR: ${changed_file}"
       #     done
-      
+
       - name: Run check with pylint
         run: |
           python_files=()
