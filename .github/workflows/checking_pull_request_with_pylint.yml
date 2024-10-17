@@ -35,8 +35,21 @@ jobs:
 
       - name: Get merge base
         id: merge-base
-        run: echo "::set-output name=base::$(git merge-base origin/master HEAD)"
-      
+        run: |
+          echo "base=$(git merge-base origin/master HEAD)" >> $GITHUB_ENV
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          git diff --name-only ${{ steps.merge-base.outputs.base }} HEAD > changed_files.txt
+          cat changed_files.txt
+        
+      - name: Echo changed files
+        run: |
+          while IFS= read -r changed_file; do
+            echo "File modified in PR: ${changed_file}"
+          done < changed_files.txt
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -56,18 +69,6 @@ jobs:
       #       echo "File modified in PR: ${changed_file}"
       #     done
       
-      - name: Get changed files
-        id: changed-files
-        run: |
-          git diff --name-only ${{ steps.merge-base.outputs.base }} HEAD > changed_files.txt
-          cat changed_files.txt
-        
-      - name: Echo changed files
-        run: |
-          while IFS= read -r changed_file; do
-            echo "File modified in PR: ${changed_file}"
-          done < changed_files.txt
-
       - name: Run check with pylint
         run: |
           python_files=()
