@@ -28,6 +28,7 @@ jobs:
         with:
           repository: ${{ github.repository }}
           token: ${{ secrets.PYLINT_TOKEN }}
+          fetch-depth: 0
       
       - name: Fetch master branch
         run: git fetch origin master
@@ -60,11 +61,12 @@ jobs:
         run: |
           git diff --name-only ${{ steps.merge-base.outputs.base }} HEAD > changed_files.txt
           cat changed_files.txt
-
-      - run: |
-          for changed_file in $(cat changed_files.txt); do
+        
+      - name: Echo changed files
+        run: |
+          while IFS= read -r changed_file; do
             echo "File modified in PR: ${changed_file}"
-          done
+          done < changed_files.txt
 
       - name: Run check with pylint
         run: |
