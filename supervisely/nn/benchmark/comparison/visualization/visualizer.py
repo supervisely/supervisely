@@ -135,6 +135,9 @@ class ComparisonVisualizer:
         self.diff_modal_table = self._create_diff_modal_table()
         self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
 
+        # Notifcation
+        self.clickable_label = self._create_clickable_label()
+
         # Overview
         overview = Overview(self.vis_texts, self.comparison.evaluation_results)
         self.header = self._create_header()
@@ -182,9 +185,12 @@ class ComparisonVisualizer:
         self.precision_recall_f1_md = precision_recall_f1.markdown_widget
         self.precision_recall_f1_table = precision_recall_f1.table_widget
         self.precision_recall_f1_chart = precision_recall_f1.chart_main_widget
+        self.precision_per_class_title_md = precision_recall_f1.precision_per_class_title_md
         self.precision_per_class_chart = precision_recall_f1.chart_precision_per_class_widget
+        self.recall_per_class_title_md = precision_recall_f1.recall_per_class_title_md
         self.recall_per_class_chart = precision_recall_f1.chart_recall_per_class_widget
         self.f1_per_class_chart = precision_recall_f1.chart_f1_per_class_widget
+        self.f1_per_class_title_md = precision_recall_f1.f1_per_class_title_md
 
         # Classification Accuracy
         # TODO: ???
@@ -237,9 +243,13 @@ class ComparisonVisualizer:
             # Precision, Recall, F1
             (1, self.precision_recall_f1_md),
             (0, self.precision_recall_f1_table),
+            (0, self.clickable_label),
             (0, self.precision_recall_f1_chart),
+            (0, self.precision_per_class_title_md),
             (0, self.precision_per_class_chart),
+            (0, self.recall_per_class_title_md),
             (0, self.recall_per_class_chart),
+            (0, self.f1_per_class_title_md),
             (0, self.f1_per_class_chart),
             # Classification Accuracy # TODO
             # Localization Accuracy (IoU)
@@ -324,3 +334,6 @@ class ComparisonVisualizer:
     def _create_diff_modal_table(self) -> GalleryWidget:
         diff_modal_gallery = GalleryWidget("diff_predictions_modal_gallery", is_modal=True)
         return diff_modal_gallery
+
+    def _create_clickable_label(self):
+        return MarkdownWidget("clickable_label", "", text=self.vis_texts.clickable_label)

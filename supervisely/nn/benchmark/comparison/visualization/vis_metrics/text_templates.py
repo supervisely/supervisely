@@ -118,6 +118,12 @@ This chart compares the outcome counts between different models. It helps to ide
     + clickable_label
 )
 
+markdown_precision_per_class_title = """### Precision by Class"""
+
+markdown_recall_per_class_title = """### Recall by Class"""
+
+markdown_f1_per_class_title = """### F1-score by Class"""
+
 markdown_R = """## Recall
 
 This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, it answers the question: “Of all instances in the dataset, how many of them is the model managed to find out?”
@@ -181,6 +187,12 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
     + clickable_label
 )
 
+markdown_PRF1 = """## Recall, Precision, F1-score
+
+This section compares Precision, Recall, and F1-score metrics. The first graph identifies imbalance between these metrics. On the next charts, you can see each metric separately, broken down by class.
+
+_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
+"""
 
 markdown_pr_curve = """## Precision-Recall Curve
 
