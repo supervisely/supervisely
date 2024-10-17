@@ -166,7 +166,9 @@ class ComparisonVisualizer:
 
         # Average Precision by Class
         avg_prec_by_class = AveragePrecisionByClass(
-            self.vis_texts, self.comparison.evaluation_results
+            self.vis_texts,
+            self.comparison.evaluation_results,
+            explore_modal_table=self.explore_modal_table,
         )
         self.avg_prec_by_class_md = avg_prec_by_class.markdown_widget
         self.avg_prec_by_class_chart = avg_prec_by_class.chart_widget

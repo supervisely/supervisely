@@ -39,10 +39,6 @@ class AveragePrecisionByClass(BaseVisMetric):
             )
 
         fig.update_layout(
-            # polar=dict(
-            #     radialaxis=dict(range=[0, 1]),#, title=labels["r"]),
-            #     angularaxis=dict(title=labels["theta"]),
-            # ),
             width=800,
             height=800,
             margin=dict(l=80, r=80, t=0, b=0),
@@ -63,4 +59,40 @@ class AveragePrecisionByClass(BaseVisMetric):
 
     @property
     def chart_widget(self) -> ChartWidget:
-        return ChartWidget(name="chart_class_ap", figure=self.get_figure())
+        chart = ChartWidget(name="chart_class_ap", figure=self.get_figure())
+        chart.set_click_data(
+            gallery_id=self.explore_modal_table.id,
+            click_data=self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].curveNumber}${'_'}${payload.points[0].theta}`,",
+        )
+        return chart
+
+    def get_click_data(self):
+        res = {}
+        res["layoutTemplate"] = [None, None, None]
+        res["clickData"] = {}
+
+        for i, eval_result in enumerate(self.eval_results):
+            model_name = f"Model {i}"
+            for cat_name, v in eval_result.click_data.objects_by_class.items():
+                key = f"{i}_{cat_name}"
+                ap_per_class_dict = res["clickData"].setdefault(key, {})
+
+                img_ids = set()
+                obj_ids = set()
+
+                title = f"{model_name}, class: {len(v)} object{'s' if len(v) > 1 else ''}"
+                ap_per_class_dict["title"] = title
+
+                for x in v:
+                    img_ids.add(x["dt_img_id"])
+                    obj_ids.add(x["dt_obj_id"])
+
+                ap_per_class_dict["imagesIds"] = list(img_ids)
+                ap_per_class_dict["filters"] = [
+                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                    {"type": "tag", "tagId": "outcome", "value": "TP"},
+                    {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
+                ]
+
+        return res
