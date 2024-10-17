@@ -178,59 +178,66 @@ class OutcomeCounts(BaseVisMetric):
         iouThr = 0.75
         key_name = self._get_coco_key_name()
 
-        # TODO: add support for more models and refactor this method
-        assert len(self.eval_results) == 2, "Currently only 2 models are supported"
-
-        imgId2ann1 = self.imgIds_to_anns[0]["FP"]
-        imgId2ann2 = self.imgIds_to_anns[1]["FP"]
-
-        same_fp_matches = []
-        for img_id in imgId2ann1:
-            anns1 = imgId2ann1[img_id]
-            anns2 = imgId2ann2[img_id]
-            geoms1 = [x[key_name] for x in anns1]
-            geoms2 = [x[key_name] for x in anns2]
-
-            ious = maskUtils.iou(geoms1, geoms2, [0] * len(geoms2))
-            if len(ious) == 0:
-                continue
-            indxs = np.nonzero(ious > iouThr)
-            if len(indxs[0]) == 0:
-                continue
-            indxs = list(zip(*indxs))
-            indxs = sorted(indxs, key=lambda x: ious[x[0], x[1]], reverse=True)
-            id1, id2 = list(zip(*indxs))
-            id1, id2 = set(id1), set(id2)
-            for i, j in indxs:
-                if i in id1 and j in id2:
-                    same_fp_matches.append((anns1[i], anns2[j], ious[i, j]))
-                    id1.remove(i)
-                    id2.remove(j)
-
-        # Find different FP matches for each model
-        id1, id2 = zip(*[(x[0]["id"], x[1]["id"]) for x in same_fp_matches])
-        id1 = set(id1)
-        id2 = set(id2)
-
+        imgIds_to_anns = [self.imgIds_to_anns[idx]["FP"] for idx in range(len(self.eval_results))]
         sly_ids_list = [
             {x["dt_obj_id"]: x["dt_img_id"] for x in r.click_data.outcome_counts["FP"]}
             for r in self.eval_results
         ]
 
-        diff_fp_matches_1 = set([x["dt_id"] for x in self.eval_results[0].mp.m.fp_matches]) - id1
-        diff_fp_matches_2 = set([x["dt_id"] for x in self.eval_results[1].mp.m.fp_matches]) - id2
+        same_fp_matches = []
+        for img_id in imgIds_to_anns[0]:
+            anns_list = [imgIds[img_id] for imgIds in imgIds_to_anns]
+            geoms_list = [[x[key_name] for x in anns] for anns in anns_list]
 
-        diff_fp_matches_1_dict = {}
-        for x in diff_fp_matches_1:
-            obj_id = self.coco_to_sly_ids[0]["FP"][x]["dt_obj_id"]
-            img_id = sly_ids_list[0][obj_id]
-            diff_fp_matches_1_dict[obj_id] = img_id
+            if any(len(geoms) == 0 for geoms in geoms_list):
+                continue
 
-        diff_fp_matches_2_dict = {}
-        for x in diff_fp_matches_2:
-            obj_id = self.coco_to_sly_ids[1]["FP"][x]["dt_obj_id"]
-            img_id = sly_ids_list[1][obj_id]
-            diff_fp_matches_2_dict[obj_id] = img_id
+            ious_list = [
+                maskUtils.iou(geoms_list[0], geoms, [0] * len(geoms)) for geoms in geoms_list[1:]
+            ]
+            if any(len(ious) == 0 for ious in ious_list):
+                continue
+
+            indxs_list = [np.nonzero(ious > iouThr) for ious in ious_list]
+            if any(len(indxs[0]) == 0 for indxs in indxs_list):
+                continue
+
+            indxs_list = [list(zip(*indxs)) for indxs in indxs_list]
+            indxs_list = [
+                sorted(indxs, key=lambda x: ious[x[0], x[1]], reverse=True)
+                for indxs, ious in zip(indxs_list, ious_list)
+            ]
+
+            id_sets = [set(idxs[0]) for idxs in indxs_list]
+            common_ids = set.intersection(*id_sets)
+            if not common_ids:
+                continue
+
+            for i, j in indxs_list[0]:
+                if i in common_ids:
+                    same_fp_matches.append(
+                        (
+                            anns_list[0][i],
+                            [anns[j] for anns in anns_list[1:]]
+                        )
+                    )
+                    common_ids.remove(i)
+
+        # Find different FP matches for each model
+        same_fp_ids = set(x[0]["id"] for x in same_fp_matches)
+        diff_fp_matches = [
+            set([x["dt_id"] for x in eval_result.mp.m.fp_matches]) - same_fp_ids
+            for eval_result in self.eval_results
+        ]
+
+        diff_fp_matches_dicts = []
+        for idx, diff_fp in enumerate(diff_fp_matches):
+            diff_fp_dict = {}
+            for x in diff_fp:
+                obj_id = self.coco_to_sly_ids[idx]["FP"][x]["dt_obj_id"]
+                img_id = sly_ids_list[idx][obj_id]
+                diff_fp_dict[obj_id] = img_id
+            diff_fp_matches_dicts.append(diff_fp_dict)
 
         same_fp_matches_dict = {}
         for x in same_fp_matches:
@@ -238,7 +245,7 @@ class OutcomeCounts(BaseVisMetric):
             img_id = sly_ids_list[0][obj_id]
             same_fp_matches_dict[obj_id] = img_id
 
-        return [diff_fp_matches_1_dict, diff_fp_matches_2_dict], same_fp_matches_dict
+        return diff_fp_matches_dicts, same_fp_matches_dict
 
     def _find_common_and_diff_tp(self) -> tuple:
 
