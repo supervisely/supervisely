@@ -10,6 +10,7 @@ import subprocess
 import tarfile
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
+import aiofiles
 import requests
 from requests.structures import CaseInsensitiveDict
 from tqdm import tqdm
@@ -1348,3 +1349,50 @@ def str_is_url(string: str) -> bool:
         return all([result.scheme, result.netloc])
     except ValueError:
         return False
+
+
+async def copy_file_async(src: str, dst: str) -> None:
+    """
+    Asynchronously copy file from one path to another, if destination directory doesn't exist it will be created.
+
+    :param src: Source file path.
+    :type src: str
+    :param dst: Destination file path.
+    :type dst: str
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import async_copy_file
+        await async_copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+    """
+    ensure_base_path(dst)
+    async with aiofiles.open(dst, "wb") as out_f:
+        async with aiofiles.open(src, "rb") as in_f:
+            while True:
+                chunk = await in_f.read(1024 * 1024)
+                if not chunk:
+                    break
+                await out_f.write(chunk)
+
+
+async def get_file_hash_async(path: str) -> str:
+    """
+    Get hash from target file asynchronously.
+
+    :param path: Target file path.
+    :type path: str
+    :returns: File hash
+    :rtype: :class:`str`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import get_file_hash_async
+        hash = await get_file_hash_async('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
+    """
+    async with aiofiles.open(path, "rb") as file:
+        file_bytes = await file.read()
+        return get_bytes_hash(file_bytes)

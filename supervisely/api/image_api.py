@@ -18,6 +18,7 @@ from pathlib import Path
 from time import sleep
 from typing import (
     Any,
+    AsyncGenerator,
     Callable,
     Dict,
     Generator,
@@ -38,6 +39,7 @@ import requests
 from requests.exceptions import HTTPError
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 
 from supervisely._utils import (
     batched,
@@ -3376,20 +3378,33 @@ class ImageApi(RemoveableBulkModuleApi):
         r = self._api.post("images.update.links", data)
         return r.json()
 
-    async def _async_download(
+    async def _download_async(
         self,
-        id,
-        is_stream=False,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
         headers: dict = None,
-    ):
+    ) -> AsyncGenerator:
         """
         Download Image with given ID asynchronously.
 
-        :param id: int
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
         :param is_stream: bool
-        :return: Response class object contain metadata of image with given id
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
         """
         api_method_name = "images.download"
+
         json_body = {ApiField.ID: id}
 
         if headers is None:
@@ -3398,15 +3413,20 @@ class ImageApi(RemoveableBulkModuleApi):
             headers.update(self._api.headers)
 
         if is_stream:
-            async for chunk in self._api.async_stream(
-                api_method_name, "POST", json_body, headers=headers
+            async for chunk in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
             ):
                 yield chunk
         else:
-            response = await self._api.async_post(api_method_name, json_body, headers=headers)
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
             yield response
 
-    async def async_download_np(
+    async def download_np_async(
         self,
         id: int,
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
@@ -3451,18 +3471,20 @@ class ImageApi(RemoveableBulkModuleApi):
                     pbar.update(1)
         """
         async with semaphore:
-            response = await self._async_download(id)
-            loop = asyncio.get_event_loop()
-            img = loop.run_in_executor(None, sly_image.read_bytes, response.content, keep_alpha)
+            async for response in self._download_async(id):
+                # loop = asyncio.get_event_loop()
+                # img = loop.run_in_executor(None, sly_image.read_bytes, response.content, keep_alpha)
+                img = sly_image.read_bytes(response.content, keep_alpha)
             return img
 
-    async def async_download_path(
+    async def download_path_async(
         self,
         id: int,
         path: str,
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
+        headers: dict = None,
     ) -> None:
         """
         Downloads Image with given ID to local path.
@@ -3471,6 +3493,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param path: Local save path for Image.
         :type path: str
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -3486,18 +3516,19 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(770918)
             save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
 
-            api.image.download_path(770918, save_path)
+            semaphore = asyncio.Semaphore(10)
+            await api.image.async_download_path(img_info.id, save_path, semaphore)
         """
         downloaded_size = 0
-        retry_range_start = range_start
-        headers = {}
 
         url = self._api.api_server_address + "/v3/" + "images.download"
 
         if range_start is not None or range_end is not None:
+            headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
 
+        # TODO Remove this check after tests. It slows down the download process.
         if range_start is not None and range_end is not None:
             total_size = range_end - range_start
         elif range_start is not None:
@@ -3507,45 +3538,74 @@ class ImageApi(RemoveableBulkModuleApi):
         else:
             total_size = self.get_info_by_id(id).size
 
-        for retry_idx in range(self._api.retry_count):
-            try:
-                ensure_base_path(path)
-                if retry_range_start not in [0, None]:
-                    writing_method = "ab"
-                else:
-                    writing_method = "wb"
-                async with semaphore:
-                    async with aiofiles.open(path, writing_method) as fd:
-                        async for chunk in self._async_download(
-                            id, is_stream=True, headers=headers,
-                        ):
-                            await fd.write(chunk)
-                            downloaded_size += len(chunk)
+        writing_method = "ab" if range_start not in [0, None] else "wb"
 
-                downloaded_file_size = os.path.getsize(path)
-                if total_size != downloaded_file_size:
-                    raise RuntimeError(
-                        f"Downloaded size of image with ID:{id} does not match the expected size: {downloaded_file_size} != {total_size}"
-                    )
-            except httpx.RequestError as e:
-                retry_range_start = downloaded_size + (range_start or 0)
-                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
-                logger.debug(f"Image ID: {id}. Retrying with Range header: {headers['Range']}")
-                process_requests_exception(
-                    self._api.logger,
-                    e,
-                    "images.download",
-                    url,
-                    verbose=True,
-                    swallow_exc=True,
-                    sleep_sec=min(self._api.retry_sleep_sec * (2**retry_idx), 60),
-                    response=None,
-                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": self._api.retry_count},
-                )
-            except Exception as e:
-                process_unhandled_request(self._api.logger, e)
-            else:
-                return
-        raise httpx.RequestError(
-            message=f"Retry limit exceeded ({url})", request=None, response=None
-        )
+        ensure_base_path(path)
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk in self._download_async(
+                    id,
+                    is_stream=True,
+                    headers=headers,
+                    range_start=range_start,
+                    range_end=range_end,
+                ):
+                    await fd.write(chunk)
+                    downloaded_size += len(chunk)
+        # TODO Remove this check after tests. It slows down the download process.
+        downloaded_file_size = os.path.getsize(path)
+        if total_size != downloaded_file_size:
+            raise RuntimeError(
+                f"Downloaded size of image with ID:{id} does not match the expected size: {downloaded_file_size} != {total_size}"
+            )
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        show_progress: bool = True,
+    ) -> None:
+        """
+        Download Images with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Images.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param show_progress: If True, shows progress bar.
+        :type show_progress: bool, optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(img_id, img_path, semaphore)
+            tasks.append(task)
+        if show_progress:
+            with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
+                for f in asyncio.as_completed(tasks):
+                    await f
+                    pbar.update(1)
+        else:
+            await asyncio.gather(*tasks)

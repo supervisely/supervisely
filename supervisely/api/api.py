@@ -730,6 +730,213 @@ class Api:
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
 
+    @staticmethod
+    def _raise_for_status(response):
+        """
+        Raise error and show message with error code if given response can not connect to server.
+        :param response: Request class object
+        """
+        http_error_msg = ""
+        if hasattr(response, "reason"):
+            if isinstance(response.reason, bytes):
+                try:
+                    reason = response.reason.decode("utf-8")
+                except UnicodeDecodeError:
+                    reason = response.reason.decode("iso-8859-1")
+            else:
+                reason = response.reason
+        elif hasattr(response, "reason_phrase"):  # httpx
+            reason = response.reason_phrase
+        else:
+            reason = "Can't get reason"
+
+        def decode_response_content(response):
+            if hasattr(response, "is_stream_consumed"):  # httpx
+                return "Content is not acessible for streaming responses"
+            else:
+                return response.content.decode("utf-8")
+
+        if 400 <= response.status_code < 500:
+            http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                decode_response_content(response),
+            )
+
+        elif 500 <= response.status_code < 600:
+            http_error_msg = "%s Server Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                decode_response_content(response),
+            )
+
+        if http_error_msg:
+            raise httpx.HTTPStatusError(
+                message=http_error_msg, response=response, request=response.request
+            )
+
+    @staticmethod
+    def parse_error(
+        response: requests.Response,
+        default_error: Optional[str] = "Error",
+        default_message: Optional[str] = "please, contact administrator",
+    ):
+        """
+        Processes error from response.
+
+        :param response: Request object.
+        :type method: Request
+        :param default_error: Error description.
+        :type method: str, optional
+        :param default_message: Message to user.
+        :type method: str, optional
+        :return: Number of error and message about curren connection mistake
+        :rtype: :class:`int`, :class:`str`
+        """
+        ERROR_FIELD = "error"
+        MESSAGE_FIELD = "message"
+        DETAILS_FIELD = "details"
+
+        try:
+            data_str = response.content.decode("utf-8")
+            data = json.loads(data_str)
+            error = data.get(ERROR_FIELD, default_error)
+            details = data.get(DETAILS_FIELD, {})
+            if type(details) is dict:
+                message = details.get(MESSAGE_FIELD, default_message)
+            else:
+                message = details[0].get(MESSAGE_FIELD, default_message)
+
+            return error, message
+        except Exception:
+            return "", ""
+
+    def pop_header(self, key: str) -> str:
+        """ """
+        if key not in self.headers:
+            raise KeyError(f"Header {key!r} not found")
+        return self.headers.pop(key)
+
+    def _check_https_redirect(self):
+        if self._require_https_redirect_check is True:
+            response = requests.get(self.server_address, allow_redirects=False)
+            if (300 <= response.status_code < 400) or (
+                response.headers.get("Location", "").startswith("https://")
+            ):
+                self.server_address = self.server_address.replace("http://", "https://")
+                msg = (
+                    "You're using HTTP server address while the server requires HTTPS. "
+                    "Supervisely automatically changed the server address to HTTPS for you. "
+                    f"Consider updating your server address to {self.server_address}"
+                )
+                self.logger.warning(msg)
+
+            self._require_https_redirect_check = False
+
+    @classmethod
+    def from_credentials(
+        cls,
+        server_address: str,
+        login: str,
+        password: str,
+        override: bool = False,
+        env_file: str = SUPERVISELY_ENV_FILE,
+        check_instance_version: Union[bool, str] = False,
+    ) -> Api:
+        """
+        Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
+        If ".env" file already exists, backup will be created automatically.
+        All backups will be stored in the same directory with postfix "_YYYYMMDDHHMMSS". You can have not more than 5 last backups.
+        This method can be used also to update ".env" file.
+
+        :param server_address: Supervisely server url.
+        :type server_address: str
+        :param login: User login.
+        :type login: str
+        :param password: User password.
+        :type password: str
+        :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
+        :type override: bool, optional
+        :param env_file: Path to your .env file.
+        :type env_file: str, optional
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            version of the Supervisely instance.
+        :type check_instance_version: bool or str, optional
+        :return: Api object
+
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+
+                server_address = 'https://app.supervisely.com'
+                login = 'user'
+                password = 'pass'
+
+                api = sly.Api.from_credentials(server_address, login, password)
+        """
+
+        session = UserSession(server_address).log_in(login, password)
+        del password
+        gc.collect()
+
+        api = cls(
+            session.server_address,
+            session.api_token,
+            ignore_task_id=True,
+            check_instance_version=check_instance_version,
+        )
+
+        if override:
+            if os.path.isfile(env_file):
+                # create backup
+                timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                backup_file = f"{env_file}_{timestamp}"
+                shutil.copy2(env_file, backup_file)
+                if api.token != get_key(env_file, API_TOKEN):
+                    # create new file
+                    os.remove(env_file)
+                    Path(env_file).touch()
+                # remove old backups
+                all_backups = sorted(glob.glob(f"{env_file}_" + "[0-9]" * 14))
+                while len(all_backups) > 5:
+                    os.remove(all_backups.pop(0))
+            set_key(env_file, SERVER_ADDRESS, session.server_address)
+            set_key(env_file, API_TOKEN, session.api_token)
+            if session.team_id:
+                set_key(env_file, "INIT_GROUP_ID", f"{session.team_id}")
+            if session.workspace_id:
+                set_key(env_file, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
+            load_dotenv(env_file, override=override)
+        return api
+
+    @property
+    def api_server_address(self) -> str:
+        """
+        Get API server address.
+
+        :return: API server address.
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+            print(api.api_server_address)
+            # Output:
+            # 'https://app.supervisely.com/public/api'
+        """
+
+        if self._api_server_address is not None:
+            return self._api_server_address
+
+        return f"{self.server_address}/public/api"
+
     def post_httpx(
         self,
         method: str,
@@ -992,7 +1199,7 @@ class Api:
             response=locals().get("resp"),
         )
 
-    async def async_post(
+    async def post_async(
         self,
         method: str,
         data: Union[bytes, Dict],
@@ -1068,13 +1275,15 @@ class Api:
             request=getattr(response, "request", None),
         )
 
-    async def async_stream(
+    async def stream_async(
         self,
         method: str,
         method_type: Literal["GET", "POST"],
         data: Union[bytes, Dict],
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
         use_public_api: Optional[bool] = True,
         http2: Optional[bool] = False,
     ) -> AsyncGenerator:
@@ -1091,6 +1300,10 @@ class Api:
         :type headers: dict, optional
         :param retries: The number of retry attempts.
         :type retries: int, optional
+        :param range_start: Start byte position for streaming.
+        :type range_start: int, optional
+        :param range_end: End byte position for streaming.
+        :type range_end: int, optional
         :param use_public_api: Define if public API should be used.
         :type use_public_api: bool, optional
         :param http2: Use HTTP/2 protocol.
@@ -1098,8 +1311,8 @@ class Api:
         :return: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
-
         self._check_https_redirect()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1107,9 +1320,12 @@ class Api:
         if not use_public_api:
             url = os.path.join(self.server_address, method)
 
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
         logger.trace(f"{method_type} {url}")
-        client = httpx.AsyncClient(http2=http2)
-        response = None
 
         if isinstance(data, (bytes, Generator)):
             content = data
@@ -1124,252 +1340,73 @@ class Api:
             content = None
             json_body = None
 
-        if headers is None:
-            headers = self.headers.copy()
-        else:
-            headers = {**self.headers, **headers}
-        if method_type == "POST":
-            response = client.stream(
-                method_type,
-                url,
-                content=content,
-                json=json_body,
-                params=params,
-                headers=headers,
-                timeout=15,
-            )
-        elif method_type == "GET":
-            response = client.stream(
-                method_type,
-                url,
-                json=json_body or params,
-                headers=headers,
-                timeout=15,
-            )
+        if range_start is not None or range_end is not None:
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Setting Range header: {headers['Range']}")
 
-        async with response as resp:
-            expected_size = int(resp.headers.get("content-length", 0))
-            if resp.status_code not in [
-                httpx.codes.OK,
-                httpx.codes.PARTIAL_CONTENT,
-            ]:
-                self._check_version()
-                Api._raise_for_status(resp)
+        for retry_idx in range(retries):
+            try:
+                async with httpx.AsyncClient(http2=http2) as client:
+                    if method_type == "POST":
+                        response = client.stream(
+                            method_type,
+                            url,
+                            content=content,
+                            json=json_body,
+                            params=params,
+                            headers=headers,
+                            timeout=15,
+                        )
+                    elif method_type == "GET":
+                        response = client.stream(
+                            method_type,
+                            url,
+                            json=json_body or params,
+                            headers=headers,
+                            timeout=15,
+                        )
 
-            total_streamed = 0
-            async for chunk in resp.aiter_raw(8192):
-                yield chunk
-                total_streamed += len(chunk)
-                if total_streamed >= expected_size:
-                    break
-            await resp.aclose()
-            await client.aclose()
-            logger.debug(f"Streamed size: {total_streamed}, expected size: {expected_size}")
-            return
+                    async with response as resp:
+                        expected_size = int(resp.headers.get("content-length", 0))
+                        if resp.status_code not in [
+                            httpx.codes.OK,
+                            httpx.codes.PARTIAL_CONTENT,
+                        ]:
+                            self._check_version()
+                            Api._raise_for_status(resp)
 
-    @staticmethod
-    def _raise_for_status(response):
-        """
-        Raise error and show message with error code if given response can not connect to server.
-        :param response: Request class object
-        """
-        http_error_msg = ""
-        if hasattr(response, "reason"):
-            if isinstance(response.reason, bytes):
-                try:
-                    reason = response.reason.decode("utf-8")
-                except UnicodeDecodeError:
-                    reason = response.reason.decode("iso-8859-1")
-            else:
-                reason = response.reason
-        elif hasattr(response, "reason_phrase"):  # httpx
-            reason = response.reason_phrase
-        else:
-            reason = "Can't get reason"
+                        total_streamed = 0
+                        async for chunk in resp.aiter_raw(8192):
+                            yield chunk
+                            total_streamed += len(chunk)
 
-        def decode_response_content(response):
-            if hasattr(response, "is_stream_consumed"):  # httpx
-                return "Content is not acessible for streaming responses"
-            else:
-                return response.content.decode("utf-8")
-
-        if 400 <= response.status_code < 500:
-            http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
-                response.status_code,
-                reason,
-                response.url,
-                decode_response_content(response),
-            )
-
-        elif 500 <= response.status_code < 600:
-            http_error_msg = "%s Server Error: %s for url: %s (%s)" % (
-                response.status_code,
-                reason,
-                response.url,
-                decode_response_content(response),
-            )
-
-        if http_error_msg:
-            raise httpx.HTTPStatusError(
-                message=http_error_msg, response=response, request=response.request
-            )
-
-    @staticmethod
-    def parse_error(
-        response: requests.Response,
-        default_error: Optional[str] = "Error",
-        default_message: Optional[str] = "please, contact administrator",
-    ):
-        """
-        Processes error from response.
-
-        :param response: Request object.
-        :type method: Request
-        :param default_error: Error description.
-        :type method: str, optional
-        :param default_message: Message to user.
-        :type method: str, optional
-        :return: Number of error and message about curren connection mistake
-        :rtype: :class:`int`, :class:`str`
-        """
-        ERROR_FIELD = "error"
-        MESSAGE_FIELD = "message"
-        DETAILS_FIELD = "details"
-
-        try:
-            data_str = response.content.decode("utf-8")
-            data = json.loads(data_str)
-            error = data.get(ERROR_FIELD, default_error)
-            details = data.get(DETAILS_FIELD, {})
-            if type(details) is dict:
-                message = details.get(MESSAGE_FIELD, default_message)
-            else:
-                message = details[0].get(MESSAGE_FIELD, default_message)
-
-            return error, message
-        except Exception:
-            return "", ""
-
-    def pop_header(self, key: str) -> str:
-        """ """
-        if key not in self.headers:
-            raise KeyError(f"Header {key!r} not found")
-        return self.headers.pop(key)
-
-    def _check_https_redirect(self):
-        if self._require_https_redirect_check is True:
-            response = requests.get(self.server_address, allow_redirects=False)
-            if (300 <= response.status_code < 400) or (
-                response.headers.get("Location", "").startswith("https://")
-            ):
-                self.server_address = self.server_address.replace("http://", "https://")
-                msg = (
-                    "You're using HTTP server address while the server requires HTTPS. "
-                    "Supervisely automatically changed the server address to HTTPS for you. "
-                    f"Consider updating your server address to {self.server_address}"
+                        if total_streamed != expected_size:
+                            raise ValueError(
+                                f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
+                            )
+                        logger.debug(
+                            f"Streamed size: {total_streamed}, expected size: {expected_size}"
+                        )
+                        return
+            except httpx.RequestError as e:
+                retry_range_start = total_streamed + (range_start or 0)
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                process_requests_exception(
+                    self.logger,
+                    e,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                    response=response,
+                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
-                self.logger.warning(msg)
-
-            self._require_https_redirect_check = False
-
-    @classmethod
-    def from_credentials(
-        cls,
-        server_address: str,
-        login: str,
-        password: str,
-        override: bool = False,
-        env_file: str = SUPERVISELY_ENV_FILE,
-        check_instance_version: Union[bool, str] = False,
-    ) -> Api:
-        """
-        Create Api object using credentials and optionally save them to ".env" file with overriding environment variables.
-        If ".env" file already exists, backup will be created automatically.
-        All backups will be stored in the same directory with postfix "_YYYYMMDDHHMMSS". You can have not more than 5 last backups.
-        This method can be used also to update ".env" file.
-
-        :param server_address: Supervisely server url.
-        :type server_address: str
-        :param login: User login.
-        :type login: str
-        :param password: User password.
-        :type password: str
-        :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
-        :type override: bool, optional
-        :param env_file: Path to your .env file.
-        :type env_file: str, optional
-        :param check_instance_version: Check if the given version is lower or equal to the current
-            version of the Supervisely instance.
-        :type check_instance_version: bool or str, optional
-        :return: Api object
-
-        :Usage example:
-
-             .. code-block:: python
-
-                import supervisely as sly
-
-                server_address = 'https://app.supervisely.com'
-                login = 'user'
-                password = 'pass'
-
-                api = sly.Api.from_credentials(server_address, login, password)
-        """
-
-        session = UserSession(server_address).log_in(login, password)
-        del password
-        gc.collect()
-
-        api = cls(
-            session.server_address,
-            session.api_token,
-            ignore_task_id=True,
-            check_instance_version=check_instance_version,
+            except Exception as e:
+                process_unhandled_request(self.logger, e)
+            finally:
+                await client.aclose()
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})", request=None, response=None
         )
-
-        if override:
-            if os.path.isfile(env_file):
-                # create backup
-                timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-                backup_file = f"{env_file}_{timestamp}"
-                shutil.copy2(env_file, backup_file)
-                if api.token != get_key(env_file, API_TOKEN):
-                    # create new file
-                    os.remove(env_file)
-                    Path(env_file).touch()
-                # remove old backups
-                all_backups = sorted(glob.glob(f"{env_file}_" + "[0-9]" * 14))
-                while len(all_backups) > 5:
-                    os.remove(all_backups.pop(0))
-            set_key(env_file, SERVER_ADDRESS, session.server_address)
-            set_key(env_file, API_TOKEN, session.api_token)
-            if session.team_id:
-                set_key(env_file, "INIT_GROUP_ID", f"{session.team_id}")
-            if session.workspace_id:
-                set_key(env_file, "INIT_WORKSPACE_ID", f"{session.workspace_id}")
-            load_dotenv(env_file, override=override)
-        return api
-
-    @property
-    def api_server_address(self) -> str:
-        """
-        Get API server address.
-
-        :return: API server address.
-        :rtype: :class:`str`
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-
-            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-            print(api.api_server_address)
-            # Output:
-            # 'https://app.supervisely.com/public/api'
-        """
-
-        if self._api_server_address is not None:
-            return self._api_server_address
-
-        return f"{self.server_address}/public/api"
