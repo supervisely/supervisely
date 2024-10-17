@@ -146,7 +146,7 @@ class SLYImageConverter(ImageConverter):
                 ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             img_size = list(ann_json["size"].values())
             labels = validate_image_bounds(
-                [Label.from_json(obj) for obj in ann_json["objects"]],
+                [Label.from_json(obj, meta) for obj in ann_json["objects"]],
                 Rectangle.from_size(img_size),
             )
             return Annotation(img_size, labels)
