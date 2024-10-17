@@ -1,10 +1,39 @@
 from collections import defaultdict
-from typing import Callable, Optional, Literal
+from typing import Callable, List, Literal, Optional
 
 import numpy as np
 
+# pylint: disable=import-error
+from pycocotools.cocoeval import COCOeval
 
-def calculate_metrics(cocoGt, cocoDt, iouType: Literal["bbox", "segm"], progress_cb: Optional[Callable] = None):
+
+def set_cocoeval_params(
+    cocoeval: COCOeval,
+    parameters: dict,
+):
+    if parameters is None:
+        return
+    param_names = (
+        "iouThrs",
+        "recThrs",
+        "maxDets",
+        "areaRng",
+        "areaRngLbl",
+        # "kpt_oks_sigmas" # For keypoints
+    )
+    for param_name in param_names:
+        cocoeval.params.__setattr__(
+            param_name, parameters.get(param_name, cocoeval.params.__getattribute__(param_name))
+        )
+
+
+def calculate_metrics(
+    cocoGt,
+    cocoDt,
+    iouType: Literal["bbox", "segm"],
+    progress_cb: Optional[Callable] = None,
+    evaluation_params: Optional[dict] = None,
+):
     """
     Calculate COCO metrics.
 
@@ -19,35 +48,42 @@ def calculate_metrics(cocoGt, cocoDt, iouType: Literal["bbox", "segm"], progress
     :return: Results of the evaluation
     :rtype: dict
     """
-    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
 
-    progress_cb(1) if progress_cb is not None else None
     cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
-    progress_cb(1) if progress_cb is not None else None
     cocoEval.evaluate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval.accumulate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval.summarize()
-    progress_cb(1) if progress_cb is not None else None
 
     # For classification metrics
     cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType=iouType)
-    progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.params.useCats = 0
     cocoEval_cls.evaluate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.accumulate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.summarize()
-    progress_cb(1) if progress_cb is not None else None
+
+    iou_t = 0
+    is_custom_iou_threshold = (
+        evaluation_params is not None and evaluation_params.get("iou_threshold") and evaluation_params["iou_threshold"] != 0.5
+    )
+    if is_custom_iou_threshold:
+        iou_t = np.where(cocoEval.params.iouThrs == evaluation_params["iou_threshold"])[0][0]
 
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
-    matches = get_matches(eval_img_dict, eval_img_dict_cls, cocoEval_cls, iou_t=0)
+    matches = get_matches(eval_img_dict, eval_img_dict_cls, cocoEval_cls, iou_t=iou_t)
 
-    params = {"iouThrs": cocoEval.params.iouThrs, "recThrs": cocoEval.params.recThrs}
+    params = {
+        "iouThrs": cocoEval.params.iouThrs,
+        "recThrs": cocoEval.params.recThrs,
+        "evaluation_params": evaluation_params or {},
+    }
     coco_metrics = {"mAP": cocoEval.stats[0], "precision": cocoEval.eval["precision"]}
+    coco_metrics["AP50"] = cocoEval.stats[1]
+    coco_metrics["AP75"] = cocoEval.stats[2]
     eval_data = {
         "matches": matches,
         "coco_metrics": coco_metrics,

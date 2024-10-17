@@ -177,7 +177,7 @@ template_gallery_str = """<sly-iw-gallery
 
 
 template_table_str = """
-            <div style="margin-top: 20px; margin-bottom: 30px;">
+            <div style="margin-top: 20px; margin-bottom: 30px; {{ width }}">
                 <sly-iw-table
                     iw-widget-id="{{ widget_id }}"
                     {% if clickable %}
@@ -208,10 +208,16 @@ template_table_str = """
                     slot-scope="{ row, column, cellValue }"
                     >
                     <div
-                        v-if="column === '{{ mainColumn }}'"
+                        v-if="column === ' ' && '{{ mainColumn }}' === 'Batch size'"
                         class="fflex"
                     >
                         <b>Batch size {{ '{{ cellValue }}' }}</b>
+                    </div>
+                    <div
+                        v-if="column === '{{ mainColumn }}'"
+                        class="fflex"
+                    >
+                        <b>{{ '{{ cellValue }}' }}</b>
                     </div>
                     </span>
                 </sly-iw-table>

@@ -1,4 +1,5 @@
 import os
+import yaml
 from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -31,6 +32,7 @@ class BaseBenchmark:
         progress: Optional[SlyTqdm] = None,
         progress_secondary: Optional[SlyTqdm] = None,
         classes_whitelist: Optional[List[str]] = None,
+        evaluation_params: Optional[dict] = None,
     ):
         self.api = api
         self.session: SessionJSON = None
@@ -51,6 +53,8 @@ class BaseBenchmark:
         self.vis_texts = None
         self.inference_speed_text = None
         self.train_info = None
+        self.evaluation_params = evaluation_params
+        self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
         raise NotImplementedError()
@@ -152,6 +156,7 @@ class BaseBenchmark:
             progress=self.pbar,
             items_count=self.dt_project_info.items_count,
             classes_whitelist=self.classes_whitelist,
+            evaluation_params=self.evaluation_params,
         )
         self.evaluator.evaluate()
 
@@ -552,3 +557,7 @@ class BaseBenchmark:
                 chagned = True
         if chagned:
             self.api.project.update_meta(pred_project_id, pred_meta.to_json())
+
+    def _validate_evaluation_params(self):
+        if self.evaluation_params:
+            self._get_evaluator_class().validate_evaluation_params(self.evaluation_params)

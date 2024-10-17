@@ -71,14 +71,14 @@ class ModelPredictions(MetricVis):
 
         self._row_ids = []
 
-        for row in tbl["data"]["data"]:
-            sly_id = row["items"].pop(0)
+        for row in tbl["data"]:
+            sly_id = row.pop(0)
             info = self._loader.comparison_data[sly_id].gt_image_info
 
             dct = {
                 "row": {key_mapping[k]: v for k, v in info._asdict().items()},
                 "id": info.name,
-                "items": row["items"],
+                "items": row,
             }
 
             self._row_ids.append(dct["id"])
