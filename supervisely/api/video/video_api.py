@@ -1825,8 +1825,9 @@ class VideoApi(RemoveableBulkModuleApi):
             ]
         """
 
-        if infos is not None and hashes is not None and not skip_download:
-            self.upsert_infos(hashes, infos, links)
+        # This was deprecated, do not uncomment, otherwise it will break the code.
+        # if infos is not None and hashes is not None and not skip_download:
+        #     self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
         )
