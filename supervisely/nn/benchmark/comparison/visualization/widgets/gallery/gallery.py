@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from jinja2 import Template
 
@@ -13,20 +13,28 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class GalleryWidget(BaseWidget):
-    def __init__(self, name: str, filters: Optional[List] = None, is_modal: Optional[bool] = False):
+    def __init__(
+        self,
+        name: str,
+        filters: Optional[List] = None,
+        is_modal: Optional[bool] = False,
+        columns_number: int = 3,
+    ):
         super().__init__(name)
         self.reference = self.id
         self.is_modal = is_modal
-        self.click_hadled = False
+        self.click_handled = False
         self.click_gallery_id = None
         self.click_data = None
         self.click_gallery_items_limit = None
-        self.image_left_header = None
+        self.image_left_header = False
         self._project_meta = None
+        self.show_all_button = False
+        self.columns_number = columns_number
 
         filters = filters or [{"confidence": [0.6, 1]}]
         self._gallery = GridGalleryV2(
-            columns_number=3,
+            columns_number=columns_number,
             annotations_opacity=0.4,
             border_width=4,
             enable_zoom=False,
@@ -41,18 +49,26 @@ class GalleryWidget(BaseWidget):
         self,
         image_infos: List[ImageInfo],
         ann_infos: List[AnnotationInfo],
+        project_metas: List[ProjectMeta] = None,
+        skip_tags_filtering: Optional[List[Union[bool, List[str]]]] = None,
     ):
         """One time operation"""
-        for idx, (pred_image, ann_info) in enumerate(zip(image_infos, ann_infos)):
-            image_name = pred_image.name
-            image_url = pred_image.full_storage_url
+        if project_metas is None:
+            project_metas = [self._project_meta] * self.columns_number
+
+        if skip_tags_filtering is None:
+            skip_tags_filtering = [False] * self.columns_number
+
+        for idx, (image, ann) in enumerate(zip(image_infos, ann_infos)):
+            image_name = image.name
+            image_url = image.full_storage_url
             self._gallery.append(
                 title=image_name,
                 image_url=image_url,
-                annotation_info=ann_info,
-                column_index=idx % 3,
-                project_meta=self._project_meta,
-                ignore_tags_filtering=["outcome"],
+                annotation_info=ann,
+                column_index=idx % self.columns_number,
+                project_meta=project_metas[idx % self.columns_number],
+                ignore_tags_filtering=skip_tags_filtering[idx % self.columns_number],
             )
 
     def _get_init_data(self):
@@ -86,7 +102,7 @@ class GalleryWidget(BaseWidget):
         return Template(template_str.read_text()).render(self._get_template_data())
 
     def add_on_click(self, gallery_id, click_data, gallery_items_limit):
-        self.click_hadled = True
+        self.click_handled = True
         self.click_gallery_id = gallery_id
         self.click_data = click_data
         self.click_gallery_items_limit = gallery_items_limit
@@ -100,7 +116,8 @@ class GalleryWidget(BaseWidget):
             "reference": self.reference,  # TODO: same as id?
             "init_data_source": self.data_source,
             "is_modal": str(self.is_modal).lower(),
-            "click_hadnled": self.click_hadled,
+            "click_handled": self.click_handled,
+            "show_all_button": self.show_all_button,
             "click_data_source": self.click_data_source,
             "click_gallery_id": self.click_gallery_id,
             "click_gallery_items_limit": self.click_gallery_items_limit,
