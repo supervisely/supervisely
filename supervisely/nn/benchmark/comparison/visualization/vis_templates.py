@@ -82,7 +82,7 @@ def generate_main_template(metric_visualizations: List):
 
 
 template_markdown_str = """
-            <div style="margin-top: 10px;">
+            <div>
                 <sly-iw-markdown
                 id="{{ widget_id }}"
                 class="markdown-no-border {{ 'overview-info-block' if is_overview else '' }}"
