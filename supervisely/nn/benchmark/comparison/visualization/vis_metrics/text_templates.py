@@ -74,10 +74,10 @@ markdown_explore_difference = """## Explore Predictions
 
 In this section, you can explore predictions made by different models side-by-side. This helps you to understand the differences in predictions made by each model, and to identify which model performs better in different scenarios.
 
-### Difference in Predictions
 
 > Click on the image to view the **Ground Truth**, and **Prediction** annotations side-by-side.
 """
+### Difference in Predictions
 
 markdown_explore_same_errors = """
 ### Same Errors

@@ -11,6 +11,7 @@ from supervisely.io.fs import dir_empty, get_directory_size
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
+    ExplorePredictions,
     LocalizationAccuracyIoU,
     OutcomeCounts,
     Overview,
@@ -147,6 +148,17 @@ class ComparisonVisualizer:
         self.overview_chart = overview.chart_widget
 
         # TODO: Explore Predictions
+        columns_number = len(self.comparison.evaluation_results) + 1
+        self.explore_predictions_modal_gallery = self._create_explore_modal_table(columns_number)
+        explore_predictions = ExplorePredictions(
+            self.vis_texts,
+            self.comparison.evaluation_results,
+            explore_modal_table=self.explore_predictions_modal_gallery,
+        )
+        self.explore_predictions_md = explore_predictions.difference_predictions_md
+        self.explore_predictions_gallery = explore_predictions.explore_gallery
+        # self.explore_same_errors_md = explore_predictions.same_errors_md
+        # self.explore_same_errors_gallery = explore_predictions.same_errors_gallery
 
         # Outcome Counts
         outcome_counts = OutcomeCounts(
@@ -226,6 +238,10 @@ class ComparisonVisualizer:
             (0, self.key_metrics_table),
             (0, self.overview_chart),
             # Explore Predictions # TODO
+            (1, self.explore_predictions_md),
+            (0, self.explore_predictions_gallery),
+            # (0, self.explore_same_errors_md),
+            # (0, self.explore_same_errors_gallery),
             # Outcome Counts
             (1, self.outcome_counts_md),
             (0, self.outcome_counts_main),
@@ -277,7 +293,10 @@ class ComparisonVisualizer:
                 anchors.append(widget.id)
 
         sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
-        layout = ContainerWidget(widgets=[sidebar, self.explore_modal_table], name="main_container")
+        layout = ContainerWidget(
+            widgets=[sidebar, self.explore_modal_table, self.explore_predictions_modal_gallery],
+            name="main_container",
+        )
         return layout
 
     def _create_header(self) -> MarkdownWidget:
@@ -321,18 +340,20 @@ class ComparisonVisualizer:
             "markdown_outcome_counts_diff", "Outcome Counts Differences", text=outcome_counts_text
         )
 
-    def _create_explore_modal_table(self, diff_modal_table_id):
+    def _create_explore_modal_table(self, columns_number=3):
         # TODO: table for each evaluation?
         all_predictions_modal_gallery = GalleryWidget(
-            "all_predictions_modal_gallery", is_modal=True
+            "all_predictions_modal_gallery", is_modal=True, columns_number=columns_number
         )
         all_predictions_modal_gallery.set_project_meta(
             self.comparison.evaluation_results[0].dt_project_meta
         )
         return all_predictions_modal_gallery
 
-    def _create_diff_modal_table(self) -> GalleryWidget:
-        diff_modal_gallery = GalleryWidget("diff_predictions_modal_gallery", is_modal=True)
+    def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
+        diff_modal_gallery = GalleryWidget(
+            "diff_predictions_modal_gallery", is_modal=True, columns_number=columns_number
+        )
         return diff_modal_gallery
 
     def _create_clickable_label(self):
