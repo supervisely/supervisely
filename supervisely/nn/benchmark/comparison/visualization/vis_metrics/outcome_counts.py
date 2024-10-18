@@ -215,12 +215,7 @@ class OutcomeCounts(BaseVisMetric):
 
             for i, j in indxs_list[0]:
                 if i in common_ids:
-                    same_fp_matches.append(
-                        (
-                            anns_list[0][i],
-                            [anns[j] for anns in anns_list[1:]]
-                        )
-                    )
+                    same_fp_matches.append((anns_list[0][i], [anns[j] for anns in anns_list[1:]]))
                     common_ids.remove(i)
 
         # Find different FP matches for each model
@@ -283,11 +278,16 @@ class OutcomeCounts(BaseVisMetric):
                 title = f"{model_name}. {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
                 outcome_dict["title"] = title
                 outcome_dict["imagesIds"] = list(img_ids)
-                outcome_dict["filters"] = [
-                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                    {"type": "tag", "tagId": "outcome", "value": outcome},
-                    {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
-                ]
+                thr = eval_result.f1_optimal_conf
+                if outcome == "FN":
+                    outcome_dict["filters"] = [
+                        {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
+                    ]
+                else:
+                    outcome_dict["filters"] = [
+                        {"type": "tag", "tagId": "outcome", "value": outcome},
+                        {"type": "tag", "tagId": "confidence", "value": [thr, 1]},
+                    ]
 
         return res
 
@@ -314,11 +314,11 @@ class OutcomeCounts(BaseVisMetric):
             title = f"{title}. {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
             outcome_dict["title"] = title
             outcome_dict["imagesIds"] = list(img_ids)
-            outcome_dict["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [0, 1]},
-                {"type": "tag", "tagId": "outcome", "value": outcome},
-                {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
-            ]
+            filters = outcome_dict.setdefault("filters", [])
+            filters.append({"type": "specific_objects", "tagId": None, "value": list(obj_ids)})
+            if outcome != "FN":
+                filters.append({"type": "tag", "tagId": "confidence", "value": [0, 1]})
+                filters.append({"type": "tag", "tagId": "outcome", "value": outcome})
 
         for outcome, (diff_ids, common_ids) in outcomes_ids.items():
             key = f"Common_{outcome}"
