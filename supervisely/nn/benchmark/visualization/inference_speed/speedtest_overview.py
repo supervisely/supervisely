@@ -62,7 +62,7 @@ class SpeedtestOverview(MetricVis):
         res["columns"] = columns
         res["columnsOptions"] = columns_options
 
-        widget.main_column = columns[0]
+        widget.main_column = "Batch size"
         widget.fixed_columns = 1
         widget.show_header_controls = False
         return res

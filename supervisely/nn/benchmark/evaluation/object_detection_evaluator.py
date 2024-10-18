@@ -4,9 +4,12 @@ from supervisely.io.json import dump_json_file
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
 from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
+from pathlib import Path
 
 
 class ObjectDetectionEvaluator(BaseEvaluator):
+    EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/coco/evaluation_params.yaml"
+
     def evaluate(self):
         try:
             self.cocoGt_json, self.cocoDt_json = self._convert_to_coco()
@@ -17,11 +20,24 @@ class ObjectDetectionEvaluator(BaseEvaluator):
                 "try to use newer version of NN app."
             )
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)
-        with self.pbar(message="Evaluation: Calculating metrics", total=10) as p:
+        with self.pbar(message="Evaluation: Calculating metrics", total=5) as p:
             self.eval_data = calculate_metrics(
-                self.cocoGt, self.cocoDt, iouType="bbox", progress_cb=p.update
+                self.cocoGt,
+                self.cocoDt,
+                iouType="bbox",
+                progress_cb=p.update,
+                evaluation_params=self.evaluation_params,
             )
         self._dump_eval_results()
+
+    @classmethod
+    def validate_evaluation_params(cls, evaluation_params: dict) -> None:
+        iou_threshold = evaluation_params.get("iou_threshold")
+        if iou_threshold is not None:
+            assert iou_threshold in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], (
+                f"iou_threshold must be one of [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], "
+                f"but got {iou_threshold}"
+            )
 
     def _convert_to_coco(self):
         cocoGt_json = sly2coco(

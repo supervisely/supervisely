@@ -3,15 +3,13 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from typing import Literal, Optional
 
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from supervisely.convert.image.csv.csv_converter import CSVConverter
+from supervisely.convert.image.high_color.high_color_depth import HighColorDepthImageConverter
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
@@ -33,21 +31,17 @@ from supervisely.io.fs import (
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+from supervisely.project.project_settings import LabelingInterface
 
 
 class ImportManager:
+
     def __init__(
         self,
         input_data: str,
         project_type: ProjectType,
-        team_id: int = None,
-        labeling_interface: Literal[
-            "default",
-            "multi_view",
-            "multispectral",
-            "images_with_16_color",
-            "medical_imaging_single",
-        ] = "default",
+        team_id: Optional[int] = None,
+        labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
         self._api = Api.from_env()
@@ -69,7 +63,7 @@ class ImportManager:
 
         self._modality = project_type
         self._converter = self.get_converter()
-        if isinstance(self._converter, CSVConverter):
+        if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
             self._converter.team_id = self._team_id
 
     @property
