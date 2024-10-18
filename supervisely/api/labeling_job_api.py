@@ -28,6 +28,7 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.api.entity_annotation.figure_api import FigureInfo
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -43,8 +44,8 @@ from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.sly_logger import logger
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 
 class LabelingJobInfo(NamedTuple):
@@ -70,6 +71,8 @@ class LabelingJobInfo(NamedTuple):
     finished_at: str
     status: str
     disabled: bool
+    labeling_queue_id: int
+    labeling_exam_id: int
     images_count: int
     finished_images_count: int
     rejected_images_count: int
@@ -158,6 +161,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              finished_at='2020-04-08T15:13:39.788Z',
                              status='completed',
                              disabled=False,
+                             labeling_queue_id=3,
+                             labeling_exam_id=None,
                              images_count=3,
                              finished_images_count=0,
                              rejected_images_count=1,
@@ -196,6 +201,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.FINISHED_AT,
             ApiField.STATUS,
             ApiField.DISABLED,
+            ApiField.LABELING_QUEUE_ID,
+            ApiField.LABELING_EXAM_ID,
             ApiField.IMAGES_COUNT,
             ApiField.FINISHED_IMAGES_COUNT,
             ApiField.REJECTED_IMAGES_COUNT,
@@ -324,6 +331,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_ids: Optional[List[int]] = [],
         dynamic_classes: Optional[bool] = False,
         dynamic_tags: Optional[bool] = False,
+        disable_confirm: Optional[bool] = None,
+        disable_submit: Optional[bool] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -360,6 +369,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type dynamic_classes: bool, optional
         :param dynamic_tags: If True, tags created after creating the job will be available for annotators
         :type dynamic_tags: bool, optional
+        :param disable_confirm: If True, the Confirm button will be disabled in the labeling tool. It will remain disabled until the next API call sets the parameter to False, re-enabling the button.
+        :type disable_confirm: bool, optional
+        :param disable_submit: If True, the Submit button will be disabled in the labeling tool. It will remain disabled until the next API call sets the parameter to False, re-enabling the button.
+        :type disable_submit: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -514,21 +527,28 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if tags_limit_per_image is None:
             tags_limit_per_image = 0
 
+        meta = {
+            "classes": classes_to_label,
+            "projectTags": tags_to_label,
+            "imageTags": filter_images_by_tags,
+            "imageFiguresLimit": objects_limit_per_image,
+            "imageTagsLimit": tags_limit_per_image,
+            "entityIds": images_ids,
+            "dynamicClasses": dynamic_classes,
+            "dynamicTags": dynamic_tags,
+        }
+
+        if disable_confirm is not None:
+            meta.update({"disableConfirm": disable_confirm})
+        if disable_submit is not None:
+            meta.update({"disableSubmit": disable_submit})
+
         data = {
             ApiField.NAME: name,
             ApiField.DATASET_ID: dataset_id,
             ApiField.USER_IDS: user_ids,
             # ApiField.DESCRIPTION: description,
-            ApiField.META: {
-                "classes": classes_to_label,
-                "projectTags": tags_to_label,
-                "imageTags": filter_images_by_tags,
-                "imageFiguresLimit": objects_limit_per_image,
-                "imageTagsLimit": tags_limit_per_image,
-                "entityIds": images_ids,
-                "dynamicClasses": dynamic_classes,
-                "dynamicTags": dynamic_tags,
-            },
+            ApiField.META: meta,
         }
 
         if readme is not None:
@@ -563,6 +583,11 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         dataset_id: Optional[int] = None,
         show_disabled: Optional[bool] = False,
         reviewer_id: Optional[int] = None,
+        is_part_of_queue: Optional[bool] = True,
+        queue_ids: Optional[Union[List, int]] = None,
+        exclude_statuses: Optional[
+            List[Literal["pending", "in_progress", "on_review", "completed"]]
+        ] = None,
     ) -> List[LabelingJobInfo]:
         """
         Get list of information about Labeling Job in the given Team.
@@ -581,6 +606,12 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type show_disabled: bool, optional
         :param reviewer_id: ID of the User who reviews the LabelingJob.
         :type reviewer_id: int, optional
+        :param is_part_of_queue: Filter by Labeling Queue. If True, all existing Labeling Jobs are returned. If False, only Labeling Jobs that are not part of the queue are returned.
+        :type is_part_of_queue: bool, optional
+        :param queue_ids: IDs of the Labeling Queues. If set, only Labeling Jobs from the selected queues are returned. Arg `is_part_of_queue` must be True.
+        :type queue_ids: Union[List, int], optional
+        :param exclude_statuses: Exclude Labeling Jobs with given statuses.
+        :type exclude_statuses: List[Literal["pending", "in_progress", "on_review", "completed"]], optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -619,6 +650,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             #         "2020-04-08T15:13:39.788Z",
             #         "completed",
             #         false,
+            #         3,
+            #         null,
             #         3,
             #         0,
             #         1,
@@ -660,6 +693,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             #         "2020-04-08T15:17:33.572Z",
             #         "completed",
             #         false,
+            #         3,
+            #         null,
             #         2,
             #         0,
             #         0,
@@ -680,6 +715,12 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             #     ]
             # ]
         """
+        if not is_part_of_queue and queue_ids is not None:
+            raise ValueError("To filter by `queue_id`, `is_part_of_queue` must be set to `True`.")
+
+        if isinstance(queue_ids, int):
+            queue_ids = [queue_ids]
+
         filters = []
         if created_by_id is not None:
             filters.append(
@@ -695,6 +736,14 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
+        if not is_part_of_queue:
+            filters.append({"field": ApiField.LABELING_QUEUE_ID, "operator": "=", "value": None})
+        if queue_ids is not None:
+            filters.append(
+                {"field": ApiField.LABELING_QUEUE_ID, "operator": "in", "value": queue_ids}
+            )
+        if exclude_statuses is not None:
+            filters.append({"field": ApiField.STATUS, "operator": "!in", "value": exclude_statuses})
         return self.get_list_all_pages(
             "jobs.list",
             {ApiField.TEAM_ID: team_id, "showDisabled": show_disabled, ApiField.FILTER: filters},
@@ -1182,17 +1231,28 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return job_meta
 
     def get_annotations(
-        self, id: int, image_ids: List[int], project_meta: ProjectMeta = None
+        self,
+        id: int,
+        image_ids: Optional[List[int]] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        image_infos: Optional[List[ImageInfo]] = None,
     ) -> List[Annotation]:
         """
         Return annotations for given image ids from labeling job with given id.
+        To speed up the process, you can provide image infos, which will be used instead of fetching them from the API.
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :param image_ids: Image IDs in Supervisely.
-        :type image_ids: int
+                        If not provided, you must provide :param:`image_infos`.
+                        Have lower priority than :param:`image_infos`.
+        :type image_ids: List[int], optional
         :param project_meta: Project meta of the labeling job with given id. Can be retrieved with :func:`get_project_meta`.
         :type project_meta: :class:`ProjectMeta`, optional
+        :param image_infos: List of ImageInfo objects.
+                            If not provided, will be retrieved from the API.
+                            Have higher priority than :param:`image_ids`.
+        :type image_infos: List[ImageInfo], optional
         :return: Annotation for given image id from labeling job with given id.
         :rtype: :class:`Annotation`
         """
@@ -1235,20 +1295,27 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 labels.append(label)
             return labels
 
-        self._api.add_header("x-job-id", str(id))
+        if image_ids is None and image_infos is None:
+            raise ValueError("Either 'image_ids' or 'image_infos' must be provided.")
+        if image_infos is not None:
+            image_ids = [image_info.id for image_info in image_infos]
+        if self._api.headers.get("x-job-id") != str(id):
+            self._api.add_header("x-job-id", str(id))
         job_info = self.get_info_by_id(id)
+        if image_infos is None:
+            image_infos = self._api.image.get_list(
+                job_info.dataset_id,
+                filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
+            )
         figures_map = self._api.image.figure.download(job_info.dataset_id, image_ids)
-        images = self._api.image.get_list(
-            job_info.dataset_id,
-            filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
-        )
-        self._api.pop_header("x-job-id")
+        if self._api.headers.get("x-job-id") == str(id):
+            self._api.pop_header("x-job-id")
 
         if project_meta is None:
             project_meta = self.get_project_meta(id)
 
         anns = []
-        for image in images:
+        for image in image_infos:
             img_figures = figures_map.get(image.id, [])
             img_tags = _create_tags_from_labeling_job(image.tags, project_meta)
             labels = _create_labels_from_labeling_job(img_figures, project_meta)

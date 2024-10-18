@@ -10,6 +10,7 @@ import re
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from time import sleep
@@ -30,6 +31,7 @@ from uuid import uuid4
 
 import numpy as np
 import requests
+from requests.exceptions import HTTPError
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
@@ -66,8 +68,6 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
 )
 from supervisely.sly_logger import logger
-from requests.exceptions import HTTPError
-from datetime import datetime
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 
@@ -318,7 +318,8 @@ class ImageApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         force_metadata_for_links: Optional[bool] = True,
         return_first_response: Optional[bool] = False,
-        project_id: int = None,
+        project_id: Optional[int] = None,
+        only_labelled: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -339,6 +340,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type return_first_response: bool, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
+        :param only_labelled: If True, returns only images with labels.
+        :type only_labelled: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -399,6 +402,18 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
+        if only_labelled:
+            data[ApiField.FILTERS] = [
+                {
+                    "type": "objects_class",
+                    "data": {
+                        "from": 1,
+                        "to": 9999,
+                        "include": True,
+                        "classId": None,
+                    },
+                }
+            ]
 
         return self.get_list_all_pages(
             "images.list",
@@ -482,6 +497,7 @@ class ImageApi(RemoveableBulkModuleApi):
             "objects_annotator",
             "tagged_by_annotator",
             "issues_count",
+            "job",
         ]
         if not all([filter["type"] in allowed_filter_types for filter in filters]):
             raise ValueError(f"'type' field must be one of: {allowed_filter_types}")
@@ -582,11 +598,15 @@ class ImageApi(RemoveableBulkModuleApi):
         results = []
         if len(ids) == 0:
             return results
-        dataset_id = self.get_info_by_id(ids[0], force_metadata_for_links=False).dataset_id
-        for batch in batched(ids):
-            filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
-            results.extend(
-                self.get_list_all_pages(
+        infos_dict = {}
+        ids_set = set(ids)
+        while any(ids_set):
+            dataset_id = self.get_info_by_id(
+                ids_set.pop(), force_metadata_for_links=False
+            ).dataset_id
+            for batch in batched(ids):
+                filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                temp_results = self.get_list_all_pages(
                     "images.list",
                     {
                         ApiField.DATASET_ID: dataset_id,
@@ -594,11 +614,13 @@ class ImageApi(RemoveableBulkModuleApi):
                         ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                     },
                 )
-            )
-            if progress_cb is not None:
-                progress_cb(len(batch))
-        temp_map = {info.id: info for info in results}
-        ordered_results = [temp_map[id] for id in ids]
+                results.extend(temp_results)
+                if progress_cb is not None and len(temp_results) > 0:
+                    progress_cb(len(temp_results))
+            ids_set = ids_set - set([info.id for info in results])
+            infos_dict.update({info.id: info for info in results})
+
+        ordered_results = [infos_dict[id] for id in ids]
         return ordered_results
 
     def _download(self, id, is_stream=False):
@@ -947,9 +969,9 @@ class ImageApi(RemoveableBulkModuleApi):
         def _is_image_available(url, progress_cb=None):
             if self._api.remote_storage.is_bucket_url(url):
                 response = self._api.remote_storage.is_path_exist(url)
-                result =  url if response else None
+                result = url if response else None
             else:
-                response = requests.head(url)            
+                response = requests.head(url)
                 result = url if response.status_code == 200 else None
             if progress_cb is not None:
                 progress_cb(1)
@@ -1789,7 +1811,7 @@ class ImageApi(RemoveableBulkModuleApi):
                         results.append(self._convert_json_info(info_json_copy))
                     break
                 except HTTPError as e:
-                    error_details = e.response.json().get("details")
+                    error_details = e.response.json().get("details", {})
                     if (
                         conflict_resolution is not None
                         and e.response.status_code == 400
@@ -1834,7 +1856,9 @@ class ImageApi(RemoveableBulkModuleApi):
         # ordered_results = [name_to_res[name] for name in names]
 
         if len(idx_to_id) > 0:
-            logger.info("Inserting skipped image infos")
+            logger.info(
+                "Adding ImageInfo of images with the same name that already exist in the dataset to the response."
+            )
 
             idx_to_id = dict(reversed(list(idx_to_id.items())))
             image_infos = self._api.image.get_info_by_id_batch(list(idx_to_id.values()))
@@ -2736,6 +2760,37 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
+    def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
+        """
+        Update tag value with given ID.
+
+        :param tag_id: Tag ID in Supervisely.
+        :type value: int
+        :param value: Tag value.
+        :type value: str or float
+        :param project_meta: Project Meta.
+        :type project_meta: ProjectMeta
+        :return: Information about updated tag.
+        :rtype: :class:`dict`
+        :Usage example:
+
+            .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            tag_id = 277083
+            new_value = 'new_value'
+            api.image.update_tag_value(tag_id, new_value)
+
+        """
+        data = {ApiField.ID: tag_id, ApiField.VALUE: value}
+        response = self._api.post("image-tags.update-tag-value", data)
+        return response.json()
+
     def remove_batch(
         self,
         ids: List[int],
@@ -2882,12 +2937,15 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         group_name: str,
-        paths: List[str],
+        paths: Optional[List[str]] = None,
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        links: Optional[List[str]] = None,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
+        At least one of `paths` or `links` must be provided.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -2903,6 +2961,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param links: List of links to images.
+        :type links: Optional[List[str]]
+        :param conflict_resolution: The strategy to resolve upload conflicts.
+            Options:
+                - 'replace': Replaces the existing images in the dataset with the new ones if there is a conflict and logs the deletion of existing images.
+                - 'skip': Ignores uploading the new images if there is a conflict; the original image's ImageInfo list will be returned instead.
+                - 'rename': (default) Renames the new images to prevent name conflicts.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -2932,24 +2998,41 @@ class ImageApi(RemoveableBulkModuleApi):
             image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
         """
+
+        if paths is None and links is None:
+            raise ValueError("At least one of 'paths' or 'links' must be provided.")
+
         group_tag_meta = TagMeta(_MULTIVIEW_TAG_NAME, TagValueType.ANY_STRING)
         group_tag = Tag(meta=group_tag_meta, value=group_name)
 
-        for path in paths:
-            if get_file_ext(path).lower() not in sly_image.SUPPORTED_IMG_EXTS:
-                raise RuntimeError(
-                    f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
-                )
+        image_infos = []
+        if paths is not None:
+            for path in paths:
+                if get_file_ext(path).lower() not in sly_image.SUPPORTED_IMG_EXTS:
+                    raise RuntimeError(
+                        f"Image {path!r} has unsupported extension. Supported extensions: {sly_image.SUPPORTED_IMG_EXTS}"
+                    )
+            names = [get_file_name(path) for path in paths]
+            image_infos_by_paths = self.upload_paths(
+                dataset_id=dataset_id,
+                names=names,
+                paths=paths,
+                progress_cb=progress_cb,
+                metas=metas,
+                conflict_resolution=conflict_resolution,
+            )
+            image_infos.extend(image_infos_by_paths)
 
-        names = [get_file_name(path) for path in paths]
-
-        image_infos = self.upload_paths(
-            dataset_id=dataset_id,
-            names=names,
-            paths=paths,
-            progress_cb=progress_cb,
-            metas=metas,
-        )
+        if links is not None:
+            names = [get_file_name_with_ext(link) for link in links]
+            image_infos_by_links = self.upload_links(
+                dataset_id=dataset_id,
+                names=names,
+                links=links,
+                progress_cb=progress_cb,
+                conflict_resolution=conflict_resolution,
+            )
+            image_infos.extend(image_infos_by_links)
 
         anns = [Annotation((info.height, info.width)).add_tag(group_tag) for info in image_infos]
         image_ids = [image_info.id for image_info in image_infos]
@@ -3243,3 +3326,44 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if project_id is not None and dataset_id is not None:
             raise ValueError("Only one of 'project_id' and 'dataset_id' should be provided.")
+
+    def set_remote(self, images: List[int], links: List[str]):
+        """
+        This method helps to change local source to remote for images without re-uploading them as new.
+
+        :param images: List of image ids.
+        :type images: List[int]
+        :param links: List of remote links.
+        :type links: List[str]
+        :return: json-encoded content of a response.
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+
+                    api = sly.Api.from_env()
+
+                    images = [123, 124, 125]
+                    links = [
+                        "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
+                        "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
+                        "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
+                    ]
+                    result = api.image.set_remote(images, links)
+        """
+
+        if len(images) == 0:
+            raise ValueError("List of images can not be empty.")
+
+        if len(images) != len(links):
+            raise ValueError("Length of 'images' and 'links' should be equal.")
+
+        images_list = []
+        for img, lnk in zip(images, links):
+            images_list.append({ApiField.ID: img, ApiField.LINK: lnk})
+
+        data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
+        r = self._api.post("images.update.links", data)
+        return r.json()

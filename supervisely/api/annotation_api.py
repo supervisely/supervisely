@@ -4,9 +4,9 @@
 # docs
 from __future__ import annotations
 
-import copy
 import json
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
@@ -30,6 +30,21 @@ class AnnotationInfo(NamedTuple):
     annotation: dict
     created_at: str
     updated_at: str
+
+    def to_json(self) -> Dict[str, Any]:
+        """
+        Convert AnnotationInfo to JSON format.
+
+        :return: AnnotationInfo in JSON format.
+        :rtype: :class:`Dict[str, Any]`
+        """
+        return {
+            ApiField.IMAGE_ID: self.image_id,
+            ApiField.IMAGE_NAME: self.image_name,
+            ApiField.ANNOTATION: self.annotation,
+            ApiField.CREATED_AT: self.created_at,
+            ApiField.UPDATED_AT: self.updated_at,
+        }
 
 
 class AnnotationApi(ModuleApi):
@@ -260,8 +275,11 @@ class AnnotationApi(ModuleApi):
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
         :Usage example:
@@ -299,10 +317,14 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_ID: image_id,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: False,
             },
         )
         result = response.json()
-
+        # Convert annotation to pixel coordinate system
+        result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+            result[ApiField.ANNOTATION]
+        )
         # check if there are any AlphaMask geometries in the batch
         additonal_geometries = defaultdict(int)
         labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
@@ -333,8 +355,11 @@ class AnnotationApi(ModuleApi):
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Annotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -383,6 +408,11 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -445,9 +475,9 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: False,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
-
             if need_download_alpha_masks is True:
                 additonal_geometries = defaultdict(tuple)
                 for ann_idx, ann_dict in enumerate(results):
@@ -470,6 +500,10 @@ class AnnotationApi(ModuleApi):
                         ].update({BITMAP: geometry})
 
             for ann_dict in results:
+                # Convert annotation to pixel coordinate system
+                ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+                    ann_dict[ApiField.ANNOTATION]
+                )
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
 
@@ -494,6 +528,9 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
 
@@ -780,14 +817,29 @@ class AnnotationApi(ModuleApi):
 
     def _upload_batch(
         self,
-        func_ann_to_json,
-        img_ids,
-        anns,
+        func_ann_to_json: Callable,
+        img_ids: List[int],
+        anns: List[Union[Dict, Annotation, str]],
         progress_cb=None,
         skip_bounds_validation: Optional[bool] = False,
     ):
         """
-        _upload_batch
+        General method for uploading annotations to instance.
+
+        Method is used in: upload_paths, upload_jsons, upload_anns
+
+        :param func_ann_to_json: Function to convert annotation to json or read annotation from file.
+        :type func_ann_to_json: callable
+        :param img_ids: List of image IDs in Supervisely to which annotations will be uploaded.
+        :type img_ids: List[int]
+        :param anns: List of annotations. Can be json, Annotation object or path to annotation file.
+        :type anns: List[Union[Dict, Annotation, str]]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param skip_bounds_validation: Skip bounds validation.
+        :type skip_bounds_validation: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
         """
         # img_ids from the same dataset
         if len(img_ids) == 0:
@@ -830,14 +882,19 @@ class AnnotationApi(ModuleApi):
                 # check if there are any AlphaMask geometries in the batch
                 for img_id, ann in batch:
                     ann_json = func_ann_to_json(ann)
-                    ann_json = copy.deepcopy(ann_json)
+                    ann_json = deepcopy(ann_json)  # Avoid changing the original data
+
+                    ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
                     filtered_labels = []
                     if AnnotationJsonFields.LABELS not in ann_json:
                         raise RuntimeError(
                             f"Annotation JSON does not contain '{AnnotationJsonFields.LABELS}' field"
                         )
                     for label_json in ann_json[AnnotationJsonFields.LABELS]:
-                        for key in [LabelJsonFields.GEOMETRY_TYPE, LabelJsonFields.OBJ_CLASS_NAME]:
+                        for key in [
+                            LabelJsonFields.GEOMETRY_TYPE,
+                            LabelJsonFields.OBJ_CLASS_NAME,
+                        ]:
                             if key not in label_json:
                                 raise RuntimeError(f"Label JSON does not contain '{key}' field")
                         if label_json[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
@@ -864,9 +921,10 @@ class AnnotationApi(ModuleApi):
                     data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
             else:
                 for img_id, ann in batch:
-                    data.append(
-                        {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
-                    )
+                    ann_json = func_ann_to_json(ann)
+                    ann_json = deepcopy(ann_json)  # Avoid changing the original data
+                    ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
+                    data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
 
             self._api.post(
                 "annotations.bulk.add",
@@ -1241,5 +1299,49 @@ class AnnotationApi(ModuleApi):
                 ApiField.ID: label_id,
                 ApiField.TAGS: [tag.to_json() for tag in label.tags],
                 ApiField.GEOMETRY: label.geometry.to_json(),
+            },
+        )
+
+    def update_label_priority(self, label_id: int, priority: int) -> None:
+        """Updates label's priority with given ID in Supervisely.
+        Priority increases with the number: a higher number indicates a higher priority.
+        The higher priority means that the label will be displayed on top of the others.
+        The lower priority means that the label will be displayed below the others.
+        
+        :param label_id: ID of the label to update
+        :type label_id: int
+        :param priority: New priority of the label
+        :type priority: int
+        
+        :Usage example: 
+        
+            .. code-block:: python
+            
+            import os
+            from dotenv import load_dotenv
+            
+            import supervisely as sly
+            
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            
+            api = sly.Api.from_env()
+            
+            label_ids = [123, 456, 789]
+            priorities = [1, 2, 3]
+            
+            for label_id, priority in zip(label_ids, priorities):
+                api.annotation.update_label_priority(label_id, priority)
+                
+            # The label with ID 789 will be displayed on top of the others.
+            # The label with ID 123 will be displayed below the others.
+        
+        """
+        self._api.post(
+            "figures.priority.update",
+            {
+                ApiField.ID: label_id,
+                ApiField.PRIORITY: priority,
             },
         )

@@ -37,13 +37,13 @@ jobs:
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Delay for PyPI publish
+      - name: Delay after PyPI publish
         uses: jakejarvis/wait-action@master
         with:
           time: "300s"
 
       - name: Build and Push Docker Image
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/base-py-sdk
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -65,7 +65,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/collaboration
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -87,7 +87,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/data-operations
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -109,7 +109,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/development
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -131,7 +131,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/import-export
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -153,7 +153,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/labeling
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -175,7 +175,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/synthetic
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -197,7 +197,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/system
           tags: ${{ env.RELEASE_VERSION }}, latest
@@ -219,7 +219,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
       - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/visualization-stats
           tags: ${{ env.RELEASE_VERSION }}, latest

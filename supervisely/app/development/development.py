@@ -2,7 +2,7 @@ import os
 import shutil
 import stat
 import subprocess
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -148,22 +148,35 @@ def supervisely_vpn_network(
             raise RuntimeError(f"Error while connecting to VPN: {test_response.text}")
     else:
         logger.info(f"VPN connection has been successfully established to {gateway}")
-    
+
     # Changing back CWB to the original directory.
     os.chdir(current_directory)
 
 
-def create_debug_task(team_id, port="8000"):
+def create_debug_task(
+    team_id: int, port: int = 8000, update_status: bool = True
+) -> Dict[str, Any]:
+    """Gets or creates a debug task for the current user.
+
+    :param team_id: The ID of the team to create the task in.
+    :type team_id: int
+    :param port: The port to redirect the requests to. Default is 8000.
+    :type port: int
+    :param update_status: If True, the task status will be updated to STARTED.
+    :type update_status: bool
+    :return: The task details.
+    :rtype: Dict[str, Any]
+    """
     api = Api()
     me = api.user.get_my_info()
     session_name = me.login + "-development"
     module_id = api.app.get_ecosystem_module_id("supervisely-ecosystem/while-true-script-v2")
     sessions = api.app.get_sessions(team_id, module_id, session_name=session_name)
-    redirect_requests = {"token": api.token, "port": port}
+    redirect_requests = {"token": api.token, "port": str(port)}
     task = None
     for session in sessions:
         if (session.details["meta"].get("redirectRequests") == redirect_requests) and (
-            session.details["status"] == str(api.app.Status.QUEUED)
+            session.details["status"] in [str(api.app.Status.QUEUED), str(api.app.Status.STARTED)]
         ):
             task = session.details
             if "id" not in task:
@@ -183,4 +196,8 @@ def create_debug_task(team_id, port="8000"):
         if type(task) is list:
             task = task[0]
         logger.info(f"Debug task has been successfully created: {task['taskId']}")
+
+    if update_status:
+        logger.info(f"Task status will be updated to STARTED for task with ID: {task['id']}")
+        api.task.update_status(task["id"], api.task.Status.STARTED)
     return task

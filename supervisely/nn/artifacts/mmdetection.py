@@ -3,6 +3,8 @@ from re import compile as re_compile
 
 from supervisely.io.fs import silent_remove
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+import string
+import random
 
 
 class MMDetection(BaseTrainArtifacts):
@@ -70,30 +72,40 @@ class MMDetection3(BaseTrainArtifacts):
 
     def get_project_name(self, artifacts_folder: str) -> str:
         config_path = join(artifacts_folder, self._config_file)
-        self._api.file.download(self._team_id, config_path, "model_config.txt")
+        config_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=10)) + ".txt"
+        self._api.file.download(self._team_id, config_path, config_name)
         project_name = None
-        with open("model_config.txt", "r") as f:
+        with open(config_name, "r") as f:
             lines = f.readlines()
             project_line = lines[-1] if lines else None
+            if project_line is None:
+                f.close()
+                silent_remove(config_name)
+                return project_name
             start = project_line.find("'") + 1
             end = project_line.find("'", start)
             project_name = project_line[start:end]
             f.close()
-        silent_remove("model_config.txt")
+        silent_remove(config_name)
         return project_name
 
     def get_task_type(self, artifacts_folder: str) -> str:
         config_path = join(artifacts_folder, self._config_file)
-        self._api.file.download(self._team_id, config_path, "model_config.txt")
+        config_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=10)) + ".txt"
+        self._api.file.download(self._team_id, config_path, config_name)
         task_type = "undefined"
-        with open("model_config.txt", "r") as f:
+        with open(config_name, "r") as f:
             lines = f.readlines()
             task_type_line = lines[-3] if lines else None
+            if task_type_line is None:
+                f.close()
+                silent_remove(config_name)
+                return task_type
             start = task_type_line.find("'") + 1
             end = task_type_line.find("'", start)
             task_type = task_type_line[start:end].replace("_", " ")
             f.close()
-        silent_remove("model_config.txt")
+        silent_remove(config_name)
         return task_type
 
     def get_weights_path(self, artifacts_folder: str) -> str:

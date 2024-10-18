@@ -1,8 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict
-
-from tqdm import tqdm
+from typing import Dict, Union
 
 from supervisely import ProjectMeta, generate_free_name, is_development, logger
 from supervisely.api.api import Api, ApiContext
@@ -26,18 +24,23 @@ class MultiViewImageConverter(ImageConverter):
         logger.debug(f"Validating format: {self.__str__()}")
         group_map = self._find_image_directories()
         if not group_map:
-            logger.debug(f"No multi-view images found in {self._input_data}.")
+            logger.debug(f"Input data does not match {str(self)} format.")
             return False
         else:
             self._group_map = group_map
             logger.debug(f"Found multi-view images in {self._input_data}.")
             return True
 
-    def _find_image_directories(self) -> Dict[str, list]:
+    def _find_image_directories(self) -> Union[Dict[str, list], None]:
         group_map = defaultdict(list)
+        ann_exts = [".json", ".xml", ".txt"]
         for root, _, files in os.walk(self._input_data):
-            if any([get_file_ext(file) in SUPPORTED_IMG_EXTS for file in files]):
-                group_map[root] = list_files(root, SUPPORTED_IMG_EXTS)
+            for file in files:
+                if get_file_ext(file) in ann_exts:
+                    return None
+                if get_file_ext(file) in SUPPORTED_IMG_EXTS:
+                    group_map[root].append(os.path.join(root, file))
+            
         return group_map
 
     def upload_dataset(

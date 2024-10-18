@@ -18,6 +18,29 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class FigureInfo(NamedTuple):
+    """
+    Represents detailed information about a figure in a scene within the labeling tool.
+    It is designed to handle multimodal data.
+
+    Attributes:
+        id (int): Unique identifier for the figure.
+        class_id (int): Identifier for the class of the figure.
+        updated_at (str): Timestamp of the last update.
+        created_at (str): Timestamp of creation.
+        entity_id (int): Identifier for the entity. Possible entities: image, video, volume, pointcloud, etc.
+        object_id (int): Identifier for the object (applicable to videos, volumes, pointclouds).
+        project_id (int): Identifier for the project.
+        dataset_id (int): Identifier for the dataset.
+        frame_index (int): Index of the frame (applicable to videos, volumes (as a slice_index), pointclouds).
+        geometry_type (str): Type of geometry.
+        geometry (dict): Geometry data.
+        geometry_meta (dict): Metadata for the geometry.
+        tags (list): List of tags associated with the figure.
+        meta (dict): Additional metadata.
+        area (str): Area information.
+        priority (int): Position of the figure relative to other overlapping or underlying figures.
+    """
+
     id: int
     class_id: int
     updated_at: str
@@ -34,6 +57,7 @@ class FigureInfo(NamedTuple):
     meta: dict
     area: str
     track_id: str
+    priority: int
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -44,7 +68,7 @@ class FigureInfo(NamedTuple):
         :rtype: :class: `sly.Rectangle`
         """
         if self.geometry_meta is not None:
-            return Rectangle(*self.geometry_meta["bbox"])
+            return Rectangle(*self.geometry_meta["bbox"], sly_id=self.id)
 
 
 class FigureApi(RemoveableBulkModuleApi):
@@ -97,6 +121,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.META,
             ApiField.AREA,
             ApiField.TRACK_ID,
+            ApiField.PRIORITY,
         ]
 
     @staticmethod
@@ -180,6 +205,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "trackId",
+            "priority",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -329,6 +356,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "trackId",
+            "priority",
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -417,10 +446,7 @@ class FigureApi(RemoveableBulkModuleApi):
         return figure_ids
 
     def download(
-        self,
-        dataset_id: int,
-        image_ids: List[int] = None,
-        skip_geometry: bool = False,
+        self, dataset_id: int, image_ids: List[int] = None, skip_geometry: bool = False
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -428,9 +454,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
-
         :type image_ids: List[int], optional
-        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
@@ -451,6 +476,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "trackId",
+            "priority",
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != "geometry"]
@@ -458,7 +485,13 @@ class FigureApi(RemoveableBulkModuleApi):
         if image_ids is None:
             filters = []
         else:
-            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
+            filters = [
+                {
+                    ApiField.FIELD: ApiField.ENTITY_ID,
+                    "operator": "in",
+                    "value": image_ids,
+                }
+            ]
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
@@ -494,10 +527,14 @@ class FigureApi(RemoveableBulkModuleApi):
             "classId",
             "projectId",
             "datasetId",
-            "geometryType",
             "geometry",
+            "geometryType",
+            "geometryMeta",
             "tags",
             "meta",
+            "area",
+            "trackId",
+            "priority",
         ]
         if filters is None:
             filters = []
@@ -592,7 +629,10 @@ class FigureApi(RemoveableBulkModuleApi):
             for figure_id, geometry in zip(batch_ids, batch_geometries):
                 fields.append((ApiField.FIGURE_ID, str(figure_id)))
                 fields.append(
-                    (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
+                    (
+                        ApiField.GEOMETRY,
+                        (str(figure_id), geometry, "application/octet-stream"),
+                    )
                 )
             encoder = MultipartEncoder(fields=fields)
             self._api.post("figures.bulk.upload.geometry", encoder)

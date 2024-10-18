@@ -467,6 +467,34 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class FreePlanImagesUploadLinksError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 2019
+                self.title = "Upload remote images is only available for PRO teams"
+                self.message = "Please, upgrade plan to upload remote images: https://supervisely.com/pricing/"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class FreePlanVideosUploadsLinkError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 2020
+                self.title = "Upload remote videos is only available for PRO teams"
+                self.message = "Please, upgrade plan to upload remote videos: https://supervisely.com/pricing/"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class SDK:
         class ProjectStructureError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -659,6 +687,8 @@ ERROR_PATTERNS = {
         r".*Unauthorized for url.*": ErrorHandler.Agent.AgentError,
         r".*Operation\ is\ canceled\ because\ task\ with\ id.*already\ finished.*": ErrorHandler.API.TaskFinished,
         r".*Payment\ Required.*": ErrorHandler.API.PaymentRequired,
+        r".*images\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanImagesUploadLinksError,
+        r".*videos\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanVideosUploadsLinkError,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
