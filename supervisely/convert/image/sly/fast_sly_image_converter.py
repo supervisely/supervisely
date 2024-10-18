@@ -17,6 +17,7 @@ from supervisely.io.fs import get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.convert.image.image_helper import validate_image_bounds
 
+
 class FastSlyImageConverter(SLYImageConverter, ImageConverter):
 
     def validate_format(self) -> bool:
@@ -68,7 +69,7 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 ann_json = helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             img_size = list(ann_json["size"].values())
             labels = validate_image_bounds(
-                [Label.from_json(obj) for obj in ann_json["objects"]],
+                [Label.from_json(obj, meta) for obj in ann_json["objects"]],
                 Rectangle.from_size(img_size),
             )
             return Annotation(img_size, labels)
