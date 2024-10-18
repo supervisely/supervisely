@@ -11,7 +11,7 @@ LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
 DATASET_ID = 98357
 save_path = "/home/ganpoweird/Work/supervisely/video/images/"
-
+sly.fs.ensure_base_path(save_path)
 api = sly.Api.from_env()
 images = api.image.get_list(DATASET_ID)
 ids = [image.id for image in images]
@@ -84,8 +84,16 @@ def compare_main_dps():
     print(f"Time taken for async method: {finish}")
 
 
+def main_bytes():
+    img_bytes = asyncio.run(api.image.download_bytes_img_async(ids[0]))
+
+    with open(f"{save_path}{ids[0]}.png", "wb") as f:
+        f.write(img_bytes)
+
+
 if __name__ == "__main__":
     # main_dnp() # to download and save images as numpy arrays
     # main_dp()  # to download and save images as files
     # main_dps()  # to download and save images as files (batch)
     # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
+    main_bytes()

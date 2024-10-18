@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
 import aiofiles
-import httpx
 import requests
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm

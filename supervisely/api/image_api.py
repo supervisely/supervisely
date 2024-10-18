@@ -3472,10 +3472,38 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         async with semaphore:
             async for response in self._download_async(id):
-                # loop = asyncio.get_event_loop()
-                # img = loop.run_in_executor(None, sly_image.read_bytes, response.content, keep_alpha)
                 img = sly_image.read_bytes(response.content, keep_alpha)
             return img
+
+    async def download_nps_async(
+        self,
+        ids: List[int],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        keep_alpha: Optional[bool] = False,
+        show_progress: bool = True,
+    ) -> List[np.ndarray]:
+        """
+        Downloads Images with given IDs in NumPy format asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :return: List of Images in RGB numpy matrix format
+        :rtype: :class:`List[np.ndarray]`
+        """
+        tasks = [self.download_np_async(id, semaphore, keep_alpha) for id in ids]
+
+        if show_progress:
+            nps_list = []
+            with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
+                for f in asyncio.as_completed(tasks):
+                    img_np = await f
+                    nps_list.append(img_np)
+                    pbar.update(1)
+        else:
+            nps_list = await asyncio.gather(*tasks)
+        return nps_list
 
     async def download_path_async(
         self,
@@ -3564,6 +3592,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         paths: List[str],
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        headers: dict = None,
         show_progress: bool = True,
     ) -> None:
         """
@@ -3575,6 +3604,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type paths: :class:`List[str]`
         :param semaphore: Semaphore
         :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
         :param show_progress: If True, shows progress bar.
         :type show_progress: bool, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
@@ -3600,7 +3631,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         tasks = []
         for img_id, img_path in zip(ids, paths):
-            task = self.download_path_async(img_id, img_path, semaphore)
+            task = self.download_path_async(img_id, img_path, semaphore, headers=headers)
             tasks.append(task)
         if show_progress:
             with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
@@ -3609,3 +3640,91 @@ class ImageApi(RemoveableBulkModuleApi):
                     pbar.update(1)
         else:
             await asyncio.gather(*tasks)
+
+    async def download_bytes_img_async(
+        self,
+        id: int,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: dict = None,
+    ) -> bytes:
+        """
+        Downloads Image bytes with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :return: Bytes of downloaded image.
+        :rtype: :class:`bytes`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_id = 770918
+            img_bytes = asyncio.run(api.image.download_bytes_async(img_id))
+
+        """
+        if range_start is not None or range_end is not None:
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        async with semaphore:
+            content = b""
+            async for chunk in self._download_async(
+                id,
+                is_stream=True,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+            ):
+                content += chunk
+            return content
+
+    async def download_bytes_imgs_async(
+        self,
+        ids: List[int],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        headers: dict = None,
+        show_progress: bool = True,
+    ) -> List[bytes]:
+        """
+        Downloads Images bytes with given IDs asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for every request.
+        :type headers: dict, optional
+        :param show_progress: If True, shows progress bar.
+        :type show_progress: bool, optional
+        :return: List of bytes of downloaded images.
+        :rtype: :class:`List[bytes]`
+        """
+        tasks = [self.download_bytes_img_async(id, semaphore, headers=headers) for id in ids]
+
+        if show_progress:
+            bytes_list = []
+            with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
+                for f in asyncio.as_completed(tasks):
+                    img_bytes = await f
+                    bytes_list.append(img_bytes)
+                    pbar.update(1)
+        else:
+            bytes_list = await asyncio.gather(*tasks)
+        return bytes_list
