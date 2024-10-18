@@ -23,15 +23,18 @@ class ContainerWidget(BaseWidget):
         if self.grid:
             if any([v != "auto" and type(v) != int for v in [self.grid_cols, self.grid_rows]]):
                 raise ValueError("grid_cols and grid_rows must be either 'auto' or an integer")
-                    # grid-row-gap: 10px;
+                # grid-row-gap: 10px;
             s = f"""
-                <div style="
-                    display: grid; 
-                    grid-template-columns: repeat({self.grid_cols}, 1fr); 
-                    grid-template-rows: repeat({self.grid_rows}, 1fr);
-                    grid-column-gap: 10px;
-                    margin-bottom: 20px;
-            ">
+                <div 
+                    id="{ self.id }"
+                    style="
+                        display: grid; 
+                        grid-template-columns: repeat({self.grid_cols}, 1fr); 
+                        grid-template-rows: repeat({self.grid_rows}, 1fr);
+                        grid-column-gap: 10px;
+                        margin-bottom: 25px;
+                    "
+                >
             """
         else:
             s = "<div>"
