@@ -184,9 +184,9 @@ class EvalResult:
             )
 
     def _read_eval_data(self):
-        gt_path = Path(self.local_dir, "evaluation", "cocoGt.json")
-        dt_path = Path(self.local_dir, "evaluation", "cocoDt.json")
-        coco_gt, coco_dt = read_coco_datasets(load_json_file(gt_path), load_json_file(dt_path))
+        gt_path = Path(self.local_dir, "evaluation", "cocoGt.json").as_posix()
+        dt_path = Path(self.local_dir, "evaluation", "cocoDt.json").as_posix()
+        coco_gt, coco_dt = read_coco_datasets(gt_path, dt_path)
         self.coco_gt = coco_gt
         self.coco_dt = coco_dt
         self.eval_data = pickle.load(
