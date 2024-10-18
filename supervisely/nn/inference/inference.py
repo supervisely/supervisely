@@ -1064,7 +1064,9 @@ class Inference:
             tracker = None
 
         results = []
-        batch_size = state.get("batch_size", self.get_batch_size())
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
@@ -1117,7 +1119,9 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring images...", extra={"state": state})
-        batch_size = state.get("batch_size", self.get_batch_size())
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
         output_project_id = state.get("output_project_id", None)
         images_infos = api.image.get_info_by_id_batch(images_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -1385,7 +1389,9 @@ class Inference:
             project_info = api.project.get_info_by_id(state["projectId"])
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
-        batch_size = state.get("batch_size", self.get_batch_size())
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
 
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         if dataset_ids is not None:
@@ -2008,7 +2014,9 @@ class Inference:
             )
             images_ids = request.state.state["images_ids"]
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2045,7 +2053,9 @@ class Inference:
         def inference_video_id(response: Response, request: Request):
             logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2131,7 +2141,9 @@ class Inference:
         def inference_video_id_async(response: Response, request: Request):
             logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2173,7 +2185,9 @@ class Inference:
             if project_info.type != str(ProjectType.IMAGES):
                 raise ValueError("Only images projects are supported.")
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
