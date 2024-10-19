@@ -7,7 +7,7 @@ def read_coco_datasets(cocoGt, cocoDt):
     if isinstance(cocoGt, str) and isinstance(cocoDt, str):
         cocoGt = COCO(cocoGt)
         cocoDt = COCO(cocoDt)
-        return 
+        return cocoGt, cocoDt
     gt = COCO()
     gt.dataset = cocoGt
     gt.createIndex()
