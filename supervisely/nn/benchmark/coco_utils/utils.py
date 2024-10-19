@@ -7,9 +7,9 @@ def read_coco_datasets(cocoGt, cocoDt):
     if isinstance(cocoGt, str) and isinstance(cocoDt, str):
         cocoGt = COCO(cocoGt)
         cocoDt = COCO(cocoDt)
-        return cocoGt, cocoDt
-    cocoGt = COCO()
-    cocoGt.dataset = cocoGt
-    cocoGt.createIndex()
-    cocoDt = cocoGt.loadRes(cocoDt["annotations"])
-    return cocoGt, cocoDt
+        return 
+    gt = COCO()
+    gt.dataset = cocoGt
+    gt.createIndex()
+    dt = gt.loadRes(cocoDt["annotations"])
+    return gt, dt
