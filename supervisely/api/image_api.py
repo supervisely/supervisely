@@ -3622,7 +3622,10 @@ class ImageApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-
+            ids = [770918, 770919]
+            paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(api.image.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
             return
@@ -3648,6 +3651,7 @@ class ImageApi(RemoveableBulkModuleApi):
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> bytes:
         """
         Downloads Image bytes with given ID.
@@ -3662,6 +3666,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type range_end: int, optional
         :param headers: Headers for request.
         :type headers: dict, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :return: Bytes of downloaded image.
         :rtype: :class:`bytes`
         :Usage example:
@@ -3693,6 +3699,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 range_end=range_end,
             ):
                 content += chunk
+            if progress_cb:
+                progress_cb.update(1)
             return content
 
     async def download_bytes_imgs_async(
@@ -3703,7 +3711,8 @@ class ImageApi(RemoveableBulkModuleApi):
         show_progress: bool = True,
     ) -> List[bytes]:
         """
-        Downloads Images bytes with given IDs asynchronously.
+        Downloads Images bytes with given IDs asynchronously
+        and returns reults in the same order as in the input list.
 
         :param ids: List of Image IDs in Supervisely.
         :type ids: :class:`List[int]`
@@ -3715,16 +3724,40 @@ class ImageApi(RemoveableBulkModuleApi):
         :type show_progress: bool, optional
         :return: List of bytes of downloaded images.
         :rtype: :class:`List[bytes]`
-        """
-        tasks = [self.download_bytes_img_async(id, semaphore, headers=headers) for id in ids]
 
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN
+                api = sly.Api.from_env()
+
+                loop = asyncio.get_event_loop()
+                semaphore = asyncio.Semaphore(20)
+                img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
+        """
+
+        tasks = []
         if show_progress:
-            bytes_list = []
-            with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
-                for f in asyncio.as_completed(tasks):
-                    img_bytes = await f
-                    bytes_list.append(img_bytes)
-                    pbar.update(1)
+            with tqdm_asyncio(total=len(ids), desc="Downloading images", unit="image") as pbar:
+                for id in ids:
+                    async with semaphore:
+                        task = asyncio.create_task(
+                            self.download_bytes_img_async(
+                                id, semaphore, headers=headers, progress_cb=pbar
+                            )
+                        )
+                        tasks.append(task)
+                results = await asyncio.gather(*tasks)
         else:
-            bytes_list = await asyncio.gather(*tasks)
-        return bytes_list
+            for id in ids:
+                async with semaphore:
+                    task = asyncio.create_task(
+                        self.download_bytes_img_async(id, semaphore, headers=headers)
+                    )
+                    tasks.append(task)
+            results = await asyncio.gather(*tasks)
+        return results

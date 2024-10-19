@@ -15,6 +15,7 @@ sly.fs.ensure_base_path(save_path)
 api = sly.Api.from_env()
 images = api.image.get_list(DATASET_ID)
 ids = [image.id for image in images]
+names = [image.name for image in images]
 paths = [f"{save_path}{image.name}.png" for image in images]
 
 api.logger.setLevel(LOG_LEVEL)
@@ -26,10 +27,9 @@ def save_image_from_np(img_np, name, save_path):
 
 
 async def test_download_np():
-    semaphore = asyncio.Semaphore(10)
     tasks = []
     for image in images:
-        task = api.image.download_np_async(image.id, semaphore)
+        task = api.image.download_np_async(image.id)
         tasks.append(task)
     with tqdm(total=len(tasks), desc="Downloading images", unit="image") as pbar:
         results = []
@@ -41,17 +41,17 @@ async def test_download_np():
 
 
 def main_dnp():
-    results = asyncio.run(test_download_np())
+    loop = asyncio.get_event_loop()
+    results = loop.run_until_complete(test_download_np())
     for idx, result in enumerate(results):
         save_image_from_np(result, str(idx), save_path)
 
 
 async def test_download_path():
-    semaphore = asyncio.Semaphore(10)
     tasks = []
     for image in images:
         path = f"{save_path}{image.name}.png"
-        task = api.image.download_path_async(image.id, path, semaphore)
+        task = api.image.download_path_async(image.id, path)
         tasks.append(task)
     with tqdm(total=len(tasks), desc="Downloading images", unit="image") as pbar:
         start = time.time()
@@ -63,12 +63,13 @@ async def test_download_path():
 
 
 def main_dp():
-    asyncio.run(test_download_path())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(test_download_path())
 
 
 def main_dps():
-    semaphore = asyncio.Semaphore(33)
-    asyncio.run(api.image.download_paths_async(ids, paths, semaphore))
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(api.image.download_paths_async(ids, paths))
 
 
 def compare_main_dps():
@@ -91,9 +92,23 @@ def main_bytes():
         f.write(img_bytes)
 
 
+def main_n_bytes():
+    loop = asyncio.get_event_loop()
+    img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids))
+
+    for img_bytes, name in zip(img_bytes_list, names):
+        with open(f"{save_path}{name}", "wb") as f:
+            f.write(img_bytes)
+
+
 if __name__ == "__main__":
-    # main_dnp() # to download and save images as numpy arrays
-    # main_dp()  # to download and save images as files
-    # main_dps()  # to download and save images as files (batch)
-    # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
-    main_bytes()
+    try:
+        # main_dnp()  # to download and save images as numpy arrays
+        # main_dp()  # to download and save images as files
+        # main_dps()  # to download and save images as files (batch)
+        # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
+        # main_bytes() # to download and save image as bytes
+        main_n_bytes()  # to download and save images as bytes (batch)
+    except KeyboardInterrupt:
+        sly.logger("Stopped by user")
+set().discard
