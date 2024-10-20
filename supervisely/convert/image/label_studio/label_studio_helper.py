@@ -17,6 +17,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
+from supervisely.convert.image.image_helper import validate_image_bounds
 
 POSSIBLE_SHAPE_TYPES = ["polygonlabels", "rectanglelabels", "brushlabels"]
 POSSIBLE_TAGS_TYPES = ["choices"]
@@ -211,5 +212,6 @@ def create_supervisely_annotation(image_path: str, ann: Dict, meta: ProjectMeta)
     for labels in key_label_map.values():
         res_labels.extend(labels)
 
+    res_labels = validate_image_bounds(res_labels, Rectangle.from_size(sly_ann.img_size))
     sly_ann = sly_ann.clone(labels=res_labels, img_tags=img_tags)
     return sly_ann, meta
