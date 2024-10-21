@@ -2761,8 +2761,9 @@ class Project:
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
         with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
-            items = pickle.load(f)
-            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = items
+            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = pickle.load(
+                f
+            )
 
         if project_name is None:
             project_name = project_info.name
