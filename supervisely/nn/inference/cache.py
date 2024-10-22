@@ -83,7 +83,10 @@ class PersistentImageTTLCache(TTLCache):
             # pylint: disable=no-member
             link = self._TTLCache__getlink(key)
             # pylint: disable=no-member
-            link.expire = self._TTLCache__timer() + self._TTLCache__ttl
+            if hasattr(link, "expire"):
+                link.expire = self.timer() + self._TTLCache__ttl
+            else:
+                link.expires = self.timer() + self._TTLCache__ttl
         except KeyError:
             return
 
