@@ -51,10 +51,11 @@ class EvalResult:
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
         self.eval_dir = eval_dir
+        self.report_path = Path(eval_dir, "visualizations", "template.vue").as_posix()
         self.output_dir = output_dir
         self.api = api
         self.team_id = team_id()
-        self.local_dir = str(Path(self.output_dir, "eval_data", self.eval_dir.lstrip("/")))
+        self.local_dir = Path(self.output_dir, "eval_data", self.eval_dir.lstrip("/")).as_posix()
         self.progress = progress or tqdm_sly
 
         self.coco_gt: COCO = None
