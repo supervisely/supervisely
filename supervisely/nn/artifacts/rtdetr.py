@@ -12,7 +12,7 @@ class RTDETR(BaseTrainArtifacts):
         self._framework_folder = "/RT-DETR"
         self._weights_folder = "weights"
         self._task_type = "object detection"
-        self._weights_ext = ".pt"
+        self._weights_ext = ".pth"
         self._config_file = None
         self._pattern = re_compile(r"^/RT-DETR/[^/]+/\d+/?$")
 
