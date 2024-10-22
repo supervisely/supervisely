@@ -395,8 +395,10 @@ class Annotation:
         img_width = img_size_dict[AnnotationJsonFields.IMG_SIZE_WIDTH]
         img_size = (img_height, img_width)
         try:
-            labels_json = data[AnnotationJsonFields.LABELS]
-            labels = [Label.from_json(label_json, project_meta) for label_json in labels_json]
+            labels = [
+                Label.from_json(label_json, project_meta)
+                for label_json in data[AnnotationJsonFields.LABELS]
+            ]
         except Exception as e:
             raise RuntimeError(
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
