@@ -80,8 +80,10 @@ class PersistentImageTTLCache(TTLCache):
 
     def __update_timer(self, key):
         try:
-            link = self._get_link(key)
-            link.expire = self.timer() + self.ttl
+            # pylint: disable=no-member
+            link = self._TTLCache__getlink(key)
+            # pylint: disable=no-member
+            link.expire = self._TTLCache__timer() + self._TTLCache__ttl
         except KeyError:
             return
 
@@ -91,12 +93,12 @@ class PersistentImageTTLCache(TTLCache):
 
     def __get_keys(self):
         # pylint: disable=no-member
-        return list(self.keys())
+        return self._TTLCache__links.keys()
 
     def expire(self, time=None):
         """Remove expired items from the cache."""
         # pylint: disable=no-member
-        existing_items = dict(self)
+        existing_items = self._Cache__data.copy()
         super().expire(time)
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
