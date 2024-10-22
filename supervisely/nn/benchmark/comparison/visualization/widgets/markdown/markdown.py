@@ -1,4 +1,3 @@
-import json
 from typing import Dict
 
 from supervisely.io.fs import ensure_base_path
@@ -15,6 +14,8 @@ class MarkdownWidget(BaseWidget):
         super().__init__(name, title)
         self.text = text
         self.data_source = f"/data/{self.name}_{self.id}.md"
+        self.is_info_block = False
+        self.width_fit_content = False
 
     def save_data(self, basepath: str) -> None:
         # init data
@@ -28,12 +29,17 @@ class MarkdownWidget(BaseWidget):
         return {}
 
     def to_html(self) -> str:
-        is_overview = self.title == "Overview"
+        style_class = "markdown-no-border"
+        if self.is_info_block:
+            style_class += " overview-info-block"
+        if self.width_fit_content:
+            style_class += " markdown-fit-content"
+
         return f"""
             <div style="margin-top: 10px;">
                 <sly-iw-markdown
                 id="{ self.id }"
-                class="markdown-no-border { 'overview-info-block' if is_overview else '' }"
+                class="{ style_class }"
                 iw-widget-id="{ self.id }"
                 :actions="{{
                     'init': {{

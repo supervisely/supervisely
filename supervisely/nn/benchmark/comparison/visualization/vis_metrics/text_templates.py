@@ -31,6 +31,23 @@ markdown_header = """
 </div>
 """
 
+markdown_common_overview = """
+- **Models**: {}
+- **Evaluation Dataset**: <a href="/projects/{}/datasets" target="_blank">{}</a>
+- **Task type**: {}
+"""
+
+markdown_overview_info = """
+<h3>{}</h3>
+- **Model**: {}
+- **Checkpoint**: {}
+- **Architecture**: {}
+- **Runtime**: {}
+- **Checkpoint file**: <a class="checkpoint-url" href="{}" target="_blank">{}</a>
+- **Evaluation Report**: <a href="{}" target="_blank">View Report</a>
+
+"""
+
 markdown_overview = """
 - **Model**: {}
 - **Checkpoint**: {}

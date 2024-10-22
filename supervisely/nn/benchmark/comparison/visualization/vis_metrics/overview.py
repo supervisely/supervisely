@@ -1,5 +1,6 @@
 from typing import List
 
+from supervisely._utils import abs_url
 from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
@@ -14,6 +15,8 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
 class Overview(BaseVisMetric):
 
     MARKDOWN_OVERVIEW = "markdown_overview"
+    MARKDOWN_OVERVIEW_INFO = "markdown_overview_info"
+    MARKDOWN_COMMON_OVERVIEW = "markdown_common_overview"
     CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
@@ -26,6 +29,38 @@ class Overview(BaseVisMetric):
         super().__init__(vis_texts, eval_results)
 
     @property
+    def overview_md(self) -> List[MarkdownWidget]:
+        info = []
+        model_names = []
+        for eval_result in self.eval_results:
+            model_name = eval_result.inference_info.get("model_name") or "Custom"
+            model_name = model_name.replace("_", "\_")
+            model_names.append(model_name)
+
+            info.append(
+                [
+                    eval_result.gt_project_info.id,
+                    eval_result.gt_project_info.name,
+                    eval_result.inference_info.get("task_type"),
+                ]
+            )
+        if all([model_name == "Custom" for model_name in model_names]):
+            model_name = "Custom models"
+        elif all([model_name == model_names[0] for model_name in model_names]):
+            model_name = model_names[0]
+        else:
+            model_name = " vs. ".join(model_names)
+
+        info = [model_name] + info[0]
+
+        text_template: str = getattr(self.vis_texts, self.MARKDOWN_COMMON_OVERVIEW)
+        return MarkdownWidget(
+            name=self.MARKDOWN_COMMON_OVERVIEW,
+            title="Overview",
+            text=text_template.format(*info),
+        )
+
+    @property
     def overview_widgets(self) -> List[MarkdownWidget]:
         self.formats = []
         for eval_result in self.eval_results:
@@ -36,38 +71,39 @@ class Overview(BaseVisMetric):
                 link_text = url
             link_text = link_text.replace("_", "\_")
 
-            # Note about validation dataset
-            classes_str, note_about_val_dataset, train_session = self.get_overview_info(eval_result)
-
             checkpoint_name = eval_result.inference_info.get("deploy_params", {}).get(
                 "checkpoint_name", ""
             )
             model_name = eval_result.inference_info.get("model_name") or "Custom"
 
+            report = eval_result.api.file.get_info_by_path(
+                eval_result.team_id, eval_result.report_path
+            )
+            report_link = abs_url(f"/model-benchmark?id={report.id}")
+
             formats = [
+                checkpoint_name.replace("_", "\_"),
                 model_name.replace("_", "\_"),
                 checkpoint_name.replace("_", "\_"),
                 eval_result.inference_info.get("architecture"),
-                eval_result.inference_info.get("task_type"),
                 eval_result.inference_info.get("runtime"),
                 url,
                 link_text,
-                eval_result.gt_project_info.id,
-                eval_result.gt_project_info.name,
-                classes_str,
-                note_about_val_dataset,
-                train_session,
-                self.vis_texts.docs_url,
+                report_link,
             ]
             self.formats.append(formats)
 
-        text_template: str = getattr(self.vis_texts, self.MARKDOWN_OVERVIEW)
-        return [
-            MarkdownWidget(
-                name=self.MARKDOWN_OVERVIEW, title="Overview", text=text_template.format(*formats)
+        text_template: str = getattr(self.vis_texts, self.MARKDOWN_OVERVIEW_INFO)
+        widgets = []
+        for formats in self.formats:
+            md = MarkdownWidget(
+                name=self.MARKDOWN_OVERVIEW_INFO,
+                title="Overview",
+                text=text_template.format(*formats),
             )
-            for formats in self.formats
-        ]
+            md.is_info_block = True
+            widgets.append(md)
+        return widgets
 
     @property
     def table_widget(self) -> TableWidget:

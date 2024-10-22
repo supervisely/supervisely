@@ -143,6 +143,7 @@ class ComparisonVisualizer:
         overview = Overview(self.vis_texts, self.comparison.evaluation_results)
         self.header = self._create_header()
         self.overviews = self._create_overviews(overview)
+        self.overview_md = overview.overview_md
         self.key_metrics_md = self._create_key_metrics()
         self.key_metrics_table = overview.table_widget
         self.overview_chart = overview.chart_widget
@@ -233,7 +234,8 @@ class ComparisonVisualizer:
         is_anchors_widgets = [
             # Overview
             (0, self.header),
-            (1, self.overviews),
+            (1, self.overview_md),
+            (0, self.overviews),
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
             (0, self.overview_chart),
@@ -302,7 +304,7 @@ class ComparisonVisualizer:
     def _create_header(self) -> MarkdownWidget:
         me = self.api.user.get_my_info().login
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
-        header_main_text = " vs. ".join(
+        header_main_text = " ∣ ".join(  #  vs. or | or ∣
             eval_res.name for eval_res in self.comparison.evaluation_results
         )
         header_text = self.vis_texts.markdown_header.format(header_main_text, me, current_date)
@@ -310,8 +312,17 @@ class ComparisonVisualizer:
         return header
 
     def _create_overviews(self, vm: Overview) -> ContainerWidget:
+        grid_cols = 2
+        if len(vm.overview_widgets) > 2:
+            grid_cols = 3
+        if len(vm.overview_widgets) % 4 == 0:
+            grid_cols = 4
         return ContainerWidget(
-            vm.overview_widgets, name="overview_container", title="Overview", grid=True
+            vm.overview_widgets,
+            name="overview_container",
+            title="Overview",
+            grid=True,
+            grid_cols=grid_cols,
         )
 
     def _create_key_metrics(self) -> MarkdownWidget:
