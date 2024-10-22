@@ -149,7 +149,7 @@ class SLYImageConverter(ImageConverter):
                 [Label.from_json(obj, meta) for obj in ann_json["objects"]],
                 Rectangle.from_size(img_size),
             )
-            return Annotation(img_size, labels)
+            return Annotation.from_json(ann_json, meta).clone(labels=labels)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
