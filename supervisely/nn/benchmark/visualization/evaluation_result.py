@@ -44,7 +44,7 @@ class EvalResult:
     def __init__(
         self,
         eval_dir: str,
-        output_dir: str,
+        workdir: str,
         api: Api,
         progress: Optional[SlyTqdm] = None,
     ):
@@ -52,10 +52,10 @@ class EvalResult:
 
         self.eval_dir = eval_dir
         self.report_path = Path(eval_dir, "visualizations", "template.vue").as_posix()
-        self.output_dir = output_dir
+        self.workdir = workdir
         self.api = api
         self.team_id = team_id()
-        self.local_dir = Path(self.output_dir, "eval_data", self.eval_dir.lstrip("/")).as_posix()
+        self.local_dir = str(Path(self.workdir, self.eval_dir.lstrip("/")))
         self.progress = progress or tqdm_sly
 
         self.coco_gt: COCO = None

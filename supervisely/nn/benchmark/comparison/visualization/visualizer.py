@@ -1,13 +1,7 @@
 import datetime
 import importlib
-import json
 from pathlib import Path
-from typing import Optional
 
-from jinja2 import Template
-
-from supervisely.api.api import Api
-from supervisely.io.fs import dir_empty, get_directory_size
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
@@ -20,88 +14,14 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     Speedtest,
 )
 from supervisely.nn.benchmark.cv_tasks import CVTask
+from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import (
-    BaseWidget,
     ContainerWidget,
     GalleryWidget,
     MarkdownWidget,
     SidebarWidget,
 )
 from supervisely.task.progress import tqdm_sly
-
-
-class BaseVisualizer:
-
-    def __init__(self, template: str, layout: BaseWidget, output_dir: str) -> None:
-        self.main_template = template
-        self.layout = layout
-        self.output_dir = output_dir
-
-    @property
-    def _template_data(self):
-        return {"layout": self.layout.to_html()}
-
-    def render(self):
-        return Template(self.main_template).render(self._template_data)
-
-    def get_state(self):
-        return {}
-
-    def save(self) -> None:
-        self.layout.save_data(self.output_dir)
-        state = self.layout.get_state()
-        with open(Path(self.output_dir).joinpath("state.json"), "w") as f:
-            json.dump(state, f)
-        template = self.render()
-        with open(Path(self.output_dir).joinpath("template.vue"), "w") as f:
-            f.write(template)
-        return template
-
-    def visualize(self):
-        return self.save()
-
-    def upload_results(
-        self, api: Api, team_id: int, remote_dir: str, progress: Optional[tqdm_sly] = None
-    ) -> str:
-        if dir_empty(self.output_dir):
-            raise RuntimeError(
-                "No visualizations to upload. You should call visualize method first."
-            )
-        if progress is None:
-            progress = tqdm_sly
-        dir_total = get_directory_size(self.output_dir)
-        dir_name = Path(remote_dir).name
-        with progress(
-            message=f"Uploading visualizations to {dir_name}",
-            total=dir_total,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as pbar:
-            remote_dir = api.file.upload_directory(
-                team_id,
-                self.output_dir,
-                remote_dir,
-                change_name_if_conflict=True,
-                progress_size_cb=pbar.update,
-            )
-        src = self.save_report_link(api, team_id, remote_dir)
-        api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
-        return remote_dir
-
-    def save_report_link(self, api: Api, team_id: int, remote_dir: str):
-        report_link = self.get_report_link(api, team_id, remote_dir)
-        pth = Path(self.output_dir).joinpath("open.lnk")
-        with open(pth, "w") as f:
-            f.write(report_link)
-        return str(pth)
-
-    def get_report_link(self, api: Api, team_id: int, remote_dir: str):
-        template_path = remote_dir.rstrip("/") + "/" + "template.vue"
-        vue_template_info = api.file.get_info_by_path(team_id, template_path)
-
-        report_link = "/model-benchmark?id=" + str(vue_template_info.id)
-        return report_link
 
 
 class ComparisonVisualizer:
@@ -118,19 +38,16 @@ class ComparisonVisualizer:
                 "supervisely.nn.benchmark.comparison.visualization.vis_metrics.text_templates"
             )  # TODO: change for other task types
 
-        template_path = Path(__file__).parent.joinpath("comparison_template.html")
-        template = template_path.read_text()
-
         self._create_widgets()
         layout = self._create_layout()
 
-        self.viz = BaseVisualizer(template, layout, self.comparison.output_dir)
+        self.renderer = Renderer(layout, str(Path(self.comparison.workdir, "visualizations")))
 
     def visualize(self):
-        return self.viz.visualize()
+        return self.renderer.visualize()
 
     def upload_results(self, team_id: int, remote_dir: str, progress=None):
-        return self.viz.upload_results(self.api, team_id, remote_dir, progress)
+        return self.renderer.upload_results(self.api, team_id, remote_dir, progress)
 
     def _create_widgets(self):
         # Modal Gellery

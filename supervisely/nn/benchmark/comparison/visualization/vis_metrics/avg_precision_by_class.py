@@ -1,4 +1,4 @@
-from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
+from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )

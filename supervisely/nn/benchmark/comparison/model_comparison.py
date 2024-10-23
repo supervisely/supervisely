@@ -1,14 +1,15 @@
-from typing import Dict, List, Optional
+import random
+from pathlib import Path
+from typing import List, Optional
 
 from supervisely.api.api import Api
 from supervisely.app.widgets import SlyTqdm
-from supervisely.imaging.color import generate_rgb, rgb2hex, get_predefined_colors
-from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
+from supervisely.imaging.color import get_predefined_colors, rgb2hex
 from supervisely.nn.benchmark.comparison.visualization.visualizer import (
     ComparisonVisualizer,
 )
+from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.task.progress import tqdm_sly
-import random
 
 
 class ModelComparison:
@@ -18,19 +19,19 @@ class ModelComparison:
         api: Api,
         remote_eval_dirs: List[str],
         progress: Optional[SlyTqdm] = None,
-        output_dir: Optional[str] = "./benchmark/comparison",
+        workdir: Optional[str] = "./benchmark/comparison",
     ):
         self.api = api
         self.progress = progress or tqdm_sly
-        self.base_dir = output_dir
-        self.eval_dir = self.base_dir + "/temp"
-        self.output_dir = self.base_dir + "/results"
+        self.workdir = workdir
         self.remote_eval_dirs = remote_eval_dirs
         self.evaluation_results: List[EvalResult] = []
-        colors = get_predefined_colors(len(remote_eval_dirs) * 5)
+
+        colors = get_predefined_colors(len(remote_eval_dirs) * 5)  # for better visualizations
         random.shuffle(colors)
         for i, eval_dir in enumerate(remote_eval_dirs):
-            eval_result = EvalResult(eval_dir, self.eval_dir, self.api, self.progress)
+            local_path = str(Path(self.workdir, "eval_data"))
+            eval_result = EvalResult(eval_dir, local_path, self.api, self.progress)
             self.evaluation_results.append(eval_result)
             eval_result.color = rgb2hex(colors[i])
 
@@ -39,9 +40,6 @@ class ModelComparison:
 
         self.visualizer: ComparisonVisualizer = None
         self.remote_dir = None
-
-    def run_compare(self):
-        raise NotImplementedError()
 
     def _validate_eval_data(self):
         """
