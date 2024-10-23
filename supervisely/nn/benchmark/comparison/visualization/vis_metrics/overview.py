@@ -108,45 +108,31 @@ class Overview(BaseVisMetric):
     def get_table_widget(self, latency, fps) -> TableWidget:
         res = {}
 
-        metric_renames_map = {"f1": "F1-score", "iou": "Average IoU", "mAP": "mAP"}
+        metric_renames_map = {"f1": "F1-score"}
 
-        columns = ["metrics"] + [
-            f"[{i+1}] {eval_result.name}" for i, eval_result in enumerate(self.eval_results)
-        ]
+        columns = ["metrics"] + [f"[{i+1}] {r.name}" for i, r in enumerate(self.eval_results)]
 
-        all_metrics = [eval_result.mp.base_metrics() for eval_result in self.eval_results]
+        all_metrics = [eval_result.mp.metric_table() for eval_result in self.eval_results]
         res["content"] = []
 
-        for metric in all_metrics[0].keys():
-            if metric in metric_renames_map:
-                metric_name = metric_renames_map[metric]
-            else:
-                metric_name = metric.replace("_", " ").capitalize()
-            row = [metric_name] + [round(metrics[metric], 2) for metrics in all_metrics]
-            dct = {
-                "row": row,
-                "id": metric,
-                "items": row,
-            }
+        same_iou_thr = False
+        if len(set([r.mp.iou_threshold for r in self.eval_results])) == 1:
+            if self.eval_results[0].mp.iou_threshold is not None:
+                same_iou_thr = True
+
+        for idx, metric in enumerate(all_metrics[0].keys()):
+            if idx == 3 and not same_iou_thr:
+                continue
+            metric_name = metric_renames_map.get(metric, metric)
+            row = [metric_name] + [round(m[metric], 2) for m in all_metrics]
+            dct = {"row": row, "id": metric, "items": row}
             res["content"].append(dct)
 
         latency_row = ["Latency (ms)"] + latency
-        res["content"].append(
-            {
-                "row": latency_row,
-                "id": latency_row[0],
-                "items": latency_row,
-            }
-        )
+        res["content"].append({"row": latency_row, "id": latency_row[0], "items": latency_row})
 
         fps_row = ["FPS"] + fps
-        res["content"].append(
-            {
-                "row": fps_row,
-                "id": fps_row[0],
-                "items": fps_row,
-            }
-        )
+        res["content"].append({"row": fps_row, "id": fps_row[0], "items": fps_row})
 
         columns_options = [{"disableSort": True} for _ in columns]
 
@@ -158,6 +144,7 @@ class Overview(BaseVisMetric):
             data=res,
             show_header_controls=False,
             fix_columns=1,
+            page_size=len(res["content"]),
         )
 
     @property
