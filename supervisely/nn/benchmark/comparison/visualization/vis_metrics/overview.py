@@ -105,8 +105,7 @@ class Overview(BaseVisMetric):
             widgets.append(md)
         return widgets
 
-    @property
-    def table_widget(self) -> TableWidget:
+    def get_table_widget(self, latency, fps) -> TableWidget:
         res = {}
 
         columns = ["metrics"] + [
@@ -124,6 +123,24 @@ class Overview(BaseVisMetric):
                 "items": row,
             }
             res["content"].append(dct)
+
+        latency_row = ["Latency (ms)"] + latency
+        res["content"].append(
+            {
+                "row": latency_row,
+                "id": latency_row[0],
+                "items": latency_row,
+            }
+        )
+
+        fps_row = ["FPS"] + fps
+        res["content"].append(
+            {
+                "row": fps_row,
+                "id": fps_row[0],
+                "items": fps_row,
+            }
+        )
 
         columns_options = [{"disableSort": True} for _ in columns]
 

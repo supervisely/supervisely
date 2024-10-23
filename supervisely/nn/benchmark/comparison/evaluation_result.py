@@ -61,6 +61,7 @@ class EvalResult:
         self.coco_gt: COCO = None
         self.coco_dt: COCO = None
         self.inference_info: Dict = None
+        self.speedtest_info: Dict = None
         self.eval_data: Dict = None
         self.mp: MetricProvider = None
         self.df_score_profile: pd.DataFrame = None
@@ -196,6 +197,11 @@ class EvalResult:
         self.inference_info = load_json_file(
             Path(self.local_dir, "evaluation", "inference_info.json")
         )
+        speedtest_info_path = Path(self.local_dir, "speedtest", "speedtest.json")
+        if speedtest_info_path.exists():
+            self.speedtest_info = load_json_file(
+                Path(self.local_dir, "speedtest", "speedtest.json")
+            )
 
         self.mp = MetricProvider(
             self.eval_data["matches"],

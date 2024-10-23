@@ -4,6 +4,9 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics.avg_precision
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.calibration_score import (
     CalibrationScore,
 )
+from supervisely.nn.benchmark.comparison.visualization.vis_metrics.explore_predicttions import (
+    ExplorePredictions,
+)
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.localization_accuracy import (
     LocalizationAccuracyIoU,
 )
@@ -19,6 +22,6 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics.pr_curve impo
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.precision_recal_f1 import (
     PrecisionRecallF1,
 )
-from supervisely.nn.benchmark.comparison.visualization.vis_metrics.explore_predicttions import (
-    ExplorePredictions,
+from supervisely.nn.benchmark.comparison.visualization.vis_metrics.speedtest import (
+    Speedtest,
 )

@@ -17,6 +17,7 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     Overview,
     PrCurve,
     PrecisionRecallF1,
+    Speedtest,
 )
 from supervisely.nn.benchmark.comparison.visualization.widgets import (
     BaseWidget,
@@ -139,13 +140,18 @@ class ComparisonVisualizer:
         # Notifcation
         self.clickable_label = self._create_clickable_label()
 
+        # Speedtest init here for overview
+        speedtest = Speedtest(self.vis_texts, self.comparison.evaluation_results)
+
         # Overview
         overview = Overview(self.vis_texts, self.comparison.evaluation_results)
         self.header = self._create_header()
         self.overviews = self._create_overviews(overview)
         self.overview_md = overview.overview_md
         self.key_metrics_md = self._create_key_metrics()
-        self.key_metrics_table = overview.table_widget
+        self.key_metrics_table = overview.get_table_widget(
+            latency=speedtest.latency, fps=speedtest.fps
+        )
         self.overview_chart = overview.chart_widget
 
         # TODO: Explore Predictions
@@ -230,6 +236,20 @@ class ComparisonVisualizer:
         self.cal_score_confidence_score_md_2 = cal_score.confidence_score_md_2
         self.cal_score_collapse_conf_score = cal_score.collapse_conf_score
 
+        # SpeedTest
+        self.speedtest_present = False
+        if not speedtest.is_empty():
+            self.speedtest_present = True
+            self.speedtest_md_intro = speedtest.md_intro
+            self.speedtest_intro_table = speedtest.intro_table
+            self.speed_overview_md = speedtest.md_speed_overview
+            self.speed_md_overview_table = speedtest.md_speed_overview_table
+            self.speed_overview_table = speedtest.speed_overview_table
+            self.speed_md_fps_table = speedtest.md_fps_table
+            self.speed_fps_table = speedtest.fps_table
+            self.speed_batch_inference = speedtest.md_batch_inference
+            self.speed_chart = speedtest.chart
+
     def _create_layout(self):
         is_anchors_widgets = [
             # Overview
@@ -289,6 +309,21 @@ class ComparisonVisualizer:
             (0, self.cal_score_confidence_score_md_2),
             (0, self.cal_score_collapse_conf_score),
         ]
+        if self.speedtest_present:
+            is_anchors_widgets.extend(
+                [
+                    # SpeedTest
+                    (1, self.speedtest_md_intro),
+                    (0, self.speedtest_intro_table),
+                    (0, self.speed_overview_md),
+                    (0, self.speed_md_overview_table),
+                    (0, self.speed_overview_table),
+                    (0, self.speed_md_fps_table),
+                    (0, self.speed_fps_table),
+                    (0, self.speed_batch_inference),
+                    (0, self.speed_chart),
+                ]
+            )
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:
