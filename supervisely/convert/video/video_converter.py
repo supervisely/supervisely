@@ -283,5 +283,5 @@ class VideoConverter(BaseConverter):
                     )
                 )
             upload_progress[0].set_current_value(monitor)
-        
+
         return lambda m: _print_progress(m, upload_progress)
