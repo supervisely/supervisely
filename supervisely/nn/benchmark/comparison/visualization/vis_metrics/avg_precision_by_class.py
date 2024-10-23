@@ -9,49 +9,74 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
 
 
 class AveragePrecisionByClass(BaseVisMetric):
-    MARKDOWN_CLASS_AP = "markdown_class_ap"
+    MARKDOWN_CLASS_AP = "markdown_class_ap_polar"
+    MARKDOWN_CLASS_AP_BAR = "markdown_class_ap_bar"
 
     def get_figure(self):
         import plotly.graph_objects as go
 
         fig = go.Figure()
         labels = dict(r="Average Precision", theta="Class")
+        cls_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
             # AP per-class
             ap_per_class = eval_result.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
             ap_per_class[ap_per_class == -1] = 0  # -1 is a placeholder for no GT
 
             trace_name = f"[{i}] {eval_result.name}"
-            fig.add_trace(
-                go.Scatterpolar(
-                    r=ap_per_class,
-                    theta=eval_result.mp.cat_names,
-                    name=trace_name,
-                    marker=dict(color=eval_result.color),
-                    hovertemplate=trace_name
-                    + "<br>"
-                    + labels["theta"]
-                    + ": %{theta}<br>"
-                    + labels["r"]
-                    + ": %{r:.2f}<br>"
-                    + "<extra></extra>",
-                )
-            )
 
-        fig.update_layout(
-            width=800,
-            height=800,
-            margin=dict(l=80, r=80, t=0, b=0),
-            modebar_add=["resetScale"],
-            showlegend=True,
-            polar=dict(radialaxis_range=[0, 1]),
-        )
+            if cls_cnt >= 5:
+                fig.add_trace(
+                    go.Scatterpolar(
+                        r=ap_per_class,
+                        theta=eval_result.mp.cat_names,
+                        name=trace_name,
+                        marker=dict(color=eval_result.color),
+                        hovertemplate=trace_name
+                        + "<br>"
+                        + labels["theta"]
+                        + ": %{theta}<br>"
+                        + labels["r"]
+                        + ": %{r:.2f}<br>"
+                        + "<extra></extra>",
+                    )
+                )
+            else:
+                fig.add_trace(
+                    go.Bar(
+                        x=eval_result.mp.cat_names,
+                        y=ap_per_class,
+                        name=trace_name,
+                        width=0.2,
+                        marker=dict(color=eval_result.color),
+                    )
+                )
+
+        if cls_cnt >= 5:
+            fig.update_layout(
+                width=800,
+                height=800,
+                margin=dict(l=80, r=80, t=0, b=0),
+                modebar_add=["resetScale"],
+                showlegend=True,
+                polar=dict(radialaxis_range=[0, 1]),
+            )
+        else:
+            fig.update_layout(
+                xaxis_title="Class",
+                yaxis_title="Average Precision",
+                yaxis=dict(range=[0, 1.1]),
+                barmode="group",
+            )
 
         return fig
 
     @property
     def markdown_widget(self) -> MarkdownWidget:
-        text: str = getattr(self.vis_texts, self.MARKDOWN_CLASS_AP).format(
+        template_name = self.MARKDOWN_CLASS_AP
+        if len(self.eval_results[0].mp.cat_names) < 5:
+            template_name = self.MARKDOWN_CLASS_AP_BAR
+        text: str = getattr(self.vis_texts, template_name).format(
             self.vis_texts.definitions.average_precision
         )
         return MarkdownWidget(
