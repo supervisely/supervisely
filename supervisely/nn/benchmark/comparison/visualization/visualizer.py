@@ -240,12 +240,11 @@ class ComparisonVisualizer:
             self.speedtest_present = True
             self.speedtest_md_intro = speedtest.md_intro
             self.speedtest_intro_table = speedtest.intro_table
-            self.speed_overview_md = speedtest.md_speed_overview
-            self.speed_md_overview_table = speedtest.md_speed_overview_table
-            self.speed_overview_table = speedtest.speed_overview_table
-            self.speed_md_fps_table = speedtest.md_fps_table
+            self.speed_inference_time_md = speedtest.inference_time_md
+            self.speed_inference_time_table = speedtest.inference_time_table
+            self.speed_fps_md = speedtest.fps_md
             self.speed_fps_table = speedtest.fps_table
-            self.speed_batch_inference = speedtest.md_batch_inference
+            self.speed_batch_inference_md = speedtest.batch_inference_md
             self.speed_chart = speedtest.chart
 
     def _create_layout(self):
@@ -309,12 +308,11 @@ class ComparisonVisualizer:
                     # SpeedTest
                     (1, self.speedtest_md_intro),
                     (0, self.speedtest_intro_table),
-                    (0, self.speed_overview_md),
-                    (0, self.speed_md_overview_table),
-                    (0, self.speed_overview_table),
-                    (0, self.speed_md_fps_table),
+                    (0, self.speed_inference_time_md),
+                    (0, self.speed_inference_time_table),
+                    (0, self.speed_fps_md),
                     (0, self.speed_fps_table),
-                    (0, self.speed_batch_inference),
+                    (0, self.speed_batch_inference_md),
                     (0, self.speed_chart),
                 ]
             )

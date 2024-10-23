@@ -412,11 +412,15 @@ empty = """### {}
 
 markdown_speedtest_intro = """## Inference Speed
 
-This is a speed test benchmark for this model. The models was tested with the following configurations:
+This is a speed test benchmark for compared models. Models was tested with the following configurations:
 """
 
-markdown_speedtest_overview = """
-The table below shows the speed test results. For each test, the time taken to process one batch of images is shown, as well as the model's throughput (i.e, the number of images processed per second, or FPS). Results are averaged across **{}** iterations.
+markdown_speedtest_overview_ms = """### Latency (Inference Time)
+The table below shows the speed test results. For each test, the time taken to process one batch of images is shown. Results are averaged across **{}** iterations.
+"""
+
+markdown_speedtest_overview_fps = """### Frames per Second (FPS)
+The table below shows the speed test results. For each test, the number of frames processed per second is shown. Results are averaged across **{}** iterations.
 """
 
 markdown_batch_inference = """

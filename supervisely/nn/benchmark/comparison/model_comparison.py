@@ -8,6 +8,7 @@ from supervisely.nn.benchmark.comparison.visualization.visualizer import (
     ComparisonVisualizer,
 )
 from supervisely.task.progress import tqdm_sly
+import random
 
 
 class ModelComparison:
@@ -26,7 +27,8 @@ class ModelComparison:
         self.output_dir = self.base_dir + "/results"
         self.remote_eval_dirs = remote_eval_dirs
         self.evaluation_results: List[EvalResult] = []
-        colors = get_predefined_colors(len(remote_eval_dirs) * 5)[::-1]
+        colors = get_predefined_colors(len(remote_eval_dirs) * 5)
+        random.shuffle(colors)
         for i, eval_dir in enumerate(remote_eval_dirs):
             eval_result = EvalResult(eval_dir, self.eval_dir, self.api, self.progress)
             self.evaluation_results.append(eval_result)

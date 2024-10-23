@@ -10,6 +10,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
 from supervisely.nn.benchmark.comparison.visualization.widgets.chart.chart import (
     ChartWidget,
 )
+from supervisely.imaging.color import hex2rgb
 
 
 class Speedtest(BaseVisMetric):
@@ -100,20 +101,21 @@ class Speedtest(BaseVisMetric):
         )
 
     @property
-    def md_speed_overview(self) -> MarkdownWidget:
-        text = self.vis_texts.markdown_speedtest_overview.format(100)
+    def inference_time_md(self) -> MarkdownWidget:
+        text = self.vis_texts.markdown_speedtest_overview_ms.format(100)
         return MarkdownWidget(
-            name="speed_overview",
+            name="inference_time_md",
             title="Overview",
             text=text,
         )
 
     @property
-    def md_fps_table(self) -> MarkdownWidget:
+    def fps_md(self) -> MarkdownWidget:
+        text = self.vis_texts.markdown_speedtest_overview_fps.format(100)
         return MarkdownWidget(
-            name="fps_table",
+            name="fps_md",
             title="FPS Table",
-            text="### FPS",
+            text=text,
         )
 
     @property
@@ -176,15 +178,7 @@ class Speedtest(BaseVisMetric):
         )
 
     @property
-    def md_speed_overview_table(self) -> MarkdownWidget:
-        return MarkdownWidget(
-            name="speed_overview",
-            title="Overview",
-            text="### Inference speed",
-        )
-
-    @property
-    def speed_overview_table(self) -> TableWidget:
+    def inference_time_table(self) -> TableWidget:
         data = {}
         batch_sizes = set()
         for i, eval_result in enumerate(self.eval_results, 1):
@@ -232,14 +226,14 @@ class Speedtest(BaseVisMetric):
             "content": content,
         }
         return TableWidget(
-            name="speed_overview_table",
+            name="inference_time_md",
             data=data,
             show_header_controls=False,
             fix_columns=1,
         )
 
     @property
-    def md_batch_inference(self):
+    def batch_inference_md(self):
         return MarkdownWidget(
             name="batch_inference",
             title="Batch Inference",
@@ -255,9 +249,6 @@ class Speedtest(BaseVisMetric):
         from plotly.subplots import make_subplots  # pylint: disable=import-error
 
         fig = make_subplots(cols=2)
-
-        ms_color = "#e377c2"
-        fps_color = "#17becf"
 
         for eval_result in self.eval_results:
             if eval_result.speedtest_info is None:
@@ -278,18 +269,19 @@ class Speedtest(BaseVisMetric):
                 fps_line[batch_size] = fps
                 ms_std_line[batch_size] = round(std, 2)
 
+            error_color = "rgba(" + ",".join(map(str, hex2rgb(eval_result.color))) + ", 0.5)"
             fig.add_trace(
                 go.Scatter(
                     x=list(temp_res["ms"].keys()),
                     y=list(temp_res["ms"].values()),
                     name="Infrence time (ms)",
-                    line=dict(color=ms_color),
+                    line=dict(color=eval_result.color),
                     customdata=list(temp_res["ms_std"].values()),
                     error_y=dict(
                         type="data",
                         array=list(temp_res["ms_std"].values()),
                         visible=True,
-                        color="rgba(227, 119, 194, 0.7)",
+                        color=error_color,
                     ),
                     hovertemplate="Batch Size: %{x}<br>Time: %{y:.2f} ms<br> Standard deviation: %{customdata:.2f} ms<extra></extra>",
                 ),
@@ -301,14 +293,7 @@ class Speedtest(BaseVisMetric):
                     x=list(temp_res["fps"].keys()),
                     y=list(temp_res["fps"].values()),
                     name="FPS",
-                    line=dict(color=fps_color),
-                    # customdata=list(temp_res["fps_std"].values()),
-                    # error_y=dict(
-                    #     type="data",
-                    #     array=list(temp_res["fps_std"].values()),
-                    #     visible=True,
-                    #     color="rgba(23, 190, 207, 0.7)",
-                    # ),
+                    line=dict(color=eval_result.color),
                     hovertemplate="Batch Size: %{x}<br>FPS: %{y:.2f}<extra></extra>",  # <br> Standard deviation: %{customdata:.2f}<extra></extra>",
                 ),
                 col=2,
