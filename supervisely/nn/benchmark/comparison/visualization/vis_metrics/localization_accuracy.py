@@ -84,8 +84,8 @@ class LocalizationAccuracyIoU(BaseVisMetric):
 
         fig = go.Figure()
         nbins = 40
-        min_value = min([r.mp.ious.min() for r in self.eval_results])
-        x_range = np.linspace(min_value, 1, 500)
+        # min_value = min([r.mp.ious[0] for r in self.eval_results])
+        x_range = np.linspace(0.5, 1, 500)
         hist_data = [np.histogram(r.mp.ious, bins=nbins) for r in self.eval_results]
         bin_width = min([bin_edges[1] - bin_edges[0] for _, bin_edges in hist_data])
 
@@ -121,7 +121,6 @@ class LocalizationAccuracyIoU(BaseVisMetric):
             )
 
         fig.update_layout(
-            # title="IoU Distribution",
             xaxis_title="IoU",
             yaxis_title="Count",
         )
@@ -145,7 +144,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
             bargroupgap=0,
             dragmode=False,
             yaxis=dict(rangemode="tozero"),
-            xaxis=dict(range=[min_value, 1]),
+            xaxis=dict(range=[0.5, 1]),
             modebar=dict(
                 remove=[
                     "zoom2d",

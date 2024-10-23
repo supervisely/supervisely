@@ -159,6 +159,7 @@ class PrecisionRecallF1(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
+        classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
             model_name = f"[{i}] {eval_result.name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
@@ -168,7 +169,7 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["recall"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Recall",
-                    width=0.2 if len(sorted_by_f1) < 5 else None,
+                    width=0.2 if classes_cnt < 5 else None,
                     marker=dict(color=eval_result.color),
                 )
             )
@@ -177,6 +178,7 @@ class PrecisionRecallF1(BaseVisMetric):
             barmode="group",
             bargap=0.15,
             bargroupgap=0.05,
+            width=600 if classes_cnt < 5 else None,
         )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Recall", range=[0, 1])
@@ -214,6 +216,7 @@ class PrecisionRecallF1(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
+        classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
             model_name = f"[{i}] {eval_result.name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
@@ -223,7 +226,7 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["precision"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Precision",
-                    width=0.2 if len(sorted_by_f1) < 5 else None,
+                    width=0.2 if classes_cnt < 5 else None,
                     marker=dict(color=eval_result.color),
                 )
             )
@@ -232,6 +235,7 @@ class PrecisionRecallF1(BaseVisMetric):
             barmode="group",
             bargap=0.15,
             bargroupgap=0.05,
+            width=600 if classes_cnt < 5 else None,
         )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
@@ -241,6 +245,7 @@ class PrecisionRecallF1(BaseVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
+        classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
             model_name = f"[{i}] {eval_result.name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
@@ -250,7 +255,7 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["f1"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} F1-score",
-                    width=0.2 if len(sorted_by_f1) < 5 else None,
+                    width=0.2 if classes_cnt < 5 else None,
                     marker=dict(color=eval_result.color),
                 )
             )
@@ -259,6 +264,7 @@ class PrecisionRecallF1(BaseVisMetric):
             barmode="group",
             bargap=0.15,
             bargroupgap=0.05,
+            width=600 if classes_cnt < 5 else None,
         )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="F1-score", range=[0, 1])

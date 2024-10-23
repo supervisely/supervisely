@@ -375,10 +375,19 @@ Additionally, it provides a view of how predicted probabilities are distributed.
 Ideally, the green histogram (TP predictions) should have higher confidence scores and be shifted to the right, indicating that the model is sure about its correct predictions, and the red histogram (FP predictions) should have lower confidence scores and be shifted to the left.
 """
 
-markdown_class_ap = (
+markdown_class_ap_polar = (
     """## Average Precision by Class
 
 A quick visual comparison of the model performance across all classes. Each axis in the chart represents a different class, and the distance to the center indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class.
+
+"""
+    + clickable_label
+)
+
+markdown_class_ap_bar = (
+    """## Average Precision by Class
+
+A quick visual comparison of the model performance across all classes. Each bar in the chart represents a different class, and the height of the bar indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class.
 
 """
     + clickable_label
