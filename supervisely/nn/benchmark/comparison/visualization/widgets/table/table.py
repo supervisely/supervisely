@@ -18,6 +18,7 @@ class TableWidget(BaseWidget):
         show_header_controls: bool = True,
         main_column: Optional[str] = None,
         width: Optional[Union[int, str]] = None,
+        page_size: int = 10,
     ) -> None:
         super().__init__(name=name)
         self.data = data
@@ -32,6 +33,7 @@ class TableWidget(BaseWidget):
         elif isinstance(width, str):
             width = f"width: {width.rstrip('%')}%"
         self.width = width
+        self.page_size = page_size
 
         self.clickable = self.click_data is not None
 
@@ -65,6 +67,7 @@ class TableWidget(BaseWidget):
             "width": self.width or "",
             "data": "data",
             "command": "command",
+            "page_size": self.page_size,
         }
 
     def to_html(self) -> str:
@@ -83,6 +86,7 @@ class TableWidget(BaseWidget):
                     :actions="{
                     'init': {
                         'dataSource': '{{ init_data_source }}',
+                        'perPage': {{ page_size }},
                     },
                         {% if clickable %}
                     'chart-click': {
