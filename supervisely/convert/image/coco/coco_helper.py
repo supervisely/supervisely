@@ -7,7 +7,6 @@ from typing import List
 import cv2
 import numpy as np
 
-
 class HiddenCocoPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -37,9 +36,9 @@ from supervisely import (
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.geometry.graph import KeypointsTemplate
 from supervisely.imaging.color import generate_rgb
+from supervisely.convert.image.image_helper import validate_image_bounds
 
 conflict_classes = []
-
 
 # COCO Convert funcs
 def create_supervisely_annotation(
@@ -149,6 +148,7 @@ def create_supervisely_annotation(
                     Rectangle(y, x, y + h, x + w), obj_class_rectangle, binding_key=key
                 )
                 labels.append(rectangle)
+    labels = validate_image_bounds(labels, Rectangle.from_size(item.shape))
     return Annotation(item.shape, labels=labels, img_tags=imag_tags)
 
 

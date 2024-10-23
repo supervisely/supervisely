@@ -1,18 +1,18 @@
 import json
 import os
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from logging import Logger
 from pathlib import Path
 from threading import Lock, Thread
-from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import Any, Callable, Generator, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 from cacheout import Cache as CacheOut
-from cachetools import Cache, LRUCache, TTLCache, _Link
+from cachetools import Cache, LRUCache, TTLCache
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
@@ -83,7 +83,10 @@ class PersistentImageTTLCache(TTLCache):
             # pylint: disable=no-member
             link = self._TTLCache__getlink(key)
             # pylint: disable=no-member
-            link.expire = self._TTLCache__timer() + self._TTLCache__ttl
+            if hasattr(link, "expire"):
+                link.expire = self.timer() + self._TTLCache__ttl
+            else:
+                link.expires = self.timer() + self._TTLCache__ttl
         except KeyError:
             return
 
@@ -626,11 +629,11 @@ class InferenceImageCache:
                 pos_by_name[name] = pos
             elif return_images is True:
                 items.append((pos, name))
-        
+
         def get_one_image(item):
             pos, name = item
             return pos, self._cache.get_image(name)
-        
+
         if len(items) > 0:
             with ThreadPoolExecutor(min(64, len(items))) as executor:
                 for pos, image in executor.map(get_one_image, items):
