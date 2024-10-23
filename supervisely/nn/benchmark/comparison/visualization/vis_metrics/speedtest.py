@@ -113,7 +113,7 @@ class Speedtest(BaseVisMetric):
         return MarkdownWidget(
             name="fps_table",
             title="FPS Table",
-            text="### FPS Table",
+            text="### FPS",
         )
 
     @property
