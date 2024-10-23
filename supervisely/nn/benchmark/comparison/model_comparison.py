@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 
 from supervisely.api.api import Api
 from supervisely.app.widgets import SlyTqdm
+from supervisely.imaging.color import generate_rgb, rgb2hex, get_predefined_colors
 from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.visualizer import (
     ComparisonVisualizer,
@@ -25,10 +26,11 @@ class ModelComparison:
         self.output_dir = self.base_dir + "/results"
         self.remote_eval_dirs = remote_eval_dirs
         self.evaluation_results: List[EvalResult] = []
-        for eval_dir in remote_eval_dirs:
-            self.evaluation_results.append(
-                EvalResult(eval_dir, self.eval_dir, self.api, self.progress)
-            )
+        colors = get_predefined_colors(len(remote_eval_dirs) * 5)[::-1]
+        for i, eval_dir in enumerate(remote_eval_dirs):
+            eval_result = EvalResult(eval_dir, self.eval_dir, self.api, self.progress)
+            self.evaluation_results.append(eval_result)
+            eval_result.color = rgb2hex(colors[i])
 
         self.task_type = self.evaluation_results[0].inference_info.get("task_type")
         self._validate_eval_data()

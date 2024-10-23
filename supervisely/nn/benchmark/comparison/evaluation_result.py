@@ -69,6 +69,7 @@ class EvalResult:
         self.f1_optimal_conf: float = None
         self.click_data: ClickData = None
         self.comparison_data: Dict[int, ImageComparisonData] = {}
+        self.color = None
 
         self._gt_project_info = None
         self._gt_project_meta = None
