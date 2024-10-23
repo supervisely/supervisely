@@ -1,3 +1,5 @@
+import numpy as np
+
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
@@ -5,7 +7,7 @@ from supervisely.nn.benchmark.comparison.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
     MarkdownWidget,
-    NotificationWidget,
+    TableWidget,
 )
 from supervisely.nn.benchmark.cv_tasks import CVTask
 
@@ -38,12 +40,30 @@ class LocalizationAccuracyIoU(BaseVisMetric):
         )
 
     @property
-    def notification(self) -> NotificationWidget:
-        description = "<br>".join(
-            f"[{i+1}] {ev.name}: {ev.mp.base_metrics()['iou']:.2f}"
-            for i, ev in enumerate(self.eval_results)
+    def table_widget(self) -> TableWidget:
+        res = {}
+
+        columns = [" ", "Avg. IoU"]
+        res["content"] = []
+        for i, eval_result in enumerate(self.eval_results, 1):
+            value = round(eval_result.mp.base_metrics()["iou"], 2)
+            model_name = f"[{i}] {eval_result.name}"
+            row = [model_name, value]
+            dct = {
+                "row": row,
+                "id": model_name,
+                "items": row,
+            }
+            res["content"].append(dct)
+
+        columns_options = [{"disableSort": True}, {"disableSort": True}]
+
+        res["columns"] = columns
+        res["columnsOptions"] = columns_options
+
+        return TableWidget(
+            name="localization_accuracy_table", data=res, show_header_controls=False, fix_columns=1
         )
-        return NotificationWidget(name="notification_avg_iou", title="Avg. IoU", desc=description)
 
     @property
     def chart(self) -> ChartWidget:
@@ -59,18 +79,44 @@ class LocalizationAccuracyIoU(BaseVisMetric):
         return CollapseWidget(widgets=[inner_md])
 
     def get_figure(self):
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
+        from scipy.stats import gaussian_kde  # pylint: disable=import-error
 
         fig = go.Figure()
         nbins = 40
-        for i, eval_result in enumerate(self.eval_results):
+        min_value = min([r.mp.ious.min() for r in self.eval_results])
+        x_range = np.linspace(min_value, 1, 500)
+        hist_data = [np.histogram(r.mp.ious, bins=nbins) for r in self.eval_results]
+        bin_width = min([bin_edges[1] - bin_edges[0] for _, bin_edges in hist_data])
+
+        for i, (eval_result, (hist, bin_edges)) in enumerate(zip(self.eval_results, hist_data)):
             name = f"[{i+1}] {eval_result.name}"
+            kde = gaussian_kde(eval_result.mp.ious)
+            density = kde(x_range)
+
+            scaling_factor = len(eval_result.mp.ious) * bin_width
+            scaled_density = density * scaling_factor
+
             fig.add_trace(
-                go.Histogram(
-                    x=eval_result.mp.ious,
-                    nbinsx=nbins,
-                    name=name,
+                go.Bar(
+                    x=bin_edges[:-1],
+                    y=hist,
+                    width=bin_width,
+                    name=f"{name} (Bars)",
+                    offset=0,
+                    opacity=0.2,
                     hovertemplate=name + "<br>IoU: %{x:.2f}<br>Count: %{y}<extra></extra>",
+                    marker=dict(color=eval_result.color, line=dict(width=0)),
+                )
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x_range,
+                    y=scaled_density,
+                    name=f"{name} (KDE)",
+                    line=dict(color=eval_result.color, width=2),
+                    hovertemplate=name + "<br>IoU: %{x:.2f}<br>Count: %{y:.1f}<extra></extra>",
                 )
             )
 
@@ -92,15 +138,14 @@ class LocalizationAccuracyIoU(BaseVisMetric):
                 y1=y1,
                 line=dict(color="orange", width=2, dash="dash"),
             )
-            fig.add_annotation(
-                x=mean_iou,
-                y=y1,
-                text=f"[{i+1}] {eval_result.name}<br>Mean IoU: {mean_iou:.2f}",
-                showarrow=False,
-            )
 
         fig.update_layout(
+            barmode="overlay",
+            bargap=0,
+            bargroupgap=0,
             dragmode=False,
+            yaxis=dict(rangemode="tozero"),
+            xaxis=dict(range=[min_value, 1]),
             modebar=dict(
                 remove=[
                     "zoom2d",
