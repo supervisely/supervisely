@@ -27,11 +27,15 @@ class ExplorePredictions(BaseVisMetric):
     @property
     def explore_gallery(self) -> GalleryWidget:
         columns_number = len(self.eval_results) + 1
-        gallery = GalleryWidget(self.GALLERY_DIFFERENCE, columns_number=columns_number)
+        *data, min_conf = self._get_sample_data()
+        default_filters = [{"confidence": [min_conf, 1]}]
+        gallery = GalleryWidget(
+            self.GALLERY_DIFFERENCE, columns_number=columns_number, filters=default_filters
+        )
         gallery.add_image_left_header("Click to explore more")
         gallery.show_all_button = True
         gallery.set_project_meta(self.eval_results[0].gt_project_meta)
-        gallery.set_images(*self._get_sample_data())
+        gallery.set_images(*data)
         gallery.add_on_click(
             self.explore_modal_table.id, self.get_click_data_explore_all(), columns_number * 3
         )
@@ -46,6 +50,7 @@ class ExplorePredictions(BaseVisMetric):
         metas = [self.eval_results[0].gt_project_meta]
         skip_tags_filtering = []
         api = self.eval_results[0].api
+        min_conf = float("inf")
         for idx, eval_res in enumerate(self.eval_results):
             if idx == 0:
                 dataset_info = api.dataset.get_list(eval_res.gt_project_id)[0]
@@ -63,10 +68,11 @@ class ExplorePredictions(BaseVisMetric):
             anns = eval_res.api.annotation.download_batch(dataset_info.id, images_ids)
             annotations.append(anns)
             skip_tags_filtering.append(False)
+            min_conf = min(min_conf, eval_res.f1_optimal_conf)
 
         images = list(i for x in zip(*images) for i in x)
         annotations = list(i for x in zip(*annotations) for i in x)
-        return images, annotations, metas, skip_tags_filtering
+        return images, annotations, metas, skip_tags_filtering, min_conf
 
     def get_click_data_explore_all(self) -> dict:
         res = {}
@@ -76,9 +82,7 @@ class ExplorePredictions(BaseVisMetric):
 
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"}]
         for i in range(len(self.eval_results)):
-            res["layoutTemplate"].append(
-                {"skipObjectTagsFiltering": True, "columnTitle": f"Model {i + 1}"}
-            )
+            res["layoutTemplate"].append({"columnTitle": f"Model {i + 1}"})
 
         click_data = res.setdefault("clickData", {})
         explore = click_data.setdefault("explore", {})
@@ -86,6 +90,7 @@ class ExplorePredictions(BaseVisMetric):
 
         images_ids = []
         api = self.eval_results[0].api
+        min_conf = float("inf")
         for idx, eval_res in enumerate(self.eval_results):
             if idx == 0:
                 dataset_infos = api.dataset.get_list(eval_res.gt_project_id)
@@ -102,7 +107,10 @@ class ExplorePredictions(BaseVisMetric):
                 current_images_ids.extend([image_info.id for image_info in image_infos])
             images_ids.append(current_images_ids)
 
+            min_conf = min(min_conf, eval_res.f1_optimal_conf)
+
         explore["imagesIds"] = list(i for x in zip(*images_ids) for i in x)
+        explore["filters"] = [{"type": "tag", "tagId": "confidence", "value": [min_conf, 1]}]
 
         return res
 

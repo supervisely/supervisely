@@ -140,6 +140,7 @@ class CalibrationScore(BaseVisMetric):
                     y=eval_result.dfsp_down["f1"],
                     mode="lines",
                     name=f"[{i+1}] {eval_result.name}",
+                    line=dict(color=eval_result.color),
                     hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>",
                 )
             )
@@ -155,16 +156,10 @@ class CalibrationScore(BaseVisMetric):
                     line=dict(color="gray", width=2, dash="dash"),
                     name=f"F1-optimal threshold ({eval_result.name})",
                 )
-                fig.add_annotation(
-                    x=eval_result.mp.f1_optimal_conf,
-                    y=eval_result.mp.best_f1 + 0.04,
-                    text=f"[{i+1}] {eval_result.name}<br>F1-optimal threshold: {eval_result.mp.f1_optimal_conf:.2f}",
-                    showarrow=False,
-                )
 
         # Update the layout
         fig.update_layout(
-            yaxis=dict(range=[0, 1], title="Value"),
+            yaxis=dict(range=[0, 1], title="Scores"),
             xaxis=dict(range=[0, 1], tick0=0, dtick=0.1, title="Confidence Score"),
             height=500,
             dragmode=False,
@@ -200,6 +195,7 @@ class CalibrationScore(BaseVisMetric):
                     y=true_probs,
                     mode="lines+markers",
                     name=f"[{i+1}] {eval_result.name}",
+                    line=dict(color=eval_result.color),
                     hovertemplate=f"{eval_result.name}<br>"
                     + "Confidence Score: %{x:.2f}<br>Fraction of True Positives: %{y:.2f}<extra></extra>",
                 )

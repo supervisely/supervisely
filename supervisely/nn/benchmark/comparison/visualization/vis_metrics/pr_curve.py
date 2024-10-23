@@ -1,5 +1,6 @@
 import numpy as np
 
+from supervisely.imaging.color import hex2rgb
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
@@ -23,7 +24,7 @@ class PrCurve(BaseVisMetric):
             self.vis_texts.definitions.f1_score
         )
         return MarkdownWidget(
-            name=self.MARKDOWN_PR_CURVE, title="Precision-Recall Curve", text=text
+            name=self.MARKDOWN_PR_CURVE, title="mAP & Precision-Recall Curve", text=text
         )
 
     @property
@@ -49,14 +50,6 @@ class PrCurve(BaseVisMetric):
             text=text_pr_curve,
         )
         return CollapseWidget(widgets=[markdown_pr_trade_offs, markdown_whatis_pr_curve])
-
-    @property
-    def notification_widget(self) -> NotificationWidget:
-        desc = "<br>".join(
-            f"{i} {ev.name}: {ev.mp.json_metrics()['mAP']:.2f}\n"
-            for i, ev in enumerate(self.eval_results, 1)
-        )
-        return NotificationWidget(name="notification_map", title="mAP", desc=desc)
 
     @property
     def table_widget(self) -> TableWidget:
@@ -105,12 +98,15 @@ class PrCurve(BaseVisMetric):
             pr_curve = np.nanmean(pr_curve, axis=-1)
 
             name = f"[{i}] {eval_result.name}"
+            color = ",".join(map(str, hex2rgb(eval_result.color))) + ",0.1"
             line = go.Scatter(
                 x=eval_result.mp.recThrs,
                 y=pr_curve,
                 mode="lines",
                 name=name,
                 fill="tozeroy",
+                fillcolor=f"rgba({color})",
+                line=dict(color=eval_result.color),
                 hovertemplate=name + "<br>Recall: %{x:.2f}<br>Precision: %{y:.2f}<extra></extra>",
                 showlegend=True,
             )
@@ -139,5 +135,7 @@ class PrCurve(BaseVisMetric):
                     "resetScale2d",
                 ]
             ),
+            xaxis_title="Recall",
+            yaxis_title="Precision",
         )
         return fig

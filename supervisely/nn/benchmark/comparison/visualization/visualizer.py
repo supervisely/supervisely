@@ -183,7 +183,6 @@ class ComparisonVisualizer:
         self.pr_curve_md = pr_curve.markdown_widget
         self.pr_curve_collapsed_widgets = pr_curve.collapsed_widget
         self.pr_curve_table = pr_curve.table_widget
-        self.pr_curve_notification = pr_curve.notification_widget
         self.pr_curve_chart = pr_curve.chart_widget
 
         # Average Precision by Class
@@ -218,9 +217,8 @@ class ComparisonVisualizer:
         loc_acc = LocalizationAccuracyIoU(self.vis_texts, self.comparison.evaluation_results)
         self.loc_acc_header_md = loc_acc.header_md
         self.loc_acc_iou_distribution_md = loc_acc.iou_distribution_md
-        self.loc_acc_notification = loc_acc.notification
         self.loc_acc_chart = loc_acc.chart
-        self.loc_acc_collapse_tip = loc_acc.collapse_tip
+        self.loc_acc_table = loc_acc.table_widget
 
         # Calibration Score
         cal_score = CalibrationScore(self.vis_texts, self.comparison.evaluation_results)
@@ -262,8 +260,6 @@ class ComparisonVisualizer:
             # Explore Predictions # TODO
             (1, self.explore_predictions_md),
             (0, self.explore_predictions_gallery),
-            # (0, self.explore_same_errors_md),
-            # (0, self.explore_same_errors_gallery),
             # Outcome Counts
             (1, self.outcome_counts_md),
             (0, self.outcome_counts_main),
@@ -273,7 +269,6 @@ class ComparisonVisualizer:
             (1, self.pr_curve_md),
             (0, self.pr_curve_collapsed_widgets),
             (0, self.pr_curve_table),
-            (0, self.pr_curve_notification),
             (0, self.pr_curve_chart),
             # Average Precision by Class
             (1, self.avg_prec_by_class_md),
@@ -292,10 +287,9 @@ class ComparisonVisualizer:
             # Classification Accuracy # TODO
             # Localization Accuracy (IoU)
             (1, self.loc_acc_header_md),
-            (1, self.loc_acc_iou_distribution_md),
-            (0, self.loc_acc_notification),
+            (0, self.loc_acc_table),
+            (0, self.loc_acc_iou_distribution_md),
             (0, self.loc_acc_chart),
-            (0, self.loc_acc_collapse_tip),
             # Calibration Score
             (1, self.cal_score_md),
             (0, self.cal_score_md_2),

@@ -221,14 +221,14 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
     + clickable_label
 )
 
-markdown_PRF1 = """## Recall, Precision, F1-score
+markdown_PRF1 = """## Precision, Recall, F1-score
 
 This section compares Precision, Recall, and F1-score metrics. The first graph identifies imbalance between these metrics. On the next charts, you can see each metric separately, broken down by class.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 """
 
-markdown_pr_curve = """## Precision-Recall Curve
+markdown_pr_curve = """## mAP & Precision-Recall Curve
 
 Precision-Recall curve is an overall performance indicator. It helps to visually assess both precision and recall for all predictions made by the model on the whole dataset. This gives you an understanding of how precision changes as you attempt to increase recall, providing a view of **trade-offs between precision and recall** <abbr title="{}">(?)</abbr>. Ideally, a high-quality model will maintain strong precision as recall increases. This means that as you move from left to right on the curve, there should not be a significant drop in precision. Such a model is capable of finding many relevant instances, maintaining a high level of precision.
 """
@@ -321,7 +321,7 @@ This section analyzes <abbr title="{}">confidence scores</abbr> (or predicted pr
 markdown_what_is_calibration = """In some applications, it's crucial for a model not only to make accurate predictions but also to provide reliable **confidence levels**. A well-calibrated model aligns its confidence scores with the actual likelihood of predictions being correct. For example, if a model claims 90% confidence for predictions but they are correct only half the time, it is **overconfident**. Conversely, **underconfidence** occurs when a model assigns lower confidence scores than the actual likelihood of its predictions. In the context of autonomous driving, this might cause a vehicle to brake or slow down too frequently, reducing travel efficiency and potentially causing traffic issues."""
 markdown_calibration_score_2 = """To evaluate the calibration, we draw a <b>Reliability Diagram</b> and calculate <b>Expected Calibration Error</b> (ECE)."""
 
-markdown_reliability_diagram = """### Reliability Diagram
+markdown_reliability_diagram = """## Reliability Diagram
 
 Reliability diagram, also known as a Calibration curve, helps in understanding whether the confidence scores of detections accurately represent the true probability of a correct detection. A well-calibrated model means that when it predicts a detection with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
 """

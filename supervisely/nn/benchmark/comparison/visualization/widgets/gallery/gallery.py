@@ -32,7 +32,7 @@ class GalleryWidget(BaseWidget):
         self.show_all_button = False
         self.columns_number = columns_number
 
-        filters = filters or [{"confidence": [0.6, 1]}]
+        filters = filters # or [{"confidence": [0.6, 1]}]
         self._gallery = GridGalleryV2(
             columns_number=columns_number,
             annotations_opacity=0.4,

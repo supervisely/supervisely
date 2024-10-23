@@ -27,7 +27,7 @@ class AveragePrecisionByClass(BaseVisMetric):
                     r=ap_per_class,
                     theta=eval_result.mp.cat_names,
                     name=trace_name,
-                    fill="toself",
+                    marker=dict(color=eval_result.color),
                     hovertemplate=trace_name
                     + "<br>"
                     + labels["theta"]
@@ -44,6 +44,7 @@ class AveragePrecisionByClass(BaseVisMetric):
             margin=dict(l=80, r=80, t=0, b=0),
             modebar_add=["resetScale"],
             showlegend=True,
+            polar=dict(radialaxis_range=[0, 1]),
         )
 
         return fig

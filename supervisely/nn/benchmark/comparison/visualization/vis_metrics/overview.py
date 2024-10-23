@@ -108,6 +108,8 @@ class Overview(BaseVisMetric):
     def get_table_widget(self, latency, fps) -> TableWidget:
         res = {}
 
+        metric_renames_map = {"f1": "F1-score", "iou": "Average IoU", "mAP": "mAP"}
+
         columns = ["metrics"] + [
             f"[{i+1}] {eval_result.name}" for i, eval_result in enumerate(self.eval_results)
         ]
@@ -116,7 +118,11 @@ class Overview(BaseVisMetric):
         res["content"] = []
 
         for metric in all_metrics[0].keys():
-            row = [metric] + [round(metrics[metric], 2) for metrics in all_metrics]
+            if metric in metric_renames_map:
+                metric_name = metric_renames_map[metric]
+            else:
+                metric_name = metric.replace("_", " ").capitalize()
+            row = [metric_name] + [round(metrics[metric], 2) for metrics in all_metrics]
             dct = {
                 "row": row,
                 "id": metric,
@@ -215,8 +221,9 @@ class Overview(BaseVisMetric):
                 go.Scatterpolar(
                     r=r + [r[0]],
                     theta=theta + [theta[0]],
-                    fill="toself",
+                    # fill="toself",
                     name=name,
+                    marker=dict(color=eval_result.color),
                     hovertemplate=name + "<br>%{theta}: %{r:.2f}<extra></extra>",
                 )
             )

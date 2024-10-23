@@ -141,6 +141,8 @@ class PrecisionRecallF1(BaseVisMetric):
                     x=["Precision", "Recall", "F1-score"],
                     y=[precision, recall, f1],
                     name=model_name,
+                    width=0.2,
+                    marker=dict(color=eval_result.color),
                 )
             )
 
@@ -166,12 +168,18 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["recall"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Recall",
+                    width=0.2 if len(sorted_by_f1) < 5 else None,
+                    marker=dict(color=eval_result.color),
                 )
             )
 
-        fig.update_layout(barmode="group")
+        fig.update_layout(
+            barmode="group",
+            bargap=0.15,
+            bargroupgap=0.05,
+        )
         fig.update_xaxes(title_text="Class")
-        fig.update_yaxes(title_text="Value", range=[0, 1])
+        fig.update_yaxes(title_text="Recall", range=[0, 1])
         return fig
 
     def get_per_class_click_data(self):
@@ -215,12 +223,18 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["precision"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Precision",
+                    width=0.2 if len(sorted_by_f1) < 5 else None,
+                    marker=dict(color=eval_result.color),
                 )
             )
 
-        fig.update_layout(barmode="group")
+        fig.update_layout(
+            barmode="group",
+            bargap=0.15,
+            bargroupgap=0.05,
+        )
         fig.update_xaxes(title_text="Class")
-        fig.update_yaxes(title_text="Value", range=[0, 1])
+        fig.update_yaxes(title_text="Precision", range=[0, 1])
         return fig
 
     def get_f1_per_class_figure(self):
@@ -236,12 +250,18 @@ class PrecisionRecallF1(BaseVisMetric):
                     y=sorted_by_f1["f1"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} F1-score",
+                    width=0.2 if len(sorted_by_f1) < 5 else None,
+                    marker=dict(color=eval_result.color),
                 )
             )
 
-        fig.update_layout(barmode="group")
+        fig.update_layout(
+            barmode="group",
+            bargap=0.15,
+            bargroupgap=0.05,
+        )
         fig.update_xaxes(title_text="Class")
-        fig.update_yaxes(title_text="Value", range=[0, 1])
+        fig.update_yaxes(title_text="F1-score", range=[0, 1])
         return fig
 
     def get_click_data_main(self):
