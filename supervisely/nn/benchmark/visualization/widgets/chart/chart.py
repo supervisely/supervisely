@@ -5,7 +5,7 @@ from typing import Dict
 from jinja2 import Template
 
 from supervisely.io.fs import ensure_base_path
-from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
+from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class ChartWidget(BaseWidget):

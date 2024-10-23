@@ -1,6 +1,6 @@
 from typing import Dict
 
-from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
+from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class NotificationWidget(BaseWidget):

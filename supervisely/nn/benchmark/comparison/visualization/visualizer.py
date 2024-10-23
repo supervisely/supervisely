@@ -19,14 +19,14 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     PrecisionRecallF1,
     Speedtest,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets import (
+from supervisely.nn.benchmark.cv_tasks import CVTask
+from supervisely.nn.benchmark.visualization.widgets import (
     BaseWidget,
     ContainerWidget,
     GalleryWidget,
     MarkdownWidget,
     SidebarWidget,
 )
-from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.task.progress import tqdm_sly
 
 

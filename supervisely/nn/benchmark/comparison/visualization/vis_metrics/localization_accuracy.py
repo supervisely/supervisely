@@ -3,13 +3,13 @@ import numpy as np
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets import (
+from supervisely.nn.benchmark.cv_tasks import CVTask
+from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
     MarkdownWidget,
     TableWidget,
 )
-from supervisely.nn.benchmark.cv_tasks import CVTask
 
 
 class LocalizationAccuracyIoU(BaseVisMetric):

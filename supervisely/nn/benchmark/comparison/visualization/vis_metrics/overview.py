@@ -5,7 +5,7 @@ from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets import (
+from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
     TableWidget,

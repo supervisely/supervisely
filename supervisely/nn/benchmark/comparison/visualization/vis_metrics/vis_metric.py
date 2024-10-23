@@ -1,7 +1,7 @@
 from typing import List
 
 from supervisely.nn.benchmark.comparison.evaluation_result import EvalResult
-from supervisely.nn.benchmark.comparison.visualization.widgets import GalleryWidget
+from supervisely.nn.benchmark.visualization.widgets import GalleryWidget
 
 
 class BaseVisMetric:

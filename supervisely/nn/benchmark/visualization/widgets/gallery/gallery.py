@@ -8,7 +8,7 @@ from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.widgets import GridGalleryV2
 from supervisely.io.fs import ensure_base_path
-from supervisely.nn.benchmark.comparison.visualization.widgets.widget import BaseWidget
+from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -32,7 +32,7 @@ class GalleryWidget(BaseWidget):
         self.show_all_button = False
         self.columns_number = columns_number
 
-        filters = filters # or [{"confidence": [0.6, 1]}]
+        filters = filters  # or [{"confidence": [0.6, 1]}]
         self._gallery = GridGalleryV2(
             columns_number=columns_number,
             annotations_opacity=0.4,

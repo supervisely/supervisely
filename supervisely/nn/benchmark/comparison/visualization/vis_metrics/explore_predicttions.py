@@ -5,10 +5,7 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets import (
-    GalleryWidget,
-    MarkdownWidget,
-)
+from supervisely.nn.benchmark.visualization.widgets import GalleryWidget, MarkdownWidget
 from supervisely.project.project_meta import ProjectMeta
 
 

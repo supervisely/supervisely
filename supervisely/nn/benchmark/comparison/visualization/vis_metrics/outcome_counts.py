@@ -6,7 +6,7 @@ import numpy as np
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets import ChartWidget
+from supervisely.nn.benchmark.visualization.widgets import ChartWidget
 from supervisely.nn.task_type import TaskType
 
 

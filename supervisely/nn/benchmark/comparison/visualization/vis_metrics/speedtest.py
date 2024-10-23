@@ -1,16 +1,14 @@
 from typing import List, Union
 
+from supervisely.imaging.color import hex2rgb
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets import (
+from supervisely.nn.benchmark.visualization.widgets import (
+    ChartWidget,
     MarkdownWidget,
     TableWidget,
 )
-from supervisely.nn.benchmark.comparison.visualization.widgets.chart.chart import (
-    ChartWidget,
-)
-from supervisely.imaging.color import hex2rgb
 
 
 class Speedtest(BaseVisMetric):
