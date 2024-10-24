@@ -1,7 +1,7 @@
 import datetime
-import importlib
 from pathlib import Path
 
+import supervisely.nn.benchmark.comparison.visualization.text_templates as vis_texts
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
@@ -13,7 +13,6 @@ from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
     PrecisionRecallF1,
     Speedtest,
 )
-from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
@@ -21,22 +20,13 @@ from supervisely.nn.benchmark.visualization.widgets import (
     MarkdownWidget,
     SidebarWidget,
 )
-from supervisely.task.progress import tqdm_sly
 
 
 class ComparisonVisualizer:
     def __init__(self, comparison):
         self.comparison = comparison
         self.api = comparison.api
-        self.vis_texts = None
-        if self.comparison.task_type == CVTask.OBJECT_DETECTION:
-            import supervisely.nn.benchmark.comparison.visualization.vis_metrics.text_templates as vis_texts  # noqa
-
-            self.vis_texts = vis_texts
-        else:
-            self.vis_texts = importlib.import_module(
-                "supervisely.nn.benchmark.comparison.visualization.vis_metrics.text_templates"
-            )  # TODO: change for other task types
+        self.vis_texts = vis_texts
 
         self._create_widgets()
         layout = self._create_layout()
@@ -71,8 +61,7 @@ class ComparisonVisualizer:
         )
         self.overview_chart = overview.chart_widget
 
-        # TODO: Explore Predictions
-        columns_number = len(self.comparison.evaluation_results) + 1
+        columns_number = len(self.comparison.evaluation_results) + 1  # +1 for GT
         self.explore_predictions_modal_gallery = self._create_explore_modal_table(columns_number)
         explore_predictions = ExplorePredictions(
             self.vis_texts,
@@ -81,8 +70,6 @@ class ComparisonVisualizer:
         )
         self.explore_predictions_md = explore_predictions.difference_predictions_md
         self.explore_predictions_gallery = explore_predictions.explore_gallery
-        # self.explore_same_errors_md = explore_predictions.same_errors_md
-        # self.explore_same_errors_gallery = explore_predictions.same_errors_gallery
 
         # Outcome Counts
         outcome_counts = OutcomeCounts(
@@ -173,7 +160,7 @@ class ComparisonVisualizer:
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
             (0, self.overview_chart),
-            # Explore Predictions # TODO
+            # Explore Predictions
             (1, self.explore_predictions_md),
             (0, self.explore_predictions_gallery),
             # Outcome Counts

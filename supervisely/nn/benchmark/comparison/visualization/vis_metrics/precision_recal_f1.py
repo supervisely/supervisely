@@ -45,7 +45,7 @@ class PrecisionRecallF1(BaseVisMetric):
 
     @property
     def chart_main_widget(self) -> ChartWidget:
-        chart = ChartWidget(name="chart_pr_curve", figure=self.get_main_figure())
+        chart = ChartWidget(name="chart_PRF1", figure=self.get_main_figure())
         chart.set_click_data(
             gallery_id=self.explore_modal_table.id,
             click_data=self.get_click_data_main(),
