@@ -21,22 +21,22 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 
-class ImageComparisonData:
-    def __init__(
-        self,
-        gt_image_info: ImageInfo = None,
-        pred_image_info: ImageInfo = None,
-        diff_image_info: ImageInfo = None,
-        gt_annotation: Annotation = None,
-        pred_annotation: Annotation = None,
-        diff_annotation: Annotation = None,
-    ):
-        self.gt_image_info = gt_image_info
-        self.pred_image_info = pred_image_info
-        self.diff_image_info = diff_image_info
-        self.gt_annotation = gt_annotation
-        self.pred_annotation = pred_annotation
-        self.diff_annotation = diff_annotation
+# class ImageComparisonData:
+#     def __init__(
+#         self,
+#         gt_image_info: ImageInfo = None,
+#         pred_image_info: ImageInfo = None,
+#         diff_image_info: ImageInfo = None,
+#         gt_annotation: Annotation = None,
+#         pred_annotation: Annotation = None,
+#         diff_annotation: Annotation = None,
+#     ):
+#         self.gt_image_info = gt_image_info
+#         self.pred_image_info = pred_image_info
+#         self.diff_image_info = diff_image_info
+#         self.gt_annotation = gt_annotation
+#         self.pred_annotation = pred_annotation
+#         self.diff_annotation = diff_annotation
 
 
 class EvalResult:
@@ -68,7 +68,7 @@ class EvalResult:
         self.dfsp_down: pd.DataFrame = None
         self.f1_optimal_conf: float = None
         self.click_data: ClickData = None
-        self.comparison_data: Dict[int, ImageComparisonData] = {}
+        # self.comparison_data: Dict[int, ImageComparisonData] = {}
         self.color = None
 
         self._gt_project_info = None
@@ -169,22 +169,22 @@ class EvalResult:
                 self.team_id, self.eval_dir, self.local_dir, progress_cb=pbar.update
             )
 
-    def _load_projects(self):
-        projects_dir = Path(self.local_dir, "projects")
-        items_total = self.gt_images_ids
-        if items_total is None:
-            items_total = sum(self.gt_dataset_infos, key=lambda x: x.items_count)
-        with self.progress(
-            message=f"Downloading GT project {self.gt_project_info.name} and datasets",
-            total=items_total,
-        ) as pbar:
-            download_project(
-                self.api,
-                self.gt_project_info.id,
-                str(projects_dir),
-                dataset_ids=self.gt_dataset_ids,
-                progress_cb=pbar.update,
-            )
+    # def _load_projects(self):
+    #     projects_dir = Path(self.local_dir, "projects")
+    #     items_total = self.gt_images_ids
+    #     if items_total is None:
+    #         items_total = sum(self.gt_dataset_infos, key=lambda x: x.items_count)
+    #     with self.progress(
+    #         message=f"Downloading GT project {self.gt_project_info.name} and datasets",
+    #         total=items_total,
+    #     ) as pbar:
+    #         download_project(
+    #             self.api,
+    #             self.gt_project_info.id,
+    #             str(projects_dir),
+    #             dataset_ids=self.gt_dataset_ids,
+    #             progress_cb=pbar.update,
+    #         )
 
     def _read_eval_data(self):
         gt_path = str(Path(self.local_dir, "evaluation", "cocoGt.json"))
@@ -234,34 +234,34 @@ class EvalResult:
 
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
 
-    def _update_comparison_data(
-        self,
-        gt_image_id: int,
-        gt_image_info: ImageInfo = None,
-        pred_image_info: ImageInfo = None,
-        diff_image_info: ImageInfo = None,
-        gt_annotation: Annotation = None,
-        pred_annotation: Annotation = None,
-        diff_annotation: Annotation = None,
-    ):
-        comparison_data = self.comparison_data.get(gt_image_id, None)
-        if comparison_data is None:
-            self.comparison_data[gt_image_id] = ImageComparisonData(
-                gt_image_info=gt_image_info,
-                pred_image_info=pred_image_info,
-                diff_image_info=diff_image_info,
-                gt_annotation=gt_annotation,
-                pred_annotation=pred_annotation,
-                diff_annotation=diff_annotation,
-            )
-        else:
-            for attr, value in {
-                "gt_image_info": gt_image_info,
-                "pred_image_info": pred_image_info,
-                "diff_image_info": diff_image_info,
-                "gt_annotation": gt_annotation,
-                "pred_annotation": pred_annotation,
-                "diff_annotation": diff_annotation,
-            }.items():
-                if value is not None:
-                    setattr(comparison_data, attr, value)
+    # def _update_comparison_data(
+    #     self,
+    #     gt_image_id: int,
+    #     gt_image_info: ImageInfo = None,
+    #     pred_image_info: ImageInfo = None,
+    #     diff_image_info: ImageInfo = None,
+    #     gt_annotation: Annotation = None,
+    #     pred_annotation: Annotation = None,
+    #     diff_annotation: Annotation = None,
+    # ):
+    #     comparison_data = self.comparison_data.get(gt_image_id, None)
+    #     if comparison_data is None:
+    #         self.comparison_data[gt_image_id] = ImageComparisonData(
+    #             gt_image_info=gt_image_info,
+    #             pred_image_info=pred_image_info,
+    #             diff_image_info=diff_image_info,
+    #             gt_annotation=gt_annotation,
+    #             pred_annotation=pred_annotation,
+    #             diff_annotation=diff_annotation,
+    #         )
+    #     else:
+    #         for attr, value in {
+    #             "gt_image_info": gt_image_info,
+    #             "pred_image_info": pred_image_info,
+    #             "diff_image_info": diff_image_info,
+    #             "gt_annotation": gt_annotation,
+    #             "pred_annotation": pred_annotation,
+    #             "diff_annotation": diff_annotation,
+    #         }.items():
+    #             if value is not None:
+    #                 setattr(comparison_data, attr, value)
