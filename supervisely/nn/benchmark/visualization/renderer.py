@@ -79,7 +79,7 @@ class Renderer:
                 self.base_dir,
                 remote_dir,
                 change_name_if_conflict=True,
-                progress_size_cb=pbar.update,
+                progress_size_cb=pbar,
             )
         src = self.save_report_link(api, team_id, remote_dir)
         api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
