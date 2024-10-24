@@ -148,8 +148,8 @@ class MetricProvider:
         ap_custom_by_class = dict(zip(self.cat_names, ap_custom_by_class))
         return {
             "mAP": base["mAP"],
-            "AP50": self.coco_metrics.get("AP50", "-"),
-            "AP75": self.coco_metrics.get("AP75", "-"),
+            "AP50": self.coco_metrics.get("AP50"),
+            "AP75": self.coco_metrics.get("AP75"),
             f"AP{iou_name}": self.AP_custom(),
             "f1": base["f1"],
             "precision": base["precision"],
