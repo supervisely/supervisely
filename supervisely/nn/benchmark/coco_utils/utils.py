@@ -1,15 +1,10 @@
-from supervisely.io.json import load_json_file
-
-
-def read_coco_datasets(cocoGt, cocoDt):
+def read_coco_datasets(gt, dt):
     from pycocotools.coco import COCO  # pylint: disable=import-error
 
-    if isinstance(cocoGt, str) and isinstance(cocoDt, str):
-        cocoGt = COCO(cocoGt)
-        cocoDt = COCO(cocoDt)
-        return cocoGt, cocoDt
-    gt = COCO()
-    gt.dataset = cocoGt
-    gt.createIndex()
-    dt = gt.loadRes(cocoDt["annotations"])
-    return gt, dt
+    if isinstance(gt, str) and isinstance(dt, str):
+        return COCO(gt), COCO(dt)
+    cocoGt = COCO()
+    cocoGt.dataset = gt
+    cocoGt.createIndex()
+    cocoDt = cocoGt.loadRes(dt["annotations"])
+    return cocoGt, cocoDt
