@@ -64,6 +64,7 @@ class AveragePrecisionByClass(BaseVisMetric):
                 yaxis_title="Average Precision",
                 yaxis=dict(range=[0, 1.1]),
                 barmode="group",
+                width=700,
             )
 
         return fig

@@ -131,6 +131,7 @@ class PrecisionRecallF1(BaseVisMetric):
 
         fig = go.Figure()
 
+        classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
             precision = eval_result.mp.json_metrics()["precision"]
             recall = eval_result.mp.json_metrics()["recall"]
@@ -141,7 +142,7 @@ class PrecisionRecallF1(BaseVisMetric):
                     x=["Precision", "Recall", "F1-score"],
                     y=[precision, recall, f1],
                     name=model_name,
-                    width=0.2,
+                    width=0.2 if classes_cnt >= 5 else None,
                     marker=dict(color=eval_result.color),
                 )
             )
@@ -151,6 +152,7 @@ class PrecisionRecallF1(BaseVisMetric):
             xaxis_title="Metric",
             yaxis_title="Value",
             yaxis=dict(range=[0, 1.1]),
+            width=700 if classes_cnt < 5 else None,
         )
 
         return fig
@@ -178,7 +180,7 @@ class PrecisionRecallF1(BaseVisMetric):
             barmode="group",
             bargap=0.15,
             bargroupgap=0.05,
-            width=600 if classes_cnt < 5 else None,
+            width=700 if classes_cnt < 5 else None,
         )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Recall", range=[0, 1])
@@ -235,7 +237,7 @@ class PrecisionRecallF1(BaseVisMetric):
             barmode="group",
             bargap=0.15,
             bargroupgap=0.05,
-            width=600 if classes_cnt < 5 else None,
+            width=700 if classes_cnt < 5 else None,
         )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
@@ -264,7 +266,7 @@ class PrecisionRecallF1(BaseVisMetric):
             barmode="group",
             bargap=0.15,
             bargroupgap=0.05,
-            width=600 if classes_cnt < 5 else None,
+            width=700 if classes_cnt < 5 else None,
         )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="F1-score", range=[0, 1])
