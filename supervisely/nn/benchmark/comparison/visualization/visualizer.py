@@ -22,7 +22,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class ComparisonVisualizer:
+class DetectionComparisonVisualizer:
     def __init__(self, comparison):
         self.comparison = comparison
         self.api = comparison.api

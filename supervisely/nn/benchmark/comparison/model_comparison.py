@@ -6,7 +6,7 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import SlyTqdm
 from supervisely.imaging.color import get_predefined_colors, rgb2hex
 from supervisely.nn.benchmark.comparison.visualization.visualizer import (
-    ComparisonVisualizer,
+    DetectionComparisonVisualizer,
 )
 from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.task.progress import tqdm_sly
@@ -38,7 +38,7 @@ class ModelComparison:
         self.task_type = self.evaluation_results[0].inference_info.get("task_type")
         self._validate_eval_data()
 
-        self.visualizer: ComparisonVisualizer = None
+        self.visualizer: DetectionComparisonVisualizer = None
         self.remote_dir = None
 
     def _validate_eval_data(self):
@@ -70,7 +70,7 @@ class ModelComparison:
 
     def visualize(self):
         if self.visualizer is None:
-            self.visualizer = ComparisonVisualizer(self)
+            self.visualizer = DetectionComparisonVisualizer(self)
         self.visualizer.visualize()
 
     def upload_results(self, team_id: int, remote_dir: str, progress=None) -> str:
