@@ -4,19 +4,16 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from supervisely.annotation.annotation import Annotation, ProjectMeta
+from supervisely.annotation.annotation import ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
-from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.env import team_id
 from supervisely.io.fs import dir_empty, mkdir
 from supervisely.io.json import load_json_file
-from supervisely.nn.benchmark.coco_utils import read_coco_datasets
 from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
-from supervisely.project.download import download as download_project
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
@@ -187,9 +184,11 @@ class EvalResult:
     #         )
 
     def _read_eval_data(self):
+        from pycocotools.coco import COCO  # pylint: disable=import-error
+
         gt_path = str(Path(self.local_dir, "evaluation", "cocoGt.json"))
         dt_path = str(Path(self.local_dir, "evaluation", "cocoDt.json"))
-        coco_gt, coco_dt = read_coco_datasets(gt_path, dt_path)
+        coco_gt, coco_dt = COCO(gt_path), COCO(dt_path)
         self.coco_gt = coco_gt
         self.coco_dt = coco_dt
         self.eval_data = pickle.load(
