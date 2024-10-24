@@ -13,7 +13,7 @@ class RTDETR(BaseTrainArtifacts):
         self._weights_folder = "weights"
         self._task_type = "object detection"
         self._weights_ext = ".pth"
-        self._config_file = None
+        self._config_file = "config.yml"
         self._pattern = re_compile(r"^/RT-DETR/[^/]+/\d+/?$")
 
     def get_task_id(self, artifacts_folder: str) -> str:
@@ -29,4 +29,4 @@ class RTDETR(BaseTrainArtifacts):
         return join(artifacts_folder, self._weights_folder)
 
     def get_config_path(self, artifacts_folder: str) -> str:
-        return None
+        return join(artifacts_folder, self._config_file)
