@@ -59,7 +59,8 @@ class PrCurve(BaseVisMetric):
         res["content"] = []
         for i, eval_result in enumerate(self.eval_results, 1):
             value_range = round(eval_result.mp.json_metrics()["mAP"], 2)
-            value_75 = round(eval_result.mp.json_metrics()["AP75"], 2)
+            value_75 = eval_result.mp.json_metrics()["AP75"]
+            value_75 = round(value_75, 2) if isinstance(value_75, float) else value_75
             model_name = f"[{i}] {eval_result.name}"
             row = [model_name, value_range, value_75]
             dct = {

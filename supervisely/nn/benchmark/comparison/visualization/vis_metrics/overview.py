@@ -124,7 +124,9 @@ class Overview(BaseVisMetric):
             if idx == 3 and not same_iou_thr:
                 continue
             metric_name = metric_renames_map.get(metric, metric)
-            row = [metric_name] + [round(m[metric], 2) for m in all_metrics]
+            values = [m[metric] for m in all_metrics]
+            values = [round(v, 2) if isinstance(v, float) else v for v in values]
+            row = [metric_name] + values
             dct = {"row": row, "id": metric, "items": row}
             res["content"].append(dct)
 

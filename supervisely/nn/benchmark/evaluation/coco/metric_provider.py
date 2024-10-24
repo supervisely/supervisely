@@ -89,7 +89,9 @@ class MetricProvider:
         self.coco_precision = coco_metrics["precision"]  # TODO: provide default params
         self.iouThrs = params["iouThrs"]
         self.recThrs = params["recThrs"]
-        self.iou_threshold = params["evaluation_params"]["iou_threshold"]
+
+        eval_params = params.get("evaluation_params", {})
+        self.iou_threshold = eval_params.get("iou_threshold", 0.5)
         self.iou_threshold_idx = np.searchsorted(self.iouThrs, self.iou_threshold)
 
     def calculate(self):
@@ -146,8 +148,8 @@ class MetricProvider:
         ap_custom_by_class = dict(zip(self.cat_names, ap_custom_by_class))
         return {
             "mAP": base["mAP"],
-            "AP50": self.coco_metrics["AP50"],
-            "AP75": self.coco_metrics["AP75"],
+            "AP50": self.coco_metrics.get("AP50", "-"),
+            "AP75": self.coco_metrics.get("AP75", "-"),
             f"AP{iou_name}": self.AP_custom(),
             "f1": base["f1"],
             "precision": base["precision"],
