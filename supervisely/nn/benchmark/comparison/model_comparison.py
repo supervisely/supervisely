@@ -5,7 +5,7 @@ from typing import List, Optional
 from supervisely.api.api import Api
 from supervisely.app.widgets import SlyTqdm
 from supervisely.imaging.color import get_predefined_colors, rgb2hex
-from supervisely.nn.benchmark.comparison.visualization.visualizer import (
+from supervisely.nn.benchmark.comparison.detection_visualization.visualizer import (
     DetectionComparisonVisualizer,
 )
 from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult

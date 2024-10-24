@@ -1,6 +1,6 @@
 import numpy as np
 
-from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
+from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
 from supervisely.nn.benchmark.cv_tasks import CVTask

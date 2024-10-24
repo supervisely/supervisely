@@ -1,8 +1,8 @@
 import datetime
 from pathlib import Path
 
-import supervisely.nn.benchmark.comparison.visualization.text_templates as vis_texts
-from supervisely.nn.benchmark.comparison.visualization.vis_metrics import (
+import supervisely.nn.benchmark.comparison.detection_visualization.text_templates as vis_texts
+from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
     ExplorePredictions,
