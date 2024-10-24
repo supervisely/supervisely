@@ -82,7 +82,7 @@ class Overview(BaseVisMetric):
             report_link = abs_url(f"/model-benchmark?id={report.id}")
 
             formats = [
-                checkpoint_name.replace("_", "\_"),
+                checkpoint_name,
                 model_name.replace("_", "\_"),
                 checkpoint_name.replace("_", "\_"),
                 eval_result.inference_info.get("architecture"),
@@ -125,7 +125,7 @@ class Overview(BaseVisMetric):
                 continue
             metric_name = metric_renames_map.get(metric, metric)
             values = [m[metric] for m in all_metrics]
-            values = [v if v is not None else "-" for v in values]
+            values = [v if v is not None else "―" for v in values]
             values = [round(v, 2) if isinstance(v, float) else v for v in values]
             row = [metric_name] + values
             dct = {"row": row, "id": metric, "items": row}

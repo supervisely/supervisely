@@ -143,7 +143,7 @@ class Speedtest(BaseVisMetric):
                     "subtitle": "imgs/sec",
                     "tooltip": "Frames (images) per second",
                     "postfix": "fps",
-                    "maxValue": max_fps,
+                    # "maxValue": max_fps,
                 }
             )
 
@@ -155,7 +155,7 @@ class Speedtest(BaseVisMetric):
                 if batch_size in data[i]:
                     row.append(data[i][batch_size])
                 else:
-                    row.append("N/A")
+                    row.append("―")
             content.append(
                 {
                     "row": row,
@@ -209,7 +209,7 @@ class Speedtest(BaseVisMetric):
                 if batch_size in data[i]:
                     row.append(data[i][batch_size])
                 else:
-                    row.append("N/A")
+                    row.append("―")
             content.append(
                 {
                     "row": row,
