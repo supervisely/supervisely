@@ -146,7 +146,7 @@ This chart is used to evaluate the overall model performance by breaking down al
 markdown_outcome_counts_diff = (
     """### Outcome Counts Differences
 
-This chart compares the outcome counts between different models. It helps to identify which model performs better in terms of <abbr title="{}">True Positives</abbr>, <abbr title="{}">False Positives</abbr>, and <abbr title="{}">False Negatives</abbr>. Common bars show the number of matches between models, while separated bars show unique outcomes for each model.
+This chart compares the outcomes between different models. It helps identify where the models agree and disagree in their predictions. The 'Common' bar represents cases where the models made identical predictions, regardless of whether those predictions were correct or incorrect. The individual model bars show instances where that particular model made unique predictions that differed from other models.
 
 """
     + clickable_label

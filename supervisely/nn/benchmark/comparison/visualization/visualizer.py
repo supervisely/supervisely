@@ -273,11 +273,7 @@ class DetectionComparisonVisualizer:
         return MarkdownWidget("markdown_outcome_counts", "Outcome Counts", text=outcome_counts_text)
 
     def _create_outcome_counts_diff_md(self) -> MarkdownWidget:
-        outcome_counts_text = self.vis_texts.markdown_outcome_counts_diff.format(
-            self.vis_texts.definitions.true_positives,
-            self.vis_texts.definitions.false_positives,
-            self.vis_texts.definitions.false_negatives,
-        )
+        outcome_counts_text = self.vis_texts.markdown_outcome_counts_diff
         return MarkdownWidget(
             "markdown_outcome_counts_diff", "Outcome Counts Differences", text=outcome_counts_text
         )
