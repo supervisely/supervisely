@@ -86,7 +86,7 @@ class MetricProvider:
         # eval_data
         self.matches = matches
         self.coco_mAP = coco_metrics["mAP"]
-        self.coco_precision = coco_metrics["precision"]  # TODO: provide default params
+        self.coco_precision = coco_metrics["precision"]
         self.iouThrs = params["iouThrs"]
         self.recThrs = params["recThrs"]
 
