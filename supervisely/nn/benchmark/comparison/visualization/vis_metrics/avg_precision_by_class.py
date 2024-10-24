@@ -1,4 +1,3 @@
-from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
@@ -10,7 +9,7 @@ class AveragePrecisionByClass(BaseVisMetric):
     MARKDOWN_CLASS_AP_BAR = "markdown_class_ap_bar"
 
     def get_figure(self):
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
         labels = dict(r="Average Precision", theta="Class")

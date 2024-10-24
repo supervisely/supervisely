@@ -118,7 +118,7 @@ class OutcomeCounts(BaseVisMetric):
         return fig
 
     def get_comparison_figure(self):  #  -> Optional[go.Figure]
-        import plotly.graph_objects as go
+        import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
 

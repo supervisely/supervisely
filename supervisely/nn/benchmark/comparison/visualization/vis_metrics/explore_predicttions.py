@@ -110,21 +110,3 @@ class ExplorePredictions(BaseVisMetric):
         explore["filters"] = [{"type": "tag", "tagId": "confidence", "value": [min_conf, 1]}]
 
         return res
-
-    @property
-    def same_errors_md(self) -> MarkdownWidget:
-        text = self.vis_texts.markdown_explore_same_errors
-        return MarkdownWidget(self.MARKDOWN_SAME_ERRORS, "Same Errors", text)
-
-    @property
-    def same_errors_gallery(self) -> GalleryWidget:
-        columns_number = len(self.eval_results) + 1
-        gallery = GalleryWidget(self.GALLERY_SAME_ERRORS, columns_number=columns_number)
-        # gallery.add_image_left_header("Click to explore more")
-        gallery.show_all_button = True
-        gallery.set_project_meta(self.eval_results[0].gt_project_meta)
-        gallery.set_images(*self._get_sample_data())
-        gallery.add_on_click(
-            self.explore_modal_table.id, self.get_click_data_explore_all(), columns_number * 3
-        )
-        return gallery
