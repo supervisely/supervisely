@@ -1,0 +1,16 @@
+<div style="margin-top: 20px; margin-bottom: 20px;">
+    <sly-iw-chart iw-widget-id="{{ widget_id }}" {% if switchable %}
+        v-show="state.{{ radio_group }} === '{{ switch_key }}'" {% endif %} :actions="{
+            'init': {
+                'dataSource': '{{ init_data_source }}',
+            },
+            {% if click_handled %}
+            'chart-click': {
+                'dataSource': '{{ chart_click_data_source }}',
+                {{ chart_click_extra }}
+                'galleryId': '{{ gallery_id }}',
+                'limit': 9
+            },
+            {% endif %}
+        }" :command="command" :data="data" />
+</div>
