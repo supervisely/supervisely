@@ -878,25 +878,13 @@ class FileApi(ModuleApiBase):
         #         api.task.set_fields(task_id, [{"field": "data.previewProgress", "payload": cur_percent}])
         #     last_percent = cur_percent
 
-        def _get_progress_callback(progress_cb: Callable):
-            last_read = 0
-
-            def _progress_callback(monitor: MultipartEncoderMonitor):
-                nonlocal last_read
-                diff = monitor.bytes_read - last_read
-                last_read = monitor.bytes_read
-                progress_cb(diff)
-
-            return _progress_callback
-
         if progress_cb is None:
             data = encoder
         else:
             try:
-                progress_cb = progress_cb.get_partial()
+                data = MultipartEncoderMonitor(encoder, progress_cb.get_partial())
             except AttributeError:
-                progress_cb = _get_progress_callback(progress_cb)
-            data = MultipartEncoderMonitor(encoder, progress_cb)
+                data = MultipartEncoderMonitor(encoder, progress_cb)
         resp = self._api.post("file-storage.bulk.upload?teamId={}".format(team_id), data)
         results = [self._convert_json_info(info_json) for info_json in resp.json()]
 
