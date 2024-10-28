@@ -196,6 +196,13 @@ class ImageConverter(BaseConverter):
         mime = magic.Magic(mime=True)
         mimetype = mime.from_file(path)
         file_ext = mimetypes.guess_extension(mimetype)
+        ext = get_file_ext(path)
+        logger.debug(f"""
+            File: {path}
+                Mimetype: {mimetype}
+                File extension: {ext}
+                Guessed extension: {file_ext}
+        """)
         if file_ext is None:
             return False
         else:
