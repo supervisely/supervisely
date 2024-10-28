@@ -25,6 +25,9 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         detected_ann_cnt = 0
         self._items = []
         meta = ProjectMeta()
+        import pkg_resources
+        logger.info(f"python-magic version: {pkg_resources.get_distribution("python-magic").version}")
+
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
