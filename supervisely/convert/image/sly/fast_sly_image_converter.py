@@ -27,7 +27,7 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         meta = ProjectMeta()
         import magic
         import pkg_resources
-        logger.info(f"python-magic version: {magic.__version__}")
+        logger.info(f"python-magic version: {magic.version}")
         logger.info(f"python-magic version: {pkg_resources.get_distribution('python-magic').version}")
 
         for root, _, files in os.walk(self._input_data):
