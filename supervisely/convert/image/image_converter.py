@@ -192,9 +192,10 @@ class ImageConverter(BaseConverter):
         mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
+        mimetypes.add_type("image/bmp", ".bmp")  # to extend types_map
 
-        mime = magic.Magic(mime=True)
-        mimetype = mime.from_file(path)
+        with open(path, "rb") as f:
+            mimetype = magic.from_buffer(f.read(), mime=True)
         file_ext = mimetypes.guess_extension(mimetype)
         if file_ext is None:
             return False
