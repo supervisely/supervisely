@@ -197,7 +197,7 @@ class ImageConverter(BaseConverter):
         mimetype = mime.from_file(path)
         file_ext = mimetypes.guess_extension(mimetype)
         ext = get_file_ext(path)
-        logger.debug(f"""
+        logger.info(f"""
             File: {path}
                 Mimetype: {mimetype}
                 File extension: {ext}
