@@ -25,7 +25,6 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         detected_ann_cnt = 0
         self._items = []
         meta = ProjectMeta()
-
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
