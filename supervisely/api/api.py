@@ -811,10 +811,11 @@ class Api:
 
     def _check_https_redirect(self):
         if self._require_https_redirect_check is True:
-            response = requests.get(self.server_address, allow_redirects=False)
-            if (300 <= response.status_code < 400) or (
-                response.headers.get("Location", "").startswith("https://")
-            ):
+            try:
+                response = requests.get(
+                    self.server_address.replace("http://", "https://"), allow_redirects=False
+                )
+                response.raise_for_status()
                 self.server_address = self.server_address.replace("http://", "https://")
                 msg = (
                     "You're using HTTP server address while the server requires HTTPS. "
@@ -822,8 +823,8 @@ class Api:
                     f"Consider updating your server address to {self.server_address}"
                 )
                 self.logger.warn(msg)
-
-            self._require_https_redirect_check = False
+            finally:
+                self._require_https_redirect_check = False
 
     @classmethod
     def from_credentials(
