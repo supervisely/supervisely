@@ -821,7 +821,9 @@ class Api:
         if self._require_https_redirect_check is True:
             try:
                 response = requests.get(
-                    self.server_address.replace("http://", "https://"), allow_redirects=False
+                    self.server_address.replace("http://", "https://"),
+                    allow_redirects=False,
+                    timeout=(5, 15),
                 )
                 response.raise_for_status()
                 self.server_address = self.server_address.replace("http://", "https://")
