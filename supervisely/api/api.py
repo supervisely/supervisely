@@ -297,14 +297,6 @@ class Api:
             raise ValueError(
                 "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
-        if token is None:
-            self.logger.warning(
-                "API_TOKEN env variable is undefined, some features may be disabled. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
-            )
-        elif len(token) != 128:
-            self.logger.warning(
-                "Invalid token. length != 128. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
-            )
 
         self.server_address = Api.normalize_server_address(server_address)
 
@@ -656,6 +648,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -719,6 +719,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
