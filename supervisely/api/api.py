@@ -831,6 +831,8 @@ class Api:
                     f"Consider updating your server address to {self.server_address}"
                 )
                 self.logger.warn(msg)
+            except:
+                pass
             finally:
                 self._require_https_redirect_check = False
 
