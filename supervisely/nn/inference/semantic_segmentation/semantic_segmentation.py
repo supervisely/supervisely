@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -24,16 +24,29 @@ class SemanticSegmentation(Inference):
     def _get_obj_class_shape(self):
         return Bitmap
 
-    def _create_label(self, dto: PredictionSegmentation):
+    def _create_label(self, dto: PredictionSegmentation, classes_whitelist: Optional[List[str]] = None):
+        class_names = self.get_classes()
+        if classes_whitelist is not None:
+            idx_to_remove = [
+                idx
+                for idx, _ in enumerate(class_names)
+                if class_names[idx] not in classes_whitelist
+            ]
+            if idx_to_remove:
+                logger.debug(
+                    f"Classes {idx_to_remove} are not in classes whitelist and will be set to background"
+                )
+                dto.mask[np.isin(dto.mask, idx_to_remove)] = 0
         image_classes = np.unique(dto.mask)
+
         labels = []
         for class_idx in image_classes:
             class_mask = dto.mask == class_idx
-            class_name = self.get_classes()[class_idx]
+            class_name = class_names[class_idx]
             obj_class = self.model_meta.get_obj_class(class_name)
             if obj_class is None:
                 raise KeyError(
-                    f"Class {class_name} not found in model classes {self.get_classes()}"
+                    f"Class {class_name} not found in model classes {class_names}"
                 )
             if not class_mask.any():  # skip empty masks
                 logger.debug(f"Mask of class {class_name} is empty and will be sklipped")
