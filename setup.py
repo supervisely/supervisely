@@ -276,6 +276,9 @@ setup(
             "scikit-learn",
             "plotly==5.22.0",
             "kaleido==0.2.1",
+            "ftfy==6.3.1",
+            "torch==1.13.0",
+            "torchvision==0.14.0",
         ],
         # legacy dependencies
         "plugins": [
