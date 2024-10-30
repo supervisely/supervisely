@@ -10,8 +10,9 @@ import supervisely as sly
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
 DATASET_ID = 98357
-save_path = "/home/ganpoweird/Work/supervisely/video/images/"
+save_path = "/home/ganpoweird/Work/test_images/"
 sly.fs.ensure_base_path(save_path)
+sly.fs.clean_dir(save_path)
 api = sly.Api.from_env()
 images = api.image.get_list(DATASET_ID)
 ids = [image.id for image in images]
@@ -86,7 +87,7 @@ def compare_main_dps():
 
 
 def main_bytes():
-    img_bytes = asyncio.run(api.image.download_bytes_img_async(ids[0]))
+    img_bytes = asyncio.run(api.image.download_bytes_one_async(ids[0]))
 
     with open(f"{save_path}{ids[0]}.png", "wb") as f:
         f.write(img_bytes)
@@ -94,7 +95,7 @@ def main_bytes():
 
 def main_n_bytes():
     loop = asyncio.get_event_loop()
-    img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids))
+    img_bytes_list = loop.run_until_complete(api.image.download_bytes_many_async(ids))
 
     for img_bytes, name in zip(img_bytes_list, names):
         with open(f"{save_path}{name}", "wb") as f:
@@ -106,9 +107,9 @@ if __name__ == "__main__":
         # main_dnp()  # to download and save images as numpy arrays
         # main_dp()  # to download and save images as files
         # main_dps()  # to download and save images as files (batch)
-        # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
+        compare_main_dps()  # to compare the time taken for downloading images as files (batch)
         # main_bytes() # to download and save image as bytes
-        main_n_bytes()  # to download and save images as bytes (batch)
+        # main_n_bytes()  # to download and save images as bytes (batch)
     except KeyboardInterrupt:
-        sly.logger("Stopped by user")
+        sly.logger.info("Stopped by user")
 set().discard
