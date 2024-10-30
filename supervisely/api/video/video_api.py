@@ -2418,9 +2418,6 @@ class VideoApi(RemoveableBulkModuleApi):
             semaphore = asyncio.Semaphore(10)
             await api.video.download_path_async(video_info.id, save_path, semaphore)
         """
-
-        downloaded_size = 0
-
         if range_start is not None or range_end is not None:
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
@@ -2441,7 +2438,6 @@ class VideoApi(RemoveableBulkModuleApi):
                     chunk_size=chunk_size,
                 ):
                     await fd.write(chunk)
-                    downloaded_size += len(chunk)
                     hash_to_check = hhash
             if check_hash:
                 if hash_to_check is not None:

@@ -3550,8 +3550,6 @@ class ImageApi(RemoveableBulkModuleApi):
             semaphore = asyncio.Semaphore(10)
             await api.image.download_path_async(img_info.id, save_path, semaphore)
         """
-        downloaded_size = 0
-
         if range_start is not None or range_end is not None:
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
@@ -3571,7 +3569,6 @@ class ImageApi(RemoveableBulkModuleApi):
                     headers=headers,
                 ):
                     await fd.write(chunk)
-                    downloaded_size += len(chunk)
                     hash_to_check = hhash
 
             if check_hash:
