@@ -1,17 +1,30 @@
 # coding: utf-8
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import os
 import urllib.parse
 from functools import partial
-from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
+import aiofiles
 from numerize.numerize import numerize
 from requests import Response
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 
 import supervisely.io.fs as sly_fs
 from supervisely._utils import (
@@ -31,6 +44,7 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
+    get_file_hash_async,
     get_file_name_with_ext,
     get_file_size,
     list_files,
@@ -2304,3 +2318,207 @@ class VideoApi(RemoveableBulkModuleApi):
         data = {ApiField.VIDEOS: videos_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("videos.update.links", data)
         return r.json()
+
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: dict = None,
+        chunk_size: int = 1024 * 1024,
+    ) -> AsyncGenerator:
+        """
+        Download Video with given ID asynchronously.
+
+        :param id: Video ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "videos.download"
+
+        json_body = {ApiField.ID: id}
+
+        if headers is None:
+            headers = self._api.headers.copy()
+        else:
+            headers.update(self._api.headers)
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+                chunk_size=chunk_size,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: dict = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+    ) -> None:
+        """
+        Downloads Video with given ID to local path.
+
+        :param id: Video ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Video.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+        :type check_hash: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_info = api.video.get_info_by_id(770918)
+            save_path = os.path.join("/path/to/save/", video_info.name)
+
+            semaphore = asyncio.Semaphore(10)
+            await api.video.download_path_async(video_info.id, save_path, semaphore)
+        """
+
+        downloaded_size = 0
+
+        if range_start is not None or range_end is not None:
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    range_start=range_start,
+                    range_end=range_end,
+                    headers=headers,
+                    chunk_size=chunk_size,
+                ):
+                    await fd.write(chunk)
+                    downloaded_size += len(chunk)
+                    hash_to_check = hhash
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_file_hash = await get_file_hash_async(path)
+                    if hash_to_check != downloaded_file_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of video with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        )
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        headers: dict = None,
+        show_progress: bool = True,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+    ) -> None:
+        """
+        Download Videos with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Video IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Videos.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param show_progress: If True, shows progress bar.
+        :type show_progress: bool, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded files.
+        :type check_hash: bool, optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            ids = [770914, 770915]
+            paths = ["/path/to/save/video1.mp4", "/path/to/save/video2.mp4"]
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(api.video.download_paths_async(ids, paths))
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+
+        tasks = []
+
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(
+                img_id,
+                img_path,
+                semaphore=semaphore,
+                headers=headers,
+                chunk_size=chunk_size,
+                check_hash=check_hash,
+            )
+
+            tasks.append(task)
+        if show_progress:
+            with tqdm_asyncio(total=len(tasks), desc="Downloading videos", unit="video") as pbar:
+                for f in asyncio.as_completed(tasks):
+                    await f
+                    pbar.update(1)
+        else:
+            await asyncio.gather(*tasks)
