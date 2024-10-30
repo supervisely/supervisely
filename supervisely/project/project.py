@@ -30,6 +30,7 @@ from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     copy_file,
     dir_empty,
+    file_exists,
     dir_exists,
     ensure_base_path,
     get_file_name_with_ext,
@@ -2047,7 +2048,11 @@ class Project:
 
                 seg_path = None
                 if inplace is False:
-                    dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    if file_exists(img_path):
+                        dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    else:
+                        # if local project has no images
+                        dst_dataset._add_ann_by_type(item_name, seg_ann)
                     seg_path = dst_dataset.get_seg_path(item_name)
                 else:
                     # replace existing annotation
