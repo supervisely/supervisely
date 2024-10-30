@@ -72,7 +72,7 @@ class Evaluator:
                 import cupy as np  # gpu-compatible numpy analogue
 
                 global numpy
-                import numpy
+                import numpy as numpy
             except:
                 import warnings
 
@@ -83,6 +83,9 @@ class Evaluator:
         else:
             GPU = False
             import numpy as np
+
+            global numpy
+            numpy = np
 
         self.class_names = class_names
         self.num_classes = len(self.class_names)
@@ -201,21 +204,28 @@ class Evaluator:
             )
             self.boundary_iou_union_counts = self.boundary_iou_union_counts.get()
 
-        final_result = Result.from_evaluator(self)
-        print(final_result)
+        result = Result.from_evaluator(self)
+        # print(result)
 
-        with open(f"{self.result_dir}/cell_img_names.json", "w") as file:
-            json.dump(self.cell_img_names, file)
+        # with open(f"{self.result_dir}/cell_img_names.json", "w") as file:
+        #     json.dump(self.cell_img_names, file)
 
         normalized_confusion_matrix = self.confusion_matrix / self.confusion_matrix.sum(
             axis=1, keepdims=True
         )
         normalized_confusion_matrix = np.round(normalized_confusion_matrix, 3)
-        np.save(f"{self.result_dir}/confusion_matrix.npy", normalized_confusion_matrix)
+        # np.save(f"{self.result_dir}/confusion_matrix.npy", normalized_confusion_matrix)
 
         image_metrics_df = pd.DataFrame(data=self.image_metrics, index=self.img_names)
-        image_metrics_df.to_csv(f"{self.result_dir}/per_image_metrics.csv", index=True)
+        # image_metrics_df.to_csv(f"{self.result_dir}/per_image_metrics.csv", index=True)
 
+        final_result = {
+            "base_metrics": result.dataframe.to_dict(),
+            "image_metrics": image_metrics_df.to_dict(),
+            "confusion_matrix": self.confusion_matrix.tolist(),
+            "normalized_confusion_matrix": normalized_confusion_matrix.tolist(),
+            "cell_img_names": self.cell_img_names,
+        }
         return final_result
 
     def evaluate_sample(self, pred, gt, img_name):

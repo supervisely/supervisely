@@ -89,7 +89,7 @@ class Result:
             # aggregate classes
             dataframe.loc["mean"] = dataframe.mean(axis=0)
 
-        dataframe.to_csv(f"{evaluator.result_dir}/result_df.csv", index=True)
+        # dataframe.to_csv(f"{evaluator.result_dir}/result_df.csv", index=True)
 
         return cls(
             class_names=evaluator.class_names,

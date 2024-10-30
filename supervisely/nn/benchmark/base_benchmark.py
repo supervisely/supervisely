@@ -75,9 +75,12 @@ class BaseBenchmark:
         batch_size: int = 16,
         cache_project_on_agent: bool = False,
     ):
-        self.session = self._init_model_session(model_session, inference_settings)
-        self._eval_inference_info = self._run_inference(
-            output_project_id, batch_size, cache_project_on_agent
+        self.run_inference(
+            model_session=model_session,
+            inference_settings=inference_settings,
+            output_project_id=output_project_id,
+            batch_size=batch_size,
+            cache_project_on_agent=cache_project_on_agent,
         )
         self.evaluate(self.dt_project_info.id)
         self._dump_eval_inference_info(self._eval_inference_info)
