@@ -1284,11 +1284,13 @@ class Api:
         retries: Optional[int] = None,
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
+        chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
         http2: Optional[bool] = False,
     ) -> AsyncGenerator:
         """
         Performs asynchronous streaming GET or POST request to server with given parameters.
+        Yield chunks of data and hash of the whole content to check integrity of the data stream.
 
         :param method: Method name for the request.
         :type method: str
@@ -1375,9 +1377,11 @@ class Api:
                             self._check_version()
                             Api._raise_for_status(resp)
 
+                        # received hash of the content to check integrity of the data stream
+                        hhash = resp.headers.get("x-content-checksum-sha256", None)
                         total_streamed = 0
-                        async for chunk in resp.aiter_raw(8192):
-                            yield chunk
+                        async for chunk in resp.aiter_raw(chunk_size):
+                            yield chunk, hhash
                             total_streamed += len(chunk)
 
                         if total_streamed != expected_size:
