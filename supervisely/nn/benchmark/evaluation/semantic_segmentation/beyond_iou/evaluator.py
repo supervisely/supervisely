@@ -201,8 +201,15 @@ class Evaluator:
             self.boundary_iou_intersection_counts = self.boundary_iou_intersection_counts.get()
             self.boundary_iou_union_counts = self.boundary_iou_union_counts.get()
 
-        result = SemSegmMetricProvider.from_evaluator(self)
-        # print(result)
+        result = self.calculate_error_metrics()
+        normalized_confusion_matrix = self.confusion_matrix / self.confusion_matrix.sum(
+            axis=1, keepdims=True
+        )
+        normalized_confusion_matrix = np.round(normalized_confusion_matrix, 3)
+        return {
+            "result": result,
+            "confusion_matrix": self.confusion_matrix,
+        }
 
         # with open(f"{self.result_dir}/cell_img_names.json", "w") as file:
         #     json.dump(self.cell_img_names, file)
@@ -216,14 +223,14 @@ class Evaluator:
         image_metrics_df = pd.DataFrame(data=self.image_metrics, index=self.img_names)
         # image_metrics_df.to_csv(f"{self.result_dir}/per_image_metrics.csv", index=True)
 
-        final_result = {
-            "base_metrics": result.dataframe.to_dict(),
-            "image_metrics": image_metrics_df.to_dict(),
-            "confusion_matrix": self.confusion_matrix.tolist(),
-            "normalized_confusion_matrix": normalized_confusion_matrix.tolist(),
-            "cell_img_names": self.cell_img_names,
-        }
-        return final_result
+        # final_result = {
+        #     "result": result.dataframe.to_dict(),
+        #     "image_metrics": image_metrics_df.to_dict(),
+        #     "confusion_matrix": self.confusion_matrix.tolist(),
+        #     "normalized_confusion_matrix": normalized_confusion_matrix.tolist(),
+        #     "cell_img_names": self.cell_img_names,
+        # }
+        # return final_result
 
     def evaluate_sample(self, pred, gt, img_name):
         """Runs the analysis for a single sample.
@@ -632,3 +639,59 @@ class Evaluator:
             cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_errors.png"), error_map)
         print(f"Saved visualization to {output_dir}.")
         return
+
+    def calculate_error_metrics(self):
+        dataframe = pd.DataFrame(index=self.class_names)
+        for error_name, error_counts in self.results.items():
+            if error_name == "unassigned":
+                assert (error_counts == 0).all()
+                continue
+            dataframe[error_name] = error_counts
+
+        dataframe["FP"] = (
+            dataframe["FP_boundary"] + dataframe["FP_extent"] + dataframe["FP_segment"]
+        )
+        dataframe["FN"] = (
+            dataframe["FN_boundary"] + dataframe["FN_extent"] + dataframe["FN_segment"]
+        )
+        dataframe["E_boundary"] = dataframe["FP_boundary"] + dataframe["FN_boundary"]
+        dataframe["E_extent"] = dataframe["FP_extent"] + dataframe["FN_extent"]
+        dataframe["E_segment"] = dataframe["FP_segment"] + dataframe["FN_segment"]
+
+        union = dataframe["TP"] + dataframe["FP"] + dataframe["FN"]
+        dataframe["IoU"] = dataframe["TP"] / union
+        dataframe["precision"] = dataframe["TP"] / (dataframe["TP"] + dataframe["FP"])
+        dataframe["recall"] = dataframe["TP"] / (dataframe["TP"] + dataframe["FN"])
+        dataframe["F1_score"] = 2 / (1.0 / dataframe["precision"] + 1.0 / dataframe["recall"])
+
+        dataframe["FP_boundary_oU"] = dataframe["FP_boundary"] / union
+        dataframe["FN_boundary_oU"] = dataframe["FN_boundary"] / union
+        dataframe["E_boundary_oU"] = dataframe["E_boundary"] / union
+
+        dataframe["FP_extent_oU"] = dataframe["FP_extent"] / union
+        dataframe["FN_extent_oU"] = dataframe["FN_extent"] / union
+        dataframe["E_extent_oU"] = dataframe["E_extent"] / union
+
+        dataframe["FP_segment_oU"] = dataframe["FP_segment"] / union
+        dataframe["FN_segment_oU"] = dataframe["FN_segment"] / union
+        dataframe["E_segment_oU"] = dataframe["E_segment"] / union
+
+        dataframe["E_boundary_oU_renormed"] = dataframe["E_boundary"] / (
+            dataframe["TP"] + dataframe["E_boundary"]
+        )
+        dataframe["E_extent_oU_renormed"] = dataframe["E_extent"] / (
+            dataframe["TP"] + dataframe["E_boundary"] + dataframe["E_extent"]
+        )
+        dataframe["E_segment_oU_renormed"] = dataframe["E_segment_oU"]
+
+        with np.errstate(invalid="ignore"):  # avoid warnings for zero-division
+            # boundary IoU
+            dataframe["boundary_IoU"] = (
+                self.boundary_iou_intersection_counts / self.boundary_iou_union_counts
+            )
+            # aggregate classes
+            dataframe.loc["mean"] = dataframe.mean(axis=0)
+
+        # dataframe.to_csv(f"{evaluator.result_dir}/result_df.csv", index=True)
+
+        return dataframe

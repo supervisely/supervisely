@@ -10,7 +10,7 @@ from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.table_
 )
 
 
-class SemSegmMetricProvider:
+class SemSegmMetricProvider: # ! old class
     def __init__(
         self,
         class_names: List[str],

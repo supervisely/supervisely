@@ -15,21 +15,21 @@ class ObjectDetectionEvalResult(BaseEvalResult):
     def _read_eval_data(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        gt_path = str(Path(self.local_dir, "evaluation", "cocoGt.json"))
-        dt_path = str(Path(self.local_dir, "evaluation", "cocoDt.json"))
+        gt_path = str(Path(self.directory, "evaluation", "cocoGt.json"))
+        dt_path = str(Path(self.directory, "evaluation", "cocoDt.json"))
         coco_gt, coco_dt = COCO(gt_path), COCO(dt_path)
         self.coco_gt = coco_gt
         self.coco_dt = coco_dt
         self.eval_data = pickle.load(
-            open(Path(self.local_dir, "evaluation", "eval_data.pkl"), "rb")
+            open(Path(self.directory, "evaluation", "eval_data.pkl"), "rb")
         )
         self.inference_info = load_json_file(
-            Path(self.local_dir, "evaluation", "inference_info.json")
+            Path(self.directory, "evaluation", "inference_info.json")
         )
-        speedtest_info_path = Path(self.local_dir, "speedtest", "speedtest.json")
+        speedtest_info_path = Path(self.directory, "speedtest", "speedtest.json")
         if speedtest_info_path.exists():
             self.speedtest_info = load_json_file(
-                Path(self.local_dir, "speedtest", "speedtest.json")
+                Path(self.directory, "speedtest", "speedtest.json")
             )
 
         self.mp = MetricProvider(
