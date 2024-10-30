@@ -23,30 +23,6 @@ from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.loader
 from supervisely.project.project import Project
 from supervisely.sly_logger import logger
 
-# # function for downloading project from supervisely platform to local storage
-# def download_projects(api, gt_project_id, pred_project_id, dest_dir):
-#     project_ids = [gt_project_id, pred_project_id]
-#     project_types = ["ground truth", "predicted"]
-#     for project_id, project_type in zip(project_ids, project_types):
-#         if project_type == "ground truth":
-#             project_dest_dir = f"{dest_dir}/gt/{gt_project_id}"
-#         else:
-#             project_dest_dir = f"{dest_dir}/pred/{pred_project_id}"
-#         if os.path.exists(project_dest_dir):
-#             sly.logger.info(f"Project already exists in {project_dest_dir} directory")
-#         else:
-#             project_info = api.project.get_info_by_id(project_id)
-#             n_images = project_info.items_count
-#             pbar = tqdm(desc=f"Downloading {project_type} project...", total=n_images)
-#             Project.download(
-#                 api=api,
-#                 project_id=project_id,
-#                 dest_dir=project_dest_dir,
-#                 progress_cb=pbar,
-#             )
-#             sly.logger.info(f"Successfully downloaded {project_type} project")
-
-
 # function for data preprocessing
 def prepare_segmentation_data(source_project_dir, output_project_dir, palette):
     if os.path.exists(output_project_dir):
@@ -84,37 +60,6 @@ def prepare_segmentation_data(source_project_dir, output_project_dir, palette):
                 cv2.imwrite(os.path.join(output_project_dir, mask_file), result)
 
         shutil.rmtree(temp_project_seg_dir)
-
-
-# function for calculating performance metrics
-def calculate_metrics(
-    gt_dir,
-    pred_dir,
-    boundary_width,
-    boundary_iou_d,
-    num_workers,
-    class_names,
-    result_dir,
-):
-    if boundary_width % 1 == 0:
-        boundary_width = int(boundary_width)
-    evaluator = Evaluator(
-        class_names=class_names,
-        boundary_width=boundary_width,
-        boundary_implementation="exact",
-        boundary_iou_d=boundary_iou_d,
-        result_dir=result_dir,
-    )
-    loader = build_segmentation_loader(
-        pred_dir=pred_dir,
-        gt_dir=gt_dir,
-        gt_label_map=None,
-        pred_label_map=None,
-        num_workers=num_workers,
-    )
-    eval_data = evaluator.evaluate(loader)
-    return eval_data
-    # result.make_table(path=f"{result_dir}/table.md")
 
 
 # # function for getting image ids for each cell of confusion matrix

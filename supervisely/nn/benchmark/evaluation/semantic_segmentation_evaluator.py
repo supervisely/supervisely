@@ -5,8 +5,10 @@ from typing import List, Optional
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.evaluation import BaseEvaluator
+from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.calculate_metrics import (
+    calculate_metrics
+)
 from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.functions import (
-    calculate_metrics,
     prepare_segmentation_data,
 )
 from supervisely.project.project_meta import ProjectMeta
@@ -69,7 +71,7 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
 
     def _dump_eval_results(self):
         eval_data_path = self._get_eval_data_path()
-        self._dump_pickle(self.eval_data, eval_data_path)
+        self._dump_pickle(self.eval_data, eval_data_path) # TODO: maybe dump JSON?
 
     def _get_eval_data_path(self):
         base_dir = self.result_dir

@@ -1,14 +1,16 @@
 import os
+from typing import List
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from typing import List
+
 from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.table_template import (
     table_template,
 )
 
 
-class Result:
+class SemSegmMetricProvider:
     def __init__(
         self,
         class_names: List[str],
@@ -24,10 +26,26 @@ class Result:
         self.class_names = class_names
         self.num_classes = len(self.class_names)
         self.dataframe = dataframe
-        # pixel accuracy
+
+        # base metrics
         overall_TP = self.dataframe["TP"][: self.num_classes].sum()
         overall_FN = self.dataframe["FN"][: self.num_classes].sum()
         self.pixel_accuracy = overall_TP / (overall_TP + overall_FN)
+        self.overall_TP = overall_TP
+        self.overall_FN = overall_FN
+        self.precision = round(self.dataframe.loc["mean", "precision"] * 100, 1)
+        self.recall = round(self.dataframe.loc["mean", "recall"] * 100, 1)
+        self.f1_score = round(self.dataframe.loc["mean", "F1_score"] * 100, 1)
+        self.iou = round(self.dataframe.loc["mean", "IoU"] * 100, 1)
+        self.boundary_iou = round(self.dataframe.loc["mean", "boundary_IoU"] * 100, 1)
+
+        # error metrics
+        labels = ["mIoU", "mBoundaryEoU", "mExtentEoU", "mSegmentEoU"]
+        boundary_eou = round(self.dataframe.loc["mean", "E_boundary_oU"] * 100, 1)
+        extent_eou = round(self.dataframe.loc["mean", "E_extent_oU"] * 100, 1)
+        segment_eou = round(self.dataframe.loc["mean", "E_segment_oU"] * 100, 1)
+        values = [self.iou, boundary_eou, extent_eou, segment_eou]
+
 
     @classmethod
     def from_evaluator(cls, evaluator):
@@ -56,9 +74,7 @@ class Result:
         dataframe["IoU"] = dataframe["TP"] / union
         dataframe["precision"] = dataframe["TP"] / (dataframe["TP"] + dataframe["FP"])
         dataframe["recall"] = dataframe["TP"] / (dataframe["TP"] + dataframe["FN"])
-        dataframe["F1_score"] = 2 / (
-            1.0 / dataframe["precision"] + 1.0 / dataframe["recall"]
-        )
+        dataframe["F1_score"] = 2 / (1.0 / dataframe["precision"] + 1.0 / dataframe["recall"])
 
         dataframe["FP_boundary_oU"] = dataframe["FP_boundary"] / union
         dataframe["FN_boundary_oU"] = dataframe["FN_boundary"] / union
@@ -83,8 +99,7 @@ class Result:
         with np.errstate(invalid="ignore"):  # avoid warnings for zero-division
             # boundary IoU
             dataframe["boundary_IoU"] = (
-                evaluator.boundary_iou_intersection_counts
-                / evaluator.boundary_iou_union_counts
+                evaluator.boundary_iou_intersection_counts / evaluator.boundary_iou_union_counts
             )
             # aggregate classes
             dataframe.loc["mean"] = dataframe.mean(axis=0)
@@ -132,18 +147,15 @@ class Result:
             mE_boundary_oU=self.dataframe.loc["mean"]["E_boundary_oU"] * 100,
             mFP_boundary_oU=self.dataframe.loc["mean"]["FP_boundary_oU"] * 100,
             mFN_boundary_oU=self.dataframe.loc["mean"]["FN_boundary_oU"] * 100,
-            mE_boundary_oU_renormed=self.dataframe.loc["mean"]["E_boundary_oU_renormed"]
-            * 100,
+            mE_boundary_oU_renormed=self.dataframe.loc["mean"]["E_boundary_oU_renormed"] * 100,
             mE_extent_oU=self.dataframe.loc["mean"]["E_extent_oU"] * 100,
             mFP_extent_oU=self.dataframe.loc["mean"]["FP_extent_oU"] * 100,
             mFN_extent_oU=self.dataframe.loc["mean"]["FN_extent_oU"] * 100,
-            mE_extent_oU_renormed=self.dataframe.loc["mean"]["E_extent_oU_renormed"]
-            * 100,
+            mE_extent_oU_renormed=self.dataframe.loc["mean"]["E_extent_oU_renormed"] * 100,
             mE_segment_oU=self.dataframe.loc["mean"]["E_segment_oU"] * 100,
             mFP_segment_oU=self.dataframe.loc["mean"]["FP_segment_oU"] * 100,
             mFN_segment_oU=self.dataframe.loc["mean"]["FN_segment_oU"] * 100,
-            mE_segment_oU_renormed=self.dataframe.loc["mean"]["E_segment_oU_renormed"]
-            * 100,
+            mE_segment_oU_renormed=self.dataframe.loc["mean"]["E_segment_oU_renormed"] * 100,
             mPrecision=self.dataframe.loc["mean"]["precision"] * 100,
             mRecall=self.dataframe.loc["mean"]["recall"] * 100,
             mF1_score=self.dataframe.loc["mean"]["F1_score"] * 100,
@@ -157,3 +169,13 @@ class Result:
             with open(path, "w") as f:
                 f.write(table_string)
         return table_string
+
+    def base_metrics(self):
+        return {
+            "mPixel accuracy": self.pixel_accuracy,
+            "mPrecision": self.precision,
+            "mRecall": self.recall,
+            "mF1-score": self.f1_score,
+            "mIoU": self.iou,
+            "mBoundaryIoU": self.boundary_iou,
+        }

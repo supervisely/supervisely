@@ -1,6 +1,6 @@
 from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 from supervisely.nn.benchmark.cv_tasks import CVTask
-from supervisely.nn.benchmark.evaluation.object_detection_evaluator import (
+from supervisely.nn.benchmark.object_detection.evaluator import (
     ObjectDetectionEvaluator,
 )
 from supervisely.nn.benchmark.utils import try_set_conf_auto

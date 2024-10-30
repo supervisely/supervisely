@@ -1,21 +1,22 @@
+import json
 import os
-from typing import List, Optional, Dict, Union, Iterable
+from typing import Dict, Iterable, List, Optional, Union
+
 import cv2
-from tqdm import tqdm
+import pandas as pd
 from PIL import Image
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.result import (
-    Result,
+from tqdm import tqdm
+
+from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.metric_provider import (
+    SemSegmMetricProvider,
 )
 from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.utils import (
-    one_hot,
-    get_contiguous_segments,
-    get_interior_boundary,
-    get_exterior_boundary,
     dilate_mask,
+    get_contiguous_segments,
+    get_exterior_boundary,
+    get_interior_boundary,
+    one_hot,
 )
-import json
-import pandas as pd
-
 
 ERROR_CODES = {
     "ignore": -1,
@@ -179,9 +180,7 @@ class Evaluator:
             "FP_segment": np.zeros(self.num_classes, dtype=np.int64),
             "FN_segment": np.zeros(self.num_classes, dtype=np.int64),
         }
-        self.boundary_iou_intersection_counts = np.zeros(
-            self.num_classes, dtype=np.int64
-        )
+        self.boundary_iou_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         self.boundary_iou_union_counts = np.zeros(self.num_classes, dtype=np.int64)
 
         for pred, gt, img_name in tqdm(
@@ -199,12 +198,10 @@ class Evaluator:
         if GPU:
             for key, value in self.results.items():
                 self.results[key] = value.get()
-            self.boundary_iou_intersection_counts = (
-                self.boundary_iou_intersection_counts.get()
-            )
+            self.boundary_iou_intersection_counts = self.boundary_iou_intersection_counts.get()
             self.boundary_iou_union_counts = self.boundary_iou_union_counts.get()
 
-        result = Result.from_evaluator(self)
+        result = SemSegmMetricProvider.from_evaluator(self)
         # print(result)
 
         # with open(f"{self.result_dir}/cell_img_names.json", "w") as file:
@@ -249,12 +246,8 @@ class Evaluator:
             ignore_inds_y, ignore_inds_x = np.where(gt == self.ignore_index)
             results[:, ignore_inds_y, ignore_inds_x] = ERROR_CODES["ignore"]
 
-        pred_one_hot = one_hot(
-            pred, num_classes=self.num_classes, ignore_index=self.ignore_index
-        )
-        gt_one_hot = one_hot(
-            gt, num_classes=self.num_classes, ignore_index=self.ignore_index
-        )
+        pred_one_hot = one_hot(pred, num_classes=self.num_classes, ignore_index=self.ignore_index)
+        gt_one_hot = one_hot(gt, num_classes=self.num_classes, ignore_index=self.ignore_index)
 
         # select only the active classes
         if GPU:
@@ -288,9 +281,7 @@ class Evaluator:
             ERROR_CODES["TN"],
         )
         # inactive classes (everything that is not ignore is TN)
-        results_inactive[results_inactive == ERROR_CODES["unassigned"]] = ERROR_CODES[
-            "TN"
-        ]
+        results_inactive[results_inactive == ERROR_CODES["unassigned"]] = ERROR_CODES["TN"]
 
         # FALSE POSITIVE
         fp_mask = np.logical_and(pred_one_hot_active, ~gt_one_hot_active)
@@ -347,16 +338,12 @@ class Evaluator:
         # main results
         image_stats = {}
         for error_name, error_code in ERROR_CODES.items():
-            error_values = (sample_results["main_results"] == error_code).sum(
-                axis=(1, 2)
-            )
+            error_values = (sample_results["main_results"] == error_code).sum(axis=(1, 2))
             self.results[error_name] += error_values
             image_stats[error_name] = error_values
 
         # boundary IoU
-        boundary_intersection_counts, boundary_union_counts = sample_results[
-            "boundary_iou_results"
-        ]
+        boundary_intersection_counts, boundary_union_counts = sample_results["boundary_iou_results"]
         self.boundary_iou_intersection_counts += boundary_intersection_counts
         self.boundary_iou_union_counts += boundary_union_counts
         image_stats["boundary_iou_intersection_counts"] = boundary_intersection_counts
@@ -364,16 +351,8 @@ class Evaluator:
         self.calculate_per_image_metrics(image_stats, img_name)
 
     def calculate_per_image_metrics(self, image_stats, img_name):
-        fp = (
-            image_stats["FP_boundary"]
-            + image_stats["FP_extent"]
-            + image_stats["FP_segment"]
-        )
-        fn = (
-            image_stats["FN_boundary"]
-            + image_stats["FN_extent"]
-            + image_stats["FN_segment"]
-        )
+        fp = image_stats["FP_boundary"] + image_stats["FP_extent"] + image_stats["FP_segment"]
+        fn = image_stats["FN_boundary"] + image_stats["FN_extent"] + image_stats["FN_segment"]
         tp = image_stats["TP"]
         tn = image_stats["TN"]
 
@@ -431,12 +410,8 @@ class Evaluator:
         self.image_metrics["boundary_eou_renormed"].append(
             postprocess_values(e_boundary_ou_renormed)
         )
-        self.image_metrics["extent_eou_renormed"].append(
-            postprocess_values(e_extent_ou_renormed)
-        )
-        self.image_metrics["segment_eou_renormed"].append(
-            postprocess_values(e_segment_ou_renormed)
-        )
+        self.image_metrics["extent_eou_renormed"].append(postprocess_values(e_extent_ou_renormed))
+        self.image_metrics["segment_eou_renormed"].append(postprocess_values(e_segment_ou_renormed))
 
         self.img_names.append(img_name)
 
@@ -508,18 +483,14 @@ class Evaluator:
             if c == self.ignore_index:
                 continue
             for segment in boundary_segments:
-                if (not tp_contour[c][segment].any()) or (
-                    not tn_contour[c][segment].any()
-                ):
+                if (not tp_contour[c][segment].any()) or (not tn_contour[c][segment].any()):
                     fp_boundary_mask[c][segment] = False
 
         for c, boundary_segments in fn_boundary_segments.items():
             if c == self.ignore_index:
                 continue
             for segment in boundary_segments:
-                if (not tp_contour[c][segment].any()) or (
-                    not tn_contour[c][segment].any()
-                ):
+                if (not tp_contour[c][segment].any()) or (not tn_contour[c][segment].any()):
                     fn_boundary_mask[c][segment] = False
 
         results_on_mask = results[fp_boundary_mask]
@@ -587,14 +558,10 @@ class Evaluator:
                     if GPU:
                         pred_c = np.asarray(pred_c)
                     assert pred_c[results[c] == ERROR_CODES["unassigned"]].all()
-                    results[c][results[c] == ERROR_CODES["unassigned"]] = ERROR_CODES[
-                        "FP_segment"
-                    ]
+                    results[c][results[c] == ERROR_CODES["unassigned"]] = ERROR_CODES["FP_segment"]
             else:
                 if gt_c.any():  # only FN segment errors for this class
-                    results[c][results[c] == ERROR_CODES["unassigned"]] = ERROR_CODES[
-                        "FN_segment"
-                    ]
+                    results[c][results[c] == ERROR_CODES["unassigned"]] = ERROR_CODES["FN_segment"]
                 else:
                     continue
 
@@ -628,12 +595,8 @@ class Evaluator:
             pred_one_hot_int_boundary = np.asarray(pred_one_hot_int_boundary)
             gt_one_hot_int_boundary = np.asarray(gt_one_hot_int_boundary)
 
-        boundary_intersection = np.logical_and(
-            pred_one_hot_int_boundary, gt_one_hot_int_boundary
-        )
-        boundary_union = np.logical_or(
-            pred_one_hot_int_boundary, gt_one_hot_int_boundary
-        )
+        boundary_intersection = np.logical_and(pred_one_hot_int_boundary, gt_one_hot_int_boundary)
+        boundary_union = np.logical_or(pred_one_hot_int_boundary, gt_one_hot_int_boundary)
 
         if ignore_inds:  # remove ignore pixels
             ignore_inds_y, ignore_inds_x = ignore_inds
@@ -659,17 +622,13 @@ class Evaluator:
             if c == self.ignore_index:
                 continue
             pred_c = (pred == c).astype(np.uint8) * 255
-            cv2.imwrite(
-                os.path.join(output_dir, f"{self.class_names[c]}_pred.png"), pred_c
-            )
+            cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_pred.png"), pred_c)
             gt_c = (gt == c).astype(np.uint8) * 255
             cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_gt.png"), gt_c)
             error_map = np.zeros((H, W, 3), dtype=np.uint8)
             for error_type, error_color in ERROR_PALETTE.items():
                 error_map[sample_results[c] == error_type] = error_color
             error_map = cv2.cvtColor(error_map, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(
-                os.path.join(output_dir, f"{self.class_names[c]}_errors.png"), error_map
-            )
+            cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_errors.png"), error_map)
         print(f"Saved visualization to {output_dir}.")
         return

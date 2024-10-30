@@ -1,14 +1,73 @@
 import os
-
-from supervisely.io.json import dump_json_file
-from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
-from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
+import pickle
 from pathlib import Path
+
+from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
+from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
+from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
+from supervisely.nn.benchmark.object_detection.metric_provider import MetricProvider
+
+
+class ObjectDetectionEvalResult(BaseEvalResult):
+    mp_cls = MetricProvider
+
+    def _read_eval_data(self):
+        from pycocotools.coco import COCO  # pylint: disable=import-error
+
+        gt_path = str(Path(self.local_dir, "evaluation", "cocoGt.json"))
+        dt_path = str(Path(self.local_dir, "evaluation", "cocoDt.json"))
+        coco_gt, coco_dt = COCO(gt_path), COCO(dt_path)
+        self.coco_gt = coco_gt
+        self.coco_dt = coco_dt
+        self.eval_data = pickle.load(
+            open(Path(self.local_dir, "evaluation", "eval_data.pkl"), "rb")
+        )
+        self.inference_info = load_json_file(
+            Path(self.local_dir, "evaluation", "inference_info.json")
+        )
+        speedtest_info_path = Path(self.local_dir, "speedtest", "speedtest.json")
+        if speedtest_info_path.exists():
+            self.speedtest_info = load_json_file(
+                Path(self.local_dir, "speedtest", "speedtest.json")
+            )
+
+        self.mp = MetricProvider(
+            self.eval_data["matches"],
+            self.eval_data["coco_metrics"],
+            self.eval_data["params"],
+            self.coco_gt,
+            self.coco_dt,
+        )
+        self.mp.calculate()
+
+        # TODO: start move to Visualizer
+        # self.df_score_profile = pd.DataFrame(
+        #     self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
+        # )
+
+        # # downsample
+        # if len(self.df_score_profile) > 5000:
+        #     self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        # else:
+        #     self.dfsp_down = self.df_score_profile
+
+        # self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
+        # if self.f1_optimal_conf is None:
+        #     self.f1_optimal_conf = 0.01
+        #     logger.warning("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
+
+        # # Click data
+        # gt_id_mapper = IdMapper(self.coco_gt.dataset)
+        # dt_id_mapper = IdMapper(self.coco_dt.dataset)
+
+        # self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
+        # TODO: end
 
 
 class ObjectDetectionEvaluator(BaseEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/coco/evaluation_params.yaml"
+    eval_result_cls = ObjectDetectionEvalResult
 
     def evaluate(self):
         try:
