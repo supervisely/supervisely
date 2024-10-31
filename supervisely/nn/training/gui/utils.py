@@ -2,7 +2,11 @@ from typing import List, Optional, Callable, Dict, Any
 from supervisely.app.widgets import Button, Card, Stepper, Widget, Text
 from supervisely.app import DataJson
 
+from supervisely.nn.training.gui.input_selector import InputSelector
+from supervisely.nn.training.gui.classes_selector import ClassesSelector
+
 button_clicked = {}
+
 
 def update_custom_params(
     button: Button,
@@ -55,9 +59,10 @@ def wrap_button_click(
     upd_params: bool = True,
     validation_text: Text = None,
     validation_func: Optional[Callable] = None,
+    on_button_click: Optional[Callable] = None,
 ) -> Callable[[Optional[bool]], None]:
     global button_clicked
-    
+
     select_params = {"icon": None, "plain": False, "text": "Select"}
     reselect_params = {"icon": "zmdi zmdi-refresh", "plain": True, "text": "Reselect"}
     bid = button.widget_id
@@ -69,7 +74,7 @@ def wrap_button_click(
                 success = validation_func()
                 if not success:
                     return
-        
+
         if button_clicked_value is not None:
             button_clicked[bid] = button_clicked_value
         else:
@@ -77,6 +82,8 @@ def wrap_button_click(
 
         if button_clicked[bid] and upd_params:
             update_custom_button_params(button, reselect_params)
+            if on_button_click is not None:
+                on_button_click()
         else:
             update_custom_button_params(button, select_params)
             validation_text.hide()
@@ -102,3 +109,4 @@ def set_stepper_step(stepper: Stepper, button: Button, next_pos: int):
         stepper.set_active_step(next_pos)
     else:
         stepper.set_active_step(next_pos - 1)
+

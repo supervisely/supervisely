@@ -10,7 +10,7 @@ from supervisely.app.widgets import (
     CustomModelsSelector,
     PretrainedModelsSelector,
     RadioTabs,
-    Text
+    Text,
 )
 from supervisely.nn.artifacts import (
     HRDA,
@@ -31,10 +31,10 @@ from supervisely.project.download import is_cached
 
 
 class ModelSelector:
-    title = "Model Selection"
+    title = "Model Selector"
 
     def __init__(self, models: list):
-        self.team_id = sly_env.team_id()
+        self.team_id = sly_env.team_id() # get from project id
         self.models = models
 
         # Pretrained models
@@ -63,8 +63,7 @@ class ModelSelector:
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        
-        
+
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
@@ -73,7 +72,7 @@ class ModelSelector:
             title="Select Model",
             description="Select a model for training",
             content=container,
-            lock_message="Select dataset splits to unlock",
+            lock_message="Select classes to unlock",
         )
         self.card.lock()
 
@@ -84,7 +83,7 @@ class ModelSelector:
     def _detect_framework(self):
         app_map = {
             "YOLOv5": YOLOv5,
-            "YOLOv5v2": YOLOv5v2,
+            "YOLOv5 2.0": YOLOv5v2,
             "YOLOv8": YOLOv8,
             "UNet": UNet,
             "HRDA": HRDA,
@@ -96,7 +95,7 @@ class ModelSelector:
             "MMClassification": MMClassification,
             "Detectron2": Detectron2,
         }
-        app_name = "Train YOLOv5"#sly_env.app_name()
+        app_name = "Train YOLOv5 2.0"  # sly_env.app_name()
         for app in app_map:
             if app in app_name:
                 return app_map[app]
@@ -110,9 +109,9 @@ class ModelSelector:
 
     def get_model_parameters(self):
         if self.get_model_source() == "Pretrained models":
-            return self.pretrained_models_table.get_selected_model_params()
+            return self.pretrained_models_table.get_selected_row()
         else:
-            return self.custom_models_table.get_selected_model_params()
+            return self.custom_models_table.get_selected_row()
 
     def validate_step(self):
         self.validator_text.hide()

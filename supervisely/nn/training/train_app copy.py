@@ -66,11 +66,10 @@ class TrainApp:
         #    Model selection
         # 3. Select classes
         # 4. Training parameters (yaml), scheduler preview
-        # 5. Other options
-        # 6. Start training button / Stop
-        # 7. Progress + charts (tensorboard frame)
-        # 8. Upload checkpoints
-        # 9. Evaluation report
+        # 5. Start training button / Stop
+        # 6. Progress + charts (tensorboard frame)
+        # 7. Upload checkpoints
+        # 8. Evaluation report
         self._layout = TraininingLayout(
             models=self.models,
             hyperparameters=self.hyperparameters,

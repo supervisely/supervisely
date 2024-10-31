@@ -13,7 +13,7 @@ from supervisely.project.download import is_cached
 
 
 class InputSelector:
-    title = "Input Data"
+    title = "Input Selector"
 
     def __init__(self, project_info: ProjectInfo):
         self.project_id = project_info.id
@@ -93,6 +93,9 @@ class InputSelector:
 
     def get_val_dataset_id(self):
         return self.val_dataset_selector.get_selected_id()
+    
+    def set_val_dataset_id(self, dataset_id: int):
+        self.val_dataset_selector.set_dataset_id(dataset_id)
 
     def set_cache(self, value: bool):
         if value:

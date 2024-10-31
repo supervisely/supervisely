@@ -18,7 +18,7 @@ class TrainApp:
         self._layout: TrainGUI = TrainGUI(models, hyperparameters, app_options)
         self._app = Application(layout=self._layout.layout)
         self._server = self._app.get_server()
-
+        
     @property
     def app(self) -> Application:
         return self._app

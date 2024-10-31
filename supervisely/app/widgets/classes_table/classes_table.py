@@ -469,3 +469,15 @@ class ClassesTable(Widget):
         StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()
+
+    def set_dataset_ids(self, dataset_ids: List[int]) -> None:
+        """Sets dataset ids to filter classes.
+
+        :param dataset_ids: List of dataset ids to filter classes.
+        :type dataset_ids: List[int]
+        """
+        selected_classes = self.get_selected_classes()
+        self._dataset_ids = dataset_ids
+        self._update_meta(self._project_meta)
+        self.update_data()
+        selected_classes = self.select_classes(selected_classes)
