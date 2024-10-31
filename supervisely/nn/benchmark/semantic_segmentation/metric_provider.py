@@ -36,7 +36,7 @@ class MetricProvider:
 
         # eval_data
         self.eval_data = eval_data["result"]
-        self.class_names = eval_data.index.tolist()  # ??
+        self.class_names = self.eval_data.index.tolist()
 
         self.num_classes = len(self.class_names)
 
@@ -71,13 +71,15 @@ class MetricProvider:
         )
 
         # classwise error data
-        self.classwise_segm_error_data = self.classwise_error_data()
+        self.classwise_segm_error_data = self.get_classwise_error_data()
 
         # confusion matrix
-        self.confusion_matrix = self.get_confusion_matrix(self.eval_data["confusion_matrix"].copy())
+        self.confusion_matrix = self.get_confusion_matrix(eval_data["confusion_matrix"].copy())
 
         # frequently confused classes
-        self._frequently_confused = self.eval_data["frequently_confused"]
+        self.frequently_confused = self.get_frequently_confused(
+            eval_data["confusion_matrix"].copy()
+        )
 
     # def calculate(self):
     #     # base metrics
@@ -111,8 +113,31 @@ class MetricProvider:
         # text_anns = [[str(el) for el in row] for row in confusion_matrix]
         return confusion_matrix  # TODO: move to visualization ?
 
-    def frequently_confused(self):
-        return self._frequently_confused
+    def get_frequently_confused(self, confusion_matrix: np.ndarray):
+        n_pairs = 10
+
+        non_diagonal_indexes = {}
+        for i, idx in enumerate(np.ndindex(confusion_matrix.shape)):
+            if idx[0] != idx[1]:
+                non_diagonal_indexes[i] = idx
+
+        indexes_1d = np.argsort(confusion_matrix, axis=None)
+        indexes_2d = [non_diagonal_indexes[idx] for idx in indexes_1d if idx in non_diagonal_indexes][
+            -n_pairs:
+        ]
+        indexes_2d = np.asarray(indexes_2d[::-1])
+
+        rows = indexes_2d[:, 0]
+        cols = indexes_2d[:, 1]
+        probs = confusion_matrix[rows, cols]
+        return probs  # TODO: move to visualization ?
+
+        # confused_classes = []
+        # for idx in indexes_2d:
+        #     gt_idx, pred_idx = idx[0], idx[1]
+        #     gt_class = class_names[gt_idx]
+        #     pred_class = class_names[pred_idx]
+        #     confused_classes.append(f"{gt_class}-{pred_class}")
 
     def basic_metrics(self):
         pass
@@ -120,21 +145,21 @@ class MetricProvider:
     def error_metrics(self):
         pass
 
-    def classwise_error_data(self):
+    def get_classwise_error_data(self):
         self.eval_data.drop(["mean"], inplace=True)
         if len(self.eval_data.index) > 7:
             per_class_iou = self.eval_data["IoU"].copy()
             per_class_iou.sort_values(ascending=True, inplace=True)
             target_classes = per_class_iou.index[:7].tolist()
             # title_text = "Classwise segmentation error analysis<br><sup>(7 classes with highest error rates)</sup>"
-            # labels = target_classes[::-1]
+            labels = target_classes[::-1]
             bar_data = self.eval_data.loc[target_classes].copy()
         else:
             # title_text = "Classwise segmentation error analysis"
             bar_data = self.eval_data.copy()
         bar_data = bar_data[["IoU", "E_extent_oU", "E_boundary_oU", "E_segment_oU"]]
         bar_data.sort_values(by="IoU", ascending=False, inplace=True)
-        # if not len(self.eval_data.index) > 7:
-        #     labels = list(bar_data.index)
+        if not len(self.eval_data.index) > 7:
+            labels = list(bar_data.index)
         # color_palette = ["cornflowerblue", "moccasin", "lightgreen", "orangered"]
-        return bar_data  # TODO: move to visualization ?
+        return bar_data, labels

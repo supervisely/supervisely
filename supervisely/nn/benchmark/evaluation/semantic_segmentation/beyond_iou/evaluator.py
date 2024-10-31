@@ -208,7 +208,7 @@ class Evaluator:
         normalized_confusion_matrix = np.round(normalized_confusion_matrix, 3)
         return {
             "result": result,
-            "confusion_matrix": self.confusion_matrix,
+            "confusion_matrix": normalized_confusion_matrix,
         }
 
         # with open(f"{self.result_dir}/cell_img_names.json", "w") as file:

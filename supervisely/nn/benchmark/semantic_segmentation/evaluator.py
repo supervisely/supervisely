@@ -25,14 +25,10 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
 
     def _read_eval_data(self):
         self.eval_data = pickle.load(open(Path(self.directory, "eval_data.pkl"), "rb"))
-        # self.inference_info = load_json_file(
-        #     Path(self.local_dir, "evaluation", "inference_info.json")
-        # )
-        # speedtest_info_path = Path(self.local_dir, "speedtest", "speedtest.json")
-        # if speedtest_info_path.exists():
-        #     self.speedtest_info = load_json_file(
-        #         Path(self.local_dir, "speedtest", "speedtest.json")
-        #     )
+        self.inference_info = load_json_file(Path(self.directory, "inference_info.json"))
+        speedtest_info_path = Path(self.directory, "speedtest.json")
+        if speedtest_info_path.exists():
+            self.speedtest_info = load_json_file(Path(self.directory, "speedtest.json"))
 
         self.mp = MetricProvider(self.eval_data)
         # self.mp.calculate()

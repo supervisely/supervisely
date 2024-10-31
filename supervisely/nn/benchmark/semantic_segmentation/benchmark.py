@@ -3,9 +3,13 @@ from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvaluator,
 )
+from supervisely.nn.benchmark.semantic_segmentation.visualizer import (
+    SemanticSegmentationVisualizer,
+)
 
 
 class SemanticSegmentationBenchmark(BaseBenchmark):
+    visualizer_cls = SemanticSegmentationVisualizer
 
     @property
     def cv_task(self) -> str:

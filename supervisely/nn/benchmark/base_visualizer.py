@@ -1,7 +1,9 @@
 from typing import List
-from supervisely.nn.benchmark.visualization.renderer import Renderer
+
 from supervisely.api.api import Api
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult
+from supervisely.nn.benchmark.visualization.renderer import Renderer
+
 
 class BaseVisualizer:
 
@@ -17,6 +19,30 @@ class BaseVisualizer:
         self.eval_results = eval_results  # for comparison
 
         self.renderer = None
+        self.gt_project_info = None
+
+        for eval_result in self.eval_results:
+            self._get_eval_project_infos(eval_result)
+
+    def _get_eval_project_infos(self, eval_result):
+        if self.gt_project_info is None:
+            self.gt_project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
+        eval_result.gt_project_info = self.gt_project_info
+
+        filters = None
+        if eval_result.gt_dataset_ids is not None:
+            filters = [{"field": "id", "operator": "in", "value": eval_result.gt_dataset_ids}]
+        eval_result.gt_dataset_infos = self.api.dataset.get_list(
+            eval_result.gt_project_id,
+            filters=filters,
+            recursive=True,
+        )
+
+        train_info = eval_result.train_info
+        if train_info:
+            train_task_id = train_info.get("app_session_id")
+            if train_task_id:
+                eval_result.task_info = self.api.task.get_info_by_id(int(train_task_id))
 
     def visualize(self):
         if self.renderer is None:

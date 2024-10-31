@@ -1,5 +1,4 @@
 import os
-import yaml
 from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -21,6 +20,7 @@ from supervisely.task.progress import tqdm_sly
 
 
 class BaseBenchmark:
+    visualizer_cls = None
 
     def __init__(
         self,
@@ -282,7 +282,7 @@ class BaseBenchmark:
             )
 
     def get_layout_results_dir(self) -> str:
-        dir = os.path.join(self.get_base_dir(), "layout")
+        dir = os.path.join(self.get_base_dir(), "visualizations")
         os.makedirs(dir, exist_ok=True)
         return dir
 
@@ -453,7 +453,10 @@ class BaseBenchmark:
         if dt_project_id is not None:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
 
-        vis = Visualizer(self)
+        if self.visualizer_cls is None:
+            raise NotImplementedError("Visualizer class is not defined.")
+        eval_result = self.evaluator.get_eval_result()
+        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir())
         vis.visualize()
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
@@ -502,7 +505,7 @@ class BaseBenchmark:
         layout_dir = self.get_layout_results_dir()
         assert not fs.dir_empty(
             layout_dir
-        ), f"The layout dir {layout_dir!r} is empty. You should run evaluation before uploading results."
+        ), f"The layout dir {layout_dir!r} is empty. You should run visualizations before uploading results."
 
         # self.api.file.remove_dir(self.team_id, dest_dir, silent=True)
 
