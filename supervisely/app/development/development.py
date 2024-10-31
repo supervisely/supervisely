@@ -271,15 +271,15 @@ def enable_advanced_debug(
 
     if only_for_development and not is_development():
         logger.debug(
-            "Advanced debugging was not started because the app is not running in development mode."
-            "If you need to force the debugging, set the only_for_development argument to False."
+            "Advanced debugging was not started because the app is not running in development mode. "
+            "If you need to force the debugging, set the only_for_development argument to False. "
             "Use this parameter with caution, and do not set to False in production environments."
         )
         return None
 
     logger.debug(
         "Starting advanced debugging, will create a wireguard VPN connection and create "
-        "or use an existing debug task to redirect requests to the local machine."
+        "or use an existing debug task to redirect requests to the local machine. "
         "Learn more about this feature in Supervisely Developer Portal: "
         "https://developer.supervisely.com/app-development/advanced/advanced-debugging"
     )
