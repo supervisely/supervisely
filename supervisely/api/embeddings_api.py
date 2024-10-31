@@ -2,7 +2,7 @@ from typing import List, NamedTuple
 
 import numpy as np
 
-from supervisely.api.api import Api
+# from supervisely.api.api import Api
 
 # TODO: Replace with relative endpoint.
 # E.g. <instance-address>/embeddings
@@ -24,7 +24,7 @@ class EmbeddingInfo(NamedTuple):
 
 
 class EmbeddingsApi:
-    def __init__(self, api: Api):
+    def __init__(self, api):
         self._api = api
 
     def _get_client(self, host: str = None) -> QdrantClient:
@@ -42,15 +42,17 @@ class EmbeddingsApi:
             )
 
     def get_info_by_id(self, project_id: int, image_id: int):
-        return self.get_infos_by_ids(project_id, [image_id])[0]
+        return self.get_info_by_ids(project_id, [image_id])[0]
 
-    def get_infos_by_ids(self, project_id: int, image_ids: List[int]) -> List[EmbeddingInfo]:
+    def get_info_by_ids(self, project_id: int, image_ids: List[int]) -> List[EmbeddingInfo]:
         client = self._get_client()
 
         # If any additional fields will be added to the database (e.g. dataset_id, image_name, etc.),
         # the payload can be used to retrieve them.
         # In this case the EmbeddingInfo should be extended with the corresponding fields.
 
-        points = client.retrieve(str(project_id), image_ids)  # , with_payload=True)
+        points = client.retrieve(
+            str(project_id), image_ids, with_vectors=True
+        )  # , with_payload=True)
 
-        return [EmbeddingInfo(id=point.id, vector=point.vector) for point in points]
+        return [EmbeddingInfo(id=point.id, vector=np.array(point.vector)) for point in points]
