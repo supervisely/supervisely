@@ -216,12 +216,12 @@ def create_debug_task(
 
 
 def enable_advanced_debug(
-    only_for_development: bool = True,
     team_id: int = None,
     port: int = 8000,
     update_status: bool = True,
     vpn_action: Literal["up", "down"] = "up",
     vpn_raise_on_error: bool = True,
+    only_for_development: bool = True,
 ) -> Optional[int]:
     """Enables advanced debugging for the app.
     At first, it establishes a WireGuard VPN connection to the Supervisely network.
@@ -230,9 +230,6 @@ def enable_advanced_debug(
     Please, ensure that the Team ID was provided, or set as TEAM_ID environment variable.
     All other parameters can be omitted if using the default instance settings.
 
-    :param only_for_development: If True, the debugging will be started only if the app is running in development mode.
-        It's not recommended to set this parameter to False in production environments.
-    :type only_for_development: bool
     :param team_id: The ID of the team to create the task in, if not provided, the function
         will try to obtain it from environment variables. Default is None.
     :type team_id: int
@@ -244,6 +241,9 @@ def enable_advanced_debug(
     :type vpn_action: Literal["up", "down"]
     :param vpn_raise_on_error: If True, an exception will be raised if an error occurs while connecting to VPN.
     :type vpn_raise_on_error: bool
+    :param only_for_development: If True, the debugging will be started only if the app is running in development mode.
+        It's not recommended to set this parameter to False in production environments.
+    :type only_for_development: bool
     :return: The task ID of the debug task or None if the debugging was not started.
     :rtype: Optional[int]
 
