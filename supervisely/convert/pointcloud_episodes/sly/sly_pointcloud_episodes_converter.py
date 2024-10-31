@@ -72,7 +72,6 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
 
                 ext = get_file_ext(full_path)
                 recognized_ext = imghdr.what(full_path)
-
                 if file in JUNK_FILES:
                     continue
                 elif ext in self.ann_ext:
