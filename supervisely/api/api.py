@@ -25,6 +25,7 @@ import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
 import supervisely.api.dataset_api as dataset_api
+import supervisely.api.embeddings_api as embeddings_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
@@ -43,7 +44,6 @@ import supervisely.api.report_api as report_api
 import supervisely.api.role_api as role_api
 import supervisely.api.storage_api as storage_api
 import supervisely.api.task_api as task_api
-import supervisely.api.embeddings_api as embeddings_api
 import supervisely.api.team_api as team_api
 import supervisely.api.user_api as user_api
 import supervisely.api.video.video_api as video_api
@@ -231,9 +231,7 @@ class UserSession:
             self._setattrs_user_session(decoded_token)
             return self
         else:
-            raise RuntimeError(
-                f"Failed to authenticate user: status code {response.status_code}"
-            )
+            raise RuntimeError(f"Failed to authenticate user: status code {response.status_code}")
 
 
 class Api:
@@ -313,9 +311,7 @@ class Api:
         if retry_count is None:
             retry_count = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRIES, "10"))
         if retry_sleep_sec is None:
-            retry_sleep_sec = int(
-                os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1")
-            )
+            retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
         self.token = token
         self.headers = {}
@@ -363,14 +359,10 @@ class Api:
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self._require_https_redirect_check = not self.server_address.startswith(
-            "https://"
-        )
+        self._require_https_redirect_check = not self.server_address.startswith("https://")
 
         if check_instance_version:
-            self._check_version(
-                None if check_instance_version is True else check_instance_version
-            )
+            self._check_version(None if check_instance_version is True else check_instance_version)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -637,13 +629,8 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(
-                        url, data=data, headers=self.headers, stream=stream
-                    )
-                elif (
-                    type(data) is MultipartEncoderMonitor
-                    or type(data) is MultipartEncoder
-                ):
+                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     response = requests.post(
                         url,
                         data=data,
@@ -658,9 +645,7 @@ class Api:
                         url, json=json_body, headers=self.headers, stream=stream
                     )
 
-                if (
-                    response.status_code != requests.codes.ok
-                ):  # pylint: disable=no-member
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     self._check_version()
                     Api._raise_for_status(response)
                 return response
@@ -730,13 +715,9 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(
-                    url, params=json_body, headers=self.headers, stream=stream
-                )
+                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
-                if (
-                    response.status_code != requests.codes.ok
-                ):  # pylint: disable=no-member
+                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
