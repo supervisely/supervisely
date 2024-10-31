@@ -288,6 +288,8 @@ class Api:
         api_server_address: str = None,
         check_instance_version: Union[bool, str] = False,
     ):
+        self.logger = external_logger or logger
+
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
             token = os.environ.get(API_TOKEN, None)
@@ -296,10 +298,7 @@ class Api:
             raise ValueError(
                 "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
-        if token is None:
-            raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
-            )
+
         self.server_address = Api.normalize_server_address(server_address)
 
         self._api_server_address = None
@@ -314,11 +313,10 @@ class Api:
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
-        if len(token) != 128:
-            raise ValueError("Invalid token {!r}: length != 128".format(token))
-
         self.token = token
-        self.headers = {"x-api-key": token}
+        self.headers = {}
+        if token is not None:
+            self.headers["x-api-key"] = token
         self.task_id = os.getenv(SUPERVISELY_TASK_ID)
         if self.task_id is not None and ignore_task_id is False:
             self.headers["x-task-id"] = self.task_id
@@ -359,8 +357,6 @@ class Api:
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
-
-        self.logger = external_logger or logger
 
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
@@ -653,6 +649,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -716,6 +720,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -821,19 +833,24 @@ class Api:
 
     def _check_https_redirect(self):
         if self._require_https_redirect_check is True:
-            response = requests.get(self.server_address, allow_redirects=False)
-            if (300 <= response.status_code < 400) or (
-                response.headers.get("Location", "").startswith("https://")
-            ):
+            try:
+                response = requests.get(
+                    self.server_address.replace("http://", "https://"),
+                    allow_redirects=False,
+                    timeout=(5, 15),
+                )
+                response.raise_for_status()
                 self.server_address = self.server_address.replace("http://", "https://")
                 msg = (
                     "You're using HTTP server address while the server requires HTTPS. "
                     "Supervisely automatically changed the server address to HTTPS for you. "
                     f"Consider updating your server address to {self.server_address}"
                 )
-                self.logger.warning(msg)
-
-            self._require_https_redirect_check = False
+                self.logger.warn(msg)
+            except:
+                pass
+            finally:
+                self._require_https_redirect_check = False
 
     @classmethod
     def from_credentials(

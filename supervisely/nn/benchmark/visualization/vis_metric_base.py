@@ -216,6 +216,7 @@ class MetricVis:
                         "mainColumn": widget.main_column,
                         "fixColumns": widget.fixed_columns,
                         "showHeaderControls": widget.show_header_controls,
+                        "width": f"width:{widget.width}" if widget.width else "",
                     }
                 )
 

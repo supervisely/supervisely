@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pickle
 from typing import TYPE_CHECKING, Dict, List, Tuple
 
@@ -155,6 +156,7 @@ class Visualizer:
             cocoDt,
         )
         self.mp.calculate()
+        self._dump_key_metrics()
 
         self.df_score_profile = pd.DataFrame(
             self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
@@ -187,6 +189,8 @@ class Visualizer:
 
         initialized = [mv(self) for mv in ALL_METRICS]
         if self.speedtest is not None:
+            if len(self.speedtest["speedtest"]) < 2:
+                SPEEDTEST_METRICS.pop()
             initialized = initialized + [mv(self) for mv in SPEEDTEST_METRICS]
         initialized = [mv for mv in initialized if self.cv_task.value in mv.cv_tasks]
         with self.pbar(
@@ -350,6 +354,13 @@ class Visualizer:
         with open(local_path, "w", encoding="utf-8") as f:
             json.dump(self._generate_state(metric_visualizations), f)
         logger.info("Saved: %r", "state.json")
+
+    def _dump_key_metrics(self):
+        key_metrics = self.mp.json_metrics()
+        path = os.path.join(self._benchmark.get_base_dir(), "evaluation", "key_metrics.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(key_metrics, f)
+        return path
 
     def update_diff_annotations(self):
         meta = self._update_pred_meta_with_tags(self.dt_project_info.id, self.dt_project_meta)

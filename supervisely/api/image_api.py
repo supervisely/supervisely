@@ -1816,7 +1816,7 @@ class ImageApi(RemoveableBulkModuleApi):
                         results.append(self._convert_json_info(info_json_copy))
                     break
                 except HTTPError as e:
-                    error_details = e.response.json().get("details")
+                    error_details = e.response.json().get("details", {})
                     if (
                         conflict_resolution is not None
                         and e.response.status_code == 400
@@ -2634,7 +2634,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         return resize_image_url(url, ext, method, width, height, quality)
 
-    def update_meta(self, id: int, meta: Dict) -> Dict:
+    def update_meta(self, id: int, meta: Dict) -> Dict[str, Any]:
         """
         It is possible to add custom JSON data to every image for storing some additional information.
         Updates Image metadata by ID. Metadata is visible in Labeling Tool.
@@ -2674,10 +2674,93 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "Focal Length": "16 mm"
             # }
         """
-        if type(meta) is not dict:
-            raise TypeError("Meta must be dict, not {}".format(type(meta)))
-        response = self._api.post("images.editInfo", {ApiField.ID: id, ApiField.META: meta})
-        return response.json()
+        return self.edit(id=id, meta=meta, return_json=True)
+
+    def edit(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        meta: Optional[Dict] = None,
+        return_json: bool = False,
+    ) -> Union[ImageInfo, Dict[str, Any]]:
+        """Updates the information about the image by given ID with provided parameters.
+        At least one parameter must be set, otherwise ValueError will be raised.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param name: New Image name.
+        :type name: str, optional
+        :param description: New Image description.
+        :type description: str, optional
+        :param meta: New Image metadata.
+        :type meta: dict, optional
+        :return_json: If True, return response in JSON format, otherwise convert it ImageInfo object.
+            This parameter is only added for backward compatibility for update_meta method.
+            It's not recommended to use it in new code.
+        :type return_json: bool, optional
+        :raises: :class:`ValueError` if at least one parameter is not set
+        :raises: :class:`ValueError if meta parameter was set and it is not a dictionary
+        :return: Information about updated image as ImageInfo object or as dict if return_json is True
+        :rtype: :class:`ImageInfo` or :class:`dict`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            image_id = 123456
+            new_image_name = "IMG_3333_new.jpg"
+
+            api.image.edit(id=image_id, name=new_image_name)
+        """
+        if name is None and description is None and meta is None:
+            raise ValueError("At least one parameter must be set")
+
+        if meta is not None and not isinstance(meta, dict):
+            raise ValueError("meta parameter must be a dictionary")
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+            ApiField.DESCRIPTION: description,
+            ApiField.META: meta,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+
+        response = self._api.post("images.editInfo", data)
+        if return_json:
+            return response.json()
+        return self._convert_json_info(response.json(), skip_missing=True)
+
+    def rename(self, id: int, name: str) -> ImageInfo:
+        """
+        Renames Image with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param name: New Image name.
+        :type name: str
+        :return: Information about updated Image.
+        :rtype: :class:`ImageInfo`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 376729
+            new_image_name = 'new_image_name.jpg'
+            img_info = api.image.rename(image_id, new_image_name)
+        """
+        return self.edit(id=id, name=name)
 
     def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None) -> None:
         """

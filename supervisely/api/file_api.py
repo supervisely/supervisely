@@ -10,9 +10,12 @@ import shutil
 import tarfile
 import tempfile
 from pathlib import Path
+from time import time
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
+
 import aiofiles
+from dotenv import load_dotenv
 import requests
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
@@ -20,9 +23,8 @@ from typing_extensions import Literal
 
 import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
-from supervisely._utils import batched, is_development, rand_str
+from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ApiField, ModuleApiBase
-from supervisely.imaging.image import get_hash, write_bytes
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -41,7 +43,7 @@ from supervisely.io.network_exceptions import (
     process_unhandled_request,
 )
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, handle_original_tqdm, tqdm_sly
+from supervisely.task.progress import Progress
 
 
 class FileInfo(NamedTuple):
@@ -989,9 +991,7 @@ class FileApi(ModuleApiBase):
             )
             return
 
-        resp = self._api.post(
-            "file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path}
-        )
+        self._api.post("file-storage.remove", {ApiField.TEAM_ID: team_id, ApiField.PATH: path})
 
     def remove_file(self, team_id: int, path: str) -> None:
         """
@@ -1431,6 +1431,55 @@ class FileApi(ModuleApiBase):
         ):
             self.upload_bulk(team_id, local_paths_batch, remote_files_batch, progress_size_cb)
         return res_remote_dir
+
+    def load_dotenv_from_teamfiles(
+        self, remote_path: str = None, team_id: int = None, override: int = False
+    ) -> None:
+        """Loads .env file from Team Files into environment variables.
+        If remote_path or team_id is not specified, it will be taken from environment variables.
+
+        :param remote_path: Path to .env file in Team Files.
+        :type remote_path: str, optional
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int, optional
+        :param override: If True, existing environment variables will be overridden.
+        :type override: bool, optional
+
+        :Usage example:
+
+            .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            api.file.load_dotenv_from_teamfiles()
+            # All variables from .env file are loaded into environment variables.
+        """
+        # If remote_path or team_id is not specified, it will be taken from environment variables.
+        remote_path = remote_path or env.file(raise_not_found=False)
+        team_id = team_id or env.team_id(raise_not_found=False)
+
+        if not remote_path or not team_id or not remote_path.endswith(".env"):
+            return
+
+        try:
+            file_name = sly_fs.get_file_name(remote_path)
+
+            # Use timestamp to avoid conflicts with existing files.
+            timestamp = int(time())
+            local_save_path = os.path.join(os.getcwd(), f"{file_name}_{timestamp}.env")
+
+            # Download .env file from Team Files.
+            self.download(team_id=team_id, remote_path=remote_path, local_save_path=local_save_path)
+
+            # Load .env file into environment variables and then remove it.
+            load_dotenv(local_save_path, override=override)
+            sly_fs.silent_remove(local_save_path)
+
+            logger.debug(f"Loaded .env file from team files: {remote_path}")
+        except Exception as e:
+            logger.debug(f"Failed to load .env file from team files: {remote_path}. Error: {e}")
 
     def get_json_file_content(self, team_id: int, remote_path: str, download: bool = False) -> dict:
         """

@@ -16,6 +16,7 @@ SPECIAL_RECONNECT_ERROR = (
 RETRY_STATUS_CODES = {
     408,  # Request Timeout
     429,  # Too Many Requests
+    499,  # Client Closed Request (Nginx)
     500,  # Internal Server Error
     502,  # Bad Gateway
     503,  # Service Unavailable
@@ -93,6 +94,8 @@ def process_requests_exception(
             sleep_sec=sleep_sec,
             retry_info=retry_info,
         )
+    elif response is None:
+        process_unhandled_request(external_logger, exc)
     elif isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError)):
         process_invalid_request(external_logger, exc, response, verbose)
     else:
@@ -143,9 +146,9 @@ def process_invalid_request(external_logger, exc, response, verbose=True):
         external_logger.warn(
             REQUEST_FAILED,
             extra={
-                "reason": reason,
-                "status_code": status_code,
-                "url": url,
+                "reason": response.content.decode("utf-8"),
+                "status_code": response.status_code,
+                "url": response.url,
             },
         )
     raise exc
