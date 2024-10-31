@@ -43,6 +43,7 @@ import supervisely.api.report_api as report_api
 import supervisely.api.role_api as role_api
 import supervisely.api.storage_api as storage_api
 import supervisely.api.task_api as task_api
+import supervisely.api.embeddings_api as embeddings_api
 import supervisely.api.team_api as team_api
 import supervisely.api.user_api as user_api
 import supervisely.api.video.video_api as video_api
@@ -353,6 +354,7 @@ class Api:
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
         self.issues = issues_api.IssuesApi(self)
+        self.embeddings = embeddings_api.EmbeddingsApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
