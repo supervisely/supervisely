@@ -1,13 +1,16 @@
 # coding: utf-8
 
 # docs
+import asyncio
 import os
 from collections import defaultdict
-from typing import Callable, Dict, List, NamedTuple, Optional, Union
+from typing import AsyncGenerator, Callable, Dict, List, NamedTuple, Optional, Union
 
+import aiofiles
 from requests import Response
 from requests_toolbelt import MultipartEncoder
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 
 from supervisely._utils import batched, generate_free_name
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
@@ -18,11 +21,13 @@ from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudTagApi
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_hash,
+    get_file_hash_async,
     get_file_name_with_ext,
     list_files,
     list_files_recursively,
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
+from supervisely.sly_logger import logger
 
 
 class PointcloudInfo(NamedTuple):
@@ -1032,3 +1037,324 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 )
             )
         return pcds_infos
+
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: dict = None,
+        chunk_size: int = 1024 * 1024,
+    ) -> AsyncGenerator:
+        """
+        Download Point cloud with given ID asynchronously.
+        If is_stream is True, returns stream of bytes, otherwise returns response object.
+        For streaming, returns tuple of chunk and hash.
+
+        :param id: Point cloud ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "point-clouds.download"
+
+        json_body = {ApiField.ID: id}
+
+        if headers is None:
+            headers = self._api.headers.copy()
+        else:
+            headers.update(self._api.headers)
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+                chunk_size=chunk_size,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: dict = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+    ) -> None:
+        """
+        Downloads Point cloud with given ID to local path.
+
+        :param id: Point cloud ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Point cloud.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file. 
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pcd_info = api.pointcloud.get_info_by_id(19373403)
+            save_path = os.path.join("/path/to/save/", pcd_info.name)
+
+            semaphore = asyncio.Semaphore(10)
+            await api.pointcloud.download_path_async(pcd_info.id, save_path, semaphore)
+        """
+
+        if range_start is not None or range_end is not None:
+            check_hash = False # Hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    headers=headers,
+                    range_start=range_start,
+                    range_end=range_end,
+                    chunk_size=chunk_size,
+                ):
+                    await fd.write(chunk)
+                    hash_to_check = hhash
+                if check_hash:
+                    if hash_to_check is not None:
+                        downloaded_bytes_hash = await get_file_hash_async(path)
+                        if hash_to_check != downloaded_bytes_hash:
+                            raise RuntimeError(
+                                f"Downloaded hash of point cloud with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
+                            )
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        headers: dict = None,
+        show_progress: bool = True,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+    ) -> None:
+        """
+        Download Point clouds with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Point cloud IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Point clouds.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param show_progress: If True, shows progress bar.
+        :type show_progress: bool, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+        :type check_hash: bool, optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            ids = [19373403, 19373404]
+            paths = ["/path/to/save/000063.pcd", "/path/to/save/000064.pcd"]
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(api.pointcloud.download_paths_async(ids, paths))
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(
+                img_id,
+                img_path,
+                semaphore,
+                headers=headers,
+                chunk_size=chunk_size,
+                check_hash=check_hash,
+            )
+            tasks.append(task)
+        if show_progress:
+            with tqdm_asyncio(
+                total=len(tasks), desc="Downloading point clouds", unit="pcd"
+            ) as pbar:
+                for f in asyncio.as_completed(tasks):
+                    await f
+                    pbar.update(1)
+        else:
+            await asyncio.gather(*tasks)
+
+    async def download_related_image_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        headers: dict = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+    ) -> None:
+        """
+        Downloads a related context image from Supervisely to local directory by image id.
+
+        :param id: Point cloud ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Point cloud.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+        :type check_hash: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_info = api.pointcloud.get_list_related_images(19373403)[0]
+            save_path = os.path.join("/path/to/save/", img_info.name)
+
+            semaphore = asyncio.Semaphore(10)
+            await api.pointcloud.download_related_image_async(19373403, save_path, semaphore)
+        """
+
+        api_method_name = "point-clouds.images.download"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        async with semaphore:
+            async with aiofiles.open(path, "wb") as fd:
+                async for chunk, hhash in self._api.stream_async(
+                    api_method_name,
+                    "POST",
+                    {ApiField.ID: id},
+                    headers=headers,
+                    chunk_size=chunk_size,
+                ):
+                    await fd.write(chunk)
+                    hash_to_check = hhash
+                if check_hash:
+                    if hash_to_check is not None:
+                        downloaded_bytes_hash = await get_file_hash_async(path)
+                        if hash_to_check != downloaded_bytes_hash:
+                            raise RuntimeError(
+                                f"Downloaded hash of point cloud related image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
+                            )
+
+    async def download_related_images_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        headers: dict = None,
+        show_progress: bool = True,
+        check_hash: bool = True,
+    ) -> None:
+        """
+        Downloads a related context image from Supervisely to local directory by image id.
+
+        :param ids: Related context imgage IDs in Supervisely.
+        :type ids: int
+        :param paths: Local save paths for Point clouds.
+        :type paths: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param show_progress: If True, shows progress bar.
+        :type show_progress: bool, optional
+        :param check_hash: If True, checks hash of downloaded file.
+        :type check_hash: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_related_image_async(
+                img_id, img_path, semaphore, headers=headers, check_hash=check_hash
+            )
+            tasks.append(task)
+        if show_progress:
+            with tqdm_asyncio(
+                total=len(tasks), desc="Downloading point clouds related images", unit="image"
+            ) as pbar:
+                for f in asyncio.as_completed(tasks):
+                    await f
+                    pbar.update(1)
+        else:
+            await asyncio.gather(*tasks)
