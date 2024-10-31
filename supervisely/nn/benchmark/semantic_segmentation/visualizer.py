@@ -3,7 +3,16 @@ from supervisely.nn.benchmark.base_visualizer import BaseVisualizer
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.base_metrics import (
     BaseMetrics,
 )
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.classwise_error_analysis import (
+    ClasswiseErrorAnalysis,
+)
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.iou_eou import (
+    IntersectionErrorOverUnion,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.overview import Overview
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.renormalized_error_ou import (
+    RenormalizedErrorOverUnion,
+)
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
     GalleryWidget,
@@ -22,15 +31,33 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
     def _create_widgets(self):
         # Modal Gellery
-        self.diff_modal_table = self._create_diff_modal_table()
-        self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
+        # self.diff_modal_table = self._create_diff_modal_table()
+        # self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
 
+        # overview
         overview = Overview(self.vis_texts, self.eval_result)
         self.header = overview.get_header(self.api.user.get_my_info().login)
         self.overview_md = overview.overview_md
 
+        # key metrics
         base_metrics = BaseMetrics(self.vis_texts, self.eval_result)
+        self.base_metrics_md = base_metrics.md
         self.base_metrics_chart = base_metrics.chart
+
+        # intersection over union
+        iou_eou = IntersectionErrorOverUnion(self.vis_texts, self.eval_result)
+        self.iou_eou_md = iou_eou.md
+        self.iou_eou_chart = iou_eou.chart
+
+        # renormalized error over union
+        renorm_eou = RenormalizedErrorOverUnion(self.vis_texts, self.eval_result)
+        self.renorm_eou_md = renorm_eou.md
+        self.renorm_eou_chart = renorm_eou.chart
+
+        # classwise error analysis
+        classwise_error_analysis = ClasswiseErrorAnalysis(self.vis_texts, self.eval_result)
+        self.classwise_error_analysis_md = classwise_error_analysis.md
+        self.classwise_error_analysis_chart = classwise_error_analysis.chart
 
         self._widgets_created = True
 
@@ -42,7 +69,14 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             # Overview
             (0, self.header),
             (1, self.overview_md),
+            (1, self.base_metrics_md),
             (0, self.base_metrics_chart),
+            (1, self.iou_eou_md),
+            (0, self.iou_eou_chart),
+            (1, self.renorm_eou_md),
+            (0, self.renorm_eou_chart),
+            (1, self.classwise_error_analysis_md),
+            (0, self.classwise_error_analysis_chart),
         ]
         if self._speedtest_present:
             is_anchors_widgets.extend(

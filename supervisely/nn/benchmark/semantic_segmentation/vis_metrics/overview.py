@@ -1,26 +1,21 @@
 import datetime
 from typing import List
 
-from supervisely._utils import abs_url
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
-from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
-from supervisely.nn.benchmark.visualization.widgets import (
-    ChartWidget,
-    MarkdownWidget,
-    TableWidget,
+from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
+    SemanticSegmentationEvalResult,
 )
+from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
 
 
 class Overview(BaseVisMetric):
 
-    def __init__(self, vis_texts, eval_result: EvalResult) -> None:
+    def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
         """
         Class to create widgets for the overview block
-        overview_widgets property returns list of MarkdownWidget with information about the model
-        chart_widget property returns ChartWidget with Scatterpolar chart of the base metrics with each
-        evaluation result metrics displayed
+        overview_md property returns list of MarkdownWidget with information about the model
         """
         super().__init__(vis_texts, [eval_result])
         self.eval_result = eval_result
@@ -66,7 +61,10 @@ class Overview(BaseVisMetric):
         ]
         text_template: str = getattr(self.vis_texts, "markdown_overview")
 
-        return MarkdownWidget("markdown_overview", "Overview", text=text_template.format(*formats))
+        md = MarkdownWidget("markdown_overview", "Overview", text=text_template.format(*formats))
+        md.is_info_block = True
+        md.width_fit_content = True
+        return md
 
     def _get_overview_info(self):
         classes_cnt = len(self.eval_result.classes_whitelist)
@@ -89,7 +87,7 @@ class Overview(BaseVisMetric):
         if train_info:
             train_task_id = train_info.get("app_session_id")
             if train_task_id:
-                task_info = self.eval_result.api.task.get_info_by_id(int(train_task_id))
+                task_info = self.eval_result.train_info
                 app_id = task_info["meta"]["app"]["id"]
                 train_session = f'- **Training dashboard**:  <a href="/apps/{app_id}/sessions/{train_task_id}" target="_blank">open</a>'
 
