@@ -276,6 +276,10 @@ setup(
             "scikit-learn",
             "plotly==5.22.0",
         ],
+        "active-learning": [
+            "scikit-learn",
+            "umap-learn",
+        ],
         # legacy dependencies
         "plugins": [
             "jsonschema>=2.6.0,<3.0.0",
