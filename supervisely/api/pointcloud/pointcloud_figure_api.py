@@ -1,7 +1,9 @@
 # coding: utf-8
 
 from typing import Dict, List, Optional
-from supervisely.api.entity_annotation.figure_api import FigureApi, ApiField
+
+from supervisely.api.module_api import ApiField
+from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -40,7 +42,7 @@ class PointcloudFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -77,7 +79,7 @@ class PointcloudFigureApi(FigureApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -133,7 +135,7 @@ class PointcloudFigureApi(FigureApi):
             from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -186,3 +188,27 @@ class PointcloudFigureApi(FigureApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True):
         return super()._convert_json_info(info, skip_missing)
+
+    def download(
+        self,
+        dataset_id: int,
+        pointcloud_ids: List[int] = None,
+        skip_geometry: bool = False,
+        **kwargs
+    ) -> Dict[int, List[FigureInfo]]:
+        """
+        Method returns a dictionary with pairs of pointcloud ID and list of FigureInfo for the given dataset ID. Can be filtered by pointcloud IDs.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param pointcloud_ids: Specify the list of pointcloud IDs within the given dataset ID. If pointcloud_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
+        :type pointcloud_ids: List[int], optional
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
+        :type skip_geometry: bool
+
+        :return: A dictionary where keys are pointcloud IDs and values are lists of figures.
+        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        """
+        if kwargs.get("image_ids", False) is not False:
+            pointcloud_ids = kwargs["image_ids"]  # backward compatibility
+        return super().download(dataset_id, pointcloud_ids, skip_geometry)

@@ -38,7 +38,10 @@ from supervisely.api.module_api import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
-from supervisely.project.project_settings import ProjectSettings
+from supervisely.project.project_settings import (
+    ProjectSettings,
+    ProjectSettingsJsonFields,
+)
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -79,6 +82,7 @@ class ProjectInfo(NamedTuple):
     team_id: int
     settings: dict
     import_settings: dict
+    version: dict
 
     @property
     def image_preview_url(self):
@@ -174,6 +178,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.TEAM_ID,
             ApiField.SETTINGS,
             ApiField.IMPORT_SETTINGS,
+            ApiField.VERSION,
         ]
 
     @staticmethod
@@ -184,8 +189,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return "ProjectInfo"
 
     def __init__(self, api):
+        from supervisely.project.data_version import DataVersion
+
         CloneableModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
+        self.version = DataVersion(api)
 
     def get_list(
         self,
@@ -195,6 +203,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
+
+        *NOTE*: Version information is not available while getting list of projects.
+        If you need version information, use :func:`get_info_by_id`.
 
         :param workspace_id: Workspace ID in which the Projects are located.
         :type workspace_id: int
@@ -213,7 +224,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             workspace_id = 58
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -279,6 +290,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+        if ApiField.VERSION in fields:
+            fields.remove(ApiField.VERSION)
+            logger.debug(
+                "Project version information is not available while getting list of projects"
+            )
         return self.get_list_all_pages(
             "projects.list",
             {
@@ -314,7 +330,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_id = 1951
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -354,6 +370,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         Get Project information by name.
 
+        Version information is not available while getting project by name.
+        If you need version information, use :func:`get_info_by_id`.
+
         :param parent_id: Workspace ID.
         :type parent_id: int
         :param name: Project name.
@@ -370,7 +389,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -456,7 +475,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -500,6 +519,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_name=mtag_name,
                 multiview_tag_id=json_settings.get("groupImagesByTagId"),
                 multiview_is_synced=json_settings.get("groupImagesSync", False),
+                labeling_interface=json_settings.get(ProjectSettingsJsonFields.LABELING_INTERFACE),
             ).to_json()
 
         return json_response
@@ -573,7 +593,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             workspace_id = 8
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -638,7 +658,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             lemons_proj_id = 1951
             kiwis_proj_id = 1952
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -698,15 +718,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 multiview_tag_name=mtag_name,
                 multiview_tag_id=mtag_id,
             )
+            labeling_interface = new_s.labeling_interface
             m = m.clone(project_settings=new_s)
-            self.update_settings(
-                id,
-                {
-                    "groupImages": new_s.multiview_enabled,
-                    "groupImagesByTagId": new_s.multiview_tag_id,
-                    "groupImagesSync": new_s.multiview_is_synced,
-                },
-            )
+            settings_json = {
+                "groupImages": new_s.multiview_enabled,
+                "groupImagesByTagId": new_s.multiview_tag_id,
+                "groupImagesSync": new_s.multiview_is_synced,
+            }
+            if labeling_interface is not None:
+                settings_json[ProjectSettingsJsonFields.LABELING_INTERFACE] = labeling_interface
+            self.update_settings(id, settings_json)
 
         return m
 
@@ -730,7 +751,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_id = 454
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -757,7 +778,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_id = 454
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -765,7 +786,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             print(project_imgs_count)
             # Output: 24
         """
-        datasets = self._api.dataset.get_list(id)
+        datasets = self._api.dataset.get_list(id, recursive=True)
         return sum([dataset.images_count for dataset in datasets])
 
     def _remove_api_method_name(self):
@@ -788,7 +809,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -827,7 +848,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_id = 1951
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -875,7 +896,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_id = 1951
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -900,7 +921,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_id = 1951
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -934,7 +955,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_id = 1951
             custom_data = {1:2}
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -981,7 +1002,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1218,7 +1239,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1254,7 +1275,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ids = [18464, 18461]
             archive_urls = ['https://www.dropbox.com/...', 'https://www.dropbox.com/...']
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1297,7 +1318,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             id = 18464
             archive_url = 'https://www.dropbox.com/...'
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1474,7 +1495,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1499,7 +1520,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param sync: if True images will have synchronized view and labeling
         :type sync: bool
         """
-        meta = ProjectMeta.from_json(self.get_meta(id))
+        meta = ProjectMeta.from_json(self.get_meta(id, with_settings=True))
         existing_tag_meta = meta.get_tag_meta(tag_name)
         if existing_tag_meta is not None:
             if existing_tag_meta.value_type != TagValueType.ANY_STRING:
@@ -1528,7 +1549,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             # Load secrets and create API object from .env file (recommended)
@@ -1561,7 +1582,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             # Load secrets and create API object from .env file (recommended)

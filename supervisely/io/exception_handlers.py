@@ -466,6 +466,35 @@ class ErrorHandler:
                     title=self.title,
                     message=self.message,
                 )
+
+        class FreePlanImagesUploadLinksError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 2019
+                self.title = "Upload remote images is only available for PRO teams"
+                self.message = "Please, upgrade plan to upload remote images: https://supervisely.com/pricing/"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
+        class FreePlanVideosUploadsLinkError(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 2020
+                self.title = "Upload remote videos is only available for PRO teams"
+                self.message = "Please, upgrade plan to upload remote videos: https://supervisely.com/pricing/"
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class SDK:
         class ProjectStructureError(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
@@ -625,6 +654,23 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class MemoryExceeded(HandleException):
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                self.code = 5002
+                self.title = "Process terminated due to high memory usage"
+                self.message = (
+                    "Memory usage exceeded the limit. "
+                    "Please, check the agent's memory usage, or use a device with more memory capacity."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
 
 ERROR_PATTERNS = {
     AttributeError: {r".*api\.file\.get_info_by_path.*": ErrorHandler.API.TeamFilesFileNotFound},
@@ -639,8 +685,10 @@ ERROR_PATTERNS = {
         r".*Project with projectId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.ProjectNotFound,
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,
         r".*Unauthorized for url.*": ErrorHandler.Agent.AgentError,
-        r".*Operation is canceled because task with id.*already finished.*": ErrorHandler.API.TaskFinished,
+        r".*Operation\ is\ canceled\ because\ task\ with\ id.*already\ finished.*": ErrorHandler.API.TaskFinished,
         r".*Payment\ Required.*": ErrorHandler.API.PaymentRequired,
+        r".*images\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanImagesUploadLinksError,
+        r".*videos\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanVideosUploadsLinkError,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
@@ -649,6 +697,7 @@ ERROR_PATTERNS = {
         r".*cuda runtime error.*out of memory.*": ErrorHandler.API.OutOfMemory,
         r".*CUDA error.*an illegal memory access was encountered.*": ErrorHandler.API.OutOfMemory,
         r"The\ model\ has\ not\ yet\ been\ deployed.*": ErrorHandler.APP.CallUndeployedModelError,
+        r".*Task\ container\ finished\ with\ non-zero\ status: 137.*": ErrorHandler.Agent.MemoryExceeded,
     },
     FileNotFoundError: {
         r".*api\.annotation\.upload_path.*": ErrorHandler.API.AnnotationNotFound,

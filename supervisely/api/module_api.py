@@ -136,6 +136,10 @@ class ApiField:
     """"""
     DISABLED = "disabled"
     """"""
+    DISABLED_AT = "disabledAt"
+    """"""
+    DISABLED_BY = "disabledBy"
+    """"""
     LAST_LOGIN = "lastLogin"
     """"""
     PASSWORD = "password"
@@ -159,6 +163,8 @@ class ApiField:
     CREATED_BY_ID = (["createdBy"], "created_by_id")
     """"""
     CREATED_BY_LOGIN = (["managerLogin"], "created_by_login")
+    """"""
+    CREATED_BY_USER = "createdByUser"
     """"""
     ASSIGNED_TO_ID = (["userId"], "assigned_to_id")
     """"""
@@ -215,6 +221,8 @@ class ApiField:
     GEOMETRY_META = "geometryMeta"
     """"""
     OBJECT_ID = "objectId"
+    """"""
+    ANNOTATION_OBJECT_ID = "annotationObjectId"
     """"""
     FRAME = "frame"
     """"""
@@ -530,6 +538,62 @@ class ApiField:
     """"""
     LIMIT_BY_WORKSPACE = "limitByWorkspace"
     """"""
+    COMMIT_TOKEN = "commitToken"
+    """"""
+    TEAM_FILE_ID = "teamFileId"
+    """"""
+    PROJECT_UPDATED_AT = "projectUpdatedAt"
+    """"""
+    NODE = "node"
+    """"""
+    OPERATOR = "operator"
+    """"""
+    SMART_TOOL_INPUT = "smartToolInput"
+    """"""
+    LABELING_QUEUE_ID = "labelingQueueId"
+    """"""
+    LABELING_EXAM_ID = "labelingExamId"
+    """"""
+    IS_PINNED = "isPinned"
+    """"""
+    EVENTS = "events"
+    """"""
+    COMMENTS = "comments"
+    """"""
+    COMMENT = "comment"
+    """"""
+    ASSIGNEES = "assignees"
+    """"""
+    LINKS = "links"
+    """"""
+    IS_LOCAL = "isLocal"
+    """"""
+    ISSUE_ID = "issueId"
+    """"""
+    EXTRA = "extra"
+    """"""
+    FIGURE_IMAGE_ID = "figureImageId"
+    """"""
+    BINDINGS = "bindings"
+    """"""
+    TOP = "top"
+    """"""
+    LEFT = "left"
+    """"""
+    POSITION = "position"
+    """"""
+    ANNOTATION_DATA = "annotationData"
+    """"""
+    JOB_ENTITY_STATUS = "jobEntityStatus"
+    """"""
+    INTEGER_COORDS = "integerCoords"
+    """"""
+    HIDDEN = "hidden"
+    """"""
+    PRIORITY = "priority"
+    """"""
+    CLEAR_LOCAL_DATA_SOURCE = "clearLocalDataSource"
+    """"""
 
 
 def _get_single_item(items):
@@ -840,7 +904,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -890,7 +954,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -929,7 +993,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -965,7 +1029,7 @@ class ModuleApi(ModuleApiBase):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1064,7 +1128,7 @@ class CloneableModuleApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             # Load secrets and create API object from .env file (recommended)
@@ -1250,7 +1314,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -1284,7 +1348,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             api = sly.Api(address, token)
 
             # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 

@@ -1,23 +1,19 @@
-import os
-from typing import List, Tuple, Union
+from __future__ import annotations
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+import os
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from supervisely import (
-    Annotation,
-    Api,
-    Progress,
-    ProjectMeta,
-    TagValueType,
-    is_production,
-    logger,
-)
-from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
+from supervisely._utils import is_production
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.tag_meta import TagValueType
+from supervisely.api.api import Api
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
 class AvailableImageConverters:
@@ -33,6 +29,9 @@ class AvailableImageConverters:
     MULTI_VIEW = "multi_view"
     PDF = "pdf"
     CITYSCAPES = "cityscapes"
+    LABEL_ME = "label_me"
+    LABEL_STUDIO = "label_studio"
+    HIGH_COLOR_DEPTH = "high_color_depth"
 
 
 class AvailableVideoConverters:
@@ -141,18 +140,24 @@ class BaseConverter:
     def __init__(
         self,
         input_data: str,
-        labeling_interface: Literal[
-            "default",
-            "multi_view",
-            "multispectral",
-            "images_with_16_color",
-            "medical_imaging_single",
-        ] = "default",
+        labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
+        upload_as_links: bool = False,
+        remote_files_map: Optional[Dict[str, str]] = None,
     ):
         self._input_data: str = input_data
         self._items: List[self.BaseItem] = []
         self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
+        self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+        self._upload_as_links: bool = upload_as_links
+        self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
+        self._supports_links = False  # if converter supports uploading by links
+        self._converter = None
+
+        if self._labeling_interface not in LabelingInterface.values():
+            raise ValueError(
+                f"Invalid labeling interface value: {labeling_interface}. "
+                f"The available values: {LabelingInterface.values()}"
+            )
 
     @property
     def format(self) -> str:
@@ -170,14 +175,30 @@ class BaseConverter:
     def key_file_ext(self) -> str:
         raise NotImplementedError()
 
+    @property
+    def upload_as_links(self) -> bool:
+        return self._upload_as_links
+
+    @property
+    def remote_files_map(self) -> Dict[str, str]:
+        return self._remote_files_map
+
+    @property
+    def supports_links(self) -> bool:
+        return self._supports_links
+
     def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface == "default"
+        return self._labeling_interface == LabelingInterface.DEFAULT
 
     def validate_ann_file(self, ann_path) -> bool:
         raise NotImplementedError()
 
     def validate_key_file(self) -> bool:
         raise NotImplementedError()
+
+    def detect_format(self) -> BaseConverter:
+        self._converter = self._detect_format()
+        return self._converter
 
     def validate_format(self) -> bool:
         """
@@ -213,9 +234,19 @@ class BaseConverter:
         for converter in all_converters:
             if converter.__name__ == "BaseConverter":
                 continue
-            converter = converter(self._input_data, self._labeling_interface)
+            converter = converter(
+                self._input_data,
+                self._labeling_interface,
+                self._upload_as_links,
+                self._remote_files_map,
+            )
+
             if not converter.validate_labeling_interface():
                 continue
+
+            if self.upload_as_links and not converter.supports_links:
+                continue
+
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")
                 found_formats.append(converter)
@@ -228,19 +259,10 @@ class BaseConverter:
         progress_cb(1)
 
         if len(found_formats) == 0:
-            only_modality_items = True
-            unsupported_exts = set()
-            for root, _, files in os.walk(self._input_data):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    ext = get_file_ext(full_path)
-                    if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
-                        self._items.append(self.Item(full_path))  # pylint: disable=no-member
-                        continue
-                    only_modality_items = False
-                    if ext.lower() in self.unsupported_exts:
-                        unsupported_exts.add(ext)
-                    
+            self._items, only_modality_items, unsupported_exts = (
+                self._collect_items_if_format_not_detected()
+            )
+
             if self.items_count == 0:
                 if unsupported_exts:
                     raise RuntimeError(
@@ -254,7 +276,7 @@ class BaseConverter:
                 )
             if not only_modality_items:
                 logger.warn(
-                    "Annotations not found. " # pylint: disable=no-member
+                    "Annotations not found. "  # pylint: disable=no-member
                     f"Uploading {self.modality} without annotations. "
                     "If you need assistance to upload data with annotations, please contact our support team."
                 )
@@ -262,6 +284,23 @@ class BaseConverter:
 
         if len(found_formats) == 1:
             return found_formats[0]
+
+    def _collect_items_if_format_not_detected(self):
+        only_modality_items = True
+        unsupported_exts = set()
+        items = []
+        for root, _, files in os.walk(self._input_data):
+            for file in files:
+                full_path = os.path.join(root, file)
+                ext = get_file_ext(full_path)
+                if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
+                    items.append(self.Item(full_path))  # pylint: disable=no-member
+                    continue
+                only_modality_items = False
+                if ext.lower() in self.unsupported_exts:
+                    unsupported_exts.add(ext)
+
+        return items, only_modality_items, unsupported_exts
 
     def merge_metas_with_conflicts(
         self, api: Api, dataset_id: int
@@ -274,7 +313,7 @@ class BaseConverter:
                 f"Dataset ID:{dataset_id} not found. "
                 "Please check if the dataset exists and try again."
             )
-        meta1_json = api.project.get_meta(dataset.project_id)
+        meta1_json = api.project.get_meta(dataset.project_id, with_settings=True)
         meta1 = ProjectMeta.from_json(meta1_json)
         meta2 = self._meta
 
@@ -322,8 +361,10 @@ class BaseConverter:
                 new_tag = new_tag.clone(name=new_name)
                 meta1 = meta1.add_tag_meta(new_tag)
 
+        meta1 = self._update_labeling_interface(meta1, meta2, renamed_tags)
+
         # update project meta
-        api.project.update_meta(dataset.project_id, meta1)
+        meta1 = api.project.update_meta(dataset.project_id, meta1)
 
         return meta1, renamed_classes, renamed_tags
 
@@ -342,3 +383,31 @@ class BaseConverter:
             )
             progress_cb = progress.update
         return progress, progress_cb
+
+    def _update_labeling_interface(
+        self,
+        meta1: ProjectMeta,
+        meta2: ProjectMeta,
+        renamed_tags: Dict[str, str] = None,
+    ) -> ProjectMeta:
+        """
+        Update project meta with labeling interface from the converter meta.
+        Only update if the existing labeling interface is the default value.
+        In other cases, the existing labeling interface is preserved.
+        """
+        existing = meta1.project_settings.labeling_interface
+        new = meta2.project_settings.labeling_interface
+        if existing == new:
+            return meta1
+
+        if new is None or new == LabelingInterface.DEFAULT:
+            return meta1
+
+        if existing == LabelingInterface.DEFAULT:
+            group_tag_name = meta2.project_settings.multiview_tag_name
+            if group_tag_name and renamed_tags:
+                group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+            new_settings = meta2.project_settings.clone(multiview_tag_name=group_tag_name)
+
+            return meta1.clone(project_settings=new_settings)
+        return meta1

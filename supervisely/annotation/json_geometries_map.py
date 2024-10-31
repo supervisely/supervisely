@@ -13,6 +13,8 @@ from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.cuboid_2d import Cuboid2d
 
 
 _INPUT_GEOMETRIES = [
@@ -30,6 +32,8 @@ _INPUT_GEOMETRIES = [
     Point3d,
     MultichannelBitmap,
     ClosedSurfaceMesh,
+    AlphaMask,
+    Cuboid2d,
 ]
 _JSON_SHAPE_TO_GEOMETRY_TYPE = {
     geometry.geometry_name(): geometry for geometry in _INPUT_GEOMETRIES

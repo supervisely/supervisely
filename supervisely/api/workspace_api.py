@@ -2,7 +2,8 @@
 """list/create supervisely workspaces"""
 
 from __future__ import annotations
-from typing import NamedTuple, List, Dict, Optional
+
+from typing import Dict, List, NamedTuple, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 
@@ -99,7 +100,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -156,7 +157,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -200,7 +201,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -236,3 +237,30 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return WorkspaceInfo(**res._asdict())
+
+    def change_visibility(self, id: int, visible: bool):
+        """
+        Change Workspace visibility.
+
+        :param id: Workspace ID.
+        :type id: int
+        :param visible: Visibility status.
+        :type visible: bool
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.workspace.change_visibility(58, False)
+        """
+
+        response = self._api.post(
+            "workspaces.visibility.set",
+            {ApiField.ID: id, ApiField.HIDDEN: not visible},
+        )
+        

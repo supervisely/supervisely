@@ -2,9 +2,11 @@ import mimetypes
 from pathlib import Path
 
 import magic
+import numpy as np
 from PIL import Image
+from typing import Union, List
 
-from supervisely import logger
+from supervisely import Rectangle, Label, logger
 from supervisely.imaging.image import read, write
 from supervisely.io.fs import (
     get_file_ext,
@@ -13,7 +15,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 
-EXT_TO_CONVERT = [".heic", ".avif", ".heif"]
+EXT_TO_CONVERT = [".heic", ".avif", ".heif", ".jfif"]
 
 
 def validate_image(path: str) -> tuple:
@@ -75,3 +77,37 @@ def convert_to_jpg(path) -> tuple:
         image.convert("RGB").save(new_path)
     silent_remove(path)
     return new_path
+
+def read_tiff_image(path: str) -> Union[np.ndarray, None]:
+    """
+    Read tiff image.
+    Method will transpose image if it has shape (C, H, W) to (H, W, C).
+    """
+
+    import tifffile
+
+    logger.debug(f"Found tiff file: {path}.")
+    image = tifffile.imread(path)
+    name = get_file_name_with_ext(path)
+    if image is not None:
+        tiff_shape = image.shape
+        if image.ndim == 3:
+            if tiff_shape[0] < tiff_shape[1] and tiff_shape[0] < tiff_shape[2]:
+                image = image.transpose(1, 2, 0)
+                logger.warning(
+                    f"{name}: transposed shape from {tiff_shape} to {image.shape}"
+                )
+
+    return image
+
+
+def validate_image_bounds(labels: List[Label], img_rect: Rectangle) -> List[Label]:
+    """
+    Check if labels are localed inside the image canvas, print a warning and skip them if not.
+    """
+    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+    if new_labels != labels:
+        logger.warning(
+            f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."
+        )
+    return new_labels

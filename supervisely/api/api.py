@@ -30,6 +30,7 @@ import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
 import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
+import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
 import supervisely.api.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
@@ -55,6 +56,7 @@ from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_unhandled_request,
 )
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 SUPERVISELY_TASK_ID = "SUPERVISELY_TASK_ID"
@@ -65,6 +67,77 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
+
+class ApiContext:
+    """
+    Context manager for the API object for optimization purposes.
+    Use this context manager when you need to perform a series of operations on the same project or dataset.
+    It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
+
+    :param api: API object.
+    :type api: :class:`Api`
+    :param project_id: Project ID.
+    :type project_id: int, optional
+    :param dataset_id: Dataset ID.
+    :type dataset_id: int, optional
+    :param project_meta: ProjectMeta object.
+    :type project_meta: :class:`ProjectMeta`, optional
+    :raises: :class:`RuntimeError`, if api is None.
+
+    :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            with ApiContext(
+                api,
+                project_id=33333,
+                dataset_id=99999,
+                project_meta=project_meta,
+                with_alpha_masks=True,
+            ):
+                api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                # another code here
+    """
+
+    def __init__(
+        self,
+        api: Api,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        with_alpha_masks: Optional[bool] = True,
+    ):
+        if api is None:
+            raise RuntimeError("Api object is None")
+        self.api = api
+        self.project_id = project_id
+        self.dataset_id = dataset_id
+        self.project_meta = project_meta
+        self.with_alpha_masks = with_alpha_masks
+
+    def __enter__(self):
+        self.api.optimization_context = {
+            "project_id": self.project_id,
+            "dataset_id": self.dataset_id,
+            "project_meta": self.project_meta,
+            "with_alpha_masks": self.with_alpha_masks,
+        }
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.api.optimization_context = {}
 
 
 class UserSession:
@@ -200,7 +273,7 @@ class Api:
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
     def __init__(
@@ -214,18 +287,17 @@ class Api:
         api_server_address: str = None,
         check_instance_version: Union[bool, str] = False,
     ):
+        self.logger = external_logger or logger
+
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
             token = os.environ.get(API_TOKEN, None)
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
-        if token is None:
-            raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervise.ly/getting-started/basics-of-authentication"
-            )
+
         self.server_address = Api.normalize_server_address(server_address)
 
         self._api_server_address = None
@@ -240,16 +312,16 @@ class Api:
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
-        if len(token) != 128:
-            raise ValueError("Invalid token {!r}: length != 128".format(token))
-
         self.token = token
-        self.headers = {"x-api-key": token}
+        self.headers = {}
+        if token is not None:
+            self.headers["x-api-key"] = token
         self.task_id = os.getenv(SUPERVISELY_TASK_ID)
         if self.task_id is not None and ignore_task_id is False:
             self.headers["x-task-id"] = self.task_id
         self.context = {}
         self.additional_fields = {}
+        self.optimization_context = {}
 
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
@@ -280,11 +352,10 @@ class Api:
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
+        self.issues = issues_api.IssuesApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
-
-        self.logger = external_logger or logger
 
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
@@ -328,14 +399,14 @@ class Api:
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
             api = sly.Api.from_env()
 
             # alternatively you can store SERVER_ADDRESS and API_TOKEN
             # in "~/supervisely.env" .env file
-            # Learn more here: https://developer.supervise.ly/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
+            # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
 
             api = sly.Api.from_env()
         """
@@ -358,11 +429,11 @@ class Api:
 
         if server_address is None:
             raise ValueError(
-                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "SERVER_ADDRESS env variable is undefined. Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
         if token is None:
             raise ValueError(
-                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervise.ly/getting-started/basics-of-authentication"
+                "API_TOKEN env variable is undefined. Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
 
         return cls(
@@ -577,6 +648,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -640,6 +719,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -732,10 +819,13 @@ class Api:
 
     def _check_https_redirect(self):
         if self._require_https_redirect_check is True:
-            response = requests.get(self.server_address, allow_redirects=False)
-            if (300 <= response.status_code < 400) or (
-                response.headers.get("Location", "").startswith("https://")
-            ):
+            try:
+                response = requests.get(
+                    self.server_address.replace("http://", "https://"),
+                    allow_redirects=False,
+                    timeout=(5, 15),
+                )
+                response.raise_for_status()
                 self.server_address = self.server_address.replace("http://", "https://")
                 msg = (
                     "You're using HTTP server address while the server requires HTTPS. "
@@ -743,8 +833,10 @@ class Api:
                     f"Consider updating your server address to {self.server_address}"
                 )
                 self.logger.warn(msg)
-
-            self._require_https_redirect_check = False
+            except:
+                pass
+            finally:
+                self._require_https_redirect_check = False
 
     @classmethod
     def from_credentials(

@@ -144,6 +144,15 @@ API
 
     FileApi
 
+.. currentmodule:: supervisely.api.storage_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    StorageApi
+
 .. currentmodule:: supervisely.api.image_annotation_tool_api
 
 .. autosummary::
@@ -533,6 +542,15 @@ Geometry
 
     Bitmap
     SkeletonizeMethod
+
+.. currentmodule:: supervisely.geometry.alpha_mask
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    AlphaMask
 
 .. currentmodule:: supervisely.geometry.bitmap_base
 

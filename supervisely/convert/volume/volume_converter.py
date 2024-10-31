@@ -1,17 +1,16 @@
 import os
 
 from pathlib import Path
-from typing import List, Optional, OrderedDict, Union
+from typing import Optional, OrderedDict, Union
 
 from supervisely import (
     Api,
-    ProjectMeta,
-    VolumeAnnotation,
     batched,
     generate_free_name,
     is_development,
     logger,
 )
+from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie_volume
@@ -81,14 +80,6 @@ class VolumeConverter(BaseConverter):
         def create_empty_annotation(self) -> VolumeAnnotation:
             return VolumeAnnotation(self._volume_meta)
 
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._meta: ProjectMeta = None
-        self._items: List[self.Item] = []
-        self._labeling_interface: str = labeling_interface
-        self._converter = self._detect_format()
-        self._batch_size: int = 1
-
     @property
     def format(self):
         return self._converter.format
@@ -100,12 +91,6 @@ class VolumeConverter(BaseConverter):
     @property
     def key_file_ext(self):
         return None
-
-    def get_meta(self) -> ProjectMeta:
-        return self._meta
-
-    def get_items(self) -> List[BaseConverter.BaseItem]:
-        return self._items
 
     @staticmethod
     def validate_ann_file(ann_path, meta=None):

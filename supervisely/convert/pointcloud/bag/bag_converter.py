@@ -1,7 +1,7 @@
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import Dict, Optional, Union
 
 from supervisely import (
     Api,
@@ -26,6 +26,7 @@ from supervisely.io.fs import (
     list_files_recursively,
     silent_remove,
 )
+from supervisely.project.project_settings import LabelingInterface
 
 
 class BagConverter(PointcloudConverter):
@@ -49,11 +50,15 @@ class BagConverter(PointcloudConverter):
         def topic(self, topic: str):
             self._topic = topic
 
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[PointcloudConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._total_msg_count = 0
         self._is_pcd_episode = False
 

@@ -692,7 +692,7 @@ class VideoDataset(Dataset):
             ds_items_link = VideoDataset.get_url(project_id, dataset_id)
 
             print(ds_items_link)
-            # Output: "/projects/10093/datasets/45330/entities"
+            # Output: "/projects/10093/datasets/45330"
         """
         return super().get_url(project_id, dataset_id)
 
@@ -1050,7 +1050,7 @@ class VideoProject(Project):
         dataset_ids: List[int] = None,
         download_videos: bool = True,
         save_video_info: bool = False,
-        log_progress: bool = False,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
@@ -1069,7 +1069,7 @@ class VideoProject(Project):
         :param save_video_info: Save video infos or not.
         :type save_video_info: :class:`bool`, optional
         :param log_progress: Log download progress or not.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
         :return: None
@@ -1113,7 +1113,7 @@ class VideoProject(Project):
         api: Api,
         workspace_id: int,
         project_name: Optional[str] = None,
-        log_progress: Optional[bool] = True,
+        log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Tuple[int, str]:
         """
@@ -1129,7 +1129,7 @@ class VideoProject(Project):
 
         :type project_name: str
         :param log_progress: Logging progress of download video project or not.
-        :type log_progress: bool, optional
+        :type log_progress: bool
         :return: New video project ID in Supervisely and project name
         :rtype: :class:`int`, :class:`str`
         :Usage example:
@@ -1174,7 +1174,7 @@ def download_video_project(
     dataset_ids: Optional[List[int]] = None,
     download_videos: Optional[bool] = True,
     save_video_info: Optional[bool] = False,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
 ) -> None:
@@ -1194,7 +1194,7 @@ def download_video_project(
     :param save_video_info: Include video info in the download.
     :type save_video_info: bool, optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -1243,22 +1243,27 @@ def download_video_project(
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
 
-    datasets_infos = []
+    if progress_cb is not None:
+        log_progress = False
+
+    datasets = []
     if dataset_ids is not None:
         for ds_id in dataset_ids:
-            datasets_infos.append(api.dataset.get_info_by_id(ds_id))
+            datasets.append(api.dataset.get_info_by_id(ds_id))
     else:
-        datasets_infos = api.dataset.get_list(project_id)
+        datasets = api.dataset.get_list(project_id)
 
-    for dataset in datasets_infos:
+    for dataset in datasets:
         dataset_fs = project_fs.create_dataset(dataset.name)
         videos = api.video.get_list(dataset.id)
 
-        ds_progress = None
+        ds_progress = progress_cb
         if log_progress:
-            ds_progress = Progress(
-                "Downloading dataset: {!r}".format(dataset.name), total_cnt=len(videos)
+            ds_progress = tqdm_sly(
+                desc="Downloading videos from {!r}".format(dataset.name),
+                total=len(videos),
             )
+
         for batch in batched(videos, batch_size=LOG_BATCH_SIZE):
             video_ids = [video_info.id for video_info in batch]
             video_names = [video_info.name for video_info in batch]
@@ -1276,6 +1281,7 @@ def download_video_project(
                     },
                 )
                 raise e
+
             for video_id, video_name, custom_data, ann_json, video_info in zip(
                 video_ids, video_names, custom_datas, ann_jsons, batch
             ):
@@ -1293,15 +1299,15 @@ def download_video_project(
                 if download_videos:
                     try:
                         video_file_size = video_info.file_meta.get("size")
-                        if log_progress and video_file_size is not None:
-                            item_progress = Progress(
-                                f"Downloading {video_name}",
-                                total_cnt=int(video_file_size),
-                                is_size=True,
+                        if ds_progress is not None and video_file_size is not None:
+                            item_progress = tqdm_sly(
+                                desc=f"Downloading '{video_name}'",
+                                total=int(video_file_size),
+                                unit="B",
+                                unit_scale=True,
+                                leave=False,
                             )
-                            api.video.download_path(
-                                video_id, video_file_path, item_progress.iters_done_report
-                            )
+                            api.video.download_path(video_id, video_file_path, item_progress)
                         else:
                             api.video.download_path(video_id, video_file_path)
                     except Exception as e:
@@ -1359,7 +1365,7 @@ def download_video_project(
                     progress_cb(1)
 
             if log_progress:
-                ds_progress.iters_done_report(len(batch))
+                ds_progress(len(batch))
 
     project_fs.set_key_id_map(key_id_map)
 
@@ -1369,7 +1375,7 @@ def upload_video_project(
     api: Api,
     workspace_id: int,
     project_name: Optional[str] = None,
-    log_progress: Optional[bool] = True,
+    log_progress: bool = True,
     include_custom_data: Optional[bool] = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
@@ -1398,7 +1404,7 @@ def upload_video_project(
             ann_paths.append(ann_path)
 
         ds_progress = progress_cb
-        if log_progress:
+        if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Uploading videos to {!r}".format(dataset.name),
                 total=len(item_paths),

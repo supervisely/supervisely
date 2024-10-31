@@ -1,12 +1,8 @@
-import os
-
-from pathlib import Path
-from typing import List, Optional
+from typing import Optional, Tuple
 
 from supervisely import (
     Api,
     PointcloudAnnotation,
-    ProjectMeta,
     batched,
     generate_free_name,
     is_development,
@@ -15,7 +11,6 @@ from supervisely import (
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
 from supervisely.io.json import load_json_file
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 
 
@@ -41,16 +36,8 @@ class PointcloudConverter(BaseConverter):
         def create_empty_annotation(self) -> PointcloudAnnotation:
             return PointcloudAnnotation()
 
-        def set_related_images(self, related_images: dict) -> None:
+        def set_related_images(self, related_images: Tuple[str, str]) -> None:
             self._related_images.append(related_images)
-
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._meta: ProjectMeta = None
-        self._items: List[self.Item] = []
-        self._labeling_interface: str = labeling_interface
-        self._converter = self._detect_format()
-        self._batch_size = 1
 
     @property
     def format(self):
@@ -63,12 +50,6 @@ class PointcloudConverter(BaseConverter):
     @property
     def key_file_ext(self):
         return None
-
-    def get_meta(self) -> ProjectMeta:
-        return self._meta
-
-    def get_items(self) -> List[BaseConverter.BaseItem]:
-        return self._items
 
     @staticmethod
     def validate_ann_file(ann_path, meta=None):

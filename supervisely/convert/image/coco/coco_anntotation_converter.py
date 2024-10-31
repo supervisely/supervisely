@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, Api, ProjectMeta, batched, is_development, logger
@@ -35,6 +36,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         # create Items
         self._items = []
         meta = ProjectMeta()
+        warnings = defaultdict(list)
         for ann_path in ann_paths:
             try:
                 with coco_helper.HiddenCocoPrints():
@@ -55,6 +57,11 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
             # create ann dict
             for image_id, image_info in coco_items:
                 image_name = image_info.get("file_name", image_info.get("name"))
+                if not isinstance(image_name, str):
+                    warnings["file_name field is not a string"].append(image_name)
+                    continue
+                if "/" in image_name:
+                    image_name = os.path.basename(image_name)
                 image_url = image_info.get(
                     "coco_url",
                     image_info.get(
@@ -75,6 +82,9 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
                 detected_ann_cnt += len(coco_ann)
 
         self._meta = meta
+        if len(warnings) > 0:
+            for warning, failed_items in warnings.items():
+                logger.warn(f"{warning}: {failed_items}")
         return detected_ann_cnt > 0
 
     def to_supervisely(
@@ -114,9 +124,9 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         existing_images = {img_info.name: img_info for img_info in api.image.get_list(dataset_id)}
         if len(existing_images) == 0:
             raise RuntimeError(
-                "Failed to upload COCO annotations, you have no images in the dataset. "
-                "To add annotations to your dataset, please start import process from dataset with images. "
-                "Or you can upload images and annotations together. "
+                "Not found images in the dataset. "
+                "Please start the import process from a dataset that contains images, "
+                "or upload both images and COCO annotations at once."
             )
         if log_progress:
             progress, progress_cb = self.get_progress(

@@ -1,3 +1,5 @@
 # coding: utf-8
 
 RECOMMENDED_EXPORT_PATH = "/tmp/supervisely/export/"
+RECOMMENDED_BACKUP_PATH = "/system/"
+RECOMMENDED_IMPORT_BACKUP_PATH = RECOMMENDED_BACKUP_PATH + "imports/"

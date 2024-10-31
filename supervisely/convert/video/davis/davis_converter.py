@@ -2,8 +2,6 @@ from supervisely.convert.base_converter import AvailableVideoConverters, BaseCon
 
 
 class DavisConverter(BaseConverter):
-    def __init__(self, input_data, labeling_interface: str):
-        super().__init__(input_data, labeling_interface)
 
     def __str__(self):
         return AvailableVideoConverters.DAVIS

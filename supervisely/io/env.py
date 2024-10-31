@@ -413,7 +413,9 @@ def content_origin_update_interval() -> float:
     )
 
 
-def smart_cache_ttl(raise_not_found: Optional[bool] = False, default: Optional[int] = 120) -> int:
+def smart_cache_ttl(
+    raise_not_found: Optional[bool] = False, default: Optional[int] = 30 * 60
+) -> int:
     """Returns TTL of the smart cache from environment variable using following keys:
         - SMART_CACHE_TTL
 

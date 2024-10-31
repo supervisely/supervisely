@@ -5,14 +5,18 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
 from supervisely._utils import batched
-from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
+from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.api.module_api import ApiField, ModuleApi
+from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.constants import BITMAP
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -26,6 +30,21 @@ class AnnotationInfo(NamedTuple):
     annotation: dict
     created_at: str
     updated_at: str
+
+    def to_json(self) -> Dict[str, Any]:
+        """
+        Convert AnnotationInfo to JSON format.
+
+        :return: AnnotationInfo in JSON format.
+        :rtype: :class:`Dict[str, Any]`
+        """
+        return {
+            ApiField.IMAGE_ID: self.image_id,
+            ApiField.IMAGE_NAME: self.image_name,
+            ApiField.ANNOTATION: self.annotation,
+            ApiField.CREATED_AT: self.created_at,
+            ApiField.UPDATED_AT: self.updated_at,
+        }
 
 
 class AnnotationApi(ModuleApi):
@@ -111,7 +130,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -188,7 +207,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -256,8 +275,11 @@ class AnnotationApi(ModuleApi):
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
         :Usage example:
@@ -266,7 +288,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -295,9 +317,32 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_ID: image_id,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: False,
             },
         )
-        return self._convert_json_info(response.json())
+        result = response.json()
+        # Convert annotation to pixel coordinate system
+        result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+            result[ApiField.ANNOTATION]
+        )
+        # check if there are any AlphaMask geometries in the batch
+        additonal_geometries = defaultdict(int)
+        labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+        for idx, label in enumerate(labels):
+            if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                figure_id = label[LabelJsonFields.ID]
+                additonal_geometries[figure_id] = idx
+
+        # if so, download them separately and update the annotation
+        if len(additonal_geometries) > 0:
+            figure_ids = list(additonal_geometries.keys())
+            figures = self._api.image.figure.download_geometries_batch(figure_ids)
+            for figure_id, geometry in zip(figure_ids, figures):
+                label_idx = additonal_geometries[figure_id]
+                labels[label_idx].update({BITMAP: geometry})
+        ann_info = self._convert_json_info(result)
+
+        return ann_info
 
     def download_json(
         self,
@@ -310,8 +355,11 @@ class AnnotationApi(ModuleApi):
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :param with_custom_data:
+        :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Annotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -320,7 +368,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -360,6 +408,11 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -369,7 +422,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -381,7 +434,40 @@ class AnnotationApi(ModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
+
+            Optimizing the download process by using the context to avoid redundant API calls.:
+            # 1. Download the project meta
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
         """
+        # use context to avoid redundant API calls
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_meta = context.get("project_meta")
+        project_id = context.get("project_id")
+        if dataset_id != context_dataset_id:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
+
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
+
+        need_download_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_download_alpha_masks = True
+                break
+
         id_to_ann = {}
         for batch in batched(image_ids):
             post_data = {
@@ -389,11 +475,38 @@ class AnnotationApi(ModuleApi):
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: False,
             }
             results = self._api.post("annotations.bulk.info", data=post_data).json()
+            if need_download_alpha_masks is True:
+                additonal_geometries = defaultdict(tuple)
+                for ann_idx, ann_dict in enumerate(results):
+                    # check if there are any AlphaMask geometries in the batch
+                    for label_idx, label in enumerate(
+                        ann_dict[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+                    ):
+                        if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                            figure_id = label[LabelJsonFields.ID]
+                            additonal_geometries[figure_id] = (ann_idx, label_idx)
+
+                # if there are any AlphaMask geometries, download them separately and update the annotation
+                if len(additonal_geometries) > 0:
+                    figure_ids = list(additonal_geometries.keys())
+                    figures = self._api.image.figure.download_geometries_batch(figure_ids)
+                    for figure_id, geometry in zip(figure_ids, figures):
+                        ann_idx, label_idx = additonal_geometries[figure_id]
+                        results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][
+                            label_idx
+                        ].update({BITMAP: geometry})
+
             for ann_dict in results:
+                # Convert annotation to pixel coordinate system
+                ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+                    ann_dict[ApiField.ANNOTATION]
+                )
                 ann_info = self._convert_json_info(ann_dict)
                 id_to_ann[ann_info.image_id] = ann_info
+
             if progress_cb is not None:
                 progress_cb(len(batch))
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
@@ -415,6 +528,9 @@ class AnnotationApi(ModuleApi):
         :type image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
 
@@ -424,7 +540,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -467,7 +583,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -502,13 +618,24 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
             img_ids = [121236918, 121236919]
             ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
             upl_paths = api.annotation.upload_paths(img_ids, ann_pathes)
+
+            # Optimizing the upload process by using the context to avoid redundant API calls.
+            # Usefull when uploading a large number of annotations in one dataset.
+            # 1. Download the project meta
+            dataset_id = 254737
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                api.annotation.upload_paths(img_ids, ann_pathes)
         """
 
         def read_json(ann_path):
@@ -545,7 +672,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -579,12 +706,23 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
             img_ids = [121236918, 121236919]
-            upl_jsons = api.annotation.upload_jsons(img_ids, ann_jsons)
+            api.annotation.upload_jsons(img_ids, ann_jsons)
+
+            # Optimizing the upload process by using the context to avoid redundant API calls.
+            # Usefull when uploading a large number of annotations in one dataset.
+            # 1. Download the project meta
+            dataset_id = 254737
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                api.annotation.upload_jsons(img_ids, ann_jsons)
         """
         self._upload_batch(
             lambda x: x,
@@ -616,7 +754,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -650,12 +788,23 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
             img_ids = [121236918, 121236919]
             upl_anns = api.annotation.upload_anns(img_ids, [ann1, ann2])
+
+            # Optimizing the upload process by using the context to avoid redundant API calls.
+            # Usefull when uploading a large number of annotations in one dataset.
+            # 1. Download the project meta
+            dataset_id = 254737
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                api.annotation.upload_anns(img_ids, [ann1, ann2])
         """
         # img_ids from the same dataset
         self._upload_batch(
@@ -668,14 +817,29 @@ class AnnotationApi(ModuleApi):
 
     def _upload_batch(
         self,
-        func_ann_to_json,
-        img_ids,
-        anns,
+        func_ann_to_json: Callable,
+        img_ids: List[int],
+        anns: List[Union[Dict, Annotation, str]],
         progress_cb=None,
         skip_bounds_validation: Optional[bool] = False,
     ):
         """
-        _upload_batch
+        General method for uploading annotations to instance.
+
+        Method is used in: upload_paths, upload_jsons, upload_anns
+
+        :param func_ann_to_json: Function to convert annotation to json or read annotation from file.
+        :type func_ann_to_json: callable
+        :param img_ids: List of image IDs in Supervisely to which annotations will be uploaded.
+        :type img_ids: List[int]
+        :param anns: List of annotations. Can be json, Annotation object or path to annotation file.
+        :type anns: List[Union[Dict, Annotation, str]]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param skip_bounds_validation: Skip bounds validation.
+        :type skip_bounds_validation: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
         """
         # img_ids from the same dataset
         if len(img_ids) == 0:
@@ -685,14 +849,83 @@ class AnnotationApi(ModuleApi):
                 'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
             )
 
+        # use context to avoid redundant API calls
         dataset_id = self._api.image.get_info_by_id(
             img_ids[0], force_metadata_for_links=False
         ).dataset_id
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_id = context.get("project_id")
+        project_meta = context.get("project_meta")
+        if dataset_id != context_dataset_id:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
+
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
+
+        need_upload_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_upload_alpha_masks = True
+                break
+
         for batch in batched(list(zip(img_ids, anns))):
-            data = [
-                {ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: func_ann_to_json(ann)}
-                for img_id, ann in batch
-            ]
+            data = []
+            if need_upload_alpha_masks:
+                special_figures = []
+                special_geometries = []
+                # check if there are any AlphaMask geometries in the batch
+                for img_id, ann in batch:
+                    ann_json = func_ann_to_json(ann)
+                    ann_json = deepcopy(ann_json)  # Avoid changing the original data
+
+                    ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
+                    filtered_labels = []
+                    if AnnotationJsonFields.LABELS not in ann_json:
+                        raise RuntimeError(
+                            f"Annotation JSON does not contain '{AnnotationJsonFields.LABELS}' field"
+                        )
+                    for label_json in ann_json[AnnotationJsonFields.LABELS]:
+                        for key in [
+                            LabelJsonFields.GEOMETRY_TYPE,
+                            LabelJsonFields.OBJ_CLASS_NAME,
+                        ]:
+                            if key not in label_json:
+                                raise RuntimeError(f"Label JSON does not contain '{key}' field")
+                        if label_json[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                            label_json.update({ApiField.ENTITY_ID: img_id})
+
+                            obj_cls_name = label_json.get(LabelJsonFields.OBJ_CLASS_NAME)
+                            obj_cls = project_meta.get_obj_class(obj_cls_name)
+                            if obj_cls is None:
+                                raise RuntimeError(
+                                    f"Object class '{obj_cls_name}' not found in project meta"
+                                )
+                            # update obj class id in label json
+                            label_json[LabelJsonFields.OBJ_CLASS_ID] = obj_cls.sly_id
+
+                            geometry = label_json.pop(
+                                BITMAP
+                            )  # remove alpha mask geometry from label json
+                            special_geometries.append(geometry)
+                            special_figures.append(label_json)
+                        else:
+                            filtered_labels.append(label_json)
+                    if len(filtered_labels) != len(ann_json[AnnotationJsonFields.LABELS]):
+                        ann_json[AnnotationJsonFields.LABELS] = filtered_labels
+                    data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
+            else:
+                for img_id, ann in batch:
+                    ann_json = func_ann_to_json(ann)
+                    ann_json = deepcopy(ann_json)  # Avoid changing the original data
+                    ann_json = Annotation._to_subpixel_coordinate_system_json(ann_json)
+                    data.append({ApiField.IMAGE_ID: img_id, ApiField.ANNOTATION: ann_json})
+
             self._api.post(
                 "annotations.bulk.add",
                 data={
@@ -701,6 +934,22 @@ class AnnotationApi(ModuleApi):
                     ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
                 },
             )
+            if need_upload_alpha_masks:
+                if len(special_figures) > 0:
+                    # 1. create figures
+                    json_body = {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FIGURES: special_figures,
+                        ApiField.SKIP_BOUNDS_VALIDATION: skip_bounds_validation,
+                    }
+                    resp = self._api.post("figures.bulk.add", json_body)
+                    added_fig_ids = [resp_obj[ApiField.ID] for resp_obj in resp.json()]
+
+                    # 2. upload alpha mask geometries
+                    self._api.image.figure.upload_geometries_batch(
+                        added_fig_ids, special_geometries
+                    )
+
             if progress_cb is not None:
                 progress_cb(len(batch))
 
@@ -762,7 +1011,7 @@ class AnnotationApi(ModuleApi):
             import supervisely as sly
             from tqdm import tqdm
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -821,7 +1070,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -860,7 +1109,7 @@ class AnnotationApi(ModuleApi):
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervise.ly'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
@@ -912,10 +1161,16 @@ class AnnotationApi(ModuleApi):
         if len(labels) == 0:
             return
 
+        alpha_mask_geometry = AlphaMask._impl_json_class_name()
         payload = []
-        for label in labels:
+        special_geometries = {}
+        for idx, label in enumerate(labels):
             _label_json = label.to_json()
-            _label_json["geometry"] = label.geometry.to_json()
+            if isinstance(label.geometry, AlphaMask):
+                _label_json.pop(alpha_mask_geometry)  # remove alpha mask geometry from label json
+                special_geometries[idx] = label.geometry.to_json()[BITMAP]
+            else:
+                _label_json["geometry"] = label.geometry.to_json()
             if "classId" not in _label_json:
                 raise KeyError("Update project meta from server to get class id")
             payload.append(_label_json)
@@ -933,6 +1188,11 @@ class AnnotationApi(ModuleApi):
             for resp_obj in resp.json():
                 figure_id = resp_obj[ApiField.ID]
                 added_ids.append(figure_id)
+
+        # upload alpha mask geometries
+        if len(special_geometries) > 0:
+            fidure_ids = [added_ids[idx] for idx in special_geometries.keys()]
+            self._api.image.figure.upload_geometries_batch(fidure_ids, special_geometries.values())
 
     def get_label_by_id(
         self, label_id: int, project_meta: ProjectMeta, with_tags: Optional[bool] = True
@@ -1039,5 +1299,49 @@ class AnnotationApi(ModuleApi):
                 ApiField.ID: label_id,
                 ApiField.TAGS: [tag.to_json() for tag in label.tags],
                 ApiField.GEOMETRY: label.geometry.to_json(),
+            },
+        )
+
+    def update_label_priority(self, label_id: int, priority: int) -> None:
+        """Updates label's priority with given ID in Supervisely.
+        Priority increases with the number: a higher number indicates a higher priority.
+        The higher priority means that the label will be displayed on top of the others.
+        The lower priority means that the label will be displayed below the others.
+        
+        :param label_id: ID of the label to update
+        :type label_id: int
+        :param priority: New priority of the label
+        :type priority: int
+        
+        :Usage example: 
+        
+            .. code-block:: python
+            
+            import os
+            from dotenv import load_dotenv
+            
+            import supervisely as sly
+            
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            
+            api = sly.Api.from_env()
+            
+            label_ids = [123, 456, 789]
+            priorities = [1, 2, 3]
+            
+            for label_id, priority in zip(label_ids, priorities):
+                api.annotation.update_label_priority(label_id, priority)
+                
+            # The label with ID 789 will be displayed on top of the others.
+            # The label with ID 123 will be displayed below the others.
+        
+        """
+        self._api.post(
+            "figures.priority.update",
+            {
+                ApiField.ID: label_id,
+                ApiField.PRIORITY: priority,
             },
         )

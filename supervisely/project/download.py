@@ -30,7 +30,7 @@ def download(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
@@ -48,7 +48,7 @@ def download(
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
@@ -95,12 +95,19 @@ def download(
         project_info = api.project.get_info_by_id(project_id_video)
         num_videos = project_info.items_count
 
-        p = tqdm(desc="Downloading video project", total=num_videos)
+        # Download video project with automatic logging...
         sly.download(
             api,
             project_id_video,
             dest_dir,
-            progress_cb=p,
+            save_video_info=True,
+        )
+        # ...or disable logging at all
+        sly.download(
+            api,
+            project_id_video,
+            dest_dir,
+            log_progress=False,
             save_video_info=True,
         )
 
@@ -159,7 +166,6 @@ def download(
         log_progress = False
 
     project_class = get_project_class(project_info.type)
-
     project_class.download(
         api=api,
         project_id=project_id,
@@ -479,7 +485,7 @@ def download_using_cache(
     project_id: int,
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
-    log_progress: Optional[bool] = False,
+    log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     **kwargs,
 ) -> None:
@@ -496,7 +502,7 @@ def download_using_cache(
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output.
-    :type log_progress: bool, optional
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
 
@@ -512,3 +518,30 @@ def download_using_cache(
         **kwargs,
     )
     copy_from_cache(project_id, dest_dir, [*downloaded, *cached])
+
+
+def read_from_cached_project(
+    project_id: int, dataset_name: str, image_names: List[int]
+) -> List[Tuple[str, str]]:
+    """
+    Read images from cached project.
+
+    :param project_id: Project ID.
+    :type project_id: int
+    :param dataset_name: Name of the dataset.
+    :type dataset_name: str
+    :param image_ids: List of image IDs.
+    :type image_ids: list(int)
+
+    :return: List of tuples of image path and annotation path.
+    :rtype: list(str)
+    """
+    if not is_cached(project_id, dataset_name):
+        raise RuntimeError(f"Dataset {dataset_name} of project {project_id} is not cached")
+
+    dataset = Dataset(_get_cache_dir(project_id, dataset_name), OpenMode.READ)
+    paths = []
+    for image_name in image_names:
+        image_path, ann_path = dataset.get_item_paths(image_name)
+        paths.append((image_path, ann_path))
+    return paths

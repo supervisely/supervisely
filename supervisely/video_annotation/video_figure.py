@@ -49,6 +49,12 @@ class VideoFigure:
     :type updated_at: str, optional
     :param created_at: Date and Time when VideoFigure was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param track_id: ID of the track to which VideoFigure belongs.
+    :type track_id: str, optional
+    :param smart_tool_input: Smart Tool parameters that were used for labeling.
+    :type smart_tool_input: dict, optional
+    :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
+    :type priority: int, optional
     :Usage example:
 
      .. code-block:: python
@@ -95,6 +101,8 @@ class VideoFigure:
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
         track_id: Optional[str] = None,
+        smart_tool_input: Optional[Dict] = None,
+        priority: Optional[int] = None,
     ):
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
@@ -105,6 +113,8 @@ class VideoFigure:
         self.updated_at = updated_at
         self.created_at = created_at
         self.track_id = track_id
+        self._smart_tool_input = smart_tool_input
+        self._priority = priority
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
@@ -212,6 +222,41 @@ class VideoFigure:
         """
         return self._frame_index
 
+    @property
+    def smart_tool_input(self):
+        """
+        Smart Tool parameters that were used for labeling.
+
+        Example:
+
+            {
+                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]],
+                'visible': True,
+                'negative': [],
+                'positive': [[597, 933], [474.5072466934964, 1381.6437133813354]]
+            }
+        """
+        return self._smart_tool_input
+
+    @smart_tool_input.setter
+    def smart_tool_input(self, smtool_input: Dict):
+        smtool_input_keys = ["crop", "visible", "negative", "positive"]
+        for k in smtool_input_keys:
+            if k not in smtool_input:
+                raise ValueError(f"Smart tool input has to contain key '{k}'")
+        self._smart_tool_input = smtool_input
+
+    @property
+    def priority(self):
+        """
+        Priority of the figure (position of the figure relative to other overlapping or underlying figures).
+        """
+        return self._priority
+
+    @priority.setter
+    def priority(self, priority: int):
+        self._priority = priority
+
     def key(self) -> UUID:
         """
         Figure key.
@@ -317,6 +362,12 @@ class VideoFigure:
         if save_meta is True:
             data_json[ApiField.META] = self.get_meta()
 
+        if self._smart_tool_input is not None:
+            data_json[ApiField.SMART_TOOL_INPUT] = self._smart_tool_input
+
+        if self._priority is not None:
+            data_json[ApiField.PRIORITY] = self._priority
+
         self._add_creation_info(data_json)
         return data_json
 
@@ -390,7 +441,9 @@ class VideoFigure:
                 raise RuntimeError("Figure can not be deserialized: key_id_map is None")
             object_key = key_id_map.get_object_key(object_id)
             if object_key is None:
-                raise RuntimeError("Object with id={!r} not found in key_id_map".format(object_id))
+                raise RuntimeError(
+                    "Object with id={!r} not found in key_id_map".format(object_id)
+                )
 
         object = objects.get(object_key)
         if object is None:
@@ -416,6 +469,8 @@ class VideoFigure:
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
         track_id = data.get(TRACK_ID, None)
+        smart_tool_input = data.get(ApiField.SMART_TOOL_INPUT, None)
+        priority = data.get(ApiField.PRIORITY, None)
 
         return cls(
             object,
@@ -427,6 +482,8 @@ class VideoFigure:
             updated_at=updated_at,
             created_at=created_at,
             track_id=track_id,
+            smart_tool_input=smart_tool_input,
+            priority=priority,
         )
 
     def clone(
@@ -439,6 +496,9 @@ class VideoFigure:
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        track_id: Optional[str] = None,
+        smart_tool_input: Optional[Dict] = None,
+        priority: Optional[int] = None,
     ) -> VideoFigure:
         """
         Makes a copy of VideoFigure with new fields, if fields are given, otherwise it will use fields of the original VideoFigure.
@@ -459,6 +519,12 @@ class VideoFigure:
         :type updated_at: str, optional
         :param created_at: Date and Time when VideoFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param track_id: ID of the track to which VideoFigure belongs.
+        :type track_id: str, optional
+        :param smart_tool_input: Smart Tool parameters that were used for labeling.
+        :type smart_tool_input: dict, optional
+        :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
+        :type priority: int, optional
         :return: VideoFigure object
         :rtype: :class:`VideoFigure`
 
@@ -512,6 +578,9 @@ class VideoFigure:
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            track_id=take_with_default(track_id, self.track_id),
+            smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
+            priority=take_with_default(priority, self._priority),
         )
 
     def validate_bounds(
