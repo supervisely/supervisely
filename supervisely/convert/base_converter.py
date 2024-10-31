@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import Dict, List, Optional, Tuple, Union
+
 from tqdm import tqdm
 
 from supervisely._utils import is_production
