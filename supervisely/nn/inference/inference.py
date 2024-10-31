@@ -2543,16 +2543,51 @@ def clean_up_cuda():
         logger.debug("Error in clean_up_cuda.", exc_info=True)
 
 
+def _fix_classes_names(meta: ProjectMeta, ann: Annotation):
+    def _replace_strip(s, chars: str, replacement: str = "_") -> str:
+        replace_pattern = f"^[{re.escape(chars)}]+|[{re.escape(chars)}]+$"
+        return re.sub(replace_pattern, replacement, s)
+
+    replaced_classes_in_meta = []
+    for obj_class in meta.obj_classes:
+        obj_class_name = _replace_strip(obj_class.name, " ", "")
+        if obj_class_name != obj_class.name:
+            new_obj_class = obj_class.clone(name=obj_class_name)
+            meta = meta.delete_obj_class(obj_class.name)
+            meta = meta.add_obj_class(new_obj_class)
+            replaced_classes_in_meta.append((obj_class.name, obj_class_name))
+    replaced_classes_in_ann = set()
+    new_labels = []
+    for label in ann.labels:
+        obj_class = label.obj_class
+        obj_class_name = _replace_strip(obj_class.name, " ", "")
+        if obj_class_name != obj_class.name:
+            new_obj_class = obj_class.clone(name=obj_class_name)
+            label = label.clone(obj_class=new_obj_class)
+            replaced_classes_in_ann.add((obj_class.name, obj_class_name))
+        new_labels.append(label)
+    ann = ann.clone(labels=new_labels)
+    return meta, ann, replaced_classes_in_meta, list(replaced_classes_in_ann)
+
+
 def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     """Update project meta and annotation to match each other
     If obj class or tag meta from annotation conflicts with project meta
     add suffix to obj class or tag meta.
     Return tuple of updated project meta, annotation and boolean flag if meta was changed."""
-    obj_classes_suffixes = {"_nn"}
-    tag_meta_suffixes = {"_nn"}
+    obj_classes_suffixes = ["_nn"]
+    tag_meta_suffixes = ["_nn"]
     ann_obj_classes = {}
     ann_tag_metas = {}
     meta_changed = False
+
+    ann, meta, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    if replaced_classes_in_meta:
+        meta_changed = True
+        logger.warning(
+            "Some classes names were fixed in project meta",
+            extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
+        )
 
     # get all obj classes and tag metas from annotation
     for label in ann.labels:
@@ -2563,7 +2598,8 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
         ann_tag_metas[tag.meta.name] = tag.meta
 
     # check if obj classes are in project meta
-    # if not, add them with suffix
+    # if not, add them.
+    # if shape is different, add them with suffix
     changed_obj_classes = {}
     for ann_obj_class in ann_obj_classes.values():
         if meta.get_obj_class(ann_obj_class.name) is None:
