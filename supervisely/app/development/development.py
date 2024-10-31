@@ -290,12 +290,8 @@ def enable_advanced_debug(
 
     logger.debug(
         f"Advanced debugging has been started. "
-        f"VPN connection has been established and debug task has been create. Task ID: {task_id}."
+        f"VPN connection has been established and debug task has been create. Task ID: {task_id}. "
         "The metod will return the task ID, you can use it to make requests to the app."
     )
-
-    # data = {"project_id": project_id, "force": True, "team_id": 448}
-
-    # api.task.send_request(task_id, "embeddings", data, skip_response=True)
 
     return task_id
