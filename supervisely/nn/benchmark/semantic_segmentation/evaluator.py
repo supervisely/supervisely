@@ -5,6 +5,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
@@ -23,9 +24,7 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
     mp_cls = MetricProvider
 
     def _read_eval_data(self):
-        self.eval_data = pickle.load(
-            open(Path(self.local_dir, "evaluation", "eval_data.pkl"), "rb")
-        )
+        self.eval_data = pickle.load(open(Path(self.directory, "eval_data.pkl"), "rb"))
         # self.inference_info = load_json_file(
         #     Path(self.local_dir, "evaluation", "inference_info.json")
         # )
@@ -40,16 +39,16 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
 
 
 class SemanticSegmentationEvaluator(BaseEvaluator):
-    EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/coco/evaluation_params.yaml"
+    EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = SemanticSegmentationEvalResult
 
     def evaluate(self):
         class_names, colors = self._get_classes_names_and_colors()
 
         gt_prep_path = Path(self.gt_project_path).parent / "preprocessed_gt"
-        pred_prep_path = Path(self.dt_project_path).parent / "preprocessed_pred"
+        pred_prep_path = Path(self.pred_project_path).parent / "preprocessed_pred"
         self.prepare_segmentation_data(self.gt_project_path, gt_prep_path, colors)
-        self.prepare_segmentation_data(self.dt_project_path, pred_prep_path, colors)
+        self.prepare_segmentation_data(self.pred_project_path, pred_prep_path, colors)
 
         self.eval_data = calculate_metrics(
             gt_dir=gt_prep_path,

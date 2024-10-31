@@ -74,9 +74,10 @@ class MetricProvider:
         self.classwise_segm_error_data = self.classwise_error_data()
 
         # confusion matrix
-        self.confusion_matrix = self.confusion_matrix(self.eval_data["confusion_matrix"].copy())
+        self.confusion_matrix = self.get_confusion_matrix(self.eval_data["confusion_matrix"].copy())
 
         # frequently confused classes
+        self._frequently_confused = self.eval_data["frequently_confused"]
 
     # def calculate(self):
     #     # base metrics
@@ -90,7 +91,7 @@ class MetricProvider:
     def metric_table(self):
         pass
 
-    def confusion_matrix(self, confusion_matrix: np.ndarray):
+    def get_confusion_matrix(self, confusion_matrix: np.ndarray):
         if len(self.eval_data.index) > 7:
             original_classes = self.eval_data.index.tolist()
             per_class_iou = self.eval_data["IoU"].copy()
