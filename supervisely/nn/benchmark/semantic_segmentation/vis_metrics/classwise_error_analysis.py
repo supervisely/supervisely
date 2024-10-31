@@ -33,13 +33,13 @@ class ClasswiseErrorAnalysis(BaseVisMetric):
         bar_data, labels = self.eval_result.mp.classwise_segm_error_data
         color_palette = ["cornflowerblue", "moccasin", "lightgreen", "orangered"]
 
-        for data, label, color in zip(bar_data, labels, color_palette):
+        for i, column in enumerate(bar_data.columns):
             fig.add_trace(
                 go.Bar(
-                    x=bar_data.columns,
-                    y=data,
-                    name=label,
-                    marker=dict(color=color),
+                    name=column,
+                    y=bar_data[column],
+                    x=labels,
+                    marker_color=color_palette[i],
                 )
             )
 

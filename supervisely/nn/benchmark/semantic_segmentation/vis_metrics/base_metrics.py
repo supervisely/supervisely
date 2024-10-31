@@ -14,7 +14,7 @@ class BaseMetrics(BaseVisMetric):
 
     @property
     def md(self) -> MarkdownWidget:
-        header = MarkdownWidget("markdown_header", "Header", text="## Key metrics")
+        header = MarkdownWidget("markdown_header", "Key Metrics", text="## Key metrics")
         return header
 
     @property
