@@ -16,6 +16,9 @@ from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.overview import 
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.renormalized_error_ou import (
     RenormalizedErrorOverUnion,
 )
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.frequently_confused import (
+    FrequentlyConfused,
+)
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
     GalleryWidget,
@@ -47,6 +50,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.base_metrics_md = base_metrics.md
         self.base_metrics_chart = base_metrics.chart
 
+        # TODO: Explore predictions
+
         # intersection over union
         iou_eou = IntersectionErrorOverUnion(self.vis_texts, self.eval_result)
         self.iou_eou_md = iou_eou.md
@@ -67,6 +72,11 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.confusion_matrix_md = confusion_matrix.md
         self.confusion_matrix_chart = confusion_matrix.chart
 
+        # frequently confused
+        frequently_confused = FrequentlyConfused(self.vis_texts, self.eval_result)
+        self.frequently_confused_md = frequently_confused.md
+        self.frequently_confused_chart = frequently_confused.chart
+
         self._widgets_created = True
 
     def _create_layout(self):
@@ -79,6 +89,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (1, self.overview_md),
             (1, self.base_metrics_md),
             (0, self.base_metrics_chart),
+            # TODO: Explore predictions
             (1, self.iou_eou_md),
             (0, self.iou_eou_chart),
             (1, self.renorm_eou_md),
@@ -87,6 +98,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (0, self.classwise_error_analysis_chart),
             (1, self.confusion_matrix_md),
             (0, self.confusion_matrix_chart),
+            (1, self.frequently_confused_md),
+            (0, self.frequently_confused_chart),
         ]
         if self._speedtest_present:
             is_anchors_widgets.extend(

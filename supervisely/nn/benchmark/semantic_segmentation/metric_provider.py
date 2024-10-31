@@ -122,22 +122,15 @@ class MetricProvider:
                 non_diagonal_indexes[i] = idx
 
         indexes_1d = np.argsort(confusion_matrix, axis=None)
-        indexes_2d = [non_diagonal_indexes[idx] for idx in indexes_1d if idx in non_diagonal_indexes][
-            -n_pairs:
-        ]
+        indexes_2d = [
+            non_diagonal_indexes[idx] for idx in indexes_1d if idx in non_diagonal_indexes
+        ][-n_pairs:]
         indexes_2d = np.asarray(indexes_2d[::-1])
 
         rows = indexes_2d[:, 0]
         cols = indexes_2d[:, 1]
         probs = confusion_matrix[rows, cols]
-        return probs  # TODO: move to visualization ?
-
-        # confused_classes = []
-        # for idx in indexes_2d:
-        #     gt_idx, pred_idx = idx[0], idx[1]
-        #     gt_class = class_names[gt_idx]
-        #     pred_class = class_names[pred_idx]
-        #     confused_classes.append(f"{gt_class}-{pred_class}")
+        return probs, indexes_2d
 
     def basic_metrics(self):
         pass
