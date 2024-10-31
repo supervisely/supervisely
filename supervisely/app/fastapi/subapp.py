@@ -1,5 +1,5 @@
-import asyncio
 import os
+import inspect
 import signal
 import sys
 from contextlib import suppress
@@ -1042,7 +1042,7 @@ class Application(metaclass=Singleton):
         def inner(func: Callable) -> Callable:
             server = self.get_server()
 
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
 
                 @server.post(event.endpoint)
                 async def wrapper(request: Request):
