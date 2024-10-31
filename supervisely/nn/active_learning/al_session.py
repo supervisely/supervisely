@@ -1,6 +1,6 @@
 from collections import defaultdict
 from supervisely import Api
-from supervisely.io.json import load_json_file
+from supervisely.io.json import load_json_file, dump_json_file
 from supervisely.nn.active_learning.sampling.random_sampler import RandomSampler
 from supervisely.nn.active_learning.sampling.kmeans_sampler import KMeansSampler
 from supervisely import DatasetInfo
@@ -57,10 +57,33 @@ class ALSession:
 
     def _init_with_team_files_config(self):
         local_config_path = "/tmp/config.json"
-        self.api.file.download(self.team_id, f"/active_learning/{self.workspace_id}/config.json", local_config_path)
+        self.api.file.download(self.team_id, self._team_files_config_path(self.workspace_id), local_config_path)
         config: dict = load_json_file(local_config_path)
         self.index_project_id = config["index_project_id"]
         self.labeling_project_id = config["labeling_project_id"]
         self.training_project_id = config["training_project_id"]
         self.train_dataset_id = config["train_dataset_id"]
         self.val_dataset_id = config["val_dataset_id"]
+
+    @staticmethod
+    def _team_files_config_path(workspace_id: int):
+        return f"/active_learning/{workspace_id}/config.json"
+
+    @staticmethod
+    def from_empty_workspace(api: Api, workspace_id: int) -> 'ALSession':
+        api = api
+        index_info = api.project.create(workspace_id, "Index")
+        labeling_info = api.project.create(workspace_id, "Labeling")
+        training_info = api.project.create(workspace_id, "Training")
+        config = {
+            "index_project_id": index_info.id,
+            "labeling_project_id": labeling_info.id,
+            "training_project_id": training_info.id,
+            "train_dataset_id": None,
+            "val_dataset_id": None
+        }
+        team_id = api.workspace.get_info_by_id(workspace_id).team_id
+        local_config_path = "/tmp/config.json"
+        dump_json_file(config, local_config_path)
+        api.file.upload(team_id, local_config_path, ALSession._team_files_config_path(workspace_id))
+        return ALSession(api, workspace_id)

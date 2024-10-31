@@ -29,10 +29,9 @@ class KMeansSampler(BaseSampler):
         """
         num_clusters = num_images
         image_ids = self.image_ids
-        items = self.api.embeddings.get_items_by_image_ids(image_ids)
-        embeddings = ...
-        
-        assert len(image_ids) == len(embeddings), "Mismatch between image IDs and embeddings"
+        items = self.api.embeddings.get_info_by_ids(image_ids)
+        embeddings, image_ids = zip(*[(item.vector, item.id) for item in items])
+        embeddings = np.stack(embeddings, axis=0)
         
         # Dimensionality reduction
         if self.decomposition_method == "PCA":
