@@ -136,6 +136,9 @@ class PretrainedModelsSelector(Widget):
 
     def get_selected_model_params(self, model_name_column: str = "Model") -> Union[Dict, None]:
         selected_model = self.get_selected_row()
+        if selected_model is None:
+            return {}
+        
         model_name = selected_model.get(model_name_column)
         if model_name is None:
             raise ValueError(

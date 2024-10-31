@@ -1,5 +1,6 @@
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
@@ -15,6 +16,7 @@ class RITM(BaseTrainArtifacts):
         self._info_file = "info/ui_state.json"
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/RITM_training/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["interactive segmentation"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
