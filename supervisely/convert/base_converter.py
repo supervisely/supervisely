@@ -289,7 +289,7 @@ class BaseConverter:
         unsupported_exts = set()
         items = []
         is_episode = self.__class__.__name__ == "PointcloudEpisodeConverter"
-        i = 0
+        i = 0  # incremental for PointcloudEpisodeConverter.Item's frame number
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 i += 1
