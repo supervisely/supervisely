@@ -3613,7 +3613,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :type range_end: int, optional
         :param headers: Headers for request.
         :type headers: dict, optional
-        :param check_hash: If True, checks hash of downloaded image.
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
         :type check_hash: bool, optional
         :return: None
         :rtype: :class:`NoneType`
@@ -3634,6 +3636,7 @@ class ImageApi(RemoveableBulkModuleApi):
             await api.image.download_path_async(img_info.id, save_path, semaphore)
         """
         if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
@@ -3749,7 +3752,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param check_hash: If True, checks hash of downloaded image.
+        :param check_hash: If True, checks hash of downloaded bytes.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
         :type check_hash: bool, optional
         :return: Bytes of downloaded image.
         :rtype: :class:`bytes`
@@ -3768,6 +3773,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         """
         if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")

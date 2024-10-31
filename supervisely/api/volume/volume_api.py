@@ -1322,6 +1322,10 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for downloading. Default is 1MB.
         :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1342,6 +1346,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
 
         if range_start is not None or range_end is not None:
+            check_hash = False  # Hash check is not supported for partial downloads
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
@@ -1396,6 +1401,8 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type show_progress: bool, optional
         :param chunk_size: Size of chunk for downloading. Default is 1MB.
         :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+        :type check_hash: bool, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`

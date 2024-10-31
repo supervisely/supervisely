@@ -870,26 +870,6 @@ def get_file_hash(path: str) -> str:
         return get_bytes_hash(file_bytes)
 
 
-async def get_file_hash_async(path: str) -> str:
-    """
-    Get hash from target file asynchronously.
-
-    :param path: Target file path.
-    :type path: str
-    :returns: File hash
-    :rtype: :class:`str`
-    :Usage example:
-
-     .. code-block:: python
-
-        from supervisely.io.fs import get_file_hash_async
-        hash = await get_file_hash_async('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
-    """
-    async with aiofiles.open(path, "rb") as file:
-        file_bytes = await file.read()
-        return get_bytes_hash(file_bytes)
-
-
 def tree(dir_path: str) -> str:
     """
     Get tree for target directory.

@@ -2400,6 +2400,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :param chunk_size: Size of chunk for partial download. Default is 1MB.
         :type chunk_size: int, optional
         :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
         :type check_hash: bool, optional
         :return: None
         :rtype: :class:`NoneType`
@@ -2420,6 +2422,7 @@ class VideoApi(RemoveableBulkModuleApi):
             await api.video.download_path_async(video_info.id, save_path, semaphore)
         """
         if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
