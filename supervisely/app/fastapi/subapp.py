@@ -1,4 +1,5 @@
 import os
+import inspect
 import signal
 import sys
 from contextlib import suppress
@@ -1012,11 +1013,15 @@ class Application(metaclass=Singleton):
             self._graceful_stop_event.set()
         return suppress(self.StopException)
 
-    def event(self, event: Event) -> Callable:
+    def event(self, event: Event, use_state: bool = False) -> Callable:
         """Decorator to register posts to specific endpoints.
+        Supports both async and sync functions.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
         :type event: Event
+        :param use_state: if set to True, data will be extracted from request.state.state,
+            otherwise from request.state.context, defaults to False
+        :type use_state: bool, optional
         :return: decorator
         :rtype: Callable
 
@@ -1037,9 +1042,19 @@ class Application(metaclass=Singleton):
         def inner(func: Callable) -> Callable:
             server = self.get_server()
 
-            @server.post(event.endpoint)
-            def wrapper(request: Request):
-                return func(request.state.api, event.from_json(request.state.context))
+            if inspect.iscoroutinefunction(func):
+
+                @server.post(event.endpoint)
+                async def wrapper(request: Request):
+                    data = request.state.state if use_state else request.state.context
+                    return await func(request.state.api, event.from_json(data))
+
+            else:
+
+                @server.post(event.endpoint)
+                def wrapper(request: Request):
+                    data = request.state.state if use_state else request.state.context
+                    return func(request.state.api, event.from_json(data))
 
             return wrapper
 
