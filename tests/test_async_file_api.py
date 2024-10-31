@@ -1,70 +1,67 @@
 import asyncio
-from time import sleep, time
-
-from tqdm import tqdm
-from tqdm.asyncio import tqdm_asyncio as tqdm
+import time
 
 import supervisely as sly
 
+LOG_LEVEL = "INFO"
+# LOG_LEVEL = "DEBUG"
 api = sly.Api.from_env()
 
-# api.logger.setLevel("DEBUG")
+api.logger.setLevel(LOG_LEVEL)
 
-full_path = "/videos/MP4_HEVC.mp4"
-team_id = 567
-local_path = "/home/ganpoweird/Work/supervisely/video/video.mp4"
+
+TEAM_ID = 567
+save_path = "/home/ganpoweird/Work/test_file_download/"
+remote_path = "/videos/"
+sly.fs.ensure_base_path(save_path)
+sly.fs.clean_dir(save_path)
 files = (
-    ("12391768_3840_2160_30fps.mp4", "/videos/12391768_3840_2160_30fps.mp4"),
-    # ("1fps.mp4", "/videos/1fps.mp4"),
-    ("MOV_h264.mov", "/videos/MOV_h264.mov"),
-    ("MP4_HEVC.mp4", "/videos/MP4_HEVC.mp4"),
+    ("12391768_3840_2160_30fps.mp4", f"{remote_path}12391768_3840_2160_30fps.mp4"),
+    ("MOV_h264.mov", f"{remote_path}MOV_h264.mov"),
+    ("MP4_HEVC.mp4", f"{remote_path}MP4_HEVC.mp4"),
 )
 
 
-async def download_files(api: sly.Api, team_id, files):
+async def download_files():
     sema = asyncio.Semaphore(10)
-    save_path = "/home/ganpoweird/Work/supervisely/video/"
     tasks = []
     for name, path in files:
         task = api.file.download_async(
-            team_id, path, save_path + name, sema, show_file_progress=True
+            TEAM_ID, path, save_path + name, sema, show_file_progress=True
         )
         tasks.append(task)
     await asyncio.gather(*tasks)
 
 
-# api.file.download_directory(team_id, "/videos/", "/home/ganpoweird/Work/supervisely/video")
+def maind_df():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(download_files())
 
 
-# def run_async():
-#     start = time()
-#     asyncio.run(download_files(api, team_id, files))
-#     finish = time() - start
-#     return finish
+def main_dd():
+    start = time.time()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(api.file.download_directory_async(TEAM_ID, remote_path, save_path))
+    end = time.time()
+    print(f"Time taken for download dir async: {end-start}")
 
 
-asyncio.run(download_files(api, team_id, files))
+def compare_dir_download():
+    main_dd()
 
-# for _ in range(5):
-#     for name, path in files:
-#         api.file.download(team_id, path, "/home/ganpoweird/Work/supervisely/video/" + name)
+    sly.fs.clean_dir(save_path)
 
-# # time_list = []
-# # for _ in range(5):
-# #     sleep(2)
-# #     time_list.append(run_async())
-
-# # print(f"Min time: {round(min(time_list), 2)}")
-# # print(f"Max time: {round(max(time_list), 2)}")
-# # print(f"Average time: {round(sum(time_list) / len(time_list), 2)}")
+    start = time.time()
+    api.file.download_directory(TEAM_ID, remote_path, save_path)
+    end = time.time()
+    print(f"Time taken for download dir: {end-start}")
 
 
-# progress = tqdm(desc="Downloading", total=api.storage.get_info_by_path(team_id, full_path).sizeb, unit="B", unit_scale=True)
-# with open(local_path, "wb") as f:
-#     for chunk in api.stream(
-#         "file-storage.download",
-#         "POST",
-#         {"teamId": team_id, "path": full_path},
-#     ):
-#         f.write(chunk)
-#         progress(len(chunk))
+if __name__ == "__main__":
+    try:
+        # maind_df()  # to download and save files
+        main_dd()  # to download and save files as folder
+        # compare_dir_download()  # to compare download time between async and sync
+    except KeyboardInterrupt:
+        sly.logger.info("Stopped by user")
+set().discard

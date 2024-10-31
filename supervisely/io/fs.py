@@ -1351,7 +1351,11 @@ def str_is_url(string: str) -> bool:
         return False
 
 
-async def copy_file_async(src: str, dst: str) -> None:
+async def copy_file_async(
+    src: str,
+    dst: str,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> None:
     """
     Asynchronously copy file from one path to another, if destination directory doesn't exist it will be created.
 
@@ -1359,6 +1363,8 @@ async def copy_file_async(src: str, dst: str) -> None:
     :type src: str
     :param dst: Destination file path.
     :type dst: str
+    :param progress_cb: Function for tracking copy progress.
+    :type progress_cb: Union[tqdm, Callable], optional
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -1376,6 +1382,8 @@ async def copy_file_async(src: str, dst: str) -> None:
                 if not chunk:
                     break
                 await out_f.write(chunk)
+                if progress_cb is not None:
+                    progress_cb(len(chunk))
 
 
 async def get_file_hash_async(path: str) -> str:

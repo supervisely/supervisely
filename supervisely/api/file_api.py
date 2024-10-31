@@ -13,10 +13,9 @@ from pathlib import Path
 from time import time
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
-
 import aiofiles
-from dotenv import load_dotenv
 import requests
+from dotenv import load_dotenv
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 from typing_extensions import Literal
@@ -38,12 +37,8 @@ from supervisely.io.fs import (
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import load_json_file
-from supervisely.io.network_exceptions import (
-    process_requests_exception,
-    process_unhandled_request,
-)
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
+from supervisely.task.progress import Progress, tqdm_sly
 
 
 class FileInfo(NamedTuple):
@@ -1538,6 +1533,7 @@ class FileApi(ModuleApiBase):
         headers: dict = None,
         show_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        check_hash: bool = True,
     ):
         """
         Download file from Team Files or connected Cloud Storage.
@@ -1558,14 +1554,17 @@ class FileApi(ModuleApiBase):
         :type show_progress: bool
         :param progress_cb: Function for tracking download progress. If None, tqdm will be used.
         :type progress_cb: tqdm or callable, optional
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool
         :return: None
         :rtype: :class:`NoneType`
         """
         api_method = "file-storage.download"
 
-        downloaded_size = 0
-
         if range_start is not None or range_end is not None:
+            check_hash = False
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"File: {remote_path}. Setting Range header: {headers['Range']}")
@@ -1576,34 +1575,26 @@ class FileApi(ModuleApiBase):
             **self._api.additional_fields,
         }
 
-        # TODO move this section to tqdm_sly after tests or remove it. It slows down the download process.
-        if range_start is not None and range_end is not None:
-            total_size = range_end - range_start
-        elif range_start is not None:
-            total_size = self.get_info_by_path(team_id, remote_path).sizeb - range_start
-        elif range_end is not None:
-            total_size = range_end
-        else:
-            total_size = self.get_info_by_path(team_id, remote_path).sizeb
-
-        logger.debug(f"Starting download: {remote_path}, total size: {total_size}")
-
         writing_method = "ab" if range_start not in [0, None] else "wb"
 
         ensure_base_path(local_save_path)
         if show_progress is False:
             progress_cb = None
         elif show_progress and progress_cb is None:
+            file_info = self.get_info_by_path(team_id, remote_path)
             progress_cb = tqdm_sly(
-                total=total_size,
+                total=file_info.sizeb if file_info is not None else None,
                 unit="B",
                 unit_scale=True,
-                desc="Downloading file",
-                initial=downloaded_size,
+                desc=(
+                    f"Downloading file {file_info.name}"
+                    if file_info is not None
+                    else "Downloading file"
+                ),
             )
-
+        hash_to_check = None
         async with aiofiles.open(local_save_path, writing_method) as fd:
-            async for chunk in self._api.stream_async(
+            async for chunk, hhash in self._api.stream_async(
                 method=api_method,
                 method_type="POST",
                 data=json_body,
@@ -1612,17 +1603,18 @@ class FileApi(ModuleApiBase):
                 range_end=range_end,
             ):
                 await fd.write(chunk)
-                downloaded_size += len(chunk)
+                hash_to_check = hhash
                 if progress_cb is not None:
                     progress_cb.update(len(chunk))
             await fd.flush()
 
-        # TODO remove this check after tests. It slows down the download process.
-        downloaded_file_size = os.path.getsize(local_save_path)
-        if total_size != downloaded_file_size:
-            raise RuntimeError(
-                f"Downloaded {remote_path} file size does not match the expected size: {downloaded_file_size} != {total_size}"
-            )
+        if check_hash:
+            if hash_to_check is not None:
+                downloaded_file_hash = await get_file_hash_async(local_save_path)
+                if hash_to_check != downloaded_file_hash:
+                    raise RuntimeError(
+                        f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                    )
 
         if progress_cb is not None:
             progress_cb.close()
@@ -1674,8 +1666,17 @@ class FileApi(ModuleApiBase):
 
         async with semaphore:
             if self.is_on_agent(remote_path):
-                await self.download_from_agent_async(remote_path, local_save_path, progress_cb)
-                return
+                # for optimized download from agent
+                # in other agent cases download will be performed as usual
+                agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
+                if (
+                    agent_id == env.agent_id(raise_not_found=False)
+                    and env.agent_storage(raise_not_found=False) is not None
+                ):
+                    path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
+                    logger.info(f"Optimized download from agent: {path_on_agent}")
+                    await sly_fs.copy_file_async(path_on_agent, local_save_path, progress_cb)
+                    return
 
             if cache is None:
                 await self._download_async(
@@ -1718,79 +1719,62 @@ class FileApi(ModuleApiBase):
                         if progress_cb is not None:
                             progress_cb(get_file_size(local_save_path))
 
-    async def download_from_agent_async(
+    async def download_directory_async(
         self,
+        team_id: int,
         remote_path: str,
         local_save_path: str,
-        range_start: Optional[int] = None,
-        range_end: Optional[int] = None,
-        headers: dict = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        show_progress: bool = True,
     ) -> None:
         """
-        Download file from agent storage.
+        Download Directory from Team Files to local path asynchronously.
 
-        :param remote_path: Path to file in agent storage.
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_path: Path to Directory in Team Files.
         :type remote_path: str
         :param local_save_path: Local save path.
         :type local_save_path: str
-        :param range_start: Start byte position for partial download.
-        :type range_start: int, optional
-        :param range_end: End byte position for partial download.
-        :type range_end: int, optional
-        :param headers: Additional headers for request.
-        :type headers: dict, optional
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm or callable, optional
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore
+        :param show_progress: If True show download progress.
+        :type show_progress: bool
         :return: None
         :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            path_to_dir = "/files/folder"
+            local_path = "path/to/local/folder"
+
+            await api.file.download_directory_async(9, path_to_dir, local_path)
         """
-        api_method = "agents.storage.download"
 
-        agent_id, path_in_agent_folder = self.parse_agent_id_and_path(remote_path)
-        if (
-            agent_id == env.agent_id(raise_not_found=False)
-            and env.agent_storage(raise_not_found=False) is not None
-        ):
-            path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
-            logger.info(f"Optimized download from agent: {path_on_agent}")
-            await sly_fs.copy_file_async(path_on_agent, local_save_path)
-            if progress_cb is not None:
-                progress_cb(await sly_fs.get_file_size(path_on_agent))
-            return
+        if not remote_path.endswith("/"):
+            remote_path += "/"
 
-        if headers is None:
-            headers = self._api.headers.copy()
+        tasks = []
+        files = self.list(team_id, remote_path, recursive=True)
+        for file in files:
+            task = self.download_async(
+                team_id,
+                file["path"],
+                os.path.join(local_save_path, file["path"][len(remote_path) :]),
+                semaphore=semaphore,
+            )
+            tasks.append(task)
+        if show_progress:
+            with tqdm_sly(total=len(tasks), desc="Downloading files") as pbar:
+                for f in asyncio.as_completed(tasks):
+                    await f
+                    pbar.update(1)
         else:
-            headers.update(self._api.headers)
-
-        downloaded_size = 0
-
-        if range_start is not None or range_end is not None:
-            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
-            logger.debug(f"File: {remote_path}. Setting Range header: {headers['Range']}")
-
-        json_body = {ApiField.ID: agent_id, ApiField.PATH: path_in_agent_folder}
-
-        logger.debug(f"Starting download: {remote_path}")
-
-        writing_method = "ab" if range_start not in [0, None] else "wb"
-
-        ensure_base_path(local_save_path)
-        async with aiofiles.open(local_save_path, writing_method) as fd:
-            async for chunk in self._api.stream_async(
-                method=api_method,
-                method_type="POST",
-                data=json_body,
-                headers=headers,
-                range_start=range_start,
-                range_end=range_end,
-            ):
-                await fd.write(chunk)
-                downloaded_size += len(chunk)
-                if progress_cb is not None:
-                    progress_cb.update(len(chunk))
-            await fd.flush()
-
-        if progress_cb is not None:
-            progress_cb.close()
+            await asyncio.gather(*tasks)
