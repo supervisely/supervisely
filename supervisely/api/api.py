@@ -1384,7 +1384,7 @@ class Api:
                             yield chunk, hhash
                             total_streamed += len(chunk)
 
-                        if total_streamed != expected_size:
+                        if expected_size != 0 and total_streamed != expected_size:
                             raise ValueError(
                                 f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                             )
@@ -1393,7 +1393,7 @@ class Api:
                         )
                         return
             except httpx.RequestError as e:
-                retry_range_start = total_streamed + (range_start or 0)
+                retry_range_start = total_streamed + (range_start or 0) + 1
                 headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
                 logger.debug(f"Setting Range header {headers['Range']} for retry")
                 process_requests_exception(
