@@ -111,7 +111,7 @@ class MetricProvider:
         # x = class_names
         # y = x[::-1].copy()
         # text_anns = [[str(el) for el in row] for row in confusion_matrix]
-        return confusion_matrix  # TODO: move to visualization ?
+        return confusion_matrix, class_names
 
     def get_frequently_confused(self, confusion_matrix: np.ndarray):
         n_pairs = 10

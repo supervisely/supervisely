@@ -22,7 +22,7 @@ class ClasswiseErrorAnalysis(BaseVisMetric):
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget("intersection_error_over_union", self.get_figure())
+        return ChartWidget("classwise_error_analysis", self.get_figure())
 
     def get_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error

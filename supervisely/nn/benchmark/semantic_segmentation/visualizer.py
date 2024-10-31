@@ -6,6 +6,9 @@ from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.base_metrics imp
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.classwise_error_analysis import (
     ClasswiseErrorAnalysis,
 )
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.confusion_matrix import (
+    ConfusionMatrix,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.iou_eou import (
     IntersectionErrorOverUnion,
 )
@@ -59,6 +62,11 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.classwise_error_analysis_md = classwise_error_analysis.md
         self.classwise_error_analysis_chart = classwise_error_analysis.chart
 
+        # confusion matrix
+        confusion_matrix = ConfusionMatrix(self.vis_texts, self.eval_result)
+        self.confusion_matrix_md = confusion_matrix.md
+        self.confusion_matrix_chart = confusion_matrix.chart
+
         self._widgets_created = True
 
     def _create_layout(self):
@@ -77,6 +85,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (0, self.renorm_eou_chart),
             (1, self.classwise_error_analysis_md),
             (0, self.classwise_error_analysis_chart),
+            (1, self.confusion_matrix_md),
+            (0, self.confusion_matrix_chart),
         ]
         if self._speedtest_present:
             is_anchors_widgets.extend(
