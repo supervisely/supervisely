@@ -601,9 +601,13 @@ class ImageApi(RemoveableBulkModuleApi):
         infos_dict = {}
         ids_set = set(ids)
         while any(ids_set):
-            dataset_id = self.get_info_by_id(
-                ids_set.pop(), force_metadata_for_links=False
-            ).dataset_id
+            img_id = ids_set.pop()
+            image_info = self.get_info_by_id(img_id, force_metadata_for_links=False)
+            if image_info is None:
+                raise KeyError(
+                    f"Image with id {img_id} is either archived, doesn't exist or you don't have enough permissions to access it"
+                )
+            dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
                 temp_results = self.get_list_all_pages(
