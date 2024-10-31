@@ -1,4 +1,5 @@
 from collections import defaultdict
+import time
 import numpy as np
 from supervisely.nn.active_learning.sampling.base_sampler import BaseSampler
 from supervisely import Api
@@ -8,6 +9,7 @@ try:
     from umap import UMAP
 except ImportError:
     pass
+from supervisely import logger
 
 
 class KMeansSampler(BaseSampler):
@@ -29,11 +31,12 @@ class KMeansSampler(BaseSampler):
         """
         num_clusters = num_images
         image_ids = self.image_ids
-        items = self.api.embeddings.get_info_by_ids(image_ids)
+        items = self.api.embeddings.get_info_by_ids(self.project_id, image_ids)
         embeddings, image_ids = zip(*[(item.vector, item.id) for item in items])
         embeddings = np.stack(embeddings, axis=0)
         
         # Dimensionality reduction
+        t0 = time.time()
         if self.decomposition_method == "PCA":
             pca = PCA(n_components=self.n_dim)
             reduced_embeddings = pca.fit_transform(embeddings)
@@ -62,12 +65,14 @@ class KMeansSampler(BaseSampler):
                 continue
             cluster_center = kmeans.cluster_centers_[cluster_label]
             cluster_embeddings = np.array([
-                embeddings[image_ids.index(img_id)] 
+                reduced_embeddings[image_ids.index(img_id)] 
                 for img_id in cluster_images
             ])
             distances = np.linalg.norm(cluster_embeddings - cluster_center, axis=1)
             closest_image_index = np.argmin(distances)
             sampled_image_ids.append(cluster_images[closest_image_index])
+        dt = time.time() - t0
+        logger.info(f"KMeans sampling completed in {dt:.2f} seconds")
 
         return sampled_image_ids
         
