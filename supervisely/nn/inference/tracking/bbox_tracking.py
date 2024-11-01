@@ -11,6 +11,7 @@ from fastapi import BackgroundTasks, Form, Request, UploadFile
 
 import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
+from supervisely._utils import rand_str
 from supervisely.annotation.label import Geometry, Label
 from supervisely.nn.inference import Inference
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
@@ -110,6 +111,8 @@ class BBoxTracking(Inference):
             daemon=True,
         ).start()
 
+        frames_counter = 0
+
         try:
             for fig_id, obj_id in zip(
                 video_interface.geometries.keys(),
@@ -133,12 +136,21 @@ class BBoxTracking(Inference):
                         self.initialize(imgs[0], target)
                         init = True
 
+                    if frames_counter % 16 == 0:
+                        api.logger.debug("saving frame for visualization")
+                        ds_id = 93355
+                        self.api.image.upload_np(
+                            ds_id, f"frame_{frames_counter}_{rand_str(5)}.png", imgs[-1]
+                        )
+
                     geometry = self.predict(
                         rgb_image=imgs[-1],
                         prev_rgb_image=imgs[0],
                         target_bbox=target,
                         settings=self.custom_inference_settings_dict,
                     )
+                    frames_counter += 1
+
                     sly_geometry = self._to_sly_geometry(geometry)
                     upload_queue.put(
                         (sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])
