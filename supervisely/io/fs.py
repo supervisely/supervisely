@@ -1437,7 +1437,7 @@ async def unpack_archive_async(
         archive_path = '/home/admin/work/examples.tar'
         target_dir = '/home/admin/work/projects'
 
-        sly.fs.unpack_archive(archive_path, target_dir)
+        await sly.fs.unpack_archive(archive_path, target_dir)
     """
     if is_split:
         chunk = chunk_size_mb * 1024 * 1024
