@@ -574,10 +574,15 @@ class Inference:
         for prediction in predictions:
             if (
                 not classes_whitelist in (None, "all")
+                and hasattr(prediction, "class_name")
                 and prediction.class_name not in classes_whitelist
             ):
                 continue
-            label = self._create_label(prediction)
+            if "classes_whitelist" in inspect.signature(self._create_label).parameters:
+                # pylint: disable=unexpected-keyword-arg
+                label = self._create_label(prediction, classes_whitelist)
+            else:
+                label = self._create_label(prediction)
             if label is None:
                 # for example empty mask
                 continue
