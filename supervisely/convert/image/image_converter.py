@@ -137,8 +137,8 @@ class ImageConverter(BaseConverter):
                 if item.path is None:
                     continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if self.upload_as_links:
-                    ann = None  # TODO: implement
+                if self.upload_as_links and not self.supports_links:
+                    ann = None
                 else:
                     ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
@@ -188,6 +188,9 @@ class ImageConverter(BaseConverter):
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
+        if self._upload_as_links and self.supports_links:
+            ext = get_file_ext(path)
+            return ext.lower() in self.allowed_exts
         mimetypes.add_type("image/heic", ".heic")  # to extend types_map
         mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map

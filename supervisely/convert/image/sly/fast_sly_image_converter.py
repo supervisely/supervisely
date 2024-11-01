@@ -20,6 +20,10 @@ from supervisely.convert.image.image_helper import validate_image_bounds
 
 class FastSlyImageConverter(SLYImageConverter, ImageConverter):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supports_links = False
+
     def validate_format(self) -> bool:
 
         detected_ann_cnt = 0
