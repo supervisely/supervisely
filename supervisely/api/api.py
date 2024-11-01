@@ -1169,6 +1169,10 @@ class Api:
                             params=json_body or params,
                             headers=headers,
                         )
+                    else:
+                        raise NotImplementedError(
+                            f"Unsupported method type: {method_type}. Supported types: 'GET', 'POST'"
+                        )
 
                     with response as resp:
                         expected_size = int(resp.headers.get("content-length", 0))
@@ -1428,6 +1432,4 @@ class Api:
                 process_unhandled_request(self.logger, e)
             finally:
                 await client.aclose()
-        raise httpx.RequestError(
-            message=f"Retry limit exceeded ({url})", request=None, response=None
-        )
+        raise httpx.RequestError(message=f"Retry limit exceeded ({url})", request=None)

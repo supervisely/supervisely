@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 
 import supervisely as sly
@@ -38,6 +39,17 @@ def maind_df():
     loop.run_until_complete(download_files())
 
 
+def main_ip():
+    start = time.time()
+    loop = asyncio.get_event_loop()
+    # os.environ["CONTEXT_SLYFILE"] = "/test/test_input.tar"
+    os.environ["FOLDER"] = "/videos/"
+    os.environ["TEAM_ID"] = str(TEAM_ID)
+    loop.run_until_complete(api.file.download_input_async(save_path, log_progress=True))
+    end = time.time()
+    print(f"Time taken for download input async: {end-start}")
+
+
 def main_dd():
     start = time.time()
     loop = asyncio.get_event_loop()
@@ -61,6 +73,7 @@ if __name__ == "__main__":
     try:
         # maind_df()  # to download and save files
         main_dd()  # to download and save files as folder
+        # main_ip()  # to download input file
         # compare_dir_download()  # to compare download time between async and sync
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

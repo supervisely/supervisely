@@ -446,7 +446,7 @@ class FileApi(ModuleApiBase):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 fd.write(chunk)
                 if progress_cb is not None:
-                    progress_cb.update(len(chunk))
+                    progress_cb(len(chunk))
 
     def download(
         self,
@@ -518,6 +518,7 @@ class FileApi(ModuleApiBase):
     def parse_agent_id_and_path(self, remote_path: str) -> int:
         return sly_fs.parse_agent_id_and_path(remote_path)
 
+    # TODO replace with download_async
     def download_from_agent(
         self,
         remote_path: str,
@@ -548,8 +549,7 @@ class FileApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    # TODO make new async method
-    # TODO mark as deprecated
+    # TODO replace with download_directory_async
     def download_directory(
         self,
         team_id: int,
@@ -704,13 +704,7 @@ class FileApi(ModuleApiBase):
             if self.is_on_agent(remote_file_path):
                 self.download_from_agent(remote_file_path, local_file_path, progress_cb=progress_cb)
             else:
-                asyncio.run(
-                    self.download_async(
-                        self.download(
-                            team_id, remote_file_path, local_file_path, progress_cb=progress_cb
-                        )
-                    )
-                )
+                self.download(team_id, remote_file_path, local_file_path, progress_cb=progress_cb)
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 sly_fs.unpack_archive(local_file_path, save_path)
                 if remove_archive:
@@ -1605,7 +1599,7 @@ class FileApi(ModuleApiBase):
                 await fd.write(chunk)
                 hash_to_check = hhash
                 if progress_cb is not None:
-                    progress_cb.update(len(chunk))
+                    progress_cb(len(chunk))
             await fd.flush()
 
         if check_hash:
@@ -1615,9 +1609,6 @@ class FileApi(ModuleApiBase):
                     raise RuntimeError(
                         f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
                     )
-
-        if progress_cb is not None:
-            progress_cb.close()
 
     async def download_async(
         self,
@@ -1763,18 +1754,152 @@ class FileApi(ModuleApiBase):
 
         tasks = []
         files = self.list(team_id, remote_path, recursive=True)
+        sizeb = sum([file["meta"]["size"] for file in files])
+        if show_progress:
+            progress_cb = tqdm_sly(
+                total=sizeb, desc=f"Downloading files from {remote_path}", unit="B", unit_scale=True
+            )
+        else:
+            progress_cb = None
+
         for file in files:
             task = self.download_async(
                 team_id,
                 file["path"],
                 os.path.join(local_save_path, file["path"][len(remote_path) :]),
                 semaphore=semaphore,
+                progress_cb=progress_cb,
+                show_file_progress=show_progress,
             )
             tasks.append(task)
-        if show_progress:
-            with tqdm_sly(total=len(tasks), desc="Downloading files") as pbar:
-                for f in asyncio.as_completed(tasks):
-                    await f
-                    pbar.update(1)
-        else:
-            await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
+
+    async def download_input_async(
+        self,
+        save_path: str,
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        unpack_if_archive: Optional[bool] = True,
+        remove_archive: Optional[bool] = True,
+        force: Optional[bool] = False,
+        log_progress: bool = False,
+    ) -> None:
+        """Downloads data asynchronously for application from input using environment variables.
+        Automatically detects if data is a file or a directory and saves it to the specified directory.
+        If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
+
+        :param save_path: path to a directory where data will be saved
+        :type save_path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads
+        :type semaphore: asyncio.Semaphore
+        :param unpack_if_archive: if True, archive will be unpacked to the specified directory
+        :type unpack_if_archive: Optional[bool]
+        :param remove_archive: if True, archive will be removed after unpacking
+        :type remove_archive: Optional[bool]
+        :param force: if True, data will be downloaded even if it already exists in the specified directory
+        :type force: Optional[bool]
+        :param log_progress: if True, progress bar will be displayed
+        :type log_progress: bool
+        :raises RuntimeError:
+            - if both file and folder paths not found in environment variables \n
+            - if both file and folder paths found in environment variables (debug)
+            - if team id not found in environment variables
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            # Application is started...
+            save_path = "/my_app_data"
+            api.file.download_input(save_path)
+
+            # The data is downloaded to the specified directory.
+        """
+        remote_file_path = env.file(raise_not_found=False)
+        remote_folder_path = env.folder(raise_not_found=False)
+        team_id = env.team_id()
+
+        sly_fs.mkdir(save_path)
+
+        if remote_file_path is None and remote_folder_path is None:
+            raise RuntimeError(
+                "Both file and folder paths not found in environment variables. "
+                "Please, specify one of them."
+            )
+        elif remote_file_path is not None and remote_folder_path is not None:
+            raise RuntimeError(
+                "Both file and folder paths found in environment variables. "
+                "Please, specify only one of them."
+            )
+        if team_id is None:
+            raise RuntimeError("Team id not found in environment variables.")
+
+        if remote_file_path is not None:
+            file_name = sly_fs.get_file_name_with_ext(remote_file_path)
+            local_file_path = os.path.join(save_path, file_name)
+
+            if os.path.isfile(local_file_path) and not force:
+                logger.info(
+                    f"The file {local_file_path} already exists. "
+                    "Download is skipped, if you want to download it again, "
+                    "use force=True."
+                )
+                return
+
+            sly_fs.silent_remove(local_file_path)
+
+            progress_cb = None
+            file_info = self.get_info_by_path(team_id, remote_file_path)
+            if log_progress is True and file_info is not None:
+                progress_cb = tqdm_sly(
+                    desc=f"Downloading {remote_file_path}",
+                    total=file_info.sizeb,
+                    unit="B",
+                    unit_scale=True,
+                )
+            await self.download_async(
+                team_id,
+                remote_file_path,
+                local_file_path,
+                semaphore=semaphore,
+                progress_cb=progress_cb,
+                show_file_progress=log_progress,
+            )
+            if unpack_if_archive and sly_fs.is_archive(local_file_path):
+                await sly_fs.unpack_archive_async(local_file_path, save_path)
+                if remove_archive:
+                    sly_fs.silent_remove(local_file_path)
+                else:
+                    logger.info(
+                        f"Achive {local_file_path} was unpacked, but not removed. "
+                        "If you want to remove it, use remove_archive=True."
+                    )
+        elif remote_folder_path is not None:
+            folder_name = os.path.basename(os.path.normpath(remote_folder_path))
+            local_folder_path = os.path.join(save_path, folder_name)
+            if os.path.isdir(local_folder_path) and not force:
+                logger.info(
+                    f"The folder {folder_name} already exists. "
+                    "Download is skipped, if you want to download it again, "
+                    "use force=True."
+                )
+                return
+
+            sly_fs.remove_dir(local_folder_path)
+
+            await self.download_directory_async(
+                team_id,
+                remote_folder_path,
+                local_folder_path,
+                semaphore=semaphore,
+                show_progress=log_progress,
+            )
