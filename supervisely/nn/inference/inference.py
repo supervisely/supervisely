@@ -1568,7 +1568,10 @@ class Inference:
                     )
 
         def _add_results_to_request(results: List[Dict]):
-            logger.debug("adding results to request", extra={"results": len(results), "request": async_inference_request_uuid})
+            logger.debug(
+                "adding results to request",
+                extra={"results": len(results), "request": async_inference_request_uuid},
+            )
             if async_inference_request_uuid is None:
                 return
             inference_request["pending_results"].extend(results)
@@ -1581,7 +1584,7 @@ class Inference:
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
-                        logger.debug("Got items from loop", extra={"items": len(items)})
+                        logger.debug("Got items from queue", extra={"items": len(items)})
                         ds_batches = {}
                         for batch in items:
                             if len(batch) == 0:
@@ -2589,7 +2592,7 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     ann_tag_metas = {}
     meta_changed = False
 
-    ann, meta, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
     if replaced_classes_in_meta:
         meta_changed = True
         logger.warning(
