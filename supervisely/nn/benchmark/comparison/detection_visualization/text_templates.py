@@ -421,7 +421,7 @@ empty = """### {}
 
 markdown_speedtest_intro = """## Inference Speed
 
-This is a speed test benchmark for compared models. Models was tested with the following configurations:
+This is a speed test benchmark for compared models. Models were tested with the following configurations:
 """
 
 markdown_speedtest_overview_ms = """### Latency (Inference Time)
