@@ -1568,6 +1568,7 @@ class Inference:
                     )
 
         def _add_results_to_request(results: List[Dict]):
+            logger.debug("adding results to request", extra={"results": len(results), "request": async_inference_request_uuid})
             if async_inference_request_uuid is None:
                 return
             inference_request["pending_results"].extend(results)
@@ -1580,6 +1581,7 @@ class Inference:
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
+                        logger.debug("Got items from loop", extra={"items": len(items)})
                         ds_batches = {}
                         for batch in items:
                             if len(batch) == 0:
@@ -1668,6 +1670,7 @@ class Inference:
                         )
                     results.extend(batch_results)
                     upload_queue.put(batch_results)
+                    logger.debug("batch done", extra={"batch_resulsts_len": len(batch_results)})
         except Exception:
             stop_upload_event.set()
             upload_thread.join()
