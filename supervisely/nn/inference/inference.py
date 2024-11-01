@@ -663,6 +663,11 @@ class Inference:
         data_to_return: list,
     ) -> List[Annotation]:
         images_np = source
+        
+        logger.debug("saving first image of batch for visualization")
+        ds_id = 93355
+        self.api.image.upload_np(ds_id, f"img{rand_str(5)}.png", images_np[0])
+
         inference_mode = settings.get("inference_mode", "full_image")
         use_raw = (
             inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
