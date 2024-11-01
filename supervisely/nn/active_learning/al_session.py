@@ -52,9 +52,10 @@ class ALSession:
         al_session.init_with_config(config)
         al_session._update_team_files_config()
         return al_session
+    
     def init_from_team_files_config(self):
         local_config_path = "/tmp/config.json"
-        self.api.file.download(self.team_id, self.team_files_config_path(self.workspace_id), local_config_path)
+        self.api.file.download(self.team_id, self.team_files_config_path(), local_config_path)
         config: dict = load_json_file(local_config_path)
         self.init_with_config(config)
 
@@ -66,11 +67,7 @@ class ALSession:
         self.val_dataset_id = config["val_dataset_id"]
 
     def team_files_config_path(self):
-        return ALSession.team_files_config_path(self.workspace_id)
-
-    @staticmethod
-    def team_files_config_path(workspace_id: int):
-        return f"/active_learning/{workspace_id}/config.json"
+        return f"/active_learning/{self.workspace_id}/config.json"
     
     def al_config(self):
         config = {
@@ -196,7 +193,7 @@ class ALSession:
         config = self.al_config()
         local_config_path = "/tmp/config.json"
         dump_json_file(config, local_config_path)
-        self.api.file.upload(self.team_id, local_config_path, self.team_files_config_path(self.workspace_id))
+        self.api.file.upload(self.team_id, local_config_path, self.team_files_config_path())
     
     def _list_images(self, project_id: int):
         datasets = self.api.dataset.get_list(project_id)
