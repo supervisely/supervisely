@@ -743,27 +743,54 @@ class Api:
                 process_unhandled_request(self.logger, exc)
 
     @staticmethod
-    def _raise_for_status(response):
+    def _raise_for_status(response: requests.Response):
         """
         Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
         """
         http_error_msg = ""
-        if hasattr(response, "reason"):
-            if isinstance(response.reason, bytes):
-                try:
-                    reason = response.reason.decode("utf-8")
-                except UnicodeDecodeError:
-                    reason = response.reason.decode("iso-8859-1")
-            else:
-                reason = response.reason
-        elif hasattr(response, "reason_phrase"):  # httpx
+        if isinstance(response.reason, bytes):
+            try:
+                reason = response.reason.decode("utf-8")
+            except UnicodeDecodeError:
+                reason = response.reason.decode("iso-8859-1")
+        else:
+            reason = response.reason
+
+        if 400 <= response.status_code < 500:
+            http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                response.content.decode("utf-8"),
+            )
+
+        elif 500 <= response.status_code < 600:
+            http_error_msg = "%s Server Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                response.content.decode("utf-8"),
+            )
+
+        if http_error_msg:
+            raise requests.exceptions.HTTPError(http_error_msg, response=response)
+
+    @staticmethod
+    def _raise_for_status_httpx(response: httpx.Response):
+        """
+        Raise error and show message with error code if given response can not connect to server.
+        :param response: Response class object
+        """
+        http_error_msg = ""
+
+        if hasattr(response, "reason_phrase"):
             reason = response.reason_phrase
         else:
             reason = "Can't get reason"
 
-        def decode_response_content(response):
-            if hasattr(response, "is_stream_consumed"):  # httpx
+        def decode_response_content(response: httpx.Response):
+            if hasattr(response, "is_stream_consumed"):
                 return "Content is not acessible for streaming responses"
             else:
                 return response.content.decode("utf-8")
@@ -1004,7 +1031,7 @@ class Api:
                 response = httpx.post(url, headers=headers, **request_params)
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
-                    Api._raise_for_status(response)
+                    Api._raise_for_status_httpx(response)
                 return response
             except httpx.RequestError as exc:
                 if raise_error:
@@ -1069,7 +1096,7 @@ class Api:
             try:
                 response = httpx.get(url, params=request_params, headers=self.headers)
                 if response.status_code != httpx.codes.OK:
-                    Api._raise_for_status(response)
+                    Api._raise_for_status_httpx(response)
                 return response
             except httpx.RequestError as exc:
                 process_requests_exception(
@@ -1181,7 +1208,7 @@ class Api:
                             httpx.codes.PARTIAL_CONTENT,
                         ]:
                             self._check_version()
-                            Api._raise_for_status(resp)
+                            Api._raise_for_status_httpx(resp)
 
                         total_streamed = 0
                         for chunk in resp.iter_raw(8192):
@@ -1271,7 +1298,7 @@ class Api:
                 response = await client.post(url, headers=headers, **request_params)
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
-                    Api._raise_for_status(response)
+                    Api._raise_for_status_httpx(response)
                 return response
             except httpx.RequestError as exc:
                 if raise_error:
@@ -1396,7 +1423,7 @@ class Api:
                             httpx.codes.PARTIAL_CONTENT,
                         ]:
                             self._check_version()
-                            Api._raise_for_status(resp)
+                            Api._raise_for_status_httpx(resp)
 
                         # received hash of the content to check integrity of the data stream
                         hhash = resp.headers.get("x-content-checksum-sha256", None)

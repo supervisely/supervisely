@@ -1807,11 +1807,17 @@ class FileApi(ModuleApiBase):
             remote_path += "/"
 
         tasks = []
-        files = self.list(team_id, remote_path, recursive=True)
-        sizeb = sum([file["meta"]["size"] for file in files])
+        files = self._api.storage.list( # to avoid method duplication in storage api
+            team_id,
+            remote_path,
+            recursive=True,
+            include_folders=False,
+            with_metadata=False,
+        )  
+        sizeb = sum([file.sizeb for file in files])
         if show_progress:
             progress_cb = tqdm_sly(
-                total=sizeb, desc=f"Downloading files from {remote_path}", unit="B", unit_scale=True
+                total=sizeb, desc=f"Downloading files from directory", unit="B", unit_scale=True
             )
         else:
             progress_cb = None
@@ -1819,8 +1825,8 @@ class FileApi(ModuleApiBase):
         for file in files:
             task = self.download_async(
                 team_id,
-                file["path"],
-                os.path.join(local_save_path, file["path"][len(remote_path) :]),
+                file.path,
+                os.path.join(local_save_path, file.path[len(remote_path) :]),
                 semaphore=semaphore,
                 progress_cb=progress_cb,
             )
