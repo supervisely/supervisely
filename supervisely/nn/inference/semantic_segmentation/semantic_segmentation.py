@@ -39,7 +39,7 @@ class SemanticSegmentation(Inference):
         default_bg_class_name = "__bg__"
         if meta.get_obj_class(default_bg_class_name) is None:
             obj_class = ObjClass(default_bg_class_name, self._get_obj_class_shape())
-            meta = meta.add_obj_classes(obj_class)
+            meta = meta.add_obj_class(obj_class)
         return meta, obj_class
 
     def _get_or_create_bg_obj_class(self, classes):
