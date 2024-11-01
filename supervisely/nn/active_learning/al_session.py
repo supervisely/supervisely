@@ -5,6 +5,7 @@ from supervisely.io.json import load_json_file, dump_json_file
 from supervisely.nn.active_learning.sampling.random_sampler import RandomSampler
 from supervisely.nn.active_learning.sampling.kmeans_sampler import KMeansSampler
 from supervisely import DatasetInfo
+from supervisely import logger
 
 
 class ALSession:
@@ -29,11 +30,8 @@ class ALSession:
         self.training_project_id = None
         self.train_dataset_id = None
         self.val_dataset_id = None
-        self._embedding_generator_id = None
-        # self._checkpoints_db_connection = None
-        # self._best_checkpoint_id = None
-        # self._clip_settings = None
-        # self.init_from_team_files_config()
+        # self._embedding_generator_id = None
+        self._load_from_team_files_config_if_exists()
 
     @staticmethod
     def from_empty_workspace(api: Api, workspace_id: int) -> 'ALSession':
@@ -49,17 +47,18 @@ class ALSession:
             "val_dataset_id": None
         }
         al_session = ALSession(api, workspace_id)
-        al_session.init_with_config(config)
+        al_session.load_with_config(config)
         al_session._update_team_files_config()
         return al_session
     
-    def init_from_team_files_config(self):
+    def load_from_team_files_config(self):
         local_config_path = "/tmp/config.json"
         self.api.file.download(self.team_id, self.team_files_config_path(), local_config_path)
         config: dict = load_json_file(local_config_path)
-        self.init_with_config(config)
+        self.load_with_config(config)
+        self._sync_config()
 
-    def init_with_config(self, config: dict):
+    def load_with_config(self, config: dict):
         self.index_project_id = config["index_project_id"]
         self.labeling_project_id = config["labeling_project_id"]
         self.training_project_id = config["training_project_id"]
@@ -79,7 +78,7 @@ class ALSession:
         }
         return config
     
-    def sample(self, method: str, num_images: int, sampler_params: dict):
+    def sample(self, method: str, num_images: int, sampler_params: dict = {}):
         if method == "random":
             sampler_cls = RandomSampler
         elif method == "kmeans":
@@ -100,7 +99,7 @@ class ALSession:
     def _copy_to_labeling_project(self, image_ids: list) -> DatasetInfo:
         api = self.api
         if self.labeling_project_id is None:
-            self.labeling_project_id = api.project.create(self.workspace_id, self.LABELING_PROJECT_NAME).id
+            self.labeling_project_id = api.project.get_or_create(self.workspace_id, self.LABELING_PROJECT_NAME).id
             self._update_team_files_config()
         existed_datasets = api.dataset.get_list(self.labeling_project_id)
         name = f"{self.LABELING_BATCH_NAME}_{len(existed_datasets) + 1:03d}"
@@ -122,16 +121,12 @@ class ALSession:
         # create train/val nested datasets
         api = self.api
         if self.training_project_id is None:
-            api.project.create(self.workspace_id, self.TRAINING_PROJECT_NAME)
+            self.training_project_id = api.project.get_or_create(self.workspace_id, self.TRAINING_PROJECT_NAME).id
             self._update_team_files_config()
         existed_datasets = api.dataset.get_list(self.training_project_id)
-        if self.train_dataset_id is not None and self.val_dataset_id is not None:
-            train_dataset_info = api.dataset.get_info_by_id(self.train_dataset_id)
-            old_train_ids = api.image.get_list(train_dataset_info.id)
-            val_dataset_info = api.dataset.get_info_by_id(self.val_dataset_id)
-            old_val_ids = api.image.get_list(val_dataset_info.id)
-            train_ids.extend(old_train_ids)
-            val_ids.extend(old_val_ids)
+        old_train_ids, old_val_ids = self._existed_train_and_val_ids()
+        train_ids.extend(old_train_ids)
+        val_ids.extend(old_val_ids)
         # create new train/val datasets
         iter_num = len(existed_datasets) + 1
         iter_name = f"{self.TRAINING_ITER_NAME}_{iter_num:03d}"
@@ -142,12 +137,12 @@ class ALSession:
         self.val_dataset_id = val_dataset_info.id
         self._update_team_files_config()
         # copy images to train/val datasets
-        def upload_images(dataset_info, image_ids):
+        def upload_images(dataset_id, image_ids):
             image_infos = api.image.get_info_by_id_batch(image_ids)
             names, hashes = zip(*[(image_info.name, image_info.hash) for image_info in image_infos])
-            return api.image.upload_hashes(dataset_info.id, names, hashes, batch_size=100)
-        upload_images(train_dataset_info, train_ids)
-        upload_images(val_dataset_info, val_ids)
+            return api.image.upload_hashes(dataset_id, names, hashes, batch_size=100)
+        upload_images(train_dataset_info.id, train_ids)
+        upload_images(val_dataset_info.id, val_ids)
         # clear labeling project from labeled images
         api.image.remove_batch(train_ids + val_ids)
 
@@ -183,7 +178,8 @@ class ALSession:
         else:
             labeling_ids = []
         if self.training_project_id is not None:
-            training_ids = self._list_images(self.training_project_id)
+            train_ids, val_ids = self._existed_train_and_val_ids()
+            training_ids = train_ids + val_ids
         else:
             training_ids = []
         not_sampled_ids = set(index_ids) - set(labeling_ids) - set(training_ids)
@@ -202,3 +198,39 @@ class ALSession:
             images = self.api.image.get_list(dataset.id)
             image_ids.extend([image.id for image in images])
         return image_ids
+    
+    def _existed_train_and_val_ids(self):
+        train_ids = []
+        val_ids = []
+        if self.train_dataset_id is not None:
+            train_ids = self.api.image.get_list(self.train_dataset_id)
+            train_ids = [image.id for image in train_ids]
+        if self.val_dataset_id is not None:
+            val_ids = self.api.image.get_list(self.val_dataset_id)
+            val_ids = [image.id for image in val_ids]
+        return train_ids, val_ids
+    
+    def _load_from_team_files_config_if_exists(self):
+        if self.api.file.exists(self.team_id, self.team_files_config_path()):
+            self.load_from_team_files_config()
+            logger.debug("AL session loaded from team files config")
+            return True
+        else:
+            logger.debug("Team files config not found")
+            return False
+
+    def _sync_config(self):
+        # check if projects and datasets still exist
+        # if not, set corresponding fields to None
+        if not self.api.project.get_info_by_id(self.index_project_id):
+            self.index_project_id = None
+        if not self.api.project.get_info_by_id(self.labeling_project_id):
+            self.labeling_project_id = None
+        if not self.api.project.get_info_by_id(self.training_project_id):
+            self.training_project_id = None
+        if self.training_project_id is not None:
+            if self.train_dataset_id and not self.api.dataset.get_info_by_id(self.train_dataset_id):
+                self.train_dataset_id = None
+            if self.val_dataset_id and not self.api.dataset.get_info_by_id(self.val_dataset_id):
+                self.val_dataset_id = None
+        self._update_team_files_config()
