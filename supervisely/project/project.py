@@ -31,6 +31,7 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
     copy_file,
+    copy_file_async,
     dir_empty,
     dir_exists,
     ensure_base_path,
@@ -43,7 +44,7 @@ from supervisely.io.fs import (
     subdirs_tree,
 )
 from supervisely.io.fs_cache import FileCache
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -1228,7 +1229,7 @@ class Dataset(KeyObject):
             raise RuntimeError("No item_raw_bytes or ann or img_info provided.")
 
         await self._add_item_raw_bytes_async(item_name, item_raw_bytes)
-        self._add_ann_by_type(item_name, ann)
+        await self._add_ann_by_type_async(item_name, ann)
         self._add_item_info(item_name, img_info)
 
     def generate_item_path(self, item_name: str) -> str:
@@ -1538,6 +1539,120 @@ class Dataset(KeyObject):
         if is_development():
             res = abs_url(res)
         return res
+
+    async def set_ann_file_async(self, item_name: str, ann_path: str) -> None:
+        """
+        Replaces given annotation json file for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item Name.
+        :type item_name: :class:`str`
+        :param ann_path: Path to the :class:`Annotation<supervisely.annotation.annotation.Annotation>` json file.
+        :type ann_path: :class:`str`
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if ann_path is not str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
+            ds.set_ann_file("IMG_1812.jpeg", new_ann)
+        """
+        if type(ann_path) is not str:
+            raise TypeError("Annotation path should be a string, not a {}".format(type(ann_path)))
+        dst_ann_path = self.get_ann_path(item_name)
+        await copy_file_async(ann_path, dst_ann_path)
+
+    async def set_ann_dict_async(self, item_name: str, ann: Dict) -> None:
+        """
+        Replaces given annotation json for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` as a dict in json format.
+        :type ann: :class:`dict`
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if ann_path is not str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            new_ann_json = {
+                "description":"",
+                "size":{
+                    "height":500,
+                    "width":700
+                },
+                "tags":[],
+                "objects":[],
+                "customBigData":{}
+            }
+
+            ds.set_ann_dict("IMG_8888.jpeg", new_ann_json)
+        """
+        if type(ann) is not dict:
+            raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
+        dst_ann_path = self.get_ann_path(item_name)
+        os.makedirs(os.path.dirname(dst_ann_path), exist_ok=True)
+        await dump_json_file_async(ann, dst_ann_path, indent=4)
+
+    async def set_ann_async(self, item_name: str, ann: Annotation) -> None:
+        """
+        Replaces given annotation for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param ann: Annotation object.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            height, width = 500, 700
+            new_ann = sly.Annotation((height, width))
+            ds.set_ann("IMG_0748.jpeg", new_ann)
+        """
+        if type(ann) is not self.annotation_class:
+            raise TypeError(
+                f"Type of 'ann' should be {self.annotation_class.__name__}, not a {type(ann).__name__}"
+            )
+        dst_ann_path = self.get_ann_path(item_name)
+        await dump_json_file_async(ann.to_json(), dst_ann_path, indent=4)
+
+    async def _add_ann_by_type_async(self, item_name, ann):
+        """
+        Add given annotation to dataset annotations dir and to dictionary items: item file name -> annotation file name
+        :param item_name: str
+        :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
+        """
+        # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
+        # an annotation either.
+        self._item_to_ann[item_name] = item_name + ANN_EXT
+        if ann is None:
+            await self.set_ann_async(item_name, self._get_empty_annotaion(item_name))
+        elif type(ann) is self.annotation_class:
+            await self.set_ann_async(item_name, ann)
+        elif type(ann) is str:
+            await self.set_ann_file_async(item_name, ann)
+        elif type(ann) is dict:
+            await self.set_ann_dict_async(item_name, ann)
+        else:
+            raise TypeError("Unsupported type {!r} for ann argument".format(type(ann)))
 
 
 class Project:
@@ -3985,7 +4100,7 @@ async def _download_project_async(
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
-    semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+    semaphore: asyncio.Semaphore = asyncio.Semaphore(30),
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: Optional[bool] = True,
@@ -4076,13 +4191,11 @@ async def _download_project_async(
             rb_tasks = []
             for img_info, name, img_bytes, ann in zip(images, image_names, imgs_bytes, ann_jsons):
                 async with asyncio.Semaphore(100):
-                    task = asyncio.create_task(
-                        dataset_fs.add_item_raw_bytes_async(
-                            item_name=name,
-                            item_raw_bytes=img_bytes if save_images is True else None,
-                            ann=ann,
-                            img_info=img_info if save_image_info is True else None,
-                        )
+                    task = dataset_fs.add_item_raw_bytes_async(
+                        item_name=name,
+                        item_raw_bytes=img_bytes if save_images is True else None,
+                        ann=ann,
+                        img_info=img_info if save_image_info is True else None,
                     )
                     rb_tasks.append(task)
             await asyncio.gather(*rb_tasks)
@@ -4094,11 +4207,8 @@ async def _download_project_async(
                 if image_info.meta:
                     async with semaphore:
                         sly.fs.mkdir(meta_dir)
-                        task = asyncio.create_task(
-                            sly.json.dump_json_file_async(
-                                image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
-                            )
-                        )
+                        task = sly.json.dump_json_file_async(
+                                image_info.meta, dataset_fs.get_item_meta_path(image_info.name))
                         meta_tasks.append(task)
             await asyncio.gather(*meta_tasks)
     try:

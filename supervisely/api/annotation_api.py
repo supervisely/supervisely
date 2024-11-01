@@ -1449,8 +1449,8 @@ class AnnotationApi(ModuleApi):
         :type dataset_id: int
         :param image_ids: List of integers.
         :type image_ids: List[int]
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm
+        :param progress_cb: Function for tracking download progress. Total should be equal to len(image_ids) or None.
+        :type progress_cb: tqdm or callable, optional
         :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
@@ -1509,12 +1509,9 @@ class AnnotationApi(ModuleApi):
         tasks = []
 
         for image in image_ids:
-            async with semaphore:
-                task = asyncio.create_task(
-                    self.download_async(
-                        image, with_custom_data, force_metadata_for_links, semaphore, progress_cb
-                    )
-                )
-                tasks.append(task)
+            task = self.download_async(
+                image, with_custom_data, force_metadata_for_links, semaphore, progress_cb
+            )
+            tasks.append(task)
         ann_infos = await asyncio.gather(*tasks)
         return ann_infos
