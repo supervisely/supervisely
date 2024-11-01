@@ -27,11 +27,21 @@ async def download_files():
     sema = asyncio.Semaphore(10)
     tasks = []
     for name, path in files:
-        task = api.file.download_async(
-            TEAM_ID, path, save_path + name, sema, show_file_progress=True
-        )
+        progress = sly.tqdm_sly(total=None, desc=f"Downloading {name}", unit="B", unit_scale=True)
+        task = api.file.download_async(TEAM_ID, path, save_path + name, sema, progress_cb=progress)
         tasks.append(task)
     await asyncio.gather(*tasks)
+
+
+def main_db():
+    loop = asyncio.get_event_loop()
+    remote_paths = [path for _, path in files]
+    names = [name for name, _ in files]
+    save_paths = [save_path + name for name in names]
+    progress = sly.tqdm_sly(total=None, desc="Downloading files", unit="B", unit_scale=True)
+    loop.run_until_complete(
+        api.file.download_bulk_async(TEAM_ID, remote_paths, save_paths, progress_cb=progress)
+    )
 
 
 def maind_df():
@@ -45,7 +55,7 @@ def main_ip():
     # os.environ["CONTEXT_SLYFILE"] = "/test/test_input.tar"
     os.environ["FOLDER"] = "/videos/"
     os.environ["TEAM_ID"] = str(TEAM_ID)
-    loop.run_until_complete(api.file.download_input_async(save_path, log_progress=True))
+    loop.run_until_complete(api.file.download_input_async(save_path, show_progress=True))
     end = time.time()
     print(f"Time taken for download input async: {end-start}")
 
@@ -72,9 +82,10 @@ def compare_dir_download():
 if __name__ == "__main__":
     try:
         # maind_df()  # to download and save files
-        main_dd()  # to download and save files as folder
+        # main_dd()  # to download and save files as folder
+        # main_db()  # to download and save files in bulk
         # main_ip()  # to download input file
-        # compare_dir_download()  # to compare download time between async and sync
+        compare_dir_download()  # to compare download time between async and sync
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
 set().discard

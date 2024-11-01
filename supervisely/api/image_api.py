@@ -3711,7 +3711,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+            raise ValueError(f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}')
 
         tasks = []
         for img_id, img_path in zip(ids, paths):

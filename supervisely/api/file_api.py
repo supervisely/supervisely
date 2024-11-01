@@ -1525,7 +1525,6 @@ class FileApi(ModuleApiBase):
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
-        show_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         check_hash: bool = True,
     ):
@@ -1544,9 +1543,7 @@ class FileApi(ModuleApiBase):
         :type range_end: int, optional
         :param headers: Additional headers for request.
         :type headers: dict, optional
-        :param show_progress: If True show download progress. If False, progress_cb will be None.
-        :type show_progress: bool
-        :param progress_cb: Function for tracking download progress. If None, tqdm will be used.
+        :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param check_hash: If True, checks hash of downloaded file.
                         Check is not supported for partial downloads.
@@ -1572,20 +1569,6 @@ class FileApi(ModuleApiBase):
         writing_method = "ab" if range_start not in [0, None] else "wb"
 
         ensure_base_path(local_save_path)
-        if show_progress is False:
-            progress_cb = None
-        elif show_progress and progress_cb is None:
-            file_info = self.get_info_by_path(team_id, remote_path)
-            progress_cb = tqdm_sly(
-                total=file_info.sizeb if file_info is not None else None,
-                unit="B",
-                unit_scale=True,
-                desc=(
-                    f"Downloading file {file_info.name}"
-                    if file_info is not None
-                    else "Downloading file"
-                ),
-            )
         hash_to_check = None
         async with aiofiles.open(local_save_path, writing_method) as fd:
             async for chunk, hhash in self._api.stream_async(
@@ -1617,7 +1600,6 @@ class FileApi(ModuleApiBase):
         local_save_path: str,
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
         cache: Optional[FileCache] = None,
-        show_file_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
@@ -1633,8 +1615,6 @@ class FileApi(ModuleApiBase):
         :type semaphore: asyncio.Semaphore
         :param cache: Cache object for storing files.
         :type cache: FileCache, optional
-        :param show_file_progress: If True show download progress. If False, progress_cb will be None.
-        :type show_file_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :return: None
@@ -1675,7 +1655,6 @@ class FileApi(ModuleApiBase):
                     remote_path,
                     local_save_path,
                     progress_cb=progress_cb,
-                    show_progress=show_file_progress,
                 )
             else:
                 file_info = self.get_info_by_path(team_id, remote_path)
@@ -1685,7 +1664,6 @@ class FileApi(ModuleApiBase):
                         remote_path,
                         local_save_path,
                         progress_cb=progress_cb,
-                        show_progress=show_file_progress,
                     )
                 else:
                     cache_path = cache.check_storage_object(
@@ -1698,7 +1676,6 @@ class FileApi(ModuleApiBase):
                             remote_path,
                             local_save_path,
                             progress_cb=progress_cb,
-                            show_progress=show_file_progress,
                         )
                         if file_info.hash != await get_file_hash_async(local_save_path):
                             raise KeyError(
@@ -1709,6 +1686,83 @@ class FileApi(ModuleApiBase):
                         await cache.read_object_async(file_info.hash, local_save_path)
                         if progress_cb is not None:
                             progress_cb(get_file_size(local_save_path))
+
+    async def download_bulk_async(
+        self,
+        team_id: int,
+        remote_paths: List[str],
+        local_save_paths: List[str],
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        caches: Optional[List[FileCache]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ):
+        """
+        Download multiple Files from Team Files.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param remote_paths: List of paths to Files in Team Files.
+        :type remote_paths: List[str]
+        :param local_save_paths: List of local save paths.
+        :type local_save_paths: List[str]
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore
+        :param caches: List of cache objects for storing files.
+        :type caches: List[FileCache], optional
+        :param progress_cb: Function for tracking download progress.
+                            Total should be sum of all files sizes or None.
+        :type progress_cb: tqdm or callable, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            paths_to_files = [
+                "/999_App_Test/ds1/01587.json",
+                "/999_App_Test/ds1/01588.json",
+                "/999_App_Test/ds1/01587.json"
+            ]
+            local_paths = [
+                "/home/admin/Downloads/01587.json",
+                "/home/admin/Downloads/01588.json",
+                "/home/admin/Downloads/01587.json"
+            ]
+
+            await api.file.download_bulk_async(8, paths_to_files, local_paths)
+        """
+        if len(remote_paths) == 0:
+            return
+
+        if len(remote_paths) != len(local_save_paths):
+            raise ValueError(
+                f"Length of remote_paths and local_save_paths must be equal: {len(remote_paths)} != {len(local_save_paths)}"
+            )
+        elif caches is not None and len(remote_paths) != len(caches):
+            raise ValueError(
+                f"Length of remote_paths and caches must be equal: {len(remote_paths)} != {len(caches)}"
+            )
+
+        tasks = []
+        for remote_path, local_path, cache in zip(
+            remote_paths, local_save_paths, caches or [None] * len(remote_paths)
+        ):
+            task = self.download_async(
+                team_id,
+                remote_path,
+                local_path,
+                semaphore=semaphore,
+                cache=cache,
+                progress_cb=progress_cb,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
     async def download_directory_async(
         self,
@@ -1769,7 +1823,6 @@ class FileApi(ModuleApiBase):
                 os.path.join(local_save_path, file["path"][len(remote_path) :]),
                 semaphore=semaphore,
                 progress_cb=progress_cb,
-                show_file_progress=show_progress,
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
@@ -1781,7 +1834,7 @@ class FileApi(ModuleApiBase):
         unpack_if_archive: Optional[bool] = True,
         remove_archive: Optional[bool] = True,
         force: Optional[bool] = False,
-        log_progress: bool = False,
+        show_progress: bool = False,
     ) -> None:
         """Downloads data asynchronously for application from input using environment variables.
         Automatically detects if data is a file or a directory and saves it to the specified directory.
@@ -1797,8 +1850,8 @@ class FileApi(ModuleApiBase):
         :type remove_archive: Optional[bool]
         :param force: if True, data will be downloaded even if it already exists in the specified directory
         :type force: Optional[bool]
-        :param log_progress: if True, progress bar will be displayed
-        :type log_progress: bool
+        :param show_progress: if True, progress bar will be displayed
+        :type show_progress: bool
         :raises RuntimeError:
             - if both file and folder paths not found in environment variables \n
             - if both file and folder paths found in environment variables (debug)
@@ -1859,7 +1912,7 @@ class FileApi(ModuleApiBase):
 
             progress_cb = None
             file_info = self.get_info_by_path(team_id, remote_file_path)
-            if log_progress is True and file_info is not None:
+            if show_progress is True and file_info is not None:
                 progress_cb = tqdm_sly(
                     desc=f"Downloading {remote_file_path}",
                     total=file_info.sizeb,
@@ -1872,7 +1925,6 @@ class FileApi(ModuleApiBase):
                 local_file_path,
                 semaphore=semaphore,
                 progress_cb=progress_cb,
-                show_file_progress=log_progress,
             )
             if unpack_if_archive and sly_fs.is_archive(local_file_path):
                 await sly_fs.unpack_archive_async(local_file_path, save_path)
@@ -1901,5 +1953,5 @@ class FileApi(ModuleApiBase):
                 remote_folder_path,
                 local_folder_path,
                 semaphore=semaphore,
-                show_progress=log_progress,
+                show_progress=show_progress,
             )
