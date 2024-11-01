@@ -1,6 +1,4 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
@@ -17,7 +15,7 @@ class FrequentlyConfused(BaseVisMetric):
         return MarkdownWidget(
             "frequently_confused",
             "Frequency Confused Classes",
-            text="## Frequency Confused Classes",
+            text=self.vis_texts.markdown_frequently_confused,
         )
 
     @property

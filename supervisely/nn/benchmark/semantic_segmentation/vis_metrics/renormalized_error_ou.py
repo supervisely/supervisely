@@ -1,6 +1,4 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
@@ -17,7 +15,7 @@ class RenormalizedErrorOverUnion(BaseVisMetric):
         return MarkdownWidget(
             "renormalized_error_over_union",
             "Renormalized Error over Union",
-            text="## Renormalized Error over Union",
+            text=self.vis_texts.markdown_renormalized_error_ou,
         )
 
     @property

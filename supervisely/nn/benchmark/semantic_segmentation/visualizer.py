@@ -1,28 +1,30 @@
-import supervisely.nn.benchmark.semantic_segmentation.vis_metrics.vis_texts as vis_texts
+import supervisely.nn.benchmark.semantic_segmentation.text_templates as vis_texts
 from supervisely.nn.benchmark.base_visualizer import BaseVisualizer
-from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.base_metrics import (
-    BaseMetrics,
-)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.classwise_error_analysis import (
     ClasswiseErrorAnalysis,
 )
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.confusion_matrix import (
     ConfusionMatrix,
 )
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.frequently_confused import (
+    FrequentlyConfused,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.iou_eou import (
     IntersectionErrorOverUnion,
 )
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.key_metrics import (
+    KeyMetrics,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.overview import Overview
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.acknowledgement import (
+    Acknowledgement,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.renormalized_error_ou import (
     RenormalizedErrorOverUnion,
-)
-from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.frequently_confused import (
-    FrequentlyConfused,
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
     GalleryWidget,
-    MarkdownWidget,
     SidebarWidget,
 )
 
@@ -46,9 +48,9 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.overview_md = overview.overview_md
 
         # key metrics
-        base_metrics = BaseMetrics(self.vis_texts, self.eval_result)
-        self.base_metrics_md = base_metrics.md
-        self.base_metrics_chart = base_metrics.chart
+        key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
+        self.key_metrics_md = key_metrics.md
+        self.key_metrics_chart = key_metrics.chart
 
         # TODO: Explore predictions
 
@@ -77,6 +79,10 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.frequently_confused_md = frequently_confused.md
         self.frequently_confused_chart = frequently_confused.chart
 
+        # Acknowledgement
+        acknowledgement = Acknowledgement(self.vis_texts, self.eval_result)
+        self.acknowledgement_md = acknowledgement.md
+
         self._widgets_created = True
 
     def _create_layout(self):
@@ -87,8 +93,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             # Overview
             (0, self.header),
             (1, self.overview_md),
-            (1, self.base_metrics_md),
-            (0, self.base_metrics_chart),
+            (1, self.key_metrics_md),
+            (0, self.key_metrics_chart),
             # TODO: Explore predictions
             (1, self.iou_eou_md),
             (0, self.iou_eou_chart),
@@ -100,6 +106,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (0, self.confusion_matrix_chart),
             (1, self.frequently_confused_md),
             (0, self.frequently_confused_chart),
+            (0, self.acknowledgement_md),
         ]
         if self._speedtest_present:
             is_anchors_widgets.extend(

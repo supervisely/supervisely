@@ -1,6 +1,4 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
@@ -17,7 +15,7 @@ class ConfusionMatrix(BaseVisMetric):
         return MarkdownWidget(
             "confusion_matrix",
             "Confusion Matrix",
-            text="## Confusion Matrix",
+            text=self.vis_texts.markdown_confusion_matrix,
         )
 
     @property

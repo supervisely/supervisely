@@ -1,6 +1,4 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
@@ -17,7 +15,7 @@ class ClasswiseErrorAnalysis(BaseVisMetric):
         return MarkdownWidget(
             "classwise_error_analysis",
             "Classwise Segmentation Error Analysis",
-            text="## Classwise Segmentation Error Analysis",
+            text=self.vis_texts.markdown_eou_per_class,
         )
 
     @property
@@ -43,6 +41,7 @@ class ClasswiseErrorAnalysis(BaseVisMetric):
                 )
             )
 
-        fig.update_layout(xaxis_title="Class", yaxis_title="Error")
+        fig.update_layout(barmode="stack", xaxis_title="Class")
+        fig.update_yaxes(range=[0, 1])
 
         return fig

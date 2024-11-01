@@ -1,9 +1,7 @@
 import datetime
 from typing import List
 
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
@@ -57,11 +55,14 @@ class Overview(BaseVisMetric):
             classes_str,
             note_about_val_dataset,
             train_session,
-            "",  # self._loader.docs_link,
+            self.vis_texts.docs_url,
         ]
-        text_template: str = getattr(self.vis_texts, "markdown_overview")
 
-        md = MarkdownWidget("markdown_overview", "Overview", text=text_template.format(*formats))
+        md = MarkdownWidget(
+            "markdown_overview",
+            "Overview",
+            text=self.vis_texts.markdown_overview.format(*formats),
+        )
         md.is_info_block = True
         md.width_fit_content = True
         return md

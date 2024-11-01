@@ -1,6 +1,4 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
@@ -17,7 +15,7 @@ class IntersectionErrorOverUnion(BaseVisMetric):
         return MarkdownWidget(
             "intersection_error_over_union",
             "Intersection & Error Over Union",
-            text="## Intersection & Error Over Union",
+            text=self.vis_texts.markdown_iou,
         )
 
     @property

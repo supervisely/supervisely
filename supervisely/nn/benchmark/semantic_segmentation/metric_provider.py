@@ -81,12 +81,6 @@ class MetricProvider:
             eval_data["confusion_matrix"].copy()
         )
 
-    # def calculate(self):
-    #     # base metrics
-    #     self._base_metrics = self.m.base_metrics()
-    #     self._confusion_matrix = self.m.confusion_matrix()
-    #     self._frequently_confused = self.m.frequently_confused(self._confusion_matrix)
-
     def json_metrics(self):
         pass
 
@@ -132,8 +126,16 @@ class MetricProvider:
         probs = confusion_matrix[rows, cols]
         return probs, indexes_2d
 
-    def basic_metrics(self):
-        pass
+    def key_metrics(self):
+        return {
+            "mPixel accuracy": self.pixel_accuracy,
+            "mPrecision": self.precision,
+            "mRecall": self.recall,
+            "mF1-score": self.f1_score,
+            "mIoU": self.iou,
+            "mBoundaryIoU": self.boundary_iou,
+            "mPixel accuracy": self.pixel_accuracy,
+        }
 
     def error_metrics(self):
         pass
