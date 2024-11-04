@@ -363,6 +363,8 @@ class Api:
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
 
+        self.async_client: httpx.AsyncClient = None
+
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
         """ """
@@ -1271,7 +1273,8 @@ class Api:
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
-        self._check_https_redirect()
+        self._set_async_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1291,11 +1294,10 @@ class Api:
         else:
             request_params = {"params": data}
 
-        client = httpx.AsyncClient()
         for retry_idx in range(retries):
             response = None
             try:
-                response = await client.post(url, headers=headers, **request_params)
+                response = await self.async_client.post(url, headers=headers, **request_params)
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
@@ -1334,7 +1336,7 @@ class Api:
         range_end: Optional[int] = None,
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
-        http2: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 15,
     ) -> AsyncGenerator:
         """
         Performs asynchronous streaming GET or POST request to server with given parameters.
@@ -1354,14 +1356,16 @@ class Api:
         :type range_start: int, optional
         :param range_end: End byte position for streaming.
         :type range_end: int, optional
+        :param chunk_size: Size of the chunk to read from the stream.
+        :type chunk_size: int, optional
         :param use_public_api: Define if public API should be used.
         :type use_public_api: bool, optional
-        :param http2: Use HTTP/2 protocol.
-        :type http2: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
-        self._check_https_redirect()
+        self._set_async_client()
 
         if retries is None:
             retries = self.retry_count
@@ -1395,53 +1399,52 @@ class Api:
             logger.debug(f"Setting Range header: {headers['Range']}")
 
         for retry_idx in range(retries):
+            total_streamed = 0
             try:
-                async with httpx.AsyncClient(http2=http2) as client:
-                    if method_type == "POST":
-                        response = client.stream(
-                            method_type,
-                            url,
-                            content=content,
-                            json=json_body,
-                            params=params,
-                            headers=headers,
-                            timeout=15,
-                        )
-                    elif method_type == "GET":
-                        response = client.stream(
-                            method_type,
-                            url,
-                            json=json_body or params,
-                            headers=headers,
-                            timeout=15,
-                        )
+                if method_type == "POST":
+                    response = self.async_client.stream(
+                        method_type,
+                        url,
+                        content=content,
+                        json=json_body,
+                        params=params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                elif method_type == "GET":
+                    response = self.async_client.stream(
+                        method_type,
+                        url,
+                        json=json_body or params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
 
-                    async with response as resp:
-                        expected_size = int(resp.headers.get("content-length", 0))
-                        if resp.status_code not in [
-                            httpx.codes.OK,
-                            httpx.codes.PARTIAL_CONTENT,
-                        ]:
-                            self._check_version()
-                            Api._raise_for_status_httpx(resp)
+                async with response as resp:
+                    expected_size = int(resp.headers.get("content-length", 0))
+                    if resp.status_code not in [
+                        httpx.codes.OK,
+                        httpx.codes.PARTIAL_CONTENT,
+                    ]:
+                        self._check_version()
+                        Api._raise_for_status_httpx(resp)
 
-                        # received hash of the content to check integrity of the data stream
-                        hhash = resp.headers.get("x-content-checksum-sha256", None)
-                        total_streamed = 0
-                        async for chunk in resp.aiter_raw(chunk_size):
-                            yield chunk, hhash
-                            total_streamed += len(chunk)
+                    # received hash of the content to check integrity of the data stream
+                    hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    async for chunk in resp.aiter_raw(chunk_size):
+                        yield chunk, hhash
+                        total_streamed += len(chunk)
 
-                        if expected_size != 0 and total_streamed != expected_size:
-                            raise ValueError(
-                                f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
-                            )
-                        logger.debug(
-                            f"Streamed size: {total_streamed}, expected size: {expected_size}"
+                    if expected_size != 0 and total_streamed != expected_size:
+                        raise ValueError(
+                            f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
-                        return
+                    logger.debug(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    return
             except httpx.RequestError as e:
-                retry_range_start = total_streamed + (range_start or 0) + 1
+                retry_range_start = total_streamed + (range_start or 0)
+                if total_streamed != 0:
+                    retry_range_start += 1
                 headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
                 logger.debug(f"Setting Range header {headers['Range']} for retry")
                 process_requests_exception(
@@ -1457,6 +1460,16 @@ class Api:
                 )
             except Exception as e:
                 process_unhandled_request(self.logger, e)
-            finally:
-                await client.aclose()
         raise httpx.RequestError(message=f"Retry limit exceeded ({url})", request=None)
+
+    def _set_async_client(self):
+        """
+        Set async client if it is not set yet.
+        Switch on HTTP/2 if the server address uses HTTPS.
+        """
+        if self.async_client is None:
+            self._check_https_redirect()
+            if self.server_address.startswith("https://"):
+                self.async_client = httpx.AsyncClient(http2=True)
+            else:
+                self.async_client = httpx.AsyncClient()

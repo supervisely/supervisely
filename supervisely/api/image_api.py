@@ -3711,7 +3711,9 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise ValueError(f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}')
+            raise ValueError(
+                f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}'
+            )
 
         tasks = []
         for img_id, img_path in zip(ids, paths):
@@ -3806,7 +3808,6 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
         headers: dict = None,
-        show_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         check_hash: bool = True,
     ) -> List[bytes]:
@@ -3820,8 +3821,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param headers: Headers for every request.
         :type headers: dict, optional
-        :param show_progress: If True, shows progress bar.
-        :type show_progress: bool, optional
         :param progress_cb: Function for tracking download progress. If None, tqdm_asyncio will be used.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param check_hash: If True, checks hash of downloaded images.
@@ -3843,23 +3842,15 @@ class ImageApi(RemoveableBulkModuleApi):
                 semaphore = asyncio.Semaphore(20)
                 img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
         """
-
         tasks = []
-        if show_progress:
-            if progress_cb is None:
-                progress_cb = tqdm_asyncio(total=len(ids), desc="Downloading images", unit="image")
-            with progress_cb as pbar:
-                for id in ids:
-                    task = self.download_bytes_one_async(
-                        id, semaphore, headers=headers, progress_cb=pbar, check_hash=check_hash
-                    )
-                    tasks.append(task)
-                results = await asyncio.gather(*tasks)
-        else:
-            for id in ids:
-                task = self.download_bytes_one_async(
-                    id, semaphore, headers=headers, check_hash=check_hash
-                )
-                tasks.append(task)
-            results = await asyncio.gather(*tasks)
+        for id in ids:
+            task = self.download_bytes_one_async(
+                id,
+                semaphore,
+                headers=headers,
+                progress_cb=progress_cb,
+                check_hash=check_hash,
+            )
+            tasks.append(task)
+        results = await asyncio.gather(*tasks)
         return results

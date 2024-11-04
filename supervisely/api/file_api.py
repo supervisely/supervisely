@@ -1807,13 +1807,13 @@ class FileApi(ModuleApiBase):
             remote_path += "/"
 
         tasks = []
-        files = self._api.storage.list( # to avoid method duplication in storage api
+        files = self._api.storage.list(  # to avoid method duplication in storage api
             team_id,
             remote_path,
             recursive=True,
             include_folders=False,
             with_metadata=False,
-        )  
+        )
         sizeb = sum([file.sizeb for file in files])
         if show_progress:
             progress_cb = tqdm_sly(
