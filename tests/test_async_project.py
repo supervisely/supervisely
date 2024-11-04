@@ -3,7 +3,7 @@ import os
 import time
 
 import supervisely as sly
-from supervisely.project.project import _download_project, _download_project_async
+from supervisely.project.project import _download_project, download_project_async
 
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
@@ -22,7 +22,7 @@ api.logger.setLevel(LOG_LEVEL)
 def main_dpa():
     start = time.time()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(_download_project_async(api, PROJECT_ID, save_path_async))
+    loop.run_until_complete(download_project_async(api, PROJECT_ID, save_path_async))
     finish = time.time() - start
     print(f"Time taken for async method: {finish}")
 
