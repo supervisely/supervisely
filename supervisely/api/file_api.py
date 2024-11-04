@@ -1598,7 +1598,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         cache: Optional[FileCache] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
@@ -1692,7 +1692,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_paths: List[str],
         local_save_paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         caches: Optional[List[FileCache]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
@@ -1769,7 +1769,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         show_progress: bool = True,
     ) -> None:
         """
@@ -1836,7 +1836,7 @@ class FileApi(ModuleApiBase):
     async def download_input_async(
         self,
         save_path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         unpack_if_archive: Optional[bool] = True,
         remove_archive: Optional[bool] = True,
         force: Optional[bool] = False,

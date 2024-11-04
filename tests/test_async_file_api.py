@@ -63,7 +63,11 @@ def main_ip():
 def main_dd():
     start = time.time()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(api.file.download_directory_async(TEAM_ID, remote_path, save_path))
+    loop.run_until_complete(
+        api.file.download_directory_async(
+            TEAM_ID, remote_path, save_path, semaphore=asyncio.Semaphore(100)
+        )
+    )
     end = time.time()
     print(f"Time taken for download dir async: {end-start}")
 
@@ -82,10 +86,10 @@ def compare_dir_download():
 if __name__ == "__main__":
     try:
         # maind_df()  # to download and save files
-        # main_dd()  # to download and save files as folder
+        main_dd()  # to download and save files as folder
         # main_db()  # to download and save files in bulk
         # main_ip()  # to download input file
-        compare_dir_download()  # to compare download time between async and sync
+        # compare_dir_download()  # to compare download time between async and sync
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
 set().discard
