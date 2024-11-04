@@ -1,8 +1,6 @@
 from typing import Literal
 
 import supervisely.io.env as sly_env
-from supervisely import logger
-from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -27,14 +25,13 @@ from supervisely.nn.artifacts import (
     YOLOv8,
 )
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
-from supervisely.project.download import is_cached
 
 
 class ModelSelector:
     title = "Model Selector"
 
     def __init__(self, models: list):
-        self.team_id = sly_env.team_id() # get from project id
+        self.team_id = sly_env.team_id()  # get from project id
         self.models = models
 
         # Pretrained models
@@ -95,7 +92,7 @@ class ModelSelector:
             "MMClassification": MMClassification,
             "Detectron2": Detectron2,
         }
-        app_name = "Train YOLOv5 2.0"  # sly_env.app_name()
+        app_name = "RT-DETR"  # sly_env.app_name()
         for app in app_map:
             if app in app_name:
                 return app_map[app]
@@ -111,7 +108,7 @@ class ModelSelector:
         if self.get_model_source() == "Pretrained models":
             return self.pretrained_models_table.get_selected_row()
         else:
-            return self.custom_models_table.get_selected_row()
+            return self.custom_models_table.get_selected_model_params()
 
     def validate_step(self):
         self.validator_text.hide()

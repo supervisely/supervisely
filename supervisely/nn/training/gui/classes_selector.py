@@ -7,7 +7,6 @@ from supervisely.app.widgets import (
     Switch,
     Text,
 )
-from supervisely.project.download import is_cached
 
 
 class ClassesSelector:
@@ -73,16 +72,12 @@ class ClassesSelector:
         empty_classes = [
             row[0]["data"]
             for row in table_data
-            if row[0]["data"] in selected_classes
-            and row[2]["data"] == 0
-            and row[3]["data"] == 0
+            if row[0]["data"] in selected_classes and row[2]["data"] == 0 and row[3]["data"] == 0
         ]
 
         n_classes = len(selected_classes)
         if n_classes == 0:
-            self.validator_text.set(
-                text="Please select at least one class", status="error"
-            )
+            self.validator_text.set(text="Please select at least one class", status="error")
         else:
             warning_text = ""
             status = "success"
@@ -100,7 +95,7 @@ class ClassesSelector:
                         )
                     else:
                         warning_text += ". Consider removing images without annotations or enabling 'Filter images without annotations' option."
-                    
+
                     status = "warning"
 
             class_text = "class" if n_classes == 1 else "classes"

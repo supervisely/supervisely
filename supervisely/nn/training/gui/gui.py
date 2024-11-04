@@ -1,14 +1,12 @@
 import supervisely.io.env as sly_env
 from supervisely import Api
-from supervisely.app.widgets import (
-    Stepper,
-    Widget,
-)
+from supervisely.app.widgets import Stepper, Widget
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
+from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
 from supervisely.nn.training.gui.input_selector import InputSelector
 from supervisely.nn.training.gui.model_selector import ModelSelector
-from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
-from supervisely.nn.training.gui.utils import wrap_button_click, set_stepper_step
+from supervisely.nn.training.gui.training_process import TrainingProcess
+from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
 
 
 # training_layout.py
@@ -27,7 +25,7 @@ class TrainGUI:
     def __init__(
         self,
         models: list,
-        hyperparameters: str,
+        hyperparameters: dict,
         app_options: dict = None,
     ):
         self.api = Api.from_env()
@@ -48,9 +46,11 @@ class TrainGUI:
         # 3. Model selection
         self.model_selector = ModelSelector(models=self.models)
         # 4. Training parameters (yaml), scheduler preview
-        self.hyperparameters_selector = HyperparametersSelector(hyperparameters=self.hyperparameters)
+        self.hyperparameters_selector = HyperparametersSelector(
+            hyperparameters=self.hyperparameters
+        )
         # 5. Start Train
-        # ...
+        self.training_process = TrainingProcess()
 
         # Stepper layout
         self.stepper = Stepper(
@@ -59,6 +59,7 @@ class TrainGUI:
                 self.classes_selector.card,
                 self.model_selector.card,
                 self.hyperparameters_selector.card,
+                self.training_process.card,
             ],
         )
         # ------------------------------------------------- #
@@ -69,31 +70,42 @@ class TrainGUI:
                 train_dataset_id=self.input_selector.get_train_dataset_id(),
                 val_dataset_id=self.input_selector.get_val_dataset_id(),
             )
-            
+
         def disable_hyperparams_editor():
             # @TODO: Doesn't work on reselect!
-            if  self.hyperparameters_selector.editor.readonly:
-                self.hyperparameters_selector.editor.readonly=False
+            if self.hyperparameters_selector.editor.readonly:
+                self.hyperparameters_selector.editor.readonly = False
             else:
-                self.hyperparameters_selector.editor.readonly=True
+                self.hyperparameters_selector.editor.readonly = True
+
         # ------------------------------------------------- #
 
         # Wrappers
-        hyperparameters_selector_cb = wrap_button_click(
+        training_process_cb = wrap_button_click(
             button=self.hyperparameters_selector.button,
             cards_to_unlock=[],
-            widgets_to_disable=self.hyperparameters_selector.widgets_to_disable,
+            widgets_to_disable=self.training_process.widgets_to_disable,
             callback=None,
+            validation_text=self.training_process.validator_text,
+            validation_func=self.training_process.validate_step,
+        )
+
+        hyperparameters_selector_cb = wrap_button_click(
+            button=self.hyperparameters_selector.button,
+            cards_to_unlock=[self.training_process.card],
+            widgets_to_disable=self.hyperparameters_selector.widgets_to_disable,
+            callback=training_process_cb,
             validation_text=self.hyperparameters_selector.validator_text,
             validation_func=self.hyperparameters_selector.validate_step,
-            on_button_click=disable_hyperparams_editor
+            on_select_click=disable_hyperparams_editor,
+            on_reselect_click=disable_hyperparams_editor,
         )
-                
+
         model_selector_cb = wrap_button_click(
             button=self.model_selector.button,
             cards_to_unlock=[self.hyperparameters_selector.card],
             widgets_to_disable=self.model_selector.widgets_to_disable,
-            callback=None,
+            callback=hyperparameters_selector_cb,
             validation_text=self.model_selector.validator_text,
             validation_func=self.model_selector.validate_step,
         )
@@ -114,20 +126,34 @@ class TrainGUI:
             callback=classes_selector_cb,
             validation_text=self.input_selector.validator_text,
             validation_func=self.input_selector.validate_step,
-            on_button_click=update_classes_table,
+            on_select_click=update_classes_table,
         )
         # ------------------------------------------------- #
 
         # Handlers
+        
+        # Define outside? Used by user in app?
+        # @self.training_process.start_button.click
+        # def start_training():
+        #     pass
+
+        # @self.training_process.stop_button.click
+        # def stop_training():
+        #     pass
+
+        @self.training_process.logs_button.click
+        def show_logs():
+            self.training_process.toggle_logs()
+
         @self.hyperparameters_selector.button.click
         def select_hyperparameters():
             hyperparameters_selector_cb()
-            # set_stepper_step(
-            #     self.stepper,
-            #     self.hyperparameters_selector.button,
-            #     next_pos=5,
-            # )
-            
+            set_stepper_step(
+                self.stepper,
+                self.hyperparameters_selector.button,
+                next_pos=5,
+            )
+
         @self.model_selector.button.click
         def select_model():
             model_selector_cb()
@@ -154,8 +180,6 @@ class TrainGUI:
                 self.input_selector.button,
                 next_pos=2,
             )
-
-
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper

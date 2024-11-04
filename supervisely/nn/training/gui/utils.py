@@ -1,9 +1,7 @@
-from typing import List, Optional, Callable, Dict, Any
-from supervisely.app.widgets import Button, Card, Stepper, Widget, Text
-from supervisely.app import DataJson
+from typing import Any, Callable, Dict, List, Optional
 
-from supervisely.nn.training.gui.input_selector import InputSelector
-from supervisely.nn.training.gui.classes_selector import ClassesSelector
+from supervisely.app import DataJson
+from supervisely.app.widgets import Button, Card, Stepper, Text, Widget
 
 button_clicked = {}
 
@@ -59,7 +57,8 @@ def wrap_button_click(
     upd_params: bool = True,
     validation_text: Text = None,
     validation_func: Optional[Callable] = None,
-    on_button_click: Optional[Callable] = None,
+    on_select_click: Optional[Callable] = None,
+    on_reselect_click: Optional[Callable] = None,
 ) -> Callable[[Optional[bool]], None]:
     global button_clicked
 
@@ -82,10 +81,12 @@ def wrap_button_click(
 
         if button_clicked[bid] and upd_params:
             update_custom_button_params(button, reselect_params)
-            if on_button_click is not None:
-                on_button_click()
+            if on_select_click is not None:
+                on_select_click()
         else:
             update_custom_button_params(button, select_params)
+            if on_reselect_click is not None:
+                on_reselect_click()
             validation_text.hide()
 
         unlock_lock(
@@ -109,4 +110,3 @@ def set_stepper_step(stepper: Stepper, button: Button, next_pos: int):
         stepper.set_active_step(next_pos)
     else:
         stepper.set_active_step(next_pos - 1)
-

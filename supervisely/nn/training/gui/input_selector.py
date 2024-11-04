@@ -4,10 +4,10 @@ from supervisely.app.widgets import (
     Card,
     Checkbox,
     Container,
+    Field,
     ProjectThumbnail,
     SelectDatasetTree,
     Text,
-    Field,
 )
 from supervisely.project.download import is_cached
 
@@ -54,7 +54,7 @@ class InputSelector:
             _text = "Cache data on the agent to optimize project download for future trainings"
         self.use_cache_text = Text(_text)
         self.use_cache_checkbox = Checkbox(self.use_cache_text, checked=True)
-        
+
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
@@ -93,7 +93,7 @@ class InputSelector:
 
     def get_val_dataset_id(self):
         return self.val_dataset_selector.get_selected_id()
-    
+
     def set_val_dataset_id(self, dataset_id: int):
         self.val_dataset_selector.set_dataset_id(dataset_id)
 
@@ -102,6 +102,9 @@ class InputSelector:
             self.use_cache_checkbox.check(value)
         else:
             self.use_cache_checkbox.uncheck(value)
+
+    def get_cache_value(self):
+        return self.use_cache_checkbox.is_checked()
 
     def validate_step(self):
         self.validator_text.hide()
@@ -132,8 +135,6 @@ class InputSelector:
             self.validator_text.show()
             return True
         else:
-            self.validator_text.set(
-                text="Train and val datasets are selected", status="success"
-            )
+            self.validator_text.set(text="Train and val datasets are selected", status="success")
             self.validator_text.show()
             return True

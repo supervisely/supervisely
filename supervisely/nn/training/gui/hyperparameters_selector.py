@@ -1,14 +1,6 @@
-from supervisely.app.widgets import (
-    Button,
-    Card,
-    ClassesTable,
-    Container,
-    Field,
-    Switch,
-    Text,
-    Editor,
-)
-from supervisely.project.download import is_cached
+from typing import Union
+
+from supervisely.app.widgets import Button, Card, Container, Editor, Text
 
 
 class HyperparametersSelector:
@@ -16,7 +8,7 @@ class HyperparametersSelector:
 
     def __init__(self, hyperparameters: dict):
         self.editor = Editor(
-            hyperparameters, height_px=700, language_mode="yaml"
+            hyperparameters, height_lines=50, language_mode="yaml", auto_format=True
         )
 
         self.validator_text = Text("")
@@ -40,6 +32,12 @@ class HyperparametersSelector:
     @property
     def widgets_to_disable(self):
         return [self.editor]
+
+    def set_hyperparameters(self, hyperparameters: Union[str, dict]):
+        self.editor.set_text(hyperparameters)
+
+    def get_hyperparameters(self) -> dict:
+        return self.editor.get_value()
 
     def validate_step(self):
         return True
