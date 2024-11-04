@@ -1,5 +1,6 @@
 from collections import defaultdict
 import time
+import random
 import numpy as np
 from supervisely.nn.active_learning.sampling.base_sampler import BaseSampler
 from supervisely import Api
@@ -59,20 +60,27 @@ class KMeansSampler(BaseSampler):
         # Select representative image for each cluster
         # i.e, the image with minimum distance to cluster center
         sampled_image_ids = []
+        pool = set(image_ids)
         for cluster_label in range(num_clusters):
             cluster_images = image_clusters.get(cluster_label, [])
             if not cluster_images:
+                logger.debug(f"Cluster {cluster_label} is empty. Assigning random image.")
+                img_id = random.choice(list(pool))
+                sampled_image_ids.append(img_id)
+                pool.remove(img_id)
                 continue
             cluster_center = kmeans.cluster_centers_[cluster_label]
             cluster_embeddings = np.array([
                 reduced_embeddings[image_ids.index(img_id)] 
-                for img_id in cluster_images
+                for img_id in cluster_images if img_id in pool
             ])
             distances = np.linalg.norm(cluster_embeddings - cluster_center, axis=1)
             closest_image_index = np.argmin(distances)
-            sampled_image_ids.append(cluster_images[closest_image_index])
+            img_id = cluster_images[closest_image_index]
+            sampled_image_ids.append(img_id)
+            pool.remove(img_id)
+
         dt = time.time() - t0
         logger.info(f"KMeans sampling completed in {dt:.2f} seconds")
-
         return sampled_image_ids
         
