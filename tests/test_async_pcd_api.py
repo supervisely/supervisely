@@ -26,8 +26,16 @@ api.logger.setLevel(LOG_LEVEL)
 
 
 def main_dps():
+    pbar = tqdm(desc="Downloading pointclouds", total=len(ids))
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(api.pointcloud.download_paths_async(ids, paths))
+    loop.run_until_complete(
+        api.pointcloud.download_paths_async(
+            ids,
+            paths,
+            progress_cb=pbar,
+            progress_cb_type="number",
+        )
+    )
 
 
 def main_dris():

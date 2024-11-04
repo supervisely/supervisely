@@ -1356,6 +1356,7 @@ async def copy_file_async(
     src: str,
     dst: str,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    progress_cb_type: Literal["number", "size"] = "size",
 ) -> None:
     """
     Asynchronously copy file from one path to another, if destination directory doesn't exist it will be created.
@@ -1366,6 +1367,8 @@ async def copy_file_async(
     :type dst: str
     :param progress_cb: Function for tracking copy progress.
     :type progress_cb: Union[tqdm, Callable], optional
+    :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+    :type progress_cb_type: Literal["number", "size"], optional
     :returns: None
     :rtype: :class:`NoneType`
     :Usage example:
@@ -1383,8 +1386,10 @@ async def copy_file_async(
                 if not chunk:
                     break
                 await out_f.write(chunk)
-                if progress_cb is not None:
+                if progress_cb is not None and progress_cb_type == "size":
                     progress_cb(len(chunk))
+    if progress_cb is not None and progress_cb_type == "number":
+        progress_cb(1)
 
 
 async def get_file_hash_async(path: str) -> str:

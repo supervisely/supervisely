@@ -3510,6 +3510,7 @@ class ImageApi(RemoveableBulkModuleApi):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         keep_alpha: Optional[bool] = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> np.ndarray:
         """
         Downloads Image with given ID in NumPy format asynchronously.
@@ -3522,6 +3523,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type keep_alpha: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
 
@@ -3552,7 +3555,10 @@ class ImageApi(RemoveableBulkModuleApi):
             async for response in self._download_async(id):
                 img = sly_image.read_bytes(response.content, keep_alpha)
                 if progress_cb is not None:
-                    progress_cb(1)
+                    if progress_cb_type == "number":
+                        progress_cb(1)
+                    elif progress_cb_type == "size":
+                        progress_cb(len(response.content))
             return img
 
     async def download_nps_async(
@@ -3561,6 +3567,7 @@ class ImageApi(RemoveableBulkModuleApi):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         keep_alpha: Optional[bool] = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> List[np.ndarray]:
         """
         Downloads Images with given IDs in NumPy format asynchronously.
@@ -3572,12 +3579,16 @@ class ImageApi(RemoveableBulkModuleApi):
         :param keep_alpha: If True keeps alpha mask for images, otherwise don't.
         :type keep_alpha: bool, optional
         :param progress_cb: Function for tracking download progress.
-                            It is recommend to set total to len(ids).
         :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
         """
-        tasks = [self.download_np_async(id, semaphore, keep_alpha, progress_cb) for id in ids]
+        tasks = [
+            self.download_np_async(id, semaphore, keep_alpha, progress_cb, progress_cb_type)
+            for id in ids
+        ]
         return await asyncio.gather(*tasks)
 
     async def download_path_async(
@@ -3590,6 +3601,7 @@ class ImageApi(RemoveableBulkModuleApi):
         headers: dict = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Downloads Image with given ID to local path.
@@ -3612,6 +3624,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -3651,7 +3665,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 ):
                     await fd.write(chunk)
                     hash_to_check = hhash
-            if progress_cb is not None:
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
+            if progress_cb is not None and progress_cb_type == "number":
                 progress_cb(1)
             if check_hash:
                 if hash_to_check is not None:
@@ -3669,6 +3685,7 @@ class ImageApi(RemoveableBulkModuleApi):
         headers: dict = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Download Images with given IDs and saves them to given local paths asynchronously.
@@ -3684,8 +3701,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :param check_hash: If True, checks hash of downloaded images.
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
-                            It is recommend to set total to len(ids).
         :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -3721,6 +3739,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 headers=headers,
                 check_hash=check_hash,
                 progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
@@ -3734,6 +3753,7 @@ class ImageApi(RemoveableBulkModuleApi):
         headers: dict = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> bytes:
         """
         Downloads Image bytes with given ID.
@@ -3754,6 +3774,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: Bytes of downloaded image.
         :rtype: :class:`bytes`
         :Usage example:
@@ -3788,6 +3810,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ):
                 content += chunk
                 hash_to_check = hhash
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(chunk))
             if check_hash:
                 if hash_to_check is not None:
                     downloaded_bytes_hash = get_bytes_hash(content)
@@ -3795,7 +3819,7 @@ class ImageApi(RemoveableBulkModuleApi):
                         raise RuntimeError(
                             f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
                         )
-            if progress_cb:
+            if progress_cb is not None and progress_cb_type == "number":
                 progress_cb(1)
             return content
 
@@ -3806,6 +3830,7 @@ class ImageApi(RemoveableBulkModuleApi):
         headers: dict = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> List[bytes]:
         """
         Downloads Images bytes with given IDs asynchronously
@@ -3820,8 +3845,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :param check_hash: If True, checks hash of downloaded images.
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
-                            It is recommend to set total to len(ids).
         :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: List of bytes of downloaded images.
         :rtype: :class:`List[bytes]`
 
@@ -3845,8 +3871,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 id,
                 semaphore,
                 headers=headers,
-                progress_cb=progress_cb,
                 check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
             tasks.append(task)
         results = await asyncio.gather(*tasks)

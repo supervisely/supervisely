@@ -4,13 +4,21 @@
 import asyncio
 import os
 from collections import defaultdict
-from typing import AsyncGenerator, Callable, Dict, List, NamedTuple, Optional, Union
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 import aiofiles
 from requests import Response
 from requests_toolbelt import MultipartEncoder
 from tqdm import tqdm
-from tqdm.asyncio import tqdm_asyncio
 
 from supervisely._utils import batched, generate_free_name
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
@@ -1095,12 +1103,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
         self,
         id: int,
         path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Downloads Point cloud with given ID to local path.
@@ -1119,10 +1129,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for partial download. Default is 1MB.
         :type chunk_size: int, optional
-        :param check_hash: If True, checks hash of downloaded file. 
+        :param check_hash: If True, checks hash of downloaded file.
                         Check is not supported for partial downloads.
                         When range is set, hash check is disabled.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1143,7 +1157,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
 
         if range_start is not None or range_end is not None:
-            check_hash = False # Hash check is not supported for partial downloads
+            check_hash = False  # Hash check is not supported for partial downloads
             headers = headers or {}
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
             logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
@@ -1164,6 +1178,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 ):
                     await fd.write(chunk)
                     hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
                 if check_hash:
                     if hash_to_check is not None:
                         downloaded_bytes_hash = await get_file_hash_async(path)
@@ -1171,16 +1187,19 @@ class PointcloudApi(RemoveableBulkModuleApi):
                             raise RuntimeError(
                                 f"Downloaded hash of point cloud with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
                             )
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
 
     async def download_paths_async(
         self,
         ids: List[int],
         paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         headers: dict = None,
-        show_progress: bool = True,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Download Point clouds with given IDs and saves them to given local paths asynchronously.
@@ -1199,6 +1218,10 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type chunk_size: int, optional
         :param check_hash: If True, checks hash of downloaded file.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -1232,26 +1255,22 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 headers=headers,
                 chunk_size=chunk_size,
                 check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
             tasks.append(task)
-        if show_progress:
-            with tqdm_asyncio(
-                total=len(tasks), desc="Downloading point clouds", unit="pcd"
-            ) as pbar:
-                for f in asyncio.as_completed(tasks):
-                    await f
-                    pbar.update(1)
-        else:
-            await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
     async def download_related_image_async(
         self,
         id: int,
         path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         headers: dict = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Downloads a related context image from Supervisely to local directory by image id.
@@ -1268,6 +1287,10 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type chunk_size: int, optional
         :param check_hash: If True, checks hash of downloaded file.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1302,6 +1325,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 ):
                     await fd.write(chunk)
                     hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
                 if check_hash:
                     if hash_to_check is not None:
                         downloaded_bytes_hash = await get_file_hash_async(path)
@@ -1309,15 +1334,18 @@ class PointcloudApi(RemoveableBulkModuleApi):
                             raise RuntimeError(
                                 f"Downloaded hash of point cloud related image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
                             )
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
 
     async def download_related_images_async(
         self,
         ids: List[int],
         paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         headers: dict = None,
-        show_progress: bool = True,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Downloads a related context image from Supervisely to local directory by image id.
@@ -1330,10 +1358,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param headers: Headers for request.
         :type headers: dict, optional
-        :param show_progress: If True, shows progress bar.
-        :type show_progress: bool, optional
         :param check_hash: If True, checks hash of downloaded file.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         """
@@ -1346,15 +1376,13 @@ class PointcloudApi(RemoveableBulkModuleApi):
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_related_image_async(
-                img_id, img_path, semaphore, headers=headers, check_hash=check_hash
+                img_id,
+                img_path,
+                semaphore,
+                headers=headers,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
             tasks.append(task)
-        if show_progress:
-            with tqdm_asyncio(
-                total=len(tasks), desc="Downloading point clouds related images", unit="image"
-            ) as pbar:
-                for f in asyncio.as_completed(tasks):
-                    await f
-                    pbar.update(1)
-        else:
-            await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)

@@ -1525,8 +1525,9 @@ class FileApi(ModuleApiBase):
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
     ):
         """
         Download file from Team Files or connected Cloud Storage.
@@ -1543,12 +1544,14 @@ class FileApi(ModuleApiBase):
         :type range_end: int, optional
         :param headers: Additional headers for request.
         :type headers: dict, optional
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm or callable, optional
         :param check_hash: If True, checks hash of downloaded file.
                         Check is not supported for partial downloads.
                         When range is set, hash check is disabled.
         :type check_hash: bool
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         """
@@ -1581,7 +1584,7 @@ class FileApi(ModuleApiBase):
             ):
                 await fd.write(chunk)
                 hash_to_check = hhash
-                if progress_cb is not None:
+                if progress_cb is not None and progress_cb_type == "size":
                     progress_cb(len(chunk))
             await fd.flush()
 
@@ -1592,6 +1595,8 @@ class FileApi(ModuleApiBase):
                     raise RuntimeError(
                         f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
                     )
+        if progress_cb is not None and progress_cb_type == "number":
+            progress_cb(1)
 
     async def download_async(
         self,
@@ -1601,6 +1606,7 @@ class FileApi(ModuleApiBase):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         cache: Optional[FileCache] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
     ) -> None:
         """
         Download File from Team Files.
@@ -1617,6 +1623,8 @@ class FileApi(ModuleApiBase):
         :type cache: FileCache, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1646,7 +1654,9 @@ class FileApi(ModuleApiBase):
                 ):
                     path_on_agent = os.path.normpath(env.agent_storage() + path_in_agent_folder)
                     logger.info(f"Optimized download from agent: {path_on_agent}")
-                    await sly_fs.copy_file_async(path_on_agent, local_save_path, progress_cb)
+                    await sly_fs.copy_file_async(
+                        path_on_agent, local_save_path, progress_cb, progress_cb_type
+                    )
                     return
 
             if cache is None:
@@ -1655,6 +1665,7 @@ class FileApi(ModuleApiBase):
                     remote_path,
                     local_save_path,
                     progress_cb=progress_cb,
+                    progress_cb_type=progress_cb_type,
                 )
             else:
                 file_info = self.get_info_by_path(team_id, remote_path)
@@ -1664,6 +1675,7 @@ class FileApi(ModuleApiBase):
                         remote_path,
                         local_save_path,
                         progress_cb=progress_cb,
+                        progress_cb_type=progress_cb_type,
                     )
                 else:
                     cache_path = cache.check_storage_object(
@@ -1676,6 +1688,7 @@ class FileApi(ModuleApiBase):
                             remote_path,
                             local_save_path,
                             progress_cb=progress_cb,
+                            progress_cb_type=progress_cb_type,
                         )
                         if file_info.hash != await get_file_hash_async(local_save_path):
                             raise KeyError(
@@ -1684,8 +1697,10 @@ class FileApi(ModuleApiBase):
                         await cache.write_object_async(local_save_path, file_info.hash)
                     else:
                         await cache.read_object_async(file_info.hash, local_save_path)
-                        if progress_cb is not None:
+                        if progress_cb is not None and progress_cb_type == "size":
                             progress_cb(get_file_size(local_save_path))
+                        if progress_cb is not None and progress_cb_type == "number":
+                            progress_cb(1)
 
     async def download_bulk_async(
         self,
@@ -1695,6 +1710,7 @@ class FileApi(ModuleApiBase):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         caches: Optional[List[FileCache]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
     ):
         """
         Download multiple Files from Team Files.
@@ -1710,8 +1726,9 @@ class FileApi(ModuleApiBase):
         :param caches: List of cache objects for storing files.
         :type caches: List[FileCache], optional
         :param progress_cb: Function for tracking download progress.
-                            Total should be sum of all files sizes or None.
         :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1760,6 +1777,7 @@ class FileApi(ModuleApiBase):
                 semaphore=semaphore,
                 cache=cache,
                 progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
             tasks.append(task)
         await asyncio.gather(*tasks)

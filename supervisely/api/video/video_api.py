@@ -13,6 +13,7 @@ from typing import (
     Dict,
     Iterator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -24,7 +25,6 @@ from numerize.numerize import numerize
 from requests import Response
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
-from tqdm.asyncio import tqdm_asyncio
 
 import supervisely.io.fs as sly_fs
 from supervisely._utils import (
@@ -2375,13 +2375,14 @@ class VideoApi(RemoveableBulkModuleApi):
         self,
         id: int,
         path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Downloads Video with given ID to local path.
@@ -2406,6 +2407,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -2446,8 +2449,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 ):
                     await fd.write(chunk)
                     hash_to_check = hhash
-            if progress_cb is not None:
-                progress_cb(1)
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
             if check_hash:
                 if hash_to_check is not None:
                     downloaded_file_hash = await get_file_hash_async(path)
@@ -2455,16 +2458,19 @@ class VideoApi(RemoveableBulkModuleApi):
                         raise RuntimeError(
                             f"Downloaded hash of video with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
                         )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
 
     async def download_paths_async(
         self,
         ids: List[int],
         paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         headers: dict = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> None:
         """
         Download Videos with given IDs and saves them to given local paths asynchronously.
@@ -2483,6 +2489,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -2518,6 +2526,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 chunk_size=chunk_size,
                 check_hash=check_hash,
                 progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
 
             tasks.append(task)
