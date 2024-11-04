@@ -69,8 +69,9 @@ def main_dp():
 
 
 def main_dps():
+    pbar = tqdm(total=len(ids), desc="Downloading images", unit="image")
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(api.image.download_paths_async(ids, paths))
+    loop.run_until_complete(api.image.download_paths_async(ids, paths, progress_cb=pbar))
 
 
 def compare_main_dps():
@@ -94,8 +95,11 @@ def main_bytes():
 
 
 def main_n_bytes():
+    pbar = tqdm(total=len(ids), desc="Downloading images", unit="image")
     loop = asyncio.get_event_loop()
-    img_bytes_list = loop.run_until_complete(api.image.download_bytes_many_async(ids))
+    img_bytes_list = loop.run_until_complete(
+        api.image.download_bytes_many_async(ids, progress_cb=pbar)
+    )
 
     for img_bytes, name in zip(img_bytes_list, names):
         with open(f"{save_path}{name}", "wb") as f:
@@ -108,8 +112,7 @@ if __name__ == "__main__":
         # main_dp()  # to download and save images as files
         # main_dps()  # to download and save images as files (batch)
         compare_main_dps()  # to compare the time taken for downloading images as files (batch)
-        # main_bytes() # to download and save image as bytes
+        # main_bytes()  # to download and save image as bytes
         # main_n_bytes()  # to download and save images as bytes (batch)
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
-set().discard

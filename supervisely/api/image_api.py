@@ -37,7 +37,6 @@ import requests
 from requests.exceptions import HTTPError
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
-from tqdm.asyncio import tqdm_asyncio
 
 from supervisely._utils import (
     batched,
@@ -3508,8 +3507,9 @@ class ImageApi(RemoveableBulkModuleApi):
     async def download_np_async(
         self,
         id: int,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         keep_alpha: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> np.ndarray:
         """
         Downloads Image with given ID in NumPy format asynchronously.
@@ -3520,6 +3520,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param keep_alpha: If True keeps alpha mask for image, otherwise don't.
         :type keep_alpha: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
 
@@ -3539,27 +3541,26 @@ class ImageApi(RemoveableBulkModuleApi):
             semaphore = asyncio.Semaphore(10)
             images = api.image.get_list(DATASET_ID)
             tasks = []
+            pbar = tqdm(total=len(images), desc="Downloading images", unit="image")
             for image in images:
-                task = api.image.download_np_async(image.id, semaphore)
+                task = api.image.download_np_async(image.id, semaphore, progress_cb=pbar)
                 tasks.append(task)
-            with tqdm(total=len(tasks), desc="Downloading images", unit="image") as pbar:
-                results = []
-                for f in asyncio.as_completed(tasks):
-                    result = await f
-                    results.append(result)
-                    pbar.update(1)
+            results = await asyncio.gather(*tasks)
         """
+
         async with semaphore:
             async for response in self._download_async(id):
                 img = sly_image.read_bytes(response.content, keep_alpha)
+                if progress_cb is not None:
+                    progress_cb(1)
             return img
 
     async def download_nps_async(
         self,
         ids: List[int],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         keep_alpha: Optional[bool] = False,
-        show_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[np.ndarray]:
         """
         Downloads Images with given IDs in NumPy format asynchronously.
@@ -3570,33 +3571,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param keep_alpha: If True keeps alpha mask for images, otherwise don't.
         :type keep_alpha: bool, optional
-        :param show_progress: If True, shows progress bar.
-        :type show_progress: bool, optional
+        :param progress_cb: Function for tracking download progress.
+                            It is recommend to set total to len(ids).
+        :type progress_cb: tqdm or callable, optional
         :return: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
         """
-        tasks = [self.download_np_async(id, semaphore, keep_alpha) for id in ids]
-
-        if show_progress:
-            nps_list = []
-            with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
-                for f in asyncio.as_completed(tasks):
-                    img_np = await f
-                    nps_list.append(img_np)
-                    pbar.update(1)
-        else:
-            nps_list = await asyncio.gather(*tasks)
-        return nps_list
+        tasks = [self.download_np_async(id, semaphore, keep_alpha, progress_cb) for id in ids]
+        return await asyncio.gather(*tasks)
 
     async def download_path_async(
         self,
         id: int,
         path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Downloads Image with given ID to local path.
@@ -3617,6 +3610,8 @@ class ImageApi(RemoveableBulkModuleApi):
                         Check is not supported for partial downloads.
                         When range is set, hash check is disabled.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -3656,7 +3651,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 ):
                     await fd.write(chunk)
                     hash_to_check = hhash
-
+            if progress_cb is not None:
+                progress_cb(1)
             if check_hash:
                 if hash_to_check is not None:
                     downloaded_file_hash = await get_file_hash_async(path)
@@ -3669,10 +3665,10 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         ids: List[int],
         paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         headers: dict = None,
-        show_progress: bool = True,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Images with given IDs and saves them to given local paths asynchronously.
@@ -3685,10 +3681,11 @@ class ImageApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param headers: Headers for request.
         :type headers: dict, optional
-        :param show_progress: If True, shows progress bar.
-        :type show_progress: bool, optional
         :param check_hash: If True, checks hash of downloaded images.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+                            It is recommend to set total to len(ids).
+        :type progress_cb: tqdm or callable, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -3718,26 +3715,25 @@ class ImageApi(RemoveableBulkModuleApi):
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(
-                img_id, img_path, semaphore, headers=headers, check_hash=check_hash
+                img_id,
+                img_path,
+                semaphore,
+                headers=headers,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
             )
             tasks.append(task)
-        if show_progress:
-            with tqdm_asyncio(total=len(tasks), desc="Downloading images", unit="image") as pbar:
-                for f in asyncio.as_completed(tasks):
-                    await f
-                    pbar.update(1)
-        else:
-            await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
     async def download_bytes_one_async(
         self,
         id: int,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: dict = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> bytes:
         """
         Downloads Image bytes with given ID.
@@ -3752,12 +3748,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type range_end: int, optional
         :param headers: Headers for request.
         :type headers: dict, optional
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: Optional[Union[tqdm, Callable]]
         :param check_hash: If True, checks hash of downloaded bytes.
                         Check is not supported for partial downloads.
                         When range is set, hash check is disabled.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :return: Bytes of downloaded image.
         :rtype: :class:`bytes`
         :Usage example:
@@ -3800,16 +3796,16 @@ class ImageApi(RemoveableBulkModuleApi):
                             f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
                         )
             if progress_cb:
-                progress_cb.update(1)
+                progress_cb(1)
             return content
 
     async def download_bytes_many_async(
         self,
         ids: List[int],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
+        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         headers: dict = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[bytes]:
         """
         Downloads Images bytes with given IDs asynchronously
@@ -3821,10 +3817,11 @@ class ImageApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param headers: Headers for every request.
         :type headers: dict, optional
-        :param progress_cb: Function for tracking download progress. If None, tqdm_asyncio will be used.
-        :type progress_cb: Optional[Union[tqdm, Callable]]
         :param check_hash: If True, checks hash of downloaded images.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+                            It is recommend to set total to len(ids).
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :return: List of bytes of downloaded images.
         :rtype: :class:`List[bytes]`
 
