@@ -1,5 +1,6 @@
-from os import makedirs
-from os.path import basename, exists, join
+import shutil
+from os import listdir, makedirs
+from os.path import basename, exists, isdir, join
 from typing import Any, Dict, List, Union
 from urllib.request import urlopen
 
@@ -10,7 +11,9 @@ import supervisely.io.fs as sly_fs
 from supervisely import (
     Api,
     Application,
+    Dataset,
     DatasetInfo,
+    OpenMode,
     Project,
     ProjectInfo,
     download_project,
@@ -58,10 +61,15 @@ class TrainApp:
         # Input
         self._output_dir = output_dir
         self._project_dir = join(self._output_dir, "sly_project")
-        self._train_dataset_dir = join(self._output_dir, "train")
-        self._val_dataset_dir = join(self._output_dir, "val")
         self._project_meta_path = join(self._project_dir, "meta.json")  # No need?
 
+        self._train_dataset_dir = join(self._project_dir, "train")
+        self._val_dataset_dir = join(self._project_dir, "val")
+
+        self._train_dataset_info = None
+        self._val_dataset_info = None
+        self._train_dataset_fs = None
+        self._val_dataset_fs = None
         self._project_fs = None
         # ----------------------------------------- #
 
@@ -109,6 +117,22 @@ class TrainApp:
         return self._layout.input_selector.get_val_dataset_id()
 
     @property
+    def train_dataset_info(self) -> int:
+        return self._train_dataset_info
+
+    @property
+    def val_dataset_info(self) -> int:
+        return self._val_dataset_info
+
+    @property
+    def train_dataset_fs(self) -> int:
+        return self._train_dataset_fs
+
+    @property
+    def val_dataset_fs(self) -> int:
+        return self._val_dataset_fs
+
+    @property
     def model_source(self) -> str:
         return self._layout.model_selector.get_model_source()
 
@@ -118,9 +142,12 @@ class TrainApp:
 
     @property
     def hyperparameters(self) -> Dict[str, Any]:
-        return yaml.safe_load(self.hyperparameters)(
-            self._layout.hyperparameters_selector.get_hyperparameters()
-        )
+        return yaml.safe_load(self._layout.hyperparameters_selector.get_hyperparameters())
+
+    # def get_hyperparameters(self) -> Dict[str, Any]:
+    #     return yaml.safe_load(self.hyperparameters)(
+    #         self._layout.hyperparameters_selector.get_hyperparameters()
+    #     )
 
     @property
     def classes(self) -> List[str]:
@@ -211,12 +238,14 @@ class TrainApp:
             self._api.dataset.get_info_by_id(self.val_dataset_id),
         ]
         total_images = sum(ds_info.images_count for ds_info in dataset_infos)
+        self._train_dataset_info, self._val_dataset_info = dataset_infos
 
         if exists(self._project_dir):
             clean_dir(self._project_dir)
 
         if not self.use_cache:
             self.__download_no_cache(dataset_infos, total_images)
+            self._project_fs = self.__prepare_project()
             return
 
         try:
@@ -229,8 +258,26 @@ class TrainApp:
                 clean_dir(self._project_dir)
             self.__download_no_cache(dataset_infos, total_images)
         finally:
-            self._project_fs = Project(self._project_dir)
+            self._project_fs = self.__prepare_project()
             logger.info(f"Project downloaded successfully to: '{self._project_dir}'")
+
+    def __prepare_project(self) -> None:
+        # Preprocess project
+        # Rename datasets to train and val
+        project_fs = Project(self._project_dir, OpenMode.READ)
+        for dataset in project_fs.datasets:
+            dataset: Dataset
+            if dataset.name == self._train_dataset_info.name:
+                dataset_path = join(self._project_dir, dataset.name)
+                shutil.move(dataset_path, self._train_dataset_dir)
+                self._train_dataset_fs = Dataset(self._train_dataset_dir, OpenMode.READ)
+            elif dataset.name == self._val_dataset_info.name:
+                dataset_path = join(self._project_dir, dataset.name)
+                shutil.move(dataset_path, self._val_dataset_dir)
+                self._val_dataset_fs = Dataset(self._val_dataset_dir, OpenMode.READ)
+            else:
+                raise ValueError("Unknown dataset name")  # TODO: won't happen?
+        return Project(self._project_dir, OpenMode.READ)
 
     def __download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
         self.progress_bar_download_project.show()
