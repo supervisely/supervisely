@@ -2381,6 +2381,7 @@ class VideoApi(RemoveableBulkModuleApi):
         headers: dict = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Downloads Video with given ID to local path.
@@ -2403,6 +2404,8 @@ class VideoApi(RemoveableBulkModuleApi):
                         Check is not supported for partial downloads.
                         When range is set, hash check is disabled.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -2443,6 +2446,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 ):
                     await fd.write(chunk)
                     hash_to_check = hhash
+            if progress_cb is not None:
+                progress_cb(1)
             if check_hash:
                 if hash_to_check is not None:
                     downloaded_file_hash = await get_file_hash_async(path)
@@ -2457,9 +2462,9 @@ class VideoApi(RemoveableBulkModuleApi):
         paths: List[str],
         semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
         headers: dict = None,
-        show_progress: bool = True,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Download Videos with given IDs and saves them to given local paths asynchronously.
@@ -2472,12 +2477,12 @@ class VideoApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param headers: Headers for request.
         :type headers: dict, optional
-        :param show_progress: If True, shows progress bar.
-        :type show_progress: bool, optional
         :param chunk_size: Size of chunk for partial download. Default is 1MB.
         :type chunk_size: int, optional
         :param check_hash: If True, checks hash of downloaded files.
         :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
         :raises: :class:`ValueError` if len(ids) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
@@ -2512,13 +2517,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 headers=headers,
                 chunk_size=chunk_size,
                 check_hash=check_hash,
+                progress_cb=progress_cb,
             )
 
             tasks.append(task)
-        if show_progress:
-            with tqdm_asyncio(total=len(tasks), desc="Downloading videos", unit="video") as pbar:
-                for f in asyncio.as_completed(tasks):
-                    await f
-                    pbar.update(1)
-        else:
-            await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)

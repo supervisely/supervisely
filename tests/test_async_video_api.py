@@ -23,17 +23,14 @@ api.logger.setLevel(LOG_LEVEL)
 
 async def test_download_path():
     tasks = []
+    pbar = sly.tqdm_sly(total=len(ids), desc="Downloading videos", unit="video")
     for video in videos:
         path = f"{save_path}{video.name}.mp4"
-        task = api.video.download_path_async(video.id, path)
+        task = api.video.download_path_async(video.id, path, progress_cb=pbar)
         tasks.append(task)
-    with tqdm(total=len(tasks), desc="Downloading videos", unit="video") as pbar:
-        start = time.time()
-        for f in asyncio.as_completed(tasks):
-            _ = await f
-            pbar.update(1)
-        finish = time.time() - start
-        print(f"Time taken: {finish}")
+    start = time.time()
+    await asyncio.gather(*tasks)
+    print(f"Time taken: {time.time() - start}")
 
 
 def main_dp():
@@ -43,10 +40,9 @@ def main_dp():
 
 def main_dps():
     start = time.time()
+    pbar = sly.tqdm_sly(total=len(ids), desc="Downloading videos", unit="video")
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        api.video.download_paths_async(ids, paths, show_progress=True, check_hash=False)
-    )
+    loop.run_until_complete(api.video.download_paths_async(ids, paths, progress_cb=pbar))
     finish = time.time() - start
     print(f"Time taken for async method: {finish}")
 
@@ -67,8 +63,8 @@ if __name__ == "__main__":
     try:
 
         # main_dp()  # to download and save videos as files
-        main_dps()  # to download and save videos as files (batch)
-        # compare_main_dps()  # to compare the time taken for downloading videos as files (batch)
+        # main_dps()  # to download and save videos as files (batch)
+        compare_main_dps()  # to compare the time taken for downloading videos as files (batch)
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
 set().discard
