@@ -160,19 +160,29 @@ class ImageConverter(BaseConverter):
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
-                upload_method = (
-                    api.image.upload_links if self.upload_as_links else api.image.upload_paths
-                )
-                img_infos = upload_method(
-                    dataset_id,
-                    item_names,
-                    item_paths,
-                    metas=item_metas,
-                    conflict_resolution="rename",
-                )
+                if self.upload_as_links:
+                    img_infos = api.image.upload_links(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        conflict_resolution="rename",
+                        force_metadata_for_links=False,
+                    )
+                else:
+                    img_infos = api.image.upload_paths(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        conflict_resolution="rename",
+                    )
+
                 img_ids = [img_info.id for img_info in img_infos]
                 if len(anns) == len(img_ids):
-                    api.annotation.upload_anns(img_ids, anns)
+                    api.annotation.upload_anns(
+                        img_ids, anns, skip_bounds_validation=self.upload_as_links
+                    )
 
             if log_progress:
                 progress_cb(len(batch))

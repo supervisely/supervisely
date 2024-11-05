@@ -175,6 +175,7 @@ class VideoConverter(BaseConverter):
                     dataset_id,
                     item_paths,
                     item_names,
+                    skip_download=True,
                 )
             else:
                 vid_infos = api.video.upload_paths(
