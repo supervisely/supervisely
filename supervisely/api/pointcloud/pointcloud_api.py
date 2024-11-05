@@ -1139,6 +1139,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1147,8 +1148,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
             pcd_info = api.pointcloud.get_info_by_id(19373403)
             save_path = os.path.join("/path/to/save/", pcd_info.name)
 
-            semaphore = asyncio.Semaphore(10)
-            await api.pointcloud.download_path_async(pcd_info.id, save_path, semaphore)
+            semaphore = asyncio.Semaphore(100)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                        api.pointcloud.download_path_async(pcd_info.id, save_path, semaphore)
+                    )
         """
 
         if range_start is not None or range_end is not None:
@@ -1226,6 +1231,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1233,7 +1239,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
             ids = [19373403, 19373404]
             paths = ["/path/to/save/000063.pcd", "/path/to/save/000064.pcd"]
-            loop = asyncio.get_event_loop()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(api.pointcloud.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
@@ -1293,6 +1300,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1301,8 +1309,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
             img_info = api.pointcloud.get_list_related_images(19373403)[0]
             save_path = os.path.join("/path/to/save/", img_info.name)
 
-            semaphore = asyncio.Semaphore(10)
-            await api.pointcloud.download_related_image_async(19373403, save_path, semaphore)
+            semaphore = asyncio.Semaphore(100)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.pointcloud.download_related_image_async(19373403, save_path, semaphore)
+                )
         """
 
         api_method_name = "point-clouds.images.download"
@@ -1361,6 +1373,28 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                img_infos = api.pointcloud.get_list_related_images(19373403)
+                ids = [img_info.id for img_info in img_infos]
+                save_paths = [os.path.join("/path/to/save/", img_info.name) for img_info in img_infos]
+
+                semaphore = asyncio.Semaphore(100)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(
+                        api.pointcloud.download_related_images_async(ids, save_paths, semaphore)
+                    )
         """
 
         if len(ids) == 0:

@@ -2411,6 +2411,7 @@ class VideoApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -2419,8 +2420,12 @@ class VideoApi(RemoveableBulkModuleApi):
             video_info = api.video.get_info_by_id(770918)
             save_path = os.path.join("/path/to/save/", video_info.name)
 
-            semaphore = asyncio.Semaphore(10)
-            await api.video.download_path_async(video_info.id, save_path, semaphore)
+            semaphore = asyncio.Semaphore(100)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.video.download_path_async(video_info.id, save_path, semaphore)
+                )
         """
         if range_start is not None or range_end is not None:
             check_hash = False  # hash check is not supported for partial downloads
@@ -2495,6 +2500,7 @@ class VideoApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -2502,7 +2508,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
             ids = [770914, 770915]
             paths = ["/path/to/save/video1.mp4", "/path/to/save/video2.mp4"]
-            loop = asyncio.get_event_loop()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(api.video.download_paths_async(ids, paths))
         """
         if len(ids) == 0:

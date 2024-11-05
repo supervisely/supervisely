@@ -3536,7 +3536,7 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             DATASET_ID = 98357
-            semaphore = asyncio.Semaphore(10)
+            semaphore = asyncio.Semaphore(100)
             images = api.image.get_list(DATASET_ID)
             tasks = []
             pbar = tqdm(total=len(images), desc="Downloading images", unit="image")
@@ -3579,6 +3579,28 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                DATASET_ID = 98357
+                semaphore = asyncio.Semaphore(100)
+                images = api.image.get_list(DATASET_ID)
+                img_ids = [image.id for image in images]
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                results = loop.run_until_complete(
+                                api.image.download_nps_async(img_ids, semaphore)
+                            )
+
         """
         tasks = [
             self.download_np_async(id, semaphore, keep_alpha, progress_cb, progress_cb_type)
@@ -3628,6 +3650,7 @@ class ImageApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -3636,8 +3659,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.get_info_by_id(770918)
             save_path = os.path.join("/path/to/save/", img_info.name)
 
-            semaphore = asyncio.Semaphore(10)
-            await api.image.download_path_async(img_info.id, save_path, semaphore)
+            semaphore = asyncio.Semaphore(100)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.image.download_path_async(img_info.id, save_path, semaphore)
+                )
         """
         if range_start is not None or range_end is not None:
             check_hash = False  # hash check is not supported for partial downloads
@@ -3708,6 +3735,7 @@ class ImageApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -3715,7 +3743,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
             ids = [770918, 770919]
             paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
-            loop = asyncio.get_event_loop()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(api.image.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
@@ -3778,13 +3807,16 @@ class ImageApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
             img_id = 770918
-            img_bytes = await api.image.download_bytes_async(img_id)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            img_bytes = loop.run_until_complete(api.image.download_bytes_async(img_id))
 
         """
         if range_start is not None or range_end is not None:
@@ -3851,13 +3883,15 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import supervisely as sly
+                import asyncio
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN
                 api = sly.Api.from_env()
 
-                loop = asyncio.get_event_loop()
-                semaphore = asyncio.Semaphore(20)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                semaphore = asyncio.Semaphore(100)
                 img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
         """
         tasks = []

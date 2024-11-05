@@ -1333,6 +1333,7 @@ class VolumeApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1341,8 +1342,12 @@ class VolumeApi(RemoveableBulkModuleApi):
             volume_info = api.volume.get_info_by_id(770918)
             save_path = os.path.join("/path/to/save/", volume_info.name)
 
-            semaphore = asyncio.Semaphore(10)
-            await api.volume.download_path_async(volume_info.id, save_path, semaphore)
+            semaphore = asyncio.Semaphore(100)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                        api.volume.download_path_async(volume_info.id, save_path, semaphore)
+                )
         """
 
         if range_start is not None or range_end is not None:
@@ -1418,6 +1423,7 @@ class VolumeApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1425,7 +1431,8 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             ids = [770914, 770915]
             paths = ["/path/to/save/volume1.nrrd", "/path/to/save/volume2.nrrd"]
-            loop = asyncio.get_event_loop()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(api.volume.download_paths_async(ids, paths))
         """
         if len(ids) == 0:

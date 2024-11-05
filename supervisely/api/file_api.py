@@ -1632,6 +1632,7 @@ class FileApi(ModuleApiBase):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1639,8 +1640,9 @@ class FileApi(ModuleApiBase):
 
             path_to_file = "/999_App_Test/ds1/01587.json"
             local_save_path = "/path/to/save/999_App_Test/ds1/01587.json"
-
-            await api.file.download_async(8, path_to_file, local_save_path)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(api.file.download_async(8, path_to_file, local_save_path))
         """
 
         async with semaphore:
@@ -1736,6 +1738,7 @@ class FileApi(ModuleApiBase):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1751,8 +1754,11 @@ class FileApi(ModuleApiBase):
                 "/path/to/save/999_App_Test/ds1/01588.json",
                 "/path/to/save/999_App_Test/ds1/01587.json"
             ]
-
-            await api.file.download_bulk_async(8, paths_to_files, local_paths)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.file.download_bulk_async(8, paths_to_files, local_paths)
+                )
         """
         if len(remote_paths) == 0:
             return
@@ -1810,6 +1816,7 @@ class FileApi(ModuleApiBase):
          .. code-block:: python
 
             import supervisely as sly
+            import asyncio
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1818,7 +1825,11 @@ class FileApi(ModuleApiBase):
             path_to_dir = "/files/folder"
             local_path = "path/to/local/folder"
 
-            await api.file.download_directory_async(9, path_to_dir, local_path)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.file.download_directory_async(9, path_to_dir, local_path)
+                )
         """
 
         if not remote_path.endswith("/"):
@@ -1860,7 +1871,7 @@ class FileApi(ModuleApiBase):
         force: Optional[bool] = False,
         show_progress: bool = False,
     ) -> None:
-        """Asynchronously downloads data for the application, using a path from file/folder selector. 
+        """Asynchronously downloads data for the application, using a path from file/folder selector.
         The application adds this path to environment variables, which the method then reads.
         Automatically detects if data is a file or a directory and saves it to the specified directory.
         If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
@@ -1890,6 +1901,7 @@ class FileApi(ModuleApiBase):
             from dotenv import load_dotenv
 
             import supervisely as sly
+            import asyncio
 
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1898,7 +1910,11 @@ class FileApi(ModuleApiBase):
 
             # Application is started...
             save_path = "/my_app_data"
-            await api.file.download_input_async(save_path)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.file.download_input_async(save_path)
+                )
 
             # The data is downloaded to the specified directory.
         """
