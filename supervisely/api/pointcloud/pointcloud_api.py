@@ -1079,11 +1079,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         json_body = {ApiField.ID: id}
 
-        if headers is None:
-            headers = self._api.headers.copy()
-        else:
-            headers.update(self._api.headers)
-
         if is_stream:
             async for chunk, hhash in self._api.stream_async(
                 api_method_name,
@@ -1106,7 +1101,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
-        headers: dict = None,
+        headers: Optional[dict] = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
