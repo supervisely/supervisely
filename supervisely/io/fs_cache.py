@@ -1,8 +1,8 @@
 # coding: utf-8
 
+import hashlib
 import os
 import os.path as osp
-import hashlib
 import shutil
 
 from supervisely.io import fs as sly_fs
@@ -140,6 +140,24 @@ class FileCache(FSCache):
 
     def _rm_obj_impl(self, st_path):
         os.remove(st_path)
+
+    async def _read_obj_impl_async(self, st_path, dst_path):
+        sly_fs.ensure_base_path(dst_path)
+        await sly_fs.copy_file_async(st_path, dst_path)
+
+    async def write_object_async(self, src_path, data_hash):
+        suffix = self._get_suffix(src_path)
+        st_path = self.get_storage_path(data_hash, suffix)
+        if not self._storage_obj_exists(st_path, suffix):
+            await sly_fs.copy_file_async(src_path, st_path)
+
+    async def read_object_async(self, data_hash, dst_path):
+        suffix = self._get_suffix(dst_path)
+        st_path = self.check_storage_object(data_hash, suffix)
+        if not st_path:
+            return None
+        await self._read_obj_impl(st_path, dst_path)
+        return dst_path
 
 
 class NNCache(FSCache):
