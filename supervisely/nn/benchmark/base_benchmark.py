@@ -251,15 +251,14 @@ class BaseBenchmark:
         return gt_path, dt_path
 
     def get_eval_results_dir(self) -> str:
-        dir = os.path.join(self.get_base_dir(), "evaluation")
-        os.makedirs(dir, exist_ok=True)
-        return dir
+        eval_dir = os.path.join(self.get_base_dir(), "evaluation")
+        os.makedirs(eval_dir, exist_ok=True)
+        return eval_dir
 
     def get_speedtest_results_dir(self) -> str:
-        checkpoint_name = self._speedtest["model_info"]["checkpoint_name"]
-        dir = os.path.join(self.output_dir, "speedtest", checkpoint_name)
-        os.makedirs(dir, exist_ok=True)
-        return dir
+        speedtest_dir = os.path.join(self.get_base_dir(), "speedtest")
+        os.makedirs(speedtest_dir, exist_ok=True)
+        return speedtest_dir
 
     def upload_eval_results(self, remote_dir: str):
         eval_dir = self.get_eval_results_dir()

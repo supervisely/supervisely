@@ -26,9 +26,10 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
     def _read_eval_data(self):
         self.eval_data = pickle.load(open(Path(self.directory, "eval_data.pkl"), "rb"))
         self.inference_info = load_json_file(Path(self.directory, "inference_info.json"))
-        speedtest_info_path = Path(self.directory, "speedtest.json")
+        speedtest_info_path = Path(self.directory).parent / "speedtest" / "speedtest.json"
+        self.speedtest_info = None
         if speedtest_info_path.exists():
-            self.speedtest_info = load_json_file(Path(self.directory, "speedtest.json"))
+            self.speedtest_info = load_json_file(speedtest_info_path)
 
         self.mp = MetricProvider(self.eval_data)
         # self.mp.calculate()
@@ -39,33 +40,41 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
     eval_result_cls = SemanticSegmentationEvalResult
 
     def evaluate(self):
-        class_names, colors = self._get_classes_names_and_colors()
+        gt_name_to_color = self._get_classes_names_to_colors(self.gt_project_path)
+        pred_name_to_color = self._get_classes_names_to_colors(self.pred_project_path)
+
+        target_classes = [name for name in gt_name_to_color.keys() if name in pred_name_to_color]
+
+        gt_palette = [gt_name_to_color[name] for name in target_classes]
+        pred_palette = [pred_name_to_color[name] for name in target_classes]
 
         gt_prep_path = Path(self.gt_project_path).parent / "preprocessed_gt"
         pred_prep_path = Path(self.pred_project_path).parent / "preprocessed_pred"
-        self.prepare_segmentation_data(self.gt_project_path, gt_prep_path, colors)
-        self.prepare_segmentation_data(self.pred_project_path, pred_prep_path, colors)
+        self.prepare_segmentation_data(
+            self.gt_project_path, gt_prep_path, gt_palette, target_classes
+        )
+        self.prepare_segmentation_data(
+            self.pred_project_path, pred_prep_path, pred_palette, target_classes
+        )
 
         self.eval_data = calculate_metrics(
             gt_dir=gt_prep_path,
             pred_dir=pred_prep_path,
             boundary_width=0.01,
             boundary_iou_d=0.02,
-            num_workers=0,  # TODO: 0 for local tests, change to 4 for production
-            class_names=class_names,
+            num_workers=4,
+            class_names=target_classes,
             result_dir=self.result_dir,
         )
         logger.info("Successfully calculated evaluation metrics")
         self._dump_eval_results()
         logger.info("Evaluation results are saved")
 
-    def _get_classes_names_and_colors(self):
-        meta_path = Path(self.gt_project_path) / "meta.json"
+    def _get_classes_names_to_colors(self, source_project_path):
+        meta_path = Path(source_project_path) / "meta.json"
         meta = ProjectMeta.from_json(load_json_file(meta_path))
 
-        class_names = [obj.name for obj in meta.obj_classes]
-        colors = [obj.color for obj in meta.obj_classes]
-        return class_names, colors
+        return {obj.name: obj.color for obj in meta.obj_classes}
 
     def _dump_eval_results(self):
         eval_data_path = self._get_eval_data_path()
@@ -76,7 +85,9 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         eval_data_path = os.path.join(base_dir, "eval_data.pkl")
         return eval_data_path
 
-    def prepare_segmentation_data(self, source_project_dir, output_project_dir, palette):
+    def prepare_segmentation_data(
+        self, source_project_dir, output_project_dir, palette, target_classes
+    ):
         if os.path.exists(output_project_dir):
             logger.info(f"Preprocessed data already exists in {output_project_dir} directory")
             return
@@ -87,9 +98,12 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
 
             temp_project_seg_dir = source_project_dir + "_temp"
             if not os.path.exists(temp_project_seg_dir):
+                default_bg_name = self._get_bg_class_name()
                 Project.to_segmentation_task(
                     source_project_dir,
                     temp_project_seg_dir,
+                    target_classes=target_classes,
+                    default_bg_name=default_bg_name,
                 )
 
             datasets = os.listdir(temp_project_seg_dir)
@@ -104,7 +118,7 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                     )[:, :, ::-1]
                     result = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int32)
                     # human masks to machine masks
-                    for color_idx, color in enumerate(palette):
+                    for color_idx, color in enumerate(palette, start=1):
                         colormap = np.where(np.all(mask == color, axis=-1))
                         result[colormap] = color_idx
                     if mask_file.count(".png") > 1:
@@ -112,3 +126,15 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                     cv2.imwrite(os.path.join(output_project_dir, mask_file), result)
 
             shutil.rmtree(temp_project_seg_dir)
+
+    def _get_bg_class_name(self):
+        possible_bg_names = ["background", "bg", "unlabeled", "neutral", "__bg__"]
+
+        meta_path = Path(self.gt_project_path) / "meta.json"
+        meta = ProjectMeta.from_json(load_json_file(meta_path))
+
+        for i, obj_cls in enumerate(meta.obj_classes):
+            if obj_cls.name in possible_bg_names:
+                logger.info(f"Found background class: {obj_cls.name}")
+                return obj_cls.name
+        return "__bg__"
