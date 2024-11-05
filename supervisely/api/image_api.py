@@ -1744,13 +1744,28 @@ class ImageApi(RemoveableBulkModuleApi):
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ):
         """ """
-        if (
-            conflict_resolution is not None
-            and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
-        ):
-            raise ValueError(
-                f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
-            )
+        if conflict_resolution is not None:
+            if conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS:
+                raise ValueError(
+                    f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
+                )
+            if len(set(names)) != len(names):
+                logger.info(f"Some images are duplicated, handling with '{conflict_resolution}' conflict resolution method")
+                i = 0
+                unique_names = set()
+                while i < len(names):
+                    name = names[i]
+                    if name in unique_names:
+                        if conflict_resolution == "rename":
+                            names[i] = _add_timestamp(name)
+                            i += 1
+                        elif conflict_resolution in ['skip', 'replace']:
+                            names.pop(i)
+                            items.pop(i)
+                    else:
+                        unique_names.add(name)
+                        i += 1
+
         results = []
 
         def _add_timestamp(name: str) -> str:
