@@ -3739,7 +3739,7 @@ class ImageApi(RemoveableBulkModuleApi):
             tasks.append(task)
         await asyncio.gather(*tasks)
 
-    async def download_bytes_one_async(
+    async def download_bytes_single_async(
         self,
         id: int,
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
@@ -3862,7 +3862,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         tasks = []
         for id in ids:
-            task = self.download_bytes_one_async(
+            task = self.download_bytes_single_async(
                 id,
                 semaphore,
                 headers=headers,

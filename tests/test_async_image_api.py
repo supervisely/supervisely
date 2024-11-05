@@ -88,7 +88,7 @@ def compare_main_dps():
 
 
 def main_bytes():
-    img_bytes = asyncio.run(api.image.download_bytes_one_async(ids[0]))
+    img_bytes = asyncio.run(api.image.download_bytes_single_async(ids[0]))
 
     with open(f"{save_path}{ids[0]}.png", "wb") as f:
         f.write(img_bytes)
