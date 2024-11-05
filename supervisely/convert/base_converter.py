@@ -456,7 +456,6 @@ class BaseConverter:
                 team_id=self._team_id,
                 remote_paths=list(files_to_download.values()),
                 local_save_paths=list(files_to_download.keys()),
-                semaphore=asyncio.Semaphore(50),
                 progress_cb=progress_cb,
             )
         )
