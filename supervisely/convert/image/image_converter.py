@@ -137,8 +137,8 @@ class ImageConverter(BaseConverter):
                 if item.path is None:
                     continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if self.upload_as_links:
-                    ann = None  # TODO: implement
+                if self.upload_as_links and not self.supports_links:
+                    ann = None
                 else:
                     ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
@@ -160,19 +160,29 @@ class ImageConverter(BaseConverter):
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
-                upload_method = (
-                    api.image.upload_links if self.upload_as_links else api.image.upload_paths
-                )
-                img_infos = upload_method(
-                    dataset_id,
-                    item_names,
-                    item_paths,
-                    metas=item_metas,
-                    conflict_resolution="rename",
-                )
+                if self.upload_as_links:
+                    img_infos = api.image.upload_links(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        conflict_resolution="rename",
+                        force_metadata_for_links=False,
+                    )
+                else:
+                    img_infos = api.image.upload_paths(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        conflict_resolution="rename",
+                    )
+
                 img_ids = [img_info.id for img_info in img_infos]
                 if len(anns) == len(img_ids):
-                    api.annotation.upload_anns(img_ids, anns)
+                    api.annotation.upload_anns(
+                        img_ids, anns, skip_bounds_validation=self.upload_as_links
+                    )
 
             if log_progress:
                 progress_cb(len(batch))
@@ -188,6 +198,9 @@ class ImageConverter(BaseConverter):
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
+        if self._upload_as_links and self.supports_links:
+            ext = get_file_ext(path)
+            return ext.lower() in self.allowed_exts
         mimetypes.add_type("image/heic", ".heic")  # to extend types_map
         mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map

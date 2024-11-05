@@ -5,11 +5,12 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from supervisely._utils import is_production
+from supervisely._utils import batched, is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.io.env import team_id
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext, silent_remove
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -145,12 +146,16 @@ class BaseConverter:
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
         self._input_data: str = input_data
-        self._items: List[self.BaseItem] = []
+        self._items: List[BaseConverter.BaseItem] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+
+        # import as links settings
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
+        self._api = Api.from_env() if self._upload_as_links else None
+        self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
@@ -419,3 +424,39 @@ class BaseConverter:
 
             return meta1.clone(project_settings=new_settings)
         return meta1
+
+    def _download_remote_ann_files(self) -> None:
+        """
+        Download all annotation files from Cloud Storage to the local storage.
+        Needed to detect annotation format if "upload_as_links" is enabled.
+        """
+        if not self.upload_as_links:
+            return
+
+        files_to_download = {
+            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
+        }
+        if not files_to_download:
+            return
+
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        _, progress_cb = self.get_progress(
+            len(files_to_download),
+            "Downloading annotation files from remote storage",
+        )
+
+        for local_path in files_to_download.keys():
+            silent_remove(local_path)
+
+        logger.info("Downloading annotation files from remote storage...")
+        loop.run_until_complete(
+            self._api.storage.download_bulk_async(
+                team_id=self._team_id,
+                remote_paths=list(files_to_download.values()),
+                local_save_paths=list(files_to_download.keys()),
+                progress_cb=progress_cb,
+            )
+        )
+        logger.info("Annotation files downloaded successfully")

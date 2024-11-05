@@ -1,15 +1,16 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 from tqdm import tqdm
-
-from typing import Literal, Optional
 
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
 from supervisely.convert.image.csv.csv_converter import CSVConverter
-from supervisely.convert.image.high_color.high_color_depth import HighColorDepthImageConverter
+from supervisely.convert.image.high_color.high_color_depth import (
+    HighColorDepthImageConverter,
+)
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
@@ -28,10 +29,10 @@ from supervisely.io.fs import (
     touch,
     unpack_archive,
 )
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
-from supervisely.project.project_settings import LabelingInterface
 
 
 class ImportManager:
@@ -164,7 +165,7 @@ class ImportManager:
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
 
-        local_path = os.path.join(get_data_dir(), dir_name)
+        local_path = os.path.abspath(os.path.join(get_data_dir(), dir_name))
         mkdir(local_path, remove_content_if_exists=True)
 
         if is_dir:

@@ -2,21 +2,21 @@ import os
 from typing import Dict, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
-from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely import (
     Annotation,
     Dataset,
+    Label,
     OpenMode,
     Project,
     ProjectMeta,
     Rectangle,
-    Label,
     logger,
 )
 from supervisely._utils import generate_free_name
 from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.io.fs import dirs_filter, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
@@ -31,6 +31,7 @@ class SLYImageConverter(ImageConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._project_structure = None
+        self._supports_links = True
 
     def __str__(self):
         return AvailableImageConverters.SLY
@@ -74,6 +75,8 @@ class SLYImageConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links and self._supports_links:
+            self._download_remote_ann_files()
         if self.read_sly_project(self._input_data):
             return True
 
@@ -136,6 +139,8 @@ class SLYImageConverter(ImageConverter):
             meta = self._meta
 
         if item.ann_data is None:
+            if self._upload_as_links:
+                item.set_shape([None, None])
             return item.create_empty_annotation()
 
         try:
@@ -151,7 +156,7 @@ class SLYImageConverter(ImageConverter):
             )
             return Annotation.from_json(ann_json, meta).clone(labels=labels)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
 
     def read_sly_project(self, input_data: str) -> bool:
@@ -163,7 +168,7 @@ class SLYImageConverter(ImageConverter):
             logger.debug("Trying to find Supervisely project format in the input data")
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
-                logger.info("Found multiple Supervisely projects")
+                logger.info("Found multiple possible Supervisely projects in the input data")
             meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
