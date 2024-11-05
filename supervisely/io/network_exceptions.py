@@ -3,6 +3,7 @@
 import time
 import traceback
 
+import httpx
 import requests
 
 CONNECTION_ERROR = "Temporary connection error, please wait ..."
@@ -44,18 +45,22 @@ def process_requests_exception(
             requests.exceptions.Timeout,
             requests.exceptions.TooManyRedirects,
             requests.exceptions.ChunkedEncodingError,
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.TooManyRedirects,
+            httpx.ProtocolError,
         ),
     )
 
     is_server_retryable_error = (
-        isinstance(exc, requests.exceptions.HTTPError)
+        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError))
         and hasattr(exc, "response")
         and (exc.response.status_code in RETRY_STATUS_CODES)
     )
 
     is_need_ping_error = False
     if (
-        isinstance(exc, requests.exceptions.HTTPError)
+        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError))
         and hasattr(exc, "response")
         and (exc.response.status_code == 400)
     ):
@@ -91,7 +96,7 @@ def process_requests_exception(
         )
     elif response is None:
         process_unhandled_request(external_logger, exc)
-    elif isinstance(exc, requests.exceptions.HTTPError):
+    elif isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError)):
         process_invalid_request(external_logger, exc, response, verbose)
     else:
         process_unhandled_request(external_logger, exc)
@@ -125,6 +130,18 @@ def process_retryable_request(
 
 
 def process_invalid_request(external_logger, exc, response, verbose=True):
+    if type(response) in (httpx.Response, requests.Response):
+        reason = (
+            response.content.decode("utf-8")
+            if not hasattr(response, "is_stream_consumed")
+            else "Content is not acessible for streaming responses"
+        )
+        status_code = response.status_code
+        url = response.url
+    else:
+        reason = "Reason is unknown"
+        status_code = None
+        url = None
     if verbose:
         external_logger.warn(
             REQUEST_FAILED,
