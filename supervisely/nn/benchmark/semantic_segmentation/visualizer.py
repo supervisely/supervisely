@@ -1,5 +1,8 @@
 import supervisely.nn.benchmark.semantic_segmentation.text_templates as vis_texts
 from supervisely.nn.benchmark.base_visualizer import BaseVisualizer
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.acknowledgement import (
+    Acknowledgement,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.classwise_error_analysis import (
     ClasswiseErrorAnalysis,
 )
@@ -16,11 +19,11 @@ from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.key_metrics impo
     KeyMetrics,
 )
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.overview import Overview
-from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.acknowledgement import (
-    Acknowledgement,
-)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.renormalized_error_ou import (
     RenormalizedErrorOverUnion,
+)
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.speedtest import (
+    Speedtest,
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
@@ -83,6 +86,19 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         acknowledgement = Acknowledgement(self.vis_texts, self.eval_result)
         self.acknowledgement_md = acknowledgement.md
 
+        # SpeedTest
+        self.speedtest_present = False
+        self.speedtest_multiple_batch_sizes = False
+        speedtest = Speedtest(self.vis_texts, self.eval_result)
+        if not speedtest.is_empty():
+            self.speedtest_present = True
+            self.speedtest_md_intro = speedtest.intro_md
+            self.speedtest_intro_table = speedtest.intro_table
+            if speedtest.multiple_batche_sizes():
+                self.speedtest_multiple_batch_sizes = True
+                self.speedtest_batch_inference_md = speedtest.batch_size_md
+                self.speedtest_chart = speedtest.chart
+
         self._widgets_created = True
 
     def _create_layout(self):
@@ -106,22 +122,15 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (0, self.confusion_matrix_chart),
             (1, self.frequently_confused_md),
             (0, self.frequently_confused_chart),
-            (0, self.acknowledgement_md),
         ]
         if self._speedtest_present:
-            is_anchors_widgets.extend(
-                [
-                    # SpeedTest
-                    # (1, self.speedtest_md_intro),
-                    # (0, self.speedtest_intro_table),
-                    # (0, self.speed_inference_time_md),
-                    # (0, self.speed_inference_time_table),
-                    # (0, self.speed_fps_md),
-                    # (0, self.speed_fps_table),
-                    # (0, self.speed_batch_inference_md),
-                    # (0, self.speed_chart),
-                ]
-            )
+            is_anchors_widgets.append((1, self.speedtest_md_intro))
+            is_anchors_widgets.append((0, self.speedtest_intro_table))
+            if self.speedtest_multiple_batch_sizes:
+                is_anchors_widgets.append((0, self.speedtest_batch_inference_md))
+                is_anchors_widgets.append((0, self.speedtest_chart))
+
+        is_anchors_widgets.append((0, self.acknowledgement_md))
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:
