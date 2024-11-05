@@ -50,7 +50,6 @@ class Evaluator:
     def __init__(
         self,
         class_names: List[str],
-        ignore_index: Optional[int] = None,
         boundary_width: Union[float, int] = 0.01,
         boundary_iou_d: float = 0.02,
         boundary_implementation: str = "exact",
@@ -58,7 +57,6 @@ class Evaluator:
     ):
         """The main class for running our error analysis.
         :param class_names: List of strings providing names for class ids 0,...,C.
-        :param ignore_index: Class id to be ignored in the IoU computation.
         :param boundary_width: The parameter d in the paper, either as a float in [0,1] (relative to diagonal)
             or as an integer > 1 (absolute number of pixels).
         :param boundary_implementation: Choose "exact" for the euclidean pixel distance.
@@ -90,7 +88,6 @@ class Evaluator:
 
         self.class_names = class_names
         self.num_classes = len(self.class_names)
-        self.ignore_index = ignore_index
 
         self.boundary_width = boundary_width
         if 0 < self.boundary_width < 1:
@@ -183,9 +180,7 @@ class Evaluator:
         self.boundary_iou_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         self.boundary_iou_union_counts = np.zeros(self.num_classes, dtype=np.int64)
 
-        for pred, gt, img_name in tqdm(
-            loader, total=len(loader), smoothing=0, desc="Calculating metrics..."
-        ):
+        for pred, gt, img_name in tqdm(loader, total=len(loader), desc="Calculating metrics..."):
             sample_results = self.evaluate_sample(pred, gt, img_name)
             self.update_results(sample_results, img_name)
             self.confusion_matrix = self.calc_confusion_matrix(
@@ -248,13 +243,9 @@ class Evaluator:
             fill_value=ERROR_CODES["unassigned"],
             dtype=np.int8,
         )
-        # IGNORE
-        if self.ignore_index:
-            ignore_inds_y, ignore_inds_x = np.where(gt == self.ignore_index)
-            results[:, ignore_inds_y, ignore_inds_x] = ERROR_CODES["ignore"]
 
-        pred_one_hot = one_hot(pred, num_classes=self.num_classes, ignore_index=self.ignore_index)
-        gt_one_hot = one_hot(gt, num_classes=self.num_classes, ignore_index=self.ignore_index)
+        pred_one_hot = one_hot(pred, num_classes=self.num_classes)
+        gt_one_hot = one_hot(gt, num_classes=self.num_classes)
 
         # select only the active classes
         if GPU:
@@ -269,8 +260,6 @@ class Evaluator:
         gt_one_hot_active = gt_one_hot[active_mask]
         pred_active = np.argmax(pred_one_hot_active, axis=0)
         gt_active = np.argmax(gt_one_hot_active, axis=0)
-        if self.ignore_index:
-            gt_active[ignore_inds_y, ignore_inds_x] = self.ignore_index
         results_active = results[active_mask]
         results_inactive = results[~active_mask]
 
@@ -316,11 +305,6 @@ class Evaluator:
         results[~active_mask] = results_inactive
         assert not (results == ERROR_CODES["unassigned"]).any()
 
-        # Boundary IoU
-        if self.ignore_index:
-            ignore_inds = (ignore_inds_y, ignore_inds_x)
-        else:
-            ignore_inds = None
         (
             boundary_intersection_counts_active,
             boundary_union_counts_active,
@@ -328,7 +312,6 @@ class Evaluator:
             sample_results=results_active,
             pred_one_hot=pred_one_hot_active,
             gt_one_hot=gt_one_hot_active,
-            ignore_inds=ignore_inds,
         )
         boundary_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         boundary_union_counts = np.zeros(self.num_classes, dtype=np.int64)
@@ -487,15 +470,11 @@ class Evaluator:
         tn_contour = get_exterior_boundary(tn_mask, width=1, implementation="fast")
 
         for c, boundary_segments in fp_boundary_segments.items():
-            if c == self.ignore_index:
-                continue
             for segment in boundary_segments:
                 if (not tp_contour[c][segment].any()) or (not tn_contour[c][segment].any()):
                     fp_boundary_mask[c][segment] = False
 
         for c, boundary_segments in fn_boundary_segments.items():
-            if c == self.ignore_index:
-                continue
             for segment in boundary_segments:
                 if (not tp_contour[c][segment].any()) or (not tn_contour[c][segment].any()):
                     fn_boundary_mask[c][segment] = False
@@ -574,9 +553,7 @@ class Evaluator:
 
         return results
 
-    def evaluate_sample_boundary_iou(
-        self, sample_results, pred_one_hot, gt_one_hot, ignore_inds=None
-    ):
+    def evaluate_sample_boundary_iou(self, sample_results, pred_one_hot, gt_one_hot):
         H, W = sample_results.shape[-2:]
         img_diag = np.sqrt(H**2 + W**2)
 
@@ -605,12 +582,6 @@ class Evaluator:
         boundary_intersection = np.logical_and(pred_one_hot_int_boundary, gt_one_hot_int_boundary)
         boundary_union = np.logical_or(pred_one_hot_int_boundary, gt_one_hot_int_boundary)
 
-        if ignore_inds:  # remove ignore pixels
-            ignore_inds_y, ignore_inds_x = ignore_inds
-            assert not gt_one_hot[:, ignore_inds_y, ignore_inds_x].any()
-            boundary_intersection[:, ignore_inds_y, ignore_inds_x] = 0
-            boundary_union[:, ignore_inds_y, ignore_inds_x] = 0
-
         boundary_intersection_counts = boundary_intersection.sum(axis=(1, 2))
         boundary_union_counts = boundary_union.sum(axis=(1, 2))
 
@@ -626,8 +597,6 @@ class Evaluator:
         H, W = sample_results.shape[-2:]
 
         for c in active_classes:
-            if c == self.ignore_index:
-                continue
             pred_c = (pred == c).astype(np.uint8) * 255
             cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_pred.png"), pred_c)
             gt_c = (gt == c).astype(np.uint8) * 255

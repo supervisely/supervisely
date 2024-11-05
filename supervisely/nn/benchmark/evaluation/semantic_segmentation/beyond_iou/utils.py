@@ -3,11 +3,9 @@ import cv2
 import scipy
 
 
-def one_hot(segmentation, num_classes, ignore_index):
+def one_hot(segmentation, num_classes):
     # TODO: this assumes that the classes start with 0
     segmentation_copy = segmentation.copy()
-    if ignore_index:
-        segmentation_copy[segmentation == ignore_index] = num_classes
     eye = np.eye(num_classes + 1, dtype=np.bool_)
     one_hot_seg = eye[segmentation_copy].transpose(2, 0, 1)
     return one_hot_seg[:num_classes]
