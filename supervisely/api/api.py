@@ -12,7 +12,18 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import AsyncGenerator, Dict, Generator, Literal, Optional, Union
+from typing import (
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    Dict,
+    Generator,
+    Iterable,
+    Literal,
+    Mapping,
+    Optional,
+    Union,
+)
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -1269,7 +1280,10 @@ class Api:
     async def post_async(
         self,
         method: str,
-        data: Union[bytes, Dict],
+        json: Dict = None,
+        content: Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
+        files: Union[Mapping] = None,
+        params: Union[str, bytes] = None,
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
@@ -1279,8 +1293,14 @@ class Api:
 
         :param method: Method name.
         :type method: str
-        :param data: Bytes with data content or dictionary with params.
-        :type data: bytes or dict
+        :param json: Dictionary to send in the body of request.
+        :type json: dict, optional
+        :param content: Bytes with data content or dictionary with params.
+        :type content: bytes or dict, optional
+        :param files: Files to send in the body of request.
+        :type files: dict, optional
+        :param params: URL query parameters.
+        :type params: str, bytes, optional
         :param headers: Custom headers to include in the request.
         :type headers: dict, optional
         :param retries: The number of attempts to connect to the server.
@@ -1303,19 +1323,16 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
-        if isinstance(data, bytes):
-            request_params = {"content": data}
-        elif isinstance(data, Dict):
-            json_body = {**data, **self.additional_fields}
-            request_params = {"json": json_body}
-        else:
-            request_params = {"params": data}
-
         for retry_idx in range(retries):
             response = None
             try:
                 response = await self.async_httpx_client.post(
-                    url, headers=headers, **request_params
+                    url,
+                    content=content,
+                    files=files,
+                    json=json,
+                    params=params,
+                    headers=headers,
                 )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
