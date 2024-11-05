@@ -88,17 +88,19 @@ class MetricProvider:
         pass
 
     def get_confusion_matrix(self, confusion_matrix: np.ndarray):
-        if len(self.eval_data.index) > 7:
-            original_classes = self.eval_data.index.tolist()
-            per_class_iou = self.eval_data["IoU"].copy()
-            remove_classes = per_class_iou.index[7:].tolist()
-            remove_indexes = [original_classes.index(cls) for cls in remove_classes]
-            confusion_matrix = np.delete(confusion_matrix, remove_indexes, 0)
-            confusion_matrix = np.delete(confusion_matrix, remove_indexes, 1)
-            class_names = [cls for cls in class_names if cls not in remove_classes]
-            # title_text = "Confusion matrix<br><sup>(7 classes with highest error rates)</sup>"
-        else:
-            class_names = self.eval_data.index.tolist()
+        # if len(self.eval_data.index) > 7:
+        #     class_names = self.eval_data.index.tolist()[7:]
+        #     original_classes = self.eval_data.index.tolist()
+        #     per_class_iou = self.eval_data["IoU"].copy()
+        #     remove_classes = per_class_iou.index[7:].tolist()
+        #     remove_indexes = [original_classes.index(cls) for cls in remove_classes]
+        #     confusion_matrix = np.delete(confusion_matrix, remove_indexes, 0)
+        #     confusion_matrix = np.delete(confusion_matrix, remove_indexes, 1)
+        #     class_names = [cls for cls in class_names if cls not in remove_classes]
+        #     # title_text = "Confusion matrix<br><sup>(7 classes with highest error rates)</sup>"
+        # else:
+        #     class_names = self.eval_data.index.tolist()
+        class_names = self.eval_data.index.tolist()
             # title_text = "Confusion matrix"
 
         confusion_matrix = confusion_matrix[::-1]
@@ -142,16 +144,16 @@ class MetricProvider:
 
     def get_classwise_error_data(self):
         self.eval_data.drop(["mean"], inplace=True)
-        if len(self.eval_data.index) > 7:
-            per_class_iou = self.eval_data["IoU"].copy()
-            per_class_iou.sort_values(ascending=True, inplace=True)
-            target_classes = per_class_iou.index[:7].tolist()
-            # title_text = "Classwise segmentation error analysis<br><sup>(7 classes with highest error rates)</sup>"
-            labels = target_classes[::-1]
-            bar_data = self.eval_data.loc[target_classes].copy()
-        else:
-            # title_text = "Classwise segmentation error analysis"
-            bar_data = self.eval_data.copy()
+        # if len(self.eval_data.index) > 7:
+        #     per_class_iou = self.eval_data["IoU"].copy()
+        #     per_class_iou.sort_values(ascending=True, inplace=True)
+        #     target_classes = per_class_iou.index[:7].tolist()
+        #     # title_text = "Classwise segmentation error analysis<br><sup>(7 classes with highest error rates)</sup>"
+        #     labels = target_classes[::-1]
+        #     bar_data = self.eval_data.loc[target_classes].copy()
+        # else:
+        #     # title_text = "Classwise segmentation error analysis"
+        bar_data = self.eval_data.copy()
         bar_data = bar_data[["IoU", "E_extent_oU", "E_boundary_oU", "E_segment_oU"]]
         bar_data.sort_values(by="IoU", ascending=False, inplace=True)
         if not len(self.eval_data.index) > 7:
