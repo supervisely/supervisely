@@ -1638,9 +1638,9 @@ class FileApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             path_to_file = "/999_App_Test/ds1/01587.json"
-            local_save_path = "/home/admin/Downloads/01587.json"
+            local_save_path = "/path/to/save/999_App_Test/ds1/01587.json"
 
-            api.file.download(8, path_to_file, local_save_path)
+            await api.file.download_async(8, path_to_file, local_save_path)
         """
 
         async with semaphore:
@@ -1747,9 +1747,9 @@ class FileApi(ModuleApiBase):
                 "/999_App_Test/ds1/01587.json"
             ]
             local_paths = [
-                "/home/admin/Downloads/01587.json",
-                "/home/admin/Downloads/01588.json",
-                "/home/admin/Downloads/01587.json"
+                "/path/to/save/999_App_Test/ds1/01587.json",
+                "/path/to/save/999_App_Test/ds1/01588.json",
+                "/path/to/save/999_App_Test/ds1/01587.json"
             ]
 
             await api.file.download_bulk_async(8, paths_to_files, local_paths)
@@ -1897,7 +1897,7 @@ class FileApi(ModuleApiBase):
 
             # Application is started...
             save_path = "/my_app_data"
-            api.file.download_input(save_path)
+            await api.file.download_input_async(save_path)
 
             # The data is downloaded to the specified directory.
         """
