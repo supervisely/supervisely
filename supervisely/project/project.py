@@ -4094,7 +4094,7 @@ def _dataset_structure_md(
     return result_md
 
 
-async def download_project_async(
+async def _download_project_async(
     api: sly.Api,
     project_id: int,
     dest_dir: str,
@@ -4107,37 +4107,7 @@ async def download_project_async(
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
-) -> None:
-    """Download image project to the local directory asynchronously.
-
-    :param api: Supervisely API object.
-    :type api: Api
-    :param project_id: Project ID to download
-    :type project_id: int
-    :param dest_dir: Destination path to local directory.
-    :type dest_dir: str
-    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
-    :type dataset_ids: list(int), optional
-    :param log_progress: Show downloading logs in the output. By default, it is True.
-    :type log_progress: bool, optional
-    :param semaphore: Semaphore for limiting the number of concurrent downloads.
-    :type semaphore: asyncio.Semaphore, optional
-    :param only_image_tags: Specify if downloading images only with image tags. Alternatively, full annotations will be downloaded.
-    :type only_image_tags: bool, optional
-    :param save_image_info: Include image info in the download.
-    :type save_image_info, bool, optional
-    :param save_images: Include images in the download.
-    :type save_images, bool, optional
-    :param progress_cb: Function for tracking download progress.
-    :type progress_cb: tqdm or callable, optional
-    :param save_image_meta: Include images metadata in JSON format in the download.
-    :type save_image_meta: bool, optional
-    :param images_ids: Specified list of Image IDs which will be downloaded.
-    :type images_ids: list(int), optional
-    :return: None.
-    :rtype: NoneType
-    """
-
+):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))

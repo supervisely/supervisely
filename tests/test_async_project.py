@@ -1,45 +1,68 @@
+import argparse
 import asyncio
 import os
+import signal
+import sys
 import time
 
 import supervisely as sly
-from supervisely.project.project import _download_project, download_project_async
+from supervisely.project.project import _download_project, _download_project_async
 
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
-PROJECT_ID = 41860
-common_path = "/home/ganpoweird/Work/test_project_download/"
+PROJECT_ID = 42616  #  41862
+home_dir = os.path.expanduser("~")
+common_path = os.path.join(home_dir, "test_project_download/")
 save_path = os.path.join(common_path, "old/")
 save_path_async = os.path.join(common_path, "async/")
 sly.fs.ensure_base_path(common_path)
-api = sly.Api.from_env()
+# api = sly.Api.from_env()
 
 sly.fs.clean_dir(common_path)
 
-api.logger.setLevel(LOG_LEVEL)
 
-
-def main_dpa():
+def main_dpa(project_id: int, semaphore_size: int):
+    sema = asyncio.Semaphore(semaphore_size)
     start = time.time()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(download_project_async(api, PROJECT_ID, save_path_async))
+    loop.run_until_complete(
+        _download_project_async(api, project_id, save_path_async, semaphore=sema)
+    )
     finish = time.time() - start
     print(f"Time taken for async method: {finish}")
+    print(f"Project downloaded to {save_path_async}")
 
 
-def compare_downloads():
+def main_dps(project_id: int):
     start = time.time()
-    _download_project(api, PROJECT_ID, save_path)
+    _download_project(api, project_id, save_path)
     finish = time.time() - start
     print(f"Time taken for old method: {finish}")
 
-    main_dpa()
+
+def compare_downloads(project_id: int):
+    main_dps(project_id)
+    sly.fs.clean_dir(save_path)
+    main_dpa(project_id)
+    sly.fs.clean_dir(save_path_async)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Download and save project as files (async)")
+    parser.add_argument(
+        "--server", type=str, default=os.environ["SERVER_ADDRESS"], help="Server address"
+    )
+    parser.add_argument("--token", type=str, default=os.environ["API_TOKEN"], help="API token")
+    parser.add_argument("--id", type=int, default=PROJECT_ID, help="ID of the project to download")
+    parser.add_argument(
+        "--semaphore", type=int, default=50, help="Semaphore size for async download"
+    )
+    args = parser.parse_args()
     try:
-        main_dpa()  # to download and save project as files (async)
-        # compare_downloads()  # to compare the time taken for downloading and saving project as files (old vs async)
+        api = sly.Api(args.server, args.token)
+        api.logger.setLevel(LOG_LEVEL)
+        main_dpa(args.id, args.semaphore)  # to download and save project as files (async)
+        # main_dps(args.project_id)  # to download and save project as files (sync)
+        # compare_downloads(args.project_id)  # to compare the time taken for downloading and saving project as files (sync vs async)
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
-set().discard

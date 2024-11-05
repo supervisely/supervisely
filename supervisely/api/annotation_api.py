@@ -8,7 +8,7 @@ import asyncio
 import json
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
@@ -1350,23 +1350,27 @@ class AnnotationApi(ModuleApi):
     async def download_async(
         self,
         image_id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> AnnotationInfo:
         """
         Download AnnotationInfo by image ID from API.
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
         :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-        :param semaphore: Semaphore for handling async requests.
-        :type semaphore: asyncio.Semaphore, optional
-
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: str, optional
         :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
         :Usage example:
@@ -1398,6 +1402,8 @@ class AnnotationApi(ModuleApi):
             #     "2021-02-06T11:07:26.080Z"
             # ]
         """
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
         async with semaphore:
             response = await self._api.post_async(
                 "annotations.info",
@@ -1437,10 +1443,11 @@ class AnnotationApi(ModuleApi):
         self,
         dataset_id: int,
         image_ids: List[int],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(10),
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        semaphore: Optional[asyncio.Semaphore] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -1449,13 +1456,16 @@ class AnnotationApi(ModuleApi):
         :type dataset_id: int
         :param image_ids: List of integers.
         :type image_ids: List[int]
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
         :param with_custom_data: Include custom data in the response.
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-
+        :param progress_cb: Function for tracking download progress. Total should be equal to len(image_ids) or None.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: str, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -1506,15 +1516,18 @@ class AnnotationApi(ModuleApi):
             project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
             context["project_meta"] = project_meta
 
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
         tasks = []
-
         for image in image_ids:
-            async with semaphore:
-                task = asyncio.create_task(
-                    self.download_async(
-                        image, with_custom_data, force_metadata_for_links, semaphore, progress_cb
-                    )
-                )
-                tasks.append(task)
+            task = self.download_async(
+                image,
+                with_custom_data,
+                force_metadata_for_links,
+                semaphore,
+                progress_cb,
+                progress_cb_type,
+            )
+            tasks.append(task)
         ann_infos = await asyncio.gather(*tasks)
         return ann_infos
