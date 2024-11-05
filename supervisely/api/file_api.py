@@ -1860,7 +1860,8 @@ class FileApi(ModuleApiBase):
         force: Optional[bool] = False,
         show_progress: bool = False,
     ) -> None:
-        """Downloads data asynchronously for application from input using environment variables.
+        """Asynchronously downloads data for the application, using a path from file/folder selector. 
+        The application adds this path to environment variables, which the method then reads.
         Automatically detects if data is a file or a directory and saves it to the specified directory.
         If data is an archive, it will be unpacked to the specified directory if unpack_if_archive is True.
 
