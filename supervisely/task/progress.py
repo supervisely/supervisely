@@ -500,101 +500,101 @@ class tqdm_sly(tqdm, Progress):
             Progress.iters_done_report(self, count)
             self.n += count
 
-    @classmethod
-    def _decr_instances(cls, instance):
-        """
-        Remove from list and reposition another unfixed bar
-        to fill the new gap.
-        This means that by default (where all nested bars are unfixed),
-        order is not maintained but screen flicker/blank space is minimised.
-        (tqdm<=4.44.1 moved ALL subsequent unfixed bars up.)
-        """
-        with cls._lock:
-            try:
-                cls._instances.remove(instance)
-            except KeyError:
-                # if not instance.gui:  # pragma: no cover
-                #     raise
-                pass  # py2: maybe magically removed already
-            # else:
-            if not instance.gui:
-                last = (instance.nrows or 20) - 1
-                # find unfixed (`pos >= 0`) overflow (`pos >= nrows - 1`)
-                instances = list(
-                    filter(lambda i: hasattr(i, "pos") and last <= i.pos, cls._instances)
-                )
-                # set first found to current `pos`
-                if instances:
-                    inst = min(instances, key=lambda i: i.pos)
-                    inst.clear(nolock=True)
-                    inst.pos = abs(instance.pos)
-                else:
-                    # renumber remaining bars with positions below this bar so
-                    # they maintain their positions
-                    apos = abs(instance.pos)
-                    readjust = [
-                        (inst.pos, inst)
-                        for inst in cls._instances
-                        if not inst.disable and abs(getattr(inst, "pos", apos)) > apos
-                    ]
-                    for pos, inst in sorted(readjust, key=lambda pi: -abs(pi[0])):
-                        newpos = inst.pos + (1 if pos < 0 else -1)
-                        if newpos == 0 and inst.leave is None:
-                            # any bars now moving to pos=0 should not be left on
-                            # screen if `leave` was set to `None`.
-                            inst.leave = False
-                        if not inst.leave:
-                            # Clear the old position before moving the bar so we
-                            # don't leave any artefacts on screen.
-                            inst.clear(nolock=True)
-                        inst.pos = newpos
-                        inst.display()
+    # @classmethod
+    # def _decr_instances(cls, instance):
+    #     """
+    #     Remove from list and reposition another unfixed bar
+    #     to fill the new gap.
+    #     This means that by default (where all nested bars are unfixed),
+    #     order is not maintained but screen flicker/blank space is minimised.
+    #     (tqdm<=4.44.1 moved ALL subsequent unfixed bars up.)
+    #     """
+    #     with cls._lock:
+    #         try:
+    #             cls._instances.remove(instance)
+    #         except KeyError:
+    #             # if not instance.gui:  # pragma: no cover
+    #             #     raise
+    #             pass  # py2: maybe magically removed already
+    #         # else:
+    #         if not instance.gui:
+    #             last = (instance.nrows or 20) - 1
+    #             # find unfixed (`pos >= 0`) overflow (`pos >= nrows - 1`)
+    #             instances = list(
+    #                 filter(lambda i: hasattr(i, "pos") and last <= i.pos, cls._instances)
+    #             )
+    #             # set first found to current `pos`
+    #             if instances:
+    #                 inst = min(instances, key=lambda i: i.pos)
+    #                 inst.clear(nolock=True)
+    #                 inst.pos = abs(instance.pos)
+    #             else:
+    #                 # renumber remaining bars with positions below this bar so
+    #                 # they maintain their positions
+    #                 apos = abs(instance.pos)
+    #                 readjust = [
+    #                     (inst.pos, inst)
+    #                     for inst in cls._instances
+    #                     if not inst.disable and abs(getattr(inst, "pos", apos)) > apos
+    #                 ]
+    #                 for pos, inst in sorted(readjust, key=lambda pi: -abs(pi[0])):
+    #                     newpos = inst.pos + (1 if pos < 0 else -1)
+    #                     if newpos == 0 and inst.leave is None:
+    #                         # any bars now moving to pos=0 should not be left on
+    #                         # screen if `leave` was set to `None`.
+    #                         inst.leave = False
+    #                     if not inst.leave:
+    #                         # Clear the old position before moving the bar so we
+    #                         # don't leave any artefacts on screen.
+    #                         inst.clear(nolock=True)
+    #                     inst.pos = newpos
+    #                     inst.display()
 
-    def close(self):
-        """Cleanup and (if leave=False) close the progressbar."""
-        if self.disable:
-            return
+    # def close(self):
+    #     """Cleanup and (if leave=False) close the progressbar."""
+    #     if self.disable:
+    #         return
 
-        # Prevent multiple closures
-        self.disable = True
+    #     # Prevent multiple closures
+    #     self.disable = True
 
-        try:
-            if self.last_print_t < self.start_t + self.delay:
-                # haven't ever displayed; nothing to clear
-                return
+    #     try:
+    #         if self.last_print_t < self.start_t + self.delay:
+    #             # haven't ever displayed; nothing to clear
+    #             return
 
-            # GUI mode
-            if getattr(self, "sp", None) is None:
-                return
+    #         # GUI mode
+    #         if getattr(self, "sp", None) is None:
+    #             return
 
-            # annoyingly, _supports_unicode isn't good enough
-            def fp_write(s):
-                self.fp.write(str(s))
+    #         # annoyingly, _supports_unicode isn't good enough
+    #         def fp_write(s):
+    #             self.fp.write(str(s))
 
-            try:
-                fp_write("")
-            except ValueError as e:
-                if "closed" in str(e):
-                    return
-                raise  # pragma: no cover
+    #         try:
+    #             fp_write("")
+    #         except ValueError as e:
+    #             if "closed" in str(e):
+    #                 return
+    #             raise  # pragma: no cover
 
-            pos = abs(self.pos)
-            leave = pos == 0 if self.leave is None else self.leave
+    #         pos = abs(self.pos)
+    #         leave = pos == 0 if self.leave is None else self.leave
 
-            with self._lock:
-                if leave:
-                    # stats for overall rate (no weighted average)
-                    self._ema_dt = lambda: None
-                    self.display(pos=0)
-                    fp_write("\n")
-                else:
-                    # clear previous display
-                    if self.display(msg="", pos=pos) and not pos:
-                        fp_write("\r")
+    #         with self._lock:
+    #             if leave:
+    #                 # stats for overall rate (no weighted average)
+    #                 self._ema_dt = lambda: None
+    #                 self.display(pos=0)
+    #                 fp_write("\n")
+    #             else:
+    #                 # clear previous display
+    #                 if self.display(msg="", pos=pos) and not pos:
+    #                     fp_write("\r")
 
-        finally:
-            # decrement instance pos and remove from internal set
-            self._decr_instances(self)
+    #     finally:
+    #         # decrement instance pos and remove from internal set
+    #         self._decr_instances(self)
 
     def __call__(
         self,

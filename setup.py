@@ -126,7 +126,7 @@ INSTALL_REQUIRES = [
     "pyjwt>=2.1.0,<3.0.0",
     "zstd",
     "aiofiles",
-    "httpx[http2]",
+    "httpx[http2]==0.27.2",
 ]
 
 ALT_INSTALL_REQUIRES = {
