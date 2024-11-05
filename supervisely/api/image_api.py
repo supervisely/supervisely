@@ -1744,11 +1744,13 @@ class ImageApi(RemoveableBulkModuleApi):
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ):
         """ """
-        if conflict_resolution is not None:
-            if conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS:
-                raise ValueError(
-                    f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
-                )
+        if (
+            conflict_resolution is not None
+            and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
+        ):
+            raise ValueError(
+                f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
+            )
         if len(set(names)) != len(names):
             raise KeyError("Some image names are duplicated, only unique images can be uploaded")
 
