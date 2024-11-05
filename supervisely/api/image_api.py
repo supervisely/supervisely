@@ -3461,7 +3461,7 @@ class ImageApi(RemoveableBulkModuleApi):
         is_stream: bool = False,
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
-        headers: dict = None,
+        headers: Optional[dict] = None,
     ) -> AsyncGenerator:
         """
         Download Image with given ID asynchronously.
@@ -3484,11 +3484,6 @@ class ImageApi(RemoveableBulkModuleApi):
         api_method_name = "images.download"
 
         json_body = {ApiField.ID: id}
-
-        if headers is None:
-            headers = self._api.headers.copy()
-        else:
-            headers.update(self._api.headers)
 
         if is_stream:
             async for chunk, hhash in self._api.stream_async(
@@ -3598,7 +3593,7 @@ class ImageApi(RemoveableBulkModuleApi):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
-        headers: dict = None,
+        headers: Optional[dict] = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
@@ -3682,7 +3677,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         paths: List[str],
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
-        headers: dict = None,
+        headers: Optional[dict] = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
@@ -3750,7 +3745,7 @@ class ImageApi(RemoveableBulkModuleApi):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
-        headers: dict = None,
+        headers: Optional[dict] = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
@@ -3789,7 +3784,7 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             img_id = 770918
-            img_bytes = asyncio.run(api.image.download_bytes_async(img_id))
+            img_bytes = await api.image.download_bytes_async(img_id)
 
         """
         if range_start is not None or range_end is not None:
@@ -3827,7 +3822,7 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         ids: List[int],
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
-        headers: dict = None,
+        headers: Optional[dict] = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
