@@ -1941,6 +1941,7 @@ class Project:
         target_classes: Optional[List[str]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
+        default_bg_name: Optional[str] = "__bg__",
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -1956,13 +1957,15 @@ class Project:
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
-                               background class "__bg__" will be added automatically.
+                               background class will be added automatically (by default "__bg__").
         :type target_classes: :class:`list` [ :class:`str` ], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
-                                  will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
+        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class
+                                  will be added automatically (by default "__bg__") and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
+        :param default_bg_name: Default background class name, used for semantic segmentation.
+        :type default_bg_name: :class:`str`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -1979,7 +1982,7 @@ class Project:
             seg_project = sly.Project(seg_project_path, sly.OpenMode.READ)
         """
 
-        _bg_class_name = "__bg__"
+        _bg_class_name = default_bg_name
         _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
 
         if dst_project_dir is None and inplace is False:
