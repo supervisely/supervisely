@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import gc
 import glob
@@ -876,7 +877,7 @@ class Api:
                     "Supervisely automatically changed the server address to HTTPS for you. "
                     f"Consider updating your server address to {self.server_address}"
                 )
-                self.logger.warn(msg)
+                self.logger.warning(msg)
             except:
                 pass
             finally:
@@ -1509,3 +1510,21 @@ class Api:
                 self.httpx_client = httpx.Client(http2=True)
             else:
                 self.httpx_client = httpx.Client()
+
+    def _get_default_semaphore(self):
+        """
+        Get default semaphore for async requests.
+        Check if the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set.
+        If it is set, create a semaphore with the given value.
+        Otherwise, create a semaphore with a default value.
+        If server supports HTTPS, create a semaphore with a higher value.
+        """
+        env_semaphore = os.getenv("SUPERVISELY_ASYNC_SEMAPHORE")
+        if env_semaphore is not None:
+            return asyncio.Semaphore(int(env_semaphore))
+        else:
+            self._check_https_redirect()
+            if self.server_address.startswith("https://"):
+                return asyncio.Semaphore(25)
+            else:
+                return asyncio.Semaphore(5)

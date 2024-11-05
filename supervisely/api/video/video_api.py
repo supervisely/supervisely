@@ -2370,7 +2370,7 @@ class VideoApi(RemoveableBulkModuleApi):
         self,
         id: int,
         path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+        semaphore: Optional[asyncio.Semaphore] = None,
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: Optional[dict] = None,
@@ -2437,6 +2437,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
         ensure_base_path(path)
         hash_to_check = None
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(path, writing_method) as fd:
                 async for chunk, hhash in self._download_async(
@@ -2465,7 +2467,7 @@ class VideoApi(RemoveableBulkModuleApi):
         self,
         ids: List[int],
         paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+        semaphore: Optional[asyncio.Semaphore] = None,
         headers: Optional[dict] = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
@@ -2516,9 +2518,9 @@ class VideoApi(RemoveableBulkModuleApi):
             return
         if len(ids) != len(paths):
             raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
-
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
         tasks = []
-
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(
                 img_id,

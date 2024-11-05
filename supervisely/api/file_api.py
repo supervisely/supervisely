@@ -1603,7 +1603,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+        semaphore: Optional[asyncio.Semaphore] = None,
         cache: Optional[FileCache] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
@@ -1644,7 +1644,8 @@ class FileApi(ModuleApiBase):
             asyncio.set_event_loop(loop)
             loop.run_until_complete(api.file.download_async(8, path_to_file, local_save_path))
         """
-
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
         async with semaphore:
             if self.is_on_agent(remote_path):
                 # for optimized download from agent
@@ -1709,7 +1710,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_paths: List[str],
         local_save_paths: List[str],
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+        semaphore: Optional[asyncio.Semaphore] = None,
         caches: Optional[List[FileCache]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
@@ -1772,6 +1773,9 @@ class FileApi(ModuleApiBase):
                 f"Length of remote_paths and caches must be equal: {len(remote_paths)} != {len(caches)}"
             )
 
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+
         tasks = []
         for remote_path, local_path, cache in zip(
             remote_paths, local_save_paths, caches or [None] * len(remote_paths)
@@ -1793,7 +1797,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         remote_path: str,
         local_save_path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+        semaphore: Optional[asyncio.Semaphore] = None,
         show_progress: bool = True,
     ) -> None:
         """
@@ -1832,6 +1836,9 @@ class FileApi(ModuleApiBase):
                 )
         """
 
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+
         if not remote_path.endswith("/"):
             remote_path += "/"
 
@@ -1865,7 +1872,7 @@ class FileApi(ModuleApiBase):
     async def download_input_async(
         self,
         save_path: str,
-        semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
+        semaphore: Optional[asyncio.Semaphore] = None,
         unpack_if_archive: Optional[bool] = True,
         remove_archive: Optional[bool] = True,
         force: Optional[bool] = False,
@@ -1918,6 +1925,10 @@ class FileApi(ModuleApiBase):
 
             # The data is downloaded to the specified directory.
         """
+
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+
         remote_file_path = env.file(raise_not_found=False)
         remote_folder_path = env.folder(raise_not_found=False)
         team_id = env.team_id()
