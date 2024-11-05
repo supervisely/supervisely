@@ -1273,11 +1273,6 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         json_body = {ApiField.ID: id}
 
-        if headers is None:
-            headers = self._api.headers.copy()
-        else:
-            headers.update(self._api.headers)
-
         if is_stream:
             async for chunk, hhash in self._api.stream_async(
                 api_method_name,
@@ -1300,7 +1295,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
-        headers: dict = None,
+        headers: Optional[dict] = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -1389,7 +1384,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         ids: List[int],
         paths: List[str],
         semaphore: asyncio.Semaphore = asyncio.Semaphore(50),
-        headers: dict = None,
+        headers: Optional[dict] = None,
         chunk_size: int = 1024 * 1024,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -1436,7 +1431,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
         if len(ids) != len(paths):
-            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+            raise ValueError(f'Can not match "ids" and "paths" lists, {len(ids)} != {len(paths)}')
 
         tasks = []
         for img_id, img_path in zip(ids, paths):
