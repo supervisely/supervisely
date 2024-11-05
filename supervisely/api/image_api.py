@@ -1752,7 +1752,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
             )
         if len(set(names)) != len(names):
-            raise KeyError("Some image names are duplicated, only unique images can be uploaded")
+            raise ValueError("Some image names are duplicated, only unique images can be uploaded.")
 
         results = []
 
