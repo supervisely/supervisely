@@ -10,9 +10,10 @@ api = sly.Api.from_env()
 
 api.logger.setLevel(LOG_LEVEL)
 
-
 TEAM_ID = 567
-save_path = "/home/ganpoweird/Work/test_file_download/"
+user_path = os.path.expanduser("~")
+save_path = f"{user_path}/Work/test_files_download/"
+sly.logger.info(f"Save path: {save_path}")
 remote_path = "/videos/"
 sly.fs.ensure_base_path(save_path)
 sly.fs.clean_dir(save_path)
@@ -37,8 +38,10 @@ def main_db():
     loop = asyncio.get_event_loop()
     remote_paths = [path for _, path in files]
     names = [name for name, _ in files]
+    sizeb_list = [api.file.get_info_by_path(TEAM_ID, path).sizeb for _, path in files]
+    sizeb = sum(sizeb_list)
     save_paths = [save_path + name for name in names]
-    progress = sly.tqdm_sly(total=None, desc="Downloading files", unit="B", unit_scale=True)
+    progress = sly.tqdm_sly(total=sizeb, desc="Downloading files", unit="B", unit_scale=True)
     loop.run_until_complete(
         api.file.download_bulk_async(TEAM_ID, remote_paths, save_paths, progress_cb=progress)
     )
@@ -86,10 +89,9 @@ def compare_dir_download():
 if __name__ == "__main__":
     try:
         # maind_df()  # to download and save files
-        main_dd()  # to download and save files as folder
-        # main_db()  # to download and save files in bulk
+        # main_dd()  # to download and save files as folder
+        main_db()  # to download and save files in bulk
         # main_ip()  # to download input file
         # compare_dir_download()  # to compare download time between async and sync
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
-set().discard

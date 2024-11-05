@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 
 from PIL import Image
@@ -10,7 +11,9 @@ import supervisely as sly
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
 DATASET_ID = 98357
-save_path = "/home/ganpoweird/Work/test_images/"
+user_path = os.path.expanduser("~")
+save_path = f"{user_path}/Work/test_images_download/"
+sly.logger.info(f"Save path: {save_path}")
 sly.fs.ensure_base_path(save_path)
 sly.fs.clean_dir(save_path)
 api = sly.Api.from_env()

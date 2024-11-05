@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 
 from tqdm import tqdm
@@ -9,7 +10,9 @@ import supervisely as sly
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
 PROJECT_ID = 42569
-save_path = "/home/ganpoweird/Work/test_volumes/"
+user_path = os.path.expanduser("~")
+save_path = f"{user_path}/Work/test_volumes_download/"
+sly.logger.info(f"Save path: {save_path}")
 sly.fs.ensure_base_path(save_path)
 sly.fs.clean_dir(save_path)
 api = sly.Api.from_env()
@@ -54,4 +57,3 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
-set().discard

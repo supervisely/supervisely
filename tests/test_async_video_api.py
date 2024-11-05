@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 
 from tqdm import tqdm
@@ -9,7 +10,9 @@ import supervisely as sly
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
 DATASET_ID = 99051
-save_path = "/home/ganpoweird/Work/test_video_download/"
+user_path = os.path.expanduser("~")
+save_path = f"{user_path}/Work/test_videos_download/"
+sly.logger.info(f"Save path: {save_path}")
 sly.fs.ensure_base_path(save_path)
 sly.fs.clean_dir(save_path)
 api = sly.Api.from_env()
@@ -67,4 +70,3 @@ if __name__ == "__main__":
         compare_main_dps()  # to compare the time taken for downloading videos as files (batch)
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
-set().discard
