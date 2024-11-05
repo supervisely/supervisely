@@ -150,7 +150,7 @@ class BaseConverter:
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
 
-        #
+        # import as links settings
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
@@ -460,5 +460,4 @@ class BaseConverter:
                 progress_cb=progress_cb,
             )
         )
-        loop.close()
         logger.info("Annotation files downloaded successfully")
