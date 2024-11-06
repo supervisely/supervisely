@@ -457,6 +457,7 @@ class BaseConverter:
                 remote_paths=list(files_to_download.values()),
                 local_save_paths=list(files_to_download.keys()),
                 progress_cb=progress_cb,
+                progress_cb_type="number",
             )
         )
         logger.info("Annotation files downloaded successfully")
