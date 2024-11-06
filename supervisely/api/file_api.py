@@ -421,16 +421,17 @@ class FileApi(ModuleApiBase):
         remote_path,
         local_save_path,
         progress_cb=None,
-        show_progress: bool = False,
+        log_progress: bool = False,
     ):
         response = self._api.post(
             "file-storage.download",
             {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path},
             stream=True,
         )
-        if show_progress is False:
-            progress_cb = None
-        elif show_progress and progress_cb is None:
+        if progress_cb is not None:
+            log_progress = False
+
+        if log_progress and progress_cb is None:
             total_size = int(response.headers.get("Content-Length", 0))
             progress_cb = tqdm_sly(
                 total=total_size,
@@ -491,18 +492,17 @@ class FileApi(ModuleApiBase):
             self.download_from_agent(remote_path, local_save_path, progress_cb)
             return
 
-        show_progress = progress_cb is not None
         if cache is None:
-            self._download(team_id, remote_path, local_save_path, progress_cb, show_progress)
+            self._download(team_id, remote_path, local_save_path, progress_cb)
         else:
             file_info = self.get_info_by_path(team_id, remote_path)
             if file_info.hash is None:
-                self._download(team_id, remote_path, local_save_path, progress_cb, show_progress)
+                self._download(team_id, remote_path, local_save_path, progress_cb)
             else:
                 cache_path = cache.check_storage_object(file_info.hash, get_file_ext(remote_path))
                 if cache_path is None:
                     # file not in cache
-                    self._download(team_id, remote_path, local_save_path, progress_cb, show_progress)
+                    self._download(team_id, remote_path, local_save_path, progress_cb)
                     if file_info.hash != get_file_hash(local_save_path):
                         raise KeyError(
                             f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})"
