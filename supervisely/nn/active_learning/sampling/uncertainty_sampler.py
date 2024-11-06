@@ -25,10 +25,7 @@ class UncertaintySampler(BaseSampler):
     def sample(self, num_images: int):
         sampled_image_ids = []
         iterator = self.model_session.inference_project_id_async(self.project_id)
-        i = 0
         for predict in iterator:
-            print(i)
-            i += 1
             ann = predict["annotation"]
             for obj in ann["objects"]:
                 conf = [tag["value"] for tag in obj["tags"] if tag["name"] == "confidence"][0]
