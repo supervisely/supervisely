@@ -413,7 +413,12 @@ class VideoApi(RemoveableBulkModuleApi):
             return_first_response=False,
         )
 
-    def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> VideoInfo:
+    def get_info_by_id(
+        self,
+        id: int,
+        raise_error: Optional[bool] = False,
+        force_metadata_for_links=True,
+    ) -> VideoInfo:
         """
         Get Video information by ID in VideoInfo<VideoInfo> format.
 
@@ -421,6 +426,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the video info was not received.
         :type raise_error: bool
+        :param force_metadata_for_links: Get video metadata from server (if the video is uploaded as a link)
+        :type force_metadata_for_links: bool
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
@@ -477,7 +484,11 @@ class VideoApi(RemoveableBulkModuleApi):
             # )
         """
 
-        info = self._get_info_by_id(id, "videos.info")
+        info = self._get_info_by_id(
+            id,
+            "videos.info",
+            fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links},
+        )
         if info is None and raise_error is True:
             raise KeyError(f"Video with id={id} not found in your account")
         return info
@@ -546,6 +557,7 @@ class VideoApi(RemoveableBulkModuleApi):
                         ApiField.DATASET_ID: dataset_id,
                         ApiField.FILTER: filters,
                         ApiField.FIELDS: fields,
+                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                     },
                 )
             )
@@ -555,7 +567,12 @@ class VideoApi(RemoveableBulkModuleApi):
         ordered_results = [temp_map[id] for id in ids]
         return ordered_results
 
-    def get_json_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> Dict:
+    def get_json_info_by_id(
+        self,
+        id: int,
+        raise_error: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> Dict:
         """
         Get Video information by ID in json format.
 
@@ -629,7 +646,12 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         data = None
-        response = self._get_response_by_id(id, "videos.info", id_field=ApiField.ID)
+        response = self._get_response_by_id(
+            id,
+            "videos.info",
+            id_field=ApiField.ID,
+            fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links},
+        )
         if response is None:
             if raise_error is True:
                 raise KeyError(f"Video with id={id} not found in your account")
@@ -1050,7 +1072,14 @@ class VideoApi(RemoveableBulkModuleApi):
         return new_videos
 
     def _upload_bulk_add(
-        self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
+        self,
+        func_item_to_kv,
+        dataset_id,
+        names,
+        items,
+        metas=None,
+        progress_cb=None,
+        force_metadata_for_links=True,
     ):
         if metas is None:
             metas = [{}] * len(items)
@@ -1077,7 +1106,11 @@ class VideoApi(RemoveableBulkModuleApi):
                 )
             response = self._api.post(
                 "videos.bulk.add",
-                {ApiField.DATASET_ID: dataset_id, ApiField.VIDEOS: images},
+                {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.VIDEOS: images,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                },
             )
             if progress_cb is not None:
                 progress_cb(len(images))
@@ -1791,6 +1824,8 @@ class VideoApi(RemoveableBulkModuleApi):
         hashes: List[str] = None,
         metas: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given links to Dataset.
@@ -1809,6 +1844,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param skip_download: Skip download videos to local storage.
         :type skip_download: Optional[bool]
+        :param force_metadata_for_links: Specify if metadata should be forced. Default is True.
+        :type force_metadata_for_links: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -1843,7 +1880,13 @@ class VideoApi(RemoveableBulkModuleApi):
         # if infos is not None and hashes is not None and not skip_download:
         #     self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
-            lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
+            lambda item: (ApiField.LINK, item),
+            dataset_id,
+            names,
+            links,
+            metas,
+            progress_cb=progress_cb
+            force_metadata_for_links=force_metadata_for_links,
         )
 
     def update_custom_data(self, id: int, data: dict):
