@@ -1885,7 +1885,7 @@ class VideoApi(RemoveableBulkModuleApi):
             names,
             links,
             metas,
-            progress_cb=progress_cb
+            progress_cb=progress_cb,
             force_metadata_for_links=force_metadata_for_links,
         )
 
