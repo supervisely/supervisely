@@ -12,7 +12,7 @@ from supervisely import (
     Rectangle,
     logger,
 )
-from supervisely._utils import generate_free_name
+from supervisely._utils import generate_free_name, is_development
 from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
@@ -280,6 +280,11 @@ class SLYImageConverter(ImageConverter):
         project_id = dataset_info.project_id
         existing_datasets = api.dataset.get_list(project_id, recursive=True)
         existing_datasets = {ds.name for ds in existing_datasets}
+        
+        if log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
+        else:
+            progress, progress_cb = None, None
 
         def _upload_project(
             project_structure: Dict,
@@ -300,7 +305,7 @@ class SLYImageConverter(ImageConverter):
                 items = value.get(DATASET_ITEMS, [])
                 if items:
                     super(SLYImageConverter, self).upload_dataset(
-                        api, dataset_id, batch_size, log_progress, entities=items
+                        api, dataset_id, batch_size, entities=items, progress_cb=progress_cb
                     )
 
                 nested_datasets = value.get(NESTED_DATASETS, {})
@@ -308,3 +313,6 @@ class SLYImageConverter(ImageConverter):
                     _upload_project(nested_datasets, project_id, dataset_id, dataset_id)
 
         _upload_project(self._project_structure, project_id, dataset_id, first_dataset=True)
+
+        if is_development() and progress is not None:
+            progress.close()
