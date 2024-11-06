@@ -184,6 +184,8 @@ class ImportManager:
     def _unpack_archives(self, local_path):
         """Unpack if input data contains an archive."""
 
+        if self._upload_as_links:
+            return
         new_paths_to_scan = [local_path]
         while len(new_paths_to_scan) > 0:
             archives = []
