@@ -491,17 +491,18 @@ class FileApi(ModuleApiBase):
             self.download_from_agent(remote_path, local_save_path, progress_cb)
             return
 
+        show_progress = progress_cb is not None
         if cache is None:
-            self._download(team_id, remote_path, local_save_path, progress_cb)
+            self._download(team_id, remote_path, local_save_path, progress_cb, show_progress)
         else:
             file_info = self.get_info_by_path(team_id, remote_path)
             if file_info.hash is None:
-                self._download(team_id, remote_path, local_save_path, progress_cb)
+                self._download(team_id, remote_path, local_save_path, progress_cb, show_progress)
             else:
                 cache_path = cache.check_storage_object(file_info.hash, get_file_ext(remote_path))
                 if cache_path is None:
                     # file not in cache
-                    self._download(team_id, remote_path, local_save_path, progress_cb)
+                    self._download(team_id, remote_path, local_save_path, progress_cb, show_progress)
                     if file_info.hash != get_file_hash(local_save_path):
                         raise KeyError(
                             f"Remote and local hashes are different (team id: {team_id}, file: {remote_path})"
