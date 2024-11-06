@@ -4,6 +4,7 @@ from supervisely import Api
 from supervisely.io.json import load_json_file, dump_json_file
 from supervisely.nn.active_learning.sampling.random_sampler import RandomSampler
 from supervisely.nn.active_learning.sampling.kmeans_sampler import KMeansSampler
+from supervisely.nn.active_learning.sampling.uncertainty_sampler import UncertaintySampler
 from supervisely import DatasetInfo
 from supervisely import logger
 
@@ -18,10 +19,10 @@ class ALSession:
     TRAINING_ITER_NAME = "iter"
 
     def __init__(
-            self,
-            api: Api,
-            workspace_id: int,
-        ):
+        self,
+        api: Api,
+        workspace_id: int,
+    ):
         self.api = api
         self.workspace_id = workspace_id
         self.team_id = self.api.workspace.get_info_by_id(self.workspace_id).team_id
@@ -34,7 +35,7 @@ class ALSession:
         self._load_from_team_files_config_if_exists()
 
     @staticmethod
-    def from_empty_workspace(api: Api, workspace_id: int) -> 'ALSession':
+    def from_empty_workspace(api: Api, workspace_id: int) -> "ALSession":
         api = api
         index_info = api.project.create(workspace_id, ALSession.INDEX_PROJECT_NAME)
         labeling_info = api.project.create(workspace_id, ALSession.LABELING_PROJECT_NAME)
@@ -44,13 +45,13 @@ class ALSession:
             "labeling_project_id": labeling_info.id,
             "training_project_id": training_info.id,
             "train_dataset_id": None,
-            "val_dataset_id": None
+            "val_dataset_id": None,
         }
         al_session = ALSession(api, workspace_id)
         al_session.load_with_config(config)
         al_session._update_team_files_config()
         return al_session
-    
+
     def load_from_team_files_config(self):
         local_config_path = "/tmp/config.json"
         self.api.file.download(self.team_id, self.team_files_config_path(), local_config_path)
@@ -67,30 +68,34 @@ class ALSession:
 
     def team_files_config_path(self):
         return f"/active_learning/{self.workspace_id}/config.json"
-    
+
     def al_config(self):
         config = {
             "index_project_id": self.index_project_id,
             "labeling_project_id": self.labeling_project_id,
             "training_project_id": self.training_project_id,
             "train_dataset_id": self.train_dataset_id,
-            "val_dataset_id": self.val_dataset_id
+            "val_dataset_id": self.val_dataset_id,
         }
         return config
-    
+
     def sample(self, method: str, num_images: int, sampler_params: dict = {}):
         if method == "random":
             sampler_cls = RandomSampler
         elif method == "kmeans":
             sampler_cls = KMeansSampler
+        elif method == "uncertainty":
+            sampler_cls = UncertaintySampler
         else:
             raise ValueError(f"Unknown sampling method: {method}")
         not_sampled_image_ids = self._not_sampled_ids()
-        sampler = sampler_cls(self.api, self.index_project_id, not_sampled_image_ids, **sampler_params)
+        sampler = sampler_cls(
+            self.api, self.index_project_id, not_sampled_image_ids, **sampler_params
+        )
         sampled_image_ids = sampler.sample(num_images)
         new_labeling_dataset_info = self._copy_to_labeling_project(sampled_image_ids)
         return new_labeling_dataset_info
-    
+
     def move_labeling_to_training(self, train_ratio: float = None, train_size: int = None):
         labeled_image_ids = self._list_images(self.labeling_project_id)
         train_ids, val_ids = self._train_val_split(labeled_image_ids, train_ratio, train_size)
@@ -99,7 +104,9 @@ class ALSession:
     def _copy_to_labeling_project(self, image_ids: list) -> DatasetInfo:
         api = self.api
         if self.labeling_project_id is None:
-            self.labeling_project_id = api.project.get_or_create(self.workspace_id, self.LABELING_PROJECT_NAME).id
+            self.labeling_project_id = api.project.get_or_create(
+                self.workspace_id, self.LABELING_PROJECT_NAME
+            ).id
             self._update_team_files_config()
         existed_datasets = api.dataset.get_list(self.labeling_project_id)
         name = f"{self.LABELING_BATCH_NAME}_{len(existed_datasets) + 1:03d}"
@@ -112,7 +119,7 @@ class ALSession:
         for dataset_id, image_infos in images_by_dataset.items():
             api.image.copy_batch_optimized(dataset_id, image_infos, new_dataset_info.id)
         return new_dataset_info
-    
+
     def _create_training_iteration(self, train_ids: list, val_ids: list):
         # train/val split on labeled_image_ids
         # get train/val dataset ids (if exist)
@@ -121,7 +128,9 @@ class ALSession:
         # create train/val nested datasets
         api = self.api
         if self.training_project_id is None:
-            self.training_project_id = api.project.get_or_create(self.workspace_id, self.TRAINING_PROJECT_NAME).id
+            self.training_project_id = api.project.get_or_create(
+                self.workspace_id, self.TRAINING_PROJECT_NAME
+            ).id
             self._update_team_files_config()
         existed_datasets = api.dataset.get_list(self.training_project_id)
         old_train_ids, old_val_ids = self._existed_train_and_val_ids()
@@ -131,28 +140,34 @@ class ALSession:
         iter_num = len(existed_datasets) + 1
         iter_name = f"{self.TRAINING_ITER_NAME}_{iter_num:03d}"
         iter_dataset_info = api.dataset.create(self.training_project_id, iter_name)
-        train_dataset_info = api.dataset.create(self.training_project_id, self.TRAIN_DATASET_NAME, parent_id=iter_dataset_info.id)
-        val_dataset_info = api.dataset.create(self.training_project_id, self.VAL_DATASET_NAME, parent_id=iter_dataset_info.id)
+        train_dataset_info = api.dataset.create(
+            self.training_project_id, self.TRAIN_DATASET_NAME, parent_id=iter_dataset_info.id
+        )
+        val_dataset_info = api.dataset.create(
+            self.training_project_id, self.VAL_DATASET_NAME, parent_id=iter_dataset_info.id
+        )
         self.train_dataset_id = train_dataset_info.id
         self.val_dataset_id = val_dataset_info.id
         self._update_team_files_config()
+
         # copy images to train/val datasets
         def upload_images(dataset_id, image_ids):
             image_infos = api.image.get_info_by_id_batch(image_ids)
             names, hashes = zip(*[(image_info.name, image_info.hash) for image_info in image_infos])
             return api.image.upload_hashes(dataset_id, names, hashes, batch_size=100)
+
         upload_images(train_dataset_info.id, train_ids)
         upload_images(val_dataset_info.id, val_ids)
         # clear labeling project from labeled images
         api.image.remove_batch(train_ids + val_ids)
 
     def _train_val_split(
-            self,
-            image_ids: list,
-            train_ratio: float = None,
-            train_size: int = None,
-            stratified: bool = False,
-        ):
+        self,
+        image_ids: list,
+        train_ratio: float = None,
+        train_size: int = None,
+        stratified: bool = False,
+    ):
         # TODO: implement full method in SDK
         if train_ratio is None and train_size is None:
             raise ValueError("Either train_ratio or train_size must be specified")
@@ -190,7 +205,7 @@ class ALSession:
         local_config_path = "/tmp/config.json"
         dump_json_file(config, local_config_path)
         self.api.file.upload(self.team_id, local_config_path, self.team_files_config_path())
-    
+
     def _list_images(self, project_id: int):
         datasets = self.api.dataset.get_list(project_id)
         image_ids = []
@@ -198,7 +213,7 @@ class ALSession:
             images = self.api.image.get_list(dataset.id)
             image_ids.extend([image.id for image in images])
         return image_ids
-    
+
     def _existed_train_and_val_ids(self):
         train_ids = []
         val_ids = []
@@ -209,7 +224,7 @@ class ALSession:
             val_ids = self.api.image.get_list(self.val_dataset_id)
             val_ids = [image.id for image in val_ids]
         return train_ids, val_ids
-    
+
     def _load_from_team_files_config_if_exists(self):
         if self.api.file.exists(self.team_id, self.team_files_config_path()):
             self.load_from_team_files_config()
