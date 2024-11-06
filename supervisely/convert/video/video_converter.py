@@ -140,15 +140,16 @@ class VideoConverter(BaseConverter):
         has_large_files = False
         size_progress_cb = None
         progress_cb, progress, ann_progress, ann_progress_cb = None, None, None, None
-        if log_progress and not self.upload_as_links:
+        if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
-            file_sizes = [get_file_size(item.path) for item in self._items]
-            has_large_files = any(
-                [self._check_video_file_size(file_size) for file_size in file_sizes]
-            )
-            if has_large_files:
-                upload_progress = []
-                size_progress_cb = self._get_video_upload_progress(upload_progress)
+            if not self.upload_as_links:
+                file_sizes = [get_file_size(item.path) for item in self._items]
+                has_large_files = any(
+                    [self._check_video_file_size(file_size) for file_size in file_sizes]
+                )
+                if has_large_files:
+                    upload_progress = []
+                    size_progress_cb = self._get_video_upload_progress(upload_progress)
         batch_size = 1 if has_large_files or not self.upload_as_links else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
@@ -176,6 +177,8 @@ class VideoConverter(BaseConverter):
                     item_paths,
                     item_names,
                     skip_download=True,
+                    progress_cb=progress_cb if log_progress else None,
+                    force_metadata_for_links=False,
                 )
             else:
                 vid_infos = api.video.upload_paths(
