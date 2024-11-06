@@ -40,10 +40,10 @@ class TrainApp:
 
     def __init__(
         self,
-        output_dir: str,
         models: Union[str, List[Dict[str, Any]]],
         hyperparameters: Union[str, List[Dict[str, Any]]],
         app_options: Union[str, List[Dict[str, Any]]] = None,
+        work_dir: str = None,
     ):
 
         # Init
@@ -52,15 +52,17 @@ class TrainApp:
         self._team_id = sly_env.team_id()
         self._workspace_id = sly_env.workspace_id()
 
-        self._models = self.__load_models(models)
-        self._hyperparameters = self.__load_hyperparameters(hyperparameters)
-        self._app_options = self.__load_app_options(app_options)
+        self._models = self._load_models(models)
+        self._hyperparameters = self._load_hyperparameters(hyperparameters)
+        self._app_options = self._load_app_options(app_options)
 
         # ----------------------------------------- #
 
         # Input
-        self._output_dir = output_dir
-        self._project_dir = join(self._output_dir, "sly_project")
+        # if work_dir is None:
+        # work_dir = sly.app.dir
+        self._work_dir = work_dir
+        self._project_dir = join(self._work_dir, "sly_project")
         self._project_meta_path = join(self._project_dir, "meta.json")  # No need?
 
         self._train_dataset_dir = join(self._project_dir, "train")
@@ -70,14 +72,14 @@ class TrainApp:
         self._val_dataset_info = None
         self._train_dataset_fs = None
         self._val_dataset_fs = None
-        self._project_fs = None
+        self._sly_project = None
         # ----------------------------------------- #
 
         # Classes
         # ----------------------------------------- #
 
         # Model
-        self._model_dir = join(self._output_dir, "model")
+        self._model_dir = join(self._work_dir, "model")
         self._model_path = None
         self._config_path = None
         # ----------------------------------------- #
@@ -97,12 +99,16 @@ class TrainApp:
         return self._app
 
     @property
+    def work_dir(self) -> str:
+        return self._work_dir
+
+    @property
     def project_id(self) -> int:
         return self._layout.project_id
 
     @property
-    def project_fs(self):
-        return self._project_fs
+    def sly_project(self):
+        return self._sly_project
 
     @property
     def use_cache(self) -> bool:
@@ -133,6 +139,10 @@ class TrainApp:
         return self._val_dataset_fs
 
     @property
+    def model_path(self) -> str:
+        return self._model_path
+
+    @property
     def model_source(self) -> str:
         return self._layout.model_selector.get_model_source()
 
@@ -141,17 +151,20 @@ class TrainApp:
         return self._layout.model_selector.get_model_parameters()
 
     @property
+    def model_config_path(self) -> str:
+        return self._config_path
+
+    @property
     def hyperparameters(self) -> Dict[str, Any]:
         return yaml.safe_load(self._layout.hyperparameters_selector.get_hyperparameters())
-
-    # def get_hyperparameters(self) -> Dict[str, Any]:
-    #     return yaml.safe_load(self.hyperparameters)(
-    #         self._layout.hyperparameters_selector.get_hyperparameters()
-    #     )
 
     @property
     def classes(self) -> List[str]:
         return self._layout.classes_selector.get_selected_classes()
+
+    @property
+    def num_classes(self) -> List[str]:
+        return len(self._layout.classes_selector.get_selected_classes())
 
     # Train Process
     @property
@@ -172,18 +185,24 @@ class TrainApp:
 
     @property
     def start(self):
+        if exists(self.work_dir):
+            clean_dir(self.work_dir)
+        else:
+            makedirs(self.work_dir, exist_ok=True)
+
         def decorator(func):
             self._train_func = func
 
             def wrapped_start_training():
+                output_dir = None
                 self.preprocess()
                 try:
                     if self._train_func:
-                        self._train_func()
+                        output_dir = self._train_func()
                 except StopTrainingException as e:
                     print(f"Training stopped: {e}")
                 finally:
-                    self.postprocess()
+                    self.postprocess(output_dir)
 
             self._layout.training_process.start_button.click(wrapped_start_training)
             return func
@@ -193,25 +212,50 @@ class TrainApp:
     def preprocess(self):
         print("Preprocessing...")
         # workflow input
-        self.__download_project()
-        # convert project to format?
-        self.__download_model()
+        self._download_project()
 
-    def postprocess(self):
+        # @TODO: later
+        # convert project to format?
+        # return:
+        # train.train_ann_path =
+        # train.train_img_dir =
+        # train.val_ann_path =
+        # train.val_img_dir =
+
+        self._download_model()
+
+    def postprocess(self, output_dir: str):
         print("Postprocessing...")
+        print(f"Uploading directory: '{output_dir}' to Supervisely")
         # upload artifacts
+
+        # get train app name from
+        # 1 api.task
+        # 2 config.json where main.py is located
+        # 3 sly_env.app_name?
+        # if debug
+        # 1 set train app name in .vscode launch.json?
+        # 2 put to debug session dir
+        self._upload_artifacts(output_dir)
+
+        # generate train_info.json
         # model benchmark evaluation
         # workflow output
 
     # Utility methods
+    # Upload artifacts
+    def _upload_artifacts(self, output_dir: str) -> None:
+        pass
+
+    # ----------------------------------------- #
 
     # Loaders
-    def __load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    def _load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         if isinstance(models, str):
             models = load_file(models)
         return validate_list_of_dicts(models, "models")
 
-    def __load_hyperparameters(self, hyperparameters: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def _load_hyperparameters(self, hyperparameters: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         if isinstance(hyperparameters, str):
             hyperparameters = load_file(hyperparameters)
         if not isinstance(hyperparameters, (dict, str)):
@@ -220,7 +264,7 @@ class TrainApp:
             )
         return hyperparameters
 
-    def __load_app_options(self, app_options: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def _load_app_options(self, app_options: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         if isinstance(app_options, str):
             app_options = load_file(app_options)
         if not isinstance(app_options, dict):
@@ -230,7 +274,7 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Download Project
-    def __download_project(self) -> None:
+    def _download_project(self) -> None:
         makedirs(self._project_dir, exist_ok=True)
         project_info = self._api.project.get_info_by_id(self.project_id)
         dataset_infos = [
@@ -244,24 +288,24 @@ class TrainApp:
             clean_dir(self._project_dir)
 
         if not self.use_cache:
-            self.__download_no_cache(dataset_infos, total_images)
-            self._project_fs = self.__prepare_project()
+            self._download_no_cache(dataset_infos, total_images)
+            self._sly_project = self._prepare_project()
             return
 
         try:
-            self.__download_with_cache(project_info, dataset_infos, total_images)
+            self._download_with_cache(project_info, dataset_infos, total_images)
         except Exception:
             logger.warning(
                 "Failed to retrieve project from cache. Downloading it...", exc_info=True
             )
             if exists(self._project_dir):
                 clean_dir(self._project_dir)
-            self.__download_no_cache(dataset_infos, total_images)
+            self._download_no_cache(dataset_infos, total_images)
         finally:
-            self._project_fs = self.__prepare_project()
+            self._sly_project = self._prepare_project()
             logger.info(f"Project downloaded successfully to: '{self._project_dir}'")
 
-    def __prepare_project(self) -> None:
+    def _prepare_project(self) -> None:
         # Preprocess project
         # Rename datasets to train and val
         project_fs = Project(self._project_dir, OpenMode.READ)
@@ -279,7 +323,7 @@ class TrainApp:
                 raise ValueError("Unknown dataset name")  # TODO: won't happen?
         return Project(self._project_dir, OpenMode.READ)
 
-    def __download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
+    def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
         self.progress_bar_download_project.show()
         with self.progress_bar_download_project(
             message="Downloading input data...", total=total_images
@@ -294,13 +338,13 @@ class TrainApp:
             )
         self.progress_bar_download_project.hide()
 
-    def __download_with_cache(
+    def _download_with_cache(
         self, project_info: ProjectInfo, dataset_infos: List[DatasetInfo], total_images: int
     ) -> None:
         to_download = [info for info in dataset_infos if not is_cached(project_info.id, info.name)]
         cached = [info for info in dataset_infos if is_cached(project_info.id, info.name)]
 
-        logger.info(self.__get_cache_log_message(cached, to_download))
+        logger.info(self._get_cache_log_message(cached, to_download))
         self.progress_bar_download_project.show()
         with self.progress_bar_download_project(
             message="Downloading input data...", total=total_images
@@ -329,7 +373,7 @@ class TrainApp:
             )
         self.progress_bar_download_project.hide()
 
-    def __get_cache_log_message(self, cached: bool, to_download: List[DatasetInfo]) -> str:
+    def _get_cache_log_message(self, cached: bool, to_download: List[DatasetInfo]) -> str:
         if not cached:
             log_msg = "No cached datasets found"
         else:
@@ -348,18 +392,16 @@ class TrainApp:
 
     # ----------------------------------------- #
     # Download Model
-    def __download_model(self) -> None:
+    def _download_model(self) -> None:
         makedirs(self._model_dir, exist_ok=True)
         if self.model_source == "Pretrained models":
-            self.__download_pretrained_model()
+            self._download_pretrained_model()
 
         else:
-            self.__download_custom_model()
+            self._download_custom_model()
         logger.info(f"Model downloaded successfully to: '{self._model_path}'")
 
-    # ----------------------------------------- #
-
-    def __download_pretrained_model(self):
+    def _download_pretrained_model(self):
         # General
         model_meta = self.model_parameters["meta"]
         model_url = model_meta["weights_url"]
@@ -405,13 +447,13 @@ class TrainApp:
                 )
         self.progress_bar_download_model.hide()
 
-    def __download_custom_model(self):
+    def _download_custom_model(self):
         # General
         model_url = self.model_parameters["checkpoint_url"]
         model_name = basename(model_url)
 
         # Specific
-        config_url = self.model_parameters("config_url", None)
+        config_url = self.model_parameters.get("config_url", None)
         config_name = basename(config_url) if config_url is not None else None
 
         self._model_path = join(self._model_dir, model_name)  # TODO handle ext?
@@ -453,3 +495,5 @@ class TrainApp:
                         progress_cb=config_pbar.update,
                     )
         self.progress_bar_download_model.hide()
+
+    # ----------------------------------------- #
