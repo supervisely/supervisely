@@ -197,7 +197,9 @@ class ImageConverter(BaseConverter):
         if log_progress:
             if is_development() and progress is not None:
                 progress.close()
-        logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
+        logger.info(
+            f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
+        )
 
     def validate_image(self, path: str) -> Tuple[str, str]:
         if self.upload_as_links:
