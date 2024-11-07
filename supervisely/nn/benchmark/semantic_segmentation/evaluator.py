@@ -91,41 +91,44 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         if os.path.exists(output_project_dir):
             logger.info(f"Preprocessed data already exists in {output_project_dir} directory")
             return
-        else:
-            os.makedirs(output_project_dir)
 
-            ann_dir = "seg"
+        os.makedirs(output_project_dir)
+        ann_dir = "seg"
+        temp_project_seg_dir = source_project_dir + "_temp"
+        if not os.path.exists(temp_project_seg_dir):
+            default_bg_name = self._get_bg_class_name()
+            Project.to_segmentation_task(
+                source_project_dir,
+                temp_project_seg_dir,
+                target_classes=target_classes,
+                default_bg_name=default_bg_name,
+            )
 
-            temp_project_seg_dir = source_project_dir + "_temp"
-            if not os.path.exists(temp_project_seg_dir):
-                default_bg_name = self._get_bg_class_name()
-                Project.to_segmentation_task(
-                    source_project_dir,
-                    temp_project_seg_dir,
-                    target_classes=target_classes,
-                    default_bg_name=default_bg_name,
+        palette_lookup = np.zeros(256**3, dtype=np.int32)
+        for idx, color in enumerate(palette, 1):
+            key = (color[0] << 16) | (color[1] << 8) | color[2]
+            palette_lookup[key] = idx
+        datasets = os.listdir(temp_project_seg_dir)
+        for dataset in datasets:
+            if not os.path.isdir(os.path.join(temp_project_seg_dir, dataset)):
+                continue
+            # convert masks to required format and save to general ann_dir
+            mask_files = os.listdir(os.path.join(temp_project_seg_dir, dataset, ann_dir))
+            for mask_file in tqdm(mask_files, desc="Preparing segmentation data..."):
+                mask = cv2.imread(os.path.join(temp_project_seg_dir, dataset, ann_dir, mask_file))[
+                    :, :, ::-1
+                ]
+                mask_keys = (
+                    (mask[:, :, 0].astype(np.int32) << 16)
+                    | (mask[:, :, 1].astype(np.int32) << 8)
+                    | mask[:, :, 2].astype(np.int32)
                 )
+                result = palette_lookup[mask_keys]
+                if mask_file.count(".png") > 1:
+                    mask_file = mask_file[:-4]
+                cv2.imwrite(os.path.join(output_project_dir, mask_file), result)
 
-            datasets = os.listdir(temp_project_seg_dir)
-            for dataset in datasets:
-                if not os.path.isdir(os.path.join(temp_project_seg_dir, dataset)):
-                    continue
-                # convert masks to required format and save to general ann_dir
-                mask_files = os.listdir(os.path.join(temp_project_seg_dir, dataset, ann_dir))
-                for mask_file in tqdm(mask_files, desc="Preparing segmentation data..."):
-                    mask = cv2.imread(
-                        os.path.join(temp_project_seg_dir, dataset, ann_dir, mask_file)
-                    )[:, :, ::-1]
-                    result = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int32)
-                    # human masks to machine masks
-                    for color_idx, color in enumerate(palette, start=1):
-                        colormap = np.where(np.all(mask == color, axis=-1))
-                        result[colormap] = color_idx
-                    if mask_file.count(".png") > 1:
-                        mask_file = mask_file[:-4]
-                    cv2.imwrite(os.path.join(output_project_dir, mask_file), result)
-
-            shutil.rmtree(temp_project_seg_dir)
+        shutil.rmtree(temp_project_seg_dir)
 
     def _get_bg_class_name(self):
         possible_bg_names = ["background", "bg", "unlabeled", "neutral", "__bg__"]

@@ -1,5 +1,5 @@
-import numpy as np
 import cv2
+import numpy as np
 import scipy
 
 
@@ -9,6 +9,18 @@ def one_hot(segmentation, num_classes):
     eye = np.eye(num_classes + 1, dtype=np.bool_)
     one_hot_seg = eye[segmentation_copy].transpose(2, 0, 1)
     return one_hot_seg[:num_classes]
+
+
+def single_one_hot(segmentation, cls):
+    one_hot_seg = np.zeros_like(segmentation)
+    one_hot_seg[segmentation == cls] = 1
+    return one_hot_seg
+
+
+def get_single_contiguous_segment(one_hot_segmentation):
+    kernel = np.ones((3, 3), dtype=one_hot_segmentation.dtype)
+    seg = scipy.ndimage.label(one_hot_segmentation, structure=kernel)[0]
+    return [np.where(seg == l) for l in range(1, seg.max() + 1)]
 
 
 def get_contiguous_segments(one_hot_segmentation):
@@ -37,9 +49,7 @@ def erode_mask(mask, width, implementation="fast"):
     elif mask.ndim == 3:
         input_mask = mask.astype(np.uint8).transpose(1, 2, 0)
     else:
-        raise ValueError(
-            f"Assume an array of shape (H,W) or (C,H,W), got {mask.shape}!"
-        )
+        raise ValueError(f"Assume an array of shape (H,W) or (C,H,W), got {mask.shape}!")
 
     if implementation == "fast":
         kernel = np.ones((3, 3), dtype=np.uint8)
@@ -66,9 +76,7 @@ def dilate_mask(mask, width, implementation="fast"):
     elif mask.ndim == 3:
         input_mask = mask.astype(np.uint8).transpose(1, 2, 0)
     else:
-        raise ValueError(
-            f"Assume an array of shape (H,W) or (C,H,W), got {mask.shape}!"
-        )
+        raise ValueError(f"Assume an array of shape (H,W) or (C,H,W), got {mask.shape}!")
 
     if implementation == "fast":
         kernel = np.ones((3, 3), dtype=np.uint8)

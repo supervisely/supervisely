@@ -1,6 +1,7 @@
 import os
-import cv2
 import warnings
+
+import cv2
 
 try:
     import torch
@@ -36,13 +37,15 @@ class SegmentationLoader(torch.utils.data.Dataset):
         pred_path = os.path.join(self.pred_dir, self.pred_files[index])
         gt_path = os.path.join(self.gt_dir, self.gt_files[index])
 
-        pred = cv2.imread(pred_path, cv2.IMREAD_UNCHANGED)
         if self.pred_label_map:
             pred = self.pred_label_map(pred)
+        else:
+            pred = cv2.imread(pred_path, cv2.IMREAD_UNCHANGED)
 
-        gt = cv2.imread(gt_path, cv2.IMREAD_UNCHANGED)
         if self.gt_label_map:
             gt = self.gt_label_map(gt)
+        else:
+            gt = cv2.imread(gt_path, cv2.IMREAD_UNCHANGED)
 
         img_name = self.gt_files[index]
         return (pred, gt, img_name)

@@ -3,6 +3,7 @@ import os
 from typing import Dict, Iterable, List, Optional, Union
 
 import cv2
+import numpy as np
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
@@ -15,7 +16,9 @@ from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.utils 
     get_contiguous_segments,
     get_exterior_boundary,
     get_interior_boundary,
+    get_single_contiguous_segment,
     one_hot,
+    single_one_hot,
 )
 
 ERROR_CODES = {
@@ -65,7 +68,8 @@ class Evaluator:
         global torch, np, GPU
         import torch
 
-        if torch.cuda.is_available():
+        # if torch.cuda.is_available():
+        if False:
             GPU = True
             try:
                 import cupy as np  # gpu-compatible numpy analogue
@@ -133,24 +137,25 @@ class Evaluator:
 
         return masks
 
+    def extract_masks_gen(self, seg, cl):
+        if GPU:
+            seg = np.asarray(seg)
+        h, w = seg.shape
+        for c in cl:
+            mask = np.zeros((h, w))
+            mask[seg == c] = 1
+            yield mask
+
     def calc_confusion_matrix(self, pred, gt, cmat, img_name):
         assert pred.shape == gt.shape
 
         cl = np.arange(cmat.shape[0])
-        n_cl = len(cl)
-        pred_mask = self.extract_masks(pred, cl, n_cl)
-        gt_mask = self.extract_masks(gt, cl, n_cl)
-
-        for ig in range(n_cl):
-            gm = gt_mask[ig, :, :]
+        for ig, gm in enumerate(self.extract_masks_gen(gt, cl)):
             if np.sum(gm) == 0:
                 continue
-
-            for ip in range(n_cl):
-                pm = pred_mask[ip, :, :]
+            for ip, pm in enumerate(self.extract_masks_gen(pred, cl)):
                 if np.sum(pm) == 0:
                     continue
-
                 cmat[ig, ip] += np.sum(np.logical_and(pm, gm))
                 cell = str(ig) + str(ip)
                 if cell in self.cell_img_names:
@@ -244,80 +249,55 @@ class Evaluator:
             dtype=np.int8,
         )
 
-        pred_one_hot = one_hot(pred, num_classes=self.num_classes)
-        gt_one_hot = one_hot(gt, num_classes=self.num_classes)
-
-        # select only the active classes
-        if GPU:
-            pred_one_hot = np.asarray(pred_one_hot)
-            gt_one_hot = np.asarray(gt_one_hot)
-
-        active_mask = np.logical_or(
-            pred_one_hot.any(axis=(1, 2)),
-            gt_one_hot.any(axis=(1, 2)),
-        )
-        pred_one_hot_active = pred_one_hot[active_mask]
-        gt_one_hot_active = gt_one_hot[active_mask]
-        pred_active = np.argmax(pred_one_hot_active, axis=0)
-        gt_active = np.argmax(gt_one_hot_active, axis=0)
-        results_active = results[active_mask]
-        results_inactive = results[~active_mask]
-
-        # TRUE POSITIVE
-        tp_mask = np.logical_and(pred_one_hot_active, gt_one_hot_active)
-        results_active[tp_mask] = ERROR_CODES["TP"]
-
-        # TRUE NEGATIVE
-        # active classes
-        tn_mask = ~np.logical_or(pred_one_hot_active, gt_one_hot_active)
-        results_on_mask = results_active[tn_mask]
-        results_active[tn_mask] = np.where(
-            results_on_mask != ERROR_CODES["unassigned"],
-            results_on_mask,
-            ERROR_CODES["TN"],
-        )
-        # inactive classes (everything that is not ignore is TN)
-        results_inactive[results_inactive == ERROR_CODES["unassigned"]] = ERROR_CODES["TN"]
-
-        # FALSE POSITIVE
-        fp_mask = np.logical_and(pred_one_hot_active, ~gt_one_hot_active)
-
-        # FALSE NEGATIVE
-        fn_mask = np.logical_and(~pred_one_hot_active, gt_one_hot_active)
-
-        # BOUNDARY
-        results_active = self.get_boundary_errors(
-            results=results_active,
-            tp_mask=tp_mask,
-            tn_mask=tn_mask,
-            fp_mask=fp_mask,
-            fn_mask=fn_mask,
-        )
-
-        # EXTENT / SEGMENT
-        results_active = self.get_extent_segment_errors(
-            results=results_active,
-            pred_one_hot=pred_one_hot_active,
-            gt_one_hot=gt_one_hot_active,
-        )
-
-        results[active_mask] = results_active
-        results[~active_mask] = results_inactive
-        assert not (results == ERROR_CODES["unassigned"]).any()
-
-        (
-            boundary_intersection_counts_active,
-            boundary_union_counts_active,
-        ) = self.evaluate_sample_boundary_iou(
-            sample_results=results_active,
-            pred_one_hot=pred_one_hot_active,
-            gt_one_hot=gt_one_hot_active,
-        )
         boundary_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         boundary_union_counts = np.zeros(self.num_classes, dtype=np.int64)
+        for c in range(self.num_classes):
+            gt_mask = gt == c
+            pred_mask = pred == c
+            if not gt_mask.any() and not pred_mask.any():
+                results[c] = ERROR_CODES["TN"]
+                continue
+            tp_mask = np.logical_and(gt_mask, pred_mask)
+            tn_mask = ~np.logical_or(gt_mask, pred_mask)
+            fp_mask = np.logical_and(pred_mask, ~gt_mask)
+            fn_mask = np.logical_and(~pred_mask, gt_mask)
+            results[c][tp_mask] = ERROR_CODES["TP"]
+            results[c][tn_mask] = ERROR_CODES["TN"]
+            # results[c][fp_mask] = ERROR_CODES["FP"]
+            # results[c][fn_mask] = ERROR_CODES["FN"]
 
-        boundary_intersection_counts[active_mask] += boundary_intersection_counts_active
-        boundary_union_counts[active_mask] += boundary_union_counts_active
+            # BOUNDARY
+            results[c] = self.get_single_boundary_errors(
+                class_results=results[c],
+                tp_mask=tp_mask,
+                tn_mask=tn_mask,
+                fp_mask=fp_mask,
+                fn_mask=fn_mask,
+            )
+
+            # EXTENT / SEGMENT
+            results[c] = self.get_single_extent_segment_errors(
+                class_results=results[c],
+                pred_mask=pred_mask,
+                gt_mask=gt_mask,
+            )
+
+            assert not (results[c] == ERROR_CODES["unassigned"]).any()
+
+            # Boundary IoU
+            ignore_inds = None
+            (
+                boundary_intersection_counts_active,
+                boundary_union_counts_active,
+            ) = self.evaluate_single_sample_boundary_iou(
+                class_results=results[c],
+                pred_mask=pred_mask,
+                gt_mask=gt_mask,
+                ignore_inds=ignore_inds,
+            )
+
+            boundary_intersection_counts[c] += boundary_intersection_counts_active
+            boundary_union_counts[c] += boundary_union_counts_active
 
         return dict(
             main_results=results,
@@ -493,6 +473,92 @@ class Evaluator:
         )
         return results
 
+    def get_single_boundary_errors(self, class_results, tp_mask, tn_mask, fp_mask, fn_mask):
+        H, W = tp_mask.shape[-2:]
+        if self.use_relative_boundary_width:
+            img_diag = np.sqrt(H**2 + W**2)
+            if GPU:
+                img_diag = img_diag.get()
+                tp_mask = tp_mask.get()
+                tn_mask = tn_mask.get()
+
+            boundary_width = int(round(self.boundary_width * img_diag))
+        else:
+            boundary_width = self.boundary_width
+
+        tp_ext_boundary = get_exterior_boundary(
+            tp_mask, width=boundary_width, implementation=self.boundary_implementation
+        )
+        tn_ext_boundary = get_exterior_boundary(
+            tn_mask, width=boundary_width, implementation=self.boundary_implementation
+        )
+
+        if GPU:
+            tp_ext_boundary, tn_ext_boundary = np.asarray(tp_ext_boundary), np.asarray(
+                tn_ext_boundary
+            )
+
+        boundary_intersection = np.logical_and(tp_ext_boundary, tn_ext_boundary)
+        fp_boundary_mask_naive = np.logical_and(fp_mask, boundary_intersection)
+        fn_boundary_mask_naive = np.logical_and(fn_mask, boundary_intersection)
+
+        if GPU:
+            fp_boundary_mask_naive, fn_boundary_mask_naive = (
+                fp_boundary_mask_naive.get(),
+                fn_boundary_mask_naive.get(),
+            )
+
+        dilated_fp_boundary_mask = dilate_mask(
+            mask=fp_boundary_mask_naive,
+            width=boundary_width,
+            implementation=self.boundary_implementation,
+        )
+        dilated_fn_boundary_mask = dilate_mask(
+            mask=fn_boundary_mask_naive,
+            width=boundary_width,
+            implementation=self.boundary_implementation,
+        )
+
+        if GPU:
+            dilated_fp_boundary_mask = np.asarray(dilated_fp_boundary_mask)
+            dilated_fn_boundary_mask = np.asarray(dilated_fn_boundary_mask)
+
+        fp_boundary_mask = np.logical_and(dilated_fp_boundary_mask, fp_mask)
+        fn_boundary_mask = np.logical_and(dilated_fn_boundary_mask, fn_mask)
+
+        if GPU:
+            fp_boundary_mask = fp_boundary_mask.get()
+            fn_boundary_mask = fn_boundary_mask.get()
+
+        # check if every segment of boundary errors has a TP and a TN as direct neighbor
+        fp_boundary_segments = get_single_contiguous_segment(fp_boundary_mask)
+        fn_boundary_segments = get_single_contiguous_segment(fn_boundary_mask)
+
+        tp_contour = get_exterior_boundary(tp_mask, width=1, implementation="fast")
+        tn_contour = get_exterior_boundary(tn_mask, width=1, implementation="fast")
+
+        for segment in fp_boundary_segments:
+            if (not tp_contour[segment].any()) or (not tn_contour[segment].any()):
+                fp_boundary_mask[segment] = False
+
+        for segment in fn_boundary_segments:
+            if (not tp_contour[segment].any()) or (not tn_contour[segment].any()):
+                fn_boundary_mask[segment] = False
+
+        results_on_mask = class_results[fp_boundary_mask]
+        class_results[fp_boundary_mask] = np.where(
+            results_on_mask != ERROR_CODES["unassigned"],
+            results_on_mask,
+            ERROR_CODES["FP_boundary"],
+        )
+        results_on_mask = class_results[fn_boundary_mask]
+        class_results[fn_boundary_mask] = np.where(
+            results_on_mask != ERROR_CODES["unassigned"],
+            results_on_mask,
+            ERROR_CODES["FN_boundary"],
+        )
+        return class_results
+
     def get_extent_segment_errors(
         self,
         results,
@@ -553,7 +619,72 @@ class Evaluator:
 
         return results
 
-    def evaluate_sample_boundary_iou(self, sample_results, pred_one_hot, gt_one_hot):
+    def get_single_extent_segment_errors(
+        self,
+        class_results,
+        pred_mask,
+        gt_mask,
+    ):
+        if GPU:
+            pred_mask = pred_mask.get()
+            gt_mask = gt_mask.get()
+
+        pred_segments = get_single_contiguous_segment(pred_mask)
+        gt_segments = get_single_contiguous_segment(gt_mask)
+
+        if pred_mask.any():
+            if gt_mask.any():
+                # positve
+                for pred_segment in pred_segments:
+                    results_on_segment = class_results[pred_segment]
+                    if (results_on_segment == ERROR_CODES["unassigned"]).any():
+                        error_type = (
+                            "FP_extent"
+                            if (results_on_segment == ERROR_CODES["TP"]).any()
+                            else "FP_segment"
+                        )
+                        class_results[pred_segment] = np.where(
+                            results_on_segment != ERROR_CODES["unassigned"],
+                            results_on_segment,
+                            ERROR_CODES[error_type],
+                        )
+
+                # negative
+                for gt_segment in gt_segments:
+                    results_on_segment = class_results[gt_segment]
+                    if (results_on_segment == ERROR_CODES["unassigned"]).any():
+                        error_type = (
+                            "FN_extent"
+                            if (results_on_segment == ERROR_CODES["TP"]).any()
+                            else "FN_segment"
+                        )
+                        class_results[gt_segment] = np.where(
+                            results_on_segment != ERROR_CODES["unassigned"],
+                            results_on_segment,
+                            ERROR_CODES[error_type],
+                        )
+            else:  # only FP segment errors for this class
+                # positive prediction must be a superset of unassigned
+                # every prediction can only be unassigned or ignore
+                if GPU:
+                    pred_mask = np.asarray(pred_mask)
+                assert pred_mask[class_results == ERROR_CODES["unassigned"]].all()
+                class_results[class_results == ERROR_CODES["unassigned"]] = ERROR_CODES[
+                    "FP_segment"
+                ]
+        else:
+            if gt_mask.any():  # only FN segment errors for this class
+                class_results[class_results == ERROR_CODES["unassigned"]] = ERROR_CODES[
+                    "FN_segment"
+                ]
+            else:
+                return class_results
+
+        return class_results
+
+    def evaluate_sample_boundary_iou(
+        self, sample_results, pred_one_hot, gt_one_hot, ignore_inds=None
+    ):
         H, W = sample_results.shape[-2:]
         img_diag = np.sqrt(H**2 + W**2)
 
@@ -584,6 +715,51 @@ class Evaluator:
 
         boundary_intersection_counts = boundary_intersection.sum(axis=(1, 2))
         boundary_union_counts = boundary_union.sum(axis=(1, 2))
+
+        return (
+            boundary_intersection_counts,
+            boundary_union_counts,
+        )
+
+    def evaluate_single_sample_boundary_iou(
+        self, class_results, pred_mask, gt_mask, ignore_inds=None
+    ):
+        H, W = class_results.shape[-2:]
+        img_diag = np.sqrt(H**2 + W**2)
+
+        if GPU:
+            img_diag = img_diag.get()
+            pred_mask = pred_mask.get()
+            gt_mask = gt_mask.get()
+
+        boundary_width = max(int(round(self.boundary_iou_d * img_diag)), 1)
+
+        # BoundaryIoU uses "fast" boundary implementation, see https://github.com/bowenc0221/boundary-iou-api/blob/37d25586a677b043ed585f10e5c42d4e80176ea9/boundary_iou/utils/boundary_utils.py#L12
+        pred_mask_int_boundary = get_interior_boundary(
+            pred_mask, width=boundary_width, implementation="fast"
+        )  # P_d ∩ P
+        gt_mask_int_boundary = get_interior_boundary(
+            gt_mask, width=boundary_width, implementation="fast"
+        )  # G_d ∩ G
+        gt_mask_ext_boundary = get_exterior_boundary(
+            gt_mask, width=boundary_width, implementation="fast"
+        )  # G_d - G
+
+        if GPU:
+            pred_mask_int_boundary = np.asarray(pred_mask_int_boundary)
+            gt_mask_int_boundary = np.asarray(gt_mask_int_boundary)
+
+        boundary_intersection = np.logical_and(pred_mask_int_boundary, gt_mask_int_boundary)
+        boundary_union = np.logical_or(pred_mask_int_boundary, gt_mask_int_boundary)
+
+        if ignore_inds:  # remove ignore pixels
+            ignore_inds_y, ignore_inds_x = ignore_inds
+            assert not gt_mask[ignore_inds_y, ignore_inds_x].any()
+            boundary_intersection[ignore_inds_y, ignore_inds_x] = 0
+            boundary_union[ignore_inds_y, ignore_inds_x] = 0
+
+        boundary_intersection_counts = boundary_intersection.sum()
+        boundary_union_counts = boundary_union.sum()
 
         return (
             boundary_intersection_counts,
