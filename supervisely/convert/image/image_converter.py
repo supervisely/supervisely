@@ -127,9 +127,7 @@ class ImageConverter(BaseConverter):
         if progress_cb is not None:
             log_progress = True
         elif log_progress:
-            progress, progress_cb = self.get_progress(
-                self.items_count, "Uploading images and annotations"
-            )
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading")
 
         if self.upload_as_links:
             batch_size = 1000
