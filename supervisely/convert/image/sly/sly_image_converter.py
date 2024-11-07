@@ -12,7 +12,7 @@ from supervisely import (
     Rectangle,
     logger,
 )
-from supervisely._utils import generate_free_name
+from supervisely._utils import generate_free_name, is_development
 from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
@@ -169,6 +169,8 @@ class SLYImageConverter(ImageConverter):
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
                 logger.info("Found multiple possible Supervisely projects in the input data")
+            else:
+                logger.info("Possible Supervisely project found in the input data")
             meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
@@ -281,6 +283,12 @@ class SLYImageConverter(ImageConverter):
         existing_datasets = api.dataset.get_list(project_id, recursive=True)
         existing_datasets = {ds.name for ds in existing_datasets}
 
+        if log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
+        else:
+            progress, progress_cb = None, None
+
+        logger.info("Uploading project structure")
         def _upload_project(
             project_structure: Dict,
             project_id: int,
@@ -288,7 +296,6 @@ class SLYImageConverter(ImageConverter):
             parent_id: Optional[int] = None,
             first_dataset=False,
         ):
-
             for ds_name, value in project_structure.items():
                 ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
                 if first_dataset:
@@ -298,13 +305,17 @@ class SLYImageConverter(ImageConverter):
                     dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
 
                 items = value.get(DATASET_ITEMS, [])
+                nested_datasets = value.get(NESTED_DATASETS, {})
+                logger.info(f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}")
                 if items:
                     super(SLYImageConverter, self).upload_dataset(
-                        api, dataset_id, batch_size, log_progress, entities=items
+                        api, dataset_id, batch_size, entities=items, progress_cb=progress_cb
                     )
 
-                nested_datasets = value.get(NESTED_DATASETS, {})
                 if nested_datasets:
                     _upload_project(nested_datasets, project_id, dataset_id, dataset_id)
 
         _upload_project(self._project_structure, project_id, dataset_id, first_dataset=True)
+
+        if is_development() and progress is not None:
+            progress.close()

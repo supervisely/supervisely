@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
@@ -10,7 +11,14 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
 from supervisely.io.env import team_id
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext, silent_remove
+from supervisely.io.fs import (
+    get_file_ext,
+    get_file_name_with_ext,
+    is_archive,
+    remove_dir,
+    silent_remove,
+    unpack_archive,
+)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -433,30 +441,72 @@ class BaseConverter:
         if not self.upload_as_links:
             return
 
-        files_to_download = {
+        ann_archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
+
+        anns_to_download = {
             l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
         }
-        if not files_to_download:
+        if not anns_to_download and not ann_archives:
             return
 
         import asyncio
 
-        loop = asyncio.get_event_loop()
-        _, progress_cb = self.get_progress(
-            len(files_to_download),
-            "Downloading annotation files from remote storage",
-        )
+        for files_type, files in {
+            "annotations": anns_to_download,
+            "archives": ann_archives,
+        }.items():
+            if not files:
+                continue
 
-        for local_path in files_to_download.keys():
-            silent_remove(local_path)
+            is_archive_type = files_type == "archives"
 
-        logger.info("Downloading annotation files from remote storage...")
-        loop.run_until_complete(
-            self._api.storage.download_bulk_async(
-                team_id=self._team_id,
-                remote_paths=list(files_to_download.values()),
-                local_save_paths=list(files_to_download.keys()),
-                progress_cb=progress_cb,
+            file_size = None
+            if is_archive_type:
+                logger.info(f"Remote archives detected.")
+                file_size = sum(
+                    self._api.storage.get_info_by_path(self._team_id, remote_path).sizeb
+                    for remote_path in files.values()
+                )
+
+            loop = asyncio.get_event_loop()
+            _, progress_cb = self.get_progress(
+                len(files) if not is_archive_type else file_size,
+                f"Downloading {files_type} from remote storage",
+                is_size=is_archive_type,
             )
-        )
-        logger.info("Annotation files downloaded successfully")
+
+            for local_path in files.keys():
+                silent_remove(local_path)
+
+            logger.info(f"Downloading {files_type} from remote storage...")
+            loop.run_until_complete(
+                self._api.storage.download_bulk_async(
+                    team_id=self._team_id,
+                    remote_paths=list(files.values()),
+                    local_save_paths=list(files.keys()),
+                    progress_cb=progress_cb,
+                    progress_cb_type="number" if not is_archive_type else "size",
+                )
+            )
+            logger.info("Possible annotations downloaded successfully.")
+
+            if is_archive_type:
+                for local_path in files.keys():
+                    parent_dir = Path(local_path).parent
+                    if parent_dir.name == "ann":
+                        target_dir = parent_dir
+                    else:
+                        target_dir = parent_dir / "ann"
+                        target_dir.mkdir(parents=True, exist_ok=True)
+
+                    unpack_archive(local_path, str(target_dir))
+                    silent_remove(local_path)
+
+                    dirs = [d for d in target_dir.iterdir() if d.is_dir()]
+                    files = [f for f in target_dir.iterdir() if f.is_file()]
+                    if len(dirs) == 1 and len(files) == 0:
+                        for file in dirs[0].iterdir():
+                            file.rename(target_dir / file.name)
+                        remove_dir(str(dirs[0]))
+
+                    logger.info(f"Archive {local_path} unpacked successfully to {str(target_dir)}")
