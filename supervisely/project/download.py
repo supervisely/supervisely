@@ -362,6 +362,9 @@ def _download_project_to_cache(
         return
     elif is_cached(project_id):
         temp_pr_dir = os.path.join(apps_cache_dir(), rand_str(10))
+        existing_project = Project(cached_project_dir, OpenMode.READ)
+        for dataset in existing_project.datasets:
+            copy_dir_recursively(dataset.directory, os.path.join(temp_pr_dir, dataset.name))
         download(
             api=api,
             project_id=project_id,
@@ -371,12 +374,6 @@ def _download_project_to_cache(
             progress_cb=progress_cb,
             **kwargs,
         )
-        existing_project = Project(cached_project_dir, OpenMode.READ)
-        for dataset in existing_project.datasets:
-            dataset: Dataset
-            if dataset.name in [info.name for info in dataset_infos]:
-                continue
-            copy_dir_recursively(dataset.directory, os.path.join(temp_pr_dir, dataset.name))
         remove_dir(cached_project_dir)
         shutil.move(temp_pr_dir, cached_project_dir)
     else:
