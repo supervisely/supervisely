@@ -150,7 +150,7 @@ class VideoConverter(BaseConverter):
                 if has_large_files:
                     upload_progress = []
                     size_progress_cb = self._get_video_upload_progress(upload_progress)
-        batch_size = 1 if has_large_files or not self.upload_as_links else batch_size
+        batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []

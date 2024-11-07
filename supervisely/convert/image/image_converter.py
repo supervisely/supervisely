@@ -131,6 +131,9 @@ class ImageConverter(BaseConverter):
                 self.items_count, "Uploading images and annotations"
             )
 
+        if self.upload_as_links:
+            batch_size = 500
+
         for batch in batched(entities or self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
