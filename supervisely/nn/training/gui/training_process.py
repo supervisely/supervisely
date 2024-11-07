@@ -4,6 +4,7 @@ from supervisely.app.widgets import (
     Container,
     DoneLabel,
     Empty,
+    Field,
     FolderThumbnail,
     Progress,
     ReportThumbnail,
@@ -32,6 +33,9 @@ class TrainingProcess:
         self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
         self.model_benchmark_report_text.hide()
 
+        # self.creating_model_benchmark_report_field = Field(Empty(), "", "Creating report on model...")
+        # self.creating_model_benchmark_report_field.hide()
+
         self.project_download_progress = Progress("Downloading datasets")
         self.project_download_progress.hide()
 
@@ -44,8 +48,14 @@ class TrainingProcess:
         self.iter_progress = Progress("Iterations", hide_on_finish=False)
         self.iter_progress.hide()
 
-        self.model_benchmark_progress = SlyTqdm()
-        self.model_benchmark_progress.hide()
+        self.model_benchmark_progress_main = SlyTqdm()
+        self.model_benchmark_progress_main.hide()
+
+        self.model_benchmark_progress_secondary = Progress()
+        self.model_benchmark_progress_secondary.hide()
+
+        self.artifacts_upload_progress = Progress("Uploading artifacts")
+        self.artifacts_upload_progress.hide()
 
         self.validator_text = Text("")
         self.validator_text.hide()
@@ -83,7 +93,9 @@ class TrainingProcess:
                 self.model_download_progress,
                 self.epoch_progress,
                 self.iter_progress,
-                self.model_benchmark_progress,
+                self.artifacts_upload_progress,
+                self.model_benchmark_progress_main,
+                self.model_benchmark_progress_secondary,
             ]
         )
         self.card = Card(
@@ -110,16 +122,3 @@ class TrainingProcess:
             self.task_logs.hide()
             self.logs_button.text = "Show logs"
             self.logs_button.icon = "zmdi zmdi-caret-down-circle"
-
-    # No need?
-    def get_artifacts_thumbnail(self):
-        return self.artifacts_thumbnail
-
-    def get_model_benchmark_report_thumbnail(self):
-        return self.model_benchmark_report_thumbnail
-
-    def get_model_benchmark_report_text(self):
-        return self.model_benchmark_report_text
-
-    def get_model_benchmark_progress(self):
-        return self.model_benchmark_progress

@@ -24,12 +24,14 @@ class TrainGUI:
     # 9. Evaluation report
     def __init__(
         self,
+        framework_name: str,
         models: list,
         hyperparameters: dict,
         app_options: dict = None,
     ):
         self.api = Api.from_env()
 
+        self.framework_name = framework_name
         self.models = models
         self.hyperparameters = hyperparameters
         self.app_options = app_options
@@ -44,7 +46,7 @@ class TrainGUI:
         # 2. Select classes
         self.classes_selector = ClassesSelector(project_id=self.project_id, classes=[])
         # 3. Model selection
-        self.model_selector = ModelSelector(models=self.models)
+        self.model_selector = ModelSelector(self.framework_name, self.models)
         # 4. Training parameters (yaml), scheduler preview
         self.hyperparameters_selector = HyperparametersSelector(
             hyperparameters=self.hyperparameters
@@ -131,8 +133,8 @@ class TrainGUI:
         # ------------------------------------------------- #
 
         # Handlers
-        
-        # Define outside? Used by user in app?
+
+        # Define outside. Used by user in app
         # @self.training_process.start_button.click
         # def start_training():
         #     pass
@@ -141,6 +143,12 @@ class TrainGUI:
         # def stop_training():
         #     pass
 
+        # Other handlers
+        @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
+        def show_mb_speedtest(is_checked: bool):
+            self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
+
+        # Buttons
         @self.training_process.logs_button.click
         def show_logs():
             self.training_process.toggle_logs()
@@ -180,6 +188,7 @@ class TrainGUI:
                 self.input_selector.button,
                 next_pos=2,
             )
+
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper

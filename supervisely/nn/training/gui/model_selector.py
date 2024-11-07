@@ -30,7 +30,7 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 class ModelSelector:
     title = "Model Selector"
 
-    def __init__(self, models: list):
+    def __init__(self, framework: str, models: list):
         self.team_id = sly_env.team_id()  # get from project id
         self.models = models
 
@@ -38,7 +38,7 @@ class ModelSelector:
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
 
         # Custom models
-        framework = self._detect_framework()
+        framework = self._detect_framework(framework)
         if framework is not None:
             artifacts: BaseTrainArtifacts = framework(self.team_id)
             custom_artifacts = artifacts.get_list()
@@ -77,26 +77,22 @@ class ModelSelector:
     def widgets_to_disable(self):
         return [self.model_source_tabs, self.pretrained_models_table, self.custom_models_table]
 
-    def _detect_framework(self):
+    def _detect_framework(self, framework: str):
         app_map = {
-            "YOLOv5": YOLOv5,
-            "YOLOv5 2.0": YOLOv5v2,
-            "YOLOv8": YOLOv8,
-            "UNet": UNet,
-            "HRDA": HRDA,
-            "RITM": RITM,
-            "RT-DETR": RTDETR,
-            "MMDetection": MMDetection,
-            "MMDetection 3.0": MMDetection3,
-            "MMSegmentation": MMSegmentation,
-            "MMClassification": MMClassification,
-            "Detectron2": Detectron2,
+            "yolov5": YOLOv5,
+            "yolov5 2.0": YOLOv5v2,
+            "yolov8": YOLOv8,
+            "unet": UNet,
+            "hrda": HRDA,
+            "ritm": RITM,
+            "rt-detr": RTDETR,
+            "mmdetection": MMDetection,
+            "mmdetection 3.0": MMDetection3,
+            "mmsegmentation": MMSegmentation,
+            "mmclassification": MMClassification,
+            "detectron2": Detectron2,
         }
-        app_name = "RT-DETR"  # sly_env.app_name()
-        for app in app_map:
-            if app in app_name:
-                return app_map[app]
-        return None
+        return app_map.get(framework.lower(), None)
 
     def get_model_source(self):
         return self.model_source_tabs.get_active_tab()
