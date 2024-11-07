@@ -1384,23 +1384,9 @@ class AnnotationApi(ModuleApi):
             api = sly.Api.from_env()
 
             image_id = 121236918
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info, indent=4))
-            # Output: [
-            #     121236918,
-            #     "IMG_0748.jpeg",
-            #     {
-            #         "description": "",
-            #         "tags": [],
-            #         "size": {
-            #             "height": 800,
-            #             "width": 1067
-            #         },
-            #         "objects": []
-            #     },
-            #     "2019-12-19T12:06:59.435Z",
-            #     "2021-02-06T11:07:26.080Z"
-            # ]
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            ann_info = loop.run_until_complete(api.annotation.download_async(image_id))
         """
         if semaphore is None:
             semaphore = self._api._get_default_semaphore()
@@ -1414,6 +1400,9 @@ class AnnotationApi(ModuleApi):
                     ApiField.INTEGER_COORDS: False,
                 },
             )
+            if progress_cb is not None and progress_cb_type == "size":
+                progress_cb(len(response.content))
+
             result = response.json()
             # Convert annotation to pixel coordinate system
             result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
@@ -1430,7 +1419,14 @@ class AnnotationApi(ModuleApi):
             # if so, download them separately and update the annotation
             if len(additonal_geometries) > 0:
                 figure_ids = list(additonal_geometries.keys())
-                figures = self._api.image.figure.download_geometries_batch(figure_ids)
+                figures = self._api.image.figure.download_geometries_batch(
+                    figure_ids,
+                    (
+                        progress_cb
+                        if progress_cb is not None and progress_cb_type == "size"
+                        else None
+                    ),
+                )
                 for figure_id, geometry in zip(figure_ids, figures):
                     label_idx = additonal_geometries[figure_id]
                     labels[label_idx].update({BITMAP: geometry})
@@ -1481,23 +1477,13 @@ class AnnotationApi(ModuleApi):
 
             dataset_id = 254737
             image_ids = [121236918, 121236919]
-            p = tqdm(desc="Annotations downloaded: ", total=len(image_ids))
+            pbar = tqdm(desc="Download annotations", total=len(image_ids))
 
-            ann_infos = api.annotation.download_batch(dataset_id, image_ids, progress_cb=p)
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
-
-            Optimizing the download process by using the context to avoid redundant API calls.:
-            # 1. Download the project meta
-            project_id = api.dataset.get_info_by_id(dataset_id).project_id
-            project_meta = api.project.get_meta(project_id)
-
-            # 2. Use the context to avoid redundant API calls
-            dataset_id = 254737
-            image_ids = [121236918, 121236919]
-            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
-                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            ann_infos = loop.run_until_complete(
+                                api.annotation.download_batch_async(dataset_id, image_ids, progress_cb=pbar)
+                            )
         """
 
         # use context to avoid redundant API calls

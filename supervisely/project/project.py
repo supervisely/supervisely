@@ -1654,6 +1654,110 @@ class Dataset(KeyObject):
         else:
             raise TypeError("Unsupported type {!r} for ann argument".format(type(ann)))
 
+    async def _add_item_file_async(
+        self, item_name, item_path, _validate_item=True, _use_hardlink=False
+    ):
+        """
+        Add given item file to dataset items directory. Generate exception error if item_name already exists in dataset
+        or item name has unsupported extension
+        :param item_name: str
+        :param item_path: str
+        :param _validate_item: bool
+        :param _use_hardlink: bool
+        """
+        if item_path is None:
+            return
+
+        self._check_add_item_name(item_name)
+        dst_item_path = os.path.join(self.item_dir, item_name)
+        if (
+            item_path != dst_item_path and item_path is not None
+        ):  # used only for agent + api during download project + None to optimize internal usage
+            hardlink_done = False
+            if _use_hardlink:
+                try:
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(None, os.link, item_path, dst_item_path)
+                    hardlink_done = True
+                except OSError:
+                    pass
+            if not hardlink_done:
+                await copy_file_async(item_path, dst_item_path)
+            if _validate_item:
+                await self._validate_added_item_or_die_async(item_path)
+
+    async def add_item_file_async(
+        self,
+        item_name: str,
+        item_path: str,
+        ann: Optional[Union[Annotation, str]] = None,
+        _validate_item: Optional[bool] = True,
+        _use_hardlink: Optional[bool] = False,
+        item_info: Optional[Union[ImageInfo, Dict, str]] = None,
+        img_info: Optional[Union[ImageInfo, Dict, str]] = None,
+    ) -> None:
+        """
+        Adds given item file to dataset items directory, and adds given annotation to dataset
+        annotations directory. if ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param item_path: Path to the item.
+        :type item_path: :class:`str`
+        :param ann: Annotation object or path to annotation json file.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :param _validate_item: Checks input files format.
+        :type _validate_item: :class:`bool`, optional
+        :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
+        :type _use_hardlink: :class:`bool`, optional
+        :param item_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
+        :type item_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :param img_info: Deprecated version of item_info parameter. Can be removed in future versions.
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ann = "/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_8888.jpeg.json"
+            loop = asyncio.get_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    await ds.add_item_file_async("IMG_8888.jpeg", "/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_8888.jpeg", ann=ann)
+                )
+            print(ds.item_exists("IMG_8888.jpeg"))
+            # Output: True
+        """
+        # item_path is None when image is cached
+        if item_path is None and ann is None and img_info is None:
+            raise RuntimeError("No item_path or ann or img_info provided.")
+
+        if item_info is not None and img_info is not None:
+            raise RuntimeError(
+                "At least one parameter of two (item_info and img_info) must be None."
+            )
+
+        if img_info is not None:
+            logger.warning(
+                "img_info parameter of add_item_file() method is deprecated and can be removed in future versions. Use item_info parameter instead."
+            )
+            item_info = img_info
+
+        await self._add_item_file_async(
+            item_name,
+            item_path,
+            _validate_item=_validate_item,
+            _use_hardlink=_use_hardlink,
+        )
+        await self._add_ann_by_type_async(item_name, ann)
+        await self._add_item_info_async(item_name, item_info)
+
 
 class Project:
     """
@@ -3269,6 +3373,96 @@ class Project:
             progress_cb=progress_cb,
         )
 
+    @staticmethod
+    async def download_async(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        dataset_ids: Optional[List[int]] = None,
+        log_progress: bool = True,
+        semaphore: asyncio.Semaphore = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        only_image_tags: Optional[bool] = False,
+        save_image_info: Optional[bool] = False,
+        save_images: bool = True,
+        save_image_meta: bool = False,
+        images_ids: Optional[List[int]] = None,
+        cache: Optional[FileCache] = None,
+    ) -> None:
+        """
+        Download project from Supervisely to the given directory in asynchronous mode.
+
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Supervisely downloadable project ID.
+        :type project_id: :class:`int`
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`
+        :param dataset_ids: Filter datasets by IDs.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param semaphore: Semaphore to limit the number of concurrent downloads of items.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param only_image_tags: Download project with only images tags (without objects tags).
+        :type only_image_tags: :class:`bool`, optional
+        :param save_image_info: Download images infos or not.
+        :type save_image_info: :class:`bool`, optional
+        :param save_images: Download images or not.
+        :type save_images: :class:`bool`, optional
+        :param save_image_meta: Download images metadata in JSON format or not.
+        :type save_image_meta: :class:`bool`, optional
+        :param images_ids: Filter images by IDs.
+        :type images_ids: :class:`list` [ :class:`int` ], optional
+        :param cache: FileCache object. WARNING: Cache is not supported in async mode yet.
+        :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local destination Project folder
+                save_directory = "/path/to/save/projects"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+                project_id = 8888
+
+                # Download Project
+                loop = asyncio.create_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(
+                        sly.Project.download_async(api, project_id, save_directory)
+                    )
+        """
+        if cache is None:
+            await _download_project_async(
+                api=api,
+                project_id=project_id,
+                dest_dir=dest_dir,
+                dataset_ids=dataset_ids,
+                log_progress=log_progress,
+                semaphore=semaphore,
+                only_image_tags=only_image_tags,
+                save_image_info=save_image_info,
+                save_images=save_images,
+                progress_cb=progress_cb,
+                save_image_meta=save_image_meta,
+                images_ids=images_ids,
+            )
+        else:
+            raise NotImplementedError("Cache is not supported in async mode")
+
 
 def read_single_project(
     dir: str,
@@ -3500,7 +3694,7 @@ def _download_project(
                     batch, image_names, batch_imgs_bytes, ann_jsons
                 ):
                     dataset_fs: Dataset
-                    
+
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,
@@ -4153,16 +4347,31 @@ async def _download_project_async(
     dest_dir: str,
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
-    semaphore: asyncio.Semaphore = asyncio.Semaphore(200),
+    semaphore: asyncio.Semaphore = None,
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: Optional[bool] = True,
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
+    force: Optional[bool] = True,
 ):
+    if semaphore is None:
+        semaphore = api._get_default_semaphore()
+
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
-    project_fs = Project(dest_dir, OpenMode.CREATE)
+    project_fs = None
+    if os.path.exists(dest_dir):
+        if force:
+            logger.debug("Project already exists and force==True. Will overwrite it.")
+            sly.fs.remove_dir(dest_dir)
+        else:
+            project_fs = Project(dest_dir, OpenMode.READ)
+            logger.info(
+                "Project already exists and force==False. Will upload only modified items. To force download, pass `force=True`."
+            )
+    if project_fs is None:
+        project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
@@ -4177,13 +4386,17 @@ async def _download_project_async(
     if images_ids is not None:
         images_filter = [{"field": "id", "operator": "in", "value": images_ids}]
 
+    existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
         dataset_id = dataset.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
 
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
         images = api.image.get_list(dataset_id, filters=images_filter)
 
@@ -4202,17 +4415,18 @@ async def _download_project_async(
         ):
             tasks = []
             for image in images:
-                task = _download_project_entity_async(
-                    api,
-                    image,
-                    meta,
-                    dataset_fs,
-                    id_to_tagmeta,
-                    semaphore,
-                    save_images,
-                    save_image_info,
-                    only_image_tags,
-                    ds_progress,
+                task = _download_project_item_async(
+                    api=api,
+                    image_info=image,
+                    meta=meta,
+                    dataset_fs=dataset_fs,
+                    id_to_tagmeta=id_to_tagmeta,
+                    semaphore=semaphore,
+                    save_images=save_images,
+                    save_image_info=save_image_info,
+                    only_image_tags=only_image_tags,
+                    ds_progress=ds_progress,
+                    force=force,
                 )
                 tasks.append(task)
             await asyncio.gather(*tasks)
@@ -4230,7 +4444,7 @@ async def _download_project_async(
         logger.info(f"There was an error while creating README: {e}")
 
 
-async def _download_project_entity_async(
+async def _download_project_item_async(
     api: sly.Api,
     img_info: sly.ImageInfo,
     meta: ProjectMeta,
@@ -4241,10 +4455,17 @@ async def _download_project_entity_async(
     save_image_info: bool,
     only_image_tags: bool,
     progress_cb: Optional[Callable],
+    force: Optional[bool] = True,
 ) -> None:
     """Download image and annotation from Supervisely API and save it to the local filesystem.
     Uses parameters from the parent function _download_project_async.
     """
+    if not force:
+        local_info = dataset_fs.get_item_info(img_info.name)
+        if local_info is not None and local_info.updated_at == img_info.updated_at:
+            if progress_cb is not None:
+                progress_cb(1)
+            return
 
     if save_images:
         img_bytes = await api.image.download_bytes_single_async(

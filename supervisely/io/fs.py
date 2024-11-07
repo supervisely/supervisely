@@ -1473,3 +1473,24 @@ async def unpack_archive_async(
         silent_remove(archive_path)
     if remove_junk:
         remove_junk_from_dir(target_dir)
+
+
+async def touch_async(path: str) -> None:
+    """
+    Sets access and modification times for a file asynchronously.
+
+    :param path: Target file path.
+    :type path: str
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        from supervisely.io.fs import touch
+        await touch('/home/admin/work/projects/examples/1.jpeg')
+    """
+    ensure_base_path(path)
+    async with aiofiles.open(path, "a"):
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, os.utime, path, None)
