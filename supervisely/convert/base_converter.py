@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
@@ -14,6 +15,7 @@ from supervisely.io.fs import (
     get_file_ext,
     get_file_name_with_ext,
     is_archive,
+    remove_dir,
     silent_remove,
     unpack_archive,
 )
@@ -490,7 +492,21 @@ class BaseConverter:
 
             if is_archive_type:
                 for local_path in files.keys():
-                    target_dir = os.path.dirname(os.path.normpath(local_path))
-                    unpack_archive(local_path, target_dir)
+                    parent_dir = Path(local_path).parent
+                    if parent_dir.name == "ann":
+                        target_dir = parent_dir
+                    else:
+                        target_dir = parent_dir / "ann"
+                        target_dir.mkdir(parents=True, exist_ok=True)
+
+                    unpack_archive(local_path, str(target_dir))
                     silent_remove(local_path)
-                    logger.info(f"Archive {local_path} unpacked successfully.")
+
+                    dirs = [d for d in target_dir.iterdir() if d.is_dir()]
+                    files = [f for f in target_dir.iterdir() if f.is_file()]
+                    if len(dirs) == 1 and len(files) == 0:
+                        for file in dirs[0].iterdir():
+                            file.rename(target_dir / file.name)
+                        remove_dir(str(dirs[0]))
+
+                    logger.info(f"Archive {local_path} unpacked successfully to {str(target_dir)}")
