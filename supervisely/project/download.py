@@ -337,6 +337,13 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
     return kwargs
 
 
+def _add_force_to_kwargs(kwargs: dict, project_type: str):
+    supported_force_projects = (str(ProjectType.IMAGES),)
+    if project_type in supported_force_projects:
+        kwargs["force"] = False
+    return kwargs
+
+
 def _download_project_to_cache(
     api: Api,
     project_info: ProjectInfo,
@@ -348,6 +355,7 @@ def _download_project_to_cache(
     project_id = project_info.id
     project_type = project_info.type
     kwargs = _add_save_items_infos_to_kwargs(kwargs, project_type)
+    kwargs = _add_force_to_kwargs(kwargs, project_type)
     cached_project_dir = _get_cache_dir(project_id)
     if len(dataset_infos) == 0:
         logger.debug("No datasets to download")
@@ -366,7 +374,6 @@ def _download_project_to_cache(
         existing_project = Project(cached_project_dir, OpenMode.READ)
         for dataset in existing_project.datasets:
             dataset: Dataset
-            dataset.directory
             if dataset.name in [info.name for info in dataset_infos]:
                 continue
             copy_dir_recursively(dataset.directory, os.path.join(temp_pr_dir, dataset.name))

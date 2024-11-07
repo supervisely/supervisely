@@ -3363,9 +3363,21 @@ def _download_project(
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
+    force: Optional[bool] = True,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
-    project_fs = Project(dest_dir, OpenMode.CREATE)
+    project_fs = None
+    if os.path.exists(dest_dir):
+        if force:
+            logger.debug("Project already exists and force==True. Will overwrite it.")
+            sly.fs.remove_dir(dest_dir)
+        else:
+            project_fs = Project(dest_dir, OpenMode.READ)
+            logger.info(
+                "Project already exists and force==False. Will upload only modified items. To force download, pass `force=True`."
+            )
+    if project_fs is None:
+        project_fs = Project(dest_dir, OpenMode.CREATE)
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
@@ -3380,13 +3392,17 @@ def _download_project(
     if images_ids is not None:
         images_filter = [{"field": "id", "operator": "in", "value": images_ids}]
 
+    existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
         dataset_id = dataset.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
 
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
         images = api.image.get_list(dataset_id, filters=images_filter)
         ds_total = len(images)
@@ -3416,42 +3432,79 @@ def _download_project(
                 image_ids = [image_info.id for image_info in batch]
                 image_names = [image_info.name for image_info in batch]
 
-                # download images in numpy format
-                if save_images:
-                    batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
-                else:
-                    batch_imgs_bytes = [None] * len(image_ids)
+                existing_image_infos: Dict[str, ImageInfo] = {}
+                for image_name in image_names:
+                    try:
+                        image_info = dataset_fs.get_item_info(image_name)
+                    except:
+                        image_info = None
+                    existing_image_infos[image_name] = image_info
 
-                if log_progress or progress_cb is not None:
-                    ds_progress(len(batch))
+                indexes_to_download = []
+                for i, image_info in enumerate(batch):
+                    existing_image_info = existing_image_infos[image_info.name]
+                    if (
+                        existing_image_info is None
+                        or existing_image_info.updated_at != image_info.updated_at
+                    ):
+                        indexes_to_download.append(i)
+
+                # download images in numpy format
+                batch_imgs_bytes = [None] * len(image_ids)
+                if save_images and indexes_to_download:
+                    for index, img in zip(
+                        indexes_to_download,
+                        api.image.download_bytes(
+                            dataset_id,
+                            [image_ids[i] for i in indexes_to_download],
+                            progress_cb=ds_progress,
+                        ),
+                    ):
+                        batch_imgs_bytes[index] = img
+
+                if ds_progress is not None:
+                    ds_progress(len(batch) - len(indexes_to_download))
 
                 # download annotations in json format
+                ann_jsons = [None] * len(image_ids)
                 if only_image_tags is False:
-                    ann_infos = api.annotation.download_batch(
-                        dataset_id, image_ids, progress_cb=anns_progress
-                    )
-                    ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+                    if indexes_to_download:
+                        for index, ann_info in zip(
+                            indexes_to_download,
+                            api.annotation.download_batch(
+                                dataset_id,
+                                [image_ids[i] for i in indexes_to_download],
+                                progress_cb=anns_progress,
+                            ),
+                        ):
+                            ann_jsons[index] = ann_info.annotation
                 else:
-                    ann_jsons = []
-                    for image_info in batch:
-                        # pylint: disable=possibly-used-before-assignment
-                        tags = TagCollection.from_api_response(
-                            image_info.tags,
-                            meta.tag_metas,
-                            id_to_tagmeta,
-                        )
-                        tmp_ann = Annotation(
-                            img_size=(image_info.height, image_info.width), img_tags=tags
-                        )
-                        ann_jsons.append(tmp_ann.to_json())
+                    if indexes_to_download:
+                        for index in indexes_to_download:
+                            image_info = batch[index]
+                            tags = TagCollection.from_api_response(
+                                image_info.tags,
+                                meta.tag_metas,
+                                id_to_tagmeta,
+                            )
+                            tmp_ann = Annotation(
+                                img_size=(image_info.height, image_info.width), img_tags=tags
+                            )
+                            ann_jsons[index] = tmp_ann.to_json()
+                            if anns_progress is not None:
+                                anns_progress(len(indexes_to_download))
+                if anns_progress is not None:
+                    anns_progress(len(batch) - len(indexes_to_download))
 
                 for img_info, name, img_bytes, ann in zip(
                     batch, image_names, batch_imgs_bytes, ann_jsons
                 ):
+                    dataset_fs: Dataset
+                    
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,
-                        ann=ann,
+                        ann=dataset_fs.get_ann(name) if ann is None else ann,
                         img_info=img_info if save_image_info is True else None,
                     )
 
