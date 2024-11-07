@@ -132,7 +132,7 @@ class ImageConverter(BaseConverter):
             )
 
         if self.upload_as_links:
-            batch_size = 500
+            batch_size = 1000
 
         for batch in batched(entities or self._items, batch_size=batch_size):
             item_names = []
@@ -173,6 +173,7 @@ class ImageConverter(BaseConverter):
                         item_names,
                         item_paths,
                         metas=item_metas,
+                        batch_size=batch_size,
                         conflict_resolution="rename",
                         force_metadata_for_links=False,
                     )
