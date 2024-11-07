@@ -1755,12 +1755,13 @@ class ImageApi(RemoveableBulkModuleApi):
             raise ValueError(
                 f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
             )
+        if len(set(names)) != len(names):
+            raise ValueError("Some image names are duplicated, only unique images can be uploaded.")
+
         results = []
 
         def _add_timestamp(name: str) -> str:
-
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
         def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
