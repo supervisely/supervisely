@@ -169,7 +169,7 @@ class ImportManager:
         mkdir(local_path, remove_content_if_exists=True)
 
         if is_dir:
-            files = self._api.storage.list(self._team_id, remote_path)
+            files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
         else:
             files = [self._api.storage.get_info_by_path(self._team_id, remote_path)]
 
