@@ -4247,7 +4247,7 @@ async def _download_project_entity_async(
     """
 
     if save_images:
-        img_bytes = await api.image.download_bytes_one_async(
+        img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
     else:

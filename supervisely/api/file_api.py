@@ -14,6 +14,7 @@ from time import time
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
 import aiofiles
+import httpx
 import requests
 from dotenv import load_dotenv
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -2008,3 +2009,140 @@ class FileApi(ModuleApiBase):
                 semaphore=semaphore,
                 show_progress=show_progress,
             )
+
+    async def upload_async(
+        self,
+        team_id: int,
+        src: str,
+        dst: str,
+        semaphore: asyncio.Semaphore = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+    ) -> httpx.Response:
+        """
+        Upload file from local path to Team Files asynchronously.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param src: Local path to file.
+        :type src: str
+        :param dst: Path to save file in Team Files.
+        :type dst: str
+        :param chunk_size: Size of chunk for uploading file.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of uploaded file.
+        :type check_hash: bool
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Response from API.
+        :rtype: :class:`httpx.Response`
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                path_to_file = "/path/to/local/file/01587.json"
+                path_to_save = "/files/01587.json"
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(
+                    api.file.upload_async(8, path_to_file, path_to_save)
+                )
+        """
+        api_method = "file-storage.upload"
+        headers = {"Content-Type": "application/octet-stream"}
+        # sha256 = await get_file_hash_async(src)
+        json_body = {
+            ApiField.TEAM_ID: team_id,
+            ApiField.PATH: dst,
+            # "sha256": sha256,
+        }
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        async with semaphore:
+            async with aiofiles.open(src, "rb") as fd:
+                item = await fd.read()
+                response = await self._api.post_async(
+                    api_method, content=item, params=json_body, headers=headers
+                )
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(item))
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
+                return response
+
+    async def upload_bulk_async(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        semaphore: asyncio.Semaphore = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+    ) -> None:
+        """
+        Upload multiple files from local paths to Team Files asynchronously.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param src_paths: List of local paths to files.
+        :type src_paths: List[str]
+        :param dst_paths: List of paths to save files in Team Files.
+        :type dst_paths: List[str]
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                paths_to_files = [
+                    "/path/to/local/file/01587.json",
+                    "/path/to/local/file/01588.json",
+                    "/path/to/local/file/01589.json"
+                ]
+                paths_to_save = [
+                    "/files/01587.json",
+                    "/files/01588.json",
+                    "/files/01589.json"
+                ]
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(
+                    api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
+                )
+        """
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        tasks = []
+        for s, d in zip(src_paths, dst_paths):
+            task = self.upload_async(
+                team_id,
+                s,
+                d,
+                semaphore=semaphore,
+                chunk_size=chunk_size,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)

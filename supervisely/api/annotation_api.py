@@ -1435,7 +1435,7 @@ class AnnotationApi(ModuleApi):
                     label_idx = additonal_geometries[figure_id]
                     labels[label_idx].update({BITMAP: geometry})
             ann_info = self._convert_json_info(result)
-            if progress_cb is not None:
+            if progress_cb is not None and progress_cb_type == "number":
                 progress_cb(1)
             return ann_info
 
@@ -1521,12 +1521,12 @@ class AnnotationApi(ModuleApi):
         tasks = []
         for image in image_ids:
             task = self.download_async(
-                image,
-                with_custom_data,
-                force_metadata_for_links,
-                semaphore,
-                progress_cb,
-                progress_cb_type,
+                image_id=image,
+                semaphore=semaphore,
+                with_custom_data=with_custom_data,
+                force_metadata_for_links=force_metadata_for_links,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
             )
             tasks.append(task)
         ann_infos = await asyncio.gather(*tasks)
