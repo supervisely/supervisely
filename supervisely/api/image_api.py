@@ -605,9 +605,13 @@ class ImageApi(RemoveableBulkModuleApi):
         infos_dict = {}
         ids_set = set(ids)
         while any(ids_set):
-            dataset_id = self.get_info_by_id(
-                ids_set.pop(), force_metadata_for_links=False
-            ).dataset_id
+            img_id = ids_set.pop()
+            image_info = self.get_info_by_id(img_id, force_metadata_for_links=False)
+            if image_info is None:
+                raise KeyError(
+                    f"Image (id: {img_id}) is either archived, doesn't exist or you don't have enough permissions to access it"
+                )
+            dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
                 temp_results = self.get_list_all_pages(
@@ -1817,6 +1821,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     break
                 except HTTPError as e:
                     error_details = e.response.json().get("details", {})
+                    if isinstance(error_details, list):
+                        error_details = error_details[0]
                     if (
                         conflict_resolution is not None
                         and e.response.status_code == 400
