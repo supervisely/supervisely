@@ -5,6 +5,8 @@ import asyncio
 import datetime
 import json
 import os
+import shutil
+import subprocess
 import urllib.parse
 from functools import partial
 from typing import (
@@ -1491,68 +1493,129 @@ class VideoApi(RemoveableBulkModuleApi):
         if update_headers:
             self._api.add_header("x-skip-processing", "true")
 
-        video_info_results = []
-        hashes = [get_file_hash(x) for x in paths]
-
-        self._upload_data_bulk(
-            path_to_bytes_stream,
-            zip(paths, hashes),
-            progress_cb=progress_cb,
-            item_progress=item_progress,
-        )
-        if update_headers:
-            self.upsert_infos(hashes, infos)
-            self._api.pop_header("x-skip-processing")
-
-        unique_hashes = list(set(hashes))
-        unique_metas = self._api.import_storage.get_meta_by_hashes(unique_hashes)
-
-        hash_meta_dict = {}
-        for hash_value, meta in zip(unique_hashes, unique_metas):
-            hash_meta_dict[hash_value] = meta
-
-        metas = [hash_meta_dict[hash_value] for hash_value in hashes]
-
-        metas2 = [meta["meta"] for meta in metas]
-
-        names = self.get_free_names(dataset_id, names)
-
-        for name, hash, meta in zip(names, hashes, metas2):
+        def _fix_frames(path):
             try:
-                all_streams = meta["streams"]
-                video_streams = get_video_streams(all_streams)
-                for stream_info in video_streams:
-                    stream_index = stream_info["index"]
-
-                    # TODO: check is community
-                    # if instance_type == sly.COMMUNITY:
-                    #     if _check_video_requires_processing(file_info, stream_info) is True:
-                    #         warn_video_requires_processing(file_name)
-                    #         continue
-
-                    # item_name = name
-                    # info = self._api.video.get_info_by_name(dataset_id, item_name)
-                    # if info is not None:
-                    #     item_name = gen_video_stream_name(name, stream_index)
-                    res = self.upload_hash(dataset_id, name, hash, stream_index)
-                    video_info_results.append(res)
-            except Exception as e:
-                from supervisely.io.exception_handlers import (
-                    ErrorHandler,
-                    handle_exception,
+                pcs = subprocess.run(
+                    [
+                        "ffprobe",
+                        path,
+                        "-select_streams",
+                        "v",
+                        "-show_entries",
+                        "frame=coded_picture_number",
+                        "-of",
+                        "csv=p=0:nk=1",
+                        "-v",
+                        "0",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
                 )
+                pcs.check_returncode()
+                frame_numbers = []
+                for line in pcs.stdout.decode("utf-8").split("\n"):
+                    try:
+                        frame_numbers.append(int(line))
+                    except ValueError:
+                        pass
+                if len(frame_numbers) - 1 == max(frame_numbers):
+                    return path
+                logger.warning(
+                    f"Detected skipped frames in video `{path}`. Reencoding for Supervisely video tool compatibility."
+                )
+                new_path = path.replace(".mp4", f"__frames_fixed__{rand_str(10)}.mp4")
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-y",
+                        "-i",
+                        path,
+                        "-vsync",
+                        "cfr",
+                        new_path,
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                ).check_returncode()
+                return new_path
+            except:
+                return path
 
-                msg = f"File skipped {name}: error occurred during processing: "
-                handled_exc = handle_exception(e)
-                if handled_exc is not None:
-                    if isinstance(handled_exc, ErrorHandler.API.PaymentRequired):
-                        raise e  # re-raise original exception (will be handled in the UI)
+        fixed_paths = []
+        for i in range(len(paths)):
+            path = paths[i]
+            fixed_path = _fix_frames(path)
+            if fixed_path != path:
+                fixed_paths.append(fixed_path)
+                paths[i] = fixed_path
+
+        try:
+            video_info_results = []
+            hashes = [get_file_hash(x) for x in paths]
+
+            self._upload_data_bulk(
+                path_to_bytes_stream,
+                zip(paths, hashes),
+                progress_cb=progress_cb,
+                item_progress=item_progress,
+            )
+            if update_headers:
+                self.upsert_infos(hashes, infos)
+                self._api.pop_header("x-skip-processing")
+
+            unique_hashes = list(set(hashes))
+            unique_metas = self._api.import_storage.get_meta_by_hashes(unique_hashes)
+
+            hash_meta_dict = {}
+            for hash_value, meta in zip(unique_hashes, unique_metas):
+                hash_meta_dict[hash_value] = meta
+
+            metas = [hash_meta_dict[hash_value] for hash_value in hashes]
+
+            metas2 = [meta["meta"] for meta in metas]
+
+            names = self.get_free_names(dataset_id, names)
+
+            for name, hash, meta in zip(names, hashes, metas2):
+                try:
+                    all_streams = meta["streams"]
+                    video_streams = get_video_streams(all_streams)
+                    for stream_info in video_streams:
+                        stream_index = stream_info["index"]
+
+                        # TODO: check is community
+                        # if instance_type == sly.COMMUNITY:
+                        #     if _check_video_requires_processing(file_info, stream_info) is True:
+                        #         warn_video_requires_processing(file_name)
+                        #         continue
+
+                        # item_name = name
+                        # info = self._api.video.get_info_by_name(dataset_id, item_name)
+                        # if info is not None:
+                        #     item_name = gen_video_stream_name(name, stream_index)
+                        res = self.upload_hash(dataset_id, name, hash, stream_index)
+                        video_info_results.append(res)
+                except Exception as e:
+                    from supervisely.io.exception_handlers import (
+                        ErrorHandler,
+                        handle_exception,
+                    )
+
+                    msg = f"File skipped {name}: error occurred during processing: "
+                    handled_exc = handle_exception(e)
+                    if handled_exc is not None:
+                        if isinstance(handled_exc, ErrorHandler.API.PaymentRequired):
+                            raise e  # re-raise original exception (will be handled in the UI)
+                        else:
+                            msg += handled_exc.get_message_for_exception()
                     else:
-                        msg += handled_exc.get_message_for_exception()
-                else:
-                    msg += repr(e)
-                logger.warning(msg)
-        return video_info_results
+                        msg += repr(e)
+                    logger.warning(msg)
+            return video_info_results
+        finally:
+            for fixed_path in fixed_paths:
+                if os.path.exists(fixed_path):
+                    os.remove(fixed_path)
 
     def upload_path(
         self,
