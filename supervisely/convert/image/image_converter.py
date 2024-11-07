@@ -114,6 +114,7 @@ class ImageConverter(BaseConverter):
         batch_size: int = 50,
         log_progress=True,
         entities: List[Item] = None,
+        progress_cb=None,
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
@@ -122,10 +123,14 @@ class ImageConverter(BaseConverter):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_names = set([img.name for img in api.image.get_list(dataset_id)])
-        if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading images...")
-        else:
-            progress_cb = None
+        progress = None
+        if progress_cb is not None:
+            log_progress = True
+        elif log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading")
+
+        if self.upload_as_links:
+            batch_size = 1000
 
         for batch in batched(entities or self._items, batch_size=batch_size):
             item_names = []
@@ -166,6 +171,7 @@ class ImageConverter(BaseConverter):
                         item_names,
                         item_paths,
                         metas=item_metas,
+                        batch_size=batch_size,
                         conflict_resolution="rename",
                         force_metadata_for_links=False,
                     )
@@ -188,9 +194,11 @@ class ImageConverter(BaseConverter):
                 progress_cb(len(batch))
 
         if log_progress:
-            if is_development():
+            if is_development() and progress is not None:
                 progress.close()
-        logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
+        logger.info(
+            f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
+        )
 
     def validate_image(self, path: str) -> Tuple[str, str]:
         if self.upload_as_links:

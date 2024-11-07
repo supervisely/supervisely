@@ -169,21 +169,26 @@ class ImportManager:
         mkdir(local_path, remove_content_if_exists=True)
 
         if is_dir:
-            files = self._api.storage.list(self._team_id, remote_path)
+            files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
         else:
             files = [self._api.storage.get_info_by_path(self._team_id, remote_path)]
 
+        unique_directories = set()
         for file in files:
             new_path = file.path.replace(dir_path, local_path)
             self._remote_files_map[new_path] = file.path
             Path(new_path).parent.mkdir(parents=True, exist_ok=True)
+            unique_directories.add(str(Path(file.path).parent))
             touch(new_path)
 
+        logger.info(f"Scanned remote directories:\n   - " + "\n   - ".join(unique_directories))
         return local_path
 
     def _unpack_archives(self, local_path):
         """Unpack if input data contains an archive."""
 
+        if self._upload_as_links:
+            return
         new_paths_to_scan = [local_path]
         while len(new_paths_to_scan) > 0:
             archives = []
