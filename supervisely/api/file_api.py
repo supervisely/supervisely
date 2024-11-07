@@ -421,16 +421,17 @@ class FileApi(ModuleApiBase):
         remote_path,
         local_save_path,
         progress_cb=None,
-        show_progress: bool = False,
+        log_progress: bool = False,
     ):
         response = self._api.post(
             "file-storage.download",
             {ApiField.TEAM_ID: team_id, ApiField.PATH: remote_path},
             stream=True,
         )
-        if show_progress is False:
-            progress_cb = None
-        elif show_progress and progress_cb is None:
+        if progress_cb is not None:
+            log_progress = False
+
+        if log_progress and progress_cb is None:
             total_size = int(response.headers.get("Content-Length", 0))
             progress_cb = tqdm_sly(
                 total=total_size,
