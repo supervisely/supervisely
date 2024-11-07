@@ -1844,6 +1844,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param skip_download: Skip download videos to local storage.
         :type skip_download: Optional[bool]
+        :param progress_cb: Function for tracking the progress of copying.
+        :type progress_cb: tqdm or callable, optional
         :param force_metadata_for_links: Specify if metadata should be forced. Default is True.
         :type force_metadata_for_links: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
