@@ -1163,7 +1163,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 print(entity.id, entity.name) # Output: 123456, 'image.jpg'
         """
         validation_schema = self.get_validation_schema(id)
-        print(f"Validation schema: {validation_schema}")
         if not validation_schema:
             raise ValueError("Validation schema is not set for this project.")
         
