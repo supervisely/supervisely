@@ -1185,7 +1185,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # TODO: Add support for other project types.
             raise NotImplementedError("Validation schema is not supported for this project type.")
         
-        entities = listing_method(id)
+        entities = listing_method(project_id=id)
         incorrect_entities = []
         
         for entity in entities:
