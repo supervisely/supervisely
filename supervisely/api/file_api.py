@@ -1642,8 +1642,7 @@ class FileApi(ModuleApiBase):
 
             path_to_file = "/999_App_Test/ds1/01587.json"
             local_save_path = "/path/to/save/999_App_Test/ds1/01587.json"
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.fs.get_or_create_event_loop()
             loop.run_until_complete(api.file.download_async(8, path_to_file, local_save_path))
         """
         if semaphore is None:
@@ -1757,8 +1756,7 @@ class FileApi(ModuleApiBase):
                 "/path/to/save/999_App_Test/ds1/01588.json",
                 "/path/to/save/999_App_Test/ds1/01587.json"
             ]
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.fs.get_or_create_event_loop()
             loop.run_until_complete(
                     api.file.download_bulk_async(8, paths_to_files, local_paths)
                 )
@@ -1831,8 +1829,7 @@ class FileApi(ModuleApiBase):
             path_to_dir = "/files/folder"
             local_path = "path/to/local/folder"
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.fs.get_or_create_event_loop()
             loop.run_until_complete(
                     api.file.download_directory_async(9, path_to_dir, local_path)
                 )
@@ -1919,8 +1916,7 @@ class FileApi(ModuleApiBase):
 
             # Application is started...
             save_path = "/my_app_data"
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.fs.get_or_create_event_loop()
             loop.run_until_complete(
                     api.file.download_input_async(save_path)
                 )
@@ -2053,8 +2049,7 @@ class FileApi(ModuleApiBase):
 
                 path_to_file = "/path/to/local/file/01587.json"
                 path_to_save = "/files/01587.json"
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                loop = sly.fs.get_or_create_event_loop()
                 loop.run_until_complete(
                     api.file.upload_async(8, path_to_file, path_to_save)
                 )
@@ -2124,8 +2119,7 @@ class FileApi(ModuleApiBase):
                     "/files/01588.json",
                     "/files/01589.json"
                 ]
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                loop = sly.fs.get_or_create_event_loop()
                 loop.run_until_complete(
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )

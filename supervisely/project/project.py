@@ -36,6 +36,7 @@ from supervisely.io.fs import (
     dir_exists,
     ensure_base_path,
     get_file_name_with_ext,
+    get_or_create_event_loop,
     list_dir_recursively,
     list_files,
     list_files_recursively,
@@ -1676,7 +1677,7 @@ class Dataset(KeyObject):
             hardlink_done = False
             if _use_hardlink:
                 try:
-                    loop = asyncio.get_event_loop()
+                    loop = get_or_create_event_loop()
                     await loop.run_in_executor(None, os.link, item_path, dst_item_path)
                     hardlink_done = True
                 except OSError:
@@ -1726,10 +1727,9 @@ class Dataset(KeyObject):
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ann = "/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_8888.jpeg.json"
-            loop = asyncio.get_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.fs.get_or_create_event_loop()
             loop.run_until_complete(
-                    await ds.add_item_file_async("IMG_8888.jpeg", "/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_8888.jpeg", ann=ann)
+                    ds.add_item_file_async("IMG_8888.jpeg", "/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_8888.jpeg", ann=ann)
                 )
             print(ds.item_exists("IMG_8888.jpeg"))
             # Output: True
@@ -3389,7 +3389,6 @@ class Project:
         save_images: bool = True,
         save_image_meta: bool = False,
         images_ids: Optional[List[int]] = None,
-        cache: Optional[FileCache] = None,
         resume_download: Optional[bool] = False,
     ) -> None:
         """
@@ -3419,8 +3418,8 @@ class Project:
         :type save_image_meta: :class:`bool`, optional
         :param images_ids: Filter images by IDs.
         :type images_ids: :class:`list` [ :class:`int` ], optional
-        :param cache: FileCache object. WARNING: Cache is not supported in async mode yet.
-        :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
+        :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+        :type resume_download: :class:`bool`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -3442,30 +3441,26 @@ class Project:
                 project_id = 8888
 
                 # Download Project
-                loop = asyncio.create_event_loop()
-                asyncio.set_event_loop(loop)
+                loop = sly.fs.get_or_create_event_loop()
                 loop.run_until_complete(
                         sly.Project.download_async(api, project_id, save_directory)
                     )
         """
-        if cache is None:
-            await _download_project_async(
-                api=api,
-                project_id=project_id,
-                dest_dir=dest_dir,
-                dataset_ids=dataset_ids,
-                log_progress=log_progress,
-                semaphore=semaphore,
-                only_image_tags=only_image_tags,
-                save_image_info=save_image_info,
-                save_images=save_images,
-                progress_cb=progress_cb,
-                save_image_meta=save_image_meta,
-                images_ids=images_ids,
-                resume_download=resume_download,
-            )
-        else:
-            raise NotImplementedError("Cache is not supported in async mode")
+        await _download_project_async(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            semaphore=semaphore,
+            only_image_tags=only_image_tags,
+            save_image_info=save_image_info,
+            save_images=save_images,
+            progress_cb=progress_cb,
+            save_image_meta=save_image_meta,
+            images_ids=images_ids,
+            resume_download=resume_download,
+        )
 
 
 def read_single_project(
@@ -3905,7 +3900,10 @@ def download_project(
     :type save_images, bool, optional
     :param save_image_meta: Include images metadata in JSON format in the download.
     :type save_imgge_meta: bool, optional
-
+    :param images_ids: Specified list of Image IDs which will be downloaded.
+    :type images_ids: list(int), optional
+    :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+    :type resume_download: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:

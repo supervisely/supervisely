@@ -1352,6 +1352,28 @@ def str_is_url(string: str) -> bool:
         return False
 
 
+def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
+    """
+    Get the current event loop or create a new one if it doesn't exist.
+    Works for different Python versions and contexts.
+
+    :return: Event loop
+    :rtype: asyncio.AbstractEventLoop
+    """
+    try:
+        # Preferred method for asynchronous context (Python 3.7+)
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        # If the loop is not running, get the current one or create a new one (Python 3.8 and 3.9)
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            # For Python 3.10+ or if the call occurs outside of an active loop context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
+
+
 async def copy_file_async(
     src: str,
     dst: str,
@@ -1467,7 +1489,7 @@ async def unpack_archive_async(
                         await output_file.write(data)
         archive_path = combined
 
-    loop = asyncio.get_running_loop()
+    loop = get_or_create_event_loop()
     await loop.run_in_executor(None, shutil.unpack_archive, archive_path, target_dir)
     if is_split:
         silent_remove(archive_path)
@@ -1492,5 +1514,5 @@ async def touch_async(path: str) -> None:
     """
     ensure_base_path(path)
     async with aiofiles.open(path, "a"):
-        loop = asyncio.get_event_loop()
+        loop = get_or_create_event_loop()
         await loop.run_in_executor(None, os.utime, path, None)

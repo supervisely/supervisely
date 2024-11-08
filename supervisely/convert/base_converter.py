@@ -14,6 +14,7 @@ from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name_with_ext,
+    get_or_create_event_loop,
     is_archive,
     remove_dir,
     silent_remove,
@@ -468,7 +469,7 @@ class BaseConverter:
                     for remote_path in files.values()
                 )
 
-            loop = asyncio.get_event_loop()
+            loop = get_or_create_event_loop()
             _, progress_cb = self.get_progress(
                 len(files) if not is_archive_type else file_size,
                 f"Downloading {files_type} from remote storage",
@@ -479,15 +480,19 @@ class BaseConverter:
                 silent_remove(local_path)
 
             logger.info(f"Downloading {files_type} from remote storage...")
-            loop.run_until_complete(
-                self._api.storage.download_bulk_async(
-                    team_id=self._team_id,
-                    remote_paths=list(files.values()),
-                    local_save_paths=list(files.keys()),
-                    progress_cb=progress_cb,
-                    progress_cb_type="number" if not is_archive_type else "size",
-                )
+            download_coro = self._api.storage.download_bulk_async(
+                team_id=self._team_id,
+                remote_paths=list(files.values()),
+                local_save_paths=list(files.keys()),
+                progress_cb=progress_cb,
+                progress_cb_type="number" if not is_archive_type else "size",
             )
+
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+                future.result()
+            else:
+                loop.run_until_complete(download_coro)
             logger.info("Possible annotations downloaded successfully.")
 
             if is_archive_type:

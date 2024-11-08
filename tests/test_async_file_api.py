@@ -35,16 +35,23 @@ async def download_files():
 
 
 def main_db():
-    loop = asyncio.get_event_loop()
+    loop = sly.fs.get_or_create_event_loop()
+
     remote_paths = [path for _, path in files]
     names = [name for name, _ in files]
     sizeb_list = [api.file.get_info_by_path(TEAM_ID, path).sizeb for _, path in files]
     sizeb = sum(sizeb_list)
     save_paths = [save_path + name for name in names]
     progress = sly.tqdm_sly(total=sizeb, desc="Downloading files", unit="B", unit_scale=True)
-    loop.run_until_complete(
-        api.file.download_bulk_async(TEAM_ID, remote_paths, save_paths, progress_cb=progress)
+    download_coro = api.file.download_bulk_async(
+        TEAM_ID, remote_paths, save_paths, progress_cb=progress
     )
+
+    if loop.is_running():
+        future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+        future.result()
+    else:
+        loop.run_until_complete(download_coro)
 
 
 def maind_df():

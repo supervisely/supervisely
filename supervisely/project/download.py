@@ -18,6 +18,7 @@ from supervisely.io.fs import (
     copy_file,
     dir_exists,
     get_directory_size,
+    get_or_create_event_loop,
     remove_dir,
 )
 from supervisely.io.json import dump_json_file, load_json_file
@@ -182,6 +183,7 @@ def download_async(
     api: Api,
     project_id: int,
     dest_dir: str,
+    semaphore: Optional[asyncio.Semaphore] = None,
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -198,19 +200,18 @@ def download_async(
             api=api,
             project_id=project_id,
             dest_dir=dest_dir,
+            semaphore=semaphore,
             dataset_ids=dataset_ids,
             log_progress=log_progress,
             progress_cb=progress_cb,
             **kwargs,
         )
-        try:
-            # Try to get the current event loop
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(download_coro)
-        else:
-            future = asyncio.run_coroutine_threadsafe(download_coro, loop)
+        loop = get_or_create_event_loop()
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
             future.result()
+        else:
+            loop.run_until_complete(download_coro)
     else:
         raise NotImplementedError(f"Method download_async is not implemented for {project_class}")
 
@@ -222,6 +223,7 @@ def download_async_or_sync(
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ):
     project_info = api.project.get_info_by_id(project_id)
@@ -235,19 +237,19 @@ def download_async_or_sync(
             api=api,
             project_id=project_id,
             dest_dir=dest_dir,
+            semaphore=semaphore,
             dataset_ids=dataset_ids,
             log_progress=log_progress,
             progress_cb=progress_cb,
             **kwargs,
         )
-        try:
-            # Try to get the current event loop
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(download_coro)
-        else:
-            future = asyncio.run_coroutine_threadsafe(download_coro, loop)
+        loop = get_or_create_event_loop()
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
             future.result()
+        else:
+            loop.run_until_complete(download_coro)
+
     else:
         project_class.download(
             api=api,
@@ -434,6 +436,7 @@ def _download_project_to_cache(
     log_progress: bool = True,
     progress_cb: Callable = None,
     project_meta: Optional[ProjectMeta] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ):
     project_id = project_info.id
@@ -453,6 +456,7 @@ def _download_project_to_cache(
         dataset_ids=[info.id for info in dataset_infos],
         log_progress=log_progress,
         progress_cb=progress_cb,
+        semaphore=semaphore,
         **kwargs,
     )
 
@@ -464,6 +468,7 @@ def download_to_cache(
     dataset_ids: List[int] = None,
     log_progress: bool = True,
     progress_cb=None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ) -> Tuple[List, List]:
     """
@@ -483,6 +488,7 @@ def download_to_cache(
     :type log_progress: bool, optional
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
 
     :return: Tuple where the first list contains names of downloaded datasets and the second list contains
     names of cached datasets
@@ -509,6 +515,7 @@ def download_to_cache(
         log_progress=log_progress,
         progress_cb=progress_cb,
         project_meta=project_meta,
+        semaphore=semaphore,
         **kwargs,
     )
     return to_download, cached
@@ -561,6 +568,7 @@ def download_using_cache(
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ) -> None:
     """
@@ -579,6 +587,8 @@ def download_using_cache(
     :type log_progress: bool
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
+    :type semaphore: asyncio.Semaphore, optional
 
     :return: None.
     :rtype: NoneType
@@ -589,6 +599,7 @@ def download_using_cache(
         dataset_ids=dataset_ids,
         log_progress=log_progress,
         progress_cb=progress_cb,
+        semaphore=semaphore,
         **kwargs,
     )
     copy_from_cache(project_id, dest_dir, [*downloaded, *cached])
