@@ -1787,6 +1787,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 "or disable strict validation by setting use_strict_validation to False."
             )
         if validate_custom_data:
+            # TODO: Add caching for validation schema (dump it to the file and load it if exists).
             dataset_info = self._api.dataset.get_info_by_id(dataset_id)
 
             validation_schema = self._api.project.get_validation_schema(dataset_info.project_id)
