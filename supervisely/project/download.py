@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 from typing import Callable, List, Optional, Tuple, Union
@@ -19,7 +20,7 @@ from supervisely.io.fs import (
     get_directory_size,
     remove_dir,
 )
-from supervisely.io.json import load_json_file
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project import Project
 from supervisely.project.project import Dataset, OpenMode, ProjectType
 from supervisely.sly_logger import logger
@@ -175,6 +176,88 @@ def download(
         progress_cb=progress_cb,
         **kwargs,
     )
+
+
+def download_async(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    **kwargs,
+) -> None:
+    project_info = api.project.get_info_by_id(project_id)
+
+    if progress_cb is not None:
+        log_progress = False
+
+    project_class = get_project_class(project_info.type)
+    if hasattr(project_class, "download_async"):
+        download_coro = project_class.download_async(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            **kwargs,
+        )
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(download_coro)
+        else:
+            future = asyncio.run_coroutine_threadsafe(download_coro, loop)
+            future.result()
+    else:
+        raise NotImplementedError(f"Method download_async is not implemented for {project_class}")
+
+
+def download_async_or_sync(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    **kwargs,
+):
+    project_info = api.project.get_info_by_id(project_id)
+
+    if progress_cb is not None:
+        log_progress = False
+
+    project_class = get_project_class(project_info.type)
+    if hasattr(project_class, "download_async"):
+        download_coro = project_class.download_async(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            **kwargs,
+        )
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(download_coro)
+        else:
+            future = asyncio.run_coroutine_threadsafe(download_coro, loop)
+            future.result()
+    else:
+        project_class.download(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            **kwargs,
+        )
 
 
 def _get_cache_dir(project_id: int, dataset_name: str = None) -> str:
@@ -350,6 +433,7 @@ def _download_project_to_cache(
     dataset_infos: List[DatasetInfo],
     log_progress: bool = True,
     progress_cb: Callable = None,
+    project_meta: Optional[ProjectMeta] = None,
     **kwargs,
 ):
     project_id = project_info.id
@@ -357,35 +441,20 @@ def _download_project_to_cache(
     kwargs = _add_save_items_infos_to_kwargs(kwargs, project_type)
     kwargs = _add_force_to_kwargs(kwargs, project_type)
     cached_project_dir = _get_cache_dir(project_id)
+    if project_meta is not None:
+        dump_json_file(project_meta.to_json(), os.path.join(cached_project_dir, "meta.json"))
     if len(dataset_infos) == 0:
         logger.debug("No datasets to download")
         return
-    elif is_cached(project_id):
-        temp_pr_dir = os.path.join(apps_cache_dir(), rand_str(10))
-        existing_project = Project(cached_project_dir, OpenMode.READ)
-        for dataset in existing_project.datasets:
-            copy_dir_recursively(dataset.directory, os.path.join(temp_pr_dir, dataset.name))
-        download(
-            api=api,
-            project_id=project_id,
-            dest_dir=temp_pr_dir,
-            dataset_ids=[info.id for info in dataset_infos],
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-            **kwargs,
-        )
-        remove_dir(cached_project_dir)
-        shutil.move(temp_pr_dir, cached_project_dir)
-    else:
-        download(
-            api=api,
-            project_id=project_id,
-            dest_dir=cached_project_dir,
-            dataset_ids=[info.id for info in dataset_infos],
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-            **kwargs,
-        )
+    download_async_or_sync(
+        api=api,
+        project_id=project_id,
+        dest_dir=cached_project_dir,
+        dataset_ids=[info.id for info in dataset_infos],
+        log_progress=log_progress,
+        progress_cb=progress_cb,
+        **kwargs,
+    )
 
 
 def download_to_cache(
@@ -439,6 +508,7 @@ def download_to_cache(
         dataset_infos=[name_to_info[name] for name in to_download],
         log_progress=log_progress,
         progress_cb=progress_cb,
+        project_meta=project_meta,
         **kwargs,
     )
     return to_download, cached

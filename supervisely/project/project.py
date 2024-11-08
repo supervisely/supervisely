@@ -3388,6 +3388,7 @@ class Project:
         save_image_meta: bool = False,
         images_ids: Optional[List[int]] = None,
         cache: Optional[FileCache] = None,
+        force: Optional[bool] = True,
     ) -> None:
         """
         Download project from Supervisely to the given directory in asynchronous mode.
@@ -3459,6 +3460,7 @@ class Project:
                 progress_cb=progress_cb,
                 save_image_meta=save_image_meta,
                 images_ids=images_ids,
+                force=force,
             )
         else:
             raise NotImplementedError("Cache is not supported in async mode")
@@ -3710,6 +3712,12 @@ def _download_project(
                     sly.json.dump_json_file(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
+
+        # delete redundant items
+        items_names_set = set(image_names)
+        for item_name in dataset_fs.get_items_names():
+            if item_name not in items_names_set:
+                dataset_fs.delete_item(item_name)
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:
@@ -4361,18 +4369,19 @@ async def _download_project_async(
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir):
         if force:
             logger.debug("Project already exists and force==True. Will overwrite it.")
             sly.fs.remove_dir(dest_dir)
         else:
+            dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
             project_fs = Project(dest_dir, OpenMode.READ)
             logger.info(
                 "Project already exists and force==False. Will upload only modified items. To force download, pass `force=True`."
             )
     if project_fs is None:
         project_fs = Project(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
     if progress_cb is not None:
@@ -4415,9 +4424,19 @@ async def _download_project_async(
         ):
             tasks = []
             for image in images:
+                try:
+                    existing = dataset_fs.get_item_info(image.name)
+                except:
+                    existing = None
+                else:
+                    if existing.updated_at == image.updated_at:
+                        if ds_progress is not None:
+                            ds_progress(1)
+                        continue
+
                 task = _download_project_item_async(
                     api=api,
-                    image_info=image,
+                    img_info=image,
                     meta=meta,
                     dataset_fs=dataset_fs,
                     id_to_tagmeta=id_to_tagmeta,
@@ -4425,8 +4444,7 @@ async def _download_project_async(
                     save_images=save_images,
                     save_image_info=save_image_info,
                     only_image_tags=only_image_tags,
-                    ds_progress=ds_progress,
-                    force=force,
+                    progress_cb=ds_progress,
                 )
                 tasks.append(task)
             await asyncio.gather(*tasks)
@@ -4438,6 +4456,12 @@ async def _download_project_async(
                     sly.json.dump_json_file(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
+
+        # delete redundant items
+        images_names = set([image.name for image in images])
+        for item_name in dataset_fs.get_items_names():
+            if item_name not in images_names:
+                dataset_fs.delete_item(item_name)
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:
@@ -4455,18 +4479,10 @@ async def _download_project_item_async(
     save_image_info: bool,
     only_image_tags: bool,
     progress_cb: Optional[Callable],
-    force: Optional[bool] = True,
 ) -> None:
     """Download image and annotation from Supervisely API and save it to the local filesystem.
     Uses parameters from the parent function _download_project_async.
     """
-    if not force:
-        local_info = dataset_fs.get_item_info(img_info.name)
-        if local_info is not None and local_info.updated_at == img_info.updated_at:
-            if progress_cb is not None:
-                progress_cb(1)
-            return
-
     if save_images:
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
@@ -4490,6 +4506,8 @@ async def _download_project_item_async(
         tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
         ann_json = tmp_ann.to_json()
 
+    if dataset_fs.item_exists(img_info.name):
+        dataset_fs.delete_item(img_info.name)
     await dataset_fs.add_item_raw_bytes_async(
         item_name=img_info.name,
         item_raw_bytes=img_bytes if save_images is True else None,
