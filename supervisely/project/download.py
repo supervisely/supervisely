@@ -420,10 +420,10 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
     return kwargs
 
 
-def _add_force_to_kwargs(kwargs: dict, project_type: str):
+def _add_resume_download_to_kwargs(kwargs: dict, project_type: str):
     supported_force_projects = (str(ProjectType.IMAGES),)
     if project_type in supported_force_projects:
-        kwargs["force"] = False
+        kwargs["resume_download"] = True
     return kwargs
 
 
@@ -439,7 +439,7 @@ def _download_project_to_cache(
     project_id = project_info.id
     project_type = project_info.type
     kwargs = _add_save_items_infos_to_kwargs(kwargs, project_type)
-    kwargs = _add_force_to_kwargs(kwargs, project_type)
+    kwargs = _add_resume_download_to_kwargs(kwargs, project_type)
     cached_project_dir = _get_cache_dir(project_id)
     if project_meta is not None:
         dump_json_file(project_meta.to_json(), os.path.join(cached_project_dir, "meta.json"))

@@ -2809,6 +2809,7 @@ class Project:
         save_image_info: Optional[bool] = False,
         save_images: bool = True,
         save_image_meta: bool = False,
+        resume_download: bool = False,
     ) -> None:
         """
         Download project from Supervisely to the given directory.
@@ -2874,6 +2875,7 @@ class Project:
             save_image_info=save_image_info,
             save_images=save_images,
             save_image_meta=save_image_meta,
+            resume_download=resume_download,
         )
 
     @staticmethod
@@ -3388,7 +3390,7 @@ class Project:
         save_image_meta: bool = False,
         images_ids: Optional[List[int]] = None,
         cache: Optional[FileCache] = None,
-        force: Optional[bool] = True,
+        resume_download: Optional[bool] = False,
     ) -> None:
         """
         Download project from Supervisely to the given directory in asynchronous mode.
@@ -3460,7 +3462,7 @@ class Project:
                 progress_cb=progress_cb,
                 save_image_meta=save_image_meta,
                 images_ids=images_ids,
-                force=force,
+                resume_download=resume_download,
             )
         else:
             raise NotImplementedError("Cache is not supported in async mode")
@@ -3559,22 +3561,16 @@ def _download_project(
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
-    force: Optional[bool] = True,
+    resume_download: Optional[bool] = False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
-    if os.path.exists(dest_dir):
-        if force:
-            logger.debug("Project already exists and force==True. Will overwrite it.")
-            sly.fs.remove_dir(dest_dir)
-        else:
-            project_fs = Project(dest_dir, OpenMode.READ)
-            logger.info(
-                "Project already exists and force==False. Will upload only modified items. To force download, pass `force=True`."
-            )
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        project_fs = Project(dest_dir, OpenMode.READ)
     if project_fs is None:
         project_fs = Project(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     project_fs.set_meta(meta)
 
     if progress_cb is not None:
@@ -3883,6 +3879,7 @@ def download_project(
     save_images: bool = True,
     save_image_meta: bool = False,
     images_ids: Optional[List[int]] = None,
+    resume_download: Optional[bool] = False,
 ) -> None:
     """
     Download image project to the local directory.
@@ -3962,6 +3959,7 @@ def download_project(
             progress_cb=progress_cb,
             save_image_meta=save_image_meta,
             images_ids=images_ids,
+            resume_download=resume_download,
         )
     else:
         _download_project_optimized(
@@ -4362,7 +4360,7 @@ async def _download_project_async(
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
-    force: Optional[bool] = True,
+    resume_download: Optional[bool] = False,
 ):
     if semaphore is None:
         semaphore = api._get_default_semaphore()
@@ -4370,16 +4368,9 @@ async def _download_project_async(
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
-    if os.path.exists(dest_dir):
-        if force:
-            logger.debug("Project already exists and force==True. Will overwrite it.")
-            sly.fs.remove_dir(dest_dir)
-        else:
-            dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
-            project_fs = Project(dest_dir, OpenMode.READ)
-            logger.info(
-                "Project already exists and force==False. Will upload only modified items. To force download, pass `force=True`."
-            )
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        project_fs = Project(dest_dir, OpenMode.READ)
     if project_fs is None:
         project_fs = Project(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
