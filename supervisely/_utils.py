@@ -386,6 +386,20 @@ def add_callback(func, callback):
 def compare_dicts(
     template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True
 ) -> bool:
+    """Compare two dictionaries recursively (by keys only) and return True if they are equal, 
+    False otherwise.
+    If strict is True, the keys of the template and data dictionaries must match exactly.
+    Otherwise, the data dictionary may contain additional keys that are not in the template dictionary.
+    
+    :param template: The template dictionary.
+    :type template: Dict[Any, Any]
+    :param data: The data dictionary.
+    :type data: Dict[Any, Any]
+    :param strict: If True, the keys of the template and data dictionaries must match exactly.
+    :type strict: bool, optional
+    :return: True if the dictionaries are equal, False otherwise.
+    :rtype: bool
+    """
     if not isinstance(template, dict) or not isinstance(data, dict):
         return template == data
 
