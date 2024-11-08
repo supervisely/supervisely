@@ -15,3 +15,6 @@ class ProjectType(StrEnum):
 # Constants for multispectral and multiview projects.
 _MULTISPECTRAL_TAG_NAME = "multispectral"
 _MULTIVIEW_TAG_NAME = "multiview"
+
+_METADATA_SYSTEM_KEY = "system"
+_METADATA_VALIDATION_SCHEMA_KEY = "validation_schema"

@@ -45,6 +45,8 @@ from supervisely.project.project_settings import (
 from supervisely.project.project_type import (
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
+    _METADATA_SYSTEM_KEY,
+    _METADATA_VALIDATION_SCHEMA_KEY,
     ProjectType,
 )
 
@@ -968,6 +970,167 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ID: id, ApiField.CUSTOM_DATA: data, ApiField.SILENT: silent},
         )
         return response.json()
+
+    def get_custom_data(self, id: int) -> Dict[Any, Any]:
+        """Returns custom data of the Project by ID.
+        Custom data is a dictionary that can be used to store any additional information.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Custom data of the Project
+        :rtype: :class:`dict`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            custom_data = api.project.get_custom_data(project_id)
+            
+            print(custom_data) # Output: {'key': 'value'}
+        """
+        return self.get_info_by_id(id).custom_data
+    
+    def _get_system_custom_data(self, id: int) -> Dict[Any, Any]:
+        """Returns system custom data of the Project by ID.
+        System custom data is just a part of custom data that is used to store system information
+        and obtained by the key `_METADATA_SYSTEM_KEY`.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: System custom data of the Project
+        :rtype: :class:`dict`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            system_custom_data = api.project._get_system_custom_data(project_id)
+            
+            print(system_custom_data)
+        """
+        return self.get_info_by_id(id).custom_data.get(_METADATA_SYSTEM_KEY, {})
+
+    def get_validation_schema(self, id: int) -> Optional[Dict[Any, Any]]:
+        """Returns validation schema of the Project by ID.
+        Validation schema is a dictionary that can be used to validate metadata of each entity in the project
+        if corresnpoding schema is provided.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Validation schema of the Project
+        :rtype: :class:`dict`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            validation_schema = api.project.get_validation_schema(project_id)
+            
+            print(validation_schema) # Output: {'key': 'Description of the field'}
+        """
+        return self._get_system_custom_data(id).get(_METADATA_VALIDATION_SCHEMA_KEY)
+    
+    def _edit_validation_schema(self, id: int, schema: Dict[Any, Any] = None) -> Dict[Any, Any]:
+        """Edits validation schema of the Project by ID.
+        Do not use this method directly, use `set_validation_schema` or `remove_validation_schema` instead.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param schema: Validation schema to set. If None, removes validation schema.
+        :type schema: dict, optional
+        :return: Project information in dict format
+        :rtype: :class:`dict`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+            
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            schema = {'key': 'Description of the field'}
+            
+            api.project._edit_validation_schema(project_id, schema) #Set new validation schema.
+            api.project._edit_validation_schema(project_id) #Remove validation schema.
+        """
+        custom_data = self.get_custom_data(id)
+        custom_data[_METADATA_SYSTEM_KEY] = custom_data.get(_METADATA_SYSTEM_KEY, {})
+        if not schema:
+            custom_data[_METADATA_SYSTEM_KEY].pop(_METADATA_VALIDATION_SCHEMA_KEY, None)
+        else:
+            custom_data[_METADATA_SYSTEM_KEY][_METADATA_VALIDATION_SCHEMA_KEY] = schema
+        return self.update_custom_data(id, custom_data)
+    
+    def set_validation_schema(self, id: int, schema: Dict[Any, Any]) -> Dict[Any, Any]:
+        """Sets validation schema of the Project by ID.
+        NOTE: This method will overwrite existing validation schema. To extend existing schema,
+        use `get_validation_schema` first to get current schema, then update it and use this method to set new schema.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param schema: Validation schema to set.
+        :type schema: dict
+        :return: Project information in dict format
+        :rtype: :class:`dict`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+            
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            schema = {'key': 'Description of the field'}
+            
+            api.project.set_validation_schema(project_id, schema)
+        """
+        return self._edit_validation_schema(id, schema)
+    
+    def remove_validation_schema(self, id: int) -> Dict[Any, Any]:
+        """Removes validation schema of the Project by ID.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :return: Project information in dict format
+        :rtype: :class:`dict`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+            
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            api.project.remove_validation_schema(project_id)
+        """
+        return self._edit_validation_schema(id)
 
     def get_settings(self, id: int) -> Dict[str, str]:
         info = self._get_info_by_id(id, "projects.info")
