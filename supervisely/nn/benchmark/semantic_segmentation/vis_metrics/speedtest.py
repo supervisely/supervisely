@@ -82,7 +82,7 @@ class Speedtest(BaseVisMetric):
             res["content"].append(dct)
 
         columns_options = [
-            {"customCell": True, "disableSort": True},
+            {"disableSort": True},  # "customCell": True
             {"subtitle": "ms", "tooltip": "Milliseconds for batch images", "postfix": "ms"},
             {
                 "subtitle": "imgs/sec",
