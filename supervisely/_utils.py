@@ -13,7 +13,7 @@ import urllib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict, Any
 
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
@@ -382,3 +382,22 @@ def add_callback(func, callback):
         return res
 
     return wrapper
+
+def compare_dicts(
+    template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True
+) -> bool:
+    if not isinstance(template, dict) or not isinstance(data, dict):
+        return template == data
+
+    if strict:
+        if template.keys() != data.keys():
+            return False
+        for key in template:
+            if not compare_dicts(template[key], data[key], strict):
+                return False
+    else:
+        for key in template:
+            if key not in data or not compare_dicts(template[key], data[key], strict):
+                return False
+
+    return True

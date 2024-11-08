@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
 from datetime import datetime, timedelta
+from supervisely.api.image_api import ImageInfo
 
 from supervisely import logger
 from supervisely._utils import abs_url, compress_image_url, is_development
@@ -49,6 +50,7 @@ from supervisely.project.project_type import (
     _METADATA_VALIDATION_SCHEMA_KEY,
     ProjectType,
 )
+from supervisely._utils import compare_dicts
 
 
 class ProjectNotFound(Exception):
@@ -1131,6 +1133,68 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             api.project.remove_validation_schema(project_id)
         """
         return self._edit_validation_schema(id)
+    
+    def validate_entities_schema(self, id: int, strict: bool = False) -> List[Union[ImageInfo]]:
+        """Validates entities of the Project by ID using validation schema.
+        Returns list of entities that do not match the schema.
+        
+        :param id: Project ID in Supervisely.
+        :type id: int
+        :param strict: If strict is disabled, only checks if the entity has all the fields from the schema.
+            Any extra fields in the entity will be ignored and will not be considered as an error.
+            If strict is enabled, checks that the entity custom data is an exact match to the schema.
+        :type strict: bool, optional
+        :return: List of entities that do not match the schema.
+        :rtype: :class:`List[Union[ImageInfo]]`
+        
+        :Usage example:
+        
+        .. code-block:: python
+        
+            import supervisely as sly
+            
+            api = sly.Api.from_env()
+            
+            project_id = 123456
+            
+            incorrect_entities = api.project.validate_entities_schema(project_id)
+            
+            for entity in incorrect_entities:
+                print(entity.id, entity.name) # Output: 123456, 'image.jpg'
+        """
+        validation_schema = self.get_validation_schema(id)
+        print(f"Validation schema: {validation_schema}")
+        if not validation_schema:
+            raise ValueError("Validation schema is not set for this project.")
+        
+        info = self.get_info_by_id(id)
+        listing_method = {
+            # Mapping of project type to listing method.
+            ProjectType.IMAGES.value: self._api.image.get_list,
+        }
+        custom_data_properties = {
+            # Mapping of project type to custom data property name.
+            # Can be different for different project types.
+            ProjectType.IMAGES.value: "meta"
+        }
+        
+        listing_method = listing_method.get(info.type)
+        custom_data_property = custom_data_properties.get(info.type)
+    
+        if not listing_method or not custom_data_property:
+            # TODO: Add support for other project types.
+            raise NotImplementedError("Validation schema is not supported for this project type.")
+        
+        entities = listing_method(id)
+        incorrect_entities = []
+        
+        for entity in entities:
+            custom_data = getattr(entity, custom_data_property)
+            check = compare_dicts(validation_schema, custom_data, strict=strict)
+            if not check:
+                incorrect_entities.append(entity)
+                
+        return incorrect_entities
 
     def get_settings(self, id: int) -> Dict[str, str]:
         info = self._get_info_by_id(id, "projects.info")
