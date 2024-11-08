@@ -154,7 +154,7 @@ class BaseBenchmark:
         eval_results_dir = self.get_eval_results_dir()
         self.evaluator = self._get_evaluator_class()(
             gt_project_path=gt_project_path,
-            dt_project_path=dt_project_path,
+            pred_project_path=dt_project_path,
             result_dir=eval_results_dir,
             progress=self.pbar,
             items_count=self.dt_project_info.items_count,
@@ -247,7 +247,7 @@ class BaseBenchmark:
     def get_project_paths(self):
         base_dir = self.get_base_dir()
         gt_path = os.path.join(base_dir, "gt_project")
-        dt_path = os.path.join(base_dir, "dt_project")
+        dt_path = os.path.join(base_dir, "pred_project")
         return gt_path, dt_path
 
     def get_eval_results_dir(self) -> str:

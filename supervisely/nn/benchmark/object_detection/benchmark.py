@@ -4,11 +4,14 @@ from supervisely.nn.benchmark.object_detection.evaluator import (
     ObjectDetectionEvaluator,
 )
 from supervisely.nn.benchmark.utils import try_set_conf_auto
-
+from supervisely.nn.benchmark.object_detection.visualizer import (
+    ObjectDetectionVisualizer,
+)
 CONF_THRES = 0.05
 
 
 class ObjectDetectionBenchmark(BaseBenchmark):
+    visualizer_cls = ObjectDetectionVisualizer
 
     @property
     def cv_task(self) -> str:
