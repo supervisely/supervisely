@@ -66,6 +66,7 @@ class TrainApp:
             self._task_id = sly_env.task_id()
         else:
             self._task_id = "debug-session"
+            logger.info("TrainApp is running in debug mode")
 
         supported_frameworks = [
             "yolov5",
@@ -232,6 +233,10 @@ class TrainApp:
         return yaml.safe_load(self._layout.hyperparameters_selector.get_hyperparameters())
 
     @property
+    def hyperparameters_raw(self) -> str:
+        return self._layout.hyperparameters_selector.get_hyperparameters()
+
+    @property
     def use_model_benchmark(self) -> bool:
         return self._layout.hyperparameters_selector.get_model_benchmark_checkbox_value()
 
@@ -273,21 +278,24 @@ class TrainApp:
             self._train_func = func
 
             def wrapped_start_training():
-                output_dir = None
+                if self._train_func is None:
+                    raise ValueError("Train function is not defined")
+
+                experiment_info = None
                 self.preprocess()
                 try:
-                    if self._train_func:
-                        output_dir = self._train_func()
+                    experiment_info = self._train_func()
                 except StopTrainingException as e:
                     print(f"Training stopped: {e}")
-                finally:
-                    self.postprocess(output_dir)
+                    raise e  # @TODO: add stop button
+                self.postprocess(experiment_info)
 
             self._layout.training_process.start_button.click(wrapped_start_training)
             return func
 
         return decorator
 
+    # region PROCESS
     def preprocess(self):
         print("Preprocessing...")
         # Step 1. Workflow Input
@@ -299,30 +307,41 @@ class TrainApp:
         # Step 4. Download Model files
         self._download_model()
 
-    def postprocess(self, output_dir: str):
+    def postprocess(self, experiment_info: dict):
         print("Postprocessing...")
 
-        # Step 1. Upload artifacts
-        remote_dir, file_info = self._upload_artifacts(output_dir)
+        # Step 1. Validate experiment_info
+        success = self._validate_experiment_info(experiment_info)
+        if not success:
+            raise ValueError("Experiment info is not valid. Failed to upload artifacts")
 
-        # Step 2. Run Model Benchmark
+        # Step 2. Preprocess artifacts
+        output_dir = self._preprocess_artifacts(experiment_info)
+
+        # Step 3. Upload artifacts
+        remote_dir, file_info = self._upload_artifacts(output_dir, experiment_info)
+
+        # Step 4. Run Model Benchmark
         mb_eval_report, mb_eval_report_id = None, None
-        if is_production() and self.use_model_benchmark is True:
-            try:
-                mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
-                    output_dir, remote_dir
-                )
-            except Exception as e:
-                logger.error(f"Model benchmark failed: {e}")
+        if self.use_model_benchmark is True:
+            if is_production() and self.use_model_benchmark is True:
+                try:
+                    mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
+                        output_dir, remote_dir, experiment_info
+                    )
+                except Exception as e:
+                    logger.error(f"Model benchmark failed: {e}")
 
-        # Step 3. Generate experiment_info.json and model_meta.json
-        self._generate_experiment_info(output_dir, remote_dir, mb_eval_report_id)
+        # Step 4. Generate experiment_info.json
+        self._generate_experiment_info(output_dir, remote_dir, experiment_info, mb_eval_report_id)
 
-        # Step 4. Workflow output
+        # Step 5. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
-        # Step 5. Shutdown app
+        # Step 6. Shutdown app
         self._app.shutdown()
+
+    # endregion PROCESS
 
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
         self._inference_class = inference_class
@@ -363,10 +382,7 @@ class TrainApp:
         total_images = sum(ds_info.images_count for ds_info in dataset_infos)
         self._train_dataset_info, self._val_dataset_info = dataset_infos
 
-        if sly_fs.dir_exists(self._project_dir):
-            sly_fs.clean_dir(self._project_dir)
-
-        if not self.use_cache:
+        if not self.use_cache or is_development():
             self._download_no_cache(dataset_infos, total_images)
             self._sly_project = self._prepare_project()
             return
@@ -581,26 +597,115 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Postprocess
+
+    def _validate_experiment_info(self, experiment_info: dict) -> bool:
+        if not isinstance(experiment_info, dict):
+            logger.error(
+                f"Validation failed: 'experiment_info' must be a dictionary not '{type(experiment_info)}'"
+            )
+            return False
+
+        logger.info("Starting validation of 'experiment_info'")
+        required_keys = {
+            "model_name": str,
+            "task_type": str,
+            "model_files": dict,
+            "checkpoints": (list, str),
+            "best_checkpoint": str,
+        }
+
+        for key, expected_type in required_keys.items():
+            if key not in experiment_info:
+                logger.error(f"Validation failed: Missing required key '{key}'")
+                return False
+
+            if not isinstance(experiment_info[key], expected_type):
+                logger.error(
+                    f"Validation failed: Key '{key}' should be of type {expected_type.__name__}"
+                )
+                return False
+
+        if "config" not in experiment_info["model_files"]:
+            logger.error("Validation failed: 'model_files' must contain a 'config' key")
+            return False
+        sly_fs.file_exists(experiment_info["model_files"]["config"])
+
+        if isinstance(experiment_info["checkpoints"], list):
+            for checkpoint in experiment_info["checkpoints"]:
+                if not isinstance(checkpoint, str):
+                    logger.error(
+                        "Validation failed: All items in 'checkpoints' list must be strings"
+                    )
+                    return False
+                if not sly_fs.file_exists(checkpoint):
+                    logger.error(
+                        f"Validation failed: Checkpoint file: '{checkpoint}' does not exist"
+                    )
+                    return False
+
+        if not sly_fs.file_exists(experiment_info["best_checkpoint"]):
+            logger.error(
+                f"Validation failed: Best checkpoint file: '{experiment_info['best_checkpoint']}' does not exist"
+            )
+            return False
+
+        logger.info("Validation successful")
+        return True
+
+    def _preprocess_artifacts(self, experiment_info: dict) -> str:
+        logger.info("Preprocessing artifacts...")
+        output_dir = join(self.work_dir, "result")
+        output_weights_dir = join(output_dir, "weights")
+        output_config_path = join(
+            output_dir, sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
+        )
+        sly_fs.mkdir(output_dir, True)
+        sly_fs.mkdir(output_weights_dir, True)
+
+        # Add sly_metadata to config
+        logger.info("Adding 'sly_metadata' to config file")
+        with open(experiment_info["model_files"]["config"], "r") as file:
+            custom_config = yaml.safe_load(file)
+
+        custom_config["sly_metadata"] = {
+            "classes": self.classes,
+            "model": experiment_info["model_name"],
+            "project_id": self.project_info.id,
+            "project_name": self.project_info.name,
+        }
+
+        with open(experiment_info["model_files"]["config"], "w") as f:
+            yaml.safe_dump(custom_config, f)
+        shutil.move(experiment_info["model_files"]["config"], output_config_path)
+
+        checkpoints = experiment_info["checkpoints"]
+        if isinstance(checkpoints, str):
+            checkpoint_paths = []
+            for checkpoint_path in sly_fs.list_files_recursively(checkpoints, [".pt", ".pth"]):
+                checkpoint_paths.append(checkpoint_path)
+        else:
+            checkpoint_paths = checkpoints
+
+        for checkpoint_path in checkpoint_paths:
+            new_checkpoint_path = join(
+                output_weights_dir, sly_fs.get_file_name_with_ext(checkpoint_path)
+            )
+            shutil.move(checkpoint_path, new_checkpoint_path)
+        return output_dir
+
     # Generate train info
     def _generate_experiment_info(
-        self, local_dir: str, remote_dir: str, evaluation_report_id: int = None
+        self,
+        local_dir: str,
+        remote_dir: str,
+        experiment_info: dict,
+        evaluation_report_id: int = None,
     ) -> None:
-        logger.info("Generating 'experiment_info.json' and 'model_meta.json'")
+        logger.info("Updating experiment info")
 
-        experiment_info = {}
         experiment_info["framework_name"] = self.framework_name
 
-        # Get model name
-        experiment_info["model"] = self.model_parameters
-
-        # Get task type
-        if self.model_source == "Pretrained models":
-            experiment_info["task_type"] = self.model_parameters["meta"]["task_type"]
-        else:
-            experiment_info["task_type"] = self.model_parameters["task_type"]
-
         experiment_info["hyperparameters"] = self.hyperparameters
-
         experiment_info["artifacts_dir"] = remote_dir
         experiment_info["task_id"] = self.task_id
         experiment_info["project_id"] = self.project_info.id
@@ -622,58 +727,40 @@ class TrainApp:
         checkpoint_paths = [f"weights/{checkpoint.name}" for checkpoint in checkpoint_files]
         experiment_info["checkpoints"] = checkpoint_paths
 
-        logger.info("Uploading 'experiment_info.json' and 'model_meta.json' to Supervisely")
+        best_file_name = sly_fs.get_file_name_with_ext(experiment_info["best_checkpoint"])
+        experiment_info["best_checkpoint"] = best_file_name
+
+        config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
+        experiment_info["model_files"]["config"] = join(remote_dir, config_name)
+
+        logger.info("Uploading 'experiment_info.json' to Supervisely")
         # Dump experiment_info.json
         local_experiment_info_path = join(local_dir, "experiment_info.json")
         remote_experiment_info_path = join(remote_dir, "experiment_info.json")
         sly_json.dump_json_file(experiment_info, local_experiment_info_path)
         total_size = sly_fs.get_file_size(local_experiment_info_path)
 
-        self.progress_bar_upload_artifacts.show()
         with self.progress_bar_upload_artifacts(
             message="Uploading 'experiment_info.json' to Team Files...",
             total=total_size,
             unit="bytes",
             unit_scale=True,
         ) as upload_artifacts_pbar:
+            self.progress_bar_upload_artifacts.show()
             remote_dir = self._api.file.upload(
                 self._team_id,
                 local_experiment_info_path,
                 remote_experiment_info_path,
-                progress_size_cb=upload_artifacts_pbar,
+                progress_cb=upload_artifacts_pbar,
             )
-        self.progress_bar_upload_artifacts.hide()
-
-        # Dump model_meta.json
-        local_model_meta_path = join(local_dir, "model_meta.json")
-        remote_model_meta_path = join(remote_dir, "model_meta.json")
-        sly_json.dump_json_file(self.model_parameters["meta"], local_model_meta_path)
-        total_size = sly_fs.get_file_size(local_model_meta_path)
-
-        self.progress_bar_upload_artifacts.show()
-        with self.progress_bar_upload_artifacts(
-            message="Uploading 'model_meta.json' to Team Files...",
-            total=total_size,
-            unit="bytes",
-            unit_scale=True,
-        ) as upload_artifacts_pbar:
-            remote_dir = self._api.file.upload(
-                self._team_id,
-                local_model_meta_path,
-                remote_model_meta_path,
-                progress_size_cb=upload_artifacts_pbar,
-            )
-        self.progress_bar_upload_artifacts.hide()
+            self.progress_bar_upload_artifacts.hide()
 
     # Upload artifacts
-    def _upload_artifacts(self, output_dir: str) -> None:
+    def _upload_artifacts(self, output_dir: str, experiment_info: dict) -> None:
         logger.info(f"Uploading directory: '{output_dir}' to Supervisely")
 
         experiments_dir = "/experiments"
-        if self.model_source == "Pretrained models":
-            task_type = self.model_parameters["meta"]["task_type"]  # hardcoded?
-        else:
-            task_type = self.model_parameters["task_type"]
+        task_type = experiment_info["task_type"]
 
         task_id = self.task_id
         project_name = self.project_info.name
@@ -684,8 +771,15 @@ class TrainApp:
 
         # Clean debug directory if exists
         if task_id == "debug-session":
-            if self._api.file.dir_exists(self._team_id, remote_artifacts_dir):
-                self._api.file.remove_dir(self._team_id, remote_artifacts_dir)
+            if self._api.file.dir_exists(self._team_id, f"{remote_artifacts_dir}/", True):
+                with self.progress_bar_upload_artifacts(
+                    message=f"[Debug] Cleaning train artifacts: '{remote_artifacts_dir}/'",
+                    total=1,
+                ) as upload_artifacts_pbar:
+                    self.progress_bar_upload_artifacts.show()
+                    self._api.file.remove_dir(self._team_id, f"{remote_artifacts_dir}/", True)
+                    upload_artifacts_pbar.update(1)
+                    self.progress_bar_upload_artifacts.hide()
 
         # Generate link file
         if is_production():
@@ -704,12 +798,14 @@ class TrainApp:
             unit="bytes",
             unit_scale=True,
         ) as upload_artifacts_pbar:
+            self.progress_bar_upload_artifacts.show()
             remote_dir = self._api.file.upload_directory(
                 self._team_id,
                 output_dir,
                 remote_artifacts_dir,
                 progress_size_cb=upload_artifacts_pbar,
             )
+            self.progress_bar_upload_artifacts.hide()
 
         # Set output directory
         file_info = self._api.file.get_info_by_path(self._team_id, join(remote_dir, "open_app.lnk"))
@@ -732,9 +828,7 @@ class TrainApp:
 
     # Hot to pass inference_settings?
     def _run_model_benchmark(
-        self,
-        local_artifacts_dir: str,
-        remote_artifacts_dir: str,
+        self, local_artifacts_dir: str, remote_artifacts_dir: str, experiment_info: dict
     ) -> bool:
         if self._inference_class is None:
             logger.warn(
@@ -745,12 +839,7 @@ class TrainApp:
 
         # can't get task type from session. requires before session init
         supported_task_types = [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION]
-        if self.model_source == "Pretrained models":
-            task_type = self.model_parameters["meta"]["task_type"]
-        else:
-            task_type = self.model_parameters["task_type"]
-        task_type = task_type.lower()
-
+        task_type = experiment_info["task_type"]
         if task_type not in supported_task_types:
             logger.warn(
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
@@ -761,34 +850,14 @@ class TrainApp:
         logger.info("Running Model Benchmark evaluation...")
         try:
             remote_weights_dir = join(remote_artifacts_dir, "weights")
-            remote_checkpoints = self._api.file.list(
-                self._team_id(), remote_weights_dir, return_type="fileinfo"
-            )
-            best_checkpoint = None
-            for checkpoint in remote_checkpoints:
-                if checkpoint.name.startswith("best_"):
-                    best_checkpoint = checkpoint
-                    break
-            if best_checkpoint is None:
-                raise ValueError(
-                    "Best checkpoint not found in remote artifacts directory. "
-                    "Checkpoint name must start with 'best_'"
-                )
-
-            config_found = False
-            for config_name in ["config.yaml", "config.yml"]:
-                remote_config_path = join(remote_artifacts_dir, config_name)
-                if self._api.file.exists(self._team_id(), remote_config_path):
-                    config_found = True
-                    break
-            if not config_found:
-                raise ValueError(
-                    "Config file not found in remote artifacts directory. "
-                    "Expected 'config.yaml' or 'config.yml'"
-                )
-
+            best_checkpoint = experiment_info.get("best_checkpoint", None)
             best_filename = sly_fs.get_file_name_with_ext(best_checkpoint)
-            checkpoint_path = join(remote_weights_dir, best_filename)
+            remote_best_checkpoint = join(remote_weights_dir, best_filename)
+
+            config_path = experiment_info["model_files"]["config"]
+            remote_config_path = join(
+                remote_artifacts_dir, sly_fs.get_file_name_with_ext(config_path)
+            )
 
             logger.info(f"Creating the report for the best model: {best_filename!r}")
             self._layout.training_process.model_benchmark_report_text.show()
@@ -816,7 +885,7 @@ class TrainApp:
                 model_source="Custom models",
                 task_type=task_type,
                 checkpoint_name=best_filename,
-                checkpoint_url=checkpoint_path,
+                checkpoint_url=remote_best_checkpoint,
                 config_url=remote_config_path,
             )
             m._load_model(deploy_params)

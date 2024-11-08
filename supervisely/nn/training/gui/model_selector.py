@@ -45,12 +45,7 @@ class ModelSelector:
         else:
             custom_artifacts = []
 
-        self.custom_models_table = CustomModelsSelector(
-            self.team_id,
-            custom_artifacts,
-            show_custom_checkpoint_path=True,
-            custom_checkpoint_task_types=artifacts.get_available_task_types(),
-        )
+        self.custom_models_table = CustomModelsSelector(self.team_id, custom_artifacts)
         # Model source tabs
         self.model_source_tabs = RadioTabs(
             titles=["Pretrained models", "Custom models"],
