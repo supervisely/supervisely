@@ -13,7 +13,7 @@ import urllib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import List, Literal, Optional, Dict, Any
+from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
@@ -383,14 +383,13 @@ def add_callback(func, callback):
 
     return wrapper
 
-def compare_dicts(
-    template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True
-) -> bool:
-    """Compare two dictionaries recursively (by keys only) and return True if they are equal, 
+
+def compare_dicts(template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True) -> bool:
+    """Compare two dictionaries recursively (by keys only) and return True if they are equal,
     False otherwise.
     If strict is True, the keys of the template and data dictionaries must match exactly.
     Otherwise, the data dictionary may contain additional keys that are not in the template dictionary.
-    
+
     :param template: The template dictionary.
     :type template: Dict[Any, Any]
     :param data: The data dictionary.
@@ -400,6 +399,7 @@ def compare_dicts(
     :return: True if the dictionaries are equal, False otherwise.
     :rtype: bool
     """
+    # TODO: Method should return mismatched keys (missing or extra) instead of just True or False.
     if not isinstance(template, dict) or not isinstance(data, dict):
         return template == data
 

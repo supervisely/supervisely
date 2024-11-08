@@ -40,6 +40,7 @@ from tqdm import tqdm
 
 from supervisely._utils import (
     batched,
+    compare_dicts,
     generate_free_name,
     get_bytes_hash,
     resize_image_url,
@@ -1135,7 +1136,13 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_path(
-        self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        path: str,
+        meta: Optional[Dict] = None,
+        validate_custom_data: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1163,7 +1170,14 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
         """
         metas = None if meta is None else [meta]
-        return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
+        return self.upload_paths(
+            dataset_id,
+            [name],
+            [path],
+            metas=metas,
+            validate_custom_data=validate_custom_data,
+            use_strict_validation=use_strict_validation,
+        )[0]
 
     def upload_paths(
         self,
@@ -1173,6 +1187,8 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_custom_data: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1214,7 +1230,13 @@ class ImageApi(RemoveableBulkModuleApi):
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
 
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+            dataset_id,
+            names,
+            hashes,
+            metas=metas,
+            conflict_resolution=conflict_resolution,
+            validate_custom_data=validate_custom_data,
+            use_strict_validation=use_strict_validation,
         )
 
     def upload_np(
@@ -1492,6 +1514,8 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_custom_data: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1553,6 +1577,8 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
+            validate_custom_data=validate_custom_data,
+            use_strict_validation=use_strict_validation,
         )
 
     def upload_id(
@@ -1750,8 +1776,39 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links=True,
         skip_validation=False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_custom_data: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
     ):
         """ """
+        if use_strict_validation and not validate_custom_data:
+            raise ValueError(
+                "use_strict_validation is set to True, while validate_custom_data is set to False. "
+                "Please set validate_custom_data to True to use strict validation "
+                "or disable strict validation by setting use_strict_validation to False."
+            )
+        if validate_custom_data:
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+
+            validation_schema = self._api.project.get_validation_schema(dataset_info.project_id)
+
+            if validation_schema is None:
+                raise ValueError(
+                    "Validation schema is not set for the project, while "
+                    "validate_custom_data is set to True. Either disable the validation "
+                    "or set the validation schema for the project using the "
+                    "api.project.set_validation_schema method."
+                )
+
+            for idx, meta in enumerate(metas):
+                result = compare_dicts(validation_schema, meta, strict=use_strict_validation)
+                if not result:
+                    raise ValueError(
+                        f"Validation failed for the metadata of the image with index {idx} and name {names[idx]}. "
+                        "Please check the metadata and try again."
+                        # TODO: Improve the method, so it will return exact failed fields.
+                        # Add them to the error message.
+                    )
+
         if (
             conflict_resolution is not None
             and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
