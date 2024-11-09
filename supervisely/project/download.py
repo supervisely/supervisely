@@ -435,7 +435,6 @@ def _download_project_to_cache(
     dataset_infos: List[DatasetInfo],
     log_progress: bool = True,
     progress_cb: Callable = None,
-    project_meta: Optional[ProjectMeta] = None,
     semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ):
@@ -444,8 +443,6 @@ def _download_project_to_cache(
     kwargs = _add_save_items_infos_to_kwargs(kwargs, project_type)
     kwargs = _add_resume_download_to_kwargs(kwargs, project_type)
     cached_project_dir = _get_cache_dir(project_id)
-    if project_meta is not None:
-        dump_json_file(project_meta.to_json(), os.path.join(cached_project_dir, "meta.json"))
     if len(dataset_infos) == 0:
         logger.debug("No datasets to download")
         return
@@ -514,7 +511,6 @@ def download_to_cache(
         dataset_infos=[name_to_info[name] for name in to_download],
         log_progress=log_progress,
         progress_cb=progress_cb,
-        project_meta=project_meta,
         semaphore=semaphore,
         **kwargs,
     )
