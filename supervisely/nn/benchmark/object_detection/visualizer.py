@@ -22,6 +22,7 @@ from supervisely.nn.benchmark.object_detection.vis_metrics import (
     F1ScoreAtDifferentIOU,
     FrequentlyConfused,
     IOUDistribution,
+    KeyMetrics,
     ModelPredictions,
     OutcomeCounts,
     Overview,
@@ -33,9 +34,11 @@ from supervisely.nn.benchmark.object_detection.vis_metrics import (
     Recall,
     RecallVsPrecision,
     ReliabilityDiagram,
+    Speedtest,
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
+    MarkdownWidget,
     SidebarWidget,
 )
 from supervisely.project.project import Dataset, OpenMode, Project
@@ -92,20 +95,20 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         # self.diff_modal_table = self._create_diff_modal_table()
         # self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
 
-        # # Notifcation
-        # self.clickable_label = self._create_clickable_label()
-
-        # # Speedtest init here for overview
-        # speedtest = Speedtest(self.vis_texts, self.comparison.evaluation_results)
+        # Notifcation
+        self.clickable_label = self._create_clickable_label()
 
         # Overview
         me = self.api.user.get_my_info()
         overview = Overview(self.vis_texts, self.eval_result)
         self.header = overview.get_header(me.login)
         self.overview_md = overview.md
-        # self.key_metrics_md = self._create_key_metrics()
-        # self.key_metrics_table = overview.get_table_widget(speedtest.latency, speedtest.fps)
-        # self.overview_chart = overview.chart_widget
+
+        # Key Metrics
+        key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
+        self.key_metrics_md = key_metrics.md
+        self.key_metrics_table = key_metrics.table
+        self.overview_chart = key_metrics.chart
 
         # Explore Predictions
         explore_predictions = ExplorePredictions(self.vis_texts, self.eval_result)
@@ -219,18 +222,16 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.per_class_outcome_counts_chart_normalized = per_class_outcome_counts.chart_normalized
         self.per_class_outcome_counts_chart_absolute = per_class_outcome_counts.chart_absolute
 
-        # # SpeedTest
-        # self.speedtest_present = False
-        # if not speedtest.is_empty():
-        #     self.speedtest_present = True
-        #     self.speedtest_md_intro = speedtest.md_intro
-        #     self.speedtest_intro_table = speedtest.intro_table
-        #     self.speed_inference_time_md = speedtest.inference_time_md
-        #     self.speed_inference_time_table = speedtest.inference_time_table
-        #     self.speed_fps_md = speedtest.fps_md
-        #     self.speed_fps_table = speedtest.fps_table
-        #     self.speed_batch_inference_md = speedtest.batch_inference_md
-        #     self.speed_chart = speedtest.chart
+        # Speedtest init here for overview
+        speedtest = Speedtest(self.vis_texts, self.eval_result)
+        self.speedtest_present = False
+        if not speedtest.is_empty():
+            self.speedtest_present = True
+            self.speedtest_md_intro = speedtest.intro_md
+            self.speedtest_table_md = speedtest.table_md
+            self.speedtest_table = speedtest.table
+            self.speedtest_chart_md = speedtest.chart_md
+            self.speedtest_chart = speedtest.chart
 
         self._widgets = True
 
@@ -242,28 +243,37 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             # Overview
             (0, self.header),
             (1, self.overview_md),
-            # TODO: key_metrics_md
+            # KeyMetrics
+            (1, self.key_metrics_md),
+            (0, self.key_metrics_table),
+            (0, self.overview_chart),
             # ExplorePredictions
             (1, self.explore_predictions_md),
+            (0, self.clickable_label),
             (0, self.explore_predictions_gallery),
             # ModelPredictions
             (0, self.model_predictions_md),
+            (0, self.clickable_label),
             (0, self.model_predictions_table),
             # OutcomeCounts
             (1, self.outcome_counts_md),
+            (0, self.clickable_label),
             (0, self.outcome_counts_chart),
             # Recall
             (1, self.recall_md),
             (0, self.recall_notificaiton),
             (0, self.recall_per_class_md),
+            (0, self.clickable_label),
             (0, self.recall_chart),
             # Precision
             (1, self.precision_md),
             (0, self.precision_notification),
             (0, self.precision_per_class_md),
+            (0, self.clickable_label),
             (0, self.precision_chart),
             # RecallVsPrecision
             (1, self.recall_vs_precision_md),
+            (0, self.clickable_label),
             (0, self.recall_vs_precision_chart),
             # PRCurve
             (1, self.pr_curve_md),
@@ -272,9 +282,11 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             (0, self.pr_curve_collapse),
             # PRCurveByClass
             (1, self.pr_curve_by_class_md),
+            (0, self.clickable_label),
             (0, self.pr_curve_by_class_chart),
             # ConfusionMatrix
             (1, self.confusion_matrix_md),
+            (0, self.clickable_label),
             (0, self.confusion_matrix_chart),
             # FrequentlyConfused
             (1, self.frequently_confused_md),
@@ -282,6 +294,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         if self.frequently_confused_present:
             is_anchors_widgets.extend(
                 [
+                    (0, self.clickable_label),
                     (0, self.frequently_confused_chart_1),
                     (0, self.frequently_confused_chart_2),
                 ]
@@ -316,30 +329,29 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                 (0, self.confidence_distribution_chart),
                 # PerClassAvgPrecision
                 (1, self.per_class_avg_precision_md),
+                (0, self.clickable_label),
                 (0, self.per_class_avg_precision_chart),
                 # PerClassOutcomeCounts
                 (1, self.per_class_outcome_counts_md),
                 (0, self.per_class_outcome_counts_md_2),
                 (0, self.per_class_outcome_counts_collapse),
+                (0, self.clickable_label),
                 (0, self.per_class_outcome_counts_chart_normalized),
                 (0, self.per_class_outcome_counts_chart_absolute),
             ]
         )
 
-        # if self.speedtest_present:
-        #     is_anchors_widgets.extend(
-        #         [
-        #             # SpeedTest
-        #             (1, self.speedtest_md_intro),
-        #             (0, self.speedtest_intro_table),
-        #             (0, self.speed_inference_time_md),
-        #             (0, self.speed_inference_time_table),
-        #             (0, self.speed_fps_md),
-        #             (0, self.speed_fps_table),
-        #             (0, self.speed_batch_inference_md),
-        #             (0, self.speed_chart),
-        #         ]
-        #     )
+        if self.speedtest_present:
+            is_anchors_widgets.extend(
+                [
+                    # SpeedTest
+                    (1, self.speedtest_md_intro),
+                    (0, self.speedtest_table_md),
+                    (0, self.speedtest_table),
+                    (0, self.speedtest_chart_md),
+                    (0, self.speedtest_chart),
+                ]
+            )
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:
@@ -347,10 +359,15 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
         layout = ContainerWidget(
-            widgets=[sidebar],#, self.explore_modal_table, self.explore_predictions_modal_gallery],
+            widgets=[
+                sidebar
+            ],  # , self.explore_modal_table, self.explore_predictions_modal_gallery],
             name="main_container",
         )
         return layout
+
+    def _create_clickable_label(self):
+        return MarkdownWidget(name="clickable_label", title="", text=self.vis_texts.clickable_label)
 
     def update_diff_annotations(self):
         pred_project_id = self.eval_result.pred_project_id

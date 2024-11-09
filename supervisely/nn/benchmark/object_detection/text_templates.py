@@ -97,14 +97,11 @@ markdown_experts = """
 markdown_how_to_use = """
 """
 
-markdown_outcome_counts = (
-    """## Outcome Counts
+markdown_outcome_counts = """## Outcome Counts
 
 This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.
 
 """
-    + clickable_label
-)
 
 markdown_R = """## Recall
 
@@ -118,8 +115,7 @@ notification_recall = {
     "description": "The model correctly found <b>{} of {}</b> total instances in the dataset.",
 }
 
-markdown_R_perclass = (
-    """### Per-class Recall
+markdown_R_perclass = """### Per-class Recall
 
 This chart further analyzes Recall, breaking it down to each class in separate.
 
@@ -128,8 +124,6 @@ Since the overall recall is calculated as an average across all classes, we prov
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
 """
-    + clickable_label
-)
 
 
 markdown_P = """## Precision
@@ -144,8 +138,7 @@ notification_precision = {
     "description": "The model correctly predicted <b>{} of {}</b> predictions made by the model in total.",
 }
 
-markdown_P_perclass = (
-    """### Per-class Precision
+markdown_P_perclass = """### Per-class Precision
 
 This chart further analyzes Precision, breaking it down to each class in separate.
 
@@ -154,20 +147,15 @@ Since the overall precision is computed as an average across all classes, we pro
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
 """
-    + clickable_label
-)
 
 
-markdown_PR = (
-    """## Recall vs. Precision
+markdown_PR = """## Recall vs. Precision
 
 This section compares Precision and Recall in one graph, identifying **imbalance** between these two.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
 """
-    + clickable_label
-)
 
 
 markdown_pr_curve = """## Precision-Recall Curve
@@ -199,33 +187,26 @@ notification_ap = {
     "description": "",
 }
 
-markdown_pr_by_class = (
-    """### Precision-Recall Curve by Class
+markdown_pr_by_class = """### Precision-Recall Curve by Class
 
 In this plot, you can evaluate PR curve for each class individually.
 
 """
-    + clickable_label
-)
 
-markdown_confusion_matrix = (
-    """## Confusion Matrix
+markdown_confusion_matrix = """## Confusion Matrix
 
 Confusion matrix helps to find the number of confusions between different classes made by the model.
 Each row of the matrix represents the instances in a ground truth class, while each column represents the instances in a predicted class.
 The diagonal elements represent the number of correct predictions for each class (True Positives), and the off-diagonal elements show misclassifications.
 
 """
-    + clickable_label
-)
 
 markdown_frequently_confused_empty = """### Frequently Confused Classes
 
 No frequently confused class pairs found
 """
 
-markdown_frequently_confused = (
-    """### Frequently Confused Classes
+markdown_frequently_confused = """### Frequently Confused Classes
 
 This chart displays the most frequently confused pairs of classes. In general, it finds out which classes visually seem very similar to the model.
 
@@ -234,8 +215,6 @@ The chart calculates the **probability of confusion** between different pairs of
 The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
 
 """
-    + clickable_label
-)
 
 
 markdown_localization_accuracy = """## Localization Accuracy (IoU)
@@ -321,14 +300,11 @@ Additionally, it provides a view of how predicted probabilities are distributed.
 Ideally, the green histogram (TP predictions) should have higher confidence scores and be shifted to the right, indicating that the model is sure about its correct predictions, and the red histogram (FP predictions) should have lower confidence scores and be shifted to the left.
 """
 
-markdown_class_ap = (
-    """## Average Precision by Class
+markdown_class_ap = """## Average Precision by Class
 
 A quick visual comparison of the model performance across all classes. Each axis in the chart represents a different class, and the distance to the center indicates the <abbr title="{}">Average Precision</abbr> (AP) for that class.
 
 """
-    + clickable_label
-)
 
 
 markdown_class_outcome_counts_1 = """### Outcome Counts by Class
@@ -342,16 +318,38 @@ markdown_normalization = """Normalization is used for better interclass comparis
 If normalization is off, the chart will display the total count of instances that correspond to outcome type (one of TP, FP or FN). This mode is identical to the main Outcome Counts graph on the top of the page. However, when normalization is off, you may encounter a class imbalance problem. Visually, bars that correspond to classes with many instances in the dataset will be much larger than others. This complicates the visual analysis.
 """
 
-markdown_class_outcome_counts_2 = (
-    """You can switch the plot view between normalized and absolute values.
+markdown_class_outcome_counts_2 = """You can switch the plot view between normalized and absolute values.
 
 _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
 
 """
-    + clickable_label
-)
 
 empty = """### {}
 
 > {}
+"""
+
+
+markdown_speedtest_intro = """## Inference Speed
+
+This is a speed test benchmark for this model. The model was tested with the following configuration:
+
+- **Device**: {}
+- **Hardware**: {}
+- **Runtime**: {}
+"""
+
+markdown_speedtest_table = """
+The table below shows the speed test results. For each test, the time taken to process one batch of images is shown, as well as the model's throughput (i.e, the number of images processed per second, or FPS). Results are averaged across **{}** iterations.
+"""
+
+markdown_real_time_inference = """## Real-time Inference
+
+This chart compares different runtimes and devices (CPU or GPU)."""
+
+# We additionally divide **predict** procedure into three stages: pre-process, inference, and post-process. Each bar in this chart consists of these three stages. For example, in the chart you can find how long the post-process phase lasts in a CPU device with an ONNXRuntime environment."""
+
+
+markdown_speedtest_chart = """
+This chart shows how the model's speed changes with different batch sizes . As the batch size increases, you can observe an increase in FPS (images per second).
 """
