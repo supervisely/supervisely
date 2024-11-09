@@ -3588,7 +3588,7 @@ def _download_project(
             dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
         all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
-        images = [image for image in all_images if image_ids is None or image.id in image_ids]
+        images = [image for image in all_images if images_ids is None or image.id in images_ids]
         ds_total = len(images)
 
         ds_progress = progress_cb
@@ -4377,10 +4377,6 @@ async def _download_project_async(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
-    images_filter = None
-    if images_ids is not None:
-        images_filter = [{"field": "id", "operator": "in", "value": images_ids}]
-
     existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
@@ -4394,7 +4390,7 @@ async def _download_project_async(
             dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
         all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
-        images = [image for image in all_images if images_filter is None or image.id in images_ids]
+        images = [image for image in all_images if images_ids is None or image.id in images_ids]
 
         ds_progress = progress_cb
         if log_progress is True:
