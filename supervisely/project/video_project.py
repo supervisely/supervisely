@@ -1182,7 +1182,7 @@ class VideoProject(Project):
         include_custom_data: bool = False,
     ) -> None:
         """
-        Download video project from Supervisely to the given directory.
+        Download video project from Supervisely to the given directory asynchronously.
 
         :param api: Supervisely Api class object.
         :type api: :class:`Api<supervisely.api.api.Api>`
@@ -1202,6 +1202,8 @@ class VideoProject(Project):
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
+        :param include_custom_data: Include custom data in the download.
+        :type include_custom_data: :class:`bool`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -1210,21 +1212,20 @@ class VideoProject(Project):
 
             import supervisely as sly
 
-            # Local destination Project folder
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
             save_directory = "/home/admin/work/supervisely/source/video_project"
-
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
-
-            # Initialize API object
-            api = sly.Api(address, token)
             project_id = 8888
 
-            # Download Video Project
-            sly.VideoProject.download(api, project_id, save_directory)
-            project_fs = sly.VideoProject(save_directory, sly.OpenMode.READ)
+            loop = sly.fs.get_or_create_event_loop()
+            coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
         """
         await download_video_project_async(
             api=api,
@@ -1566,7 +1567,8 @@ async def download_video_project_async(
     :type log_progress: bool
     :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
-
+    :param include_custom_data: Include custom data in the download.
+    :type include_custom_data: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:
@@ -1579,29 +1581,17 @@ async def download_video_project_async(
         from tqdm import tqdm
         import supervisely as sly
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
-
         dest_dir = 'your/local/dest/dir'
-
-        # Download video project
         project_id = 17758
-        project_info = api.project.get_info_by_id(project_id)
-        num_videos = project_info.items_count
 
-        p = tqdm(desc="Downloading video project", total=num_videos)
-        sly.download(
-            api,
-            project_id,
-            dest_dir,
-            progress_cb=p,
-        )
+        loop = sly.fs.get_or_create_event_loop()
+        loop.run_until_complete(
+                        sly.download_async(api, project_id, dest_dir)
+                    )
     """
     if semaphore is None:
         semaphore = api._get_default_semaphore()
@@ -1661,6 +1651,10 @@ def _log_warning(
     ann_json: Optional[dict] = None,
     item_info: Optional[dict] = None,
 ):
+    """
+    This function logs a warning with additional information for debugging.
+    It is used in the _download_project_item_async function.
+    """
     logger.info(
         "INFO FOR DEBUGGING",
         extra={
@@ -1688,10 +1682,13 @@ async def _download_project_item_async(
     download_videos: bool,
     save_video_info: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
-):
+) -> None:
+    """
+    This function downloads a video item from the project in Supervisely platform asynchronously.
+    """
 
     try:
-        ann_json = await api.video.annotation.download_async(video.id, video)
+        ann_json = await api.video.annotation.download_async(video.id, video, semaphore=semaphore)
         ann_json = ann_json[0]
     except Exception as e:
         _log_warning(video)

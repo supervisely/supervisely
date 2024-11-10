@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Callable, Dict, List, Optional, Union
 
@@ -251,15 +252,18 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
     async def download_async(
         self,
         video_id: int,
-        video_info = None,
+        video_info=None,
+        semaphore: Optional[asyncio.Semaphore] = None,
     ) -> Dict:
         """
-        Download information about VideoAnnotation by video ID from API.
+        Download information about VideoAnnotation by video ID from API asynchronously.
 
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param video_info: VideoInfo object. Use it to avoid additional request to the server.
         :type video_info: VideoInfo, optional
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
         :return: Information about VideoAnnotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -273,29 +277,18 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             api = sly.Api.from_env()
 
             video_id = 198702499
-            ann_info = await api.video.annotation.download_async(video_id)
-            print(ann_info)
-            # Output: {
-            #     "videoId": 198702499,
-            #     "videoName": "Videos_dataset_cars_cars.mp4",
-            #     "createdAt": "2021-03-23T13:14:25.536Z",
-            #     "updatedAt": "2021-03-23T13:16:43.300Z",
-            #     "description": "",
-            #     "tags": [],
-            #     "objects": [],
-            #     "size": {
-            #         "height": 2160,
-            #         "width": 3840
-            #     },
-            #     "framesCount": 326,
-            #     "frames": []
-            # }
+            loop = sly.fs.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
         """
-
         if video_info is None:
             video_info = self._api.video.get_info_by_id(video_id)
-        response = await self._api.post_async(
-            self._method_download_bulk,
-            {ApiField.DATASET_ID: video_info.dataset_id, self._entity_ids_str: [video_info.id]},
-        )
-        return response.json()
+
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+
+        async with semaphore:
+            response = await self._api.post_async(
+                self._method_download_bulk,
+                {ApiField.DATASET_ID: video_info.dataset_id, self._entity_ids_str: [video_info.id]},
+            )
+            return response.json()

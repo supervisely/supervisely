@@ -1198,7 +1198,8 @@ class Dataset(KeyObject):
         img_info: Optional[Union[ImageInfo, Dict, str]] = None,
     ) -> None:
         """
-        Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
+        Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory.
+        If ann is None, creates empty annotation file.
 
         :param item_name: Item name.
         :type item_name: :class:`str`
@@ -1222,7 +1223,14 @@ class Dataset(KeyObject):
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
             img_bytes = sly.image.write_bytes(img_np, "jpeg")
-            ds.add_item_raw_bytes("IMG_050.jpeg", img_bytes)
+            loop = sly.fs.get_or_create_event_loop()
+            coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
+
             print(ds.item_exists("IMG_050.jpeg"))
             # Output: True
         """
@@ -1559,9 +1567,15 @@ class Dataset(KeyObject):
             import supervisely as sly
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
-
             new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
-            ds.set_ann_file("IMG_1812.jpeg", new_ann)
+
+            loop = sly.fs.get_or_create_event_loop()
+            coroutine = ds.set_ann_file_async("IMG_1812.jpeg", new_ann)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
         """
         if type(ann_path) is not str:
             raise TypeError("Annotation path should be a string, not a {}".format(type(ann_path)))
@@ -1598,7 +1612,13 @@ class Dataset(KeyObject):
                 "customBigData":{}
             }
 
-            ds.set_ann_dict("IMG_8888.jpeg", new_ann_json)
+            loop = sly.fs.get_or_create_event_loop()
+            coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
         """
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
@@ -1626,7 +1646,13 @@ class Dataset(KeyObject):
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            ds.set_ann("IMG_0748.jpeg", new_ann)
+            loop = sly.fs.get_or_create_event_loop()
+            coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
         """
         if type(ann) is not self.annotation_class:
             raise TypeError(
@@ -1698,8 +1724,8 @@ class Dataset(KeyObject):
         img_info: Optional[Union[ImageInfo, Dict, str]] = None,
     ) -> None:
         """
-        Adds given item file to dataset items directory, and adds given annotation to dataset
-        annotations directory. if ann is None, creates empty annotation file.
+        Adds given item file to dataset items directory, and adds given annotation to dataset annotations directory.
+        If ann is None, creates empty annotation file.
 
         :param item_name: Item name.
         :type item_name: :class:`str`
@@ -3422,29 +3448,27 @@ class Project:
         :type resume_download: :class:`bool`, optional
         :return: None
         :rtype: NoneType
+
         :Usage example:
 
-        .. code-block:: python
+            .. code-block:: python
 
                 import supervisely as sly
 
-                # Local destination Project folder
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                project_id = 8888
                 save_directory = "/path/to/save/projects"
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
-                project_id = 8888
-
-                # Download Project
                 loop = sly.fs.get_or_create_event_loop()
-                loop.run_until_complete(
-                        sly.Project.download_async(api, project_id, save_directory)
-                    )
+                coro = sly.Project.download_async(api, project_id, save_directory)
+                if loop.is_running():
+                    future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                    future.result()
+                else:
+                    loop.run_until_complete(coroutine)
         """
         await _download_project_async(
             api=api,

@@ -235,7 +235,7 @@ def validate_json(data: Dict, schema: Dict, raise_error: bool = False) -> bool:
 
 async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] = 4) -> None:
     """
-    Write given data in json format in file with given name.
+    Write given data in json format in file with given name asynchronously.
 
     :param data: Data in json format as a dict.
     :type data: dict
@@ -249,9 +249,16 @@ async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] 
 
      .. code-block:: python
 
-        from supervisely.io.json import dump_json_file
+        import supervisely as sly
+
         data = {1: 'example'}
-        await dump_json_file(data, '/home/admin/work/projects/examples/1.json')
+        loop = sly.fs.get_or_create_event_loop()
+        coro = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
     """
     async with aiofiles.open(filename, "w") as fout:
         await fout.write(json.dumps(data, indent=indent))

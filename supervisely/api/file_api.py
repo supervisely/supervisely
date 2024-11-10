@@ -2011,9 +2011,9 @@ class FileApi(ModuleApiBase):
         team_id: int,
         src: str,
         dst: str,
-        semaphore: asyncio.Semaphore = None,
-        chunk_size: int = 1024 * 1024,
-        check_hash: bool = True,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        # chunk_size: int = 1024 * 1024, #TODO add with resumaple api
+        # check_hash: bool = True, #TODO add with resumaple api
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
     ) -> httpx.Response:
@@ -2026,10 +2026,8 @@ class FileApi(ModuleApiBase):
         :type src: str
         :param dst: Path to save file in Team Files.
         :type dst: str
-        :param chunk_size: Size of chunk for uploading file.
-        :type chunk_size: int, optional
-        :param check_hash: If True, checks hash of uploaded file.
-        :type check_hash: bool
+        :param semaphore: Semaphore for limiting the number of simultaneous uploads.
+        :type semaphore: asyncio.Semaphore, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -2056,11 +2054,11 @@ class FileApi(ModuleApiBase):
         """
         api_method = "file-storage.upload"
         headers = {"Content-Type": "application/octet-stream"}
-        # sha256 = await get_file_hash_async(src)
+        # sha256 = await get_file_hash_async(src) #TODO add with resumaple api
         json_body = {
             ApiField.TEAM_ID: team_id,
             ApiField.PATH: dst,
-            # "sha256": sha256,
+            # "sha256": sha256, #TODO add with resumaple api
         }
         if semaphore is None:
             semaphore = self._api._get_default_semaphore()
@@ -2081,9 +2079,9 @@ class FileApi(ModuleApiBase):
         team_id: int,
         src_paths: List[str],
         dst_paths: List[str],
-        semaphore: asyncio.Semaphore = None,
-        chunk_size: int = 1024 * 1024,
-        check_hash: bool = True,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        # chunk_size: int = 1024 * 1024, #TODO add with resumaple api
+        # check_hash: bool = True, #TODO add with resumaple api
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
     ) -> None:
@@ -2096,6 +2094,12 @@ class FileApi(ModuleApiBase):
         :type src_paths: List[str]
         :param dst_paths: List of paths to save files in Team Files.
         :type dst_paths: List[str]
+        :param semaphore: Semaphore for limiting the number of simultaneous uploads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -2133,8 +2137,8 @@ class FileApi(ModuleApiBase):
                 s,
                 d,
                 semaphore=semaphore,
-                chunk_size=chunk_size,
-                check_hash=check_hash,
+                # chunk_size=chunk_size, #TODO add with resumaple api
+                # check_hash=check_hash, #TODO add with resumaple api
                 progress_cb=progress_cb,
                 progress_cb_type=progress_cb_type,
             )

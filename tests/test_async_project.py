@@ -77,10 +77,10 @@ if __name__ == "__main__":
     # )
     # args = parser.parse_args()
     try:
-        ann_db()
+        # ann_db()
         # api = sly.Api(args.server, args.token)
         # api.logger.setLevel(LOG_LEVEL)
-        # main_dpa(args.id, args.semaphore)  # to download and save project as files (async)
+        main_dpa(PROJECT_ID, 200)  # to download and save project as files (async)
         # main_dps(args.project_id)  # to download and save project as files (sync)
         # compare_downloads(args.project_id)  # to compare the time taken for downloading and saving project as files (sync vs async)
     except KeyboardInterrupt:

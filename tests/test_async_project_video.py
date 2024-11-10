@@ -24,7 +24,7 @@ sly.fs.clean_dir(common_path)
 def main_dpa(project_id: int, semaphore_size: int):
     sema = asyncio.Semaphore(semaphore_size)
     start = time.time()
-    loop = asyncio.get_event_loop()
+    loop = sly.fs.get_or_create_event_loop()
     loop.run_until_complete(
         sly.VideoProject.download_async(api, project_id, save_path_async, semaphore=sema)
     )
