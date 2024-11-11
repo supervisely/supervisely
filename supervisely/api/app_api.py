@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
@@ -536,10 +537,7 @@ class AppApi(TaskApi):
             self._enabled = True
             if is_development():
                 self._enabled = False
-                logger.warning(
-                    "Workflow is disabled in development mode. "
-                    "To enable it, use `api.app.workflow.enable()` right after Api initialization."
-                )
+            self.__last_warning_time = None
 
         def enable(self):
             """Enable the workflow functionality."""
@@ -574,10 +572,18 @@ class AppApi(TaskApi):
                         if min_instance_version is not None
                         else self._min_instance_version
                     )
-                    if (
-                        not check_workflow_compatibility(self._api, version_to_check)
-                        or not self._enabled
-                    ):
+                    if not self.is_enabled():
+                        if (
+                            self.__last_warning_time is None
+                            or time.monotonic() - self.__last_warning_time > 60
+                        ):
+                            self.__last_warning_time = time.monotonic()
+                            logger.warning(
+                                "Workflow is disabled in development mode. "
+                                "To enable it, use `api.app.workflow.enable()` right after Api initialization."
+                            )
+                        return
+                    if not check_workflow_compatibility(self._api, version_to_check):
                         logger.info(f"Workflow method `{func.__name__}` is disabled.")
                         return
                     return func(self, *args, **kwargs)
