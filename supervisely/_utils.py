@@ -315,6 +315,15 @@ def get_readable_datetime(value: str) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def get_unix_timestamp() -> int:
+    """Return the current Unix timestamp.
+
+    :return: Current Unix timestamp.
+    :rtype: int
+    """
+    return int(time.time())
+
+
 def get_certificates_list(path: str = DEFAULT_CA_BUNDLE_PATH) -> List[str]:
     with open(path, "r", encoding="ascii") as f:
         content = f.read().strip()

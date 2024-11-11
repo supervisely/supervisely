@@ -11,10 +11,10 @@ class ProjectType(StrEnum):
     POINT_CLOUD_EPISODES = "point_cloud_episodes"
 
 
-
 # Constants for multispectral and multiview projects.
 _MULTISPECTRAL_TAG_NAME = "multispectral"
 _MULTIVIEW_TAG_NAME = "multiview"
 
 _METADATA_SYSTEM_KEY = "system"
 _METADATA_VALIDATION_SCHEMA_KEY = "validation_schema"
+_METADATA_TIMESTAMP_KEY = "validation_schema_timestamp"

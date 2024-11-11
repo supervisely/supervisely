@@ -4,7 +4,9 @@
 # docs
 from __future__ import annotations
 
+import os
 from collections import defaultdict
+from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -29,6 +31,7 @@ from supervisely._utils import (
     abs_url,
     compare_dicts,
     compress_image_url,
+    get_unix_timestamp,
     is_development,
 )
 from supervisely.annotation.annotation import TagCollection
@@ -42,6 +45,7 @@ from supervisely.api.module_api import (
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import (
@@ -50,6 +54,7 @@ from supervisely.project.project_settings import (
 )
 from supervisely.project.project_type import (
     _METADATA_SYSTEM_KEY,
+    _METADATA_TIMESTAMP_KEY,
     _METADATA_VALIDATION_SCHEMA_KEY,
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
@@ -1028,13 +1033,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         return self.get_info_by_id(id).custom_data.get(_METADATA_SYSTEM_KEY, {})
 
-    def get_validation_schema(self, id: int) -> Optional[Dict[Any, Any]]:
+    def get_validation_schema(self, id: int, use_caching: bool = False) -> Optional[Dict[Any, Any]]:
         """Returns validation schema of the Project by ID.
         Validation schema is a dictionary that can be used to validate metadata of each entity in the project
         if corresnpoding schema is provided.
+        If using caching, the schema will be loaded from the cache if available.
+        Use cached version only in scenarios when the schema is not expected to change,
+        otherwise it may lead to checks with outdated schema.
 
         :param id: Project ID in Supervisely.
         :type id: int
+        :param use_caching: If True, uses cached version of the schema if available.
+            NOTE: This may lead to checks with outdated schema. Use with caution.
+            And only in scenarios when the schema is not expected to change.
         :return: Validation schema of the Project
         :rtype: :class:`dict`
 
@@ -1052,7 +1063,27 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             print(validation_schema) # Output: {'key': 'Description of the field'}
         """
-        return self._get_system_custom_data(id).get(_METADATA_VALIDATION_SCHEMA_KEY)
+        SCHEMA_DIFF_THRESHOLD = 60 * 60  # 1 hour
+        json_cache_filename = os.path.join(os.getcwd(), f"{id}_validation_schema.json")
+
+        if use_caching:
+            if os.path.isfile(json_cache_filename):
+                try:
+                    schema = load_json_file(json_cache_filename)
+                    timestamp = schema.pop(_METADATA_TIMESTAMP_KEY, 0)
+
+                    if get_unix_timestamp() - timestamp < SCHEMA_DIFF_THRESHOLD:
+                        return schema
+                except RuntimeError:
+                    pass
+
+        schema = self._get_system_custom_data(id).get(_METADATA_VALIDATION_SCHEMA_KEY)
+        if schema and use_caching:
+            schema_with_timestamp = deepcopy(schema)
+            schema_with_timestamp[_METADATA_TIMESTAMP_KEY] = get_unix_timestamp()
+            dump_json_file(schema_with_timestamp, json_cache_filename)
+
+        return schema
 
     def _edit_validation_schema(self, id: int, schema: Dict[Any, Any] = None) -> Dict[Any, Any]:
         """Edits validation schema of the Project by ID.
