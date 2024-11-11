@@ -38,7 +38,6 @@ from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
