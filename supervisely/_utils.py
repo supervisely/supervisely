@@ -13,7 +13,7 @@ import urllib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
@@ -393,9 +393,10 @@ def add_callback(func, callback):
     return wrapper
 
 
-def compare_dicts(template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True) -> bool:
-    """Compare two dictionaries recursively (by keys only) and return True if they are equal,
-    False otherwise.
+def compare_dicts(
+    template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True
+) -> Tuple[List[str], List[str]]:
+    """Compare two dictionaries recursively (by keys only) and return lists of missing and extra fields.
     If strict is True, the keys of the template and data dictionaries must match exactly.
     Otherwise, the data dictionary may contain additional keys that are not in the template dictionary.
 
@@ -405,22 +406,33 @@ def compare_dicts(template: Dict[Any, Any], data: Dict[Any, Any], strict: bool =
     :type data: Dict[Any, Any]
     :param strict: If True, the keys of the template and data dictionaries must match exactly.
     :type strict: bool, optional
-    :return: True if the dictionaries are equal, False otherwise.
-    :rtype: bool
+    :return: A tuple containing a list of missing fields and a list of extra fields.
+    :rtype: Tuple[List[str], List[str]]
     """
-    # TODO: Method should return mismatched keys (missing or extra) instead of just True or False.
+    missing_fields = []
+    extra_fields = []
+
     if not isinstance(template, dict) or not isinstance(data, dict):
-        return template == data
+        return missing_fields, extra_fields
 
     if strict:
-        if template.keys() != data.keys():
-            return False
-        for key in template:
-            if not compare_dicts(template[key], data[key], strict):
-                return False
+        template_keys = set(template.keys())
+        data_keys = set(data.keys())
+
+        missing_fields = list(template_keys - data_keys)
+        extra_fields = list(data_keys - template_keys)
+
+        for key in template_keys & data_keys:
+            sub_missing, sub_extra = compare_dicts(template[key], data[key], strict)
+            missing_fields.extend([f"{key}.{m}" for m in sub_missing])
+            extra_fields.extend([f"{key}.{e}" for e in sub_extra])
     else:
         for key in template:
-            if key not in data or not compare_dicts(template[key], data[key], strict):
-                return False
+            if key not in data:
+                missing_fields.append(key)
+            else:
+                sub_missing, sub_extra = compare_dicts(template[key], data[key], strict)
+                missing_fields.extend([f"{key}.{m}" for m in sub_missing])
+                extra_fields.extend([f"{key}.{e}" for e in sub_extra])
 
-    return True
+    return missing_fields, extra_fields

@@ -1828,13 +1828,15 @@ class ImageApi(RemoveableBulkModuleApi):
                 )
 
             for idx, meta in enumerate(metas):
-                result = compare_dicts(validation_schema, meta, strict=use_strict_validation)
-                if not result:
+                missing_fields, extra_fields = compare_dicts(
+                    validation_schema, meta, strict=use_strict_validation
+                )
+
+                if missing_fields or extra_fields:
                     raise ValueError(
                         f"Validation failed for the metadata of the image with index {idx} and name {names[idx]}. "
-                        "Please check the metadata and try again."
-                        # TODO: Improve the method, so it will return exact failed fields.
-                        # Add them to the error message.
+                        "Please check the metadata and try again. "
+                        f"Missing fields: {missing_fields}, Extra fields: {extra_fields}"
                     )
 
         if (

@@ -1169,9 +1169,22 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         return self._edit_validation_schema(id)
 
-    def validate_entities_schema(self, id: int, strict: bool = False) -> List[Union[ImageInfo]]:
+    def validate_entities_schema(
+        self, id: int, strict: bool = False
+    ) -> List[Dict[str, Union[id, str, List[str], List[Any]]]]:
         """Validates entities of the Project by ID using validation schema.
         Returns list of entities that do not match the schema.
+
+        Example of the returned list:
+
+        [
+            {
+                "entity_id": 123456,
+                "entity_name": "image.jpg",
+                "missing_fields": ["location"],
+                "extra_fields": ["city.name"] <- Nested field (field "name" of the field "city")
+            }
+        ]
 
         :param id: Project ID in Supervisely.
         :type id: int
@@ -1179,8 +1192,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             Any extra fields in the entity will be ignored and will not be considered as an error.
             If strict is enabled, checks that the entity custom data is an exact match to the schema.
         :type strict: bool, optional
-        :return: List of entities that do not match the schema.
-        :rtype: :class:`List[Union[ImageInfo]]`
+        :return: List of dictionaries with information about entities that do not match the schema.
+        :rtype: :class:`List[Dict[str, Union[id, str, List[str], List[Any]]]`
 
         :Usage example:
 
@@ -1224,9 +1237,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         for entity in entities:
             custom_data = getattr(entity, custom_data_property)
-            check = compare_dicts(validation_schema, custom_data, strict=strict)
-            if not check:
-                incorrect_entities.append(entity)
+            missing_fields, extra_fields = compare_dicts(
+                validation_schema, custom_data, strict=strict
+            )
+            if missing_fields or extra_fields:
+                entry = {
+                    "entity_id": entity.id,
+                    "entity_name": entity.name,
+                    "missing_fields": missing_fields,
+                    "extra_fields": extra_fields,
+                }
+                incorrect_entities.append(entry)
 
         return incorrect_entities
 
