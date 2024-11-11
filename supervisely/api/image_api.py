@@ -4,6 +4,7 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from time import sleep
 from typing import (
     Any,
+    AsyncGenerator,
     Callable,
     Dict,
     Generator,
@@ -29,6 +31,7 @@ from typing import (
 )
 from uuid import uuid4
 
+import aiofiles
 import numpy as np
 import requests
 from requests.exceptions import HTTPError
@@ -57,6 +60,7 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
+    get_file_hash_async,
     get_file_name,
     get_file_name_with_ext,
     list_files,
@@ -601,9 +605,13 @@ class ImageApi(RemoveableBulkModuleApi):
         infos_dict = {}
         ids_set = set(ids)
         while any(ids_set):
-            dataset_id = self.get_info_by_id(
-                ids_set.pop(), force_metadata_for_links=False
-            ).dataset_id
+            img_id = ids_set.pop()
+            image_info = self.get_info_by_id(img_id, force_metadata_for_links=False)
+            if image_info is None:
+                raise KeyError(
+                    f"Image (id: {img_id}) is either archived, doesn't exist or you don't have enough permissions to access it"
+                )
+            dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
                 temp_results = self.get_list_all_pages(
@@ -1751,12 +1759,13 @@ class ImageApi(RemoveableBulkModuleApi):
             raise ValueError(
                 f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
             )
+        if len(set(names)) != len(names):
+            raise ValueError("Some image names are duplicated, only unique images can be uploaded.")
+
         results = []
 
         def _add_timestamp(name: str) -> str:
-
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
         def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
@@ -1812,6 +1821,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     break
                 except HTTPError as e:
                     error_details = e.response.json().get("details", {})
+                    if isinstance(error_details, list):
+                        error_details = error_details[0]
                     if (
                         conflict_resolution is not None
                         and e.response.status_code == 400
@@ -3450,3 +3461,468 @@ class ImageApi(RemoveableBulkModuleApi):
         data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("images.update.links", data)
         return r.json()
+
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+    ) -> AsyncGenerator:
+        """
+        Download Image with given ID asynchronously.
+        If is_stream is True, returns stream of bytes, otherwise returns response object.
+        For streaming, returns tuple of chunk and hash.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "images.download"
+
+        json_body = {ApiField.ID: id}
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def download_np_async(
+        self,
+        id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        keep_alpha: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> np.ndarray:
+        """
+        Downloads Image with given ID in NumPy format asynchronously.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param keep_alpha: If True keeps alpha mask for image, otherwise don't.
+        :type keep_alpha: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Image in RGB numpy matrix format
+        :rtype: :class:`np.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+            from tqdm.asyncio import tqdm
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            DATASET_ID = 98357
+            semaphore = asyncio.Semaphore(100)
+            images = api.image.get_list(DATASET_ID)
+            tasks = []
+            pbar = tqdm(total=len(images), desc="Downloading images", unit="image")
+            for image in images:
+                task = api.image.download_np_async(image.id, semaphore, progress_cb=pbar)
+                tasks.append(task)
+            results = await asyncio.gather(*tasks)
+        """
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+
+        async with semaphore:
+            async for response in self._download_async(id):
+                img = sly_image.read_bytes(response.content, keep_alpha)
+                if progress_cb is not None:
+                    if progress_cb_type == "number":
+                        progress_cb(1)
+                    elif progress_cb_type == "size":
+                        progress_cb(len(response.content))
+            return img
+
+    async def download_nps_async(
+        self,
+        ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        keep_alpha: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> List[np.ndarray]:
+        """
+        Downloads Images with given IDs in NumPy format asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param keep_alpha: If True keeps alpha mask for images, otherwise don't.
+        :type keep_alpha: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: List of Images in RGB numpy matrix format
+        :rtype: :class:`List[np.ndarray]`
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                DATASET_ID = 98357
+                semaphore = asyncio.Semaphore(100)
+                images = api.image.get_list(DATASET_ID)
+                img_ids = [image.id for image in images]
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                results = loop.run_until_complete(
+                                api.image.download_nps_async(img_ids, semaphore)
+                            )
+
+        """
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        tasks = [
+            self.download_np_async(id, semaphore, keep_alpha, progress_cb, progress_cb_type)
+            for id in ids
+        ]
+        return await asyncio.gather(*tasks)
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Downloads Image with given ID to local path.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Image.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_info = api.image.get_info_by_id(770918)
+            save_path = os.path.join("/path/to/save/", img_info.name)
+
+            semaphore = asyncio.Semaphore(100)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                    api.image.download_path_async(img_info.id, save_path, semaphore)
+                )
+        """
+        if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    range_start=range_start,
+                    range_end=range_end,
+                    headers=headers,
+                ):
+                    await fd.write(chunk)
+                    hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_file_hash = await get_file_hash_async(path)
+                    if hash_to_check != downloaded_file_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        )
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Download Images with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Images.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded images.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            ids = [770918, 770919]
+            paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(api.image.download_paths_async(ids, paths))
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError(
+                f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}'
+            )
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(
+                img_id,
+                img_path,
+                semaphore,
+                headers=headers,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
+    async def download_bytes_single_async(
+        self,
+        id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> bytes:
+        """
+        Downloads Image bytes with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded bytes.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Bytes of downloaded image.
+        :rtype: :class:`bytes`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_id = 770918
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            img_bytes = loop.run_until_complete(api.image.download_bytes_async(img_id))
+
+        """
+        if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        hash_to_check = None
+
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        async with semaphore:
+            content = b""
+            async for chunk, hhash in self._download_async(
+                id,
+                is_stream=True,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+            ):
+                content += chunk
+                hash_to_check = hhash
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(chunk))
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_bytes_hash = get_bytes_hash(content)
+                    if hash_to_check != downloaded_bytes_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            return content
+
+    async def download_bytes_many_async(
+        self,
+        ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> List[bytes]:
+        """
+        Downloads Images bytes with given IDs asynchronously
+        and returns reults in the same order as in the input list.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for every request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded images.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: List of bytes of downloaded images.
+        :rtype: :class:`List[bytes]`
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN
+                api = sly.Api.from_env()
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                semaphore = asyncio.Semaphore(100)
+                img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
+        """
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        tasks = []
+        for id in ids:
+            task = self.download_bytes_single_async(
+                id,
+                semaphore,
+                headers=headers,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        results = await asyncio.gather(*tasks)
+        return results
