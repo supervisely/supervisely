@@ -394,7 +394,8 @@ def _validate(
     )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        if _get_dataset_path(api, dataset_infos, dataset_info.id) in to_download:
+        ds_path = _get_dataset_path(api, dataset_infos, dataset_info.id)
+        if ds_path in to_download:
             continue
         if not _validate_dataset(
             api,
@@ -403,10 +404,10 @@ def _validate(
             project_meta,
             dataset_info,
         ):
-            to_download.add(dataset_info.name)
-            cached.remove(dataset_info.name)
+            to_download.add(ds_path)
+            cached.remove(ds_path)
             logger.info(
-                f"Dataset {dataset_info.name} of project {project_id} is not up to date and will be re-downloaded."
+                f"Dataset {ds_path} of project {project_id} is not up to date and will be re-downloaded."
             )
     return list(to_download), list(cached)
 
@@ -533,7 +534,7 @@ def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: in
     parents = _get_dataset_parents(api, dataset_infos, dataset_id)
     dataset_infos_dict = {info.id: info for info in dataset_infos}
     this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
-    Dataset._get_dataset_path(this_dataset_info.name, parents)
+    return Dataset._get_dataset_path(this_dataset_info.name, parents)
 
 
 def copy_from_cache(
