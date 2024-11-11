@@ -338,7 +338,7 @@ def _validate_dataset(
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
-        if dataset.name == dataset_info.name:
+        if dataset.name.endswith(dataset_info.name): # TODO: fix it later
             diff = set(items_infos_dict.keys()).difference(set(dataset.get_items_names()))
             if diff:
                 logger.debug(
