@@ -1112,11 +1112,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             api.project._edit_validation_schema(project_id) #Remove validation schema.
         """
         custom_data = self.get_custom_data(id)
-        custom_data[_METADATA_SYSTEM_KEY] = custom_data.get(_METADATA_SYSTEM_KEY, {})
+        system_data = custom_data.setdefault(_METADATA_SYSTEM_KEY, {})
+
         if not schema:
-            custom_data[_METADATA_SYSTEM_KEY].pop(_METADATA_VALIDATION_SCHEMA_KEY, None)
+            system_data.pop(_METADATA_VALIDATION_SCHEMA_KEY, None)
         else:
-            custom_data[_METADATA_SYSTEM_KEY][_METADATA_VALIDATION_SCHEMA_KEY] = schema
+            system_data[_METADATA_VALIDATION_SCHEMA_KEY] = schema
         return self.update_custom_data(id, custom_data)
 
     def set_validation_schema(self, id: int, schema: Dict[Any, Any]) -> Dict[Any, Any]:
