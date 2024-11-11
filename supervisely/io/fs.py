@@ -1,7 +1,6 @@
 # coding: utf-8
 
 # docs
-import asyncio
 import errno
 import mimetypes
 import os
@@ -16,7 +15,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 from tqdm import tqdm
 
-from supervisely._utils import get_bytes_hash, get_string_hash
+from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -1375,8 +1374,15 @@ async def copy_file_async(
 
      .. code-block:: python
 
-        from supervisely.io.fs import async_copy_file
-        await async_copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+        import supervisely as sly
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
     """
     ensure_base_path(dst)
     async with aiofiles.open(dst, "wb") as out_f:
@@ -1404,8 +1410,15 @@ async def get_file_hash_async(path: str) -> str:
 
      .. code-block:: python
 
-        from supervisely.io.fs import get_file_hash_async
-        hash = await get_file_hash_async('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
+        import supervisely as sly
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            hash = future.result()
+        else:
+            hash = loop.run_until_complete(coro)
     """
     async with aiofiles.open(path, "rb") as file:
         file_bytes = await file.read()
@@ -1442,7 +1455,13 @@ async def unpack_archive_async(
         archive_path = '/home/admin/work/examples.tar'
         target_dir = '/home/admin/work/projects'
 
-        await sly.fs.unpack_archive(archive_path, target_dir)
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.unpack_archive_async(archive_path, target_dir)
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
     """
     if is_split:
         chunk = chunk_size_mb * 1024 * 1024
@@ -1467,9 +1486,37 @@ async def unpack_archive_async(
                         await output_file.write(data)
         archive_path = combined
 
-    loop = asyncio.get_running_loop()
+    loop = get_or_create_event_loop()
     await loop.run_in_executor(None, shutil.unpack_archive, archive_path, target_dir)
     if is_split:
         silent_remove(archive_path)
     if remove_junk:
         remove_junk_from_dir(target_dir)
+
+
+async def touch_async(path: str) -> None:
+    """
+    Sets access and modification times for a file asynchronously.
+
+    :param path: Target file path.
+    :type path: str
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
+    """
+    ensure_base_path(path)
+    async with aiofiles.open(path, "a"):
+        loop = get_or_create_event_loop()
+        await loop.run_in_executor(None, os.utime, path, None)

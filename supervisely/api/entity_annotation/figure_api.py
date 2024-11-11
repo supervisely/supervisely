@@ -6,10 +6,11 @@ from __future__ import annotations
 import json
 import re
 from collections import defaultdict
-from typing import Dict, Generator, List, NamedTuple, Optional, Tuple
+from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
@@ -540,17 +541,25 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         return self.download_geometries_batch([figure_id])
 
-    def download_geometries_batch(self, ids: List[int]) -> List[dict]:
+    def download_geometries_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[dict]:
         """
         Download figure geometries with given IDs from storage.
 
         :param ids: List of figure IDs in Supervisely.
         :type ids: List[int]
+        :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
         """
         geometries = {}
         for idx, part in self._download_geometries_generator(ids):
+            if progress_cb is not None:
+                progress_cb(len(part.content))
             geometry_json = json.loads(part.content)
             geometries[idx] = geometry_json
 
