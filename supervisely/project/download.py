@@ -394,7 +394,7 @@ def _validate(
     )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        if _get_dataset_path(api, dataset_infos, dataset_info.name) in to_download:
+        if _get_dataset_path(api, dataset_infos, dataset_info.id) in to_download:
             continue
         if not _validate_dataset(
             api,
