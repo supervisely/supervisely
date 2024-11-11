@@ -1085,7 +1085,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         return schema
 
-    def _edit_validation_schema(self, id: int, schema: Dict[Any, Any] = None) -> Dict[Any, Any]:
+    def _edit_validation_schema(
+        self, id: int, schema: Optional[Dict[Any, Any]] = None
+    ) -> Dict[Any, Any]:
         """Edits validation schema of the Project by ID.
         Do not use this method directly, use `set_validation_schema` or `remove_validation_schema` instead.
 
