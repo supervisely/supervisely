@@ -1384,7 +1384,7 @@ class AnnotationApi(ModuleApi):
             api = sly.Api.from_env()
 
             image_id = 121236918
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.annotation.download_async(image_id))
         """
         if semaphore is None:
@@ -1478,7 +1478,7 @@ class AnnotationApi(ModuleApi):
             image_ids = [121236918, 121236919]
             pbar = tqdm(desc="Download annotations", total=len(image_ids))
 
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             ann_infos = loop.run_until_complete(
                                 api.annotation.download_batch_async(dataset_id, image_ids, progress_cb=pbar)
                             )

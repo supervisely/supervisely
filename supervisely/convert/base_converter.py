@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from supervisely._utils import batched, is_production
+from supervisely._utils import batched, get_or_create_event_loop, is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
@@ -14,7 +14,6 @@ from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
     get_file_name_with_ext,
-    get_or_create_event_loop,
     is_archive,
     remove_dir,
     silent_remove,

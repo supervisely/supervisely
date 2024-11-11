@@ -17,7 +17,13 @@ import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
-from supervisely._utils import abs_url, batched, is_development, snake_to_human
+from supervisely._utils import (
+    abs_url,
+    batched,
+    get_or_create_event_loop,
+    is_development,
+    snake_to_human,
+)
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -36,7 +42,6 @@ from supervisely.io.fs import (
     dir_exists,
     ensure_base_path,
     get_file_name_with_ext,
-    get_or_create_event_loop,
     list_dir_recursively,
     list_files,
     list_files_recursively,
@@ -1223,7 +1228,7 @@ class Dataset(KeyObject):
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
             img_bytes = sly.image.write_bytes(img_np, "jpeg")
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
             if loop.is_running():
                 future = asyncio.run_coroutine_threadsafe(coroutine, loop)
@@ -1569,7 +1574,7 @@ class Dataset(KeyObject):
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
             new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
 
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_file_async("IMG_1812.jpeg", new_ann)
             if loop.is_running():
                 future = asyncio.run_coroutine_threadsafe(coroutine, loop)
@@ -1612,7 +1617,7 @@ class Dataset(KeyObject):
                 "customBigData":{}
             }
 
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
             if loop.is_running():
                 future = asyncio.run_coroutine_threadsafe(coroutine, loop)
@@ -1646,7 +1651,7 @@ class Dataset(KeyObject):
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
             if loop.is_running():
                 future = asyncio.run_coroutine_threadsafe(coroutine, loop)
@@ -1753,7 +1758,7 @@ class Dataset(KeyObject):
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             ann = "/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_8888.jpeg.json"
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(
                     ds.add_item_file_async("IMG_8888.jpeg", "/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_8888.jpeg", ann=ann)
                 )
@@ -3462,7 +3467,7 @@ class Project:
                 project_id = 8888
                 save_directory = "/path/to/save/projects"
 
-                loop = sly.fs.get_or_create_event_loop()
+                loop = sly.utils.get_or_create_event_loop()
                 coro = sly.Project.download_async(api, project_id, save_directory)
                 if loop.is_running():
                     future = asyncio.run_coroutine_threadsafe(coroutine, loop)

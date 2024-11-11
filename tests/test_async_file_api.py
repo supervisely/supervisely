@@ -35,7 +35,7 @@ async def download_files():
 
 
 def main_db():
-    loop = sly.fs.get_or_create_event_loop()
+    loop = sly.utils.get_or_create_event_loop()
 
     remote_paths = [path for _, path in files]
     names = [name for name, _ in files]

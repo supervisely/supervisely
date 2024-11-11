@@ -1343,7 +1343,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             save_path = os.path.join("/path/to/save/", volume_info.name)
 
             semaphore = asyncio.Semaphore(100)
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(
                         api.volume.download_path_async(volume_info.id, save_path, semaphore)
                 )
@@ -1432,7 +1432,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             ids = [770914, 770915]
             paths = ["/path/to/save/volume1.nrrd", "/path/to/save/volume2.nrrd"]
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(api.volume.download_paths_async(ids, paths))
         """
         if len(ids) == 0:

@@ -1,7 +1,6 @@
 # coding: utf-8
 
 # docs
-import asyncio
 import errno
 import mimetypes
 import os
@@ -16,7 +15,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 from tqdm import tqdm
 
-from supervisely._utils import get_bytes_hash, get_string_hash
+from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -1352,28 +1351,6 @@ def str_is_url(string: str) -> bool:
         return False
 
 
-def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
-    """
-    Get the current event loop or create a new one if it doesn't exist.
-    Works for different Python versions and contexts.
-
-    :return: Event loop
-    :rtype: asyncio.AbstractEventLoop
-    """
-    try:
-        # Preferred method for asynchronous context (Python 3.7+)
-        return asyncio.get_running_loop()
-    except RuntimeError:
-        # If the loop is not running, get the current one or create a new one (Python 3.8 and 3.9)
-        try:
-            return asyncio.get_event_loop()
-        except RuntimeError:
-            # For Python 3.10+ or if the call occurs outside of an active loop context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop
-
-
 async def copy_file_async(
     src: str,
     dst: str,
@@ -1399,7 +1376,7 @@ async def copy_file_async(
 
         import supervisely as sly
 
-        loop = sly.fs.get_or_create_event_loop()
+        loop = sly.utils.get_or_create_event_loop()
         coro = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
         if loop.is_running():
             future = asyncio.run_coroutine_threadsafe(coro, loop)
@@ -1435,7 +1412,7 @@ async def get_file_hash_async(path: str) -> str:
 
         import supervisely as sly
 
-        loop = sly.fs.get_or_create_event_loop()
+        loop = sly.utils.get_or_create_event_loop()
         coro = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
         if loop.is_running():
             future = asyncio.run_coroutine_threadsafe(coro, loop)
@@ -1478,7 +1455,7 @@ async def unpack_archive_async(
         archive_path = '/home/admin/work/examples.tar'
         target_dir = '/home/admin/work/projects'
 
-        loop = sly.fs.get_or_create_event_loop()
+        loop = sly.utils.get_or_create_event_loop()
         coro = sly.fs.unpack_archive_async(archive_path, target_dir)
         if loop.is_running():
             future = asyncio.run_coroutine_threadsafe(coro, loop)
@@ -1531,7 +1508,7 @@ async def touch_async(path: str) -> None:
 
         import supervisely as sly
 
-        loop = sly.fs.get_or_create_event_loop()
+        loop = sly.utils.get_or_create_event_loop()
         coro = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
         if loop.is_running():
             future = asyncio.run_coroutine_threadsafe(coro, loop)

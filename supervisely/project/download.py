@@ -6,7 +6,7 @@ from typing import Callable, List, Optional, Tuple, Union
 from tqdm import tqdm
 
 from supervisely import get_project_class
-from supervisely._utils import rand_str
+from supervisely._utils import get_or_create_event_loop, rand_str
 from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
@@ -18,7 +18,6 @@ from supervisely.io.fs import (
     copy_file,
     dir_exists,
     get_directory_size,
-    get_or_create_event_loop,
     remove_dir,
 )
 from supervisely.io.json import dump_json_file, load_json_file

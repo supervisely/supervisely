@@ -252,7 +252,7 @@ async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] 
         import supervisely as sly
 
         data = {1: 'example'}
-        loop = sly.fs.get_or_create_event_loop()
+        loop = sly.utils.get_or_create_event_loop()
         coro = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
         if loop.is_running():
             future = asyncio.run_coroutine_threadsafe(coro, loop)

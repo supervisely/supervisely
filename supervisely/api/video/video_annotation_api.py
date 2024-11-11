@@ -277,7 +277,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             api = sly.Api.from_env()
 
             video_id = 198702499
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
         """
         if video_info is None:

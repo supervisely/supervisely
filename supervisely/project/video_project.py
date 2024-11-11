@@ -1219,7 +1219,7 @@ class VideoProject(Project):
             save_directory = "/home/admin/work/supervisely/source/video_project"
             project_id = 8888
 
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
             if loop.is_running():
                 future = asyncio.run_coroutine_threadsafe(coroutine, loop)
@@ -1588,7 +1588,7 @@ async def download_video_project_async(
         dest_dir = 'your/local/dest/dir'
         project_id = 17758
 
-        loop = sly.fs.get_or_create_event_loop()
+        loop = sly.utils.get_or_create_event_loop()
         loop.run_until_complete(
                         sly.download_async(api, project_id, dest_dir)
                     )

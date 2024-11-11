@@ -3604,7 +3604,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 semaphore = asyncio.Semaphore(100)
                 images = api.image.get_list(DATASET_ID)
                 img_ids = [image.id for image in images]
-                loop = sly.fs.get_or_create_event_loop()
+                loop = sly.utils.get_or_create_event_loop()
                 results = loop.run_until_complete(
                                 api.image.download_nps_async(img_ids, semaphore)
                             )
@@ -3670,7 +3670,7 @@ class ImageApi(RemoveableBulkModuleApi):
             save_path = os.path.join("/path/to/save/", img_info.name)
 
             semaphore = asyncio.Semaphore(100)
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(
                     api.image.download_path_async(img_info.id, save_path, semaphore)
                 )
@@ -3754,7 +3754,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             ids = [770918, 770919]
             paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(api.image.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
@@ -3825,7 +3825,7 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             img_id = 770918
-            loop = sly.fs.get_or_create_event_loop()
+            loop = sly.utils.get_or_create_event_loop()
             img_bytes = loop.run_until_complete(api.image.download_bytes_async(img_id))
 
         """
@@ -3902,7 +3902,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 os.environ['API_TOKEN
                 api = sly.Api.from_env()
 
-                loop = sly.fs.get_or_create_event_loop()
+                loop = sly.utils.get_or_create_event_loop()
                 semaphore = asyncio.Semaphore(100)
                 img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
         """
