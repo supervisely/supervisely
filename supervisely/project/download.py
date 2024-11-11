@@ -519,7 +519,7 @@ def download_to_cache(
     return to_download, cached
 
 
-def _get_dataset_parents(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> List[int]:
+def _get_dataset_parents(api, dataset_infos, dataset_id):
     dataset_infos_dict = {info.id: info for info in dataset_infos}
     this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
     if this_dataset_info.parent_id is None:
@@ -527,7 +527,10 @@ def _get_dataset_parents(api: Api, dataset_infos: List[DatasetInfo], dataset_id:
     parent = _get_dataset_parents(
         api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
     )
-    return [*parent, this_dataset_info.name]
+    this_parent_name = dataset_infos_dict.get(
+        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
+    ).name
+    return [*parent, this_parent_name]
 
 
 def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
