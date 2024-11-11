@@ -499,7 +499,7 @@ def download_to_cache(
         raise ValueError("dataset_infos and dataset_ids cannot be specified at the same time")
     if dataset_infos is None:
         if dataset_ids is None:
-            dataset_infos = api.dataset.get_list(project_id)
+            dataset_infos = api.dataset.get_list(project_id, recursive=True)
         else:
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
     path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
