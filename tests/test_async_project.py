@@ -41,20 +41,20 @@ def main_dptc():
     start = time.time()
     download_to_cache(api, PROJECT_ID)
     finish = time.time() - start
-    print(f"Time taken for old method: {finish}")
+    print(f"Time taken for cache method: {finish}")
 
 
 def main_dps(project_id: int):
     start = time.time()
     _download_project(api, project_id, save_path)
     finish = time.time() - start
-    print(f"Time taken for old method: {finish}")
+    print(f"Time taken for sync method: {finish}")
 
 
-def compare_downloads(project_id: int):
+def compare_downloads(project_id: int, semaphore_size: int):
     main_dps(project_id)
     sly.fs.clean_dir(save_path)
-    main_dpa(project_id)
+    main_dpa(project_id, semaphore_size)
     sly.fs.clean_dir(save_path_async)
 
 
@@ -90,8 +90,8 @@ if __name__ == "__main__":
         # ann_db()
         # api = sly.Api(args.server, args.token)
         # api.logger.setLevel(LOG_LEVEL)
-        main_dptc()  # to download and save project as files (async)
-        # main_dps(args.project_id)  # to download and save project as files (sync)
-        # compare_downloads(args.project_id)  # to compare the time taken for downloading and saving project as files (sync vs async)
+        main_dpa(PROJECT_ID, 200)  # to download and save project as files (async)
+        # main_dps(args.id)  # to download and save project as files (sync)
+        # compare_downloads(args.id, args.semaphore)  # to compare the time taken for downloading and saving project as files (sync vs async)
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
