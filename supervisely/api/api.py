@@ -63,7 +63,12 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely._utils import (
+    camel_to_snake,
+    get_or_create_event_loop,
+    is_community,
+    is_development,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
@@ -80,6 +85,7 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+SUPERVISELY_ASYNC_SEMAPHORE = "SUPERVISELY_ASYNC_SEMAPHORE"
 
 
 class ApiContext:
@@ -377,6 +383,8 @@ class Api:
 
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
+        self._http2_supported = None
+        self.semaphore = None
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -999,7 +1007,10 @@ class Api:
     def post_httpx(
         self,
         method: str,
-        data: Union[bytes, Dict],
+        json: Dict = None,
+        content: Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
+        files: Union[Mapping] = None,
+        params: Union[str, bytes] = None,
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
@@ -1009,8 +1020,14 @@ class Api:
 
         :param method: Method name.
         :type method: str
-        :param data: Bytes with data content or dictionary with params.
-        :type data: bytes or dict
+        :param json: Dictionary to send in the body of request.
+        :type json: dict, optional
+        :param content: Bytes with data content or dictionary with params.
+        :type content: bytes or dict, optional
+        :param files: Files to send in the body of request.
+        :type files: dict, optional
+        :param params: URL query parameters.
+        :type params: str, bytes, optional
         :param headers: Custom headers to include in the request.
         :type headers: dict, optional
         :param retries: The number of attempts to connect to the server.
@@ -1032,18 +1049,17 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
-        if isinstance(data, bytes):
-            request_params = {"content": data}
-        elif isinstance(data, Dict):
-            json_body = {**data, **self.additional_fields}
-            request_params = {"json": json_body}
-        else:
-            request_params = {"params": data}
-
         for retry_idx in range(retries):
             response = None
             try:
-                response = self.httpx_client.post(url, headers=headers, **request_params)
+                response = self.httpx_client.post(
+                    url,
+                    content=content,
+                    files=files,
+                    json=json,
+                    params=params,
+                    headers=headers,
+                )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
@@ -1065,9 +1081,8 @@ class Api:
                     )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
-        raise httpx.HTTPStatusError(
-            "Retry limit exceeded ({!r})".format(url),
-            response=response,
+        raise httpx.RequestError(
+            f"Retry limit exceeded ({url})",
             request=getattr(response, "request", None),
         )
 
@@ -1310,7 +1325,7 @@ class Api:
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
-        self._set_async_client()
+        await self._set_async_client()
 
         if retries is None:
             retries = self.retry_count
@@ -1400,7 +1415,7 @@ class Api:
         :return: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
-        self._set_async_client()
+        await self._set_async_client()
 
         if retries is None:
             retries = self.retry_count
@@ -1504,17 +1519,19 @@ class Api:
             request=resp.request if locals().get("resp") else None,
         )
 
-    def _set_async_client(self):
+    async def _set_async_client(self):
         """
         Set async httpx client if it is not set yet.
         Switch on HTTP/2 if the server address uses HTTPS.
         """
         if self.async_httpx_client is None:
             self._check_https_redirect()
+            http2 = False
             if self.server_address.startswith("https://"):
-                self.async_httpx_client = httpx.AsyncClient(http2=True)
-            else:
-                self.async_httpx_client = httpx.AsyncClient()
+                if self._http2_supported is None:
+                    await self._verify_http2_support_status_async()
+                http2 = self._http2_supported
+            self.async_httpx_client = httpx.AsyncClient(http2=http2)
 
     def _set_client(self):
         """
@@ -1523,25 +1540,89 @@ class Api:
         """
         if self.httpx_client is None:
             self._check_https_redirect()
+            http2 = False
             if self.server_address.startswith("https://"):
-                self.httpx_client = httpx.Client(http2=True)
+                if self._http2_supported is None:
+                    self._verify_http2_support_status()
             else:
-                self.httpx_client = httpx.Client()
+                self.httpx_client = httpx.Client(http2=http2)
 
-    def _get_default_semaphore(self):
+    def _initialize_semaphore(self):
         """
-        Get default semaphore for async requests.
+        Initialize the semaphore for async requests.
         Check if the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set.
         If it is set, create a semaphore with the given value.
         Otherwise, create a semaphore with a default value.
         If server supports HTTPS, create a semaphore with a higher value.
         """
-        env_semaphore = os.getenv("SUPERVISELY_ASYNC_SEMAPHORE")
+        env_semaphore = os.getenv(SUPERVISELY_ASYNC_SEMAPHORE)
         if env_semaphore is not None:
-            return asyncio.Semaphore(int(env_semaphore))
+            self.semaphore = asyncio.Semaphore(int(env_semaphore))
         else:
             self._check_https_redirect()
-            if self.server_address.startswith("https://"):
-                return asyncio.Semaphore(25)
+            if self._http2_supported:
+                self.semaphore = asyncio.Semaphore(10)
             else:
-                return asyncio.Semaphore(5)
+                self.semaphore = asyncio.Semaphore(5)
+
+    def set_semaphore_size(self, size: int = None):
+        """
+        Set the semaphore for async requests.
+        If the size is not set, will set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
+        If the environment variable is not set, will set the default value.
+
+        :param size: Size of the semaphore.
+        :type size: int, optional
+        """
+        if size is not None:
+            self.semaphore = asyncio.Semaphore(size)
+        else:
+            self._initialize_semaphore()
+
+    def _get_default_semaphore(self):
+        """
+        Get default semaphore for async requests.
+        """
+        if self.semaphore is None:
+            self._initialize_semaphore()
+        return self.semaphore
+
+    def _verify_http2_support_status(self) -> bool:
+        """
+        Verify if the server address supports HTTP/2.
+        """
+        if self._http2_supported is not None:
+            return
+
+        with httpx.Client(http2=True) as client:
+            self._check_http2_support(client)
+
+    async def _verify_http2_support_status_async(self):
+        """
+        Verify if the server address supports HTTP/2 asynchronously.
+        """
+        if self._http2_supported is not None:
+            return
+
+        async with httpx.AsyncClient(http2=True) as client:
+            loop = get_or_create_event_loop()
+            await loop.run_in_executor(None, self._check_http2_support, client)
+
+    def _check_http2_support(self, client: Union[httpx.AsyncClient, httpx.Client]) -> None:
+        """
+        Check if the server address supports HTTP/2.
+        """
+        url = self.api_server_address if self.api_server_address else self.server_address
+        try:
+            response = client.get(url)
+        except:
+            logger.debug(
+                "Failed to check if the server supports HTTP/2. Switching client to HTTP/1.1"
+            )
+            self._http2_supported = False
+        if response.http_version == "HTTP/2":
+            logger.debug("HTTP/2 is supported by the server")
+            self._http2_supported = True
+        else:
+            logger.debug("HTTP/2 is not supported by the server. Switching client to HTTP/1.1")
+            self._http2_supported = False
