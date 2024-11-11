@@ -261,29 +261,29 @@ def download_async_or_sync(
         )
 
 
-def _get_cache_dir(project_id: int, dataset_name: str = None) -> str:
+def _get_cache_dir(project_id: int, dataset_path: str = None) -> str:
     p = os.path.join(apps_cache_dir(), str(project_id))
-    if dataset_name is not None:
-        p = os.path.join(p, dataset_name)
+    if dataset_path is not None:
+        p = os.path.join(p, dataset_path)
     return p
 
 
-def is_cached(project_id, dataset_name: str = None) -> bool:
-    return dir_exists(_get_cache_dir(project_id, dataset_name))
+def is_cached(project_id, dataset_path: str = None) -> bool:
+    return dir_exists(_get_cache_dir(project_id, dataset_path))
 
 
-def _split_by_cache(project_id: int, dataset_names: List[str]) -> Tuple[List, List]:
+def _split_by_cache(project_id: int, dataset_paths: List[str]) -> Tuple[List, List]:
     if not is_cached(project_id):
-        return dataset_names, []
-    to_download = [ds_name for ds_name in dataset_names if not is_cached(project_id, ds_name)]
-    cached = [ds_name for ds_name in dataset_names if is_cached(project_id, ds_name)]
+        return dataset_paths, []
+    to_download = [ds_path for ds_path in dataset_paths if not is_cached(project_id, ds_path)]
+    cached = [ds_path for ds_path in dataset_paths if is_cached(project_id, ds_path)]
     return to_download, cached
 
 
-def get_cache_size(project_id: int, dataset_name: str = None) -> int:
-    if not is_cached(project_id, dataset_name):
+def get_cache_size(project_id: int, dataset_path: str = None) -> int:
+    if not is_cached(project_id, dataset_path):
         return 0
-    cache_dir = _get_cache_dir(project_id, dataset_name)
+    cache_dir = _get_cache_dir(project_id, dataset_path)
     return get_directory_size(cache_dir)
 
 
@@ -389,10 +389,12 @@ def _validate(
     api: Api, project_info: ProjectInfo, project_meta: ProjectMeta, dataset_infos: List[DatasetInfo]
 ):
     project_id = project_info.id
-    to_download, cached = _split_by_cache(project_id, [info.name for info in dataset_infos])
+    to_download, cached = _split_by_cache(
+        project_id, [_get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
+    )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        if dataset_info.name in to_download:
+        if _get_dataset_path(api, dataset_infos, dataset_info.name) in to_download:
             continue
         if not _validate_dataset(
             api,
@@ -499,15 +501,15 @@ def download_to_cache(
             dataset_infos = api.dataset.get_list(project_id)
         else:
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
-    name_to_info = {info.name: info for info in dataset_infos}
+    path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
     to_download, cached = _validate(api, project_info, project_meta, dataset_infos)
     if progress_cb is not None:
-        cached_items_n = sum(name_to_info[ds_name].items_count for ds_name in cached)
+        cached_items_n = sum(path_to_info[ds_path].items_count for ds_path in cached)
         progress_cb(cached_items_n)
     _download_project_to_cache(
         api=api,
         project_info=project_info,
-        dataset_infos=[name_to_info[name] for name in to_download],
+        dataset_infos=[path_to_info[ds_path] for ds_path in to_download],
         log_progress=log_progress,
         progress_cb=progress_cb,
         semaphore=semaphore,
@@ -516,8 +518,30 @@ def download_to_cache(
     return to_download, cached
 
 
+def _get_dataset_parents(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> List[int]:
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    if this_dataset_info.parent_id is None:
+        return []
+    parent = _get_dataset_parents(
+        api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
+    )
+    return [*parent, this_dataset_info.name]
+
+
+def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
+    parents = _get_dataset_parents(api, dataset_infos, dataset_id)
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    Dataset._get_dataset_path(this_dataset_info.name, parents)
+
+
 def copy_from_cache(
-    project_id: int, dest_dir: str, dataset_names: List[str] = None, progress_cb: Callable = None
+    project_id: int,
+    dest_dir: str,
+    dataset_names: List[str] = None,
+    progress_cb: Callable = None,
+    dataset_paths: List[str] = None,
 ):
     """
     Copy project or dataset from cache to the specified directory.
@@ -527,31 +551,35 @@ def copy_from_cache(
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
-    :param dataset_name: Name of the dataset to copy. If not specified, the whole project will be copied.
+    :param dataset_name: List of dataset paths to copy. If not specified, the whole project will be copied.
     :type dataset_name: str, optional
     :param progress_cb: Function for tracking copying progress. Will be called with number of bytes copied.
     :type progress_cb: tqdm or callable, optional
+    :param dataset_paths: List of dataset paths to copy. If not specified, all datasets will be copied.
+    :type dataset_paths: list(str), optional
 
     :return: None.
     :rtype: NoneType
     """
     if not is_cached(project_id):
         raise RuntimeError(f"Project {project_id} is not cached")
-    if dataset_names is not None:
-        for dataset_name in dataset_names:
-            if not is_cached(project_id, dataset_name):
-                raise RuntimeError(f"Dataset {dataset_name} of project {project_id} is not cached")
+    if dataset_names is not None or dataset_paths is not None:
+        if dataset_names is not None:
+            dataset_paths = dataset_names
+        for dataset_path in dataset_paths:
+            if not is_cached(project_id, dataset_path):
+                raise RuntimeError(f"Dataset {dataset_path} of project {project_id} is not cached")
     cache_dir = _get_cache_dir(project_id)
-    if dataset_names is None:
+    if dataset_paths is None:
         copy_dir_recursively(cache_dir, dest_dir, progress_cb)
     else:
         # copy meta
         copy_file(os.path.join(cache_dir, "meta.json"), os.path.join(dest_dir, "meta.json"))
         # copy datasets
-        for dataset_name in dataset_names:
+        for dataset_path in dataset_paths:
             copy_dir_recursively(
-                os.path.join(cache_dir, dataset_name),
-                os.path.join(dest_dir, dataset_name),
+                os.path.join(cache_dir, dataset_path),
+                os.path.join(dest_dir, dataset_path),
                 progress_cb,
             )
 
