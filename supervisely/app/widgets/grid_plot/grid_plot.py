@@ -10,7 +10,7 @@ from supervisely.sly_logger import logger
 class GridPlot(Widget):
     def __init__(
         self,
-        data: List[Union[Dict , str]] = [],
+        data: List[Union[Dict, str]] = [],
         columns: int = 1,
         gap: int = 10,
         widget_id: str = None,
@@ -19,7 +19,7 @@ class GridPlot(Widget):
         self._columns = columns
         self._gap = gap
 
-        if len(data) > 0: # TODO: add the self.add_data([data:dict]) method            
+        if len(data) > 0:  # TODO: add the self.add_data([data:dict]) method
             for plot_data in data:
                 if isinstance(plot_data, dict):
                     # self._widgets[plot_data['title']] = LinePlot(title=plot_data['title'], series=plot_data.get('series', []), show_legend=plot_data.get('show_legend', True))
@@ -88,7 +88,7 @@ class GridPlot(Widget):
         :param x: x value
         :type x: float | int
         """
-        plot_title, series_name = identifier.split("/")
+        plot_title, series_name = identifier.split("/", 1)
         _, series = self._widgets[plot_title].get_series_by_name(series_name)
 
         if series is not None:
