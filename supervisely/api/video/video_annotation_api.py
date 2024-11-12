@@ -284,7 +284,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             video_info = self._api.video.get_info_by_id(video_id)
 
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
 
         async with semaphore:
             response = await self._api.post_async(

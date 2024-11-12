@@ -8,8 +8,8 @@ from tqdm.asyncio import tqdm
 
 import supervisely as sly
 
-LOG_LEVEL = "INFO"
-# LOG_LEVEL = "DEBUG"
+# LOG_LEVEL = "INFO"
+LOG_LEVEL = "DEBUG"
 DATASET_ID = 98357
 user_path = os.path.expanduser("~")
 save_path = f"{user_path}/Work/test_images_download/"
@@ -113,8 +113,8 @@ if __name__ == "__main__":
     try:
         # main_dnp()  # to download and save images as numpy arrays
         # main_dp()  # to download and save images as files
-        # main_dps()  # to download and save images as files (batch)
-        compare_main_dps()  # to compare the time taken for downloading images as files (batch)
+        main_dps()  # to download and save images as files (batch)
+        # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
         # main_bytes()  # to download and save image as bytes
         # main_n_bytes()  # to download and save images as bytes (batch)
     except KeyboardInterrupt:

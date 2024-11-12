@@ -377,6 +377,7 @@ class Api:
 
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
+        self._semaphore = None
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -999,7 +1000,10 @@ class Api:
     def post_httpx(
         self,
         method: str,
-        data: Union[bytes, Dict],
+        json: Dict = None,
+        content: Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
+        files: Union[Mapping] = None,
+        params: Union[str, bytes] = None,
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
@@ -1009,8 +1013,14 @@ class Api:
 
         :param method: Method name.
         :type method: str
-        :param data: Bytes with data content or dictionary with params.
-        :type data: bytes or dict
+        :param json: Dictionary to send in the body of request.
+        :type json: dict, optional
+        :param content: Bytes with data content or dictionary with params.
+        :type content: bytes or dict, optional
+        :param files: Files to send in the body of request.
+        :type files: dict, optional
+        :param params: URL query parameters.
+        :type params: str, bytes, optional
         :param headers: Custom headers to include in the request.
         :type headers: dict, optional
         :param retries: The number of attempts to connect to the server.
@@ -1021,6 +1031,7 @@ class Api:
         :rtype: :class:`httpx.Response`
         """
         self._set_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1032,18 +1043,17 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
-        if isinstance(data, bytes):
-            request_params = {"content": data}
-        elif isinstance(data, Dict):
-            json_body = {**data, **self.additional_fields}
-            request_params = {"json": json_body}
-        else:
-            request_params = {"params": data}
-
         for retry_idx in range(retries):
             response = None
             try:
-                response = self.httpx_client.post(url, headers=headers, **request_params)
+                response = self.httpx_client.post(
+                    url,
+                    content=content,
+                    files=files,
+                    json=json,
+                    params=params,
+                    headers=headers,
+                )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
@@ -1065,9 +1075,8 @@ class Api:
                     )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
-        raise httpx.HTTPStatusError(
-            "Retry limit exceeded ({!r})".format(url),
-            response=response,
+        raise httpx.RequestError(
+            f"Retry limit exceeded ({url})",
             request=getattr(response, "request", None),
         )
 
@@ -1093,6 +1102,7 @@ class Api:
         :rtype: :class:`Response<Response>`
         """
         self._set_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1171,8 +1181,8 @@ class Api:
         :return: Generator object.
         :rtype: :class:`Generator`
         """
-
         self._set_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1408,13 +1418,12 @@ class Api:
         url = self.api_server_address + "/v3/" + method
         if not use_public_api:
             url = os.path.join(self.server_address, method)
+        logger.trace(f"{method_type} {url}")
 
         if headers is None:
             headers = self.headers.copy()
         else:
             headers = {**self.headers, **headers}
-
-        logger.trace(f"{method_type} {url}")
 
         if isinstance(data, (bytes, Generator)):
             content = data
@@ -1506,42 +1515,80 @@ class Api:
 
     def _set_async_client(self):
         """
-        Set async httpx client if it is not set yet.
-        Switch on HTTP/2 if the server address uses HTTPS.
+        Set async httpx client with HTTP/2 if it is not set yet.
         """
         if self.async_httpx_client is None:
-            self._check_https_redirect()
-            if self.server_address.startswith("https://"):
-                self.async_httpx_client = httpx.AsyncClient(http2=True)
-            else:
-                self.async_httpx_client = httpx.AsyncClient()
+            self.async_httpx_client = httpx.AsyncClient(http2=True)
 
     def _set_client(self):
         """
-        Set httpx client if it is not set yet.
-        Switch on HTTP/2 if the server address uses HTTPS.
+        Set sync httpx client with HTTP/2 if it is not set yet.
         """
         if self.httpx_client is None:
-            self._check_https_redirect()
-            if self.server_address.startswith("https://"):
-                self.httpx_client = httpx.Client(http2=True)
-            else:
-                self.httpx_client = httpx.Client()
+            self.httpx_client = httpx.Client(http2=True)
 
-    def _get_default_semaphore(self):
+    def get_default_semaphore(self) -> asyncio.Semaphore:
         """
-        Get default semaphore for async requests.
-        Check if the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set.
-        If it is set, create a semaphore with the given value.
-        Otherwise, create a semaphore with a default value.
-        If server supports HTTPS, create a semaphore with a higher value.
+        Get default global API semaphore for async requests.
+        If the semaphore is not set, it will be initialized.
+
+        During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
+        If the environment variable is not set, the default value will be set based on the server address.
+        Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
+
+        :return: Semaphore object.
+        :rtype: :class:`asyncio.Semaphore`
         """
-        env_semaphore = os.getenv("SUPERVISELY_ASYNC_SEMAPHORE")
-        if env_semaphore is not None:
-            return asyncio.Semaphore(int(env_semaphore))
+        if self._semaphore is None:
+            self._initialize_semaphore()
+        return self._semaphore
+
+    def _initialize_semaphore(self):
+        """
+        Initialize the semaphore for async requests.
+
+        If the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set, create a semaphore with the given value.
+
+        Otherwise, create a semaphore with a default value:
+
+            - If server supports HTTPS, create a semaphore with value 10.
+            - If server supports HTTP, create a semaphore with value 5.
+        """
+        semaphore_size = sly_env.semaphore_size()
+        if semaphore_size is not None:
+            self._semaphore = asyncio.Semaphore(semaphore_size)
+            logger.debug(
+                f"Setting global API semaphore size to {semaphore_size} from environment variable"
+            )
         else:
             self._check_https_redirect()
             if self.server_address.startswith("https://"):
-                return asyncio.Semaphore(25)
+                self._semaphore = asyncio.Semaphore(10)
+                logger.debug("Setting global API semaphore size to 10 for HTTPS")
             else:
-                return asyncio.Semaphore(5)
+                self._semaphore = asyncio.Semaphore(5)
+                logger.debug("Setting global API semaphore size to 5 for HTTP")
+
+    def set_semaphore_size(self, size: int = None):
+        """
+        Set the global API semaphore with the given size. Will replace the existing semaphore.
+        If the size is not set, will set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
+        If the environment variable is not set, will set the default value.
+
+        :param size: Size of the semaphore.
+        :type size: int, optional
+        """
+        if size is not None:
+            self._semaphore = asyncio.Semaphore(size)
+        else:
+            self._initialize_semaphore()
+
+    @property
+    def semaphore(self) -> asyncio.Semaphore:
+        """
+        Get the global API semaphore for async requests.
+
+        :return: Semaphore object.
+        :rtype: :class:`asyncio.Semaphore`
+        """
+        return self._semaphore

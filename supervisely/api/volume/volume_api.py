@@ -1360,7 +1360,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         ensure_base_path(path)
         hash_to_check = None
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(path, writing_method) as fd:
                 async for chunk, hhash in self._download_async(
@@ -1440,7 +1440,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         if len(ids) != len(paths):
             raise ValueError(f'Can not match "ids" and "paths" lists, {len(ids)} != {len(paths)}')
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(
