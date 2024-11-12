@@ -1646,7 +1646,7 @@ class FileApi(ModuleApiBase):
             loop.run_until_complete(api.file.download_async(8, path_to_file, local_save_path))
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         async with semaphore:
             if self.is_on_agent(remote_path):
                 # for optimized download from agent
@@ -1774,7 +1774,7 @@ class FileApi(ModuleApiBase):
             )
 
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
 
         tasks = []
         for remote_path, local_path, cache in zip(
@@ -1836,7 +1836,7 @@ class FileApi(ModuleApiBase):
         """
 
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
 
         if not remote_path.endswith("/"):
             remote_path += "/"
@@ -1925,7 +1925,7 @@ class FileApi(ModuleApiBase):
         """
 
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
 
         remote_file_path = env.file(raise_not_found=False)
         remote_folder_path = env.folder(raise_not_found=False)
@@ -2061,7 +2061,7 @@ class FileApi(ModuleApiBase):
             # "sha256": sha256, #TODO add with resumaple api
         }
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
                 item = await fd.read()
@@ -2129,7 +2129,7 @@ class FileApi(ModuleApiBase):
                 )
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         tasks = []
         for s, d in zip(src_paths, dst_paths):
             task = self.upload_async(

@@ -3553,7 +3553,7 @@ class ImageApi(RemoveableBulkModuleApi):
             results = await asyncio.gather(*tasks)
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
 
         async with semaphore:
             async for response in self._download_async(id):
@@ -3611,7 +3611,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         tasks = [
             self.download_np_async(id, semaphore, keep_alpha, progress_cb, progress_cb_type)
             for id in ids
@@ -3686,7 +3686,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ensure_base_path(path)
         hash_to_check = None
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(path, writing_method) as fd:
                 async for chunk, hhash in self._download_async(
@@ -3764,7 +3764,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}'
             )
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(
@@ -3838,7 +3838,7 @@ class ImageApi(RemoveableBulkModuleApi):
         hash_to_check = None
 
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         async with semaphore:
             content = b""
             async for chunk, hhash in self._download_async(
@@ -3907,7 +3907,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = await self._api._get_default_semaphore()
         tasks = []
         for id in ids:
             task = self.download_bytes_single_async(

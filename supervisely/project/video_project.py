@@ -1594,7 +1594,7 @@ async def download_video_project_async(
                     )
     """
     if semaphore is None:
-        semaphore = api._get_default_semaphore()
+        semaphore = await api._get_default_semaphore()
 
     key_id_map = KeyIdMap()
 
