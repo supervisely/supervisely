@@ -5,28 +5,27 @@ from typing import Dict, Literal
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
+    ContainerWidget,
     MarkdownWidget,
+    RadioGroupWidget,
 )
 
 
-class PerClassOutcomeCounts(BaseVisMetric):
+class PerClassOutcomeCounts(DetectionVisMetric):
     MARKDOWN = "per_class_outcome_counts"
     MARKDOWN_2 = "per_class_outcome_counts_2"
     CHART = "per_class_outcome_counts"
     COLLAPSE_TIP = "per_class_outcome_counts_collapse"
+    RADIO_GROUP = "per_class_outcome_counts_radio_group"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.clickable = True
-        self._keypair_sep: str = " - "
+        self._keypair_sep: str = "-"
         self.switchable = True
 
     @property
@@ -55,12 +54,41 @@ class PerClassOutcomeCounts(BaseVisMetric):
         return CollapseWidget([md])
 
     @property
-    def chart_normalized(self) -> ChartWidget:
-        return ChartWidget(self.CHART, self._get_figure("normalized"))
+    def chart(self) -> ContainerWidget:
+        return ContainerWidget(
+            [self.radio_group(), self._get_chart("normalized"), self._get_chart("absolute")],
+            self.CHART,
+        )
 
-    @property
-    def chart_absolute(self) -> ChartWidget:
-        return ChartWidget(self.CHART, self._get_figure("absolute"))
+    def radio_group(self) -> RadioGroupWidget:
+        return RadioGroupWidget(
+            "Normalization",
+            self.RADIO_GROUP,
+            ["normalized", "absolute"],
+        )
+
+    # @property
+    # def chart_normalized(self) -> ChartWidget:
+    #     return self._get_chart("normalized")
+
+    # @property
+    # def chart_absolute(self) -> ChartWidget:
+    #     return self._get_chart("absolute")
+
+    def _get_chart(self, switch_key: Literal["normalized", "absolute"]) -> ChartWidget:
+        chart = ChartWidget(
+            self.CHART,
+            self._get_figure(switch_key),
+            switch_key=switch_key,
+            switchable=self.switchable,
+            radiogroup_id=self.RADIO_GROUP,
+        )
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].label}${'-'}${payload.points[0].data.name}`, 'keySeparator': '-',",
+        )
+        return chart
 
     def _get_figure(self, switch_key: Literal["normalized", "absolute"]):  # -> go.Figure:
         import plotly.express as px  # pylint: disable=import-error

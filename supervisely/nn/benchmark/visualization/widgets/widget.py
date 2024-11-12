@@ -11,6 +11,7 @@ class BaseWidget:
         self.title = title
         self.data_source = f"/data/{self.name}_{self.id}.json"
         self.click_data_source = f"/data/{self.name}_{self.id}_click_data.json"
+        self.switchable = False
 
     def save_data(self, basepath: str) -> None:
         raise NotImplementedError
