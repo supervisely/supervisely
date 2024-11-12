@@ -1431,7 +1431,7 @@ class VideoApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         infos=None,
         item_progress=None,
-        fix_frames=False,
+        fix_frames: Optional[bool]=False,
     ) -> List[VideoInfo]:
         """
         Uploads Videos with given names from given local paths to Dataset.
@@ -1626,6 +1626,7 @@ class VideoApi(RemoveableBulkModuleApi):
         path: str,
         meta: Dict = None,
         item_progress: Optional[Progress] = None,
+        fix_frames: Optional[bool] = False,
     ) -> VideoInfo:
         """
         Uploads Video with given name from given local path to Dataset.
@@ -1677,6 +1678,7 @@ class VideoApi(RemoveableBulkModuleApi):
             metas=[meta],
             infos=None,
             item_progress=progress_cb,
+            fix_frames=fix_frames,
         )
         if type(item_progress) is bool:
             p.set_current_value(value=p.total, report=True)
@@ -2322,6 +2324,7 @@ class VideoApi(RemoveableBulkModuleApi):
         recursive: Optional[bool] = True,
         change_name_if_conflict: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        fix_frames: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Uploads all videos with supported extensions from given directory to Supervisely.
@@ -2351,7 +2354,9 @@ class VideoApi(RemoveableBulkModuleApi):
         if change_name_if_conflict is False:
             self.raise_name_intersections_if_exist(dataset_id, names)
 
-        video_infos = self.upload_paths(dataset_id, names, paths, progress_cb=progress_cb)
+        video_infos = self.upload_paths(
+            dataset_id, names, paths, progress_cb=progress_cb, fix_frames=fix_frames
+        )
         return video_infos
 
     def upload_dirs(
