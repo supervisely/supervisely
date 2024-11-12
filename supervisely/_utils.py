@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import asyncio
 import base64
 import copy
 import hashlib
@@ -436,3 +437,25 @@ def compare_dicts(
                 extra_fields.extend([f"{key}.{e}" for e in sub_extra])
 
     return missing_fields, extra_fields
+
+
+def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
+    """
+    Get the current event loop or create a new one if it doesn't exist.
+    Works for different Python versions and contexts.
+
+    :return: Event loop
+    :rtype: asyncio.AbstractEventLoop
+    """
+    try:
+        # Preferred method for asynchronous context (Python 3.7+)
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        # If the loop is not running, get the current one or create a new one (Python 3.8 and 3.9)
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            # For Python 3.10+ or if the call occurs outside of an active loop context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop

@@ -1149,8 +1149,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             save_path = os.path.join("/path/to/save/", pcd_info.name)
 
             semaphore = asyncio.Semaphore(100)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(
                         api.pointcloud.download_path_async(pcd_info.id, save_path, semaphore)
                     )
@@ -1241,8 +1240,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
             ids = [19373403, 19373404]
             paths = ["/path/to/save/000063.pcd", "/path/to/save/000064.pcd"]
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(api.pointcloud.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
@@ -1313,8 +1311,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             save_path = os.path.join("/path/to/save/", img_info.name)
 
             semaphore = asyncio.Semaphore(100)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(
                     api.pointcloud.download_related_image_async(19373403, save_path, semaphore)
                 )
@@ -1395,8 +1392,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 save_paths = [os.path.join("/path/to/save/", img_info.name) for img_info in img_infos]
 
                 semaphore = asyncio.Semaphore(100)
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                loop = sly.utils.get_or_create_event_loop()
                 loop.run_until_complete(
                         api.pointcloud.download_related_images_async(ids, save_paths, semaphore)
                     )
