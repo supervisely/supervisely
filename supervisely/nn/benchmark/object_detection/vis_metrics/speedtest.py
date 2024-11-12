@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
@@ -11,19 +8,19 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class Speedtest(BaseVisMetric):
+class Speedtest(DetectionVisMetric):
     MARKDOWN_INTRO = "speedtest_intro"
     TABLE_MARKDOWN = "speedtest_table"
     TABLE = "speedtest"
     CHART_MARKDOWN = "speedtest_chart"
     CHART = "speedtest"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
-
     def is_empty(self) -> bool:
         return not self.eval_result.speedtest_info
+    
+    @property
+    def num_batche_sizes(self) -> int:
+        return len(self.eval_result.speedtest_info["speedtest"])
 
     @property
     def intro_md(self) -> MarkdownWidget:
@@ -52,7 +49,7 @@ class Speedtest(BaseVisMetric):
 
             ms = round(test["benchmark"]["total"], 2)
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
-            row = [batch_size, ms, fps]
+            row = [f"Batch size {batch_size}", ms, fps]
             temp_res[batch_size] = row
             max_fps = max(max_fps, fps)
 
@@ -62,7 +59,7 @@ class Speedtest(BaseVisMetric):
             content.append({"row": row, "id": row[0], "items": row})
 
         columns_options = [
-            {"customCell": True, "disableSort": True},
+            {"disableSort": True},  # , "ustomCell": True},
             {"subtitle": "ms", "tooltip": "Milliseconds for batch images", "postfix": "ms"},
             {
                 "subtitle": "imgs/sec",
@@ -97,7 +94,7 @@ class Speedtest(BaseVisMetric):
         fps_color = "#17becf"
 
         temp_res = {}
-        for test in self.eval_result.speedtest["speedtest"]:
+        for test in self.eval_result.speedtest_info["speedtest"]:
             batch_size = test["batch_size"]
 
             std = test["benchmark_std"]["total"]
