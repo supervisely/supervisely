@@ -91,9 +91,9 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             self._init_match_data()
 
     def _create_widgets(self):
-        # # Modal Gellery
-        # self.diff_modal_table = self._create_diff_modal_table()
-        # self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
+        # Modal Gellery
+        self.diff_modal = self._create_diff_modal_table()
+        self.explore_modal = self._create_explore_modal_table(click_gallery_id=self.diff_modal.id)
 
         # Notifcation
         self.clickable_label = self._create_clickable_label()
@@ -111,36 +111,40 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.overview_chart = key_metrics.chart
 
         # Explore Predictions
-        explore_predictions = ExplorePredictions(self.vis_texts, self.eval_result)
+        explore_predictions = ExplorePredictions(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.explore_predictions_md = explore_predictions.md
         self.explore_predictions_gallery = explore_predictions.gallery
 
         # Model Predictions
-        model_predictions = ModelPredictions(self.vis_texts, self.eval_result)
+        model_predictions = ModelPredictions(self.vis_texts, self.eval_result, self.explore_modal)
         self.model_predictions_md = model_predictions.md
         self.model_predictions_table = model_predictions.table
 
         # Outcome Counts
-        outcome_counts = OutcomeCounts(self.vis_texts, self.eval_result)
+        outcome_counts = OutcomeCounts(self.vis_texts, self.eval_result, self.explore_modal)
         self.outcome_counts_md = outcome_counts.md
         self.outcome_counts_chart = outcome_counts.chart
 
         # Recall
-        recall = Recall(self.vis_texts, self.eval_result)
+        recall = Recall(self.vis_texts, self.eval_result, self.explore_modal)
         self.recall_md = recall.md
         self.recall_notificaiton = recall.notification
         self.recall_per_class_md = recall.per_class_md
         self.recall_chart = recall.chart
 
         # Precision
-        precision = Precision(self.vis_texts, self.eval_result)
+        precision = Precision(self.vis_texts, self.eval_result, self.explore_modal)
         self.precision_md = precision.md
         self.precision_notification = precision.notification
         self.precision_per_class_md = precision.per_class_md
         self.precision_chart = precision.chart
 
         # RecallVsPrecision
-        recall_vs_precision = RecallVsPrecision(self.vis_texts, self.eval_result)
+        recall_vs_precision = RecallVsPrecision(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.recall_vs_precision_md = recall_vs_precision.md
         self.recall_vs_precision_chart = recall_vs_precision.chart
 
@@ -152,17 +156,19 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.pr_curve_collapse = pr_curve.collapse
 
         # PRCurveByClass
-        pr_curve_by_class = PRCurveByClass(self.vis_texts, self.eval_result)
+        pr_curve_by_class = PRCurveByClass(self.vis_texts, self.eval_result, self.explore_modal)
         self.pr_curve_by_class_md = pr_curve_by_class.md
         self.pr_curve_by_class_chart = pr_curve_by_class.chart
 
         # ConfusionMatrix
-        confusion_matrix = ConfusionMatrix(self.vis_texts, self.eval_result)
+        confusion_matrix = ConfusionMatrix(self.vis_texts, self.eval_result, self.explore_modal)
         self.confusion_matrix_md = confusion_matrix.md
         self.confusion_matrix_chart = confusion_matrix.chart
 
         # FrequentlyConfused
-        frequently_confused = FrequentlyConfused(self.vis_texts, self.eval_result)
+        frequently_confused = FrequentlyConfused(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.frequently_confused_present = frequently_confused.is_empty is False
         if self.frequently_confused_present:
             self.frequently_confused_md = frequently_confused.md
@@ -210,28 +216,33 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.confidence_distribution_chart = confidence_distribution.chart
 
         # PerClassAvgPrecision
-        per_class_avg_precision = PerClassAvgPrecision(self.vis_texts, self.eval_result)
+        per_class_avg_precision = PerClassAvgPrecision(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.per_class_avg_precision_md = per_class_avg_precision.md
         self.per_class_avg_precision_chart = per_class_avg_precision.chart
 
         # PerClassOutcomeCounts
-        per_class_outcome_counts = PerClassOutcomeCounts(self.vis_texts, self.eval_result)
+        per_class_outcome_counts = PerClassOutcomeCounts(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.per_class_outcome_counts_md = per_class_outcome_counts.md
         self.per_class_outcome_counts_md_2 = per_class_outcome_counts.md_2
         self.per_class_outcome_counts_collapse = per_class_outcome_counts.collapse
-        self.per_class_outcome_counts_chart_normalized = per_class_outcome_counts.chart_normalized
-        self.per_class_outcome_counts_chart_absolute = per_class_outcome_counts.chart_absolute
+        self.per_class_outcome_counts_chart = per_class_outcome_counts.chart
 
         # Speedtest init here for overview
         speedtest = Speedtest(self.vis_texts, self.eval_result)
         self.speedtest_present = False
+        self.speedtest_batch_sizes_cnt = speedtest.num_batche_sizes
         if not speedtest.is_empty():
             self.speedtest_present = True
             self.speedtest_md_intro = speedtest.intro_md
             self.speedtest_table_md = speedtest.table_md
             self.speedtest_table = speedtest.table
-            self.speedtest_chart_md = speedtest.chart_md
-            self.speedtest_chart = speedtest.chart
+            if self.speedtest_batch_sizes_cnt > 1:
+                self.speedtest_chart_md = speedtest.chart_md
+                self.speedtest_chart = speedtest.chart
 
         self._widgets = True
 
@@ -252,7 +263,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             (0, self.clickable_label),
             (0, self.explore_predictions_gallery),
             # ModelPredictions
-            (0, self.model_predictions_md),
+            (1, self.model_predictions_md),
             (0, self.clickable_label),
             (0, self.model_predictions_table),
             # OutcomeCounts
@@ -292,13 +303,9 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             (1, self.frequently_confused_md),
         ]
         if self.frequently_confused_present:
-            is_anchors_widgets.extend(
-                [
-                    (0, self.clickable_label),
-                    (0, self.frequently_confused_chart_1),
-                    (0, self.frequently_confused_chart_2),
-                ]
-            )
+            is_anchors_widgets.append((0, self.clickable_label))
+            is_anchors_widgets.append((0, self.frequently_confused_chart_1))
+            is_anchors_widgets.append((0, self.frequently_confused_chart_2))
 
         is_anchors_widgets.extend(
             [
@@ -336,22 +343,18 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                 (0, self.per_class_outcome_counts_md_2),
                 (0, self.per_class_outcome_counts_collapse),
                 (0, self.clickable_label),
-                (0, self.per_class_outcome_counts_chart_normalized),
-                (0, self.per_class_outcome_counts_chart_absolute),
+                (0, self.per_class_outcome_counts_chart),
             ]
         )
 
         if self.speedtest_present:
-            is_anchors_widgets.extend(
-                [
-                    # SpeedTest
-                    (1, self.speedtest_md_intro),
-                    (0, self.speedtest_table_md),
-                    (0, self.speedtest_table),
-                    (0, self.speedtest_chart_md),
-                    (0, self.speedtest_chart),
-                ]
-            )
+            # SpeedTest
+            is_anchors_widgets.append((1, self.speedtest_md_intro))
+            is_anchors_widgets.append((0, self.speedtest_table_md))
+            is_anchors_widgets.append((0, self.speedtest_table))
+            if self.speedtest_batch_sizes_cnt > 1:
+                is_anchors_widgets.append((0, self.speedtest_chart_md))
+                is_anchors_widgets.append((0, self.speedtest_chart))
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:
@@ -359,9 +362,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
         layout = ContainerWidget(
-            widgets=[
-                sidebar
-            ],  # , self.explore_modal_table, self.explore_predictions_modal_gallery],
+            widgets=[sidebar, self.explore_modal, self.diff_modal],
             name="main_container",
         )
         return layout

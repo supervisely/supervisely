@@ -5,21 +5,18 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
-class ConfusionMatrix(BaseVisMetric):
+class ConfusionMatrix(DetectionVisMetric):
     MARKDOWN = "confusion_matrix"
     CHART = "confusion_matrix"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.clickable = True
+        self._keypair_sep: str = "-"
 
     @property
     def md(self) -> MarkdownWidget:
@@ -28,7 +25,13 @@ class ConfusionMatrix(BaseVisMetric):
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget(self.CHART, self._get_figure())
+        chart = ChartWidget(self.CHART, self._get_figure())
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+        )
+        return chart
 
     def _get_figure(self):  # -> go.Figure:
         import plotly.express as px  # pylint: disable=import-error
@@ -81,7 +84,7 @@ class ConfusionMatrix(BaseVisMetric):
             res["clickData"][key]["imagesIds"] = []
             gt_title = f"GT: '{gt_key}'" if gt_key != "(None)" else "No GT Objects"
             pred_title = f"Predicted: '{pred_key}'" if pred_key != "(None)" else "No Predictions"
-            res["clickData"][key]["title"] = f"Confusion Matrix. {gt_title} – {pred_title}"
+            res["clickData"][key]["title"] = f"Confusion Matrix. {gt_title} ― {pred_title}"
 
             img_ids = set()
             obj_ids = set()

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
@@ -12,16 +9,12 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class ReliabilityDiagram(BaseVisMetric):
+class ReliabilityDiagram(DetectionVisMetric):
     MARKDOWN_CALIBRATION_SCORE = "calibration_score"
     MARKDOWN_CALIBRATION_SCORE_2 = "calibration_score_2"
     MARKDOWN_RELIABILITY_DIAGRAM = "reliability_diagram"
     NOTIFICATION = "reliability_diagram"
     CHART = "reliability_diagram"
-
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
 
     @property
     def md_calibration_score(self) -> MarkdownWidget:

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
@@ -12,17 +9,13 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class ConfidenceScore(BaseVisMetric):
+class ConfidenceScore(DetectionVisMetric):
     MARKDOWN_CONFIDENCE_SCORE = "confidence_score"
     NOTIFICATION = "confidence_score"
     MARKDOWN_CONFIDENCE_SCORE_2 = "confidence_score_2"
     MARKDOWN_CONFIDENCE_SCORE_3 = "calibration_score_3"
     COLLAPSE_TITLE = "confidence_score_collapse"
     CHART = "confidence_score"
-
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
 
     @property
     def md_confidence_score(self) -> MarkdownWidget:

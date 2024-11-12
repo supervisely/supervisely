@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
@@ -13,14 +10,10 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class KeyMetrics(BaseVisMetric):
+class KeyMetrics(DetectionVisMetric):
     MARKDOWN = "key_metrics"
     CHART = "key_metrics"
     TABLE = "key_metrics"
-
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
 
     @property
     def md(self) -> MarkdownWidget:
@@ -45,7 +38,7 @@ class KeyMetrics(BaseVisMetric):
             content.append(dct)
 
         columns_options = [
-            {"customCell": True, "disableSort": True},
+            {"cdisableSort": True},  # , "ustomCell": True},
             {"disableSort": True},
         ]
 

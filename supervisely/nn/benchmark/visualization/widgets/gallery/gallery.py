@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from jinja2 import Template
 
@@ -19,14 +19,15 @@ class GalleryWidget(BaseWidget):
         filters: Optional[List] = None,
         is_modal: Optional[bool] = False,
         columns_number: int = 3,
+        click_gallery_id: Optional[str] = None,
     ):
         super().__init__(name)
         self.reference = self.id
         self.is_modal = is_modal
         self.click_handled = False
-        self.click_gallery_id = None
+        self.click_gallery_id = click_gallery_id
         self.click_data = None
-        self.click_gallery_items_limit = None
+        self.click_gallery_items_limit = 9
         self.image_left_header = False
         self._project_meta = None
         self.show_all_button = False
@@ -101,11 +102,10 @@ class GalleryWidget(BaseWidget):
         template_str = Path(__file__).parent / "template.html"
         return Template(template_str.read_text()).render(self._get_template_data())
 
-    def add_on_click(self, gallery_id, click_data, gallery_items_limit):
+    def set_click_data(self, click_gallery_id: str, click_data: Any) -> None:
         self.click_handled = True
-        self.click_gallery_id = gallery_id
         self.click_data = click_data
-        self.click_gallery_items_limit = gallery_items_limit
+        self.click_gallery_id = click_gallery_id
 
     def add_image_left_header(self, html: str):
         self.image_left_header = html

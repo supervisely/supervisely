@@ -1,22 +1,11 @@
 import datetime
 from typing import List
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
 
 
-class Overview(BaseVisMetric):
-
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        """
-        Class to create widgets for the overview block
-        overview_md property returns list of MarkdownWidget with information about the model
-        """
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+class Overview(DetectionVisMetric):
 
     def get_header(self, user_login: str) -> MarkdownWidget:
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")

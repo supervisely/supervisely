@@ -20,3 +20,6 @@ class BaseWidget:
 
     def to_html(self) -> str:
         raise NotImplementedError
+
+    def set_click_data(self, click_gallery_id, click_data) -> None:
+        return

@@ -2,20 +2,16 @@ from __future__ import annotations
 
 from typing import Dict
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
-class OutcomeCounts(BaseVisMetric):
+class OutcomeCounts(DetectionVisMetric):
     MARKDOWN = "outcome_counts"
     CHART = "outcome_counts"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.clickable = True
 
     @property
@@ -29,7 +25,13 @@ class OutcomeCounts(BaseVisMetric):
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget(self.CHART, self._get_figure())
+        chart = ChartWidget(self.CHART, self._get_figure())
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].data.name}`,",
+        )
+        return chart
 
     def _get_figure(self):  # -> go.Figure:
         import plotly.graph_objects as go  # pylint: disable=import-error

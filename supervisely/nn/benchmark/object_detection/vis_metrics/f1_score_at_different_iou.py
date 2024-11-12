@@ -3,20 +3,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
-class F1ScoreAtDifferentIOU(BaseVisMetric):
+class F1ScoreAtDifferentIOU(DetectionVisMetric):
     MARKDOWN = "f1_score_at_iou"
     CHART = "f1_score_at_iou"
-
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
 
     @property
     def md(self) -> MarkdownWidget:

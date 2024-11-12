@@ -2,24 +2,20 @@ from __future__ import annotations
 
 from typing import Dict, Literal
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
-class FrequentlyConfused(BaseVisMetric):
+class FrequentlyConfused(DetectionVisMetric):
     MARKDOWN = "frequently_confused"
     MARKDOWN_EMPTY = "frequently_confused_empty"
     CHART = "frequently_confused"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.clickable = True
         self.df = self.eval_result.mp.frequently_confused()
-        self._keypair_sep: str = " - "
+        self._keypair_sep: str = "-"
         self.is_empty = self.df.empty
         self.switchable = True
 
@@ -44,11 +40,23 @@ class FrequentlyConfused(BaseVisMetric):
 
     @property
     def chart_probability(self) -> ChartWidget:
-        return ChartWidget(self.CHART, self._get_figure("probability"))
+        chart = ChartWidget(self.CHART, self._get_figure("probability"))
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+        )
+        return chart
 
     @property
     def chart_count(self) -> ChartWidget:
-        return ChartWidget(self.CHART, self._get_figure("count"))
+        chart = ChartWidget(self.CHART, self._get_figure("count"))
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+        )
+        return chart
 
     @property
     def empty_md(self) -> MarkdownWidget:

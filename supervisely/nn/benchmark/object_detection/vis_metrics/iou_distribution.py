@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
@@ -12,16 +9,15 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class IOUDistribution(BaseVisMetric):
+class IOUDistribution(DetectionVisMetric):
     MARKDOWN_LOCALIZATION_ACCURACY = "localization_accuracy"
     MARKDOWN_IOU_DISTRIBUTION = "iou_distribution"
     NOTIFICATION = "iou_distribution"
     COLLAPSE = "iou_distribution"
     CHART = "iou_distribution"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.md_title = "Localization Accuracy (IoU)"
 
     @property

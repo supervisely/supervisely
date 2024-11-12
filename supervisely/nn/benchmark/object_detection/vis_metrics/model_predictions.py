@@ -3,20 +3,16 @@ from __future__ import annotations
 from typing import Dict
 
 from supervisely.api.image_api import ImageApi, ImageInfo
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget, TableWidget
 
 
-class ModelPredictions(BaseVisMetric):
+class ModelPredictions(DetectionVisMetric):
     MARKDOWN = "model_predictions"
     TABLE = "model_predictions"
 
-    def __init__(self, vis_texts, eval_result: ObjectDetectionEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.clickable = True
         self._row_ids = None  #  TODO: check if this is used
 
@@ -83,9 +79,13 @@ class ModelPredictions(BaseVisMetric):
             data=data,
             fix_columns=1,
         )
+        table.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+        )
         return table
 
-    def get_table_click_data(self) -> Dict:
+    def get_click_data(self) -> Dict:
         res = {}
         res["layoutTemplate"] = [
             {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
@@ -95,7 +95,11 @@ class ModelPredictions(BaseVisMetric):
         click_data = res.setdefault("clickData", {})
 
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
+            {
+                "type": "tag",
+                "tagId": "confidence",
+                "value": [self.eval_result.mp.f1_optimal_conf, 1],
+            },
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]
 

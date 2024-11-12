@@ -1,5 +1,5 @@
 import random
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
@@ -9,7 +9,7 @@ from supervisely.nn.benchmark.visualization.widgets import GalleryWidget
 from supervisely.project.project_meta import ProjectMeta
 
 
-class BaseVisMetric:
+class BaseVisMetrics:
 
     def __init__(
         self,
@@ -22,18 +22,56 @@ class BaseVisMetric:
         self.eval_results = eval_results
         self.explore_modal_table = explore_modal_table
         self.diff_modal_table = diff_modal_table
+        self.clickable = False
 
 
-# class BaseVisMetric(BaseVisMetrics):
-#     def __init__(
-#         self,
-#         vis_texts,
-#         eval_result: BaseEvalResult,
-#         explore_modal_table: GalleryWidget = None,
-#         diff_modal_table: GalleryWidget = None,
-#     ) -> None:
-#         super().__init__(vis_texts, [eval_result], explore_modal_table, diff_modal_table)
-#         self.eval_result = eval_result
+class BaseVisMetric(BaseVisMetrics):
+    def __init__(
+        self,
+        vis_texts,
+        eval_result: BaseEvalResult,
+        explore_modal_table: GalleryWidget = None,
+        diff_modal_table: GalleryWidget = None,
+    ) -> None:
+        super().__init__(vis_texts, [eval_result], explore_modal_table, diff_modal_table)
+        self.eval_result = eval_result
+
+    def get_click_data(self) -> Optional[Dict]:
+        if not self.clickable:
+            return
+
+        res = {}
+
+        res["layoutTemplate"] = [None, None, None]
+        res["clickData"] = {}
+        for key, v in self.eval_result.click_data.objects_by_class.items():
+            res["clickData"][key] = {}
+            res["clickData"][key]["imagesIds"] = []
+
+            # tmp = defaultdict(list)
+            img_ids = set()
+            obj_ids = set()
+
+            res["clickData"][key][
+                "title"
+            ] = f"{key} class: {len(v)} object{'s' if len(v) > 1 else ''}"
+
+            for x in v:
+                img_ids.add(x["dt_img_id"])
+                obj_ids.add(x["dt_obj_id"])
+
+            res["clickData"][key]["imagesIds"] = list(img_ids)
+            res["clickData"][key]["filters"] = [
+                {
+                    "type": "tag",
+                    "tagId": "confidence",
+                    "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                },
+                {"type": "tag", "tagId": "outcome", "value": "TP"},
+                {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
+            ]
+
+        return res
 
 
 class BaseVisualizer:
@@ -159,3 +197,20 @@ class BaseVisualizer:
 
     def _generate_diff_project_name(self, pred_project_name):
         return "[diff]: " + pred_project_name
+
+    def _create_explore_modal_table(self, columns_number=3, click_gallery_id=None) -> GalleryWidget:
+        all_predictions_modal_gallery = GalleryWidget(
+            "all_predictions_modal_gallery",
+            is_modal=True,
+            columns_number=columns_number,
+            click_gallery_id=click_gallery_id,
+        )
+        all_predictions_modal_gallery.set_project_meta(self.eval_results[0].pred_project_meta)
+        return all_predictions_modal_gallery
+
+    def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
+        diff_modal_gallery = GalleryWidget(
+            "diff_predictions_modal_gallery", is_modal=True, columns_number=columns_number
+        )
+        diff_modal_gallery.set_project_meta(self.eval_results[0].pred_project_meta)
+        return diff_modal_gallery

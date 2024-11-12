@@ -73,7 +73,7 @@ class ConfusionMatrix(MetricVis):
             res["clickData"][key]["imagesIds"] = []
             gt_title = f"GT: '{gt_key}'" if gt_key != "(None)" else "No GT Objects"
             pred_title = f"Predicted: '{pred_key}'" if pred_key != "(None)" else "No Predictions"
-            res["clickData"][key]["title"] = f"Confusion Matrix. {gt_title} – {pred_title}"
+            res["clickData"][key]["title"] = f"Confusion Matrix. {gt_title} ― {pred_title}"
 
             img_ids = set()
             obj_ids = set()
