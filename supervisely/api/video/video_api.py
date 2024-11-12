@@ -1,13 +1,26 @@
 # coding: utf-8
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import os
 import urllib.parse
 from functools import partial
-from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
+import aiofiles
 from numerize.numerize import numerize
 from requests import Response
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -31,6 +44,7 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
+    get_file_hash_async,
     get_file_name_with_ext,
     get_file_size,
     list_files,
@@ -399,7 +413,12 @@ class VideoApi(RemoveableBulkModuleApi):
             return_first_response=False,
         )
 
-    def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> VideoInfo:
+    def get_info_by_id(
+        self,
+        id: int,
+        raise_error: Optional[bool] = False,
+        force_metadata_for_links=True,
+    ) -> VideoInfo:
         """
         Get Video information by ID in VideoInfo<VideoInfo> format.
 
@@ -407,6 +426,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the video info was not received.
         :type raise_error: bool
+        :param force_metadata_for_links: Get video metadata from server (if the video is uploaded as a link)
+        :type force_metadata_for_links: bool
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
@@ -463,7 +484,11 @@ class VideoApi(RemoveableBulkModuleApi):
             # )
         """
 
-        info = self._get_info_by_id(id, "videos.info")
+        info = self._get_info_by_id(
+            id,
+            "videos.info",
+            fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links},
+        )
         if info is None and raise_error is True:
             raise KeyError(f"Video with id={id} not found in your account")
         return info
@@ -532,6 +557,7 @@ class VideoApi(RemoveableBulkModuleApi):
                         ApiField.DATASET_ID: dataset_id,
                         ApiField.FILTER: filters,
                         ApiField.FIELDS: fields,
+                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                     },
                 )
             )
@@ -541,7 +567,12 @@ class VideoApi(RemoveableBulkModuleApi):
         ordered_results = [temp_map[id] for id in ids]
         return ordered_results
 
-    def get_json_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> Dict:
+    def get_json_info_by_id(
+        self,
+        id: int,
+        raise_error: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> Dict:
         """
         Get Video information by ID in json format.
 
@@ -615,7 +646,12 @@ class VideoApi(RemoveableBulkModuleApi):
         """
 
         data = None
-        response = self._get_response_by_id(id, "videos.info", id_field=ApiField.ID)
+        response = self._get_response_by_id(
+            id,
+            "videos.info",
+            id_field=ApiField.ID,
+            fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links},
+        )
         if response is None:
             if raise_error is True:
                 raise KeyError(f"Video with id={id} not found in your account")
@@ -1036,7 +1072,14 @@ class VideoApi(RemoveableBulkModuleApi):
         return new_videos
 
     def _upload_bulk_add(
-        self, func_item_to_kv, dataset_id, names, items, metas=None, progress_cb=None
+        self,
+        func_item_to_kv,
+        dataset_id,
+        names,
+        items,
+        metas=None,
+        progress_cb=None,
+        force_metadata_for_links=True,
     ):
         if metas is None:
             metas = [{}] * len(items)
@@ -1063,7 +1106,11 @@ class VideoApi(RemoveableBulkModuleApi):
                 )
             response = self._api.post(
                 "videos.bulk.add",
-                {ApiField.DATASET_ID: dataset_id, ApiField.VIDEOS: images},
+                {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.VIDEOS: images,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                },
             )
             if progress_cb is not None:
                 progress_cb(len(images))
@@ -1777,6 +1824,8 @@ class VideoApi(RemoveableBulkModuleApi):
         hashes: List[str] = None,
         metas: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[VideoInfo]:
         """
         Upload Videos from given links to Dataset.
@@ -1795,6 +1844,10 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param skip_download: Skip download videos to local storage.
         :type skip_download: Optional[bool]
+        :param progress_cb: Function for tracking the progress of copying.
+        :type progress_cb: tqdm or callable, optional
+        :param force_metadata_for_links: Specify if metadata should be forced. Default is True.
+        :type force_metadata_for_links: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
         :Usage example:
@@ -1829,7 +1882,13 @@ class VideoApi(RemoveableBulkModuleApi):
         # if infos is not None and hashes is not None and not skip_download:
         #     self.upsert_infos(hashes, infos, links)
         return self._upload_bulk_add(
-            lambda item: (ApiField.LINK, item), dataset_id, names, links, metas
+            lambda item: (ApiField.LINK, item),
+            dataset_id,
+            names,
+            links,
+            metas,
+            progress_cb=progress_cb,
+            force_metadata_for_links=force_metadata_for_links,
         )
 
     def update_custom_data(self, id: int, data: dict):
@@ -2305,3 +2364,217 @@ class VideoApi(RemoveableBulkModuleApi):
         data = {ApiField.VIDEOS: videos_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("videos.update.links", data)
         return r.json()
+
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+    ) -> AsyncGenerator:
+        """
+        Download Video with given ID asynchronously.
+
+        :param id: Video ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "videos.download"
+
+        json_body = {ApiField.ID: id}
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+                chunk_size=chunk_size,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Downloads Video with given ID to local path.
+
+        :param id: Video ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Video.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_info = api.video.get_info_by_id(770918)
+            save_path = os.path.join("/path/to/save/", video_info.name)
+
+            semaphore = asyncio.Semaphore(100)
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(
+                    api.video.download_path_async(video_info.id, save_path, semaphore)
+                )
+        """
+        if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    range_start=range_start,
+                    range_end=range_end,
+                    headers=headers,
+                    chunk_size=chunk_size,
+                ):
+                    await fd.write(chunk)
+                    hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_file_hash = await get_file_hash_async(path)
+                    if hash_to_check != downloaded_file_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of video with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Download Videos with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Video IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Videos.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for partial download. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded files.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            ids = [770914, 770915]
+            paths = ["/path/to/save/video1.mp4", "/path/to/save/video2.mp4"]
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(api.video.download_paths_async(ids, paths))
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(
+                img_id,
+                img_path,
+                semaphore=semaphore,
+                headers=headers,
+                chunk_size=chunk_size,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+
+            tasks.append(task)
+        await asyncio.gather(*tasks)

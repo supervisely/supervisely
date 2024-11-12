@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import gc
 import glob
@@ -11,9 +12,21 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import (
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    Dict,
+    Generator,
+    Iterable,
+    Literal,
+    Mapping,
+    Optional,
+    Union,
+)
 from urllib.parse import urljoin, urlparse
 
+import httpx
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
@@ -287,6 +300,8 @@ class Api:
         api_server_address: str = None,
         check_instance_version: Union[bool, str] = False,
     ):
+        self.logger = external_logger or logger
+
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
             token = os.environ.get(API_TOKEN, None)
@@ -295,10 +310,7 @@ class Api:
             raise ValueError(
                 "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
-        if token is None:
-            raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
-            )
+
         self.server_address = Api.normalize_server_address(server_address)
 
         self._api_server_address = None
@@ -313,11 +325,10 @@ class Api:
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
-        if len(token) != 128:
-            raise ValueError("Invalid token {!r}: length != 128".format(token))
-
         self.token = token
-        self.headers = {"x-api-key": token}
+        self.headers = {}
+        if token is not None:
+            self.headers["x-api-key"] = token
         self.task_id = os.getenv(SUPERVISELY_TASK_ID)
         if self.task_id is not None and ignore_task_id is False:
             self.headers["x-task-id"] = self.task_id
@@ -359,12 +370,13 @@ class Api:
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self.logger = external_logger or logger
-
         self._require_https_redirect_check = not self.server_address.startswith("https://")
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
+
+        self.async_httpx_client: httpx.AsyncClient = None
+        self.httpx_client: httpx.Client = None
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -652,6 +664,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -715,6 +735,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -730,7 +758,7 @@ class Api:
                 process_unhandled_request(self.logger, exc)
 
     @staticmethod
-    def _raise_for_status(response):
+    def _raise_for_status(response: requests.Response):
         """
         Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
@@ -762,6 +790,46 @@ class Api:
 
         if http_error_msg:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
+
+    @staticmethod
+    def _raise_for_status_httpx(response: httpx.Response):
+        """
+        Raise error and show message with error code if given response can not connect to server.
+        :param response: Response class object
+        """
+        http_error_msg = ""
+
+        if hasattr(response, "reason_phrase"):
+            reason = response.reason_phrase
+        else:
+            reason = "Can't get reason"
+
+        def decode_response_content(response: httpx.Response):
+            if hasattr(response, "is_stream_consumed"):
+                return "Content is not acessible for streaming responses"
+            else:
+                return response.content.decode("utf-8")
+
+        if 400 <= response.status_code < 500:
+            http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                decode_response_content(response),
+            )
+
+        elif 500 <= response.status_code < 600:
+            http_error_msg = "%s Server Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                decode_response_content(response),
+            )
+
+        if http_error_msg:
+            raise httpx.HTTPStatusError(
+                message=http_error_msg, response=response, request=response.request
+            )
 
     @staticmethod
     def parse_error(
@@ -807,19 +875,24 @@ class Api:
 
     def _check_https_redirect(self):
         if self._require_https_redirect_check is True:
-            response = requests.get(self.server_address, allow_redirects=False)
-            if (300 <= response.status_code < 400) or (
-                response.headers.get("Location", "").startswith("https://")
-            ):
+            try:
+                response = requests.get(
+                    self.server_address.replace("http://", "https://"),
+                    allow_redirects=False,
+                    timeout=(5, 15),
+                )
+                response.raise_for_status()
                 self.server_address = self.server_address.replace("http://", "https://")
                 msg = (
                     "You're using HTTP server address while the server requires HTTPS. "
                     "Supervisely automatically changed the server address to HTTPS for you. "
                     f"Consider updating your server address to {self.server_address}"
                 )
-                self.logger.warn(msg)
-
-            self._require_https_redirect_check = False
+                self.logger.warning(msg)
+            except:
+                pass
+            finally:
+                self._require_https_redirect_check = False
 
     @classmethod
     def from_credentials(
@@ -922,3 +995,553 @@ class Api:
             return self._api_server_address
 
         return f"{self.server_address}/public/api"
+
+    def post_httpx(
+        self,
+        method: str,
+        data: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+    ) -> httpx.Response:
+        """
+        Performs POST request to server with given parameters using httpx.
+
+        :param method: Method name.
+        :type method: str
+        :param data: Bytes with data content or dictionary with params.
+        :type data: bytes or dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :type raise_error: bool, optional
+        :return: Response object
+        :rtype: :class:`httpx.Response`
+        """
+        self._set_client()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"POST {url}")
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        if isinstance(data, bytes):
+            request_params = {"content": data}
+        elif isinstance(data, Dict):
+            json_body = {**data, **self.additional_fields}
+            request_params = {"json": json_body}
+        else:
+            request_params = {"params": data}
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = self.httpx_client.post(url, headers=headers, **request_params)
+                if response.status_code != httpx.codes.OK:
+                    self._check_version()
+                    Api._raise_for_status_httpx(response)
+                return response
+            except httpx.RequestError as exc:
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.HTTPStatusError(
+            "Retry limit exceeded ({!r})".format(url),
+            response=response,
+            request=getattr(response, "request", None),
+        )
+
+    def get_httpx(
+        self,
+        method: str,
+        params: httpx._types.QueryParamTypes,
+        retries: Optional[int] = None,
+        use_public_api: Optional[bool] = True,
+    ) -> httpx.Response:
+        """
+        Performs GET request to server with given parameters.
+
+        :param method: Method name.
+        :type method: str
+        :param params: URL query parameters.
+        :type params: httpx._types.QueryParamTypes
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param use_public_api: Define if public API should be used. Default is True.
+        :type use_public_api: bool, optional
+        :return: Response object
+        :rtype: :class:`Response<Response>`
+        """
+        self._set_client()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if use_public_api is False:
+            url = os.path.join(self.server_address, method)
+        logger.trace(f"GET {url}")
+
+        if isinstance(params, Dict):
+            request_params = {**params, **self.additional_fields}
+        else:
+            request_params = params
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = self.httpx_client.get(url, params=request_params, headers=self.headers)
+                if response.status_code != httpx.codes.OK:
+                    Api._raise_for_status_httpx(response)
+                return response
+            except httpx.RequestError as exc:
+                process_requests_exception(
+                    self.logger,
+                    exc,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                    response=response,
+                    retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
+                )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+
+    def stream(
+        self,
+        method: str,
+        method_type: Literal["GET", "POST"],
+        data: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        chunk_size: int = 8192,
+        use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 15,
+    ) -> Generator:
+        """
+        Performs streaming GET or POST request to server with given parameters.
+        Multipart is not supported.
+
+        :param method: Method name for the request.
+        :type method: str
+        :param method_type: Request type ('GET' or 'POST').
+        :type method_type: str
+        :param data: Bytes with data content or dictionary with params.
+        :type data: bytes or dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of retry attempts.
+        :type retries: int, optional
+        :param range_start: Start byte position for streaming.
+        :type range_start: int, optional
+        :param range_end: End byte position for streaming.
+        :type range_end: int, optional
+        :param raise_error: If True, raise raw error if the request fails.
+        :type raise_error: bool, optional
+        :param chunk_size: Size of the chunks to stream.
+        :type chunk_size: int, optional
+        :param use_public_api: Define if public API should be used.
+        :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Generator object.
+        :rtype: :class:`Generator`
+        """
+
+        self._set_client()
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if not use_public_api:
+            url = os.path.join(self.server_address, method)
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        logger.trace(f"{method_type} {url}")
+
+        if isinstance(data, (bytes, Generator)):
+            content = data
+            json_body = None
+            params = None
+        elif isinstance(data, Dict):
+            json_body = {**data, **self.additional_fields}
+            content = None
+            params = None
+        else:
+            params = data
+            content = None
+            json_body = None
+
+        if range_start is not None or range_end is not None:
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Setting Range header: {headers['Range']}")
+
+        for retry_idx in range(retries):
+            total_streamed = 0
+            try:
+                if method_type == "POST":
+                    response = self.httpx_client.stream(
+                        method_type,
+                        url,
+                        content=content,
+                        json=json_body,
+                        params=params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+
+                elif method_type == "GET":
+                    response = self.httpx_client.stream(
+                        method_type,
+                        url,
+                        params=json_body or params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Unsupported method type: {method_type}. Supported types: 'GET', 'POST'"
+                    )
+
+                with response as resp:
+                    expected_size = int(resp.headers.get("content-length", 0))
+                    if resp.status_code not in [
+                        httpx.codes.OK,
+                        httpx.codes.PARTIAL_CONTENT,
+                    ]:
+                        self._check_version()
+                        Api._raise_for_status_httpx(resp)
+
+                    hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    for chunk in resp.iter_raw(chunk_size):
+                        yield chunk, hhash
+                        total_streamed += len(chunk)
+                    if expected_size != 0 and total_streamed != expected_size:
+                        raise ValueError(
+                            f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
+                        )
+                    logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    return
+            except httpx.RequestError as e:
+                retry_range_start = total_streamed + (range_start or 0)
+                if total_streamed != 0:
+                    retry_range_start += 1
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                if raise_error:
+                    raise e
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        e,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=locals().get("resp"),
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as e:
+                process_unhandled_request(self.logger, e)
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})",
+            request=resp.request if locals().get("resp") else None,
+        )
+
+    async def post_async(
+        self,
+        method: str,
+        json: Dict = None,
+        content: Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
+        files: Union[Mapping] = None,
+        params: Union[str, bytes] = None,
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+    ) -> httpx.Response:
+        """
+        Performs POST request to server with given parameters using httpx.
+
+        :param method: Method name.
+        :type method: str
+        :param json: Dictionary to send in the body of request.
+        :type json: dict, optional
+        :param content: Bytes with data content or dictionary with params.
+        :type content: bytes or dict, optional
+        :param files: Files to send in the body of request.
+        :type files: dict, optional
+        :param params: URL query parameters.
+        :type params: str, bytes, optional
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :type raise_error: bool, optional
+        :return: Response object
+        :rtype: :class:`httpx.Response`
+        """
+        self._set_async_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"POST {url}")
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = await self.async_httpx_client.post(
+                    url,
+                    content=content,
+                    files=files,
+                    json=json,
+                    params=params,
+                    headers=headers,
+                )
+                if response.status_code != httpx.codes.OK:
+                    self._check_version()
+                    Api._raise_for_status_httpx(response)
+                return response
+            except httpx.RequestError as exc:
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.RequestError(
+            f"Retry limit exceeded ({url})",
+            request=getattr(response, "request", None),
+        )
+
+    async def stream_async(
+        self,
+        method: str,
+        method_type: Literal["GET", "POST"],
+        data: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        chunk_size: int = 8192,
+        use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 15,
+    ) -> AsyncGenerator:
+        """
+        Performs asynchronous streaming GET or POST request to server with given parameters.
+        Yield chunks of data and hash of the whole content to check integrity of the data stream.
+
+        :param method: Method name for the request.
+        :type method: str
+        :param method_type: Request type ('GET' or 'POST').
+        :type method_type: str
+        :param data: Bytes with data content or dictionary with params.
+        :type data: bytes or dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of retry attempts.
+        :type retries: int, optional
+        :param range_start: Start byte position for streaming.
+        :type range_start: int, optional
+        :param range_end: End byte position for streaming.
+        :type range_end: int, optional
+        :param chunk_size: Size of the chunk to read from the stream.
+        :type chunk_size: int, optional
+        :param use_public_api: Define if public API should be used.
+        :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Async generator object.
+        :rtype: :class:`AsyncGenerator`
+        """
+        self._set_async_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if not use_public_api:
+            url = os.path.join(self.server_address, method)
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        logger.trace(f"{method_type} {url}")
+
+        if isinstance(data, (bytes, Generator)):
+            content = data
+            json_body = None
+            params = None
+        elif isinstance(data, Dict):
+            json_body = {**data, **self.additional_fields}
+            content = None
+            params = None
+        else:
+            params = data
+            content = None
+            json_body = None
+
+        if range_start is not None or range_end is not None:
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Setting Range header: {headers['Range']}")
+
+        for retry_idx in range(retries):
+            total_streamed = 0
+            try:
+                if method_type == "POST":
+                    response = self.async_httpx_client.stream(
+                        method_type,
+                        url,
+                        content=content,
+                        json=json_body,
+                        params=params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                elif method_type == "GET":
+                    response = self.async_httpx_client.stream(
+                        method_type,
+                        url,
+                        json=json_body or params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Unsupported method type: {method_type}. Supported types: 'GET', 'POST'"
+                    )
+
+                async with response as resp:
+                    expected_size = int(resp.headers.get("content-length", 0))
+                    if resp.status_code not in [
+                        httpx.codes.OK,
+                        httpx.codes.PARTIAL_CONTENT,
+                    ]:
+                        self._check_version()
+                        Api._raise_for_status_httpx(resp)
+
+                    # received hash of the content to check integrity of the data stream
+                    hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    async for chunk in resp.aiter_raw(chunk_size):
+                        yield chunk, hhash
+                        total_streamed += len(chunk)
+
+                    if expected_size != 0 and total_streamed != expected_size:
+                        raise ValueError(
+                            f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
+                        )
+                    logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    return
+            except httpx.RequestError as e:
+                retry_range_start = total_streamed + (range_start or 0)
+                if total_streamed != 0:
+                    retry_range_start += 1
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                process_requests_exception(
+                    self.logger,
+                    e,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                    response=locals().get("resp"),
+                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                )
+            except Exception as e:
+                process_unhandled_request(self.logger, e)
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})",
+            request=resp.request if locals().get("resp") else None,
+        )
+
+    def _set_async_client(self):
+        """
+        Set async httpx client if it is not set yet.
+        Switch on HTTP/2 if the server address uses HTTPS.
+        """
+        if self.async_httpx_client is None:
+            self._check_https_redirect()
+            if self.server_address.startswith("https://"):
+                self.async_httpx_client = httpx.AsyncClient(http2=True)
+            else:
+                self.async_httpx_client = httpx.AsyncClient()
+
+    def _set_client(self):
+        """
+        Set httpx client if it is not set yet.
+        Switch on HTTP/2 if the server address uses HTTPS.
+        """
+        if self.httpx_client is None:
+            self._check_https_redirect()
+            if self.server_address.startswith("https://"):
+                self.httpx_client = httpx.Client(http2=True)
+            else:
+                self.httpx_client = httpx.Client()
+
+    def _get_default_semaphore(self):
+        """
+        Get default semaphore for async requests.
+        Check if the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set.
+        If it is set, create a semaphore with the given value.
+        Otherwise, create a semaphore with a default value.
+        If server supports HTTPS, create a semaphore with a higher value.
+        """
+        env_semaphore = os.getenv("SUPERVISELY_ASYNC_SEMAPHORE")
+        if env_semaphore is not None:
+            return asyncio.Semaphore(int(env_semaphore))
+        else:
+            self._check_https_redirect()
+            if self.server_address.startswith("https://"):
+                return asyncio.Semaphore(25)
+            else:
+                return asyncio.Semaphore(5)
