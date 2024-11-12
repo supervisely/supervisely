@@ -4,7 +4,17 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
@@ -61,6 +71,7 @@ class DatasetInfo(NamedTuple):
     team_id: int
     workspace_id: int
     parent_id: Union[int, None]
+    custom_data: dict
 
     @property
     def image_preview_url(self):
@@ -135,6 +146,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             ApiField.TEAM_ID,
             ApiField.WORKSPACE_ID,
             ApiField.PARENT_ID,
+            ApiField.CUSTOM_DATA,
         ]
 
     @staticmethod
@@ -361,6 +373,83 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 project_id, name, description=description, parent_id=parent_id
             )
         return dataset_info
+
+    def update(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        custom_data: Optional[Dict[Any, Any]] = None,
+    ) -> DatasetInfo:
+        """Update Dataset information by given ID.
+
+        :param id: Dataset ID in Supervisely.
+        :type id: int
+        :param name: New Dataset name.
+        :type name: str, optional
+        :param description: New Dataset description.
+        :type description: str, optional
+        :param custom_data: New custom data.
+        :type custom_data: Dict[Any, Any], optional
+        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`DatasetInfo`
+
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_id = 384126
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                new_ds = api.dataset.update(dataset_id, name='new_ds', description='new description')
+        """
+        fields = [name, description, custom_data]  # Extend later if needed.
+        if all(f is None for f in fields):
+            raise ValueError(f"At least one of the fields must be specified: {fields}")
+
+        payload = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+            ApiField.DESCRIPTION: description,
+            ApiField.CUSTOM_DATA: custom_data,
+        }
+
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        response = self._api.post(self._get_update_method(), payload)
+        return self._convert_json_info(response.json())
+
+    def update_custom_data(self, id: int, custom_data: Dict[Any, Any]) -> DatasetInfo:
+        """Update custom data for Dataset by given ID.
+        Custom data is a dictionary that can store any additional information about the Dataset.
+
+        :param id: Dataset ID in Supervisely.
+        :type id: int
+        :param custom_data: New custom data.
+        :type custom_data: Dict[Any, Any]
+        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`DatasetInfo`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            dataset_id = 384126
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_ds = api.dataset.update_custom_data(dataset_id, custom_data={'key': 'value'})
+        """
+        return self.update(id, custom_data=custom_data)
 
     def _get_update_method(self):
         """ """

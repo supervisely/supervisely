@@ -14,7 +14,7 @@ import urllib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
@@ -316,6 +316,15 @@ def get_readable_datetime(value: str) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def get_unix_timestamp() -> int:
+    """Return the current Unix timestamp.
+
+    :return: Current Unix timestamp.
+    :rtype: int
+    """
+    return int(time.time())
+
+
 def get_certificates_list(path: str = DEFAULT_CA_BUNDLE_PATH) -> List[str]:
     with open(path, "r", encoding="ascii") as f:
         content = f.read().strip()
@@ -383,6 +392,51 @@ def add_callback(func, callback):
         return res
 
     return wrapper
+
+
+def compare_dicts(
+    template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True
+) -> Tuple[List[str], List[str]]:
+    """Compare two dictionaries recursively (by keys only) and return lists of missing and extra fields.
+    If strict is True, the keys of the template and data dictionaries must match exactly.
+    Otherwise, the data dictionary may contain additional keys that are not in the template dictionary.
+
+    :param template: The template dictionary.
+    :type template: Dict[Any, Any]
+    :param data: The data dictionary.
+    :type data: Dict[Any, Any]
+    :param strict: If True, the keys of the template and data dictionaries must match exactly.
+    :type strict: bool, optional
+    :return: A tuple containing a list of missing fields and a list of extra fields.
+    :rtype: Tuple[List[str], List[str]]
+    """
+    missing_fields = []
+    extra_fields = []
+
+    if not isinstance(template, dict) or not isinstance(data, dict):
+        return missing_fields, extra_fields
+
+    if strict:
+        template_keys = set(template.keys())
+        data_keys = set(data.keys())
+
+        missing_fields = list(template_keys - data_keys)
+        extra_fields = list(data_keys - template_keys)
+
+        for key in template_keys & data_keys:
+            sub_missing, sub_extra = compare_dicts(template[key], data[key], strict)
+            missing_fields.extend([f"{key}.{m}" for m in sub_missing])
+            extra_fields.extend([f"{key}.{e}" for e in sub_extra])
+    else:
+        for key in template:
+            if key not in data:
+                missing_fields.append(key)
+            else:
+                sub_missing, sub_extra = compare_dicts(template[key], data[key], strict)
+                missing_fields.extend([f"{key}.{m}" for m in sub_missing])
+                extra_fields.extend([f"{key}.{e}" for e in sub_extra])
+
+    return missing_fields, extra_fields
 
 
 def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
