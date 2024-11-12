@@ -1479,6 +1479,7 @@ class AppApi(TaskApi):
         show_disabled=False,
         session_name=None,
         statuses: List[TaskApi.Status] = None,
+        with_shared: bool = False,
     ) -> List[SessionInfo]:
         infos_json = self.get_list_all_pages(
             method="apps.list",
@@ -1487,6 +1488,7 @@ class AppApi(TaskApi):
                 "filter": [{"field": "moduleId", "operator": "=", "value": module_id}],
                 # "onlyRunning": only_running,
                 "showDisabled": show_disabled,
+                "withShared": with_shared,
             },
             convert_json_info_cb=lambda x: x,
             # validate_total=False,
