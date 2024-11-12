@@ -1248,7 +1248,7 @@ class Api:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
-                    logger.debug(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except httpx.RequestError as e:
                 retry_range_start = total_streamed + (range_start or 0)
@@ -1478,7 +1478,7 @@ class Api:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
-                    logger.debug(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except httpx.RequestError as e:
                 retry_range_start = total_streamed + (range_start or 0)

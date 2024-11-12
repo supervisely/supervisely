@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Callable, Dict, List, Optional, Union
 
@@ -247,3 +248,47 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                 self.append(dst_id, ann)
                 if progress_cb is not None:
                     progress_cb(1)
+
+    async def download_async(
+        self,
+        video_id: int,
+        video_info=None,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> Dict:
+        """
+        Download information about VideoAnnotation by video ID from API asynchronously.
+
+        :param video_id: Video ID in Supervisely.
+        :type video_id: int
+        :param video_info: VideoInfo object. Use it to avoid additional request to the server.
+        :type video_info: VideoInfo, optional
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :return: Information about VideoAnnotation in json format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_id = 198702499
+            loop = sly.utils.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
+        """
+        if video_info is None:
+            video_info = self._api.video.get_info_by_id(video_id)
+
+        if semaphore is None:
+            semaphore = self._api._get_default_semaphore()
+
+        async with semaphore:
+            response = await self._api.post_async(
+                self._method_download_bulk,
+                {ApiField.DATASET_ID: video_info.dataset_id, self._entity_ids_str: [video_info.id]},
+            )
+            return response.json()

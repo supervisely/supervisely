@@ -2466,8 +2466,7 @@ class VideoApi(RemoveableBulkModuleApi):
             save_path = os.path.join("/path/to/save/", video_info.name)
 
             semaphore = asyncio.Semaphore(100)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(
                     api.video.download_path_async(video_info.id, save_path, semaphore)
                 )
@@ -2555,8 +2554,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
             ids = [770914, 770915]
             paths = ["/path/to/save/video1.mp4", "/path/to/save/video2.mp4"]
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = sly.utils.get_or_create_event_loop()
             loop.run_until_complete(api.video.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
