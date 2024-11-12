@@ -1431,6 +1431,7 @@ class VideoApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         infos=None,
         item_progress=None,
+        fix_frames=False,
     ) -> List[VideoInfo]:
         """
         Uploads Videos with given names from given local paths to Dataset.
@@ -1542,12 +1543,13 @@ class VideoApi(RemoveableBulkModuleApi):
                 return path
 
         fixed_paths = []
-        for i in range(len(paths)):
-            path = paths[i]
-            fixed_path = _fix_frames(path)
-            if fixed_path != path:
-                fixed_paths.append(fixed_path)
-                paths[i] = fixed_path
+        if fix_frames:
+            for i in range(len(paths)):
+                path = paths[i]
+                fixed_path = _fix_frames(path)
+                if fixed_path != path:
+                    fixed_paths.append(fixed_path)
+                    paths[i] = fixed_path
 
         try:
             video_info_results = []
