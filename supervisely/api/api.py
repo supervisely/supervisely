@@ -1548,6 +1548,16 @@ class Api:
             else:
                 self.httpx_client = httpx.Client(http2=http2)
 
+    async def _get_default_semaphore(self):
+        """
+        Get default global API semaphore for async requests.
+        If the semaphore is not set it will be initialized.
+        """
+        if self._semaphore is None:
+            await self._verify_http2_support_status_async()
+            self._initialize_semaphore()
+        return self._semaphore
+
     def _initialize_semaphore(self):
         """
         Initialize the semaphore for async requests.
@@ -1593,16 +1603,6 @@ class Api:
         :return: Semaphore object.
         :rtype: :class:`asyncio.Semaphore`
         """
-        return self._semaphore
-
-    async def _get_default_semaphore(self):
-        """
-        Get default global API semaphore for async requests.
-        If the semaphore is not set it will be initialized.
-        """
-        if self._semaphore is None:
-            await self._verify_http2_support_status_async()
-            self._initialize_semaphore()
         return self._semaphore
 
     def _verify_http2_support_status(self) -> bool:
