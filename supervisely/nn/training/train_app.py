@@ -26,10 +26,7 @@ from supervisely import (
 )
 from supervisely.api.file_api import FileInfo
 from supervisely.app.widgets import FolderThumbnail, Progress, SlyTqdm, Widget
-from supervisely.nn.benchmark import (
-    InstanceSegmentationBenchmark,
-    ObjectDetectionBenchmark,
-)
+from supervisely.nn.benchmark import InstanceSegmentationBenchmark, ObjectDetectionBenchmark
 from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
@@ -122,8 +119,8 @@ class TrainApp:
 
         # Model
         self._model_dir = join(self._work_dir, "model")
-        self._model_path = None
-        self._config_path = None
+        self._model_name = None
+        self._model_files = {}
         # ----------------------------------------- #
 
         # Hyperparameters
@@ -138,6 +135,7 @@ class TrainApp:
         self._train_func = None
         # ----------------------------------------- #
 
+    # General
     @property
     def app(self) -> Application:
         return self._app
@@ -151,13 +149,16 @@ class TrainApp:
         return self._task_id
 
     @property
-    def framework_name(self) -> str:
-        return self._framework_name
-
-    @property
     def work_dir(self) -> str:
         return self._work_dir
 
+    @property
+    def framework_name(self) -> str:
+        return self._framework_name
+
+    # ----------------------------------------- #
+
+    # Input Data
     @property
     def project_id(self) -> int:
         return self._layout.project_id
@@ -202,21 +203,24 @@ class TrainApp:
     def val_dataset_fs(self) -> int:
         return self._val_dataset_fs
 
-    @property
-    def model_path(self) -> str:
-        return self._model_path
+    # ----------------------------------------- #
 
+    # Model
     @property
     def model_source(self) -> str:
         return self._layout.model_selector.get_model_source()
 
     @property
-    def model_parameters(self) -> str:
-        return self._layout.model_selector.get_model_parameters()
+    def model_name(self) -> str:
+        return self._layout.model_selector.get_model_name()
 
     @property
-    def model_config_path(self) -> str:
-        return self._config_path
+    def model_info(self) -> str:
+        return self._layout.model_selector.get_model_info()
+
+    @property
+    def model_files(self) -> str:
+        return self._model_files
 
     # Classes
     @property
@@ -250,8 +254,12 @@ class TrainApp:
         return self._layout.training_process.project_download_progress
 
     @property
-    def progress_bar_download_model(self) -> Progress:
-        return self._layout.training_process.model_download_progress
+    def progress_bar_download_model_main(self) -> Progress:
+        return self._layout.training_process.model_download_progress_main
+
+    @property
+    def progress_bar_download_model_secondary(self) -> Progress:
+        return self._layout.training_process.model_download_progress_secondary
 
     @property
     def progress_bar_epochs(self) -> Progress:
@@ -341,7 +349,7 @@ class TrainApp:
         # Step 6. Shutdown app
         self._app.shutdown()
 
-    # endregion PROCESS
+    # region PROCESS END
 
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
         self._inference_class = inference_class
@@ -501,98 +509,89 @@ class TrainApp:
 
         else:
             self._download_custom_model()
-        logger.info(f"Model downloaded successfully to: '{self._model_path}'")
+        logger.info(f"Model files have been downloaded successfully to: '{self._model_dir}'")
 
     def _download_pretrained_model(self):
         # General
-        model_meta = self.model_parameters["meta"]
-        model_url = model_meta["weights_url"]
-        model_name = basename(model_url)
+        self._model_files = {}
+        model_meta = self.model_info["meta"]
+        model_files = model_meta["model_files"]
 
-        # Specific
-        config_url = model_meta.get("config_url", None)
-        config_name = basename(config_url) if config_url is not None else None
-        arch_type = model_meta.get("arch_type", None)
+        with self.progress_bar_download_model_main(
+            message="Downloading model files...",
+            total=len(model_files),
+        ) as model_download_main_pbar:
+            self.progress_bar_download_model_main.show()
+            for file in model_files:
+                file_url = model_files[file]
 
-        with urlopen(model_url) as file:
-            weights_size = file.length
+                with urlopen(file_url) as f:
+                    weights_size = f.length
 
-        self.progress_bar_download_model.show()
-        self._model_path = join(self._model_dir, model_name)  # TODO handle ext?
-        with self.progress_bar_download_model(
-            message="Downloading model weights...",
-            total=weights_size,
-            unit="bytes",
-            unit_scale=True,
-        ) as model_download_pbar:
-            sly_fs.download(
-                url=model_url,
-                save_path=self._model_path,
-                progress=model_download_pbar.update,
-            )
+                file_path = join(self._model_dir, file)
 
-        if config_url is not None:
-            with urlopen(config_url) as file:
-                config_size = file.length
+                with self.progress_bar_download_model_secondary(
+                    message=f"Downloading '{file}' ...",
+                    total=weights_size,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as model_download_secondary_pbar:
+                    self.progress_bar_download_model_secondary.show()
+                    sly_fs.download(
+                        url=file_url,
+                        save_path=file_path,
+                        progress=model_download_secondary_pbar.update,
+                    )
 
-            self._config_path = join(self._model_dir, config_name)  # TODO handle ext?
-            with self.progress_bar_download_model(
-                message="Downloading model config...",
-                total=config_size,
-                unit="bytes",
-                unit_scale=True,
-            ) as config_pbar:
-                sly_fs.download(
-                    url=config_url,
-                    save_path=self._config_path,
-                    progress=config_pbar.update,
-                )
-        self.progress_bar_download_model.hide()
+                model_download_main_pbar.update(1)
+                self._model_files[file] = file_path
+
+        self.progress_bar_download_model_main.hide()
+        self.progress_bar_download_model_secondary.hide()
 
     def _download_custom_model(self):
         # General
-        model_url = self.model_parameters["checkpoint_url"]
-        model_name = basename(model_url)
+        self._model_files = {}
 
-        # Specific
-        config_url = self.model_parameters.get("config_url", None)
-        config_name = basename(config_url) if config_url is not None else None
+        # Need to merge file_url with arts dir
+        model_files = self.model_info["model_files"]
+        for file in model_files:
+            model_files[file] = join(self.model_info["artifacts_dir"], model_files[file])
 
-        self._model_path = join(self._model_dir, model_name)  # TODO handle ext?
+        # Add selected checkpoint to model_files
+        checkpoint = self._layout.model_selector.custom_models_table.get_selected_checkpoint_path()
+        model_files["checkpoint"] = checkpoint
 
-        checkpoint_info = self._api.file.get_info_by_path(self._team_id, model_url)
-        weights_size = checkpoint_info.sizeb
-        self.progress_bar_download_model.show()
-        with self.progress_bar_download_model(
-            message="Downloading model weights...",
-            total=weights_size,
-            unit="bytes",
-            unit_scale=True,
-        ) as model_download_pbar:
-            self._api.file.download(
-                self._team_id,
-                model_url,
-                self._model_path,
-                progress_cb=model_download_pbar.update,
-            )
+        with self.progress_bar_download_model_main(
+            message="Downloading model files...",
+            total=len(model_files),
+        ) as model_download_main_pbar:
+            self.progress_bar_download_model_main.show()
+            for file in model_files:
+                file_url = model_files[file]
 
-        if config_url is not None:
-            self._config_path = join(self._model_dir, config_name)
-            config_info = self._api.file.get_info_by_path(self._team_id, config_url)
-            config_size = config_info.sizeb
-            with self.progress_bar_download_model(
-                message="Downloading model config...",
-                total=config_size,
-                unit="bytes",
-                unit_scale=True,
-            ) as config_pbar:
-                self._api.file.download(
-                    self._team_id,
-                    config_url,
-                    self._config_path,
-                    progress_cb=config_pbar.update,
-                )
-        self.progress_bar_download_model.hide()
+                file_info = self._api.file.get_info_by_path(self._team_id, file_url)
+                file_path = join(self._model_dir, file)
+                file_size = file_info.sizeb
+
+                with self.progress_bar_download_model_secondary(
+                    message=f"Downloading '{file}' ...",
+                    total=file_size,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as model_download_secondary_pbar:
+                    self.progress_bar_download_model_secondary.show()
+                    self._api.file.download(
+                        self._team_id,
+                        file_url,
+                        file_path,
+                        progress_cb=model_download_secondary_pbar.update,
+                    )
+                model_download_main_pbar.update(1)
+                self._model_files[file] = file_path
+
+        self.progress_bar_download_model_main.hide()
+        self.progress_bar_download_model_secondary.hide()
 
     # ----------------------------------------- #
 
@@ -731,7 +730,8 @@ class TrainApp:
         experiment_info["best_checkpoint"] = best_file_name
 
         config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
-        experiment_info["model_files"]["config"] = join(remote_dir, config_name)
+        # experiment_info["model_files"]["config"] = join(remote_dir, config_name)
+        experiment_info["model_files"]["config"] = config_name
 
         logger.info("Uploading 'experiment_info.json' to Supervisely")
         # Dump experiment_info.json
@@ -1092,6 +1092,27 @@ class TrainApp:
                 logger.debug(
                     f"File with model benchmark report not found in Team Files. Cannot set workflow output."
                 )
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
+        except Exception as e:
+            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
+        # ----------------------------------------- #
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #

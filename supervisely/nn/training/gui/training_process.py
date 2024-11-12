@@ -39,8 +39,11 @@ class TrainingProcess:
         self.project_download_progress = Progress("Downloading datasets")
         self.project_download_progress.hide()
 
-        self.model_download_progress = Progress("Downloading Model")
-        self.model_download_progress.hide()
+        self.model_download_progress_main = Progress("Downloading model files")
+        self.model_download_progress_main.hide()
+
+        self.model_download_progress_secondary = Progress("Downloading file")
+        self.model_download_progress_secondary.hide()
 
         self.epoch_progress = Progress("Epochs")
         self.epoch_progress.hide()
@@ -90,7 +93,8 @@ class TrainingProcess:
                 button_container,
                 self.logs_button,
                 self.project_download_progress,
-                self.model_download_progress,
+                self.model_download_progress_main,
+                self.model_download_progress_secondary,
                 self.epoch_progress,
                 self.iter_progress,
                 self.artifacts_upload_progress,

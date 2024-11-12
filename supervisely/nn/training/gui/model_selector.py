@@ -1,11 +1,12 @@
 from typing import Literal
 
 import supervisely.io.env as sly_env
+from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Card,
     Container,
-    CustomModelsSelector,
+    CustomModelsSelectorV2,
     PretrainedModelsSelector,
     RadioTabs,
     Text,
@@ -25,27 +26,31 @@ from supervisely.nn.artifacts import (
     YOLOv8,
 )
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+from supervisely.nn.training.experiments import get_experiment_infos
 
 
 class ModelSelector:
     title = "Model Selector"
 
-    def __init__(self, framework: str, models: list):
+    def __init__(self, api: Api, framework: str, models: list):
         self.team_id = sly_env.team_id()  # get from project id
         self.models = models
 
         # Pretrained models
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
 
-        # Custom models
-        framework = self._detect_framework(framework)
-        if framework is not None:
-            artifacts: BaseTrainArtifacts = framework(self.team_id)
-            custom_artifacts = artifacts.get_list()
-        else:
-            custom_artifacts = []
+        # [Legacy] Custom models
+        # framework = self._detect_framework(framework)
+        # if framework is not None:
+        #     artifacts: BaseTrainArtifacts = framework(self.team_id)
+        #     custom_artifacts = artifacts.get_list()
+        # else:
+        #     custom_artifacts = []
 
-        self.custom_models_table = CustomModelsSelector(self.team_id, custom_artifacts)
+        # Custom models
+
+        custom_artifacts = get_experiment_infos(api, self.team_id, framework)
+        self.custom_models_table = CustomModelsSelectorV2(self.team_id, custom_artifacts)
         # Model source tabs
         self.model_source_tabs = RadioTabs(
             titles=["Pretrained models", "Custom models"],
@@ -95,16 +100,26 @@ class ModelSelector:
     def set_model_source(self, source: Literal["Pretrained models", "Custom models"]):
         self.model_source_tabs.set_active_tab(source)
 
-    def get_model_parameters(self):
+    def get_model_name(self):
+        if self.get_model_source() == "Pretrained models":
+            selected_row = self.pretrained_models_table.get_selected_row()
+            model_meta = selected_row.get("meta", {})
+            model_name = model_meta.get("model_name", None)
+        else:
+            selected_row = self.custom_models_table.get_selected_experiment_info()
+            model_name = selected_row.get("model_name", None)
+        return model_name
+
+    def get_model_info(self):
         if self.get_model_source() == "Pretrained models":
             return self.pretrained_models_table.get_selected_row()
         else:
-            return self.custom_models_table.get_selected_model_params()
+            return self.custom_models_table.get_selected_experiment_info()
 
     def validate_step(self):
         self.validator_text.hide()
-        model_params = self.get_model_parameters()
-        if model_params is None or model_params == {}:
+        model_info = self.get_model_info()
+        if model_info is None or model_info == {}:
             self.validator_text.set(text="Model is not selected", status="error")
             self.validator_text.show()
             return False

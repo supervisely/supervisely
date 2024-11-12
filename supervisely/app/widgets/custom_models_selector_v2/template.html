@@ -1,0 +1,82 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/custom_models_selector/style.css"/>
+
+<div
+    {% if widget._changes_handled == true %}
+    @change="post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
+    >
+
+    <div v-if="data.{{{widget.widget_id}}}.rowsHtml.length === 0"> You don't have any custom models</div>
+    <div v-else>
+
+        <div v-if="data.{{{widget.widget_id}}}.taskTypes.length > 1">
+            <sly-field
+            title="Task Type"
+            >
+                <el-radio-group
+                    class="multi-line mt10"
+                    :value="state.{{{widget.widget_id}}}.selectedTaskType"
+    
+                    {% if widget._task_type_changes_handled == true %}
+                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/task_type_changed')}"
+                    {% else %}
+                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0;}"
+                    {% endif %}
+                    >
+    
+                    <el-radio 
+                        v-for="(item, idx) in {{{widget._task_types}}}"
+                        :key="item"
+                        :label="item"
+                        >
+                            {{ item }}
+                    </el-radio>
+                </el-radio-group>
+        </sly-field>
+    </div>
+
+        <div>
+        
+    <table class="custom-models-selector-table">
+        <thead>
+        <tr>
+            <th v-for="col in data.{{{widget.widget_id}}}.columns">
+                <div> {{col}} </div>
+            </th>
+        </tr> 
+        </thead>
+        <tbody>
+        <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rowsHtml[state.{{{widget.widget_id}}}.selectedTaskType]">
+            <td v-for="col, vidx in row">
+                <div v-if="vidx === 0" style="display: flex;">
+                    <el-radio
+                    style="display: flex;"
+                    v-model="state.{{{widget.widget_id}}}.selectedRow"
+                    :label="ridx"
+                    >&#8205;</el-radio>
+                    
+                    <sly-html-compiler :params="{ridx: ridx, vidx: vidx}" :template="col" :data="data" :state="state"></sly-html-compiler>
+                    
+                </div>
+
+                <div v-else>
+
+                    <sly-html-compiler :params="{ridx: ridx, vidx: vidx}" :template="col" :data="data" :state="state">
+                    </sly-html-compiler>
+
+                </div>
+
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+    <div class="mt10" v-if="{{{widget.show_custom_checkpoint_path}}}"
+    >
+    {{{widget.show_custom_checkpoint_path_checkbox}}}
+    <div class="mt10">
+    {{{widget.custom_tab_widgets}}}
+</div>
+</div>
+</div>
+</div>

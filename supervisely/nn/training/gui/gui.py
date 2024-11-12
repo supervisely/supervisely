@@ -46,7 +46,7 @@ class TrainGUI:
         # 2. Select classes
         self.classes_selector = ClassesSelector(project_id=self.project_id, classes=[])
         # 3. Model selection
-        self.model_selector = ModelSelector(self.framework_name, self.models)
+        self.model_selector = ModelSelector(self.api, self.framework_name, self.models)
         # 4. Training parameters (yaml), scheduler preview
         self.hyperparameters_selector = HyperparametersSelector(
             hyperparameters=self.hyperparameters
