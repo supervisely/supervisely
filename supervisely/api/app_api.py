@@ -551,7 +551,7 @@ class AppApi(TaskApi):
 
         def is_enabled(self) -> bool:
             """Check if the workflow functionality is enabled."""
-            logger.info(f"Workflow check: is {'enabled' if self._enabled else 'disabled'}.")
+            logger.debug(f"Workflow check: is {'enabled' if self._enabled else 'disabled'}.")
             return self._enabled
 
         # pylint: disable=no-self-argument
@@ -579,8 +579,8 @@ class AppApi(TaskApi):
                         ):
                             self.__last_warning_time = time.monotonic()
                             logger.warning(
-                                "Workflow is disabled in development mode. "
-                                "To enable it, use `api.app.workflow.enable()` right after Api initialization."
+                                "Workflow is disabled. "
+                                "To enable it, use `api.app.workflow.enable()`."
                             )
                         return
                     if not check_workflow_compatibility(self._api, version_to_check):
