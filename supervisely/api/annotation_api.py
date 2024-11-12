@@ -1388,7 +1388,7 @@ class AnnotationApi(ModuleApi):
             ann_info = loop.run_until_complete(api.annotation.download_async(image_id))
         """
         if semaphore is None:
-            semaphore = await self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         async with semaphore:
             response = await self._api.post_async(
                 "annotations.info",
@@ -1501,7 +1501,7 @@ class AnnotationApi(ModuleApi):
             context["project_meta"] = project_meta
 
         if semaphore is None:
-            semaphore = await self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for image in image_ids:
             task = self.download_async(

@@ -85,7 +85,6 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
-SUPERVISELY_ASYNC_SEMAPHORE = "SUPERVISELY_ASYNC_SEMAPHORE"
 
 
 class ApiContext:
@@ -383,8 +382,6 @@ class Api:
 
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
-        self._http2_supported = None
-        self._http2_check_lock = asyncio.Lock()
         self._semaphore = None
 
     @classmethod
@@ -1039,6 +1036,7 @@ class Api:
         :rtype: :class:`httpx.Response`
         """
         self._set_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1109,6 +1107,7 @@ class Api:
         :rtype: :class:`Response<Response>`
         """
         self._set_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1187,8 +1186,8 @@ class Api:
         :return: Generator object.
         :rtype: :class:`Generator`
         """
-
         self._set_client()
+
         if retries is None:
             retries = self.retry_count
 
@@ -1326,7 +1325,7 @@ class Api:
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
-        await self._set_async_client()
+        self._set_async_client()
 
         if retries is None:
             retries = self.retry_count
@@ -1416,7 +1415,7 @@ class Api:
         :return: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
-        await self._set_async_client()
+        self._set_async_client()
 
         if retries is None:
             retries = self.retry_count
@@ -1424,13 +1423,12 @@ class Api:
         url = self.api_server_address + "/v3/" + method
         if not use_public_api:
             url = os.path.join(self.server_address, method)
+        logger.trace(f"{method_type} {url}")
 
         if headers is None:
             headers = self.headers.copy()
         else:
             headers = {**self.headers, **headers}
-
-        logger.trace(f"{method_type} {url}")
 
         if isinstance(data, (bytes, Generator)):
             content = data
@@ -1520,66 +1518,54 @@ class Api:
             request=resp.request if locals().get("resp") else None,
         )
 
-    async def _set_async_client(self):
+    def _set_async_client(self):
         """
-        Set async httpx client if it is not set yet.
-        Switch on HTTP/2 if the server address uses HTTPS.
+        Set async httpx client with HTTP/2 if it is not set yet.
         """
         if self.async_httpx_client is None:
-            self._check_https_redirect()
-            http2 = False
-            if self.server_address.startswith("https://"):
-                if self._http2_supported is None:
-                    await self._verify_http2_support_status_async()
-                http2 = self._http2_supported
-            self.async_httpx_client = httpx.AsyncClient(http2=http2)
+            self.async_httpx_client = httpx.AsyncClient(http2=True)
 
     def _set_client(self):
         """
-        Set httpx client if it is not set yet.
-        Switch on HTTP/2 if the server address uses HTTPS.
+        Set sync httpx client with HTTP/2 if it is not set yet.
         """
         if self.httpx_client is None:
-            self._check_https_redirect()
-            http2 = False
-            if self.server_address.startswith("https://"):
-                if self._http2_supported is None:
-                    self._verify_http2_support_status()
-            else:
-                self.httpx_client = httpx.Client(http2=http2)
+            self.httpx_client = httpx.Client(http2=True)
 
-    async def _get_default_semaphore(self):
+    def get_default_semaphore(self):
         """
         Get default global API semaphore for async requests.
-        If the semaphore is not set it will be initialized.
+        If the semaphore is not set, it will be initialized.
         """
         if self._semaphore is None:
-            await self._verify_http2_support_status_async()
             self._initialize_semaphore()
         return self._semaphore
 
     def _initialize_semaphore(self):
         """
         Initialize the semaphore for async requests.
-        Check if the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set.
-        If it is set, create a semaphore with the given value.
-        Otherwise, create a semaphore with a default value.
-        If server supports HTTPS, create a semaphore with a higher value.
+
+        If the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set, create a semaphore with the given value.
+
+        Otherwise, create a semaphore with a default value:
+
+            - If server supports HTTPS, create a semaphore with value 10.
+            - If server supports HTTP, create a semaphore with value 5.
         """
-        env_semaphore = os.getenv(SUPERVISELY_ASYNC_SEMAPHORE)
-        if env_semaphore is not None:
-            self._semaphore = asyncio.Semaphore(int(env_semaphore))
+        semaphore_size = sly_env.semaphore_size()
+        if semaphore_size is not None:
+            self._semaphore = asyncio.Semaphore(semaphore_size)
             logger.debug(
-                f"Setting global API semaphore size to {env_semaphore} from environment variable"
+                f"Setting global API semaphore size to {semaphore_size} from environment variable"
             )
         else:
             self._check_https_redirect()
-            if self._http2_supported:
+            if self.server_address.startswith("https://"):
                 self._semaphore = asyncio.Semaphore(10)
-                logger.debug("Setting global API semaphore size to 10 for HTTP/2")
+                logger.debug("Setting global API semaphore size to 10 for HTTPS")
             else:
                 self._semaphore = asyncio.Semaphore(5)
-                logger.debug("Setting global API semaphore size to 5 for HTTP/1.1")
+                logger.debug("Setting global API semaphore size to 5 for HTTP")
 
     def set_semaphore_size(self, size: int = None):
         """
@@ -1604,59 +1590,3 @@ class Api:
         :rtype: :class:`asyncio.Semaphore`
         """
         return self._semaphore
-
-    def _verify_http2_support_status(self) -> bool:
-        """
-        Verify if the server address supports HTTP/2.
-        """
-        if self._http2_supported is not None:
-            return
-
-        url = self.api_server_address if self.api_server_address else self.server_address
-        with httpx.Client(http2=True) as client:
-            try:
-                response = client.get(url)
-                if response.http_version == "HTTP/2":
-                    logger.debug("HTTP/2 is supported by the server. Setting client to HTTP/2")
-                    self._http2_supported = True
-                else:
-                    logger.debug(
-                        "HTTP/2 is not supported by the server. Setting client to HTTP/1.1"
-                    )
-                    self._http2_supported = False
-            except Exception as e:
-                logger.debug(
-                    "Failed to check if the server supports HTTP/2."
-                    f"Setting client to HTTP/1.1. Error: {e}"
-                )
-                self._http2_supported = False
-
-    async def _verify_http2_support_status_async(self):
-        """
-        Verify if the server address supports HTTP/2 asynchronously.
-        """
-        if self._http2_supported is not None:
-            return
-
-        async with self._http2_check_lock:
-            if self._http2_supported is not None:
-                return
-
-            url = self.api_server_address if self.api_server_address else self.server_address
-            async with httpx.AsyncClient(http2=True) as client:
-                try:
-                    response = await client.get(url)
-                    if response.http_version == "HTTP/2":
-                        logger.debug("HTTP/2 is supported by the server. Setting client to HTTP/2")
-                        self._http2_supported = True
-                    else:
-                        logger.debug(
-                            "HTTP/2 is not supported by the server. Setting client to HTTP/1.1"
-                        )
-                        self._http2_supported = False
-                except Exception as e:
-                    logger.debug(
-                        "Failed to check if the server supports HTTP/2."
-                        f"Setting client to HTTP/1.1. Error: {e}"
-                    )
-                    self._http2_supported = False
