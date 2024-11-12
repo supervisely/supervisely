@@ -63,12 +63,7 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import (
-    camel_to_snake,
-    get_or_create_event_loop,
-    is_community,
-    is_development,
-)
+from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
@@ -1532,10 +1527,17 @@ class Api:
         if self.httpx_client is None:
             self.httpx_client = httpx.Client(http2=True)
 
-    def get_default_semaphore(self):
+    def get_default_semaphore(self) -> asyncio.Semaphore:
         """
         Get default global API semaphore for async requests.
         If the semaphore is not set, it will be initialized.
+
+        During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
+        If the environment variable is not set, the default value will be set based on the server address.
+        Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
+
+        :return: Semaphore object.
+        :rtype: :class:`asyncio.Semaphore`
         """
         if self._semaphore is None:
             self._initialize_semaphore()
