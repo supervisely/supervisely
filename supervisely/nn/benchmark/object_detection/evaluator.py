@@ -63,6 +63,7 @@ class ObjectDetectionEvalResult(BaseEvalResult):
 class ObjectDetectionEvaluator(BaseEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = ObjectDetectionEvalResult
+    accepted_shapes = ["rectangle"]
 
     def evaluate(self):
         try:
@@ -97,14 +98,14 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         cocoGt_json = sly2coco(
             self.gt_project_path,
             is_dt_dataset=False,
-            accepted_shapes=["rectangle"],
+            accepted_shapes=self.accepted_shapes,
             progress=self.pbar,
             classes_whitelist=self.classes_whitelist,
         )
         cocoDt_json = sly2coco(
             self.pred_project_path,
             is_dt_dataset=True,
-            accepted_shapes=["rectangle"],
+            accepted_shapes=self.accepted_shapes,
             progress=self.pbar,
             classes_whitelist=self.classes_whitelist,
         )

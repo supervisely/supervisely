@@ -71,7 +71,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.vis_texts = vis_texts
         self._widgets = False
         self.cv_task = CVTask.OBJECT_DETECTION
-        self.ann_opacity = 0.4 if self.cv_task == CVTask.OBJECT_DETECTION else 0.7
+        self.ann_opacity = 0.4
 
         diff_project_info, diff_dataset_infos, existed = self._get_or_create_diff_project()
         self.eval_result.diff_project_info = diff_project_info
@@ -255,11 +255,9 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             (0, self.overview_chart),
             # ExplorePredictions
             (1, self.explore_predictions_md),
-            (0, self.clickable_label),
             (0, self.explore_predictions_gallery),
             # ModelPredictions
             (1, self.model_predictions_md),
-            (0, self.clickable_label),
             (0, self.model_predictions_table),
             # OutcomeCounts
             (1, self.outcome_counts_md),

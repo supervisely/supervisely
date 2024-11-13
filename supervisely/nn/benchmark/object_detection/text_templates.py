@@ -43,7 +43,7 @@ markdown_overview = """
 - **Ground Truth project**: <a href="/projects/{}/datasets" target="_blank">{}</a>, {}{}
 {}
 - **IoU threshold**: {}
-- **Optimal confidence threshold**: {} (calculated automatically). <a href="{}" target="_blank">Learn more</a>.
+- **Optimal confidence threshold**: {} (calculated automatically), <a href="{}" target="_blank">learn more</a>.
 
 Learn more about Model Benchmark, implementation details, and how to use the charts in our <a href="{}" target="_blank">Technical Report</a>.
 """
@@ -67,6 +67,10 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 
 markdown_explorer = """## Explore Predictions
 In this section you can visually assess the model performance through examples. This helps users better understand model capabilities and limitations, giving an intuitive grasp of prediction quality in different scenarios.
+
+> Click on the image to view the **Ground Truth**, **Prediction**, and **Difference** annotations side-by-side. 
+
+> Filtering options allow you to adjust the confidence threshold (only for predictions) and the model's false outcomes (only for differences). Differences are calculated only for the optimal confidence threshold, allowing you to focus on the most accurate predictions made by the model.
 """
 
 markdown_predictions_gallery = """
