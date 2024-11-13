@@ -62,7 +62,7 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             pred_dir=pred_prep_path,
             boundary_width=0.01,
             boundary_iou_d=0.02,
-            num_workers=4,
+            num_workers=0, # FIXME: set 4 for production
             class_names=target_classes,
             result_dir=self.result_dir,
         )

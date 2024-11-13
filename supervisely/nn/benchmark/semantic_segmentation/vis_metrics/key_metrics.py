@@ -29,8 +29,8 @@ class KeyMetrics(BaseVisMetric):
         metrics = self.eval_result.mp.key_metrics()
         fig.add_trace(
             go.Scatterpolar(
-                r=list(metrics.values()),
-                theta=list(metrics.keys()),
+                r=list(metrics.values()) + [list(metrics.values())[0]],
+                theta=list(metrics.keys()) + [list(metrics.keys())[0]],
                 line_color="blue",
                 fill="toself",
                 hovertemplate="%{theta}: %{r:.2f}<extra></extra>",

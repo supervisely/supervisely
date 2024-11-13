@@ -2,11 +2,14 @@ import os
 import pickle
 from pathlib import Path
 
+import pandas as pd
+
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
 from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
 from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
 from supervisely.nn.benchmark.object_detection.metric_provider import MetricProvider
+from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 
 
 class ObjectDetectionEvalResult(BaseEvalResult):
@@ -15,22 +18,21 @@ class ObjectDetectionEvalResult(BaseEvalResult):
     def _read_eval_data(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        gt_path = str(Path(self.directory, "evaluation", "cocoGt.json"))
-        dt_path = str(Path(self.directory, "evaluation", "cocoDt.json"))
+        gt_path = str(Path(self.directory) / "cocoGt.json")
+        dt_path = str(Path(self.directory) / "cocoDt.json")
         coco_gt, coco_dt = COCO(gt_path), COCO(dt_path)
         self.coco_gt = coco_gt
         self.coco_dt = coco_dt
-        self.eval_data = pickle.load(
-            open(Path(self.directory, "evaluation", "eval_data.pkl"), "rb")
-        )
-        self.inference_info = load_json_file(
-            Path(self.directory, "evaluation", "inference_info.json")
-        )
-        speedtest_info_path = Path(self.directory, "speedtest", "speedtest.json")
+        self.eval_data = None
+        with open(Path(self.directory, "eval_data.pkl"), "rb") as f:
+            self.eval_data = pickle.load(f)
+
+        inference_info_path = Path(self.directory) / "inference_info.json"
+        self.inference_info = load_json_file(str(inference_info_path))
+
+        speedtest_info_path = Path(self.directory).parent / "speedtest" / "speedtest.json"
         if speedtest_info_path.exists():
-            self.speedtest_info = load_json_file(
-                Path(self.directory, "speedtest", "speedtest.json")
-            )
+            self.speedtest_info = load_json_file(str(speedtest_info_path))
 
         self.mp = MetricProvider(
             self.eval_data["matches"],
@@ -41,33 +43,27 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         )
         self.mp.calculate()
 
-        # TODO: start move to Visualizer
-        # self.df_score_profile = pd.DataFrame(
-        #     self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
-        # )
+        self.df_score_profile = pd.DataFrame(
+            self.mp.confidence_score_profile(), columns=["scores", "precision", "recall", "f1"]
+        )
 
-        # # downsample
-        # if len(self.df_score_profile) > 5000:
-        #     self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
-        # else:
-        #     self.dfsp_down = self.df_score_profile
+        # downsample
+        if len(self.df_score_profile) > 5000:
+            self.dfsp_down = self.df_score_profile.iloc[:: len(self.df_score_profile) // 1000]
+        else:
+            self.dfsp_down = self.df_score_profile
 
-        # self.f1_optimal_conf = self.mp.get_f1_optimal_conf()[0]
-        # if self.f1_optimal_conf is None:
-        #     self.f1_optimal_conf = 0.01
-        #     logger.warning("F1 optimal confidence cannot be calculated. Using 0.01 as default.")
+        # Click data
+        gt_id_mapper = IdMapper(self.coco_gt.dataset)
+        dt_id_mapper = IdMapper(self.coco_dt.dataset)
 
-        # # Click data
-        # gt_id_mapper = IdMapper(self.coco_gt.dataset)
-        # dt_id_mapper = IdMapper(self.coco_dt.dataset)
-
-        # self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
-        # TODO: end
+        self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
 
 
 class ObjectDetectionEvaluator(BaseEvaluator):
-    EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/coco/evaluation_params.yaml"
+    EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = ObjectDetectionEvalResult
+    accepted_shapes = ["rectangle"]
 
     def evaluate(self):
         try:
@@ -102,14 +98,14 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         cocoGt_json = sly2coco(
             self.gt_project_path,
             is_dt_dataset=False,
-            accepted_shapes=["rectangle"],
+            accepted_shapes=self.accepted_shapes,
             progress=self.pbar,
             classes_whitelist=self.classes_whitelist,
         )
         cocoDt_json = sly2coco(
-            self.dt_project_path,
+            self.pred_project_path,
             is_dt_dataset=True,
-            accepted_shapes=["rectangle"],
+            accepted_shapes=self.accepted_shapes,
             progress=self.pbar,
             classes_whitelist=self.classes_whitelist,
         )

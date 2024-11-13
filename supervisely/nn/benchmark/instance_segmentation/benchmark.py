@@ -1,24 +1,25 @@
-from supervisely.nn.benchmark.base_benchmark import BaseBenchmark
 from supervisely.nn.benchmark.cv_tasks import CVTask
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvaluator,
+from supervisely.nn.benchmark.instance_segmentation.evaluator import (
+    InstanceSegmentationEvaluator,
 )
+from supervisely.nn.benchmark.instance_segmentation.visualizer import (
+    InstanceSegmentationVisualizer,
+)
+from supervisely.nn.benchmark.object_detection.benchmark import ObjectDetectionBenchmark
 from supervisely.nn.benchmark.utils import try_set_conf_auto
-from supervisely.nn.benchmark.object_detection.visualizer import (
-    ObjectDetectionVisualizer,
-)
+
 CONF_THRES = 0.05
 
 
-class ObjectDetectionBenchmark(BaseBenchmark):
-    visualizer_cls = ObjectDetectionVisualizer
+class InstanceSegmentationBenchmark(ObjectDetectionBenchmark):
+    visualizer_cls = InstanceSegmentationVisualizer
 
     @property
     def cv_task(self) -> str:
-        return CVTask.OBJECT_DETECTION
+        return CVTask.INSTANCE_SEGMENTATION
 
     def _get_evaluator_class(self) -> type:
-        return ObjectDetectionEvaluator
+        return InstanceSegmentationEvaluator
 
     def _run_inference(
         self,

@@ -1,9 +1,6 @@
-from typing import List, Union
+from __future__ import annotations
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
-from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
-    SemanticSegmentationEvalResult,
-)
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
@@ -11,54 +8,42 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class Speedtest(BaseVisMetric):
-
-    def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+class Speedtest(DetectionVisMetric):
+    MARKDOWN_INTRO = "speedtest_intro"
+    TABLE_MARKDOWN = "speedtest_table"
+    TABLE = "speedtest"
+    CHART_MARKDOWN = "speedtest_chart"
+    CHART = "speedtest"
 
     def is_empty(self) -> bool:
-        return self.eval_result.speedtest_info is None
-
-    def multiple_batche_sizes(self) -> bool:
-        return len(self.eval_result.speedtest_info["speedtest"]) > 1
+        return not self.eval_result.speedtest_info
 
     @property
-    def latency(self) -> List[Union[int, str]]:
-        if self.eval_result.speedtest_info is None:
-            return ["N/A"]
-        latency = []
-        for test in self.eval_result.speedtest_info["speedtest"]:
-            latency.append(round(test["benchmark"]["total"], 2))
-        return latency
-
-    @property
-    def fps(self) -> List[Union[int, str]]:
-        if self.eval_result.speedtest_info is None:
-            return ["N/A"]
-        fps = []
-        for test in self.eval_result.speedtest_info["speedtest"]:
-            fps.append(round(1000 / test["benchmark"]["total"], 2))
-        return fps
+    def num_batche_sizes(self) -> int:
+        if self.is_empty():
+            return 0
+        return len(self.eval_result.speedtest_info.get("speedtest", []))
 
     @property
     def intro_md(self) -> MarkdownWidget:
-        device = self.eval_result.speedtest_info["model_info"]["device"]
-        hardware = self.eval_result.speedtest_info["model_info"]["hardware"]
-        runtime = self.eval_result.speedtest_info["model_info"]["runtime"]
-        num_it = self.eval_result.speedtest_info["speedtest"][0]["num_iterations"]
-
-        return MarkdownWidget(
-            name="speedtest_intro",
-            title="Inference Speed",
-            text=self.vis_texts.markdown_speedtest_intro.format(device, hardware, runtime, num_it),
+        text = self.vis_texts.markdown_speedtest_intro
+        text = text.format(
+            self.eval_result.speedtest_info["model_info"]["device"],
+            self.eval_result.speedtest_info["model_info"]["hardware"],
+            self.eval_result.speedtest_info["model_info"]["runtime"],
         )
+        return MarkdownWidget(name=self.MARKDOWN_INTRO, title="Inference Speed", text=text)
 
     @property
-    def intro_table(self) -> TableWidget:
-        res = {}
+    def table_md(self) -> MarkdownWidget:
+        text = self.vis_texts.markdown_speedtest_table
+        text = text.format(self.eval_result.speedtest_info["speedtest"][0]["num_iterations"])
+        return MarkdownWidget(name=self.TABLE_MARKDOWN, title="Speedtest Table", text=text)
 
+    @property
+    def table(self) -> TableWidget:
         columns = [" ", "Infrence time", "FPS"]
+        content = []
         temp_res = {}
         max_fps = 0
         for test in self.eval_result.speedtest_info["speedtest"]:
@@ -66,23 +51,17 @@ class Speedtest(BaseVisMetric):
 
             ms = round(test["benchmark"]["total"], 2)
             fps = round(1000 / test["benchmark"]["total"] * batch_size)
-            row = [batch_size, ms, fps]
+            row = [f"Batch size {batch_size}", ms, fps]
             temp_res[batch_size] = row
             max_fps = max(max_fps, fps)
 
-        res["content"] = []
         # sort by batch size
         temp_res = dict(sorted(temp_res.items()))
         for row in temp_res.values():
-            dct = {
-                "row": row,
-                "id": row[0],
-                "items": row,
-            }
-            res["content"].append(dct)
+            content.append({"row": row, "id": row[0], "items": row})
 
         columns_options = [
-            {"disableSort": True},  # "customCell": True
+            {"disableSort": True},  # , "ustomCell": True},
             {"subtitle": "ms", "tooltip": "Milliseconds for batch images", "postfix": "ms"},
             {
                 "subtitle": "imgs/sec",
@@ -91,34 +70,23 @@ class Speedtest(BaseVisMetric):
                 "maxValue": max_fps,
             },
         ]
-
-        res["columns"] = columns
-        res["columnsOptions"] = columns_options
-
-        table = TableWidget(
-            name="speedtest_intro_table",
-            data=res,
-            show_header_controls=False,
-            fix_columns=1,
-        )
-        # table.main_column = "Batch size"
+        data = {"columns": columns, "columnsOptions": columns_options, "content": content}
+        table = TableWidget(name=self.TABLE, data=data)
+        table.main_column = "Batch size"
         table.fixed_columns = 1
         table.show_header_controls = False
         return table
 
     @property
-    def batch_size_md(self) -> MarkdownWidget:
-        return MarkdownWidget(
-            name="batch_size",
-            title="Batch Size",
-            text=self.vis_texts.markdown_batch_inference,
-        )
+    def chart_md(self) -> MarkdownWidget:
+        text = self.vis_texts.markdown_speedtest_chart
+        return MarkdownWidget(name=self.CHART_MARKDOWN, title="Speedtest Chart", text=text)
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget(name="speed_charts", figure=self.get_figure())
+        return ChartWidget(name=self.CHART, figure=self._get_figure())
 
-    def get_figure(self):  #  -> Optional[go.Figure]
+    def _get_figure(self):  #  -> go.Figure:
         import plotly.graph_objects as go  # pylint: disable=import-error
         from plotly.subplots import make_subplots  # pylint: disable=import-error
 

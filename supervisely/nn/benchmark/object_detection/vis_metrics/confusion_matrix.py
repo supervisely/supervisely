@@ -1,36 +1,44 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import Dict
 
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.visualization.vis_metric_base import MetricVis
-from supervisely.nn.benchmark.visualization.vis_widgets import Schema, Widget
-
-if TYPE_CHECKING:
-    from supervisely.nn.benchmark.visualization.visualizer import Visualizer
+from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
+from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
-class ConfusionMatrix(MetricVis):
+class ConfusionMatrix(DetectionVisMetric):
+    MARKDOWN = "confusion_matrix"
+    CHART = "confusion_matrix"
 
-    def __init__(self, loader: Visualizer) -> None:
-        super().__init__(loader)
-
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.clickable = True
-        self.schema = Schema(
-            self._loader.vis_texts,
-            markdown_confusion_matrix=Widget.Markdown(title="Confusion Matrix", is_header=True),
-            chart=Widget.Chart(),
-        )
+        self._keypair_sep: str = "-"
 
-    def get_figure(self, widget: Widget.Chart):  # -> Optional[go.Figure]:
+    @property
+    def md(self) -> MarkdownWidget:
+        text = self.vis_texts.markdown_confusion_matrix
+        return MarkdownWidget(self.MARKDOWN, "Confusion Matrix", text)
+
+    @property
+    def chart(self) -> ChartWidget:
+        chart = ChartWidget(self.CHART, self._get_figure())
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+        )
+        return chart
+
+    def _get_figure(self):  # -> go.Figure:
         import plotly.express as px  # pylint: disable=import-error
 
-        confusion_matrix = self._loader.mp.confusion_matrix()
-        # Confusion Matrix
+        confusion_matrix = self.eval_result.mp.confusion_matrix()
         # TODO: Green-red
-        cat_names = self._loader.mp.cat_names
+        cat_names = self.eval_result.mp.cat_names
         none_name = "(None)"
 
         with np.errstate(divide="ignore"):
@@ -53,6 +61,7 @@ class ConfusionMatrix(MetricVis):
         fig.update_traces(
             customdata=confusion_matrix,
             hovertemplate="Objects Count: %{customdata}<br>Predicted: %{y}<br>Ground Truth: %{x}",
+            colorscale="Viridis",
         )
 
         # Text on cells
@@ -62,12 +71,15 @@ class ConfusionMatrix(MetricVis):
         # fig.show()
         return fig
 
-    def get_click_data(self, widget: Widget.Chart) -> Optional[dict]:
-        res = dict(projectMeta=self._loader.dt_project_meta.to_json())
+    def get_click_data(self) -> Dict:
+        res = dict(projectMeta=self.eval_result.pred_project_meta.to_json())
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
 
-        for (pred_key, gt_key), matches_data in self._loader.click_data.confusion_matrix.items():
+        for (
+            pred_key,
+            gt_key,
+        ), matches_data in self.eval_result.click_data.confusion_matrix.items():
             key = gt_key + self._keypair_sep + pred_key
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []

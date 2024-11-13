@@ -632,12 +632,6 @@ class Visualizer:
         meta = self._api.project.update_meta(project_id, meta)
         return meta
 
-    def _update_diff_meta(self, meta: ProjectMeta):
-        new_obj_classes = []
-        for obj_class in meta.obj_classes:
-            new_obj_classes.append(obj_class.clone(geometry_type=AnyGeometry))
-        meta = meta.clone(obj_classes=new_obj_classes)
-        self.diff_project_meta = self._api.project.update_meta(self.diff_project_info.id, meta)
 
     def _update_diff_meta(self, meta: ProjectMeta):
         new_obj_classes = []

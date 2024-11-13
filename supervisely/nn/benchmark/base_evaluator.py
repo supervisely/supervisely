@@ -40,8 +40,16 @@ class BaseEvalResult:
         return self.inference_info.get("dt_project_id")
 
     @property
+    def pred_project_id(self):
+        return self.dt_project_id
+
+    @property
     def train_info(self):
         return self.inference_info.get("train_info", None)  # TODO: check
+
+    @property
+    def evaluator_app_info(self):
+        return self.inference_info.get("evaluator_app_info", None)  # TODO: check
 
     @property
     def gt_images_ids(self):

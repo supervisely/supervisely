@@ -53,6 +53,7 @@ class BaseBenchmark:
         self.vis_texts = None
         self.inference_speed_text = None
         self.train_info = None
+        self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
         self._validate_evaluation_params()
 
@@ -133,6 +134,10 @@ class BaseBenchmark:
             "batch_size": batch_size,
             **model_info,
         }
+        if self.train_info:
+            inference_info["train_info"] = self.train_info
+        if self.evaluator_app_info:
+            inference_info["evaluator_app_info"] = self.evaluator_app_info
         self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
         logger.debug(
             "Inference is finished.",
@@ -154,7 +159,7 @@ class BaseBenchmark:
         eval_results_dir = self.get_eval_results_dir()
         self.evaluator = self._get_evaluator_class()(
             gt_project_path=gt_project_path,
-            dt_project_path=dt_project_path,
+            pred_project_path=dt_project_path,
             result_dir=eval_results_dir,
             progress=self.pbar,
             items_count=self.dt_project_info.items_count,
@@ -247,7 +252,7 @@ class BaseBenchmark:
     def get_project_paths(self):
         base_dir = self.get_base_dir()
         gt_path = os.path.join(base_dir, "gt_project")
-        dt_path = os.path.join(base_dir, "dt_project")
+        dt_path = os.path.join(base_dir, "pred_project")
         return gt_path, dt_path
 
     def get_eval_results_dir(self) -> str:

@@ -33,7 +33,7 @@ class MarkdownWidget(BaseWidget):
         if self.is_info_block:
             style_class += " overview-info-block"
         if self.width_fit_content:
-            style_class += " markdown-fit-content"
+            style_class += " width-fit-content"
 
         return f"""
             <div style="margin-top: 10px;">
