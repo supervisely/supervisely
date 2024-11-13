@@ -339,16 +339,19 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         raw_video_meta: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
+        :param filters: List of parameters to sort output Videos. See: https://api.docs.supervisely.com/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
         :param raw_video_meta: Get normalized metadata from server if False.
         :type raw_video_meta: bool
+        :param fields: List of fields to return.
+        :type fields: List[str], optional
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -372,15 +375,14 @@ class VideoApi(RemoveableBulkModuleApi):
             print(filtered_video_infos)
             # Output: [VideoInfo(id=19371139, ...)]
         """
-
-        return self.get_list_all_pages(
-            "videos.list",
-            {
-                ApiField.DATASET_ID: dataset_id,
-                ApiField.FILTER: filters or [],
-                ApiField.RAW_VIDEO_META: raw_video_meta,
-            },
-        )
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.RAW_VIDEO_META: raw_video_meta,
+        }
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
+        return self.get_list_all_pages("videos.list", data)
 
     def get_list_generator(
         self,

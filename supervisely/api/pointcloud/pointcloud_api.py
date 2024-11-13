@@ -232,7 +232,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Pointclouds. See: https://dev.supervise.ly/api-docs/#tag/Point-Clouds/paths/~1point-clouds.list/get
+        :param filters: List of parameters to sort output Pointclouds. See: https://api.docs.supervisely.com/#tag/Point-Clouds/paths/~1point-clouds.list/get
         :type filters: List[Dict[str, str]], optional
         :return: List of the point clouds objects from the dataset with given id.
         :rtype: :class:`List[PointcloudInfo]`
@@ -407,7 +407,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             #     'hash': 'vxA+emfDNUkFP9P6oitMB5Q0rMlnskmV2jvcf47OjGU=',
             #     'link': None,
             #     'preview': '/previews/q/ext:jpeg/resize:fill:50:0:0/q:50/plain/h5ad-public/images/original/S/j/hJ/PwMg.png',
-            #     'fullStorageUrl': 'https://dev.supervise.ly/hs4-public/images/original/S/j/hJ/PwMg.png',
+            #     'fullStorageUrl': 'https://app.supervisely.com/hs4-public/images/original/S/j/hJ/PwMg.png',
             #     'name': 'img00'
             # }
         """

@@ -762,7 +762,7 @@ def _init(
             await StateJson.from_request(request)
 
         if not ("application/json" not in request.headers.get("Content-Type", "")):
-            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://dev.supervise.ly'}
+            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://app.supervisely.com'}
             content = await request.json()
 
             request.state.context = content.get("context")

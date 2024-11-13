@@ -74,7 +74,7 @@ class TagApi(ModuleApi):
 
         :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
         :type project_id: int
-        :param filters: List of parameters to sort output tags. See: https://dev.supervise.ly/api-docs/#tag/Advanced/paths/~1tags.list/get
+        :param filters: List of parameters to sort output tags. See: https://api.docs.supervisely.com/#tag/Advanced/paths/~1tags.list/get
         :type filters: List[Dict[str, str]], optional
         :return: List of the tags from the project with given id.
         :rtype: list
