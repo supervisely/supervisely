@@ -115,6 +115,11 @@ class BaseVisualizer:
             self.api.project.get_meta(eval_result.pred_project_id)
         )
 
+        # set filtered project meta
+        eval_result.filtered_project_meta = self._get_filtered_project_meta(
+            eval_result.pred_project_meta, eval_result
+        )
+
         # get dataset infos
         filters = None
         if eval_result.gt_dataset_ids is not None:
@@ -202,22 +207,33 @@ class BaseVisualizer:
         return "[diff]: " + pred_project_name
 
     def _create_explore_modal_table(self, columns_number=3, click_gallery_id=None) -> GalleryWidget:
-        all_predictions_modal_gallery = GalleryWidget(
+        gallery = GalleryWidget(
             "all_predictions_modal_gallery",
             is_modal=True,
             columns_number=columns_number,
             click_gallery_id=click_gallery_id,
             opacity=self.ann_opacity,
         )
-        all_predictions_modal_gallery.set_project_meta(self.eval_results[0].pred_project_meta)
-        return all_predictions_modal_gallery
+        gallery.set_project_meta(self.eval_results[0].filtered_project_meta)
+        # gallery.add_image_left_header("Compare with GT")
+        return gallery
 
     def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
-        diff_modal_gallery = GalleryWidget(
+        gallery = GalleryWidget(
             "diff_predictions_modal_gallery",
             is_modal=True,
             columns_number=columns_number,
             opacity=self.ann_opacity,
         )
-        diff_modal_gallery.set_project_meta(self.eval_results[0].pred_project_meta)
-        return diff_modal_gallery
+        gallery.set_project_meta(self.eval_results[0].filtered_project_meta)
+        return gallery
+
+    def _get_filtered_project_meta(self, meta: ProjectMeta, eval_result) -> ProjectMeta:
+        remove_classes = []
+        if eval_result.classes_whitelist:
+            for obj_class in meta.obj_classes:
+                if obj_class.name not in eval_result.classes_whitelist:
+                    remove_classes.append(obj_class.name)
+            if remove_classes:
+                meta = meta.delete_obj_classes(remove_classes)
+        return meta

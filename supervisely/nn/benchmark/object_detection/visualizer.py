@@ -705,15 +705,3 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         elif self.cv_task == CVTask.SEMANTIC_SEGMENTATION:
             return isinstance(label.geometry, Bitmap)
         return False
-
-    def _get_filtered_project_meta(self, project_id: int) -> ProjectMeta:
-        meta = self.api.project.get_meta(project_id)
-        meta = ProjectMeta.from_json(meta)
-        remove_classes = []
-        if self.eval_result.classes_whitelist:
-            for obj_class in meta.obj_classes:
-                if obj_class.name not in self.eval_result.classes_whitelist:
-                    remove_classes.append(obj_class.name)
-            if remove_classes:
-                meta = meta.delete_obj_classes(remove_classes)
-        return meta
