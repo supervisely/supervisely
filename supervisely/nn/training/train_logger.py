@@ -13,6 +13,8 @@ class BaseTrainLogger:
         self._on_epoch_started_callbacks = []
         self._on_epoch_finished_callbacks = []
         self._on_step_callbacks = []
+        self.epoch_idx = 0
+        self.step_idx = 0
 
     def train_started(self, total_epochs: int):
         for callback in self._on_train_started_callbacks:
@@ -27,7 +29,13 @@ class BaseTrainLogger:
             callback(total_steps)
 
     def epoch_finished(self):
+        self.epoch_idx += 1
         for callback in self._on_epoch_finished_callbacks:
+            callback()
+    
+    def on_step_end(self):
+        self.step_idx += 1
+        for callback in self._on_step_callbacks:
             callback()
 
     # def step_started(self):
@@ -46,9 +54,8 @@ class BaseTrainLogger:
     def add_on_epoch_finish_callback(self, callback: Callable):
         self._on_epoch_finished_callbacks.append(callback)
 
-    def _update_step(self, logs):
-        for callback in self._on_step_callbacks:
-            callback(logs)
+    def add_on_step_callback(self, callback: Callable):
+        self._on_step_callbacks.append(callback)
 
     def add_on_step_callback(self, callback: Callable):
         self._on_step_callbacks.append(callback)
@@ -56,9 +63,20 @@ class BaseTrainLogger:
     def _log(self, logs: dict, idx: int):
         raise NotImplementedError
 
+    def _log_step(self, logs: dict):
+        raise NotImplementedError
+
+    def _log_epoch(self, logs: dict):
+        raise NotImplementedError
+
     def log(self, logs: dict, idx: int):
         self._log(logs, idx)
-        self._update_step(logs)
+    
+    def log_step(self, logs: dict):
+        self._log_step(logs)
+
+    def log_epoch(self, logs: dict):
+        self._log_epoch(logs)
 
 
 class TensorboardLogger(BaseTrainLogger):
@@ -91,11 +109,11 @@ class TensorboardLogger(BaseTrainLogger):
             if isinstance(value, (int, float)):
                 self.writer.add_scalar(key, value, idx)
 
-    def log_step(self, logs: dict, idx: int):
-        self._log(logs, idx)
+    def _log_step(self, logs: dict):
+        self._log(logs, self.step_idx)
 
-    def log_epoch(self, logs: dict, idx: int):
-        self._log(logs, idx)
+    def _log_epoch(self, logs: dict):
+        self._log(logs, self.epoch_idx)
 
 
 train_logger = TensorboardLogger("logs")
