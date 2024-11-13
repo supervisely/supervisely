@@ -116,7 +116,7 @@ class OutcomeCounts(DetectionVisMetric):
             ] = f"{outcome}: {len(matches_data)} object{'s' if len(matches_data) > 1 else ''}"
             res["clickData"][outcome]["imagesIds"] = list(img_ids)
             res["clickData"][outcome]["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                {"type": "tag", "tagId": "confidence", "value": [self.eval_result.mp.f1_optimal_conf, 1]},
                 {"type": "tag", "tagId": "outcome", "value": outcome},
             ]
 

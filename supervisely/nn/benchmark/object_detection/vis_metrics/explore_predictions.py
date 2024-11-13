@@ -17,11 +17,12 @@ class ExplorePredictions(DetectionVisMetric):
         text = self.vis_texts.markdown_explorer
         return MarkdownWidget(self.MARKDOWN, "Explore Predictions", text)
 
-    @property
-    def gallery(self) -> GalleryWidget:
+    def gallery(self, opacity) -> GalleryWidget:
         optimal_conf = self.eval_result.mp.f1_optimal_conf
         default_filters = [{"confidence": [optimal_conf, 1]}]
-        gallery = GalleryWidget(self.GALLERY, columns_number=3, filters=default_filters)
+        gallery = GalleryWidget(
+            self.GALLERY, columns_number=3, filters=default_filters, opacity=opacity
+        )
         gallery.add_image_left_header("Click to explore more")
         gallery.show_all_button = True
 
@@ -32,6 +33,15 @@ class ExplorePredictions(DetectionVisMetric):
             ann_infos=self.eval_result.sample_anns,
         )
         gallery._gallery._update_filters()
+
+        # set click data for diff gallery
+        self.explore_modal_table.set_click_data(
+            self.diff_modal_table.id,
+            self.get_diff_data(),
+            get_key="(payload) => `${payload.annotation.imageId}`",
+        )
+
+        # set click data for explore gallery
         gallery.set_click_data(self.explore_modal_table.id, self.get_click_data())
         return gallery
 
@@ -41,6 +51,13 @@ class ExplorePredictions(DetectionVisMetric):
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": ["outcome"]}] * 3
         click_data = res.setdefault("clickData", {})
         explore = click_data.setdefault("explore", {})
+        explore["filters"] = [
+            {
+                "type": "tag",
+                "tagId": "confidence",
+                "value": [self.eval_result.mp.f1_optimal_conf, 1],
+            }
+        ]
         explore["title"] = "Explore all predictions"
         images_ids = explore.setdefault("imagesIds", [])
 
@@ -62,8 +79,11 @@ class ExplorePredictions(DetectionVisMetric):
         click_data = res.setdefault("clickData", {})
 
         default_filters = [
-            {"type": "tag", "tagId": "confidence", "value": [self.f1_optimal_conf, 1]},
-            # {"type": "tag", "tagId": "outcome", "value": "FP"},
+            {
+                "type": "tag",
+                "tagId": "confidence",
+                "value": [self.eval_result.mp.f1_optimal_conf, 1],
+            },
         ]
         for pairs_data in self.eval_result.matched_pair_data.values():
             gt = pairs_data.gt_image_info

@@ -38,7 +38,7 @@ class KeyMetrics(DetectionVisMetric):
             content.append(dct)
 
         columns_options = [
-            {"cdisableSort": True},  # , "ustomCell": True},
+            {"disableSort": True},  # , "ustomCell": True},
             {"disableSort": True},
         ]
 

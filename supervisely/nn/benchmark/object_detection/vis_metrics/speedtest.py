@@ -17,10 +17,12 @@ class Speedtest(DetectionVisMetric):
 
     def is_empty(self) -> bool:
         return not self.eval_result.speedtest_info
-    
+
     @property
     def num_batche_sizes(self) -> int:
-        return len(self.eval_result.speedtest_info["speedtest"])
+        if self.is_empty():
+            return 0
+        return len(self.eval_result.speedtest_info.get("speedtest", []))
 
     @property
     def intro_md(self) -> MarkdownWidget:

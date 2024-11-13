@@ -19,7 +19,7 @@ class ModelPredictions(DetectionVisMetric):
     @property
     def md(self) -> MarkdownWidget:
         text = self.vis_texts.markdown_predictions_table
-        return MarkdownWidget(self.MARKDOWN, "Model Predictions", text)
+        return MarkdownWidget(self.MARKDOWN, "Prediction details for every image", text)
 
     @property
     def table(self) -> TableWidget:
@@ -55,6 +55,7 @@ class ModelPredictions(DetectionVisMetric):
             key_mapping[old] = new
 
         self._row_ids = []
+        df = df.replace({float("nan"): None}) # replace NaN / float("nan") with None
 
         for row in df.values.tolist():
             sly_id = row.pop(0)

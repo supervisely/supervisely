@@ -67,14 +67,6 @@ class PerClassOutcomeCounts(DetectionVisMetric):
             ["normalized", "absolute"],
         )
 
-    # @property
-    # def chart_normalized(self) -> ChartWidget:
-    #     return self._get_chart("normalized")
-
-    # @property
-    # def chart_absolute(self) -> ChartWidget:
-    #     return self._get_chart("absolute")
-
     def _get_chart(self, switch_key: Literal["normalized", "absolute"]) -> ChartWidget:
         chart = ChartWidget(
             self.CHART,
@@ -189,7 +181,11 @@ class PerClassOutcomeCounts(DetectionVisMetric):
                         img_ids.add(img_comparison_data.pred_image_info.id)
                 res["clickData"][key]["imagesIds"] = list(img_ids)
                 res["clickData"][key]["filters"] = [
-                    {"type": "tag", "tagId": "confidence", "value": [0, 1]},
+                    {
+                        "type": "tag",
+                        "tagId": "confidence",
+                        "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                    },
                     {"type": "tag", "tagId": "outcome", "value": outcome},
                 ]
         return res

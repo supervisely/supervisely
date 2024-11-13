@@ -30,7 +30,7 @@ class IOUDistribution(DetectionVisMetric):
     def md_iou_distribution(self) -> MarkdownWidget:
         text = self.vis_texts.markdown_iou_distribution
         text = text.format(self.vis_texts.definitions.iou_score)
-        return MarkdownWidget(self.MARKDOWN_IOU_DISTRIBUTION, "IoU Distribution", text)
+        return MarkdownWidget(self.MARKDOWN_IOU_DISTRIBUTION, self.md_title, text)
 
     @property
     def notification(self) -> NotificationWidget:

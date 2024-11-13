@@ -7,6 +7,7 @@ from supervisely.nn.benchmark.base_evaluator import BaseEvalResult
 from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import GalleryWidget
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.nn.benchmark.cv_tasks import CVTask
 
 
 class BaseVisMetrics:
@@ -91,6 +92,9 @@ class BaseVisualizer:
         self.gt_project_info = None
         self.gt_project_meta = None
         self.gt_dataset_infos = None
+
+        self.cv_task = None
+        self.ann_opacity = 0.4 if self.cv_task == CVTask.OBJECT_DETECTION else 0.7
 
         for eval_result in self.eval_results:
             self._get_eval_project_infos(eval_result)
@@ -204,13 +208,17 @@ class BaseVisualizer:
             is_modal=True,
             columns_number=columns_number,
             click_gallery_id=click_gallery_id,
+            opacity=self.ann_opacity,
         )
         all_predictions_modal_gallery.set_project_meta(self.eval_results[0].pred_project_meta)
         return all_predictions_modal_gallery
 
     def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
         diff_modal_gallery = GalleryWidget(
-            "diff_predictions_modal_gallery", is_modal=True, columns_number=columns_number
+            "diff_predictions_modal_gallery",
+            is_modal=True,
+            columns_number=columns_number,
+            opacity=self.ann_opacity,
         )
         diff_modal_gallery.set_project_meta(self.eval_results[0].pred_project_meta)
         return diff_modal_gallery

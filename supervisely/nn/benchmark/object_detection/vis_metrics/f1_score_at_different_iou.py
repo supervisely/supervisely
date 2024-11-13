@@ -15,7 +15,7 @@ class F1ScoreAtDifferentIOU(DetectionVisMetric):
     def md(self) -> MarkdownWidget:
         return MarkdownWidget(
             self.MARKDOWN,
-            "F1-Score at Different IoU thresholds",
+            "Confidence Profile at Different IoU thresholds",
             self.vis_texts.markdown_f1_at_ious,
         )
 

@@ -112,10 +112,10 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         # Explore Predictions
         explore_predictions = ExplorePredictions(
-            self.vis_texts, self.eval_result, self.explore_modal
+            self.vis_texts, self.eval_result, self.explore_modal, self.diff_modal
         )
         self.explore_predictions_md = explore_predictions.md
-        self.explore_predictions_gallery = explore_predictions.gallery
+        self.explore_predictions_gallery = explore_predictions.gallery(opacity=self.ann_opacity)
 
         # Model Predictions
         model_predictions = ModelPredictions(self.vis_texts, self.eval_result, self.explore_modal)
@@ -189,12 +189,12 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         # ReliabilityDiagram
         reliability_diagram = ReliabilityDiagram(self.vis_texts, self.eval_result)
         self.reliability_diagram_md_calibration_score = reliability_diagram.md_calibration_score
-        self.reliability_diagram_collapse = reliability_diagram.collapse_tip
+        self.reliability_diagram_collapse_1 = reliability_diagram.collapse_tip
         self.reliability_diagram_md_calibration_score_2 = reliability_diagram.md_calibration_score_2
         self.reliability_diagram_md_reliability_diagram = reliability_diagram.md_reliability_diagram
         self.reliability_diagram_notification = reliability_diagram.notification
         self.reliability_diagram_chart = reliability_diagram.chart
-        self.reliability_diagram_collapse = reliability_diagram.collapse
+        self.reliability_diagram_collapse_2 = reliability_diagram.collapse
 
         # ConfidenceScore
         confidence_score = ConfidenceScore(self.vis_texts, self.eval_result)
@@ -292,7 +292,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             (0, self.pr_curve_chart),
             (0, self.pr_curve_collapse),
             # PRCurveByClass
-            (1, self.pr_curve_by_class_md),
+            (0, self.pr_curve_by_class_md),
             (0, self.clickable_label),
             (0, self.pr_curve_by_class_chart),
             # ConfusionMatrix
@@ -316,11 +316,12 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                 (0, self.iou_distribution_chart),
                 # ReliabilityDiagram
                 (1, self.reliability_diagram_md_calibration_score),
-                (0, self.reliability_diagram_collapse),
+                (0, self.reliability_diagram_collapse_1),
                 (0, self.reliability_diagram_md_calibration_score_2),
-                (0, self.reliability_diagram_md_reliability_diagram),
+                (1, self.reliability_diagram_md_reliability_diagram),
                 (0, self.reliability_diagram_notification),
                 (0, self.reliability_diagram_chart),
+                (0, self.reliability_diagram_collapse_2),
                 # ConfidenceScore
                 (1, self.confidence_score_md_confidence_score),
                 (0, self.confidence_score_notification),
