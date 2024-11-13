@@ -53,6 +53,7 @@ class BaseBenchmark:
         self.vis_texts = None
         self.inference_speed_text = None
         self.train_info = None
+        self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
         self._validate_evaluation_params()
 
@@ -133,6 +134,10 @@ class BaseBenchmark:
             "batch_size": batch_size,
             **model_info,
         }
+        if self.train_info:
+            inference_info["train_info"] = self.train_info
+        if self.evaluator_app_info:
+            inference_info["evaluator_app_info"] = self.evaluator_app_info
         self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
         logger.debug(
             "Inference is finished.",

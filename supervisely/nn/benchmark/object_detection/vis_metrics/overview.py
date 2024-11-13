@@ -29,7 +29,10 @@ class Overview(DetectionVisMetric):
         )
 
         # Note about validation dataset
-        classes_str, note_about_val_dataset, train_session = self._get_overview_info()
+        classes_str, note_about_images, starter_app_info = self._get_overview_info()
+
+        # link to scroll to the optimal confidence section
+        opt_conf_url = self.vis_texts.docs_url + "#f1-optimal-confidence-threshold"
 
         formats = [
             model_name.replace("_", "\_"),
@@ -42,8 +45,11 @@ class Overview(DetectionVisMetric):
             self.eval_result.gt_project_info.id,
             self.eval_result.gt_project_info.name,
             classes_str,
-            note_about_val_dataset,
-            train_session,
+            note_about_images,
+            starter_app_info,
+            self.eval_result.mp.iou_threshold,
+            round(self.eval_result.mp.f1_optimal_conf, 4),
+            opt_conf_url,
             self.vis_texts.docs_url,
         ]
 
@@ -61,18 +67,20 @@ class Overview(DetectionVisMetric):
         classes_str = "classes" if classes_cnt > 1 else "class"
         classes_str = f"{classes_cnt} {classes_str}"
 
-        train_session, images_str = "", ""
+        evaluator_session, train_session, images_str = None, None, ""
         gt_project_id = self.eval_result.gt_project_info.id
         gt_dataset_ids = self.eval_result.gt_dataset_ids
         gt_images_ids = self.eval_result.gt_images_ids
         train_info = self.eval_result.train_info
+        evaluator_app_info = self.eval_result.evaluator_app_info
+        total_imgs_cnt = self.eval_result.gt_project_info.items_count
         if gt_images_ids is not None:
             val_imgs_cnt = len(gt_images_ids)
         elif gt_dataset_ids is not None:
             datasets = self.eval_result.gt_dataset_infos
             val_imgs_cnt = sum(ds.items_count for ds in datasets)
         else:
-            val_imgs_cnt = self.eval_result.gt_project_info.items_count
+            val_imgs_cnt = total_imgs_cnt
 
         if train_info:
             train_task_id = train_info.get("app_session_id")
@@ -85,16 +93,25 @@ class Overview(DetectionVisMetric):
             images_str = f", {train_imgs_cnt} images in train, {val_imgs_cnt} images in validation"
 
         if gt_images_ids is not None:
-            images_str += f". Evaluated using subset - {val_imgs_cnt} images"
+            images_str += (
+                f", total {total_imgs_cnt} images. Evaluated using subset - {val_imgs_cnt} images"
+            )
         elif gt_dataset_ids is not None:
             links = [
                 f'<a href="/projects/{gt_project_id}/datasets/{ds.id}" target="_blank">{ds.name}</a>'
                 for ds in datasets
             ]
-            images_str += (
-                f". Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
-            )
+            images_str += f", total {total_imgs_cnt} images. Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
         else:
-            images_str += f". Evaluated on the whole project ({val_imgs_cnt} images)"
+            images_str += f", total {total_imgs_cnt} images. Evaluated on the whole project ({val_imgs_cnt} images)"
 
-        return classes_str, images_str, train_session
+        if evaluator_app_info:
+            evaluator_task_id = evaluator_app_info.get("id")
+            evaluator_app_id = evaluator_app_info.get("meta", {}).get("app", {}).get("id")
+            evaluator_app_name = evaluator_app_info.get("meta", {}).get("app", {}).get("name")
+            if evaluator_task_id and evaluator_app_id and evaluator_app_name:
+                evaluator_session = f'- **Evaluator app session**:  <a href="/apps/{evaluator_app_id}/sessions/{evaluator_task_id}" target="_blank">open</a>'
+
+        starter_app_info = train_session or evaluator_session or ""
+
+        return classes_str, images_str, starter_app_info

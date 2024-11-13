@@ -71,12 +71,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.vis_texts = vis_texts
         self._widgets = False
         self.cv_task = CVTask.OBJECT_DETECTION
-
-        # # Click data
-        # gt_id_mapper = IdMapper(self.eval_result.coco_gt.dataset)
-        # dt_id_mapper = IdMapper(self.eval_result.coco_dt.dataset)
-
-        # self.click_data = ClickData(self.eval_result.mp.m, gt_id_mapper, dt_id_mapper)
+        self.ann_opacity = 0.4 if self.cv_task == CVTask.OBJECT_DETECTION else 0.7
 
         diff_project_info, diff_dataset_infos, existed = self._get_or_create_diff_project()
         self.eval_result.diff_project_info = diff_project_info

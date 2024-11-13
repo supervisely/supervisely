@@ -94,7 +94,6 @@ class BaseVisualizer:
         self.gt_dataset_infos = None
 
         self.cv_task = None
-        self.ann_opacity = 0.4 if self.cv_task == CVTask.OBJECT_DETECTION else 0.7
 
         for eval_result in self.eval_results:
             self._get_eval_project_infos(eval_result)

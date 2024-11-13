@@ -42,6 +42,8 @@ markdown_overview = """
 - **Checkpoint file**: <a class="checkpoint-url" href="{}" target="_blank">{}</a>
 - **Ground Truth project**: <a href="/projects/{}/datasets" target="_blank">{}</a>, {}{}
 {}
+- **IoU threshold**: {}
+- **Optimal confidence threshold**: {} (calculated automatically). <a href="{}" target="_blank">Learn more</a>.
 
 Learn more about Model Benchmark, implementation details, and how to use the charts in our <a href="{}" target="_blank">Technical Report</a>.
 """
