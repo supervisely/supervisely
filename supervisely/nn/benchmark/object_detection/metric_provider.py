@@ -4,7 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.evaluation.coco import metrics
+from supervisely.nn.benchmark.utils.coco import metrics
 
 METRIC_NAMES = {
     "mAP": "mAP",

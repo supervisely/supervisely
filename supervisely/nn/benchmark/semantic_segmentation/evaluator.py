@@ -9,11 +9,11 @@ from tqdm import tqdm
 
 from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.calculate_metrics import (
-    calculate_metrics,
-)
 from supervisely.nn.benchmark.semantic_segmentation.metric_provider import (
     MetricProvider,
+)
+from supervisely.nn.benchmark.utils import (
+    calculate_semsegm_metrics as calculate_metrics,
 )
 from supervisely.project.project import Project
 from supervisely.project.project_meta import ProjectMeta
@@ -62,7 +62,7 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             pred_dir=pred_prep_path,
             boundary_width=0.01,
             boundary_iou_d=0.02,
-            num_workers=0, # FIXME: set 4 for production
+            num_workers=0,  # FIXME: set 4 for production
             class_names=target_classes,
             result_dir=self.result_dir,
         )

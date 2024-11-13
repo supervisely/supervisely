@@ -1,17 +1,12 @@
-import json
 import os
 from typing import Dict, Iterable, List, Optional, Union
 
 import cv2
 import numpy as np
 import pandas as pd
-from PIL import Image
 from tqdm import tqdm
 
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.metric_provider import (
-    SemSegmMetricProvider,
-)
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.utils import (
+from supervisely.nn.benchmark.utils.semantic_segmentation.utils import (
     dilate_mask,
     get_contiguous_segments,
     get_exterior_boundary,
@@ -66,13 +61,13 @@ class Evaluator:
             The Boundary IoU paper uses the L1 distance ("fast").
         """
         global torch, np, GPU
-        import torch
+        import torch  # pylint: disable=import-error
 
-        # if torch.cuda.is_available():
-        if False:
+        if torch.cuda.is_available():
             GPU = True
             try:
-                import cupy as np  # gpu-compatible numpy analogue
+                # gpu-compatible numpy analogue
+                import cupy as np  # pylint: disable=import-error
 
                 global numpy
                 import numpy as numpy
@@ -210,27 +205,6 @@ class Evaluator:
             "result": result,
             "confusion_matrix": normalized_confusion_matrix,
         }
-
-        # with open(f"{self.result_dir}/cell_img_names.json", "w") as file:
-        #     json.dump(self.cell_img_names, file)
-
-        normalized_confusion_matrix = self.confusion_matrix / self.confusion_matrix.sum(
-            axis=1, keepdims=True
-        )
-        normalized_confusion_matrix = np.round(normalized_confusion_matrix, 3)
-        # np.save(f"{self.result_dir}/confusion_matrix.npy", normalized_confusion_matrix)
-
-        image_metrics_df = pd.DataFrame(data=self.image_metrics, index=self.img_names)
-        # image_metrics_df.to_csv(f"{self.result_dir}/per_image_metrics.csv", index=True)
-
-        # final_result = {
-        #     "result": result.dataframe.to_dict(),
-        #     "image_metrics": image_metrics_df.to_dict(),
-        #     "confusion_matrix": self.confusion_matrix.tolist(),
-        #     "normalized_confusion_matrix": normalized_confusion_matrix.tolist(),
-        #     "cell_img_names": self.cell_img_names,
-        # }
-        # return final_result
 
     def evaluate_sample(self, pred, gt, img_name):
         """Runs the analysis for a single sample.

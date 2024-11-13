@@ -6,9 +6,12 @@ import pandas as pd
 
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
-from supervisely.nn.benchmark.coco_utils import read_coco_datasets, sly2coco
-from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
 from supervisely.nn.benchmark.object_detection.metric_provider import MetricProvider
+from supervisely.nn.benchmark.utils import (
+    calculate_metrics,
+    read_coco_datasets,
+    sly2coco,
+)
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 
 

@@ -1,7 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy as np
-import pandas as pd
 
 METRIC_NAMES = {
     "mPixel": "mPixel accuracy",
@@ -101,7 +100,7 @@ class MetricProvider:
         # else:
         #     class_names = self.eval_data.index.tolist()
         class_names = self.eval_data.index.tolist()
-            # title_text = "Confusion matrix"
+        # title_text = "Confusion matrix"
 
         confusion_matrix = confusion_matrix[::-1]
         # x = class_names

@@ -2,13 +2,12 @@ import os
 from pathlib import Path
 
 from supervisely.io.json import dump_json_file
-from supervisely.nn.benchmark.coco_utils import read_coco_datasets
-from supervisely.nn.benchmark.evaluation.coco import calculate_metrics
 from supervisely.nn.benchmark.object_detection.evaluator import (
     ObjectDetectionEvalResult,
     ObjectDetectionEvaluator,
 )
 from supervisely.nn.benchmark.object_detection.metric_provider import MetricProvider
+from supervisely.nn.benchmark.utils import calculate_metrics, read_coco_datasets
 
 
 class InstanceSegmentationEvalResult(ObjectDetectionEvalResult):

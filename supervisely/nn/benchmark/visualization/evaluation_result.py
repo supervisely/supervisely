@@ -12,7 +12,7 @@ from supervisely.app.widgets import SlyTqdm
 from supervisely.io.env import team_id
 from supervisely.io.fs import dir_empty, mkdir
 from supervisely.io.json import load_json_file
-from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
+from supervisely.nn.benchmark.utils.coco.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly

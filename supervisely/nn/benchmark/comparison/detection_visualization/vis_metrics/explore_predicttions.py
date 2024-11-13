@@ -30,13 +30,10 @@ class ExplorePredictions(BaseVisMetric):
             self.GALLERY_DIFFERENCE, columns_number=columns_number, filters=default_filters
         )
         gallery.add_image_left_header("Click to explore more")
-        gallery.show_all_button = True
         gallery.set_project_meta(self.eval_results[0].gt_project_meta)
         gallery.set_images(*data)
-        gallery.add_on_click(
-            self.explore_modal_table.id, self.get_click_data_explore_all(), columns_number * 3
-        )
-        gallery._gallery._filters
+        gallery.set_click_data(self.explore_modal_table.id, self.get_click_data_explore_all())
+        gallery.set_show_all_data(self.explore_modal_table.id, self.get_click_data_explore_all())
         gallery._gallery._update_filters()
 
         return gallery

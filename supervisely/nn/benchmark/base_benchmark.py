@@ -9,9 +9,8 @@ from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io import env, fs, json
 from supervisely.io.fs import get_directory_size
-from supervisely.nn.benchmark.evaluation import BaseEvaluator
-from supervisely.nn.benchmark.utils import WORKSPACE_DESCRIPTION, WORKSPACE_NAME
-from supervisely.nn.benchmark.visualization.visualizer import Visualizer
+from supervisely.nn.benchmark.base_evaluator import BaseEvaluator
+from supervisely.nn.benchmark.utils.utils import WORKSPACE_DESCRIPTION, WORKSPACE_NAME
 from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.project.project_meta import ProjectMeta

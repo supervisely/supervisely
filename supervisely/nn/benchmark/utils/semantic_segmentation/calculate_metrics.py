@@ -1,7 +1,5 @@
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.evaluator import (
-    Evaluator,
-)
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.loader import (
+from supervisely.nn.benchmark.utils.semantic_segmentation.evaluator import Evaluator
+from supervisely.nn.benchmark.utils.semantic_segmentation.loader import (
     build_segmentation_loader,
 )
 

@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from supervisely.nn.benchmark.evaluation.semantic_segmentation.beyond_iou.table_template import (
+from supervisely.nn.benchmark.utils.semantic_segmentation.table_template import (
     table_template,
 )
 
 
-class SemSegmMetricProvider: # ! old class
+class SemSegmMetricProvider:  # ! old class
     def __init__(
         self,
         class_names: List[str],
@@ -45,7 +45,6 @@ class SemSegmMetricProvider: # ! old class
         extent_eou = round(self.dataframe.loc["mean", "E_extent_oU"] * 100, 1)
         segment_eou = round(self.dataframe.loc["mean", "E_segment_oU"] * 100, 1)
         values = [self.iou, boundary_eou, extent_eou, segment_eou]
-
 
     @classmethod
     def from_evaluator(cls, evaluator):

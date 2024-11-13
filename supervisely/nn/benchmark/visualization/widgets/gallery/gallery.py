@@ -6,7 +6,6 @@ from jinja2 import Template
 
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.image_api import ImageInfo
-from supervisely.app.widgets import GridGalleryV2
 from supervisely.io.fs import ensure_base_path
 from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 from supervisely.project.project_meta import ProjectMeta
@@ -40,6 +39,9 @@ class GalleryWidget(BaseWidget):
         self.opacity = opacity or 0.4
 
         filters = filters  # or [{"confidence": [0.6, 1]}]
+
+        from supervisely.app.widgets import GridGalleryV2
+
         self._gallery = GridGalleryV2(
             columns_number=columns_number,
             annotations_opacity=self.opacity,
