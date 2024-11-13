@@ -1386,3 +1386,17 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
     :rtype: str
     """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
+
+
+def get_size_from_bytes(data: bytes) -> Tuple[int, int]:
+    """
+    Get size of image from bytes.
+
+    :param data: Bytes of image.
+    :type data: bytes
+    :return: Height and width of image
+    :rtype: :class:`Tuple[int, int]`
+    """
+    image = PILImage.open(io.BytesIO(data))
+    width, height = image.size
+    return width, height

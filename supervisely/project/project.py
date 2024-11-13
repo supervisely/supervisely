@@ -4499,6 +4499,9 @@ async def _download_project_item_async(
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
+        if img_info.height is None or img_info.width is None:
+            width, height = sly.image.get_size_from_bytes(img_bytes)
+            img_info = img_info._replace(height=height, width=width)
     else:
         img_bytes = None
 
@@ -4506,9 +4509,11 @@ async def _download_project_item_async(
         ann_info = await api.annotation.download_async(
             img_info.id,
             semaphore=semaphore,
-            force_metadata_for_links=False,
+            force_metadata_for_links=not save_images,
         )
         ann_json = ann_info.annotation
+        if img_info.height is not None and img_info.width is not None:
+            ann_json.update({"size": {"height": img_info.height, "width": img_info.width}})
     else:
         tags = TagCollection.from_api_response(
             img_info.tags,
