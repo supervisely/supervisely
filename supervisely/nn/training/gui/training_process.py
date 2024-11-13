@@ -36,13 +36,13 @@ class TrainingProcess:
         # self.creating_model_benchmark_report_field = Field(Empty(), "", "Creating report on model...")
         # self.creating_model_benchmark_report_field.hide()
 
-        self.project_download_progress = Progress("Downloading datasets")
+        self.project_download_progress = Progress("Downloading datasets", hide_on_finish=True)
         self.project_download_progress.hide()
 
-        self.model_download_progress_main = Progress("Downloading model files")
+        self.model_download_progress_main = Progress("Downloading model files", hide_on_finish=True)
         self.model_download_progress_main.hide()
 
-        self.model_download_progress_secondary = Progress("Downloading file")
+        self.model_download_progress_secondary = Progress("Downloading file", hide_on_finish=True)
         self.model_download_progress_secondary.hide()
 
         self.epoch_progress = Progress("Epochs")
@@ -54,10 +54,10 @@ class TrainingProcess:
         self.model_benchmark_progress_main = SlyTqdm()
         self.model_benchmark_progress_main.hide()
 
-        self.model_benchmark_progress_secondary = Progress()
+        self.model_benchmark_progress_secondary = Progress(hide_on_finish=True)
         self.model_benchmark_progress_secondary.hide()
 
-        self.artifacts_upload_progress = Progress("Uploading artifacts")
+        self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
         self.artifacts_upload_progress.hide()
 
         self.validator_text = Text("")

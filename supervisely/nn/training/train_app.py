@@ -26,10 +26,14 @@ from supervisely import (
 )
 from supervisely.api.file_api import FileInfo
 from supervisely.app.widgets import FolderThumbnail, Progress, SlyTqdm, Widget
-from supervisely.nn.benchmark import InstanceSegmentationBenchmark, ObjectDetectionBenchmark
+from supervisely.nn.benchmark import (
+    InstanceSegmentationBenchmark,
+    ObjectDetectionBenchmark,
+)
 from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
+from supervisely.nn.training.train_logger import train_logger
 from supervisely.nn.training.utils import load_file, validate_list_of_dicts
 from supervisely.output import set_directory
 from supervisely.project.download import (
@@ -292,6 +296,7 @@ class TrainApp:
                 experiment_info = None
                 self.preprocess()
                 try:
+                    train_logger.start_tensorboard()
                     experiment_info = self._train_func()
                 except StopTrainingException as e:
                     print(f"Training stopped: {e}")
@@ -1095,24 +1100,13 @@ class TrainApp:
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
-        except Exception as e:
-            logger.debug(f"Failed to add output to the workflow: {repr(e)}")
-        # ----------------------------------------- #
+        
+    # Logger
+    def setup_logger_callbacks(self):
+        
+        def epoch_callback(total_epochs: int):
+            self._layout.training_process.epoch_progress
+            with progress_bar_epochs(message=f"Epochs", total=total_epochs) as epochs_pbar:
+        
+        def iter_callback(total_iters):
+            pass
