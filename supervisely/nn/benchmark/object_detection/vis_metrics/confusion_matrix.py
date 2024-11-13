@@ -61,6 +61,7 @@ class ConfusionMatrix(DetectionVisMetric):
         fig.update_traces(
             customdata=confusion_matrix,
             hovertemplate="Objects Count: %{customdata}<br>Predicted: %{y}<br>Ground Truth: %{x}",
+            colorscale="Viridis",
         )
 
         # Text on cells

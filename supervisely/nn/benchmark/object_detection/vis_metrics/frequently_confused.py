@@ -64,7 +64,7 @@ class FrequentlyConfused(DetectionVisMetric):
         return MarkdownWidget(self.MARKDOWN_EMPTY, "Frequently Confused Classes", text)
 
     def _get_figure(self, switch_key: Literal["probability", "count"]):  # -> go.Figure:
-        if self.empty:
+        if self.is_empty:
             return
 
         import plotly.graph_objects as go  # pylint: disable=import-error
@@ -93,7 +93,7 @@ class FrequentlyConfused(DetectionVisMetric):
         return fig
 
     def get_click_data(self) -> Dict:
-        if not self.clickable or self.empty:
+        if not self.clickable or self.is_empty:
             return
         res = dict(projectMeta=self.eval_result.pred_project_meta.to_json())
 
