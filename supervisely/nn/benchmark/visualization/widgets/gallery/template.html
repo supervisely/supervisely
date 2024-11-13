@@ -6,10 +6,14 @@
         },
         {% if click_handled %}
         'chart-click': {
-            'key': 'explore',
             'dataSource': '{{ click_data_source }}',
             'galleryId': '{{ click_gallery_id }}',
             'limit': {{ click_gallery_items_limit }},
+            {% if get_key %}
+            'getKey': {{ get_key }},
+            {% else %}
+             'key' : 'explore',
+            {% endif %}
         },
         {% endif %}
     }" :command="command" :data="data">

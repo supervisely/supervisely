@@ -20,6 +20,7 @@ class GalleryWidget(BaseWidget):
         is_modal: Optional[bool] = False,
         columns_number: int = 3,
         click_gallery_id: Optional[str] = None,
+        opacity: Optional[float] = 0.4,
     ):
         super().__init__(name)
         self.reference = self.id
@@ -32,11 +33,13 @@ class GalleryWidget(BaseWidget):
         self._project_meta = None
         self.show_all_button = False
         self.columns_number = columns_number
+        self.get_key = None
+        self.opacity = opacity or 0.4
 
         filters = filters  # or [{"confidence": [0.6, 1]}]
         self._gallery = GridGalleryV2(
             columns_number=columns_number,
-            annotations_opacity=0.4,
+            annotations_opacity=self.opacity,
             border_width=4,
             enable_zoom=False,
             default_tag_filters=filters,
@@ -102,10 +105,14 @@ class GalleryWidget(BaseWidget):
         template_str = Path(__file__).parent / "template.html"
         return Template(template_str.read_text()).render(self._get_template_data())
 
-    def set_click_data(self, click_gallery_id: str, click_data: Any) -> None:
+    def set_click_data(
+        self, click_gallery_id: str, click_data: Any, get_key: Optional[str] = None
+    ) -> None:
         self.click_handled = True
         self.click_data = click_data
         self.click_gallery_id = click_gallery_id
+        if get_key is not None:
+            self.get_key = get_key
 
     def add_image_left_header(self, html: str):
         self.image_left_header = html
@@ -122,4 +129,5 @@ class GalleryWidget(BaseWidget):
             "click_gallery_id": self.click_gallery_id,
             "click_gallery_items_limit": self.click_gallery_items_limit,
             "image_left_header": self.image_left_header,
+            "get_key": self.get_key,
         }
