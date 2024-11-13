@@ -215,7 +215,7 @@ class BaseVisualizer:
             opacity=self.ann_opacity,
         )
         gallery.set_project_meta(self.eval_results[0].filtered_project_meta)
-        # gallery.add_image_left_header("Compare with GT")
+        gallery.add_image_left_header("Compare with GT")
         return gallery
 
     def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
