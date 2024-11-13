@@ -282,6 +282,7 @@ class TrainApp:
     def artifacts_thumbnail(self) -> FolderThumbnail:
         return self._layout.training_process.artifacts_thumbnail
 
+    # region TRAIN START
     @property
     def start(self):
         sly_fs.mkdir(self.work_dir, True)
@@ -293,10 +294,13 @@ class TrainApp:
                 if self._train_func is None:
                     raise ValueError("Train function is not defined")
 
+                # Init logger and Tensorboard link
+                self._init_logger()
+                self.tensorboard_link.show()
+
                 experiment_info = None
                 self.preprocess()
                 try:
-                    train_logger.start_tensorboard()
                     experiment_info = self._train_func()
                 except StopTrainingException as e:
                     print(f"Training stopped: {e}")
@@ -308,7 +312,6 @@ class TrainApp:
 
         return decorator
 
-    # region PROCESS
     def preprocess(self):
         print("Preprocessing...")
         # Step 1. Workflow Input
@@ -354,7 +357,7 @@ class TrainApp:
         # Step 6. Shutdown app
         self._app.shutdown()
 
-    # region PROCESS END
+    # region TRAIN END
 
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
         self._inference_class = inference_class
@@ -1100,13 +1103,46 @@ class TrainApp:
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #
-        
+
     # Logger
-    def setup_logger_callbacks(self):
-        
-        def epoch_callback(total_epochs: int):
-            self._layout.training_process.epoch_progress
-            with progress_bar_epochs(message=f"Epochs", total=total_epochs) as epochs_pbar:
-        
-        def iter_callback(total_iters):
-            pass
+    def _init_logger(self):
+        log_dir = join(self.work_dir, "logs")
+        train_logger.set_log_dir(log_dir)
+        train_logger.start_tensorboard()
+        self._setup_logger_callbacks()
+
+    def _setup_logger_callbacks(self):
+        epoch_pbar = None
+        step_pbar = None
+
+        def start_training_callback(total_epochs: int):
+            nonlocal epoch_pbar
+            logger.info(f"Training started for {total_epochs} epochs")
+            pbar_widget = self.progress_bar_epochs
+            pbar_widget.show()
+            epoch_pbar = pbar_widget(message=f"Epochs", total=total_epochs)
+
+        def finish_training_callback():
+            self.progress_bar_epochs.hide()
+            self.progress_bar_iters.hide()
+
+        def start_epoch_callback(total_steps: int):
+            nonlocal step_pbar
+            logger.info(f"Epoch started. Total steps: {total_steps}")
+            pbar_widget = self.progress_bar_iters
+            pbar_widget.show()
+            step_pbar = pbar_widget(message=f"Steps", total=total_steps)
+
+        def finish_epoch_callback():
+            epoch_pbar.update(1)
+
+        def step_callback():
+            step_pbar.update(1)
+
+        train_logger.add_on_train_started_callback(start_training_callback)
+        train_logger.add_on_train_finish_callback(finish_training_callback)
+
+        train_logger.add_on_epoch_started_callback(start_epoch_callback)
+        train_logger.add_on_epoch_finish_callback(finish_epoch_callback)
+
+        train_logger.add_on_step_callback(step_callback)
