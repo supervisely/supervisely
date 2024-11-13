@@ -23,10 +23,8 @@ class ExplorePredictions(DetectionVisMetric):
         gallery = GalleryWidget(
             self.GALLERY, columns_number=3, filters=default_filters, opacity=opacity
         )
-        gallery.add_image_left_header("Click to explore more")
-        gallery.show_all_button = True
-
-        gallery.set_project_meta(self.eval_result.pred_project_meta)
+        gallery.add_image_left_header("Compare with GT")
+        gallery.set_project_meta(self.eval_result.filtered_project_meta)
 
         gallery.set_images(
             image_infos=self.eval_result.sample_images,
@@ -42,7 +40,16 @@ class ExplorePredictions(DetectionVisMetric):
         )
 
         # set click data for explore gallery
-        gallery.set_click_data(self.explore_modal_table.id, self.get_click_data())
+        gallery.set_click_data(
+            self.diff_modal_table.id,
+            self.get_diff_data(),
+            get_key="(payload) => `${payload.annotation.imageId}`",
+        )
+
+        gallery.set_show_all_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+        )
         return gallery
 
     def get_click_data(self) -> dict:

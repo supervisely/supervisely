@@ -32,6 +32,9 @@ class GalleryWidget(BaseWidget):
         self.image_left_header = False
         self._project_meta = None
         self.show_all_button = False
+        self.show_all_gallery_id = None
+        self.show_all_data = None
+        self.show_all_data_source = f"/data/{self.name}_{self.id}_show_all_data.json"
         self.columns_number = columns_number
         self.get_key = None
         self.opacity = opacity or 0.4
@@ -98,6 +101,12 @@ class GalleryWidget(BaseWidget):
             with open(basepath + self.click_data_source, "w") as f:
                 json.dump(self.click_data, f)
 
+        # show all data
+        if self.show_all_data is not None:
+            ensure_base_path(basepath + self.show_all_data_source)
+            with open(basepath + self.show_all_data_source, "w") as f:
+                json.dump(self.show_all_data, f)
+
     def get_state(self) -> None:
         return {}
 
@@ -114,6 +123,11 @@ class GalleryWidget(BaseWidget):
         if get_key is not None:
             self.get_key = get_key
 
+    def set_show_all_data(self, gallery_id: str, data: str) -> None:
+        self.show_all_button = True
+        self.show_all_gallery_id = gallery_id
+        self.show_all_data = data
+
     def add_image_left_header(self, html: str):
         self.image_left_header = html
 
@@ -125,6 +139,8 @@ class GalleryWidget(BaseWidget):
             "is_modal": str(self.is_modal).lower(),
             "click_handled": self.click_handled,
             "show_all_button": self.show_all_button,
+            "show_all_gallery_id": self.show_all_gallery_id,
+            "show_all_data_source": self.show_all_data_source,
             "click_data_source": self.click_data_source,
             "click_gallery_id": self.click_gallery_id,
             "click_gallery_items_limit": self.click_gallery_items_limit,
