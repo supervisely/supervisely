@@ -43,7 +43,7 @@ class ExplorePredictions(DetectionVisMetric):
         gallery.set_click_data(
             self.diff_modal_table.id,
             self.get_diff_data(),
-            get_key="(payload) => `${payload.annotation.imageId}`",
+            get_key="(payload) => `${payload.annotation.image_id}`",
         )
 
         gallery.set_show_all_data(
