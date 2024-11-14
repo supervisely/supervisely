@@ -353,7 +353,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raw_video_meta: bool
         :param fields: List of fields to return.
         :type fields: List[str], optional
-        :param force_metadata_for_links: Get videos metadata from server
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: Optional[bool]
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
@@ -434,7 +434,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the video info was not received.
         :type raise_error: bool
-        :param force_metadata_for_links: Get video metadata from server (if the video is uploaded as a link)
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
@@ -514,7 +514,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param force_metadata_for_links: Get normalized metadata from server.
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
         :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
         :rtype: List[VideoInfo]
@@ -588,6 +588,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the video info was not received.
         :type raise_error: bool
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
+        :type force_metadata_for_links: bool
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: dict
 
@@ -1855,7 +1857,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type skip_download: Optional[bool]
         :param progress_cb: Function for tracking the progress of copying.
         :type progress_cb: tqdm or callable, optional
-        :param force_metadata_for_links: Specify if metadata should be forced. Default is True.
+        :param force_metadata_for_links: Specify whether to force retrieving videos metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
@@ -1967,7 +1969,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: List[Dict], optional
         :param skip_download: Skip download video to local storage.
         :type skip_download: Optional[bool]
-        :param force_metadata_for_links: Specify if metadata should be forced
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
