@@ -138,7 +138,7 @@ class PretrainedModelsSelector(Widget):
         selected_model = self.get_selected_row()
         if selected_model is None:
             return {}
-        
+
         model_name = selected_model.get(model_name_column)
         if model_name is None:
             raise ValueError(
@@ -175,23 +175,42 @@ class PretrainedModelsSelector(Widget):
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
 
-    def set_active_arch_type(self, arch_type: str):
+    def set_active_arch_type(self, arch_type: str) -> None:
         if arch_type not in self._arch_types:
             raise ValueError(f'Architecture type "{arch_type}" does not exist')
         StateJson()[self.widget_id]["selectedArchType"] = arch_type
         StateJson().send_changes()
 
-    def set_active_task_type(self, task_type: str):
+    def set_active_task_type(self, task_type: str) -> None:
         if task_type not in self._task_types:
             raise ValueError(f'Task type "{task_type}" does not exist')
         StateJson()[self.widget_id]["selectedTaskType"] = task_type
         StateJson().send_changes()
 
-    def set_active_row(self, row_index: int):
+    def set_active_row(self, row_index: int) -> None:
         if row_index < 0:
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
+
+    def set_by_model_name(self, model_name: str) -> None:
+        for task_type in self._table_data:
+            for arch_type in self._table_data[task_type]:
+                for idx, model in enumerate(self._table_data[task_type][arch_type]):
+                    model_meta = model.get("meta", {})
+                    if model_meta.get("model_name") == model_name:
+                        self.set_active_task_type(task_type)
+                        self.set_active_arch_type(arch_type)
+                        self.set_active_row(idx)
+                        return
+
+    def get_by_model_name(self, model_name: str) -> Union[Dict, None]:
+        for task_type in self._table_data:
+            for arch_type in self._table_data[task_type]:
+                for idx, model in enumerate(self._table_data[task_type][arch_type]):
+                    model_meta = model.get("meta", {})
+                    if model_meta.get("model_name") == model_name:
+                        return model
 
     def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
         filtered_models = {}

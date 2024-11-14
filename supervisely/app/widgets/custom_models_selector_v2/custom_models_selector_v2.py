@@ -65,9 +65,7 @@ class CustomModelsSelectorV2(Widget):
             self._task_link = self._create_task_link()
             self._config_path = experiment_info.model_files.get("config")
             if self._config_path is not None:
-                self._config_path = os.path.join(
-                    experiment_info.artifacts_dir, self._config_path
-                )
+                self._config_path = os.path.join(experiment_info.artifacts_dir, self._config_path)
 
             # col 2 model
             self._model_name = experiment_info.model_name
@@ -148,6 +146,18 @@ class CustomModelsSelectorV2(Widget):
 
         def get_selected_checkpoint_name(self) -> str:
             return self._checkpoints_widget.get_label()
+
+        def set_selected_checkpoint_by_name(self, checkpoint_name: str):
+            for i, name in enumerate(self._checkpoints_names):
+                if name == checkpoint_name:
+                    self._checkpoints_widget.set_value(self._checkpoints_paths[i])
+                    return
+
+        def set_selected_checkpoint_by_path(self, checkpoint_path: str):
+            for i, path in enumerate(self._checkpoints_paths):
+                if path == checkpoint_path:
+                    self._checkpoints_widget.set_value(path)
+                    return
 
         def to_html(self) -> List[str]:
             return [
@@ -354,9 +364,7 @@ class CustomModelsSelectorV2(Widget):
         table_rows = defaultdict(list)
         with ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(
-                    process_experiment_info, experiment_info
-                ): experiment_info
+                executor.submit(process_experiment_info, experiment_info): experiment_info
                 for experiment_info in experiment_infos
             }
 
@@ -434,10 +442,22 @@ class CustomModelsSelectorV2(Widget):
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
+    def set_by_task_id(self, task_id: int) -> None:
+        for task_type in self._rows:
+            for i, row in enumerate(self._rows[task_type]):
+                if row.task_id == task_id:
+                    self.set_active_row(i)
+                    return
+
+    def get_by_task_id(self, task_id: int) -> Union[ModelRow, None]:
+        for task_type in self._rows:
+            for row in self._rows[task_type]:
+                if row.task_id == task_id:
+                    return row
+        return None
+
     def task_type_changed(self, func: Callable):
-        route_path = self.get_route_path(
-            CustomModelsSelectorV2.Routes.TASK_TYPE_CHANGED
-        )
+        route_path = self.get_route_path(CustomModelsSelectorV2.Routes.TASK_TYPE_CHANGED)
         server = self._sly_app.get_server()
         self._task_type_changes_handled = True
 

@@ -27,6 +27,7 @@ from supervisely.nn.artifacts import (
 )
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 from supervisely.nn.training.experiments import get_experiment_infos
+from supervisely.nn.utils import ModelSource
 
 
 class ModelSelector:
@@ -53,7 +54,7 @@ class ModelSelector:
         self.custom_models_table = CustomModelsSelectorV2(self.team_id, custom_artifacts)
         # Model source tabs
         self.model_source_tabs = RadioTabs(
-            titles=["Pretrained models", "Custom models"],
+            titles=[ModelSource.PRETRAINED, ModelSource.CUSTOM],
             descriptions=[
                 "Publicly available models",
                 "Models trained by you in Supervisely",
@@ -101,7 +102,7 @@ class ModelSelector:
         self.model_source_tabs.set_active_tab(source)
 
     def get_model_name(self):
-        if self.get_model_source() == "Pretrained models":
+        if self.get_model_source() == ModelSource.PRETRAINED:
             selected_row = self.pretrained_models_table.get_selected_row()
             model_meta = selected_row.get("meta", {})
             model_name = model_meta.get("model_name", None)
@@ -111,7 +112,7 @@ class ModelSelector:
         return model_name
 
     def get_model_info(self):
-        if self.get_model_source() == "Pretrained models":
+        if self.get_model_source() == ModelSource.PRETRAINED:
             return self.pretrained_models_table.get_selected_row()
         else:
             return self.custom_models_table.get_selected_experiment_info()

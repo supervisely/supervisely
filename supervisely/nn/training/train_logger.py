@@ -32,7 +32,7 @@ class BaseTrainLogger:
         self.epoch_idx += 1
         for callback in self._on_epoch_finished_callbacks:
             callback()
-    
+
     def on_step_end(self):
         self.step_idx += 1
         for callback in self._on_step_callbacks:
@@ -57,9 +57,6 @@ class BaseTrainLogger:
     def add_on_step_callback(self, callback: Callable):
         self._on_step_callbacks.append(callback)
 
-    def add_on_step_callback(self, callback: Callable):
-        self._on_step_callbacks.append(callback)
-
     def _log(self, logs: dict, idx: int):
         raise NotImplementedError
 
@@ -71,7 +68,7 @@ class BaseTrainLogger:
 
     def log(self, logs: dict, idx: int):
         self._log(logs, idx)
-    
+
     def log_step(self, logs: dict):
         self._log_step(logs)
 
@@ -84,6 +81,7 @@ class TensorboardLogger(BaseTrainLogger):
 
         self.log_dir = log_dir
         self.writer = SummaryWriter(log_dir)
+        self.tensorboard_process = None
         super().__init__()
 
     def set_log_dir(self, log_dir):
@@ -91,8 +89,8 @@ class TensorboardLogger(BaseTrainLogger):
         self.writer = SummaryWriter(log_dir)
 
     def start_tensorboard(self):
-        """Start TensorBoard server in a subprocess"""
-        self._tb_process = subprocess.Popen(
+        """Start Tensorboard server in a subprocess"""
+        self.tensorboard_process = subprocess.Popen(
             [
                 "tensorboard",
                 "--logdir",
@@ -102,12 +100,19 @@ class TensorboardLogger(BaseTrainLogger):
                 "--load_fast=false",
             ]
         )
-        print(f"Started TensorBoard")
+        print(f"Started Tensorboard")
+
+    def stop_tensorboard(self):
+        """Stop Tensorboard server"""
+        if self.tensorboard_process is not None:
+            self.tensorboard_process.terminate()
+            print(f"Stopped Tensorboard")
 
     def _log(self, logs: dict, idx: int):
         for key, value in logs.items():
             if isinstance(value, (int, float)):
                 self.writer.add_scalar(key, value, idx)
+        self.writer.flush()
 
     def _log_step(self, logs: dict):
         self._log(logs, self.step_idx)

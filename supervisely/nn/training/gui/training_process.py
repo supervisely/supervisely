@@ -60,6 +60,16 @@ class TrainingProcess:
         self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
         self.artifacts_upload_progress.hide()
 
+        self.tensorboard_link = "http://localhost:8001/"
+        self.tensorboard_button = Button(
+            "Open Tensorboard",
+            button_type="info",
+            plain=True,
+            icon="zmdi zmdi-chart",
+            link=self.tensorboard_link,
+        )
+        self.tensorboard_button.disable()
+
         self.validator_text = Text("")
         self.validator_text.hide()
         self.start_button = Button("Start")
@@ -91,6 +101,7 @@ class TrainingProcess:
                 self.model_benchmark_report_text,
                 self.validator_text,
                 button_container,
+                self.tensorboard_button,
                 self.logs_button,
                 self.project_download_progress,
                 self.model_download_progress_main,

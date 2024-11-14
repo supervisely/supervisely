@@ -99,9 +99,9 @@ class InputSelector:
 
     def set_cache(self, value: bool):
         if value:
-            self.use_cache_checkbox.check(value)
+            self.use_cache_checkbox.check()
         else:
-            self.use_cache_checkbox.uncheck(value)
+            self.use_cache_checkbox.uncheck()
 
     def get_cache_value(self):
         return self.use_cache_checkbox.is_checked()

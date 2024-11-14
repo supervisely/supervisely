@@ -1,12 +1,4 @@
-from supervisely.app.widgets import (
-    Button,
-    Card,
-    ClassesTable,
-    Container,
-    Field,
-    Switch,
-    Text,
-)
+from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text
 
 
 class ClassesSelector:
@@ -19,20 +11,12 @@ class ClassesSelector:
         else:
             self.classes_table.select_all()
 
-        self.remove_unlabeled_images = Switch(True)
-        filter_images_without_gt_field = Field(
-            self.remove_unlabeled_images,
-            title="Filter images without annotations",
-            description="If enabled, images without annotations depending on selected classes will be removed from training.",
-        )
-
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
         container = Container(
             [
                 self.classes_table,
-                filter_images_without_gt_field,
                 self.validator_text,
                 self.button,
             ]
@@ -50,7 +34,7 @@ class ClassesSelector:
 
     @property
     def widgets_to_disable(self):
-        return [self.classes_table, self.remove_unlabeled_images]
+        return [self.classes_table]
 
     def get_selected_classes(self):
         return self.classes_table.get_selected_classes()
@@ -89,13 +73,6 @@ class ClassesSelector:
                         if len(intersections) == 1
                         else f". Selected classes have no annotations: {', '.join(intersections)}"
                     )
-                    if self.remove_unlabeled_images.is_on():
-                        warning_text += (
-                            ". Images without annotations will be removed from training."
-                        )
-                    else:
-                        warning_text += ". Consider removing images without annotations or enabling 'Filter images without annotations' option."
-
                     status = "warning"
 
             class_text = "class" if n_classes == 1 else "classes"
