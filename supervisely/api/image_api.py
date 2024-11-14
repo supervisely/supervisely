@@ -325,6 +325,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return_first_response: Optional[bool] = False,
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -347,6 +348,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type project_id: :class:`int`
         :param only_labelled: If True, returns only images with labels.
         :type only_labelled: bool, optional
+        :param fields: List of fields to return. If None, returns all fields.
+        :type fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -419,7 +422,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
         return self.get_list_all_pages(
             "images.list",
             data=data,

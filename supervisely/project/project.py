@@ -4418,7 +4418,12 @@ async def _download_project_async(
         else:
             dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
-        all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
+        force_metadata_for_links = False
+        if save_images is False and only_image_tags is True:
+            force_metadata_for_links = True
+        all_images = api.image.get_list(
+            dataset_id, force_metadata_for_links=force_metadata_for_links
+        )
         images = [image for image in all_images if images_ids is None or image.id in images_ids]
 
         ds_progress = progress_cb
@@ -4499,6 +4504,9 @@ async def _download_project_item_async(
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
+        if None in [img_info.height, img_info.width]:
+            width, height = sly.image.get_size_from_bytes(img_bytes)
+            img_info = img_info._replace(height=height, width=width)
     else:
         img_bytes = None
 
@@ -4506,9 +4514,13 @@ async def _download_project_item_async(
         ann_info = await api.annotation.download_async(
             img_info.id,
             semaphore=semaphore,
-            force_metadata_for_links=False,
+            force_metadata_for_links=not save_images,
         )
         ann_json = ann_info.annotation
+        tmp_ann = Annotation.from_json(ann_json, meta)
+        if None in tmp_ann.img_size:
+            tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+            ann_json = tmp_ann.to_json()
     else:
         tags = TagCollection.from_api_response(
             img_info.tags,

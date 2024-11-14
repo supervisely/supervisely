@@ -116,6 +116,6 @@ if __name__ == "__main__":
         main_dps()  # to download and save images as files (batch)
         # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
         # main_bytes()  # to download and save image as bytes
-        # main_n_bytes()  # to download and save images as bytes (batch)
+        # main_n_bytes()  # to download and save images as bytes (batch)        
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
