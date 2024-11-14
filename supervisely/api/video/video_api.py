@@ -353,6 +353,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raw_video_meta: bool
         :param fields: List of fields to return.
         :type fields: List[str], optional
+        :param force_metadata_for_links: Get videos metadata from server
+        :type force_metadata_for_links: Optional[bool]
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -1965,6 +1967,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: List[Dict], optional
         :param skip_download: Skip download video to local storage.
         :type skip_download: Optional[bool]
+        :param force_metadata_for_links: Specify if metadata should be forced
+        :type force_metadata_for_links: Optional[bool]
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
