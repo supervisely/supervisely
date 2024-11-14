@@ -4517,8 +4517,8 @@ async def _download_project_item_async(
             force_metadata_for_links=not save_images,
         )
         ann_json = ann_info.annotation
-        if None in [v for _, v in ann_json.get("size", {None: None}).items()]:
-            tmp_ann = Annotation.from_json(ann_json, meta)
+        tmp_ann = Annotation.from_json(ann_json, meta)
+        if None in tmp_ann.img_size:
             tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
             ann_json = tmp_ann.to_json()
     else:
