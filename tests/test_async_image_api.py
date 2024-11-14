@@ -109,26 +109,13 @@ def main_n_bytes():
             f.write(img_bytes)
 
 
-def get_list():
-    from supervisely.api.module_api import ApiField
-
-    images = api.image.get_list(
-        DATASET_ID,
-        force_metadata_for_links=False,
-        fields=[ApiField.ID, ApiField.NAME, ApiField.PATH_ORIGINAL, ApiField.DATASET_ID],
-    )
-    for image in images:
-        print(image.id, image.name)
-
-
 if __name__ == "__main__":
     try:
         # main_dnp()  # to download and save images as numpy arrays
         # main_dp()  # to download and save images as files
-        # main_dps()  # to download and save images as files (batch)
+        main_dps()  # to download and save images as files (batch)
         # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
         # main_bytes()  # to download and save image as bytes
-        # main_n_bytes()  # to download and save images as bytes (batch)
-        get_list()
+        # main_n_bytes()  # to download and save images as bytes (batch)        
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")
