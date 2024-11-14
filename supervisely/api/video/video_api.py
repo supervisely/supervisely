@@ -340,7 +340,7 @@ class VideoApi(RemoveableBulkModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         raw_video_meta: Optional[bool] = False,
         fields: Optional[List[str]] = None,
-        force_metadata_for_links: Optional[bool] = True,
+        force_metadata_for_links: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
@@ -395,7 +395,7 @@ class VideoApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         raw_video_meta: Optional[bool] = False,
         batch_size: Optional[int] = None,
-        force_metadata_for_links: Optional[bool] = True,
+        force_metadata_for_links: Optional[bool] = False,
     ) -> Iterator[List[VideoInfo]]:
         data = {
             ApiField.DATASET_ID: dataset_id,
