@@ -38,10 +38,13 @@ def process_requests_exception(
     response=None,
     retry_info=None,
 ):
-    if exc.response.status_code == 429 and sleep_sec < 15:
+    recommended_sleep = None
+    if hasattr(exc, "response") and exc.response.status_code == 429:
         recommended_sleep = exc.response.headers.get("Retry-After")
-        if recommended_sleep:
-            sleep_sec = int(recommended_sleep)
+    elif response is not None and response.status_code == 429:
+        recommended_sleep = response.headers.get("Retry-After")
+    if recommended_sleep:
+        sleep_sec = int(recommended_sleep)
 
     is_connection_error = isinstance(
         exc,
@@ -50,7 +53,7 @@ def process_requests_exception(
             requests.exceptions.Timeout,
             requests.exceptions.TooManyRedirects,
             requests.exceptions.ChunkedEncodingError,
-            httpx.ConnectError,
+            httpx.NetworkError,
             httpx.TimeoutException,
             httpx.TooManyRedirects,
             httpx.ProtocolError,

@@ -1062,6 +1062,14 @@ class Api:
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -1127,6 +1135,14 @@ class Api:
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -1264,6 +1280,14 @@ class Api:
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                if (
+                    isinstance(e, httpx.HTTPStatusError)
+                    and resp.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
@@ -1352,6 +1376,14 @@ class Api:
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -1493,6 +1525,14 @@ class Api:
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
             except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                if (
+                    isinstance(e, httpx.HTTPStatusError)
+                    and resp.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
