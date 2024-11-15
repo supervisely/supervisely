@@ -12,9 +12,9 @@ from fastapi import FastAPI
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 from starlette.templating import _TemplateResponse
-from supervisely.io.json import dump_json_file
 
 import supervisely as sly
+from supervisely.io.json import dump_json_file
 
 _offline_session_uploader = None
 _pending_offline_session = None
@@ -115,13 +115,16 @@ def upload_to_supervisely(static_dir_path):
 
 
 def dump_state_and_data_json_files(static_dir_path: pathlib.Path, app: FastAPI):
-    state_path = static_dir_path / "state.json"
-    data_path = static_dir_path / "data.json"
+    from supervisely.app import DataJson, StateJson
 
-    data = app.post("/data").json()
-    state = app.post("/state").json()
-    dump_json_file(data_path, data)
+    state = dict(StateJson())
+    state_path = static_dir_path / "state.json"
     dump_json_file(state_path, state)
+
+    data = dict(DataJson())
+    data_path = static_dir_path / "data.json"
+    dump_json_file(data_path, data)
+
 
 def dump_files_to_supervisely(app: FastAPI, template_response):
     try:
