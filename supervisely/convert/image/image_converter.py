@@ -114,6 +114,7 @@ class ImageConverter(BaseConverter):
         batch_size: int = 50,
         log_progress=True,
         entities: List[Item] = None,
+        progress_cb=None,
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
@@ -122,10 +123,14 @@ class ImageConverter(BaseConverter):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_names = set([img.name for img in api.image.get_list(dataset_id)])
-        if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading images...")
-        else:
-            progress_cb = None
+        progress = None
+        if progress_cb is not None:
+            log_progress = True
+        elif log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading")
+
+        if self.upload_as_links:
+            batch_size = 1000
 
         for batch in batched(entities or self._items, batch_size=batch_size):
             item_names = []
@@ -137,8 +142,8 @@ class ImageConverter(BaseConverter):
                 if item.path is None:
                     continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if self.upload_as_links:
-                    ann = None  # TODO: implement
+                if self.upload_as_links and not self.supports_links:
+                    ann = None
                 else:
                     ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 name = generate_free_name(
@@ -160,27 +165,40 @@ class ImageConverter(BaseConverter):
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
-                upload_method = (
-                    api.image.upload_links if self.upload_as_links else api.image.upload_paths
-                )
-                img_infos = upload_method(
-                    dataset_id,
-                    item_names,
-                    item_paths,
-                    metas=item_metas,
-                    conflict_resolution="rename",
-                )
+                if self.upload_as_links:
+                    img_infos = api.image.upload_links(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        batch_size=batch_size,
+                        conflict_resolution="rename",
+                        force_metadata_for_links=False,
+                    )
+                else:
+                    img_infos = api.image.upload_paths(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        conflict_resolution="rename",
+                    )
+
                 img_ids = [img_info.id for img_info in img_infos]
                 if len(anns) == len(img_ids):
-                    api.annotation.upload_anns(img_ids, anns)
+                    api.annotation.upload_anns(
+                        img_ids, anns, skip_bounds_validation=self.upload_as_links
+                    )
 
             if log_progress:
                 progress_cb(len(batch))
 
         if log_progress:
-            if is_development():
+            if is_development() and progress is not None:
                 progress.close()
-        logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
+        logger.info(
+            f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
+        )
 
     def validate_image(self, path: str) -> Tuple[str, str]:
         if self.upload_as_links:
@@ -188,13 +206,17 @@ class ImageConverter(BaseConverter):
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
+        if self._upload_as_links and self.supports_links:
+            ext = get_file_ext(path)
+            return ext.lower() in self.allowed_exts
         mimetypes.add_type("image/heic", ".heic")  # to extend types_map
         mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
+        mimetypes.add_type("image/bmp", ".bmp")  # to extend types_map
 
-        mime = magic.Magic(mime=True)
-        mimetype = mime.from_file(path)
+        with open(path, "rb") as f:
+            mimetype = magic.from_buffer(f.read(), mime=True)
         file_ext = mimetypes.guess_extension(mimetype)
         if file_ext is None:
             return False
