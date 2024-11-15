@@ -39,12 +39,15 @@ def process_requests_exception(
     retry_info=None,
 ):
     recommended_sleep = None
-    if hasattr(exc, "response") and exc.response.status_code == 429:
-        recommended_sleep = exc.response.headers.get("Retry-After")
-    elif response is not None and response.status_code == 429:
-        recommended_sleep = response.headers.get("Retry-After")
-    if recommended_sleep:
-        sleep_sec = int(recommended_sleep)
+    try:
+        if hasattr(exc, "response") and exc.response.status_code == 429:
+            recommended_sleep = exc.response.headers.get("Retry-After")
+        elif response is not None and response.status_code == 429:
+            recommended_sleep = response.headers.get("Retry-After")
+        if recommended_sleep and int(recommended_sleep) > sleep_sec:
+            sleep_sec = int(recommended_sleep)
+    except Exception:
+        pass
 
     is_connection_error = isinstance(
         exc,
