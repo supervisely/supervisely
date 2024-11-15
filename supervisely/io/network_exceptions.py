@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import asyncio
 import time
 import traceback
 
@@ -27,6 +28,92 @@ RETRY_STATUS_CODES = {
 }
 
 
+async def process_requests_exception_async(
+    external_logger,
+    exc,
+    api_method_name,
+    url,
+    verbose=True,
+    swallow_exc=False,
+    sleep_sec=None,
+    response=None,
+    retry_info=None,
+):
+    recommended_sleep = None
+    try:
+        if hasattr(exc, "response") and exc.response.status_code == 429:
+            recommended_sleep = exc.response.headers.get("Retry-After")
+        elif response is not None and response.status_code == 429:
+            recommended_sleep = response.headers.get("Retry-After")
+        if recommended_sleep and int(recommended_sleep) > sleep_sec:
+            sleep_sec = int(recommended_sleep)
+    except Exception:
+        pass
+
+    is_connection_error = isinstance(
+        exc,
+        (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.TooManyRedirects,
+            requests.exceptions.ChunkedEncodingError,
+            httpx.NetworkError,
+            httpx.TimeoutException,
+            httpx.TooManyRedirects,
+            httpx.ProtocolError,
+        ),
+    )
+
+    is_server_retryable_error = (
+        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError))
+        and hasattr(exc, "response")
+        and (exc.response.status_code in RETRY_STATUS_CODES)
+    )
+
+    is_need_ping_error = False
+    if (
+        isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError))
+        and hasattr(exc, "response")
+        and (exc.response.status_code == 400)
+    ):
+        try:
+            server_explanation = exc.response.json()
+            is_need_ping_error = server_explanation.get("error", None) == SPECIAL_RECONNECT_ERROR
+        except (AttributeError, ValueError):
+            pass
+
+    if is_connection_error or is_server_retryable_error:
+        await process_retryable_request_async(
+            external_logger,
+            exc,
+            api_method_name,
+            url,
+            CONNECTION_ERROR,
+            verbose=verbose,
+            swallow_exc=swallow_exc,
+            sleep_sec=sleep_sec,
+            retry_info=retry_info,
+        )
+    elif is_need_ping_error:
+        await process_retryable_request_async(
+            external_logger,
+            exc,
+            api_method_name,
+            url,
+            AGENT_CONNECTION_ERROR,
+            verbose=verbose,
+            swallow_exc=swallow_exc,
+            sleep_sec=sleep_sec,
+            retry_info=retry_info,
+        )
+    elif response is None:
+        process_unhandled_request(external_logger, exc)
+    elif isinstance(exc, (requests.exceptions.HTTPError, httpx.HTTPStatusError)):
+        process_invalid_request(external_logger, exc, response, verbose)
+    else:
+        process_unhandled_request(external_logger, exc)
+
+
 def process_requests_exception(
     external_logger,
     exc,
@@ -38,6 +125,17 @@ def process_requests_exception(
     response=None,
     retry_info=None,
 ):
+    recommended_sleep = None
+    try:
+        if hasattr(exc, "response") and exc.response.status_code == 429:
+            recommended_sleep = exc.response.headers.get("Retry-After")
+        elif response is not None and response.status_code == 429:
+            recommended_sleep = response.headers.get("Retry-After")
+        if recommended_sleep and int(recommended_sleep) > sleep_sec:
+            sleep_sec = int(recommended_sleep)
+    except Exception:
+        pass
+
     is_connection_error = isinstance(
         exc,
         (
@@ -45,7 +143,7 @@ def process_requests_exception(
             requests.exceptions.Timeout,
             requests.exceptions.TooManyRedirects,
             requests.exceptions.ChunkedEncodingError,
-            httpx.ConnectError,
+            httpx.NetworkError,
             httpx.TimeoutException,
             httpx.TooManyRedirects,
             httpx.ProtocolError,
@@ -100,6 +198,33 @@ def process_requests_exception(
         process_invalid_request(external_logger, exc, response, verbose)
     else:
         process_unhandled_request(external_logger, exc)
+
+
+async def process_retryable_request_async(
+    external_logger,
+    exc,
+    api_method_name,
+    url,
+    user_message,
+    verbose=True,
+    swallow_exc=False,
+    sleep_sec=None,
+    retry_info=None,
+):
+    if retry_info is not None:
+        retry_idx = retry_info["retry_idx"]
+        retry_limit = retry_info["retry_limit"]
+        user_message = "{}:  Retrying ({}/{}).".format(user_message, retry_idx, retry_limit)
+    if verbose:
+        external_logger.warn(
+            user_message, extra={"method": api_method_name, "url": url, "details": str(exc)}
+        )
+
+    if sleep_sec is not None:
+        await asyncio.sleep(sleep_sec)
+
+    if not swallow_exc:
+        raise exc
 
 
 def process_retryable_request(

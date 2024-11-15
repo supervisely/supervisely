@@ -67,6 +67,7 @@ from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
+    process_requests_exception_async,
     process_unhandled_request,
 )
 from supervisely.project.project_meta import ProjectMeta
@@ -806,10 +807,13 @@ class Api:
             reason = "Can't get reason"
 
         def decode_response_content(response: httpx.Response):
-            if hasattr(response, "is_stream_consumed"):
-                return "Content is not acessible for streaming responses"
-            else:
+            try:
                 return response.content.decode("utf-8")
+            except Exception as e:
+                if hasattr(response, "is_stream_consumed"):
+                    return f"Stream is consumed. {e}"
+                else:
+                    return f"Can't decode response content: {e}"
 
         if 400 <= response.status_code < 500:
             http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
@@ -1058,7 +1062,15 @@ class Api:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
-            except httpx.RequestError as exc:
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -1123,7 +1135,15 @@ class Api:
                 if response.status_code != httpx.codes.OK:
                     Api._raise_for_status_httpx(response)
                 return response
-            except httpx.RequestError as exc:
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -1260,7 +1280,15 @@ class Api:
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except httpx.RequestError as e:
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                if (
+                    isinstance(e, httpx.HTTPStatusError)
+                    and resp.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
@@ -1348,11 +1376,19 @@ class Api:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
-            except httpx.RequestError as exc:
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
-                    process_requests_exception(
+                    await process_requests_exception_async(
                         self.logger,
                         exc,
                         method,
@@ -1489,13 +1525,21 @@ class Api:
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except httpx.RequestError as e:
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                if (
+                    isinstance(e, httpx.HTTPStatusError)
+                    and resp.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
                 headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
                 logger.debug(f"Setting Range header {headers['Range']} for retry")
-                process_requests_exception(
+                await process_requests_exception_async(
                     self.logger,
                     e,
                     method,
