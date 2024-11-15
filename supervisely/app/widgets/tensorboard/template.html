@@ -1,0 +1,61 @@
+<div class="train-metrics-widget">
+  <!-- Loading state -->
+  <div v-if="!data.{{{widget.widget_id}}}.isReady" class="loading">
+    <div class="spinner"></div>
+    <span>Starting TensorBoard server...</span>
+  </div>
+
+  <!-- Error state -->
+  <div v-if="data.{{{widget.widget_id}}}.error" class="error">
+    <span>{{data.{{{widget.widget_id}}}.error}}</span>
+  </div>
+
+  <!-- TensorBoard iframe -->
+  <iframe v-if="data.{{{widget.widget_id}}}.pathToHtml && data.{{{widget.widget_id}}}.isReady"
+    :src="data.{{{widget.widget_id}}}.pathToHtml" :width="data.{{{widget.widget_id}}}.width"
+    :height="data.{{{widget.widget_id}}}.height" frameborder="0"
+    style="border: none; width: 100%; height: 500px;"></iframe>
+
+  <style>
+    .train-metrics-widget {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+      /* Adjust this value as needed */
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .error {
+      color: red;
+      padding: 10px;
+      text-align: center;
+    }
+  </style>
+</div>
