@@ -36,6 +36,7 @@ from supervisely.collection.key_indexed_collection import (
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
+    clean_dir,
     copy_file,
     copy_file_async,
     dir_empty,
@@ -3592,7 +3593,14 @@ def _download_project(
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir) and resume_download:
         dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
-        project_fs = Project(dest_dir, OpenMode.READ)
+        try:
+            project_fs = Project(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
     if project_fs is None:
         project_fs = Project(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
@@ -4394,7 +4402,14 @@ async def _download_project_async(
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir) and resume_download:
         dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
-        project_fs = Project(dest_dir, OpenMode.READ)
+        try:
+            project_fs = Project(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
     if project_fs is None:
         project_fs = Project(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)

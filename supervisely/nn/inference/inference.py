@@ -580,7 +580,9 @@ class Inference:
                 continue
             if "classes_whitelist" in inspect.signature(self._create_label).parameters:
                 # pylint: disable=unexpected-keyword-arg
-                label = self._create_label(prediction, classes_whitelist)  # pylint: disable=too-many-function-args
+                label = self._create_label(
+                    prediction, classes_whitelist
+                )  # pylint: disable=too-many-function-args
             else:
                 label = self._create_label(prediction)
             if label is None:
