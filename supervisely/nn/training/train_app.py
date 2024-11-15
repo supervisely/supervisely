@@ -203,10 +203,6 @@ class TrainApp:
         return self._sly_project
 
     @property
-    def use_cache(self) -> bool:
-        return self._gui.input_selector.get_cache_value()
-
-    @property
     def train_dataset_id(self) -> int:
         return self._gui.input_selector.get_train_dataset_id()
 
@@ -313,10 +309,6 @@ class TrainApp:
     def tensorboard_link(self) -> str:
         return self._gui.training_process.tensorboard_link
 
-    @property
-    def tensorboard_button(self) -> Button:
-        return self._gui.training_process.tensorboard_button
-
     # region TRAIN START
     @property
     def start(self):
@@ -365,13 +357,17 @@ class TrainApp:
                 except Exception as e:
                     logger.error(f"Model benchmark failed: {e}")
 
-        # Step 4. Generate experiment_info.json
+        # Step 4. Generate and upload experiment_info.json
         self._generate_experiment_info(output_dir, remote_dir, experiment_info, mb_eval_report_id)
 
-        # Step 5. Workflow output
+        # Step 5. Disable widgets?
+        self.gui.training_process.start_button.disable()
+        self.gui.training_process.stop_button.disable()
+
+        # Step 6. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
-        # Step 6. Shutdown app
+        # Step 7. Shutdown app
         self._app.shutdown()
 
         # region TRAIN END
@@ -379,9 +375,6 @@ class TrainApp:
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
         self._inference_class = inference_class
         self._inference_settings = inference_settings
-
-    def register_train_function(self, train_func: Any) -> None:
-        self._train_func = train_func
 
     # Loaders
     def _load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
@@ -1155,7 +1148,7 @@ class TrainApp:
         train_logger.start_tensorboard()
         self._setup_logger_callbacks()
         time.sleep(1)
-        self.tensorboard_button.enable()
+        self._gui.training_process.tensorboard_button.enable()
 
     def _setup_logger_callbacks(self):
         epoch_pbar = None
