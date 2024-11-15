@@ -118,12 +118,12 @@ def dump_state_and_data_json_files(static_dir_path: pathlib.Path, app: FastAPI):
     from supervisely.app import DataJson, StateJson
 
     state = dict(StateJson())
-    state_path = static_dir_path / "state.json"
-    dump_json_file(state_path, state)
+    state_path = str(static_dir_path / "state.json")
+    dump_json_file(state, state_path)
 
     data = dict(DataJson())
-    data_path = static_dir_path / "data.json"
-    dump_json_file(data_path, data)
+    data_path = str(static_dir_path / "data.json")
+    dump_json_file(data, data_path)
 
 
 def dump_files_to_supervisely(app: FastAPI, template_response):
