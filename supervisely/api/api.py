@@ -67,6 +67,7 @@ from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     process_requests_exception,
+    process_requests_exception_async,
     process_unhandled_request,
 )
 from supervisely.project.project_meta import ProjectMeta
@@ -1387,7 +1388,7 @@ class Api:
                 if raise_error:
                     raise exc
                 else:
-                    process_requests_exception(
+                    await process_requests_exception_async(
                         self.logger,
                         exc,
                         method,
@@ -1538,7 +1539,7 @@ class Api:
                     retry_range_start += 1
                 headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
                 logger.debug(f"Setting Range header {headers['Range']} for retry")
-                process_requests_exception(
+                await process_requests_exception_async(
                     self.logger,
                     e,
                     method,
