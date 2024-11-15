@@ -38,6 +38,11 @@ def process_requests_exception(
     response=None,
     retry_info=None,
 ):
+    if exc.response.status_code == 429 and sleep_sec < 15:
+        recommended_sleep = exc.response.headers.get("Retry-After")
+        if recommended_sleep:
+            sleep_sec = int(recommended_sleep)
+
     is_connection_error = isinstance(
         exc,
         (

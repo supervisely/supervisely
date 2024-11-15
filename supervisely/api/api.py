@@ -806,10 +806,13 @@ class Api:
             reason = "Can't get reason"
 
         def decode_response_content(response: httpx.Response):
-            if hasattr(response, "is_stream_consumed"):
-                return "Content is not acessible for streaming responses"
-            else:
+            try:
                 return response.content.decode("utf-8")
+            except Exception as e:
+                if hasattr(response, "is_stream_consumed"):
+                    return f"Stream is consumed. {e}"
+                else:
+                    return f"Can't decode response content: {e}"
 
         if 400 <= response.status_code < 500:
             http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
@@ -1058,7 +1061,7 @@ class Api:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
-            except httpx.RequestError as exc:
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
                 if raise_error:
                     raise exc
                 else:
@@ -1123,7 +1126,7 @@ class Api:
                 if response.status_code != httpx.codes.OK:
                     Api._raise_for_status_httpx(response)
                 return response
-            except httpx.RequestError as exc:
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -1260,7 +1263,7 @@ class Api:
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except httpx.RequestError as e:
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
@@ -1348,7 +1351,7 @@ class Api:
                     self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
-            except httpx.RequestError as exc:
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
                 if raise_error:
                     raise exc
                 else:
@@ -1489,7 +1492,7 @@ class Api:
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except httpx.RequestError as e:
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
