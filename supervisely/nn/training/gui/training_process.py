@@ -36,8 +36,13 @@ class TrainingProcess:
         # self.creating_model_benchmark_report_field = Field(Empty(), "", "Creating report on model...")
         # self.creating_model_benchmark_report_field.hide()
 
-        self.project_download_progress = Progress("Downloading datasets", hide_on_finish=True)
-        self.project_download_progress.hide()
+        self.project_download_progress_main = Progress("Downloading datasets", hide_on_finish=True)
+        self.project_download_progress_main.hide()
+
+        self.project_download_progress_secondary = Progress(
+            "Processing splits", hide_on_finish=True
+        )
+        self.project_download_progress_secondary.hide()
 
         self.model_download_progress_main = Progress("Downloading model files", hide_on_finish=True)
         self.model_download_progress_main.hide()
@@ -74,6 +79,7 @@ class TrainingProcess:
         self.validator_text.hide()
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
+        self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
 
         button_container = Container(
             [self.start_button, self.stop_button, Empty()],
@@ -103,7 +109,8 @@ class TrainingProcess:
                 button_container,
                 self.tensorboard_button,
                 self.logs_button,
-                self.project_download_progress,
+                self.project_download_progress_main,
+                self.project_download_progress_secondary,
                 self.model_download_progress_main,
                 self.model_download_progress_secondary,
                 self.epoch_progress,
@@ -137,3 +144,7 @@ class TrainingProcess:
             self.task_logs.hide()
             self.logs_button.text = "Show logs"
             self.logs_button.icon = "zmdi zmdi-caret-down-circle"
+
+    def set_tensorboard_port(self, port):
+        self.tensorboard_link = f"http://localhost:{port}/"
+        self.tensorboard_button.link = self.tensorboard_link

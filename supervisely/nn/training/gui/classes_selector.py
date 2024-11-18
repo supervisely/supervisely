@@ -1,3 +1,4 @@
+from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
 from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text
 
 
@@ -11,12 +12,28 @@ class ClassesSelector:
         else:
             self.classes_table.select_all()
 
+        if is_development() or is_debug_with_sly_net():
+            qa_stats_link = abs_url(f"projects/{project_id}/stats/datasets")
+        else:
+            qa_stats_link = f"/projects/{project_id}/stats/datasets"
+
+        qa_stats_text = Text(
+            text=f"<i class='zmdi zmdi-chart-donut' style='color: #7f858e'></i> <a href='{qa_stats_link}' target='_blank'> <b> QA & Stats </b></a>"
+        )
+        qa_stats_button = Button(
+            text="QA & Stats",
+            button_type="primary",
+            icon="zmdi zmdi-chart-donut",
+            link=qa_stats_link,
+        )
+
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
         container = Container(
             [
                 self.classes_table,
+                qa_stats_text,
                 self.validator_text,
                 self.button,
             ]
@@ -28,7 +45,8 @@ class ClassesSelector:
                 "Supported shapes are Bitmap, Polygon, Rectangle."
             ),
             content=container,
-            lock_message="Select dataset splits to unlock",
+            lock_message="Select training and validation splits to unlock",
+            content_top_right=qa_stats_button,
         )
         self.card.lock()
 
@@ -44,9 +62,6 @@ class ClassesSelector:
 
     def select_all_classes(self):
         self.classes_table.select_all()
-
-    def set_train_val_datasets(self, train_dataset_id: int, val_dataset_id: int):
-        self.classes_table.set_dataset_ids([train_dataset_id, val_dataset_id])
 
     def validate_step(self):
         self.validator_text.hide()

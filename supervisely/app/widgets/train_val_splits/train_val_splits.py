@@ -10,7 +10,6 @@ from supervisely.app.widgets import (
     Field,
     NotificationBox,
     RadioTabs,
-    SelectDataset,
     SelectString,
     SelectTagMeta,
     Widget,
@@ -18,11 +17,15 @@ from supervisely.app.widgets import (
 from supervisely.app.widgets.random_splits_table.random_splits_table import (
     RandomSplitsTable,
 )
+from supervisely.app.widgets.select_dataset_tree.select_dataset_tree import (
+    SelectDatasetTree,
+)
 from supervisely.io.fs import remove_dir
 from supervisely.project import get_project_class
 from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
 from supervisely.project.pointcloud_project import PointcloudProject
 from supervisely.project.project import ItemInfo, Project
+from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoProject
 from supervisely.project.volume_project import VolumeProject
 
@@ -65,8 +68,8 @@ class TrainValSplits(Widget):
         self._train_tag_select: SelectTagMeta = None
         self._val_tag_select: SelectTagMeta = None
         self._untagged_select: SelectString = None
-        self._train_ds_select: Union[SelectDataset, SelectString] = None
-        self._val_ds_select: Union[SelectDataset, SelectString] = None
+        self._train_ds_select: Union[SelectDatasetTree, SelectString] = None
+        self._val_ds_select: Union[SelectDatasetTree, SelectString] = None
         self._split_methods = []
 
         contents = []
@@ -163,12 +166,37 @@ class TrainValSplits(Widget):
             box_type="info",
         )
         if self._project_id is not None:
-            self._train_ds_select = SelectDataset(
-                project_id=self._project_id, multiselect=True, compact=True, show_label=False
+            self._train_ds_select = SelectDatasetTree(
+                multiselect=True,
+                flat=True,
+                select_all_datasets=False,
+                allowed_project_types=[self._project_type],
+                always_open=False,
+                compact=True,
+                team_is_selectable=False,
+                workspace_is_selectable=False,
+                append_to_body=True,
             )
-            self._val_ds_select = SelectDataset(
-                project_id=self._project_id, multiselect=True, compact=True, show_label=False
+
+            self._val_ds_select = SelectDatasetTree(
+                multiselect=True,
+                flat=True,
+                select_all_datasets=False,
+                allowed_project_types=[self._project_type],
+                always_open=False,
+                compact=True,
+                team_is_selectable=False,
+                workspace_is_selectable=False,
+                append_to_body=True,
             )
+
+            # old implementation
+            # self._train_ds_select = SelectDataset(
+            #     project_id=self._project_id, multiselect=True, compact=True, show_label=False
+            # )
+            # self._val_ds_select = SelectDataset(
+            #     project_id=self._project_id, multiselect=True, compact=True, show_label=False
+            # )
         elif self._project_fs is not None:
             ds_names = [ds.name for ds in self._project_fs.datasets]
             self._train_ds_select = SelectString(ds_names, multiple=True)
@@ -226,11 +254,11 @@ class TrainValSplits(Widget):
 
         elif split_method == "Based on datasets":
             if self._project_id is not None:
-                self._train_ds_select: SelectDataset
-                self._val_ds_select: SelectDataset
+                self._train_ds_select: SelectDatasetTree
+                self._val_ds_select: SelectDatasetTree
                 train_ds_ids = self._train_ds_select.get_selected_ids()
                 val_ds_ids = self._val_ds_select.get_selected_ids()
-                ds_infos = self._api.dataset.get_list(self._project_id)
+                ds_infos = [dataset for _, dataset in self._api.dataset.tree(self._project_id)]
                 train_ds_names, val_ds_names = [], []
                 for ds_info in ds_infos:
                     if ds_info.id in train_ds_ids:
@@ -250,6 +278,65 @@ class TrainValSplits(Widget):
         if tmp_project_dir is not None:
             remove_dir(tmp_project_dir)
         return train_set, val_set
+
+    def set_split_method(self, split_method: Literal["random", "tags", "datasets"]):
+        if split_method == "random":
+            split_method = "Random"
+        elif split_method == "tags":
+            split_method = "Based on item tags"
+        elif split_method == "datasets":
+            split_method = "Based on datasets"
+        self._content.set_active_tab(split_method)
+        StateJson().send_changes()
+        DataJson().send_changes()
+
+    def get_split_method(self) -> str:
+        return self._content.get_active_tab()
+
+    def set_random_splits(
+        self, split: Literal["train", "training", "val", "validation"], percent: int
+    ):
+        self._content.set_active_tab("Random")
+        if split == "train" or split == "training":
+            self._random_splits_table.set_train_split_percent(percent)
+        elif split == "val" or split == "validation":
+            self._random_splits_table.set_val_split_percent(percent)
+        else:
+            raise ValueError("Split value must be 'train', 'training', 'val' or 'validation'")
+
+    def get_train_percent_split(self) -> List[int]:
+        return self._random_splits_table.get_train_percent_split()
+
+    def get_val_percent_split(self) -> List[int]:
+        return 100 - self._random_splits_table.get_train_percent_split()
+
+    def set_tags_splits(
+        self, train_tag: str, val_tag: str, untagged_action: Literal["train", "val", "ignore"]
+    ):
+        self._content.set_active_tab("Based on item tags")
+        self._train_tag_select.set_name(train_tag)
+        self._val_tag_select.set_name(val_tag)
+        self._untagged_select.set_value(untagged_action)
+
+    def get_train_tag(self) -> str:
+        return self._train_tag_select.get_selected_name()
+
+    def get_val_tag(self) -> str:
+        return self._val_tag_select.get_selected_name()
+
+    def set_datasets_splits(self, train_datasets: List[str], val_datasets: List[str]):
+        self._content.set_active_tab("Based on datasets")
+        self._train_ds_select.set_dataset_ids(train_datasets)
+        self._val_ds_select.set_dataset_ids(val_datasets)
+
+    def get_train_dataset_ids(self) -> List[int]:
+        return self._train_ds_select.get_selected_ids()
+
+    def get_val_dataset_ids(self) -> List[int]:
+        return self._val_ds_select.get_selected_ids()
+
+    def get_untagged_action(self) -> str:
+        return self._untagged_select.get_value()
 
     def disable(self):
         self._content.disable()

@@ -5,6 +5,7 @@ from supervisely.nn.training.gui.classes_selector import ClassesSelector
 from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
 from supervisely.nn.training.gui.input_selector import InputSelector
 from supervisely.nn.training.gui.model_selector import ModelSelector
+from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
 from supervisely.nn.utils import ModelSource
@@ -31,22 +32,25 @@ class TrainGUI:
         self.project_info = self._api.project.get_info_by_id(self.project_id)
 
         # 1. Project selection + Train/val split
-        self.input_selector = InputSelector(project_info=self.project_info)
-        # 2. Select classes
-        self.classes_selector = ClassesSelector(project_id=self.project_id, classes=[])
-        # 3. Model selection
+        self.input_selector = InputSelector(self.project_info)
+        # 2. Select train val splits
+        self.train_val_splits_selector = TrainValSplitsSelector(self._api, self.project_id)
+        # 3. Select classes
+        self.classes_selector = ClassesSelector(self.project_id, [])
+        # 4. Model selection
         self.model_selector = ModelSelector(self._api, self.framework_name, self.models)
-        # 4. Training parameters (yaml), scheduler preview
+        # 5. Training parameters (yaml), scheduler preview
         self.hyperparameters_selector = HyperparametersSelector(
             hyperparameters=self.hyperparameters
         )
-        # 5. Start Train
+        # 6. Start Train
         self.training_process = TrainingProcess()
 
         # Stepper layout
         self.stepper = Stepper(
             widgets=[
                 self.input_selector.card,
+                self.train_val_splits_selector.card,
                 self.classes_selector.card,
                 self.model_selector.card,
                 self.hyperparameters_selector.card,
@@ -57,10 +61,7 @@ class TrainGUI:
 
         # Button utils
         def update_classes_table():
-            self.classes_selector.set_train_val_datasets(
-                train_dataset_id=self.input_selector.get_train_dataset_id(),
-                val_dataset_id=self.input_selector.get_val_dataset_id(),
-            )
+            pass
 
         def disable_hyperparams_editor():
             if self.hyperparameters_selector.editor.readonly:
@@ -109,11 +110,20 @@ class TrainGUI:
             validation_func=self.classes_selector.validate_step,
         )
 
+        self.train_val_splits_selector_cb = wrap_button_click(
+            button=self.train_val_splits_selector.button,
+            cards_to_unlock=[self.classes_selector.card],
+            widgets_to_disable=self.train_val_splits_selector.widgets_to_disable,
+            callback=self.classes_selector_cb,
+            validation_text=self.train_val_splits_selector.validator_text,
+            validation_func=self.train_val_splits_selector.validate_step,
+        )
+
         self.input_selector_cb = wrap_button_click(
             button=self.input_selector.button,
-            cards_to_unlock=[self.classes_selector.card],
+            cards_to_unlock=[self.train_val_splits_selector.card],
             widgets_to_disable=self.input_selector.widgets_to_disable,
-            callback=self.classes_selector_cb,
+            callback=self.train_val_splits_selector_cb,
             validation_text=self.input_selector.validator_text,
             validation_func=self.input_selector.validate_step,
             on_select_click=update_classes_table,
@@ -147,7 +157,7 @@ class TrainGUI:
             set_stepper_step(
                 self.stepper,
                 self.hyperparameters_selector.button,
-                next_pos=5,
+                next_pos=6,
             )
 
         @self.model_selector.button.click
@@ -156,7 +166,7 @@ class TrainGUI:
             set_stepper_step(
                 self.stepper,
                 self.model_selector.button,
-                next_pos=4,
+                next_pos=5,
             )
 
         @self.classes_selector.button.click
@@ -165,6 +175,15 @@ class TrainGUI:
             set_stepper_step(
                 self.stepper,
                 self.classes_selector.button,
+                next_pos=4,
+            )
+
+        @self.train_val_splits_selector.button.click
+        def select_train_val_splits():
+            self.train_val_splits_selector_cb()
+            set_stepper_step(
+                self.stepper,
+                self.train_val_splits_selector.button,
                 next_pos=3,
             )
 
@@ -187,7 +206,8 @@ class TrainGUI:
             raise ValueError("app_config must be a dictionary")
 
         required_keys = {
-            "input": ["project_id", "train_dataset_id", "val_dataset_id"],
+            "input": ["project_id"],
+            "train_val_splits": ["method"],
             "classes": list,
             "model": ["source"],
             "hyperparameters": (dict, str),  # Allowing dict or str for hyperparameters
@@ -244,20 +264,38 @@ class TrainGUI:
         if not isinstance(options.get("cache_project"), bool):
             raise ValueError("app_config['options']['cache_project'] must be a boolean")
 
-        # Check project and datasets
-        project_datasets = self._api.dataset.get_list(app_config["input"]["project_id"])
-        project_datasets_ids = [dataset.id for dataset in project_datasets]
+        # Check train val splits
+        train_val_splits_settings = app_config.get("train_val_splits")
+        if train_val_splits_settings.get("method") == "datasets":
+            dataset_ids = []
+            for parents, dataset in self._api.dataset.tree(self.project_id):
+                dataset_ids.append(dataset.id)
 
-        train_ds_id = app_config["input"]["train_dataset_id"]
-        val_ds_id = app_config["input"]["val_dataset_id"]
+            train_datasets = train_val_splits_settings.get("train_datasets", [])
+            val_datasets = train_val_splits_settings.get("val_datasets", [])
 
-        if train_ds_id not in project_datasets_ids:
-            raise ValueError(
-                f"Train dataset with given id: '{train_ds_id}' is not found in project"
-            )
-        if val_ds_id not in project_datasets_ids:
-            raise ValueError(f"Val dataset with given id: '{val_ds_id}' is not found in project")
+            missing_datasets_ids = []
+            for ds_id in train_datasets + val_datasets:
+                if ds_id not in dataset_ids:
+                    missing_datasets_ids.append(ds_id)
 
+            if len(missing_datasets_ids) > 0:
+                missing_datasets_text = ", ".join([str(ds_id) for ds_id in missing_datasets_ids])
+                raise ValueError(
+                    f"Datasets with ids: {missing_datasets_text} not found in the project"
+                )
+        elif train_val_splits_settings.get("method") == "tags":
+            train_tag = train_val_splits_settings.get("train_tag")
+            val_tag = train_val_splits_settings.get("val_tag")
+            if not train_tag or not val_tag:
+                raise ValueError("train_tag and val_tag must be specified in tags split method")
+        elif train_val_splits_settings.get("method") == "random":
+            split = train_val_splits_settings.get("split")
+            percent = train_val_splits_settings.get("percent")
+            if split not in ["train", "val"]:
+                raise ValueError("split must be 'train' or 'val'")
+            if not isinstance(percent, int) or not 0 < percent < 100:
+                raise ValueError("percent must be an integer in range 1 to 99")
         return app_config
 
     def load_from_config(self, app_config: dict) -> None:
@@ -265,24 +303,43 @@ class TrainGUI:
 
         options = app_config["options"]
         input_settings = app_config["input"]
+        train_val_splits_settings = app_config["train_val_splits"]
         classes_settings = app_config["classes"]
         model_settings = app_config["model"]
         hyperparameters_settings = app_config["hyperparameters"]
 
         self._init_input(input_settings, options)
         self._init_classes(classes_settings)
+        self._init_train_val_splits(train_val_splits_settings)
         self._init_model(model_settings)
         self._init_hyperparameters(hyperparameters_settings, options)
 
     def _init_input(self, input_settings: dict, options: dict) -> None:
         # Set Input
-        # Project id will be provided and assigned during _api.app.start
-        self.input_selector.set_train_dataset_id(input_settings["train_dataset_id"])
-        self.input_selector.set_val_dataset_id(input_settings["val_dataset_id"])
         self.input_selector.set_cache(options["cache_project"])
         self.input_selector_cb()
-
         # ----------------------------------------- #
+
+    def _init_train_val_splits(self, train_val_splits_settings: dict) -> None:
+        split_method = train_val_splits_settings["method"]
+        if split_method == "random":
+            split = train_val_splits_settings["split"]
+            percent = train_val_splits_settings["percent"]
+            self.train_val_splits_selector.train_val_splits.set_random_splits(split, percent)
+        elif split_method == "tags":
+            train_tag = train_val_splits_settings["train_tag"]
+            val_tag = train_val_splits_settings["val_tag"]
+            untagged_action = train_val_splits_settings["untagged_action"]
+            self.train_val_splits_selector.train_val_splits.set_tags_splits(
+                train_tag, val_tag, untagged_action
+            )
+        elif split_method == "datasets":
+            train_datasets = train_val_splits_settings["train_datasets"]
+            val_datasets = train_val_splits_settings["val_datasets"]
+            self.train_val_splits_selector.train_val_splits.set_datasets_splits(
+                train_datasets, val_datasets
+            )
+        self.train_val_splits_selector_cb()
 
     def _init_classes(self, classes_settings: list) -> None:
         # Set Classes
