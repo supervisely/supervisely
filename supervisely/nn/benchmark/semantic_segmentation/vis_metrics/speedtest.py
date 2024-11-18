@@ -3,9 +3,6 @@ from typing import List, Union
 from supervisely.nn.benchmark.semantic_segmentation.base_vis_metric import (
     SemanticSegmVisMetric,
 )
-from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
-    SemanticSegmentationEvalResult,
-)
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
@@ -14,10 +11,6 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Speedtest(SemanticSegmVisMetric):
-
-    def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
 
     def is_empty(self) -> bool:
         return self.eval_result.speedtest_info is None

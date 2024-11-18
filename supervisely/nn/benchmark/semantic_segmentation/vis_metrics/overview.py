@@ -4,21 +4,10 @@ from typing import List
 from supervisely.nn.benchmark.semantic_segmentation.base_vis_metric import (
     SemanticSegmVisMetric,
 )
-from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
-    SemanticSegmentationEvalResult,
-)
 from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
 
 
 class Overview(SemanticSegmVisMetric):
-
-    def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
-        """
-        Class to create widgets for the overview block
-        overview_md property returns list of MarkdownWidget with information about the model
-        """
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
 
     def get_header(self, user_login: str) -> MarkdownWidget:
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
@@ -42,7 +31,7 @@ class Overview(SemanticSegmVisMetric):
         )
 
         # Note about validation dataset
-        classes_str, note_about_val_dataset, train_session = self._get_overview_info()
+        classes_str, note_about_images, starter_app_info = self._get_overview_info()
 
         formats = [
             model_name.replace("_", "\_"),
@@ -55,8 +44,8 @@ class Overview(SemanticSegmVisMetric):
             self.eval_result.gt_project_info.id,
             self.eval_result.gt_project_info.name,
             classes_str,
-            note_about_val_dataset,
-            train_session,
+            note_about_images,
+            starter_app_info,
             self.vis_texts.docs_url,
         ]
 
@@ -74,18 +63,20 @@ class Overview(SemanticSegmVisMetric):
         classes_str = "classes" if classes_cnt > 1 else "class"
         classes_str = f"{classes_cnt} {classes_str}"
 
-        train_session, images_str = "", ""
+        evaluator_session, train_session, images_str = None, None, ""
         gt_project_id = self.eval_result.gt_project_info.id
         gt_dataset_ids = self.eval_result.gt_dataset_ids
         gt_images_ids = self.eval_result.gt_images_ids
         train_info = self.eval_result.train_info
+        evaluator_app_info = self.eval_result.evaluator_app_info
+        total_imgs_cnt = self.eval_result.gt_project_info.items_count
         if gt_images_ids is not None:
             val_imgs_cnt = len(gt_images_ids)
         elif gt_dataset_ids is not None:
             datasets = self.eval_result.gt_dataset_infos
             val_imgs_cnt = sum(ds.items_count for ds in datasets)
         else:
-            val_imgs_cnt = self.eval_result.gt_project_info.items_count
+            val_imgs_cnt = total_imgs_cnt
 
         if train_info:
             train_task_id = train_info.get("app_session_id")
@@ -98,16 +89,25 @@ class Overview(SemanticSegmVisMetric):
             images_str = f", {train_imgs_cnt} images in train, {val_imgs_cnt} images in validation"
 
         if gt_images_ids is not None:
-            images_str += f". Evaluated using subset - {val_imgs_cnt} images"
+            images_str += (
+                f", total {total_imgs_cnt} images. Evaluated using subset - {val_imgs_cnt} images"
+            )
         elif gt_dataset_ids is not None:
             links = [
                 f'<a href="/projects/{gt_project_id}/datasets/{ds.id}" target="_blank">{ds.name}</a>'
                 for ds in datasets
             ]
-            images_str += (
-                f". Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
-            )
+            images_str += f", total {total_imgs_cnt} images. Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
         else:
-            images_str += f". Evaluated on the whole project ({val_imgs_cnt} images)"
+            images_str += f", total {total_imgs_cnt} images. Evaluated on the whole project ({val_imgs_cnt} images)"
 
-        return classes_str, images_str, train_session
+        if evaluator_app_info:
+            evaluator_task_id = evaluator_app_info.get("id")
+            evaluator_app_id = evaluator_app_info.get("meta", {}).get("app", {}).get("id")
+            evaluator_app_name = evaluator_app_info.get("meta", {}).get("app", {}).get("name")
+            if evaluator_task_id and evaluator_app_id and evaluator_app_name:
+                evaluator_session = f'- **Evaluator app session**:  <a href="/apps/{evaluator_app_id}/sessions/{evaluator_task_id}" target="_blank">open</a>'
+
+        starter_app_info = train_session or evaluator_session or ""
+
+        return classes_str, images_str, starter_app_info
