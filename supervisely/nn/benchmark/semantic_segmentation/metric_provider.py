@@ -35,6 +35,7 @@ class MetricProvider:
 
         # eval_data
         self.eval_data = eval_data["result"]
+        self.per_image_metrics = eval_data["per_image_metrics"]
         self.class_names = self.eval_data.index.tolist()
 
         self.num_classes = len(self.class_names)
@@ -84,7 +85,23 @@ class MetricProvider:
         pass
 
     def metric_table(self):
-        pass
+        names_map = {
+            "img_names": "Image name",
+            "pixel_acc": "Pixel accuracy",
+            "precision": "Precision",
+            "recall": "Recall",
+            "f1_score": "F1 score",
+            "iou": "IoU",
+            "boundary_iou": "Boundary IoU",
+            "boundary_eou": "Boundary EoU",
+            "extent_eou": "Extent EoU",
+            "segment_eou": "Segment EoU",
+            "boundary_eou_renormed": "Boundary EoU renormed",
+            "extent_eou_renormed": "Extent EoU renormed",
+            "segment_eou_renormed": "Segment EoU renormed",
+        }
+        prediction_table = self.per_image_metrics.rename(columns=names_map)
+        return prediction_table
 
     def get_confusion_matrix(self, confusion_matrix: np.ndarray):
         # if len(self.eval_data.index) > 7:

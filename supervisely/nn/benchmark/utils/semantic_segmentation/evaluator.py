@@ -106,6 +106,7 @@ class Evaluator:
         self.result_dir = result_dir
 
         self.image_metrics = {
+            "img_names": [],
             "pixel_acc": [],
             "precision": [],
             "recall": [],
@@ -120,6 +121,7 @@ class Evaluator:
             "segment_eou_renormed": [],
         }
         self.img_names = []
+        self.per_image_metrics = pd.DataFrame()
 
     def extract_masks(self, seg, cl, n_cl):
         if GPU:
@@ -201,9 +203,11 @@ class Evaluator:
             axis=1, keepdims=True
         )
         normalized_confusion_matrix = np.round(normalized_confusion_matrix, 3)
+        self.per_image_metrics = pd.DataFrame(self.image_metrics, index=self.img_names)
         return {
             "result": result,
             "confusion_matrix": normalized_confusion_matrix,
+            "per_image_metrics": self.per_image_metrics,
         }
 
     def evaluate_sample(self, pred, gt, img_name):
@@ -356,6 +360,7 @@ class Evaluator:
         )
         self.image_metrics["extent_eou_renormed"].append(postprocess_values(e_extent_ou_renormed))
         self.image_metrics["segment_eou_renormed"].append(postprocess_values(e_segment_ou_renormed))
+        self.image_metrics["img_names"].append(img_name)
 
         self.img_names.append(img_name)
 
