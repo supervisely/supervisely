@@ -17,7 +17,6 @@ from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdM
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
-
 # class ImageComparisonData:
 #     def __init__(
 #         self,
@@ -85,6 +84,14 @@ class EvalResult:
     def name(self) -> str:
         model_name = self.inference_info.get("model_name", self.eval_dir)
         return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
+
+    @property
+    def model_name(self) -> str:
+        if not self.name:
+            return
+        if len(self.name) > 20:
+            return self.name[:14] + "..." + self.name[-4:]
+        return self.name
 
     @property
     def gt_project_id(self) -> int:
