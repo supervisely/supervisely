@@ -59,7 +59,7 @@ markdown_predictions_table = """### Prediction details for every image
 
 Table of per image metrics allows to get performance metrics for every image. It can be helpful when there is a need to find the most problematic images where the model performed worst.
 
-> Click on the row to view the image with **Ground Truth** and **Prediction** annotations.
+> Click on the row to view the **Original Image** with **Ground Truth** and **Prediction** annotations side-by-side. 
 """
 
 markdown_iou = """## Intersection & Error Over Union

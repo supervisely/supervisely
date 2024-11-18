@@ -1,13 +1,33 @@
 import random
 from typing import Dict, List, Optional, Tuple
 
+from supervisely.annotation.annotation import Annotation
 from supervisely.api.api import Api
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult
+from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import GalleryWidget
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.nn.benchmark.cv_tasks import CVTask
+
+
+class MatchedPairData:
+    def __init__(
+        self,
+        gt_image_info: ImageInfo = None,
+        pred_image_info: ImageInfo = None,
+        diff_image_info: ImageInfo = None,
+        gt_annotation: Annotation = None,
+        pred_annotation: Annotation = None,
+        diff_annotation: Annotation = None,
+    ):
+        self.gt_image_info = gt_image_info
+        self.pred_image_info = pred_image_info
+        self.diff_image_info = diff_image_info
+        self.gt_annotation = gt_annotation
+        self.pred_annotation = pred_annotation
+        self.diff_annotation = diff_annotation
 
 
 class BaseVisMetrics:
@@ -116,9 +136,7 @@ class BaseVisualizer:
         )
 
         # set filtered project meta
-        eval_result.filtered_project_meta = self._get_filtered_project_meta(
-            eval_result.pred_project_meta, eval_result
-        )
+        eval_result.filtered_project_meta = self._get_filtered_project_meta(eval_result)
 
         # get dataset infos
         filters = None
@@ -141,12 +159,6 @@ class BaseVisualizer:
             train_task_id = train_info.get("app_session_id")
             if train_task_id:
                 eval_result.task_info = self.api.task.get_info_by_id(int(train_task_id))
-
-        # get sample images with annotations for visualization
-        pred_dataset = random.choice(eval_result.pred_dataset_infos)
-        eval_result.sample_images = self.api.image.get_list(dataset_id=pred_dataset.id, limit=9)
-        image_ids = [x.id for x in eval_result.sample_images]
-        eval_result.sample_anns = self.api.annotation.download_batch(pred_dataset.id, image_ids)
 
     def visualize(self):
         if self.renderer is None:
@@ -206,7 +218,9 @@ class BaseVisualizer:
     def _generate_diff_project_name(self, pred_project_name):
         return "[diff]: " + pred_project_name
 
-    def _create_explore_modal_table(self, columns_number=3, click_gallery_id=None) -> GalleryWidget:
+    def _create_explore_modal_table(
+        self, columns_number=3, click_gallery_id=None, hover_text=None
+    ) -> GalleryWidget:
         gallery = GalleryWidget(
             "all_predictions_modal_gallery",
             is_modal=True,
@@ -215,7 +229,8 @@ class BaseVisualizer:
             opacity=self.ann_opacity,
         )
         gallery.set_project_meta(self.eval_results[0].filtered_project_meta)
-        gallery.add_image_left_header("Compare with GT")
+        if hover_text:
+            gallery.add_image_left_header(hover_text)
         return gallery
 
     def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
@@ -228,8 +243,10 @@ class BaseVisualizer:
         gallery.set_project_meta(self.eval_results[0].filtered_project_meta)
         return gallery
 
-    def _get_filtered_project_meta(self, meta: ProjectMeta, eval_result) -> ProjectMeta:
+    def _get_filtered_project_meta(self, eval_result) -> ProjectMeta:
         remove_classes = []
+        meta = eval_result.pred_project_meta.clone()
+        meta = meta.merge(eval_result.gt_project_meta)
         if eval_result.classes_whitelist:
             for obj_class in meta.obj_classes:
                 if obj_class.name not in eval_result.classes_whitelist:
@@ -237,3 +254,35 @@ class BaseVisualizer:
             if remove_classes:
                 meta = meta.delete_obj_classes(remove_classes)
         return meta
+
+    def _update_match_data(
+        self,
+        gt_image_id: int,
+        gt_image_info: ImageInfo = None,
+        pred_image_info: ImageInfo = None,
+        diff_image_info: ImageInfo = None,
+        gt_annotation: Annotation = None,
+        pred_annotation: Annotation = None,
+        diff_annotation: Annotation = None,
+    ):
+        match_data = self.eval_result.matched_pair_data.get(gt_image_id, None)
+        if match_data is None:
+            self.eval_result.matched_pair_data[gt_image_id] = MatchedPairData(
+                gt_image_info=gt_image_info,
+                pred_image_info=pred_image_info,
+                diff_image_info=diff_image_info,
+                gt_annotation=gt_annotation,
+                pred_annotation=pred_annotation,
+                diff_annotation=diff_annotation,
+            )
+        else:
+            for attr, value in {
+                "gt_image_info": gt_image_info,
+                "pred_image_info": pred_image_info,
+                "diff_image_info": diff_image_info,
+                "gt_annotation": gt_annotation,
+                "pred_annotation": pred_annotation,
+                "diff_annotation": diff_annotation,
+            }.items():
+                if value is not None:
+                    setattr(match_data, attr, value)

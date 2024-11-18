@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 from typing import List
 
@@ -46,24 +47,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 
-class MatchedPairData:
-    def __init__(
-        self,
-        gt_image_info: ImageInfo = None,
-        pred_image_info: ImageInfo = None,
-        diff_image_info: ImageInfo = None,
-        gt_annotation: Annotation = None,
-        pred_annotation: Annotation = None,
-        diff_annotation: Annotation = None,
-    ):
-        self.gt_image_info = gt_image_info
-        self.pred_image_info = pred_image_info
-        self.diff_image_info = diff_image_info
-        self.gt_annotation = gt_annotation
-        self.pred_annotation = pred_annotation
-        self.diff_annotation = diff_annotation
-
-
 class ObjectDetectionVisualizer(BaseVisualizer):
     def __init__(self, api, eval_results, workdir="./visualizations"):
         super().__init__(api, eval_results, workdir)
@@ -85,10 +68,14 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         else:
             self._init_match_data()
 
+        self._get_sample_data_for_gallery()
+
     def _create_widgets(self):
         # Modal Gellery
         self.diff_modal = self._create_diff_modal_table()
-        self.explore_modal = self._create_explore_modal_table(click_gallery_id=self.diff_modal.id)
+        self.explore_modal = self._create_explore_modal_table(
+            click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
+        )
 
         # Notifcation
         self.clickable_label = self._create_clickable_label()
@@ -556,38 +543,6 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                 except Exception:
                     raise RuntimeError("Difference project was not created properly")
 
-    def _update_match_data(
-        self,
-        gt_image_id: int,
-        gt_image_info: ImageInfo = None,
-        pred_image_info: ImageInfo = None,
-        diff_image_info: ImageInfo = None,
-        gt_annotation: Annotation = None,
-        pred_annotation: Annotation = None,
-        diff_annotation: Annotation = None,
-    ):
-        match_data = self.eval_result.matched_pair_data.get(gt_image_id, None)
-        if match_data is None:
-            self.eval_result.matched_pair_data[gt_image_id] = MatchedPairData(
-                gt_image_info=gt_image_info,
-                pred_image_info=pred_image_info,
-                diff_image_info=diff_image_info,
-                gt_annotation=gt_annotation,
-                pred_annotation=pred_annotation,
-                diff_annotation=diff_annotation,
-            )
-        else:
-            for attr, value in {
-                "gt_image_info": gt_image_info,
-                "pred_image_info": pred_image_info,
-                "diff_image_info": diff_image_info,
-                "gt_annotation": gt_annotation,
-                "pred_annotation": pred_annotation,
-                "diff_annotation": diff_annotation,
-            }.items():
-                if value is not None:
-                    setattr(match_data, attr, value)
-
     def _update_pred_meta_with_tags(self, project_id: int, meta: ProjectMeta) -> ProjectMeta:
         old_meta = meta
         outcome_tag = TagMeta(
@@ -705,3 +660,10 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         elif self.cv_task == CVTask.SEMANTIC_SEGMENTATION:
             return isinstance(label.geometry, Bitmap)
         return False
+
+    def _get_sample_data_for_gallery(self):
+        # get sample images with annotations for visualization (Prediction project)
+        pred_ds = random.choice(self.eval_result.pred_dataset_infos)
+        self.eval_result.sample_images = self.api.image.get_list(pred_ds.id, limit=9)
+        image_ids = [x.id for x in self.eval_result.sample_images]
+        self.eval_result.sample_anns = self.api.annotation.download_batch(pred_ds.id, image_ids)

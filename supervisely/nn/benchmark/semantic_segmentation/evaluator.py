@@ -15,7 +15,7 @@ from supervisely.nn.benchmark.semantic_segmentation.metric_provider import (
 from supervisely.nn.benchmark.utils import (
     calculate_semsegm_metrics as calculate_metrics,
 )
-from supervisely.project.project import Project
+from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
@@ -93,7 +93,6 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             return
 
         os.makedirs(output_project_dir)
-        ann_dir = "seg"
         temp_project_seg_dir = source_project_dir + "_temp"
         if not os.path.exists(temp_project_seg_dir):
             default_bg_name = self._get_bg_class_name()
@@ -108,25 +107,26 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         for idx, color in enumerate(palette, 1):
             key = (color[0] << 16) | (color[1] << 8) | color[2]
             palette_lookup[key] = idx
-        datasets = os.listdir(temp_project_seg_dir)
-        for dataset in datasets:
-            if not os.path.isdir(os.path.join(temp_project_seg_dir, dataset)):
-                continue
+
+        temp_project = Project(temp_project_seg_dir, mode=OpenMode.READ)
+        temp_project.total_items
+        for dataset in temp_project.datasets:
             # convert masks to required format and save to general ann_dir
-            mask_files = os.listdir(os.path.join(temp_project_seg_dir, dataset, ann_dir))
-            for mask_file in tqdm(mask_files, desc="Preparing segmentation data..."):
-                mask = cv2.imread(os.path.join(temp_project_seg_dir, dataset, ann_dir, mask_file))[
-                    :, :, ::-1
-                ]
+            dataset: Dataset
+            names = dataset.get_items_names()
+            for name in names:
+                mask_path = dataset.get_seg_path(name)
+                mask = cv2.imread(mask_path)[:, :, ::-1]
+
                 mask_keys = (
                     (mask[:, :, 0].astype(np.int32) << 16)
                     | (mask[:, :, 1].astype(np.int32) << 8)
                     | mask[:, :, 2].astype(np.int32)
                 )
                 result = palette_lookup[mask_keys]
-                if mask_file.count(".png") > 1:
-                    mask_file = mask_file[:-4]
-                cv2.imwrite(os.path.join(output_project_dir, mask_file), result)
+                if name.count(".png") > 1:
+                    name = name[:-4]
+                cv2.imwrite(os.path.join(output_project_dir, name), result)
 
         shutil.rmtree(temp_project_seg_dir)
 
