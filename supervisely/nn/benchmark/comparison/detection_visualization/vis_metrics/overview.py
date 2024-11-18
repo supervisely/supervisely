@@ -203,7 +203,7 @@ class Overview(BaseVisMetric):
         # Overall Metrics
         fig = go.Figure()
         for i, eval_result in enumerate(self.eval_results):
-            name = f"[{i + 1}] {eval_result.name}"
+            name = f"[{i + 1}] {eval_result.model_name}"
             base_metrics = eval_result.mp.base_metrics()
             r = list(base_metrics.values())
             theta = [eval_result.mp.metric_names[k] for k in base_metrics.keys()]

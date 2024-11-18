@@ -75,8 +75,9 @@ class ExplorePredictions(BaseVisMetric):
         res["layoutTemplate"] = [None, None, None]
 
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"}]
-        for i in range(len(self.eval_results)):
-            res["layoutTemplate"].append({"columnTitle": f"Model {i + 1}"})
+        # for i in range(len(self.eval_results)):
+        for idx, eval_res in enumerate(self.eval_results, 1):
+            res["layoutTemplate"].append({"columnTitle": f"[{idx}] {eval_res.model_name}"})
 
         click_data = res.setdefault("clickData", {})
         explore = click_data.setdefault("explore", {})
