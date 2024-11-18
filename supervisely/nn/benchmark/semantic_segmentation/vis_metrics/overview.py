@@ -1,14 +1,16 @@
 import datetime
 from typing import List
 
-from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
+from supervisely.nn.benchmark.semantic_segmentation.base_vis_metric import (
+    SemanticSegmVisMetric,
+)
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvalResult,
 )
 from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
 
 
-class Overview(BaseVisMetric):
+class Overview(SemanticSegmVisMetric):
 
     def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
         """
