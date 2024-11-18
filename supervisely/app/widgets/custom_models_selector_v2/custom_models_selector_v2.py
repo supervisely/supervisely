@@ -290,7 +290,7 @@ class CustomModelsSelectorV2(Widget):
 
         self._changes_handled = False
         self._task_type_changes_handled = False
-
+        self.__debug_row = None
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
@@ -373,14 +373,19 @@ class CustomModelsSelectorV2(Widget):
                 if result:
                     task_type, model_row = result
                     if task_type is not None and model_row is not None:
+                        if model_row.task_id == "debug-session":
+                            self.__debug_row = (task_type, model_row)
+                            continue
                         table_rows[task_type].append(model_row)
-
         self._sort_table_rows(table_rows)
+        if self.__debug_row and is_development():
+            task_type, model_row = self.__debug_row
+            table_rows[task_type].insert(0, model_row)
         return table_rows
 
     def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
         for task_type in table_rows:
-            table_rows[task_type].sort(key=lambda row: row.task_id, reverse=True)
+            table_rows[task_type].sort(key=lambda row: int(row.task_id), reverse=True)
 
     def _filter_task_types(self, task_types: List[str]):
         sorted_tt = []

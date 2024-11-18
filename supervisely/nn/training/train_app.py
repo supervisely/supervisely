@@ -304,7 +304,7 @@ class TrainApp:
         return decorator
 
     def preprocess(self):
-        print("Preprocessing...")
+        logger.info("Preprocessing")
         # Step 1. Workflow Input
         if is_production():
             self._workflow_input()
@@ -317,7 +317,7 @@ class TrainApp:
         self._download_model()
 
     def postprocess(self, experiment_info: dict):
-        print("Postprocessing...")
+        logger.info("Postprocessing")
 
         # Step 1. Validate experiment_info
         success = self._validate_experiment_info(experiment_info)
@@ -411,7 +411,7 @@ class TrainApp:
             self._download_with_cache(dataset_infos, total_images)
         except Exception:
             logger.warning(
-                "Failed to retrieve project from cache. Downloading it...",
+                "Failed to retrieve project from cache. Downloading it",
                 exc_info=True,
             )
             if sly_fs.dir_exists(self._project_dir):
@@ -424,7 +424,7 @@ class TrainApp:
     def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
         self.progress_bar_download_project_main.show()
         with self.progress_bar_download_project_main(
-            message="Downloading input data...", total=total_images
+            message="Downloading input data", total=total_images
         ) as pbar:
             download_project(
                 api=self._api,
@@ -448,7 +448,7 @@ class TrainApp:
 
         logger.info(self._get_cache_log_message(cached, to_download))
         with self.progress_bar_download_project_main(
-            message="Downloading input data...", total=total_images
+            message="Downloading input data", total=total_images
         ) as pbar:
             self.progress_bar_download_project_main.show()
             download_to_cache(
@@ -463,7 +463,7 @@ class TrainApp:
             get_cache_size(self.project_info.id, ds.name) for ds in dataset_infos
         )
         with self.progress_bar_download_project_main(
-            message="Retrieving data from cache...",
+            message="Retrieving data from cache",
             total=total_cache_size,
             unit="B",
             unit_scale=True,
@@ -536,13 +536,13 @@ class TrainApp:
                 pbar.update(1)
 
         with self.progress_bar_download_project_main(
-            message="Applying train / val splits to project...", total=2
+            message="Applying train / val splits to project", total=2
         ) as main_pbar:
             self.progress_bar_download_project_main.show()
             for dataset in ["train", "val"]:
                 total_items = len(self._train_split) if dataset == "train" else len(self._val_split)
                 with self.progress_bar_download_project_secondary(
-                    message=f"Preparing '{dataset}'...", total=total_items
+                    message=f"Preparing '{dataset}'", total=total_items
                 ) as second_pbar:
                     self.progress_bar_download_project_secondary.show()
                     if dataset == "train":
@@ -576,9 +576,7 @@ class TrainApp:
 
         train_ds_path = join(self._project_dir, "train")
         val_ds_path = join(self._project_dir, "val")
-        with self.progress_bar_download_project_main(
-            message="Processing splits...", total=2
-        ) as pbar:
+        with self.progress_bar_download_project_main(message="Processing splits", total=2) as pbar:
             self.progress_bar_download_project_main.show()
             for dataset in ["train", "val"]:
                 split_path = train_split_path if dataset == "train" else val_split_path
@@ -609,7 +607,7 @@ class TrainApp:
         model_files = model_meta["model_files"]
 
         with self.progress_bar_download_model_main(
-            message="Downloading model files...",
+            message="Downloading model files",
             total=len(model_files),
         ) as model_download_main_pbar:
             self.progress_bar_download_model_main.show()
@@ -622,7 +620,7 @@ class TrainApp:
                 file_path = join(self._model_dir, file)
 
                 with self.progress_bar_download_model_secondary(
-                    message=f"Downloading '{file}' ...",
+                    message=f"Downloading '{file}' ",
                     total=weights_size,
                     unit="bytes",
                     unit_scale=True,
@@ -654,7 +652,7 @@ class TrainApp:
         model_files["checkpoint"] = checkpoint
 
         with self.progress_bar_download_model_main(
-            message="Downloading model files...",
+            message="Downloading model files",
             total=len(model_files),
         ) as model_download_main_pbar:
             self.progress_bar_download_model_main.show()
@@ -666,7 +664,7 @@ class TrainApp:
                 file_size = file_info.sizeb
 
                 with self.progress_bar_download_model_secondary(
-                    message=f"Downloading '{file}' ...",
+                    message=f"Downloading {file}",
                     total=file_size,
                     unit="bytes",
                     unit_scale=True,
@@ -738,7 +736,7 @@ class TrainApp:
         return True
 
     def _preprocess_artifacts(self, experiment_info: dict) -> str:
-        logger.info("Preprocessing artifacts...")
+        logger.info("Preprocessing artifacts")
         output_dir = self._output_dir
         output_weights_dir = join(output_dir, "weights")
 
@@ -827,13 +825,13 @@ class TrainApp:
         self._upload_json_file(
             local_train_split_path,
             remote_train_split_path,
-            "Uploading 'train_split.json' to Team Files...",
+            "Uploading 'train_split.json' to Team Files",
         )
         sly_json.dump_json_file(self.val_split, local_val_split_path)
         self._upload_json_file(
             local_val_split_path,
             remote_val_split_path,
-            "Uploading 'val_split.json' to Team Files...",
+            "Uploading 'val_split.json' to Team Files",
         )
 
     def _generate_experiment_info(
@@ -877,7 +875,7 @@ class TrainApp:
         remote_path = join(remote_dir, "experiment_info.json")
         sly_json.dump_json_file(experiment_info, local_path)
         self._upload_json_file(
-            local_path, remote_path, "Uploading 'experiment_info.json' to Team Files..."
+            local_path, remote_path, "Uploading 'experiment_info.json' to Team Files"
         )
 
     def _generate_app_state(self, local_dir: str, remote_dir: str, experiment_info: Dict) -> None:
@@ -905,9 +903,7 @@ class TrainApp:
         local_path = join(local_dir, "app_state.json")
         remote_path = join(remote_dir, "app_state.json")
         sly_json.dump_json_file(app_state, local_path)
-        self._upload_json_file(
-            local_path, remote_path, "Uploading 'app_state.json' to Team Files..."
-        )
+        self._upload_json_file(local_path, remote_path, "Uploading 'app_state.json' to Team Files")
 
     def _get_train_val_splits(self) -> Dict:
         split_method = self.gui.train_val_splits_selector.get_split_method()
@@ -981,7 +977,7 @@ class TrainApp:
         local_files = sly_fs.list_files_recursively(output_dir)
         total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
         with self.progress_bar_upload_artifacts(
-            message="Uploading train artifacts to Team Files...",
+            message="Uploading train artifacts to Team Files",
             total=total_size,
             unit="bytes",
             unit_scale=True,
@@ -1038,7 +1034,7 @@ class TrainApp:
             )
             return None, None
 
-        logger.info("Running Model Benchmark evaluation...")
+        logger.info("Running Model Benchmark evaluation")
         try:
             remote_weights_dir = join(remote_artifacts_dir, "weights")
             best_checkpoint = experiment_info.get("best_checkpoint", None)
@@ -1054,7 +1050,7 @@ class TrainApp:
             self._gui.training_process.model_benchmark_report_text.show()
             self._gui.training_process.model_benchmark_progress_main.show()
             self._gui.training_process.model_benchmark_progress_main(
-                message="Starting Model Benchmark evaluation...", total=1
+                message="Starting Model Benchmark evaluation", total=1
             )
 
             # 0. Serve trained model
@@ -1088,6 +1084,7 @@ class TrainApp:
             sly_fs.mkdir(benchmark_dir, True)
 
             # 1. Init benchmark (todo: auto-detect task type)
+            # @TODO: fix model benchmark
             train_dataset_ids = [self.train_dataset_id]
             train_images_ids = [
                 img_info.id for img_info in self._api.image.get_list(self.train_dataset_id)
@@ -1351,7 +1348,7 @@ class TrainApp:
         try:
             experiment_info = self._train_func()
         except StopTrainingException as e:
-            print(f"Training stopped: {e}")
+            logger.error(f"Training stopped: {e}")
             raise e  # @TODO: add stop button
         self.postprocess(experiment_info)
         self.gui.training_process.start_button.loading = False
