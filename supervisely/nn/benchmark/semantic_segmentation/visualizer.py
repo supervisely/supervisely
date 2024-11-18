@@ -84,7 +84,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
         # explore predictions
         explore_predictions = ExplorePredictions(
-            self.vis_texts, self.eval_result, self.explore_modal
+            self.vis_texts, self.eval_result, self.explore_modal, self.diff_modal
         )
         self.explore_predictions_md = explore_predictions.md
         self.explore_predictions_gallery = explore_predictions.gallery(self.ann_opacity)
@@ -249,51 +249,11 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
     def _get_sample_data_for_gallery(self):
         # get sample images with annotations for visualization
-        sample_images, sample_anns = [], []
-
-        diff_ds = random.choice(self.eval_result.diff_dataset_infos)
-        imgs = self.api.image.get_list(diff_ds.id, limit=3, force_metadata_for_links=False)
-        anns = self.api.annotation.download_batch(
-            diff_ds.id, [x.id for x in imgs], force_metadata_for_links=False
-        )
-        names = [x.name for x in imgs]
-
-        sample_images.append(imgs)
-        sample_anns.append(anns)
-
-        pred_ds, gt_ds = None, None
-        for ds in self.eval_result.pred_dataset_infos:
-            if ds.name == diff_ds.name:
-                pred_ds = ds
-                break
-        for ds in self.eval_result.gt_dataset_infos:
-            if ds.name == diff_ds.name:
-                gt_ds = ds
-                break
-
-        if pred_ds is None or gt_ds is None:
-            raise RuntimeError("Dataset not found")
-
-        filters = [{"field": "name", "operator": "in", "value": names}]
-
-        imgs = self.api.image.get_list(pred_ds.id, filters, limit=3, force_metadata_for_links=False)
-        imgs = sorted(imgs, key=lambda x: names.index(x.name))
+        pred_ds = random.choice(self.eval_result.pred_dataset_infos)
+        imgs = self.api.image.get_list(pred_ds.id, limit=9, force_metadata_for_links=False)
         anns = self.api.annotation.download_batch(
             pred_ds.id, [x.id for x in imgs], force_metadata_for_links=False
         )
 
-        sample_images.append(imgs)
-        sample_anns.append(anns)
-
-        imgs = self.api.image.get_list(gt_ds.id, filters, limit=3, force_metadata_for_links=False)
-        imgs = sorted(imgs, key=lambda x: names.index(x.name))
-        anns = self.api.annotation.download_batch(
-            gt_ds.id, [x.id for x in imgs], force_metadata_for_links=False
-        )
-
-        sample_images.append(imgs)
-        sample_anns.append(anns)
-
-        # [[a, a, a], [b, b, b], [c, c, c]] -> [a, b, c, a, b, c, a, b, c]
-        self.eval_result.sample_images = [x for y in list(zip(*sample_images)) for x in y]
-        self.eval_result.sample_anns = [x for y in list(zip(*sample_anns)) for x in y]
+        self.eval_result.sample_images = imgs
+        self.eval_result.sample_anns = anns
