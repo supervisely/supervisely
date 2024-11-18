@@ -1,7 +1,6 @@
 import json
-import os
 import shutil
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
 from logging import Logger
 from pathlib import Path
@@ -16,6 +15,7 @@ from cachetools import Cache, LRUCache, TTLCache
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
+from supervisely._utils import batched
 from supervisely.io.fs import silent_remove
 
 
@@ -150,6 +150,9 @@ class PersistentImageTTLCache(TTLCache):
 
     def get_project_meta(self, project_meta_name):
         return self[project_meta_name]
+
+    def copy_to(self, name, path):
+        shutil.copyfile(str(self[name]), path)
 
 
 class InferenceImageCache:
@@ -664,3 +667,38 @@ class InferenceImageCache:
             # TODO: sleep if slowdown
             sleep(0.1)
             continue
+
+    def download_frames_to_paths(self, api, video_id, frame_indexes, paths, progress_cb=None):
+        def _download_frame(frame_index):
+            self.download_frame(api, video_id, frame_index)
+            name = self._frame_name(video_id, frame_index)
+            return frame_index, name
+
+        def _download_and_save(this_frame_indexes, this_paths):
+            if video_id in self._cache:
+                for path, frame in zip(
+                    this_paths, self.get_frames_from_cache(video_id, this_frame_indexes)
+                ):
+                    sly.image.write(path, frame)
+                    if progress_cb is not None:
+                        progress_cb()
+                return
+
+            futures = []
+            frame_index_to_path = {}
+            for frame_index, path in zip(this_frame_indexes[:5], this_paths[:5]):
+                frame_index_to_path[frame_index] = path
+                futures.append(executor.submit(_download_frame, frame_index))
+            for future in as_completed(futures):
+                frame_index, name = future.result()
+                path = frame_index_to_path[frame_index]
+                self._cache.copy_to(name, path)
+                if progress_cb is not None:
+                    progress_cb()
+            if len(this_frame_indexes) > 5:
+                _download_and_save(this_frame_indexes[5:], this_paths[5:])
+
+        # optimization for frame read from video file
+        frame_indexes, paths = zip(*sorted(zip(frame_indexes, paths), key=lambda x: x[0]))
+        executor = ThreadPoolExecutor(max_workers=5)
+        _download_and_save(frame_indexes, paths)
