@@ -99,6 +99,11 @@ markdown_frequently_confused = """## Frequently Confused Classes
 The bar chart below reveals pairs of classes which were most frequently confused by the model. Each column of the chart demonstrates the probability of confusion of a given pair of classes. It is necessary to remember that this probability is not symmetric: the probability of confusing class A with class B is not equal to the probability of confusing class B with class A.
 """
 
+markdown_frequently_confused_empty = """### Frequently Confused Classes
+
+No frequently confused class pairs found
+"""
+
 markdown_speedtest_intro = """## Inference Speed
 
 This is a speed test benchmark for this model. The model was tested with the following configuration:

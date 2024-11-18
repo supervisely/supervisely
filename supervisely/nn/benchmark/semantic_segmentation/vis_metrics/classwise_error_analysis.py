@@ -1,16 +1,15 @@
+from typing import Dict
+
 from supervisely.nn.benchmark.semantic_segmentation.base_vis_metric import (
     SemanticSegmVisMetric,
-)
-from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
-    SemanticSegmentationEvalResult,
 )
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
 class ClasswiseErrorAnalysis(SemanticSegmVisMetric):
-    def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.clickable = True
 
     @property
     def md(self) -> MarkdownWidget:
@@ -22,7 +21,13 @@ class ClasswiseErrorAnalysis(SemanticSegmVisMetric):
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget("classwise_error_analysis", self.get_figure())
+        chart = ChartWidget("classwise_error_analysis", self.get_figure())
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].label}`,",
+        )
+        return chart
 
     def get_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error

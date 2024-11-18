@@ -33,24 +33,24 @@ class ExplorePredictions(SemanticSegmVisMetric):
         # set click data for diff gallery
         self.explore_modal_table.set_click_data(
             self.diff_modal_table.id,
-            self.get_diff_data(),
-            get_key="(payload) => `${payload.annotation.imageId}`",
+            self.get_click_data(),
+            get_key="(payload) => `${payload.annotation.image_id || payload.annotation.imageId}`",
         )
 
         gallery.set_click_data(
             self.diff_modal_table.id,
-            self.get_diff_data(),
-            get_key="(payload) => `${payload.annotation.image_id}`",
+            self.get_click_data(),
+            get_key="(payload) => `${payload.annotation.image_id || payload.annotation.imageId}`",
         )
 
         # set click data for explore gallery
         gallery.set_show_all_data(
             self.explore_modal_table.id,
-            self.get_click_data(),
+            self.get_all_data(),
         )
         return gallery
 
-    def get_click_data(self) -> dict:
+    def get_all_data(self) -> dict:
         res = {}
 
         res["layoutTemplate"] = [None, None, None]
@@ -62,7 +62,7 @@ class ExplorePredictions(SemanticSegmVisMetric):
 
         return res
 
-    def get_diff_data(self) -> Dict:
+    def get_click_data(self) -> Dict:
         res = {}
 
         res["layoutTemplate"] = [

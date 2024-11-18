@@ -61,7 +61,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.gt_project_path = str(Path(self.workdir).parent / "gt_project")
         self.pred_project_path = str(Path(self.workdir).parent / "pred_project")
 
-        self.eval_result.images_map = defaultdict(lambda: {"gt": None, "pred": None, "diff": None})
+        self.eval_result.images_map = {}
+        self.eval_result.images_by_class = defaultdict(set)
         if not existed:
             self._init_match_data()
 
@@ -70,7 +71,9 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
     def _create_widgets(self):
         # Modal Gellery
         self.diff_modal = self._create_diff_modal_table()
-        self.explore_modal = self._create_explore_modal_table(click_gallery_id=self.diff_modal.id)
+        self.explore_modal = self._create_explore_modal_table(
+            click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
+        )
 
         # overview
         overview = Overview(self.vis_texts, self.eval_result)
@@ -105,19 +108,25 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.renorm_eou_chart = renorm_eou.chart
 
         # classwise error analysis
-        classwise_error_analysis = ClasswiseErrorAnalysis(self.vis_texts, self.eval_result)
+        classwise_error_analysis = ClasswiseErrorAnalysis(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.classwise_error_analysis_md = classwise_error_analysis.md
         self.classwise_error_analysis_chart = classwise_error_analysis.chart
 
         # confusion matrix
-        confusion_matrix = ConfusionMatrix(self.vis_texts, self.eval_result)
+        confusion_matrix = ConfusionMatrix(self.vis_texts, self.eval_result, self.explore_modal)
         self.confusion_matrix_md = confusion_matrix.md
         self.confusion_matrix_chart = confusion_matrix.chart
 
         # frequently confused
-        frequently_confused = FrequentlyConfused(self.vis_texts, self.eval_result)
+        frequently_confused = FrequentlyConfused(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
         self.frequently_confused_md = frequently_confused.md
-        self.frequently_confused_chart = frequently_confused.chart
+        self.frequently_confused_chart = None
+        if not frequently_confused.is_empty:
+            self.frequently_confused_chart = frequently_confused.chart
 
         # Acknowledgement
         acknowledgement = Acknowledgement(self.vis_texts, self.eval_result)
@@ -161,8 +170,9 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (1, self.confusion_matrix_md),
             (0, self.confusion_matrix_chart),
             (1, self.frequently_confused_md),
-            (0, self.frequently_confused_chart),
         ]
+        if self.frequently_confused_chart is not None:
+            is_anchors_widgets.append((0, self.frequently_confused_chart))
         if self.speedtest_present:
             is_anchors_widgets.append((1, self.speedtest_md_intro))
             is_anchors_widgets.append((0, self.speedtest_intro_table))
@@ -237,13 +247,14 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
                             pred_annotation=pred_ann,
                         )
 
-                        assert item_name not in self.eval_result.matched_pair_data
+                        assert item_name not in self.eval_result.images_map
 
-                        self.eval_result.images_map[item_name] = {
-                            "gt": gt_image_info.id,
-                            "pred": pred_image_info.id,
-                            "diff": diff_image_info.id,
-                        }
+                        self.eval_result.images_map[item_name] = gt_image_info.id
+
+                        for label in pred_ann.labels:
+                            self.eval_result.images_by_class[label.obj_class.name].add(
+                                gt_image_info.id
+                            )
             except Exception:
                 raise RuntimeError("Match data was not created properly")
 

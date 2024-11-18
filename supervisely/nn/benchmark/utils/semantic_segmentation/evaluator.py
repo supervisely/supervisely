@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from typing import Dict, Iterable, List, Optional, Union
 
 import cv2
@@ -102,7 +103,7 @@ class Evaluator:
         self.confusion_matrix = np.zeros(
             (self.num_classes, self.num_classes),
         )
-        self.cell_img_names = {}
+        self.cell_img_names = defaultdict(list)
         self.result_dir = result_dir
 
         self.image_metrics = {
@@ -154,11 +155,7 @@ class Evaluator:
                 if np.sum(pm) == 0:
                     continue
                 cmat[ig, ip] += np.sum(np.logical_and(pm, gm))
-                cell = str(ig) + str(ip)
-                if cell in self.cell_img_names:
-                    self.cell_img_names[cell].append(img_name)
-                else:
-                    self.cell_img_names[cell] = [img_name]
+                self.cell_img_names[str(ig) + "_" + str(ip)].append(img_name)
 
         return cmat
 
@@ -208,6 +205,7 @@ class Evaluator:
             "result": result,
             "confusion_matrix": normalized_confusion_matrix,
             "per_image_metrics": self.per_image_metrics,
+            "cell_img_names": self.cell_img_names,
         }
 
     def evaluate_sample(self, pred, gt, img_name):

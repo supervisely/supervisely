@@ -1,16 +1,17 @@
+from typing import Dict
+
 from supervisely.nn.benchmark.semantic_segmentation.base_vis_metric import (
     SemanticSegmVisMetric,
-)
-from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
-    SemanticSegmentationEvalResult,
 )
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
 class ConfusionMatrix(SemanticSegmVisMetric):
-    def __init__(self, vis_texts, eval_result: SemanticSegmentationEvalResult) -> None:
-        super().__init__(vis_texts, [eval_result])
-        self.eval_result = eval_result
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.clickable = True
+        self._keypair_sep = "-"
 
     @property
     def md(self) -> MarkdownWidget:
@@ -22,7 +23,13 @@ class ConfusionMatrix(SemanticSegmVisMetric):
 
     @property
     def chart(self) -> ChartWidget:
-        return ChartWidget("confusion_matrix", self.get_figure())
+        chart = ChartWidget("confusion_matrix", self.get_figure())
+        chart.set_click_data(
+            self.explore_modal_table.id,
+            self.get_click_data(),
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+        )
+        return chart
 
     def get_figure(self):
         import plotly.graph_objects as go  # pylint: disable=import-error
@@ -48,6 +55,27 @@ class ConfusionMatrix(SemanticSegmVisMetric):
             )
         )
 
-        fig.update_layout(xaxis_title="Predicted", yaxis_title="True")
-
+        fig.update_layout(xaxis_title="Predicted", yaxis_title="Ground Truth")
         return fig
+
+    def get_click_data(self) -> Dict:
+        res = dict(projectMeta=self.eval_result.pred_project_meta.to_json())
+        res["layoutTemplate"] = [None, None, None]
+        res["clickData"] = {}
+
+        _, class_names = self.eval_result.mp.confusion_matrix
+        for ig, gt_key in enumerate(class_names):
+            for ip, pred_key in enumerate(class_names):
+                key = f"{gt_key}{self._keypair_sep}{pred_key}"
+                res["clickData"][key] = {}
+                res["clickData"][key]["imagesIds"] = []
+
+                cmat_key = str(ig) + "_" + str(ip)
+                for name in self.eval_result.mp.cmat_cell_img_names[cmat_key]:
+                    gt_img_id = self.eval_result.images_map[name]
+                    pred_img_id = self.eval_result.matched_pair_data[gt_img_id].pred_image_info.id
+                    res["clickData"][key]["imagesIds"].append(pred_img_id)
+                title = f"Confusion Matrix. GT: '{gt_key}' ― Predicted: '{pred_key}'"
+                res["clickData"][key]["title"] = title
+
+        return res
