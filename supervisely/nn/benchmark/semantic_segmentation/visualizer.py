@@ -1,5 +1,10 @@
+import random
+from collections import defaultdict
+from pathlib import Path
+
 import supervisely.nn.benchmark.semantic_segmentation.text_templates as vis_texts
 from supervisely.nn.benchmark.base_visualizer import BaseVisualizer
+from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.acknowledgement import (
     Acknowledgement,
 )
@@ -9,6 +14,9 @@ from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.classwise_error_
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.confusion_matrix import (
     ConfusionMatrix,
 )
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.explore_predictions import (
+    ExplorePredictions,
+)
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.frequently_confused import (
     FrequentlyConfused,
 )
@@ -17,6 +25,9 @@ from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.iou_eou import (
 )
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.key_metrics import (
     KeyMetrics,
+)
+from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.model_predictions import (
+    ModelPredictions,
 )
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.overview import Overview
 from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.renormalized_error_ou import (
@@ -30,6 +41,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
     GalleryWidget,
     SidebarWidget,
 )
+from supervisely.project.project import Dataset, OpenMode, Project
 
 
 class SemanticSegmentationVisualizer(BaseVisualizer):
@@ -37,13 +49,28 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         super().__init__(api, eval_results, workdir)
 
         self.vis_texts = vis_texts
-        self._speedtest_present = self.eval_result.speedtest_info is not None
         self._widgets_created = False
+        self.cv_task = CVTask.SEMANTIC_SEGMENTATION
+        self.ann_opacity = 0.7
+
+        diff_project_info, diff_dataset_infos, existed = self._get_or_create_diff_project()
+        self.eval_result.diff_project_info = diff_project_info
+        self.eval_result.diff_dataset_infos = diff_dataset_infos
+        self.eval_result.matched_pair_data = {}
+
+        self.gt_project_path = str(Path(self.workdir).parent / "gt_project")
+        self.pred_project_path = str(Path(self.workdir).parent / "pred_project")
+
+        self.eval_result.images_map = defaultdict(lambda: {"gt": None, "pred": None, "diff": None})
+        if not existed:
+            self._init_match_data()
+
+        self._get_sample_data_for_gallery()
 
     def _create_widgets(self):
         # Modal Gellery
-        # self.diff_modal_table = self._create_diff_modal_table()
-        # self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
+        self.diff_modal = self._create_diff_modal_table()
+        self.explore_modal = self._create_explore_modal_table(click_gallery_id=self.diff_modal.id)
 
         # overview
         overview = Overview(self.vis_texts, self.eval_result)
@@ -55,7 +82,17 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.key_metrics_md = key_metrics.md
         self.key_metrics_chart = key_metrics.chart
 
-        # TODO: Explore predictions
+        # explore predictions
+        explore_predictions = ExplorePredictions(
+            self.vis_texts, self.eval_result, self.explore_modal
+        )
+        self.explore_predictions_md = explore_predictions.md
+        self.explore_predictions_gallery = explore_predictions.gallery(self.ann_opacity)
+
+        # model predictions
+        model_predictions = ModelPredictions(self.vis_texts, self.eval_result, self.explore_modal)
+        self.model_predictions_md = model_predictions.md
+        self.model_predictions_table = model_predictions.table
 
         # intersection over union
         iou_eou = IntersectionErrorOverUnion(self.vis_texts, self.eval_result)
@@ -111,7 +148,10 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (1, self.overview_md),
             (1, self.key_metrics_md),
             (0, self.key_metrics_chart),
-            # TODO: Explore predictions
+            (1, self.explore_predictions_md),
+            (0, self.explore_predictions_gallery),
+            (1, self.model_predictions_md),
+            (0, self.model_predictions_table),
             (1, self.iou_eou_md),
             (0, self.iou_eou_chart),
             (1, self.renorm_eou_md),
@@ -123,7 +163,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (1, self.frequently_confused_md),
             (0, self.frequently_confused_chart),
         ]
-        if self._speedtest_present:
+        if self.speedtest_present:
             is_anchors_widgets.append((1, self.speedtest_md_intro))
             is_anchors_widgets.append((0, self.speedtest_intro_table))
             if self.speedtest_multiple_batch_sizes:
@@ -138,21 +178,122 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
         sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
         layout = ContainerWidget(
-            widgets=[sidebar],
+            widgets=[sidebar, self.explore_modal, self.diff_modal],
             name="main_container",
         )
         return layout
 
-    def _create_explore_modal_table(self, columns_number=3):
-        # TODO: table for each evaluation?
-        all_predictions_modal_gallery = GalleryWidget(
-            "all_predictions_modal_gallery", is_modal=True, columns_number=columns_number
-        )
-        all_predictions_modal_gallery.set_project_meta(self.eval_result.dt_project_meta)
-        return all_predictions_modal_gallery
+    def _init_match_data(self):
+        gt_project = Project(self.gt_project_path, OpenMode.READ)
+        pred_project = Project(self.pred_project_path, OpenMode.READ)
+        diff_map = {ds.id: ds for ds in self.eval_result.diff_dataset_infos}
+        pred_map = {ds.id: ds for ds in self.eval_result.pred_dataset_infos}
 
-    def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
-        diff_modal_gallery = GalleryWidget(
-            "diff_predictions_modal_gallery", is_modal=True, columns_number=columns_number
+        def _get_full_name(ds_id: int, ds_id_map):
+            ds_info = ds_id_map[ds_id]
+            if ds_info.parent_id is None:
+                return ds_info.name
+            return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
+
+        diff_dataset_name_map = {_get_full_name(i, diff_map): ds for i, ds in diff_map.items()}
+        pred_dataset_name_map = {_get_full_name(i, pred_map): ds for i, ds in pred_map.items()}
+
+        for pred_dataset in pred_project.datasets:
+            pred_dataset: Dataset
+            gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
+            try:
+                diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
+                pred_dataset_info = pred_dataset_name_map[pred_dataset.name]
+            except KeyError:
+                raise RuntimeError(
+                    f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
+                )
+
+            try:
+                for src_images in self.api.image.get_list_generator(
+                    pred_dataset_info.id, force_metadata_for_links=False, batch_size=100
+                ):
+                    dst_images = self.api.image.copy_batch_optimized(
+                        pred_dataset_info.id,
+                        src_images,
+                        diff_dataset_info.id,
+                        with_annotations=False,
+                        skip_validation=True,
+                    )
+                    for diff_image_info in dst_images:
+                        item_name = diff_image_info.name
+
+                        gt_image_info = gt_dataset.get_image_info(item_name)
+                        pred_image_info = pred_dataset.get_image_info(item_name)
+                        gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
+                        pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
+
+                        self._update_match_data(
+                            gt_image_info.id,
+                            gt_image_info=gt_image_info,
+                            pred_image_info=pred_image_info,
+                            diff_image_info=diff_image_info,
+                            gt_annotation=gt_ann,
+                            pred_annotation=pred_ann,
+                        )
+
+                        assert item_name not in self.eval_result.matched_pair_data
+
+                        self.eval_result.images_map[item_name] = {
+                            "gt": gt_image_info.id,
+                            "pred": pred_image_info.id,
+                            "diff": diff_image_info.id,
+                        }
+            except Exception:
+                raise RuntimeError("Match data was not created properly")
+
+    def _get_sample_data_for_gallery(self):
+        # get sample images with annotations for visualization
+        sample_images, sample_anns = [], []
+
+        diff_ds = random.choice(self.eval_result.diff_dataset_infos)
+        imgs = self.api.image.get_list(diff_ds.id, limit=3, force_metadata_for_links=False)
+        anns = self.api.annotation.download_batch(
+            diff_ds.id, [x.id for x in imgs], force_metadata_for_links=False
         )
-        return diff_modal_gallery
+        names = [x.name for x in imgs]
+
+        sample_images.append(imgs)
+        sample_anns.append(anns)
+
+        pred_ds, gt_ds = None, None
+        for ds in self.eval_result.pred_dataset_infos:
+            if ds.name == diff_ds.name:
+                pred_ds = ds
+                break
+        for ds in self.eval_result.gt_dataset_infos:
+            if ds.name == diff_ds.name:
+                gt_ds = ds
+                break
+
+        if pred_ds is None or gt_ds is None:
+            raise RuntimeError("Dataset not found")
+
+        filters = [{"field": "name", "operator": "in", "value": names}]
+
+        imgs = self.api.image.get_list(pred_ds.id, filters, limit=3, force_metadata_for_links=False)
+        imgs = sorted(imgs, key=lambda x: names.index(x.name))
+        anns = self.api.annotation.download_batch(
+            pred_ds.id, [x.id for x in imgs], force_metadata_for_links=False
+        )
+
+        sample_images.append(imgs)
+        sample_anns.append(anns)
+
+        imgs = self.api.image.get_list(gt_ds.id, filters, limit=3, force_metadata_for_links=False)
+        imgs = sorted(imgs, key=lambda x: names.index(x.name))
+        anns = self.api.annotation.download_batch(
+            gt_ds.id, [x.id for x in imgs], force_metadata_for_links=False
+        )
+
+        sample_images.append(imgs)
+        sample_anns.append(anns)
+
+        # [[a, a, a], [b, b, b], [c, c, c]] -> [a, b, c, a, b, c, a, b, c]
+        self.eval_result.sample_images = [x for y in list(zip(*sample_images)) for x in y]
+        self.eval_result.sample_anns = [x for y in list(zip(*sample_anns)) for x in y]
