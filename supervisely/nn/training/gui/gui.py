@@ -200,6 +200,13 @@ class TrainGUI:
 
         self.layout: Widget = self.stepper
 
+    def enable_select_buttons(self):
+        self.input_selector.button.enable()
+        self.train_val_splits_selector.button.enable()
+        self.classes_selector.button.enable()
+        self.model_selector.button.enable()
+        self.hyperparameters_selector.button.enable()
+
     def disable_select_buttons(self):
         self.input_selector.button.disable()
         self.train_val_splits_selector.button.disable()

@@ -321,9 +321,9 @@ class TrainApp:
         logger.info("Postprocessing")
 
         # Step 1. Validate experiment_info
-        success = self._validate_experiment_info(experiment_info)
+        success, reason = self._validate_experiment_info(experiment_info)
         if not success:
-            raise ValueError("Experiment info is not valid. Failed to upload artifacts")
+            raise ValueError(f"{reason}. Failed to upload artifacts")
 
         # Step 2. Preprocess artifacts
         output_dir = self._preprocess_artifacts(experiment_info)
@@ -686,12 +686,10 @@ class TrainApp:
 
     # Postprocess
 
-    def _validate_experiment_info(self, experiment_info: dict) -> bool:
+    def _validate_experiment_info(self, experiment_info: dict) -> tuple:
         if not isinstance(experiment_info, dict):
-            logger.error(
-                f"Validation failed: 'experiment_info' must be a dictionary not '{type(experiment_info)}'"
-            )
-            return False
+            reason = f"Validation failed: 'experiment_info' must be a dictionary not '{type(experiment_info)}'"
+            return False, reason
 
         logger.info("Starting validation of 'experiment_info'")
         required_keys = {
@@ -704,36 +702,30 @@ class TrainApp:
 
         for key, expected_type in required_keys.items():
             if key not in experiment_info:
-                logger.error(f"Validation failed: Missing required key '{key}'")
-                return False
+                reason = f"Validation failed: Missing required key '{key}'"
+                return False, reason
 
             if not isinstance(experiment_info[key], expected_type):
-                logger.error(
+                reason = (
                     f"Validation failed: Key '{key}' should be of type {expected_type.__name__}"
                 )
-                return False
+                return False, reason
 
         if isinstance(experiment_info["checkpoints"], list):
             for checkpoint in experiment_info["checkpoints"]:
                 if not isinstance(checkpoint, str):
-                    logger.error(
-                        "Validation failed: All items in 'checkpoints' list must be strings"
-                    )
-                    return False
+                    reason = "Validation failed: All items in 'checkpoints' list must be strings"
+                    return False, reason
                 if not sly_fs.file_exists(checkpoint):
-                    logger.error(
-                        f"Validation failed: Checkpoint file: '{checkpoint}' does not exist"
-                    )
-                    return False
+                    reason = f"Validation failed: Checkpoint file: '{checkpoint}' does not exist"
+                    return False, reason
 
         if not sly_fs.file_exists(experiment_info["best_checkpoint"]):
-            logger.error(
-                f"Validation failed: Best checkpoint file: '{experiment_info['best_checkpoint']}' does not exist"
-            )
-            return False
+            reason = f"Validation failed: Best checkpoint file: '{experiment_info['best_checkpoint']}' does not exist"
+            return False, reason
 
         logger.info("Validation successful")
-        return True
+        return True, None
 
     def _postprocess_splits(self) -> dict:
         val_dataset_ids = None
