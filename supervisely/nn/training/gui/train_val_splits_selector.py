@@ -64,24 +64,39 @@ class TrainValSplitsSelector:
             train_ratio = self.train_val_splits.get_train_split_percent()
             val_ratio = self.train_val_splits.get_val_split_percent()
 
-            if train_ratio > 95:
+            # Define common warning text
+            ensure_text_random_split = (
+                "Consider reallocating to ensure efficient learning and validation."
+            )
+
+            # Validate splits
+            if train_ratio == val_ratio:
                 self.validator_text.set(
-                    text="Train split is set to over 95%. Consider allocating more data to validation.",
+                    text="Train and validation splits are equal (50:50). This is inefficient for standard training. "
+                    f"{ensure_text}",
+                    status="warning",
+                )
+            elif train_ratio > 90:
+                self.validator_text.set(
+                    text="Training split exceeds 90%. This may leave insufficient data for validation. Ensure you have enough data for validation.",
+                    status="warning",
+                )
+            elif val_ratio > train_ratio:
+                self.validator_text.set(
+                    text=f"Validation split is larger than the training split. {ensure_text_random_split}",
                     status="warning",
                 )
             elif train_ratio < 70:
                 self.validator_text.set(
-                    text="Train split is set to less than 70%. Consider allocating more data to training.",
-                    status="warning",
-                )
-
-            elif val_ratio > train_ratio:
-                self.validator_text.set(
-                    text=f"Validation split is set to more than train split. {ensure_text}.",
+                    text="Training split is below 70%. This may limit the model's learning capability. "
+                    f"{ensure_text_random_split}",
                     status="warning",
                 )
             else:
-                self.validator_text.set("Train and val splits are selected", status="success")
+                self.validator_text.set(
+                    text="Train and validation splits are selected.",
+                    status="success",
+                )
 
         elif split_method == "Based on tags":
             train_tag = self.train_val_splits.get_train_tag()

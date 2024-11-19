@@ -6,7 +6,7 @@
     {% endif %}
     >
 
-    <div v-if="data.{{{widget.widget_id}}}.rowsHtml.length === 0"> You don't have any custom models</div>
+    <div v-if="Object.keys(data.{{{widget.widget_id}}}.rowsHtml).length === 0"> You don't have any custom models</div>
     <div v-else>
 
         <div v-if="data.{{{widget.widget_id}}}.taskTypes.length > 1">

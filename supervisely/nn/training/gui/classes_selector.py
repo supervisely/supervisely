@@ -32,8 +32,8 @@ class ClassesSelector:
         self.button = Button("Select")
         container = Container(
             [
-                self.classes_table,
                 qa_stats_text,
+                self.classes_table,
                 self.validator_text,
                 self.button,
             ]
