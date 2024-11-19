@@ -156,7 +156,7 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class VideoFrameReader:
-    def __init__(self, video_path: str, frame_indexes: list[int]):
+    def __init__(self, video_path: str, frame_indexes: List[int]):
         self.video_path = video_path
         self.frame_indexes = frame_indexes
         self.cap = None
