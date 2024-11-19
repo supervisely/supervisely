@@ -1,3 +1,4 @@
+from supervisely._utils import is_development
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -12,6 +13,7 @@ from supervisely.app.widgets import (
     TaskLogs,
     Text,
 )
+from supervisely.io.env import task_id as get_task_id
 
 
 class TrainingProcess:
@@ -96,7 +98,11 @@ class TrainingProcess:
             icon="zmdi zmdi-caret-down-circle",
         )
 
-        self.task_logs = TaskLogs()
+        if is_development():
+            self.task_logs = TaskLogs()
+        else:
+            task_id = get_task_id(raise_not_found=False)
+            self.task_logs = TaskLogs(task_id)
         self.task_logs.hide()
 
         container = Container(
@@ -109,6 +115,7 @@ class TrainingProcess:
                 button_container,
                 self.tensorboard_button,
                 self.logs_button,
+                self.task_logs,
                 self.project_download_progress_main,
                 self.project_download_progress_secondary,
                 self.model_download_progress_main,
