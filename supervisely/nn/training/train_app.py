@@ -873,19 +873,10 @@ class TrainApp:
     def _generate_train_val_splits(
         self, local_dir: str, remote_dir: str, splits_data: dict
     ) -> None:
-        local_train_val_split_ids_path = join(local_dir, "train_val_ids_split.json")
-        local_train_split_path = join(local_dir, "train_split.json")
-        local_val_split_path = join(local_dir, "val_split.json")
-        remote_train_val_split_ids_path = join(remote_dir, "train_val_ids_split.json")
-        remote_train_split_path = join(remote_dir, "train_split.json")
-        remote_val_split_path = join(remote_dir, "val_split.json")
 
-        sly_json.dump_json_file(splits_data, local_train_val_split_ids_path)
-        self._upload_json_file(
-            local_train_val_split_ids_path,
-            remote_train_val_split_ids_path,
-            "Uploading 'train_val_ids_split.json' to Team Files",
-        )
+        # 1. Process train split
+        local_train_split_path = join(local_dir, "train_split.json")
+        remote_train_split_path = join(remote_dir, "train_split.json")
 
         sly_json.dump_json_file(self.train_split, local_train_split_path)
         self._upload_json_file(
@@ -893,6 +884,9 @@ class TrainApp:
             remote_train_split_path,
             "Uploading 'train_split.json' to Team Files",
         )
+        # 2. Process val split
+        local_val_split_path = join(local_dir, "val_split.json")
+        remote_val_split_path = join(remote_dir, "val_split.json")
 
         sly_json.dump_json_file(self.val_split, local_val_split_path)
         self._upload_json_file(
@@ -900,6 +894,18 @@ class TrainApp:
             remote_val_split_path,
             "Uploading 'val_split.json' to Team Files",
         )
+
+        # @TODO: No need? it's already in experiment_info.json
+        # 3. Process train / val split with ids
+        # local_train_val_split_ids_path = join(local_dir, "train_val_ids_split.json")
+        # remote_train_val_split_ids_path = join(remote_dir, "train_val_ids_split.json")
+
+        # sly_json.dump_json_file(splits_data, local_train_val_split_ids_path)
+        # self._upload_json_file(
+        #     local_train_val_split_ids_path,
+        #     remote_train_val_split_ids_path,
+        #     "Uploading 'train_val_ids_split.json' to Team Files",
+        # )
 
     def _generate_experiment_info(
         self,
