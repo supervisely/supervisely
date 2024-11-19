@@ -47,9 +47,6 @@ class RandomSplitsTable(Widget):
     def get_splits_counts(self) -> Dict[str, int]:
         return StateJson()[self.widget_id]["count"]
 
-    def get_train_percent_split(self) -> Dict[str, int]:
-        return StateJson()[self.widget_id]["percent"]["train"]
-
     def set_train_split_percent(self, percent: int):
         if 1 <= percent <= 99:
             self._percent["train"] = percent
@@ -63,6 +60,9 @@ class RandomSplitsTable(Widget):
         else:
             raise ValueError("percent must be in range [1; 99].")
 
+    def get_train_split_percent(self) -> Dict[str, int]:
+        return StateJson()[self.widget_id]["percent"]["train"]
+
     def set_val_split_percent(self, percent: int):
         if 1 <= percent <= 99:
             self._percent["val"] = percent
@@ -74,3 +74,6 @@ class RandomSplitsTable(Widget):
             StateJson().send_changes()
         else:
             raise ValueError("percent must be in range [1; 99].")
+
+    def get_val_split_percent(self) -> Dict[str, int]:
+        return StateJson()[self.widget_id]["percent"]["val"]

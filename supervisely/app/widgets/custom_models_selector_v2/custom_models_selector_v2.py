@@ -266,6 +266,7 @@ class CustomModelsSelectorV2(Widget):
         self._api = Api.from_env()
 
         self._team_id = team_id
+        self.__debug_row = None
 
         with ThreadPoolExecutor() as executor:
             future = executor.submit(self._generate_table_rows, experiment_infos)
@@ -290,7 +291,6 @@ class CustomModelsSelectorV2(Widget):
 
         self._changes_handled = False
         self._task_type_changes_handled = False
-        self.__debug_row = None
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property

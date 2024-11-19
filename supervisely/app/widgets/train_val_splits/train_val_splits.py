@@ -304,11 +304,11 @@ class TrainValSplits(Widget):
         else:
             raise ValueError("Split value must be 'train', 'training', 'val' or 'validation'")
 
-    def get_train_percent_split(self) -> List[int]:
-        return self._random_splits_table.get_train_percent_split()
+    def get_train_split_percent(self) -> List[int]:
+        return self._random_splits_table.get_train_split_percent()
 
-    def get_val_percent_split(self) -> List[int]:
-        return 100 - self._random_splits_table.get_train_percent_split()
+    def get_val_split_percent(self) -> List[int]:
+        return 100 - self._random_splits_table.get_train_split_percent()
 
     def set_tags_splits(
         self, train_tag: str, val_tag: str, untagged_action: Literal["train", "val", "ignore"]
@@ -324,7 +324,7 @@ class TrainValSplits(Widget):
     def get_val_tag(self) -> str:
         return self._val_tag_select.get_selected_name()
 
-    def set_datasets_splits(self, train_datasets: List[str], val_datasets: List[str]):
+    def set_datasets_splits(self, train_datasets: List[int], val_datasets: List[int]):
         self._content.set_active_tab("Based on datasets")
         self._train_ds_select.set_dataset_ids(train_datasets)
         self._val_ds_select.set_dataset_ids(val_datasets)

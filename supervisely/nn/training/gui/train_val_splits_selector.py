@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from supervisely import Api
+from supervisely import Api, Project
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -15,32 +15,23 @@ class TrainValSplitsSelector:
     title = "Train/Val Splits Selector"
 
     def __init__(self, api: Api, project_id: int):
+        self.api = api
+        self.project_id = project_id
         self.train_val_splits = TrainValSplits(project_id)
 
-        # Check Train / Val datasets to set default
-        dataset_paths = []
-        dataset_names = []
-        for parents, dataset in api.dataset.tree(project_id):
-            dataset_name = "/".join(parents + [dataset.name])
-            dataset_paths.append(dataset_name)
-            dataset_names.append(dataset.name)
+        train_val_dataset_ids = {"train": [], "val": []}
+        for _, dataset in api.dataset.tree(project_id):
+            if dataset.name == "train":
+                train_val_dataset_ids["train"].append(dataset.id)
+            elif dataset.name == "val":
+                train_val_dataset_ids["val"].append(dataset.id)
 
         # Check duplicate dataset names
-        train_count = dataset_names.count("train")
-        val_count = dataset_names.count("val")
-        self.notification_box = NotificationBox(
-            title="Multiple 'train' and 'val' datasets detected",
-            description="Project consists of multiple datasets named 'train' or 'val', this includes nested datasets. Please select the correct datasets manually.",
-            box_type="warning",
-        )
-        self.notification_box.hide()
-
-        # if train_count > 1 or val_count > 1:
-        # set default tab by datasets
-        # self.notification_box.show()
-        # else:
-        # set default tab by datasets
-        # self.notification_box.hide()
+        train_count = len(train_val_dataset_ids["train"])
+        val_count = len(train_val_dataset_ids["val"])
+        # @TODO: test this feature
+        if train_count == 1 and val_count == 1:
+            self.train_val_splits.set_datasets_splits(["train"], ["val"])
 
         self.validator_text = Text("")
         self.validator_text.hide()
@@ -48,7 +39,6 @@ class TrainValSplitsSelector:
         container = Container(
             [
                 self.train_val_splits,
-                self.notification_box,  # may be not needed
                 self.validator_text,
                 self.button,
             ]
@@ -66,42 +56,110 @@ class TrainValSplitsSelector:
         return [self.train_val_splits]
 
     def validate_step(self):
-        # @TODO: add validation
-        # split_method = self.train_val_splits.get_split_method()
-        # if split_method == "random":
-        #     train_percent = self.train_val_splits.get_train_percent()
-        # self.validator_text.hide()
-        # train_dataset_id = self.get_train_dataset_id()
-        # val_dataset_id = self.get_val_dataset_id()
+        split_method = self.train_val_splits.get_split_method()
+        warning_text = "Using the same data for training and validation leads to overfitting, poor generalization and biased model selection."
+        ensure_text = "Ensure this is intentional."
 
-        # error_messages = []
-        # if train_dataset_id is None:
-        #     error_messages.append("Train dataset is not selected")
-        # if val_dataset_id is None:
-        #     error_messages.append("Val dataset is not selected")
+        if split_method == "Random":
+            train_ratio = self.train_val_splits.get_train_split_percent()
+            val_ratio = self.train_val_splits.get_val_split_percent()
 
-        # if error_messages:
-        #     self.validator_text.set(text="; ".join(error_messages), status="error")
-        #     self.validator_text.show()
-        #     return False
+            if train_ratio > 95:
+                self.validator_text.set(
+                    "Train split is set to over 95%. Consider allocating more data to validation.",
+                    status="warning",
+                )
+            # @TODO: Remove?
+            # Won't use
+            # elif val_ratio < 5:
+            #     self.validator_text.set(
+            #         "Validation split is less than 5%, which may be insufficient for reliable evaluation.",
+            #         status="warning",
+            #     )
+            else:
+                self.validator_text.set("Train and val splits are selected", status="success")
 
-        # if train_dataset_id == val_dataset_id:
-        #     self.validator_text.set(
-        #         text=(
-        #             "Train and val datasets are the same. "
-        #             "Using the same dataset for training and validation leads to overfitting, "
-        #             "poor generalization, biased model selection, "
-        #             "misleading metrics, and reduced robustness on unseen data."
-        #         ),
-        #         status="warning",
-        #     )
-        #     self.validator_text.show()
-        #     return True
-        # else:
-        #     self.validator_text.set(text="Train and val datasets are selected", status="success")
-        #     self.validator_text.show()
-        #     return True
+        elif split_method == "Based on tags":
+            train_tag = self.train_val_splits.get_train_tag()
+            val_tag = self.train_val_splits.get_val_tag()
+
+            # Check if tags are present on any item in the project
+            stats = self.api.project.get_stats(self.project_id)
+            tags_count = {}
+            for item in stats["imageTags"]["items"]:
+                tag_name = item["tagMeta"]["name"]
+                tag_total = item["total"]
+                tags_count[tag_name] = tag_total
+
+            for object_tags in stats["objectTags"]["items"]:
+                tag_name = object_tags["tagMeta"]["name"]
+                tag_total = object_tags["total"]
+                if tag_name in tags_count:
+                    tags_count[tag_name] += tag_total
+                else:
+                    tags_count[tag_name] = tag_total
+
+            # @TODO: handle button correctly if validation fails. Do not unlock next card until validation passes if returned False
+            if tags_count[train_tag] == 0:
+                self.validator_text.set(
+                    text=f"Train tag '{train_tag}' is not present in any images. {ensure_text}",
+                    status="error",
+                )
+            elif tags_count[val_tag] == 0:
+                self.validator_text.set(
+                    text=f"Val tag '{val_tag}' is not present in any images. {ensure_text}",
+                    status="error",
+                )
+
+            elif train_tag == val_tag:
+                self.validator_text.set(
+                    text=f"Train and val tags are the same. {ensure_text} {warning_text}",
+                    status="warning",
+                )
+            else:
+                self.validator_text.set("Train and val tags are selected", status="success")
+
+        elif split_method == "Based on datasets":
+            train_dataset_id = self.get_train_dataset_ids()
+            val_dataset_id = self.get_val_dataset_ids()
+
+            # Check if datasets are not empty
+            stats = self.api.project.get_stats(self.project_id)
+            datasets_count = {}
+            for dataset in stats["images"]["datasets"]:
+                datasets_count[dataset["id"]] = {
+                    "name": dataset["name"],
+                    "total": dataset["imagesInDataset"],
+                }
+
+            empty_dataset_names = []
+            for dataset_id in train_dataset_id + val_dataset_id:
+                if datasets_count[dataset_id]["total"] == 0:
+                    empty_dataset_names.append(datasets_count[dataset_id]["name"])
+
+            if len(empty_dataset_names) > 0:
+                if len(empty_dataset_names) == 1:
+                    empty_ds_text = f"Selected dataset: {', '.join(empty_dataset_names)} is empty. {ensure_text}"
+                else:
+                    empty_ds_text = f"Selected datasets: {', '.join(empty_dataset_names)} are empty. {ensure_text}"
+
+                self.validator_text.set(
+                    text=empty_ds_text,
+                    status="error",
+                )
+
+            elif train_dataset_id == val_dataset_id:
+                self.validator_text.set(
+                    text=f"Same datasets are selected for both train and val splits. {ensure_text} {warning_text}",
+                    status="warning",
+                )
+            else:
+                self.validator_text.set("Train and val datasets are selected", status="success")
+        self.validator_text.show()
         return True
+
+    def set_sly_project(self, project: Project):
+        self.train_val_splits._project_fs = project
 
     def get_split_method(self):
         return self.train_val_splits.get_split_method()

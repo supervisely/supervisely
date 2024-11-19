@@ -304,6 +304,7 @@ class TrainApp:
         return decorator
 
     def preprocess(self):
+        self.gui.disable_select_buttons()
         logger.info("Preprocessing")
         # Step 1. Workflow Input
         if is_production():
@@ -327,6 +328,9 @@ class TrainApp:
         # Step 2. Preprocess artifacts
         output_dir = self._preprocess_artifacts(experiment_info)
 
+        # Step3. Postprocess splits
+        splits_data = self._postprocess_splits()
+
         # Step 3. Upload artifacts
         remote_dir, file_info = self._upload_artifacts(output_dir, experiment_info)
 
@@ -336,15 +340,17 @@ class TrainApp:
             if is_production() and self.use_model_benchmark is True:
                 try:
                     mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
-                        output_dir, remote_dir, experiment_info
+                        output_dir, remote_dir, experiment_info, splits_data
                     )
                 except Exception as e:
                     logger.error(f"Model benchmark failed: {e}")
 
         # Step 4. Generate and upload additional files
-        self._generate_experiment_info(output_dir, remote_dir, experiment_info, mb_eval_report_id)
+        self._generate_experiment_info(
+            output_dir, remote_dir, experiment_info, splits_data, mb_eval_report_id
+        )
         self._generate_app_state(output_dir, remote_dir, experiment_info)
-        self._generate_train_val_splits(output_dir, remote_dir)
+        self._generate_train_val_splits(output_dir, remote_dir, splits_data)
 
         # Step 5. Disable widgets?
         self.gui.training_process.start_button.disable()
@@ -496,94 +502,88 @@ class TrainApp:
 
     # Split Project
     def _split_project(self) -> None:
-        # @TODO: Optimize split process
-        # Unefficient way to split project
-        self.gui.train_val_splits_selector.train_val_splits._project_fs = self.sly_project
-        train_split, val_split = self.gui.train_val_splits_selector.train_val_splits.get_splits()
-        self._train_split, self._val_split = train_split, val_split
+        # Load splits
+        self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
+        self._train_split, self._val_split = (
+            self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        )
 
+        # Prepare paths
         project_split_path = join(self.work_dir, "splits")
-        train_split_path = join(project_split_path, "train")
-        val_split_path = join(project_split_path, "val")
+        paths = {
+            "train": {
+                "split_path": join(project_split_path, "train"),
+                "img_dir": join(project_split_path, "train", "img"),
+                "ann_dir": join(project_split_path, "train", "ann"),
+            },
+            "val": {
+                "split_path": join(project_split_path, "val"),
+                "img_dir": join(project_split_path, "val", "img"),
+                "ann_dir": join(project_split_path, "val", "ann"),
+            },
+        }
 
-        train_split_img_dir = join(train_split_path, "img")
-        train_split_ann_dir = join(train_split_path, "ann")
-        val_split_img_dir = join(val_split_path, "img")
-        val_split_ann_dir = join(val_split_path, "ann")
+        # Create necessary directories (only once)
+        for dataset_paths in paths.values():
+            for path in dataset_paths.values():
+                sly_fs.mkdir(path, True)
 
-        for path in [
-            project_split_path,
-            train_split_path,
-            train_split_img_dir,
-            train_split_ann_dir,
-            val_split_path,
-            val_split_img_dir,
-            val_split_ann_dir,
-        ]:
-            sly_fs.mkdir(path, True)
-
+        # Format for image names
         items_count = max(len(self._train_split), len(self._val_split))
         num_digits = len(str(items_count))
-        train_image_name_format = f"train_img_{{:0{num_digits}d}}"
-        val_image_name_format = f"val_img_{{:0{num_digits}d}}"
+        image_name_formats = {
+            "train": f"train_img_{{:0{num_digits}d}}",
+            "val": f"val_img_{{:0{num_digits}d}}",
+        }
 
-        def move_files(split, img_dir, ann_dir, img_name_format, pbar):
+        # Utility function to move files
+        def move_files(split, paths, img_name_format, pbar):
             for idx, item in enumerate(split, start=1):
                 item_name = img_name_format.format(idx) + sly_fs.get_file_ext(item.name)
                 ann_name = f"{item_name}.json"
-                shutil.copy(item.img_path, join(img_dir, item_name))
-                shutil.copy(item.ann_path, join(ann_dir, ann_name))
+                shutil.copy(item.img_path, join(paths["img_dir"], item_name))
+                shutil.copy(item.ann_path, join(paths["ann_dir"], ann_name))
                 pbar.update(1)
 
+        # Main split processing
         with self.progress_bar_download_project_main(
-            message="Applying train / val splits to project", total=2
+            message="Applying train/val splits to project", total=2
         ) as main_pbar:
             self.progress_bar_download_project_main.show()
             for dataset in ["train", "val"]:
-                total_items = len(self._train_split) if dataset == "train" else len(self._val_split)
+                split = self._train_split if dataset == "train" else self._val_split
                 with self.progress_bar_download_project_secondary(
-                    message=f"Preparing '{dataset}'", total=total_items
+                    message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
                     self.progress_bar_download_project_secondary.show()
-                    if dataset == "train":
-                        move_files(
-                            self._train_split,
-                            train_split_img_dir,
-                            train_split_ann_dir,
-                            train_image_name_format,
-                            second_pbar,
-                        )
-                    if dataset == "val":
-                        move_files(
-                            self._val_split,
-                            val_split_img_dir,
-                            val_split_ann_dir,
-                            val_image_name_format,
-                            second_pbar,
-                        )
+                    move_files(split, paths[dataset], image_name_formats[dataset], second_pbar)
                     main_pbar.update(1)
-            self.progress_bar_download_project_secondary.hide()
+                self.progress_bar_download_project_secondary.hide()
             self.progress_bar_download_project_main.hide()
 
+        # Clean up project directory
         project_datasets = [
             join(self._project_dir, item)
             for item in listdir(self._project_dir)
             if isdir(join(self._project_dir, item))
         ]
-
         for dataset in project_datasets:
             sly_fs.remove_dir(dataset)
 
+        # Move processed splits to final destination
         train_ds_path = join(self._project_dir, "train")
         val_ds_path = join(self._project_dir, "val")
         with self.progress_bar_download_project_main(message="Processing splits", total=2) as pbar:
             self.progress_bar_download_project_main.show()
             for dataset in ["train", "val"]:
-                split_path = train_split_path if dataset == "train" else val_split_path
-                ds_path = train_ds_path if dataset == "train" else val_ds_path
-                shutil.move(split_path, ds_path)
+                shutil.move(
+                    paths[dataset]["split_path"],
+                    train_ds_path if dataset == "train" else val_ds_path,
+                )
                 pbar.update(1)
             self.progress_bar_download_project_main.hide()
+
+        # Clean up temporary directory
         sly_fs.remove_dir(project_split_path)
         self._sly_project = Project(self._project_dir, OpenMode.READ)
 
@@ -735,6 +735,66 @@ class TrainApp:
         logger.info("Validation successful")
         return True
 
+    def _postprocess_splits(self) -> dict:
+        val_dataset_ids = None
+        val_images_ids = None
+        train_dataset_ids = None
+        train_images_ids = None
+
+        split_method = self.gui.train_val_splits_selector.get_split_method()
+        train_set, val_set = self.train_split, self.val_split
+        if split_method == "Based on datasets":
+            val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
+            train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids
+        else:
+            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
+            ds_infos_dict = {}
+            for dataset in dataset_infos:
+                if dataset.parent_id is not None:
+                    parent_ds = self._api.dataset.get_info_by_id(dataset.parent_id)
+                    dataset_name = f"{parent_ds.name}/{dataset.name}"
+                else:
+                    dataset_name = dataset.name
+                ds_infos_dict[dataset_name] = dataset
+
+            def get_image_infos_by_split(ds_infos_dict: dict, split: list):
+                image_names_per_dataset = {}
+                for item in split:
+                    image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
+                image_infos = []
+                for dataset_name, image_names in image_names_per_dataset.items():
+                    ds_info = ds_infos_dict[dataset_name]
+                    image_infos.extend(
+                        self._api.image.get_list(
+                            ds_info.id,
+                            filters=[
+                                {
+                                    "field": "name",
+                                    "operator": "in",
+                                    "value": image_names,
+                                }
+                            ],
+                        )
+                    )
+                return image_infos
+
+            val_image_infos = get_image_infos_by_split(ds_infos_dict, val_set)
+            train_image_infos = get_image_infos_by_split(ds_infos_dict, train_set)
+            val_images_ids = [img_info.id for img_info in val_image_infos]
+            train_images_ids = [img_info.id for img_info in train_image_infos]
+
+        splits_data = {
+            "train": {
+                "dataset_ids": train_dataset_ids,
+                "images_ids": train_images_ids,
+            },
+            "val": {
+                "dataset_ids": val_dataset_ids,
+                "images_ids": val_images_ids,
+            },
+        }
+        return splits_data
+
     def _preprocess_artifacts(self, experiment_info: dict) -> str:
         logger.info("Preprocessing artifacts")
         output_dir = self._output_dir
@@ -811,15 +871,29 @@ class TrainApp:
         ) as upload_artifacts_pbar:
             self.progress_bar_upload_artifacts.show()
             self._api.file.upload(
-                self._team_id, local_path, remote_path, progress_cb=upload_artifacts_pbar
+                self._team_id,
+                local_path,
+                remote_path,
+                progress_cb=upload_artifacts_pbar,
             )
             self.progress_bar_upload_artifacts.hide()
 
-    def _generate_train_val_splits(self, local_dir: str, remote_dir: str) -> None:
+    def _generate_train_val_splits(
+        self, local_dir: str, remote_dir: str, splits_data: dict
+    ) -> None:
+        local_train_val_split_ids_path = join(local_dir, "train_val_ids_split.json")
         local_train_split_path = join(local_dir, "train_split.json")
         local_val_split_path = join(local_dir, "val_split.json")
+        remote_train_val_split_ids_path = join(remote_dir, "train_val_ids_split.json")
         remote_train_split_path = join(remote_dir, "train_split.json")
         remote_val_split_path = join(remote_dir, "val_split.json")
+
+        sly_json.dump_json_file(splits_data, local_train_val_split_ids_path)
+        self._upload_json_file(
+            local_train_val_split_ids_path,
+            remote_train_val_split_ids_path,
+            "Uploading 'train_val_ids_split.json' to Team Files",
+        )
 
         sly_json.dump_json_file(self.train_split, local_train_split_path)
         self._upload_json_file(
@@ -827,6 +901,7 @@ class TrainApp:
             remote_train_split_path,
             "Uploading 'train_split.json' to Team Files",
         )
+
         sly_json.dump_json_file(self.val_split, local_val_split_path)
         self._upload_json_file(
             local_val_split_path,
@@ -839,6 +914,7 @@ class TrainApp:
         local_dir: str,
         remote_dir: str,
         experiment_info: Dict,
+        splits_data: Dict,
         evaluation_report_id: Optional[int] = None,
     ) -> None:
         logger.info("Updating experiment info")
@@ -846,6 +922,16 @@ class TrainApp:
             {
                 "framework_name": self.framework_name,
                 "app_state": "app_state.json",
+                "train_val_splits": {
+                    "train": {
+                        "split": "train_split.json",
+                        "images_ids": splits_data["train"]["images_ids"],
+                    },
+                    "val": {
+                        "split": "val_split.json",
+                        "images_ids": splits_data["val"]["images_ids"],
+                    },
+                },
                 "hyperparameters": self.hyperparameters,
                 "artifacts_dir": remote_dir,
                 "task_id": self.task_id,
@@ -912,7 +998,7 @@ class TrainApp:
             train_val_splits.update(
                 {
                     "split": "train",
-                    "percent": self.gui.train_val_splits_selector.train_val_splits.get_train_percent_split(),
+                    "percent": self.gui.train_val_splits_selector.train_val_splits.get_train_split_percent(),
                 }
             )
         elif split_method == "Based on tags":
@@ -934,7 +1020,10 @@ class TrainApp:
 
     def _get_model_config(self, experiment_info: Dict) -> Dict:
         if self.model_source == ModelSource.PRETRAINED:
-            return {"source": ModelSource.PRETRAINED, "model_name": experiment_info["model_name"]}
+            return {
+                "source": ModelSource.PRETRAINED,
+                "model_name": experiment_info["model_name"],
+            }
         elif self.model_source == ModelSource.CUSTOM:
             return {
                 "source": ModelSource.CUSTOM,
@@ -1012,14 +1101,20 @@ class TrainApp:
 
     # Hot to pass inference_settings?
     def _run_model_benchmark(
-        self, local_artifacts_dir: str, remote_artifacts_dir: str, experiment_info: dict
+        self,
+        local_artifacts_dir: str,
+        remote_artifacts_dir: str,
+        experiment_info: dict,
+        splits_data: dict,
     ) -> bool:
+
+        report, report_id = None, None
         if self._inference_class is None:
             logger.warn(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return None, None
+            return report, report_id
 
         # can't get task type from session. requires before session init
         supported_task_types = [
@@ -1032,7 +1127,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return None, None
+            return report, report_id
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -1041,10 +1136,13 @@ class TrainApp:
             best_filename = sly_fs.get_file_name_with_ext(best_checkpoint)
             remote_best_checkpoint = join(remote_weights_dir, best_filename)
 
-            config_path = experiment_info["model_files"]["config"]
-            remote_config_path = join(
-                remote_artifacts_dir, sly_fs.get_file_name_with_ext(config_path)
-            )
+            config_path = experiment_info["model_files"].get("config")
+            if config_path is not None:
+                remote_config_path = join(
+                    remote_artifacts_dir, sly_fs.get_file_name_with_ext(config_path)
+                )
+            else:
+                remote_config_path = None
 
             logger.info(f"Creating the report for the best model: {best_filename!r}")
             self._gui.training_process.model_benchmark_report_text.show()
@@ -1078,22 +1176,16 @@ class TrainApp:
             m._load_model(deploy_params)
             m.serve()
 
-            # m.model.overrides["verbose"] = False
-            session = SessionJSON(self._api, session_url="http://localhost:8000")
+            port = 8000
+            session = SessionJSON(self._api, session_url=f"http://localhost:{port}")
             benchmark_dir = join(local_artifacts_dir, "benchmark")
             sly_fs.mkdir(benchmark_dir, True)
 
-            # 1. Init benchmark (todo: auto-detect task type)
-            # @TODO: fix model benchmark
-            train_dataset_ids = [self.train_dataset_id]
-            train_images_ids = [
-                img_info.id for img_info in self._api.image.get_list(self.train_dataset_id)
-            ]
-
-            benchmark_dataset_ids = [self.val_dataset_id]
-            benchmark_images_ids = [
-                img_info.id for img_info in self._api.image.get_list(self.val_dataset_id)
-            ]
+            # 1. Init benchmark
+            benchmark_dataset_ids = splits_data["val"]["dataset_ids"]
+            benchmark_images_ids = splits_data["val"]["images_ids"]
+            train_dataset_ids = splits_data["train"]["dataset_ids"]
+            train_images_ids = splits_data["train"]["images_ids"]
 
             if task_type == TaskType.OBJECT_DETECTION:
                 bm = ObjectDetectionBenchmark(
@@ -1149,6 +1241,7 @@ class TrainApp:
             bm.visualize()
             remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
             report = bm.upload_report_link(remote_dir)
+            report_id = report.id
 
             # 8. UI updates
             benchmark_report_template = self._api.file.get_info_by_path(
@@ -1180,8 +1273,8 @@ class TrainApp:
                 if bm.diff_project_info:
                     self._api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
-                return None, None
-        return report, report.id
+                return report, report_id
+        return report, report_id
 
     # ----------------------------------------- #
 
@@ -1310,8 +1403,8 @@ class TrainApp:
             self.progress_bar_iters.hide()
 
             # @TODO: access tensorboard after training
-            # train_logger.writer.close()
-            # train_logger.stop_tensorboard()
+            train_logger.writer.close()
+            train_logger.stop_tensorboard()
 
         def start_epoch_callback(total_steps: int):
             nonlocal step_pbar

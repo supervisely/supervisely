@@ -20,6 +20,7 @@ class ExperimentInfo(NamedTuple):
     artifacts_dir: str
     task_id: int
     project_id: int
+    train_val_splits: dict
     app_state: dict
     datetime: str
     evaluation_report_id: int

@@ -200,6 +200,13 @@ class TrainGUI:
 
         self.layout: Widget = self.stepper
 
+    def disable_select_buttons(self):
+        self.input_selector.button.disable()
+        self.train_val_splits_selector.button.disable()
+        self.classes_selector.button.disable()
+        self.model_selector.button.disable()
+        self.hyperparameters_selector.button.disable()
+
     # Set GUI from config
     def validate_app_config(self, app_config: dict) -> dict:
         if not isinstance(app_config, dict):
@@ -359,8 +366,6 @@ class TrainGUI:
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
             self.model_selector.custom_models_table.set_by_task_id(model_settings["task_id"])
-            # @TODO: check available task ids prior to setting^^^
-            # Can check with get_experiment_infos but not efficient?
             active_row = self.model_selector.custom_models_table.get_selected_row()
             if model_settings["checkpoint"] not in active_row.checkpoints_names:
                 raise ValueError(
