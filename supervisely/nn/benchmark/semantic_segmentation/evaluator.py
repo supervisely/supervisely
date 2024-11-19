@@ -2,6 +2,7 @@ import os
 import pickle
 import shutil
 from pathlib import Path
+from typing import List
 
 import cv2
 import numpy as np
@@ -39,23 +40,17 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = SemanticSegmentationEvalResult
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bg_cls_name = None
+
     def evaluate(self):
-        gt_name_to_color = self._get_classes_names_to_colors(self.gt_project_path)
-        pred_name_to_color = self._get_classes_names_to_colors(self.pred_project_path)
+        self.bg_cls_name = self._get_bg_class_name()
+        if self.classes_whitelist is not None:
+            if self.bg_cls_name not in self.classes_whitelist:
+                self.classes_whitelist.append(self.bg_cls_name)
 
-        target_classes = [name for name in gt_name_to_color.keys() if name in pred_name_to_color]
-
-        gt_palette = [gt_name_to_color[name] for name in target_classes]
-        pred_palette = [pred_name_to_color[name] for name in target_classes]
-
-        gt_prep_path = Path(self.gt_project_path).parent / "preprocessed_gt"
-        pred_prep_path = Path(self.pred_project_path).parent / "preprocessed_pred"
-        self.prepare_segmentation_data(
-            self.gt_project_path, gt_prep_path, gt_palette, target_classes
-        )
-        self.prepare_segmentation_data(
-            self.pred_project_path, pred_prep_path, pred_palette, target_classes
-        )
+        gt_prep_path, pred_prep_path = self.prepare_segmentation_data()
 
         self.eval_data = calculate_metrics(
             gt_dir=gt_prep_path,
@@ -63,18 +58,20 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             boundary_width=0.01,
             boundary_iou_d=0.02,
             num_workers=0,  # FIXME: set 4 for production
-            class_names=target_classes,
+            class_names=self.classes_whitelist,
             result_dir=self.result_dir,
         )
         logger.info("Successfully calculated evaluation metrics")
         self._dump_eval_results()
         logger.info("Evaluation results are saved")
 
-    def _get_classes_names_to_colors(self, source_project_path):
-        meta_path = Path(source_project_path) / "meta.json"
+    def _get_palette(self, project_path):
+        meta_path = Path(project_path) / "meta.json"
         meta = ProjectMeta.from_json(load_json_file(meta_path))
 
-        return {obj.name: obj.color for obj in meta.obj_classes}
+        palette = [obj.color for obj in meta.obj_classes if obj.name in self.classes_whitelist]
+
+        return palette
 
     def _dump_eval_results(self):
         eval_data_path = self._get_eval_data_path()
@@ -85,59 +82,77 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         eval_data_path = os.path.join(base_dir, "eval_data.pkl")
         return eval_data_path
 
-    def prepare_segmentation_data(
-        self, source_project_dir, output_project_dir, palette, target_classes
-    ):
-        if os.path.exists(output_project_dir):
-            logger.info(f"Preprocessed data already exists in {output_project_dir} directory")
-            return
+    def prepare_segmentation_data(self):
+        src_dirs = [self.gt_project_path, self.pred_project_path]
+        output_dirs = [
+            Path(self.gt_project_path).parent / "preprocessed_gt",
+            Path(self.pred_project_path).parent / "preprocessed_pred",
+        ]
 
-        os.makedirs(output_project_dir)
-        temp_project_seg_dir = source_project_dir + "_temp"
-        if not os.path.exists(temp_project_seg_dir):
-            default_bg_name = self._get_bg_class_name()
-            Project.to_segmentation_task(
-                source_project_dir,
-                temp_project_seg_dir,
-                target_classes=target_classes,
-                default_bg_name=default_bg_name,
-            )
+        for src_dir, output_dir in zip(src_dirs, output_dirs):
+            if output_dir.exists():
+                logger.info(f"Preprocessed data already exists in {output_dir} directory")
+                continue
 
-        palette_lookup = np.zeros(256**3, dtype=np.int32)
-        for idx, color in enumerate(palette, 1):
-            key = (color[0] << 16) | (color[1] << 8) | color[2]
-            palette_lookup[key] = idx
-
-        temp_project = Project(temp_project_seg_dir, mode=OpenMode.READ)
-        temp_project.total_items
-        for dataset in temp_project.datasets:
-            # convert masks to required format and save to general ann_dir
-            dataset: Dataset
-            names = dataset.get_items_names()
-            for name in names:
-                mask_path = dataset.get_seg_path(name)
-                mask = cv2.imread(mask_path)[:, :, ::-1]
-
-                mask_keys = (
-                    (mask[:, :, 0].astype(np.int32) << 16)
-                    | (mask[:, :, 1].astype(np.int32) << 8)
-                    | mask[:, :, 2].astype(np.int32)
+            output_dir.mkdir(parents=True)
+            temp_seg_dir = src_dir + "_temp"
+            if not os.path.exists(temp_seg_dir):
+                Project.to_segmentation_task(
+                    src_dir,
+                    temp_seg_dir,
+                    target_classes=self.classes_whitelist,
+                    default_bg_name=self.bg_cls_name,
                 )
-                result = palette_lookup[mask_keys]
-                if name.count(".png") > 1:
-                    name = name[:-4]
-                cv2.imwrite(os.path.join(output_project_dir, name), result)
 
-        shutil.rmtree(temp_project_seg_dir)
+            palette = self._get_palette(src_dir)
+            palette_lookup = np.zeros(256**3, dtype=np.int32)
+            for idx, color in enumerate(palette, 1):
+                key = (color[0] << 16) | (color[1] << 8) | color[2]
+                palette_lookup[key] = idx
+
+            temp_project = Project(temp_seg_dir, mode=OpenMode.READ)
+            temp_project.total_items
+            for dataset in temp_project.datasets:
+                dataset: Dataset
+                names = dataset.get_items_names()
+                for name in names:
+                    mask_path = dataset.get_seg_path(name)
+                    mask = cv2.imread(mask_path)[:, :, ::-1]
+
+                    mask_keys = (
+                        (mask[:, :, 0].astype(np.int32) << 16)
+                        | (mask[:, :, 1].astype(np.int32) << 8)
+                        | mask[:, :, 2].astype(np.int32)
+                    )
+                    result = palette_lookup[mask_keys]
+                    if name.count(".png") > 1:
+                        name = name[:-4]
+                    cv2.imwrite(os.path.join(output_dir, name), result)
+
+            shutil.rmtree(temp_seg_dir)
+
+        return output_dirs
 
     def _get_bg_class_name(self):
-        possible_bg_names = ["background", "bg", "unlabeled", "neutral", "__bg__"]
+        possible_names = ["background", "bg", "unlabeled", "neutral", "__bg__"]
+        logger.info(f"Searching for background class in projects. Possible names: {possible_names}")
 
-        meta_path = Path(self.gt_project_path) / "meta.json"
-        meta = ProjectMeta.from_json(load_json_file(meta_path))
+        bg_cls_names = []
+        for project_path in [self.gt_project_path, self.pred_project_path]:
+            meta_path = Path(project_path) / "meta.json"
+            meta = ProjectMeta.from_json(load_json_file(meta_path))
 
-        for i, obj_cls in enumerate(meta.obj_classes):
-            if obj_cls.name in possible_bg_names:
-                logger.info(f"Found background class: {obj_cls.name}")
-                return obj_cls.name
-        return "__bg__"
+            for obj_cls in meta.obj_classes:
+                if obj_cls.name in possible_names:
+                    bg_cls_names.append(obj_cls.name)
+                    break
+
+        if len(bg_cls_names) == 0:
+            raise ValueError("Background class not found in GT and Pred projects")
+
+        if len(set(bg_cls_names)) > 1:
+            raise ValueError(
+                f"Founds multiple background class names in GT and Pred projects: {set(bg_cls_names)}"
+            )
+
+        return bg_cls_names[0]

@@ -82,65 +82,6 @@ class ModelPredictions(SemanticSegmVisMetric):
         )
         table.set_click_data(
             self.explore_modal_table.id,
-            self.get_click_data(),
+            self.get_diff_data(),
         )
         return table
-
-    def get_click_data(self) -> Dict:
-        res = {}
-        res["layoutTemplate"] = [
-            {"columnTitle": "Original Image"},
-            {"columnTitle": "Ground Truth Masks"},
-            {"columnTitle": "Predicted Masks"},
-        ]
-        click_data = res.setdefault("clickData", {})
-
-        for pairs_data in self.eval_result.matched_pair_data.values():
-            gt = pairs_data.gt_image_info
-            pred = pairs_data.pred_image_info
-            empty = pairs_data.diff_image_info
-            assert gt.name == pred.name == empty.name
-            key = click_data.setdefault(str(pred.name), {})
-            key["imagesIds"] = [empty.id, gt.id, pred.id]
-            key["title"] = f"Image: {pred.name}"
-            # image_id = pred.id
-            # ann_json = pairs_data.pred_annotation.to_json()
-            # assert image_id == pred.id
-            # object_bindings = []
-            # for obj in ann_json["objects"]:
-            #     for tag in obj["tags"]:
-            #         if tag["name"] == "matched_gt_id":
-            #             object_bindings.append(
-            #                 [
-            #                     {
-            #                         "id": obj["id"],
-            #                         "annotationKey": image_id,
-            #                     },
-            #                     {
-            #                         "id": int(tag["value"]),
-            #                         "annotationKey": gt.id,
-            #                     },
-            #                 ]
-            #             )
-
-            # image_id = diff.id
-            # ann_json = pairs_data.diff_annotation.to_json()
-            # assert image_id == diff.id
-            # for obj in ann_json["objects"]:
-            #     for tag in obj["tags"]:
-            #         if tag["name"] == "matched_gt_id":
-            #             object_bindings.append(
-            #                 [
-            #                     {
-            #                         "id": obj["id"],
-            #                         "annotationKey": image_id,
-            #                     },
-            #                     {
-            #                         "id": int(tag["value"]),
-            #                         "annotationKey": pred.id,
-            #                     },
-            #                 ]
-            #             )
-            # key["objectsBindings"] = object_bindings
-
-        return res
