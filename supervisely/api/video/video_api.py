@@ -1372,6 +1372,19 @@ class VideoApi(RemoveableBulkModuleApi):
             },
         )
 
+    def notify_tracking_warning(self, track_id: int, video_id: int, message: str):
+        self._api.post(
+            "videos.notify-annotation-tool",
+            data={
+                "type": "videos:tracking-warning",
+                "data": {
+                    ApiField.VIDEO_ID: str(video_id),
+                    ApiField.TRACK_ID: str(track_id),
+                    ApiField.MESSAGE: message,
+                },
+            },
+        )
+
     # def upload(self):
     #     #"/videos.bulk.upload"
     #     pass
@@ -2055,7 +2068,7 @@ class VideoApi(RemoveableBulkModuleApi):
             hashes=[h],
             metas=[meta],
             skip_download=skip_download,
-            force_metadata_for_links=force_metadata_for_links
+            force_metadata_for_links=force_metadata_for_links,
         )
         if len(links) != 1:
             raise RuntimeError(
