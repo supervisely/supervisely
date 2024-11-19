@@ -199,6 +199,7 @@ class Evaluator:
         normalized_confusion_matrix = self.confusion_matrix / self.confusion_matrix.sum(
             axis=1, keepdims=True
         )
+        normalized_confusion_matrix[np.isnan(normalized_confusion_matrix)] = 0
         normalized_confusion_matrix = np.round(normalized_confusion_matrix, 3)
         self.per_image_metrics = pd.DataFrame(self.image_metrics, index=self.img_names)
         return {
