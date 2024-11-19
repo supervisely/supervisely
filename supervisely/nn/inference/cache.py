@@ -155,6 +155,35 @@ class PersistentImageTTLCache(TTLCache):
         shutil.copyfile(str(self[name]), path)
 
 
+class VideoFrameReader:
+    def __init__(self, video_path: str, frame_indexes: list[int]):
+        self.video_path = video_path
+        self.frame_indexes = frame_indexes
+        self.cap = None
+        self.prev_idx = -1
+
+    def __enter__(self):
+        self.cap = cv2.VideoCapture(str(self.video_path))
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.cap is not None:
+            self.cap.release()
+
+    def read_frames(self) -> Generator:
+        try:
+            for frame_index in self.frame_indexes:
+                if frame_index != self.prev_idx + 1:
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                ret, frame = self.cap.read()
+                if not ret:
+                    raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
+                yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.prev_idx = frame_index
+        finally:
+            self.cap.release()
+
+
 class InferenceImageCache:
     class _LoadType(Enum):
         ImageId: str = "IMAGE"
@@ -241,25 +270,18 @@ class InferenceImageCache:
             return_images,
         )
 
+    def _read_frames_from_cached_video_iter(self, video_id, frame_indexes):
+        video_path = self._cache.get_video_path(video_id)
+        with VideoFrameReader(video_path, frame_indexes) as reader:
+            for frame in reader.read_frames():
+                yield frame
+
     def _read_frames_from_cached_video(
         self, video_id: int, frame_indexes: List[int]
     ) -> List[np.ndarray]:
-        video_path = self._cache.get_video_path(video_id)
-        if video_path is None or not video_path.exists():
-            raise KeyError(f"Video {video_id} not found in cache")
-        cap = cv2.VideoCapture(str(video_path))
-        frames = []
-        prev_idx = -1
-        for frame_index in frame_indexes:
-            if frame_index != prev_idx + 1:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-            ret, frame = cap.read()
-            if not ret:
-                raise KeyError(f"Frame {frame_index} not found in video {video_id}")
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            prev_idx = frame_index
-        cap.release()
-        return frames
+        return [
+            frame for frame in self._read_frames_from_cached_video_iter(video_id, frame_indexes)
+        ]
 
     def get_frame_from_cache(self, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
@@ -677,7 +699,8 @@ class InferenceImageCache:
         def _download_and_save(this_frame_indexes, this_paths):
             if video_id in self._cache:
                 for path, frame in zip(
-                    this_paths, self.get_frames_from_cache(video_id, this_frame_indexes)
+                    this_paths,
+                    self._read_frames_from_cached_video_iter(video_id, this_frame_indexes),
                 ):
                     sly.image.write(path, frame)
                     if progress_cb is not None:
