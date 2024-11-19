@@ -27,7 +27,7 @@ class ConfusionMatrix(SemanticSegmVisMetric):
         chart.set_click_data(
             self.explore_modal_table.id,
             self.get_click_data(),
-            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].y}${'-'}${payload.points[0].x}`, 'keySeparator': '-',",
         )
         return chart
 
