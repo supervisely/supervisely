@@ -66,16 +66,20 @@ class TrainValSplitsSelector:
 
             if train_ratio > 95:
                 self.validator_text.set(
-                    "Train split is set to over 95%. Consider allocating more data to validation.",
+                    text="Train split is set to over 95%. Consider allocating more data to validation.",
                     status="warning",
                 )
-            # @TODO: Remove?
-            # Won't use
-            # elif val_ratio < 5:
-            #     self.validator_text.set(
-            #         "Validation split is less than 5%, which may be insufficient for reliable evaluation.",
-            #         status="warning",
-            #     )
+            elif train_ratio < 70:
+                self.validator_text.set(
+                    text="Train split is set to less than 70%. Consider allocating more data to training.",
+                    status="warning",
+                )
+
+            elif val_ratio > train_ratio:
+                self.validator_text.set(
+                    text=f"Validation split is set to more than train split. {ensure_text}.",
+                    status="warning",
+                )
             else:
                 self.validator_text.set("Train and val splits are selected", status="success")
 
