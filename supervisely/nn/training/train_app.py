@@ -286,10 +286,6 @@ class TrainApp:
     def artifacts_thumbnail(self) -> FolderThumbnail:
         return self._gui.training_process.artifacts_thumbnail
 
-    @property
-    def tensorboard_link(self) -> str:
-        return self._gui.training_process.tensorboard_link
-
     # region TRAIN START
     @property
     def start(self):
@@ -1380,7 +1376,8 @@ class TrainApp:
     def _init_logger(self):
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
-        train_logger.start_tensorboard()
+        url = train_logger.start_tensorboard()
+        self.gui.training_process.tensorboard_button.link = url
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()

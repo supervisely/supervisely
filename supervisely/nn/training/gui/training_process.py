@@ -35,9 +35,6 @@ class TrainingProcess:
         self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
         self.model_benchmark_report_text.hide()
 
-        # self.creating_model_benchmark_report_field = Field(Empty(), "", "Creating report on model...")
-        # self.creating_model_benchmark_report_field.hide()
-
         self.project_download_progress_main = Progress("Downloading datasets", hide_on_finish=True)
         self.project_download_progress_main.hide()
 
@@ -151,7 +148,3 @@ class TrainingProcess:
             self.task_logs.hide()
             self.logs_button.text = "Show logs"
             self.logs_button.icon = "zmdi zmdi-caret-down-circle"
-
-    def set_tensorboard_port(self, port):
-        self.tensorboard_link = f"http://localhost:{port}/"
-        self.tensorboard_button.link = self.tensorboard_link
