@@ -2,7 +2,7 @@ import shutil
 import time
 from datetime import datetime
 from os import listdir
-from os.path import basename, dirname, isdir, isfile, join
+from os.path import basename, isdir, isfile, join
 from typing import Any, Dict, List, Optional, Union
 from urllib.request import urlopen
 
@@ -371,13 +371,17 @@ class TrainApp:
             models = load_file(models)
         return validate_list_of_dicts(models, "models")
 
-    def _load_hyperparameters(self, hyperparameters: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
-        if isinstance(hyperparameters, str):
-            hyperparameters = load_file(hyperparameters)
-        if not isinstance(hyperparameters, (dict, str)):
+    def _load_hyperparameters(self, hyperparameters: str) -> dict:
+        if not isinstance(hyperparameters, str):
             raise ValueError(
-                "hyperparameters must be a dict, or a path to a '.json' or '.yaml' file."
+                f"Expected a string with config or path for hyperparameters, but got {type(hyperparameters).__name__}"
             )
+        if hyperparameters.endswith((".yml", ".yaml")):
+            try:
+                with open(hyperparameters, "r") as file:
+                    return yaml.safe_load(file)
+            except Exception as e:
+                raise ValueError(f"Failed to load YAML file: {hyperparameters}. Error: {e}")
         return hyperparameters
 
     def _load_app_options(self, app_options: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -1044,7 +1048,7 @@ class TrainApp:
                     total=1,
                 ) as upload_artifacts_pbar:
                     self.progress_bar_upload_artifacts.show()
-                    self._api.file.remove_dir(self._team_id, f"{remote_artifacts_dir}/", True)
+                    self._api.file.remove_dir(self._team_id, f"{remote_artifacts_dir}", True)
                     upload_artifacts_pbar.update(1)
                     self.progress_bar_upload_artifacts.hide()
 
@@ -1376,7 +1380,14 @@ class TrainApp:
     def _init_logger(self):
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
-        train_logger.start_tensorboard()
+
+        base_url = None
+        if is_production():
+            task_info = self._api.task.get_info_by_id(self._task_id)
+            base_url = f'{self._api.server_address}/net/{task_info["meta"]["sessionToken"]}'
+            self.gui.training_process.tensorboard_button.link = base_url
+
+        train_logger.start_tensorboard(base_url)
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()
@@ -1428,14 +1439,9 @@ class TrainApp:
         if self._train_func is None:
             raise ValueError("Train function is not defined")
 
-        # Init logger and Tensorboard
         self._init_logger()
         experiment_info = None
         self.preprocess()
-        try:
-            experiment_info = self._train_func()
-        except StopTrainingException as e:
-            logger.error(f"Training stopped: {e}")
-            raise e  # @TODO: add stop button
+        experiment_info = self._train_func()
         self.postprocess(experiment_info)
         self.gui.training_process.start_button.loading = False

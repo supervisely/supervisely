@@ -81,7 +81,7 @@ class TrainingProcess:
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
 
         button_container = Container(
-            [self.start_button, self.stop_button, Empty()],
+            [self.start_button, self.tensorboard_button, Empty()],
             "horizontal",
             overflow="wrap",
             fractions=[1, 1, 10],
@@ -101,18 +101,16 @@ class TrainingProcess:
             task_id = get_task_id(raise_not_found=False)
             self.task_logs = TaskLogs(task_id)
         self.task_logs.hide()
+        logs_container = Container([self.logs_button, self.task_logs])
 
         container = Container(
             [
+                self.validator_text,
+                button_container,
                 self.success_message,
                 self.artifacts_thumbnail,
                 self.model_benchmark_report_thumbnail,
                 self.model_benchmark_report_text,
-                self.validator_text,
-                button_container,
-                self.tensorboard_button,
-                self.logs_button,
-                self.task_logs,
                 self.project_download_progress_main,
                 self.project_download_progress_secondary,
                 self.model_download_progress_main,
@@ -122,8 +120,32 @@ class TrainingProcess:
                 self.artifacts_upload_progress,
                 self.model_benchmark_progress_main,
                 self.model_benchmark_progress_secondary,
+                logs_container,
             ]
         )
+
+        # container = Container(
+        #     [
+        #         self.success_message,
+        #         self.artifacts_thumbnail,
+        #         self.model_benchmark_report_thumbnail,
+        #         self.model_benchmark_report_text,
+        #         self.validator_text,
+        #         button_container,
+        #         self.tensorboard_button,
+        #         self.logs_button,
+        #         self.task_logs,
+        #         self.project_download_progress_main,
+        #         self.project_download_progress_secondary,
+        #         self.model_download_progress_main,
+        #         self.model_download_progress_secondary,
+        #         self.epoch_progress,
+        #         self.iter_progress,
+        #         self.artifacts_upload_progress,
+        #         self.model_benchmark_progress_main,
+        #         self.model_benchmark_progress_secondary,
+        #     ]
+        # )
         self.card = Card(
             title="Training Process",
             description="Track progress and manage training",
