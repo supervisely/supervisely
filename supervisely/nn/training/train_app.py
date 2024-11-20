@@ -379,7 +379,7 @@ class TrainApp:
         if hyperparameters.endswith((".yml", ".yaml")):
             try:
                 with open(hyperparameters, "r") as file:
-                    return yaml.safe_load(file)
+                    return file.read()
             except Exception as e:
                 raise ValueError(f"Failed to load YAML file: {hyperparameters}. Error: {e}")
         return hyperparameters
