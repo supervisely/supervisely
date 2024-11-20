@@ -68,6 +68,9 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         else:
             self._init_match_data()
 
+        # set filtered project meta
+        self.eval_result.filtered_project_meta = self._get_filtered_project_meta(self.eval_result)
+
         self._get_sample_data_for_gallery()
 
     def _create_widgets(self):
