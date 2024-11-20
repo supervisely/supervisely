@@ -45,18 +45,29 @@ class ExplorePredictions(BaseVisMetric):
         skip_tags_filtering = []
         api = self.eval_results[0].api
         min_conf = float("inf")
+        names = None
+        ds_name = None
         for idx, eval_res in enumerate(self.eval_results):
             if idx == 0:
-                dataset_info = api.dataset.get_list(eval_res.gt_project_id)[0]
+                dataset_info = eval_res.gt_dataset_infos[0]
                 image_infos = api.image.get_list(dataset_info.id, limit=5)
+                ds_name = dataset_info.name
                 images_ids = [image_info.id for image_info in image_infos]
+                names = [image_info.name for image_info in image_infos]
                 images.append(image_infos)
                 anns = api.annotation.download_batch(dataset_info.id, images_ids)
                 annotations.append(anns)
                 skip_tags_filtering.append(True)
             metas.append(eval_res.dt_project_meta)
-            dataset_info = api.dataset.get_list(eval_res.dt_project_id)[0]
-            image_infos = eval_res.api.image.get_list(dataset_info.id, limit=5)
+            assert ds_name is not None, "Failed to get GT dataset name for gallery"
+
+            dataset_info = api.dataset.get_info_by_name(eval_res.dt_project_id, ds_name)
+
+            assert names is not None, "Failed to get GT image names for gallery"
+            image_infos = eval_res.api.image.get_list(
+                dataset_info.id,
+                filters=[{"field": "name", "operator": "in", "value": names}],
+            )
             images_ids = [image_info.id for image_info in image_infos]
             images.append(image_infos)
             anns = eval_res.api.annotation.download_batch(dataset_info.id, images_ids)
@@ -86,21 +97,32 @@ class ExplorePredictions(BaseVisMetric):
         images_ids = []
         api = self.eval_results[0].api
         min_conf = float("inf")
+        names = None
+        ds_names = None
         for idx, eval_res in enumerate(self.eval_results):
             if idx == 0:
-                dataset_infos = api.dataset.get_list(eval_res.gt_project_id)
+                dataset_infos = eval_res.gt_dataset_infos
+                ds_names = [ds.name for ds in dataset_infos]
                 current_images_ids = []
+                current_images_names = []
                 for ds in dataset_infos:
-                    image_infos = eval_res.api.image.get_list(ds.id)
+                    image_infos = eval_res.api.image.get_list(ds.id, force_metadata_for_links=False)
+                    image_infos = sorted(image_infos, key=lambda x: x.name)
+                    current_images_names.extend([image_info.name for image_info in image_infos])
                     current_images_ids.extend([image_info.id for image_info in image_infos])
                 images_ids.append(current_images_ids)
+                names = current_images_names
 
-            current_images_ids = []
             dataset_infos = api.dataset.get_list(eval_res.dt_project_id)
+            dataset_infos = [ds for ds in dataset_infos if ds.name in ds_names]
+            dataset_infos = sorted(dataset_infos, key=lambda x: ds_names.index(x.name))
+            current_images_infos = []
             for ds in dataset_infos:
-                image_infos = eval_res.api.image.get_list(ds.id)
-                current_images_ids.extend([image_info.id for image_info in image_infos])
-            images_ids.append(current_images_ids)
+                image_infos = eval_res.api.image.get_list(ds.id, force_metadata_for_links=False)
+                image_infos = [image_info for image_info in image_infos if image_info.name in names]
+                current_images_infos.extend(image_infos)
+            current_images_infos = sorted(current_images_infos, key=lambda x: names.index(x.name))
+            images_ids.append([image_info.id for image_info in current_images_infos])
 
             min_conf = min(min_conf, eval_res.f1_optimal_conf)
 
