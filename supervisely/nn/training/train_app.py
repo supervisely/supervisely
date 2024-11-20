@@ -1384,7 +1384,7 @@ class TrainApp:
         tb_url_prefix = None
         if is_production():
             task_info = self._api.task.get_info_by_id(self._task_id)
-            tb_url_prefix = f'/net/{task_info["meta"]["sessionToken"]}'
+            tb_url_prefix = f'/net/{task_info["meta"]["sessionToken"]}/tensorboard/'
             base_url = f"{self._api.server_address}{tb_url_prefix}"
             self.gui.training_process.tensorboard_button.link = base_url
 
