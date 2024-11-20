@@ -1381,13 +1381,14 @@ class TrainApp:
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
 
-        base_url = None
+        tb_url_prefix = None
         if is_production():
             task_info = self._api.task.get_info_by_id(self._task_id)
-            base_url = f'{self._api.server_address}/net/{task_info["meta"]["sessionToken"]}'
+            tb_url_prefix = f'/net/{task_info["meta"]["sessionToken"]}'
+            base_url = f"{self._api.server_address}{tb_url_prefix}"
             self.gui.training_process.tensorboard_button.link = base_url
 
-        train_logger.start_tensorboard(base_url)
+        train_logger.start_tensorboard(tb_url_prefix)
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()

@@ -88,7 +88,7 @@ class TensorboardLogger(BaseTrainLogger):
         self.log_dir = log_dir
         self.writer = SummaryWriter(log_dir)
 
-    def start_tensorboard(self, base_url: str = None):
+    def start_tensorboard(self, url_prefix: str = None):
         """Start Tensorboard server in a subprocess"""
         args = [
             "tensorboard",
@@ -97,9 +97,10 @@ class TensorboardLogger(BaseTrainLogger):
             "--host=localhost",
             "--port=8001",
             "--load_fast=false",
+            "--reload_multifile=true",
         ]
-        if base_url:
-            args.extend(["--path_prefix", base_url])
+        if url_prefix:
+            args.extend(["--path_prefix", url_prefix])
 
         self.tensorboard_process = subprocess.Popen(args)
         print(f"Tensorboard server has been started")
