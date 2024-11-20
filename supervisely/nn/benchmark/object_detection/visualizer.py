@@ -53,7 +53,6 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         self.vis_texts = vis_texts
         self._widgets = False
-        self.cv_task = CVTask.OBJECT_DETECTION
         self.ann_opacity = 0.4
 
         diff_project_info, diff_dataset_infos, existed = self._get_or_create_diff_project()
@@ -73,7 +72,12 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         self._get_sample_data_for_gallery()
 
+    @property
+    def cv_task(self):
+        return CVTask.OBJECT_DETECTION
+
     def _create_widgets(self):
+        # get cv task
         # Modal Gellery
         self.diff_modal = self._create_diff_modal_table()
         self.explore_modal = self._create_explore_modal_table(

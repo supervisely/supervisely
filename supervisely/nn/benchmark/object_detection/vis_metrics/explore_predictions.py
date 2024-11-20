@@ -97,48 +97,33 @@ class ExplorePredictions(DetectionVisMetric):
             pred = pairs_data.pred_image_info
             diff = pairs_data.diff_image_info
             assert gt.name == pred.name == diff.name
-            key = click_data.setdefault(str(pred.id), {})
-            key["imagesIds"] = [gt.id, pred.id, diff.id]
-            key["filters"] = default_filters
-            key["title"] = f"Image: {pred.name}"
-            image_id = pred.id
-            ann_json = pairs_data.pred_annotation.to_json()
-            assert image_id == pred.id
-            object_bindings = []
-            for obj in ann_json["objects"]:
-                for tag in obj["tags"]:
-                    if tag["name"] == "matched_gt_id":
-                        object_bindings.append(
-                            [
-                                {
-                                    "id": obj["id"],
-                                    "annotationKey": image_id,
-                                },
-                                {
-                                    "id": int(tag["value"]),
-                                    "annotationKey": gt.id,
-                                },
-                            ]
-                        )
+            for img_id in [gt.id, pred.id, diff.id]:
+                key = click_data.setdefault(str(img_id), {})
+                key["imagesIds"] = [gt.id, pred.id, diff.id]
+                key["filters"] = default_filters
+                key["title"] = f"Image: {gt.name}"
 
-            image_id = diff.id
-            ann_json = pairs_data.diff_annotation.to_json()
-            assert image_id == diff.id
-            for obj in ann_json["objects"]:
-                for tag in obj["tags"]:
-                    if tag["name"] == "matched_gt_id":
-                        object_bindings.append(
-                            [
-                                {
-                                    "id": obj["id"],
-                                    "annotationKey": image_id,
-                                },
-                                {
-                                    "id": int(tag["value"]),
-                                    "annotationKey": pred.id,
-                                },
-                            ]
-                        )
-            key["objectsBindings"] = object_bindings
+                object_bindings = []
+                for img in [pred, diff]:
+                    if img == pred:
+                        ann_json = pairs_data.pred_annotation.to_json()
+                    else:
+                        ann_json = pairs_data.diff_annotation.to_json()
+                    for obj in ann_json["objects"]:
+                        for tag in obj["tags"]:
+                            if tag["name"] == "matched_gt_id":
+                                object_bindings.append(
+                                    [
+                                        {
+                                            "id": obj["id"],
+                                            "annotationKey": img.id,
+                                        },
+                                        {
+                                            "id": int(tag["value"]),
+                                            "annotationKey": gt.id if img == pred else pred.id,
+                                        },
+                                    ]
+                                )
+                key["objectsBindings"] = object_bindings
 
         return res

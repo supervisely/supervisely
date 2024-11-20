@@ -82,6 +82,26 @@ class ModelPredictions(SemanticSegmVisMetric):
         )
         table.set_click_data(
             self.explore_modal_table.id,
-            self.get_diff_data(),
+            self.get_click_data(),
         )
         return table
+
+    def get_click_data(self) -> Dict:
+        res = {}
+        res["layoutTemplate"] = [
+            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
+            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
+            {"skipObjectTagsFiltering": ["confidence"], "columnTitle": "Difference"},
+        ]
+        click_data = res.setdefault("clickData", {})
+
+        for pairs_data in self.eval_result.matched_pair_data.values():
+            gt = pairs_data.gt_image_info
+            pred = pairs_data.pred_image_info
+            diff = pairs_data.diff_image_info
+            assert gt.name == pred.name == diff.name
+            key = click_data.setdefault(str(pred.name), {})
+            key["imagesIds"] = [diff.id, gt.id, pred.id]
+            key["title"] = f"Image: {pred.name}"
+
+        return res

@@ -38,7 +38,7 @@ from supervisely.nn.benchmark.semantic_segmentation.vis_metrics.speedtest import
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
-    GalleryWidget,
+    MarkdownWidget,
     SidebarWidget,
 )
 from supervisely.project.project import Dataset, OpenMode, Project
@@ -50,7 +50,6 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
         self.vis_texts = vis_texts
         self._widgets_created = False
-        self.cv_task = CVTask.SEMANTIC_SEGMENTATION
         self.ann_opacity = 0.7
 
         diff_project_info, diff_dataset_infos, existed = self._get_or_create_diff_project()
@@ -71,12 +70,19 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
         self._get_sample_data_for_gallery()
 
+    @property
+    def cv_task(self):
+        return CVTask.SEMANTIC_SEGMENTATION
+
     def _create_widgets(self):
         # Modal Gellery
         self.diff_modal = self._create_diff_modal_table()
         self.explore_modal = self._create_explore_modal_table(
             click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
         )
+
+        # Notifcation
+        self.clickable_label = self._create_clickable_label()
 
         # overview
         overview = Overview(self.vis_texts, self.eval_result)
@@ -169,12 +175,15 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (1, self.renorm_eou_md),
             (0, self.renorm_eou_chart),
             (1, self.classwise_error_analysis_md),
+            (0, self.clickable_label),
             (0, self.classwise_error_analysis_chart),
             (1, self.confusion_matrix_md),
+            (0, self.clickable_label),
             (0, self.confusion_matrix_chart),
             (1, self.frequently_confused_md),
         ]
         if self.frequently_confused_chart is not None:
+            is_anchors_widgets.append((0, self.clickable_label))
             is_anchors_widgets.append((0, self.frequently_confused_chart))
         if self.speedtest_present:
             is_anchors_widgets.append((1, self.speedtest_md_intro))
@@ -271,3 +280,6 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
         self.eval_result.sample_images = imgs
         self.eval_result.sample_anns = anns
+
+    def _create_clickable_label(self):
+        return MarkdownWidget(name="clickable_label", title="", text=self.vis_texts.clickable_label)

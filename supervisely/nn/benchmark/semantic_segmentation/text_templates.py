@@ -59,6 +59,8 @@ markdown_predictions_table = """### Prediction details for every image
 
 Table of per image metrics allows to get performance metrics for every image. It can be helpful when there is a need to find the most problematic images where the model performed worst.
 
+**Example**: you can sort by **Pixel accuracy** in ascending order to find images where the model performed worst in terms of pixel-wise accuracy.
+
 > Click on the row to view the **Original Image** with **Ground Truth** and **Prediction** annotations side-by-side. 
 """
 

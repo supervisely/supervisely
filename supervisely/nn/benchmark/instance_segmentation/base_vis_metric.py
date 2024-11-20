@@ -1,11 +1,8 @@
-from typing import Union
+from typing import Dict, Optional, Union
 
 from supervisely.nn.benchmark.base_visualizer import BaseVisMetric
 from supervisely.nn.benchmark.instance_segmentation.evaluator import (
     InstanceSegmentationEvalResult,
-)
-from supervisely.nn.benchmark.object_detection.evaluator import (
-    ObjectDetectionEvalResult,
 )
 
 
@@ -13,4 +10,40 @@ class DetectionVisMetric(BaseVisMetric):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.eval_result: Union[ObjectDetectionEvalResult, InstanceSegmentationEvalResult]
+        self.eval_result: InstanceSegmentationEvalResult
+
+    def get_click_data(self) -> Optional[Dict]:
+        if not self.clickable:
+            return
+
+        res = {}
+
+        res["layoutTemplatae"] = [None, None, None]
+        res["clickData"] = {}
+        for key, v in self.eval_result.click_data.objects_by_class.items():
+            res["clickData"][key] = {}
+            res["clickData"][key]["imagesIds"] = []
+
+            img_ids = set()
+            obj_ids = set()
+
+            res["clickData"][key][
+                "title"
+            ] = f"{key} class: {len(v)} object{'s' if len(v) > 1 else ''}"
+
+            for x in v:
+                img_ids.add(x["dt_img_id"])
+                obj_ids.add(x["dt_obj_id"])
+
+            res["clickData"][key]["imagesIds"] = list(img_ids)
+            res["clickData"][key]["filters"] = [
+                {
+                    "type": "tag",
+                    "tagId": "confidence",
+                    "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                },
+                {"type": "tag", "tagId": "outcome", "value": "TP"},
+                {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
+            ]
+
+        return res

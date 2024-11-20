@@ -1,5 +1,4 @@
-import random
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.api import Api
@@ -57,45 +56,9 @@ class BaseVisMetric(BaseVisMetrics):
         super().__init__(vis_texts, [eval_result], explore_modal_table, diff_modal_table)
         self.eval_result = eval_result
 
-    def get_click_data(self) -> Optional[Dict]:
-        if not self.clickable:
-            return
-
-        res = {}
-
-        res["layoutTemplate"] = [None, None, None]
-        res["clickData"] = {}
-        for key, v in self.eval_result.click_data.objects_by_class.items():
-            res["clickData"][key] = {}
-            res["clickData"][key]["imagesIds"] = []
-
-            # tmp = defaultdict(list)
-            img_ids = set()
-            obj_ids = set()
-
-            res["clickData"][key][
-                "title"
-            ] = f"{key} class: {len(v)} object{'s' if len(v) > 1 else ''}"
-
-            for x in v:
-                img_ids.add(x["dt_img_id"])
-                obj_ids.add(x["dt_obj_id"])
-
-            res["clickData"][key]["imagesIds"] = list(img_ids)
-            res["clickData"][key]["filters"] = [
-                {
-                    "type": "tag",
-                    "tagId": "confidence",
-                    "value": [self.eval_result.mp.f1_optimal_conf, 1],
-                },
-                {"type": "tag", "tagId": "outcome", "value": "TP"},
-                {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
-            ]
-
-        return res
-
 
 class BaseVisualizer:
+    cv_task = None
 
     def __init__(
         self,
@@ -112,8 +75,6 @@ class BaseVisualizer:
         self.gt_project_info = None
         self.gt_project_meta = None
         self.gt_dataset_infos = None
-
-        self.cv_task = None
 
         for eval_result in self.eval_results:
             self._get_eval_project_infos(eval_result)
