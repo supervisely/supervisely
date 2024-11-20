@@ -1,7 +1,7 @@
 from supervisely._utils import is_development
 from supervisely.app.widgets import (
     Button,
-    Card,
+    Card,  # SelectCudaDevice,
     Container,
     DoneLabel,
     Empty,
@@ -32,10 +32,14 @@ class TrainingProcess:
         self.model_benchmark_report_thumbnail = ReportThumbnail()
         self.model_benchmark_report_thumbnail.hide()
 
-        self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
+        self.model_benchmark_report_text = Text(
+            status="info", text="Creating report on model..."
+        )
         self.model_benchmark_report_text.hide()
 
-        self.project_download_progress_main = Progress("Downloading datasets", hide_on_finish=True)
+        self.project_download_progress_main = Progress(
+            "Downloading datasets", hide_on_finish=True
+        )
         self.project_download_progress_main.hide()
 
         self.project_download_progress_secondary = Progress(
@@ -43,10 +47,14 @@ class TrainingProcess:
         )
         self.project_download_progress_secondary.hide()
 
-        self.model_download_progress_main = Progress("Downloading model files", hide_on_finish=True)
+        self.model_download_progress_main = Progress(
+            "Downloading model files", hide_on_finish=True
+        )
         self.model_download_progress_main.hide()
 
-        self.model_download_progress_secondary = Progress("Downloading file", hide_on_finish=True)
+        self.model_download_progress_secondary = Progress(
+            "Downloading file", hide_on_finish=True
+        )
         self.model_download_progress_secondary.hide()
 
         self.epoch_progress = Progress("Epochs")
@@ -61,7 +69,9 @@ class TrainingProcess:
         self.model_benchmark_progress_secondary = Progress(hide_on_finish=True)
         self.model_benchmark_progress_secondary.hide()
 
-        self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
+        self.artifacts_upload_progress = Progress(
+            "Uploading artifacts", hide_on_finish=True
+        )
         self.artifacts_upload_progress.hide()
 
         self.tensorboard_link = "http://localhost:8001/"
@@ -79,6 +89,8 @@ class TrainingProcess:
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
+
+        # @TODO: Add GPU Selector
 
         button_container = Container(
             [self.start_button, self.tensorboard_button, Empty()],

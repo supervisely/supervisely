@@ -6,8 +6,11 @@ from os.path import basename, isdir, isfile, join
 from typing import Any, Dict, List, Optional, Union
 from urllib.request import urlopen
 
+import httpx
+import requests
 import yaml
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse, StreamingResponse
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
@@ -1388,7 +1391,12 @@ class TrainApp:
             base_url = f"{self._api.server_address}{tb_url_prefix}"
             self.gui.training_process.tensorboard_button.link = base_url
 
+        import subprocess
+
+        nginx_process = subprocess.Popen(["nginx"])
+
         train_logger.start_tensorboard(tb_url_prefix)
+        self.setup_tensorboard_proxy()
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()
@@ -1446,3 +1454,31 @@ class TrainApp:
         experiment_info = self._train_func()
         self.postprocess(experiment_info)
         self.gui.training_process.start_button.loading = False
+
+    def setup_tensorboard_proxy(self):
+        @self._server.api_route(
+            "/tensorboard/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+        )
+        def proxy_to_tensorboard(path: str, request: Request):
+            url = f"http://localhost:8001/{path}"
+            try:
+                # Forward the request to TensorBoard
+                headers = dict(request.headers)
+                response = requests.request(
+                    method=request.method,
+                    url=url,
+                    headers=headers,
+                    data=request.body(),
+                    params=request.query_params,
+                    stream=True,
+                )
+
+                # Create the response to return to the client
+                return StreamingResponse(
+                    response.raw, status_code=response.status_code, headers=dict(response.headers)
+                )
+            except requests.RequestException as exc:
+                return JSONResponse(
+                    status_code=502,
+                    content={"error": f"Unable to connect to the proxied server: {exc}"},
+                )
