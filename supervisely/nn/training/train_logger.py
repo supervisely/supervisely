@@ -129,7 +129,7 @@ class TensorboardLogger(BaseTrainLogger):
                 "--port",
                 "8001",
                 "--load_fast",
-                False,
+                "false",
             ]
         )
 
