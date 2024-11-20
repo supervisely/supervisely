@@ -11,7 +11,7 @@ from supervisely.project.project import _download_project, _download_project_asy
 
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
-PROJECT_ID = 35259  #  41862
+PROJECT_ID = 325865  #  41862
 DATSET_ID = 98429
 home_dir = os.path.expanduser("~")
 common_path = os.path.join(home_dir, "test_project_download/")
@@ -24,7 +24,10 @@ api = sly.Api.from_env()
 
 
 def main_dpa(project_id: int, semaphore_size: int):
-    sema = asyncio.Semaphore(semaphore_size)
+    if semaphore_size is None:
+        sema = None
+    else:
+        sema = asyncio.Semaphore(semaphore_size)
     start = time.time()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(

@@ -40,6 +40,7 @@ from tqdm import tqdm
 
 from supervisely._utils import (
     batched,
+    compare_dicts,
     generate_free_name,
     get_bytes_hash,
     resize_image_url,
@@ -324,6 +325,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return_first_response: Optional[bool] = False,
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -346,6 +348,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type project_id: :class:`int`
         :param only_labelled: If True, returns only images with labels.
         :type only_labelled: bool, optional
+        :param fields: List of fields to return. If None, returns all fields.
+        :type fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -418,7 +422,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -1135,7 +1140,14 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_path(
-        self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        path: str,
+        meta: Optional[Dict] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1148,6 +1160,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1163,7 +1181,15 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
         """
         metas = None if meta is None else [meta]
-        return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
+        return self.upload_paths(
+            dataset_id,
+            [name],
+            [path],
+            metas=metas,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
+        )[0]
 
     def upload_paths(
         self,
@@ -1173,6 +1199,9 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1189,6 +1218,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1214,7 +1249,14 @@ class ImageApi(RemoveableBulkModuleApi):
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
 
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+            dataset_id,
+            names,
+            hashes,
+            metas=metas,
+            conflict_resolution=conflict_resolution,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
         )
 
     def upload_np(
@@ -1492,6 +1534,9 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1512,6 +1557,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1553,6 +1604,9 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
         )
 
     def upload_id(
@@ -1750,8 +1804,44 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links=True,
         skip_validation=False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ):
         """ """
+        if use_strict_validation and not validate_meta:
+            raise ValueError(
+                "use_strict_validation is set to True, while validate_meta is set to False. "
+                "Please set validate_meta to True to use strict validation "
+                "or disable strict validation by setting use_strict_validation to False."
+            )
+        if validate_meta:
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+
+            validation_schema = self._api.project.get_validation_schema(
+                dataset_info.project_id, use_caching=use_caching_for_validation
+            )
+
+            if validation_schema is None:
+                raise ValueError(
+                    "Validation schema is not set for the project, while "
+                    "validate_meta is set to True. Either disable the validation "
+                    "or set the validation schema for the project using the "
+                    "api.project.set_validation_schema method."
+                )
+
+            for idx, meta in enumerate(metas):
+                missing_fields, extra_fields = compare_dicts(
+                    validation_schema, meta, strict=use_strict_validation
+                )
+
+                if missing_fields or extra_fields:
+                    raise ValueError(
+                        f"Validation failed for the metadata of the image with index {idx} and name {names[idx]}. "
+                        "Please check the metadata and try again. "
+                        f"Missing fields: {missing_fields}, Extra fields: {extra_fields}"
+                    )
+
         if (
             conflict_resolution is not None
             and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
@@ -3553,7 +3643,7 @@ class ImageApi(RemoveableBulkModuleApi):
             results = await asyncio.gather(*tasks)
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
 
         async with semaphore:
             async for response in self._download_async(id):
@@ -3611,7 +3701,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = [
             self.download_np_async(id, semaphore, keep_alpha, progress_cb, progress_cb_type)
             for id in ids
@@ -3686,7 +3776,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ensure_base_path(path)
         hash_to_check = None
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(path, writing_method) as fd:
                 async for chunk, hhash in self._download_async(
@@ -3764,7 +3854,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}'
             )
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(
@@ -3838,7 +3928,7 @@ class ImageApi(RemoveableBulkModuleApi):
         hash_to_check = None
 
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         async with semaphore:
             content = b""
             async for chunk, hhash in self._download_async(
@@ -3907,7 +3997,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
         """
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for id in ids:
             task = self.download_bytes_single_async(

@@ -339,16 +339,22 @@ class VideoApi(RemoveableBulkModuleApi):
         dataset_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         raw_video_meta: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
+        force_metadata_for_links: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Videos. See: https://dev.supervise.ly/api-docs/#tag/Videos/paths/~1videos.list/get
+        :param filters: List of parameters to sort output Videos. See: https://api.docs.supervisely.com/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
         :param raw_video_meta: Get normalized metadata from server if False.
         :type raw_video_meta: bool
+        :param fields: List of fields to return.
+        :type fields: List[str], optional
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
+        :type force_metadata_for_links: Optional[bool]
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -372,15 +378,15 @@ class VideoApi(RemoveableBulkModuleApi):
             print(filtered_video_infos)
             # Output: [VideoInfo(id=19371139, ...)]
         """
-
-        return self.get_list_all_pages(
-            "videos.list",
-            {
-                ApiField.DATASET_ID: dataset_id,
-                ApiField.FILTER: filters or [],
-                ApiField.RAW_VIDEO_META: raw_video_meta,
-            },
-        )
+        data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FILTER: filters or [],
+            ApiField.RAW_VIDEO_META: raw_video_meta,
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+        }
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
+        return self.get_list_all_pages("videos.list", data)
 
     def get_list_generator(
         self,
@@ -391,6 +397,7 @@ class VideoApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         raw_video_meta: Optional[bool] = False,
         batch_size: Optional[int] = None,
+        force_metadata_for_links: Optional[bool] = False,
     ) -> Iterator[List[VideoInfo]]:
         data = {
             ApiField.DATASET_ID: dataset_id,
@@ -399,6 +406,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ApiField.SORT_ORDER: sort_order,
             ApiField.RAW_VIDEO_META: raw_video_meta,
             ApiField.PAGINATION_MODE: ApiField.TOKEN,
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
         if batch_size is not None:
             data[ApiField.PER_PAGE] = batch_size
@@ -426,7 +434,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the video info was not received.
         :type raise_error: bool
-        :param force_metadata_for_links: Get video metadata from server (if the video is uploaded as a link)
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
@@ -506,7 +514,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param force_metadata_for_links: Get normalized metadata from server.
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
         :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
         :rtype: List[VideoInfo]
@@ -580,6 +588,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the video info was not received.
         :type raise_error: bool
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
+        :type force_metadata_for_links: bool
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: dict
 
@@ -967,6 +977,7 @@ class VideoApi(RemoveableBulkModuleApi):
                 links_names,
                 metas=links_metas,
                 skip_download=True,
+                force_metadata_for_links=False,
             )
 
             for info, pos in zip(res_infos_links, links_order):
@@ -1042,7 +1053,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(set(vid_info.dataset_id for vid_info in ids_info)) > 1:
             raise ValueError("Videos ids have to be from the same dataset")
 
-        existing_videos = self.get_list(dst_dataset_id)
+        existing_videos = self.get_list(dst_dataset_id, force_metadata_for_links=False)
         existing_names = {video.name for video in existing_videos}
 
         if change_name_if_conflict:
@@ -1357,6 +1368,19 @@ class VideoApi(RemoveableBulkModuleApi):
                 "data": {
                     ApiField.TRACK_ID: track_id,
                     ApiField.ERROR: {ApiField.MESSAGE: "{}: {}".format(error, message)},
+                },
+            },
+        )
+
+    def notify_tracking_warning(self, track_id: int, video_id: int, message: str):
+        self._api.post(
+            "videos.notify-annotation-tool",
+            data={
+                "type": "videos:tracking-warning",
+                "data": {
+                    ApiField.VIDEO_ID: str(video_id),
+                    ApiField.TRACK_ID: str(track_id),
+                    ApiField.MESSAGE: message,
                 },
             },
         )
@@ -1846,7 +1870,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type skip_download: Optional[bool]
         :param progress_cb: Function for tracking the progress of copying.
         :type progress_cb: tqdm or callable, optional
-        :param force_metadata_for_links: Specify if metadata should be forced. Default is True.
+        :param force_metadata_for_links: Specify whether to force retrieving videos metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
@@ -1939,6 +1963,7 @@ class VideoApi(RemoveableBulkModuleApi):
         hash: Optional[str] = None,
         meta: Optional[List[Dict]] = None,
         skip_download: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
     ):
         """
         Upload Video from given link to Dataset.
@@ -1957,6 +1982,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: List[Dict], optional
         :param skip_download: Skip download video to local storage.
         :type skip_download: Optional[bool]
+        :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server after upload
+        :type force_metadata_for_links: Optional[bool]
         :return: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
@@ -2041,6 +2068,7 @@ class VideoApi(RemoveableBulkModuleApi):
             hashes=[h],
             metas=[meta],
             skip_download=skip_download,
+            force_metadata_for_links=force_metadata_for_links,
         )
         if len(links) != 1:
             raise RuntimeError(
@@ -2216,7 +2244,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :rtype: List[str]
         """
 
-        videos_in_dataset = self.get_list(dataset_id)
+        videos_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
         used_names = {video_info.name for video_info in videos_in_dataset}
         new_names = [
             generate_free_name(used_names, name, with_ext=True, extend_used_names=True)
@@ -2242,7 +2270,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: None
         """
-        videos_in_dataset = self.get_list(dataset_id)
+        videos_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
         used_names = {video_info.name for video_info in videos_in_dataset}
         name_intersections = used_names.intersection(set(names))
         if message is None:
@@ -2482,7 +2510,7 @@ class VideoApi(RemoveableBulkModuleApi):
         ensure_base_path(path)
         hash_to_check = None
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(path, writing_method) as fd:
                 async for chunk, hhash in self._download_async(
@@ -2562,7 +2590,7 @@ class VideoApi(RemoveableBulkModuleApi):
         if len(ids) != len(paths):
             raise ValueError('Can not match "ids" and "paths" lists, len(ids) != len(paths)')
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(

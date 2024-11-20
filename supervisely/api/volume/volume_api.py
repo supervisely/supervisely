@@ -65,7 +65,7 @@ class VolumeInfo(NamedTuple):
                 'rescaleIntercept': 0
             },
             path_original='/h5af-public/images/original/M/e/7R/vsytec8zX0p.nrrd',
-            full_storage_url='https://dev.supervise.ly/h5un-public/images/original/M/e/7R/zX0p.nrrd',
+            full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zX0p.nrrd',
             tags=[],
             team_id=435,
             workspace_id=685,
@@ -260,7 +260,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Volumes. See: https://dev.supervise.ly/api-docs/#tag/Volumes/paths/~1volumes.list/get
+        :param filters: List of parameters to sort output Volumes. See: https://api.docs.supervisely.com/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
         :type sort: :class:`str`
@@ -349,7 +349,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             #         'rescaleIntercept': 0
             #     },
             #     path_original='/h5af-public/images/original/M/e/7R/vs0p.nrrd',
-            #     full_storage_url='https://dev.supervise.ly/.../original/M/e/7R/zX0p.nrrd',
+            #     full_storage_url='https://app.supervisely.com/.../original/M/e/7R/zX0p.nrrd',
             #     tags=[],
             #     team_id=435,
             #     workspace_id=685,
@@ -435,7 +435,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             #         'rescaleIntercept': 0
             #     },
             #     path_original='/h5af-public/images/original/M/e/7R/zfsfX0p.nrrd',
-            #     full_storage_url='https://dev.supervise.ly/h5un-public/images/original/M/e/7R/zXdd0p.nrrd',
+            #     full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zXdd0p.nrrd',
             #     tags=[],
             #     team_id=435,
             #     workspace_id=685,
@@ -1360,7 +1360,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         ensure_base_path(path)
         hash_to_check = None
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(path, writing_method) as fd:
                 async for chunk, hhash in self._download_async(
@@ -1440,7 +1440,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         if len(ids) != len(paths):
             raise ValueError(f'Can not match "ids" and "paths" lists, {len(ids)} != {len(paths)}')
         if semaphore is None:
-            semaphore = self._api._get_default_semaphore()
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for img_id, img_path in zip(ids, paths):
             task = self.download_path_async(

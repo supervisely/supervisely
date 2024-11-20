@@ -123,7 +123,8 @@ class VideoConverter(BaseConverter):
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        existing_names = set([vid.name for vid in api.video.get_list(dataset_id)])
+        videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
+        existing_names = {video_info.name for video_info in videos_in_dataset}
 
         # check video codecs, mimetypes and convert if needed
         convert_progress, convert_progress_cb = self.get_progress(
