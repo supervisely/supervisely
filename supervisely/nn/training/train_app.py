@@ -1391,10 +1391,6 @@ class TrainApp:
             base_url = f"{self._api.server_address}{tb_url_prefix}"
             self.gui.training_process.tensorboard_button.link = base_url
 
-        import subprocess
-
-        nginx_process = subprocess.Popen(["nginx"])
-
         train_logger.start_tensorboard(tb_url_prefix)
         self.setup_tensorboard_proxy()
         self._setup_logger_callbacks()
