@@ -1376,8 +1376,7 @@ class TrainApp:
     def _init_logger(self):
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
-        url = train_logger.start_tensorboard()
-        self.gui.training_process.tensorboard_button.link = url
+        train_logger.start_tensorboard()
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()

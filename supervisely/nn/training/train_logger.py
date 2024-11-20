@@ -1,14 +1,9 @@
-import os
-import socket
 import subprocess
 from typing import Callable
 
-from tensorboard import program
 from tensorboard.compat.proto.event_pb2 import Event
 from tensorboard.compat.proto.summary_pb2 import Summary
 from tensorboardX import SummaryWriter
-
-from supervisely._utils import is_production
 
 
 class BaseTrainLogger:
@@ -94,59 +89,24 @@ class TensorboardLogger(BaseTrainLogger):
         self.writer = SummaryWriter(log_dir)
 
     def start_tensorboard(self):
-        def get_host_ip():
-            try:
-                host_ip = socket.gethostbyname(socket.gethostname())
-                return host_ip
-            except Exception as e:
-                print(f"Error retrieving host IP: {e}")
-                return "localhost"
-
-        # self.tensorboard_process = subprocess.Popen(
-        #     [
-        #         "tensorboard",
-        #         "--logdir",
-        #         self.log_dir,
-        #         "--host=localhost",
-        #         "--port=8001",
-        #         "--load_fast=false",
-        #     ]
-        # )
-
-        if is_production():
-            host = "0.0.0.0"
-        else:
-            host = "localhost"
-
-        self.tensorboard_process = program.TensorBoard()
-        self.tensorboard_process.configure(
-            argv=[
-                None,
+        """Start Tensorboard server in a subprocess"""
+        self.tensorboard_process = subprocess.Popen(
+            [
+                "tensorboard",
                 "--logdir",
                 self.log_dir,
-                "--host",
-                host,
-                "--port",
-                "8001",
-                "--load_fast",
-                "false",
+                "--host=localhost",
+                "--port=8001",
+                "--load_fast=false",
             ]
         )
-
-        url = self.tensorboard_process.launch()
-        if is_production():
-            url = f"http://{get_host_ip()}:8001"
-
-        print(f"TensorBoard is running at {url}")
-        return url
+        print(f"Tensorboard server has been started")
 
     def stop_tensorboard(self):
         """Stop Tensorboard server"""
-        # if self.tensorboard_process is not None:
-        #     self.tensorboard_process.terminate()
-        pid = self.tensorboard_process._server._process.pid  # Get the process ID
-        os.kill(pid, 9)  # Send a termination signal
-        print("TensorBoard has been stopped.")
+        if self.tensorboard_process is not None:
+            self.tensorboard_process.terminate()
+            print(f"Tensorboard server has been stopped")
 
     def _log(self, logs: dict, idx: int):
         for key, value in logs.items():
