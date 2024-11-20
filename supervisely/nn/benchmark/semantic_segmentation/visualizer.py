@@ -42,6 +42,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
     SidebarWidget,
 )
 from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project_meta import ProjectMeta
 
 
 class SemanticSegmentationVisualizer(BaseVisualizer):
@@ -283,3 +284,16 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
 
     def _create_clickable_label(self):
         return MarkdownWidget(name="clickable_label", title="", text=self.vis_texts.clickable_label)
+
+    def _get_filtered_project_meta(self, eval_result) -> ProjectMeta:
+        remove_classes = []
+        meta = eval_result.pred_project_meta.clone()
+        meta = meta.merge(eval_result.gt_project_meta)
+        if eval_result.classes_whitelist:
+            for obj_class in meta.obj_classes:
+                if obj_class.name not in eval_result.classes_whitelist:
+                    if obj_class.name not in [eval_result.mp.bg_cls_name, "__bg__"]:
+                        remove_classes.append(obj_class.name)
+            if remove_classes:
+                meta = meta.delete_obj_classes(remove_classes)
+        return meta

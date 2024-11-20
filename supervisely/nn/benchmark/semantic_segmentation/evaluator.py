@@ -57,10 +57,11 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             pred_dir=pred_prep_path,
             boundary_width=0.01,
             boundary_iou_d=0.02,
-            num_workers=0,  # FIXME: set 4 for production
+            num_workers=4,
             class_names=self.classes_whitelist,
             result_dir=self.result_dir,
         )
+        self.eval_data["bg_cls_name"] = self.bg_cls_name
         logger.info("Successfully calculated evaluation metrics")
         self._dump_eval_results()
         logger.info("Evaluation results are saved")

@@ -35,6 +35,7 @@ class MetricProvider:
 
         # eval_data
         self.eval_data = eval_data["result"]
+        self.bg_cls_name = eval_data["bg_cls_name"]
         self.per_image_metrics = eval_data["per_image_metrics"]
         self.cmat_cell_img_names = eval_data["cell_img_names"]
         self.class_names = self.eval_data.index.tolist()

@@ -96,9 +96,6 @@ class BaseVisualizer:
             self.api.project.get_meta(eval_result.pred_project_id)
         )
 
-        # set filtered project meta
-        eval_result.filtered_project_meta = self._get_filtered_project_meta(eval_result)
-
         # get dataset infos
         filters = None
         if eval_result.gt_dataset_ids is not None:
