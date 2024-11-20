@@ -1,4 +1,5 @@
 import os
+import socket
 import subprocess
 from typing import Callable
 
@@ -93,7 +94,14 @@ class TensorboardLogger(BaseTrainLogger):
         self.writer = SummaryWriter(log_dir)
 
     def start_tensorboard(self):
-        """Start Tensorboard server in a subprocess"""
+        def get_host_ip():
+            try:
+                host_ip = socket.gethostbyname(socket.gethostname())
+                return host_ip
+            except Exception as e:
+                print(f"Error retrieving host IP: {e}")
+                return "localhost"
+
         # self.tensorboard_process = subprocess.Popen(
         #     [
         #         "tensorboard",
@@ -112,9 +120,23 @@ class TensorboardLogger(BaseTrainLogger):
 
         self.tensorboard_process = program.TensorBoard()
         self.tensorboard_process.configure(
-            argv=[None, "--logdir", self.log_dir, "--host", host, "--port", "8001"]
+            argv=[
+                None,
+                "--logdir",
+                self.log_dir,
+                "--host",
+                host,
+                "--port",
+                "8001",
+                "--load_fast",
+                False,
+            ]
         )
+
         url = self.tensorboard_process.launch()
+        if is_production():
+            url = f"http://{get_host_ip()}:8001"
+
         print(f"TensorBoard is running at {url}")
         return url
 
