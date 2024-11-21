@@ -20,6 +20,7 @@ class GalleryWidget(BaseWidget):
         columns_number: int = 3,
         click_gallery_id: Optional[str] = None,
         opacity: Optional[float] = 0.4,
+        limit: Optional[int] = None,
     ):
         super().__init__(name)
         self.reference = self.id
@@ -27,7 +28,7 @@ class GalleryWidget(BaseWidget):
         self.click_handled = False
         self.click_gallery_id = click_gallery_id
         self.click_data = None
-        self.click_gallery_items_limit = 9
+        self.click_gallery_items_limit = limit or columns_number * 3
         self.image_left_header = False
         self._project_meta = None
         self.show_all_button = False
