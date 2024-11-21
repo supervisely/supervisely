@@ -63,39 +63,20 @@ class TrainApp:
         self,
         framework_name: str,
         models: Union[str, List[Dict[str, Any]]],
-        hyperparameters: Union[str, List[Dict[str, Any]]],
+        hyperparameters: str,
         app_options: Union[str, List[Dict[str, Any]]] = None,
         work_dir: str = None,
     ):
 
         # Init
         self._api = Api.from_env()
+        self._app_state_file = "app_state.json"
 
         if is_production():
             self._task_id = sly_env.task_id()
         else:
             self._task_id = "debug-session"
             logger.info("TrainApp is running in debug mode")
-
-        supported_frameworks = [
-            "yolov5",
-            "yolov5 2.0",
-            "yolov8",
-            "unet",
-            "hrda",
-            "ritm",
-            "rt-detr",
-            "mmdetection",
-            "mmdetection 3.0",
-            "mmsegmentation",
-            "mmclassification",
-            "detectron2",
-        ]
-
-        if framework_name not in supported_frameworks:
-            logger.info(
-                f"Framework: '{framework_name}' is not supported. Supported frameworks: {', '.join(supported_frameworks)}"
-            )
 
         self._framework_name = framework_name
         self._team_id = sly_env.team_id()
@@ -135,8 +116,8 @@ class TrainApp:
         self._gui: TrainGUI = TrainGUI(
             self._framework_name, self._models, self._hyperparameters, self._app_options
         )
-        self._app = Application(layout=self._gui.layout)
-        self._server = self._app.get_server()
+        self.app = Application(layout=self._gui.layout)
+        self._server = self.app.get_server()
         self._register_routes()
         self._train_func = None
         # -------------------------- #
@@ -180,10 +161,6 @@ class TrainApp:
             )
 
     # General
-    @property
-    def app(self) -> Application:
-        return self._app
-
     @property
     def gui(self) -> TrainGUI:
         return self._gui
@@ -269,11 +246,11 @@ class TrainApp:
 
     # Hyperparameters
     @property
-    def hyperparameters_json(self) -> Dict[str, Any]:
-        return yaml.safe_load(self._gui.hyperparameters_selector.get_hyperparameters())
+    def hyperparameters(self) -> Dict[str, Any]:
+        return yaml.safe_load(self.hyperparameters_yaml)
 
     @property
-    def hyperparameters(self) -> str:
+    def hyperparameters_yaml(self) -> str:
         return self._gui.hyperparameters_selector.get_hyperparameters()
 
     @property
@@ -394,7 +371,7 @@ class TrainApp:
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
         # Step 7. Shutdown app
-        self._app.shutdown()
+        self.app.shutdown()
 
         # region TRAIN END
 
@@ -1017,7 +994,7 @@ class TrainApp:
             "train_val_splits": train_val_splits,
             "classes": self.classes,
             "model": model,
-            "hyperparameters": self.hyperparameters,
+            "hyperparameters": self.hyperparameters_yaml,
             "options": options,
         }
 

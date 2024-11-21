@@ -61,14 +61,8 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
         except JSONDecodeError as e:
             logger.debug(f"Failed to decode JSON from '{experiment_path}': {e}")
         return None
-
+    
     with ThreadPoolExecutor() as executor:
-        futures = [
-            executor.submit(fetch_experiment_data, file_info) for file_info in sorted_file_infos
-        ]
-        for future in as_completed(futures):
-            result = future.result()
-            if result is not None:
-                experiment_infos.append(result)
+        experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
 
     return experiment_infos
