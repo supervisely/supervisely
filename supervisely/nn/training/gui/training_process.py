@@ -1,4 +1,5 @@
-from supervisely._utils import is_development
+from supervisely import Api
+from supervisely._utils import is_production
 from supervisely.app.widgets import Card  # SelectCudaDevice,
 from supervisely.app.widgets import (
     Button,
@@ -21,6 +22,7 @@ class TrainingProcess:
     title = "Training Process"
 
     def __init__(self):
+        api = Api.from_env()
 
         self.select_device = SelectCudaDevice()
         self.success_message = DoneLabel(
@@ -66,7 +68,16 @@ class TrainingProcess:
         self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
         self.artifacts_upload_progress.hide()
 
-        self.tensorboard_link = "http://localhost:8000/tensorboard"
+        if is_production():
+            task_id = get_task_id(raise_not_found=False)
+            task_info = api.task.get_info_by_id(task_id)
+            session_token = task_info["meta"]["sessionToken"]
+            sly_url_prefix = f"/net/{session_token}"
+            self.tensorboard_link = f"{api.server_address}{sly_url_prefix}/tensorboard"
+        else:
+            task_id = None
+            self.tensorboard_link = "http://localhost:8000/tensorboard"
+
         self.tensorboard_button = Button(
             "Open Tensorboard",
             button_type="info",
@@ -74,7 +85,7 @@ class TrainingProcess:
             icon="zmdi zmdi-chart",
             link=self.tensorboard_link,
         )
-        # self.tensorboard_button.disable()
+        self.tensorboard_button.disable()
 
         self.validator_text = Text("")
         self.validator_text.hide()
@@ -99,11 +110,7 @@ class TrainingProcess:
             icon="zmdi zmdi-caret-down-circle",
         )
 
-        if is_development():
-            self.task_logs = TaskLogs()
-        else:
-            task_id = get_task_id(raise_not_found=False)
-            self.task_logs = TaskLogs(task_id)
+        self.task_logs = TaskLogs(task_id)
         self.task_logs.hide()
         logs_container = Container([self.logs_button, self.task_logs])
 

@@ -139,21 +139,10 @@ class TrainApp:
         self._train_func = None
         # -------------------------- #
 
-        # Tensorboard
-        if is_production():
-            task_info = self._api.task.get_info_by_id(self._task_id)
-            self.__session_token = task_info["meta"]["sessionToken"]
-            self.__sly_url_prefix = f"/net/{self.__session_token}"
-        else:
-            self.__session_token = None
-            self.__sly_url_prefix = "/tensorboard"
-
+        # Tensorboard debug
         self._register_routes()
-
-        if is_production():
-            train_logger.start_tensorboard(self.__sly_url_prefix)
-        else:
-            train_logger.start_tensorboard()
+        train_logger.start_tensorboard()
+        self.gui.training_process.tensorboard_button.enable()
 
         # Train endpoints
         @self._server.post("/train_from_api")
@@ -171,30 +160,14 @@ class TrainApp:
                 raise e
 
     def _register_routes(self):
-        if is_production():
-
-            @self._server.get("/tensorboard/{path:path}")
-            async def proxy_tensorboard(path: str, response: Response):
-                logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXX")
-                logger.info(path)
-                logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXX")
-                async with httpx.AsyncClient() as client:
-                    tensorboard_url = f"http://localhost:8001/{path}"
-                    proxy = await client.get(tensorboard_url)
-                response.body = proxy.content
-                response.status_code = proxy.status_code
-                return response
-
-        else:
-
-            @self._server.get(f"{self.__sly_url_prefix}/{{path:path}}")
-            async def proxy_tensorboard(path: str, response: Response):
-                async with httpx.AsyncClient() as client:
-                    tensorboard_url = f"http://localhost:8001/{path}"
-                    proxy = await client.get(tensorboard_url)
-                response.body = proxy.content
-                response.status_code = proxy.status_code
-                return response
+        @self._server.get("/tensorboard/{path:path}")
+        async def proxy_tensorboard(path: str, response: Response):
+            async with httpx.AsyncClient() as client:
+                tensorboard_url = f"http://localhost:8001/{path}"
+                proxy = await client.get(tensorboard_url)
+            response.body = proxy.content
+            response.status_code = proxy.status_code
+            return response
 
     # General
     @property
@@ -1430,12 +1403,6 @@ class TrainApp:
     def _init_logger(self):
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
-
-        if is_production():
-            self.gui.training_process.tensorboard_button.link = (
-                f"{self._api.server_address}{self.__sly_url_prefix}/tensorboard"
-            )
-
         train_logger.start_tensorboard(self.__sly_url_prefix)
         self._setup_logger_callbacks()
         time.sleep(1)
