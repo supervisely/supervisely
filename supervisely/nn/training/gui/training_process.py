@@ -73,7 +73,7 @@ class TrainingProcess:
             task_info = api.task.get_info_by_id(task_id)
             session_token = task_info["meta"]["sessionToken"]
             sly_url_prefix = f"/net/{session_token}"
-            self.tensorboard_link = f"{api.server_address}{sly_url_prefix}/tensorboard"
+            self.tensorboard_link = f"{api.server_address}{sly_url_prefix}/tensorboard/"
         else:
             task_id = None
             self.tensorboard_link = "http://localhost:8000/tensorboard"
