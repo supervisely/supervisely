@@ -66,7 +66,7 @@ class TrainingProcess:
         self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
         self.artifacts_upload_progress.hide()
 
-        self.tensorboard_link = "http://localhost:8001/"
+        self.tensorboard_link = "http://localhost:8000/tensorboard"
         self.tensorboard_button = Button(
             "Open Tensorboard",
             button_type="info",

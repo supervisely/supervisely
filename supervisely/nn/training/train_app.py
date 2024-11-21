@@ -139,6 +139,18 @@ class TrainApp:
         self._train_func = None
         # -------------------------- #
 
+        # Tensorboard
+        if is_production():
+            task_info = self._api.task.get_info_by_id(self._task_id)
+            self.__session_token = task_info["meta"]["sessionToken"]
+            self.__sly_url_prefix = f"/net/{self.__session_token}"
+        else:
+            self.__session_token = None
+            self.__sly_url_prefix = None
+
+        self._register_routes()
+        train_logger.start_tensorboard(self.__sly_url_prefix)
+
         # Train endpoints
         @self._server.post("/train_from_api")
         def _deploy_from_api(response: Response, request: Request):
@@ -154,20 +166,26 @@ class TrainApp:
                 self.gui.training_process.start_button.loading = False
                 raise e
 
-        task_info = self._api.task.get_info_by_id(self._task_id)
-        sly_url_prefix = f'/net/{task_info["meta"]["sessionToken"]}'
+    def _register_routes(self):
         if is_production():
-            get_val = f"/{sly_url_prefix}/tensorboard/{{path:path}}"
-        else:
-            get_val = "/tensorboard/{path:path}"
 
-        @self._server.get(get_val)
-        async def proxy_tensorboard(path: str, response: Response):
-            async with httpx.AsyncClient() as client:
-                proxy = await client.get(f"http://localhost:8001/{path}")
-            response.body = proxy.content
-            response.status_code = proxy.status_code
-            return response
+            @self._server.get(f"{self.__sly_url_prefix}/tensorboard/{{path:path}}")
+            async def proxy_tensorboard(response: Response):
+                async with httpx.AsyncClient() as client:
+                    proxy = await client.get("http://localhost:8001/")
+                response.body = proxy.content
+                response.status_code = proxy.status_code
+                return response
+
+        else:
+
+            @self._server.get("/tensorboard/{path:path}")
+            async def proxy_tensorboard(path: str, response: Response):
+                async with httpx.AsyncClient() as client:
+                    proxy = await client.get(f"http://localhost:8001/{path}")
+                response.body = proxy.content
+                response.status_code = proxy.status_code
+                return response
 
     # General
     @property
@@ -1404,14 +1422,12 @@ class TrainApp:
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
 
-        tb_url_prefix = None
         if is_production():
-            task_info = self._api.task.get_info_by_id(self._task_id)
-            tb_url_prefix = f'/net/{task_info["meta"]["sessionToken"]}'
-            base_url = f"{self._api.server_address}{tb_url_prefix}"
-            self.gui.training_process.tensorboard_button.link = base_url
+            self.gui.training_process.tensorboard_button.link = (
+                f"{self._api.server_address}{self.__sly_url_prefix}/tensorboard"
+            )
 
-        train_logger.start_tensorboard(tb_url_prefix)
+        train_logger.start_tensorboard(self.__sly_url_prefix)
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()
