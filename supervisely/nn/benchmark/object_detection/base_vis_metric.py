@@ -33,7 +33,9 @@ class DetectionVisMetric(BaseVisMetric):
 
             for x in v:
                 img_ids.add(x["dt_img_id"])
-                obj_ids.add(x["dt_obj_id"])
+                obj_id = x["dt_obj_id"]
+                if obj_id is not None:
+                    obj_ids.add(x["dt_obj_id"])
 
             res["clickData"][key]["imagesIds"] = list(img_ids)
             res["clickData"][key]["filters"] = [
