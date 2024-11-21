@@ -149,7 +149,11 @@ class TrainApp:
             self.__sly_url_prefix = "/tensorboard"
 
         self._register_routes()
-        train_logger.start_tensorboard(self.__sly_url_prefix)
+
+        if is_production():
+            train_logger.start_tensorboard(self.__sly_url_prefix)
+        else:
+            train_logger.start_tensorboard()
 
         # Train endpoints
         @self._server.post("/train_from_api")
