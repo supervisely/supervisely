@@ -97,7 +97,7 @@ class TensorboardLogger(BaseTrainLogger):
             self.log_dir,
             "--host=localhost",
             "--port=8001",
-            "--load_fast=false",
+            "--load_fast=true",
             "--reload_multifile=true",
         ]
         self.tensorboard_process = subprocess.Popen(args)
