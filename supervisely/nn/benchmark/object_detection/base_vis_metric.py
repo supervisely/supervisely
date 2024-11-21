@@ -18,7 +18,7 @@ class DetectionVisMetric(BaseVisMetric):
 
         res = {}
 
-        res["layoutTemplatae"] = [None, None, None]
+        res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
         for key, v in self.eval_result.click_data.objects_by_class.items():
             res["clickData"][key] = {}
