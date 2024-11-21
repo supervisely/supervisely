@@ -136,13 +136,13 @@ class TrainApp:
         )
         self._app = Application(layout=self._gui.layout)
         self._server = self._app.get_server()
+        self._register_routes()
         self._train_func = None
         # -------------------------- #
 
         # Tensorboard debug
-        self._register_routes()
-        train_logger.start_tensorboard()
-        self.gui.training_process.tensorboard_button.enable()
+        # train_logger.start_tensorboard()
+        # self.gui.training_process.tensorboard_button.enable()
 
         # Train endpoints
         @self._server.post("/train_from_api")
@@ -1403,7 +1403,7 @@ class TrainApp:
     def _init_logger(self):
         self._log_dir = join(self.work_dir, "logs")
         train_logger.set_log_dir(self._log_dir)
-        train_logger.start_tensorboard(self.__sly_url_prefix)
+        train_logger.start_tensorboard()
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()
