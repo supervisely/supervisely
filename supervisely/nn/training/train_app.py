@@ -170,9 +170,10 @@ class TrainApp:
         if is_production():
 
             @self._server.get(f"{self.__sly_url_prefix}/tensorboard/{{path:path}}")
-            async def proxy_tensorboard(response: Response):
+            async def proxy_tensorboard(path: str, response: Response):
                 async with httpx.AsyncClient() as client:
-                    proxy = await client.get("http://localhost:8001/")
+                    tensorboard_url = f"http://localhost:8001/{path}"
+                    proxy = await client.get(tensorboard_url)
                 response.body = proxy.content
                 response.status_code = proxy.status_code
                 return response
@@ -182,7 +183,8 @@ class TrainApp:
             @self._server.get("/tensorboard/{path:path}")
             async def proxy_tensorboard(path: str, response: Response):
                 async with httpx.AsyncClient() as client:
-                    proxy = await client.get(f"http://localhost:8001/{path}")
+                    tensorboard_url = f"http://localhost:8001/{path}"
+                    proxy = await client.get(tensorboard_url)
                 response.body = proxy.content
                 response.status_code = proxy.status_code
                 return response
