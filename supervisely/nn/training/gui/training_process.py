@@ -74,7 +74,7 @@ class TrainingProcess:
             icon="zmdi zmdi-chart",
             link=self.tensorboard_link,
         )
-        self.tensorboard_button.disable()
+        # self.tensorboard_button.disable()
 
         self.validator_text = Text("")
         self.validator_text.hide()
