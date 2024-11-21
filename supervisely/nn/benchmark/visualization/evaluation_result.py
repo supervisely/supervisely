@@ -90,7 +90,7 @@ class EvalResult:
         if not self.name:
             return
         if len(self.name) > 20:
-            return self.name[:14] + "..." + self.name[-4:]
+            return self.name[:9] + "..." + self.name[-6:]
         return self.name
 
     @property
