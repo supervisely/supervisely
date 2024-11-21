@@ -204,7 +204,6 @@ class BaseVisualizer:
     def _get_filtered_project_meta(self, eval_result) -> ProjectMeta:
         remove_classes = []
         meta = eval_result.pred_project_meta.clone()
-        meta = meta.merge(eval_result.gt_project_meta)
         if eval_result.classes_whitelist:
             for obj_class in meta.obj_classes:
                 if obj_class.name not in eval_result.classes_whitelist:
