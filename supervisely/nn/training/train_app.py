@@ -154,7 +154,14 @@ class TrainApp:
                 self.gui.training_process.start_button.loading = False
                 raise e
 
-        @self._server.get("/tensorboard/{path:path}")
+        task_info = self._api.task.get_info_by_id(self._task_id)
+        sly_url_prefix = f'/net/{task_info["meta"]["sessionToken"]}'
+        if is_production():
+            get_val = f"/{sly_url_prefix}/tensorboard/{{path:path}}"
+        else:
+            get_val = "/tensorboard/{path:path}"
+
+        @self._server.get(get_val)
         async def proxy_tensorboard(path: str, response: Response):
             async with httpx.AsyncClient() as client:
                 proxy = await client.get(f"http://localhost:8001/{path}")
