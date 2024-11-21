@@ -100,8 +100,8 @@ class TensorboardLogger(BaseTrainLogger):
             "--load_fast=false",
             "--reload_multifile=true",
         ]
-        if url_prefix:
-            args.extend(["--path_prefix", f"{url_prefix}/tensorboard"])
+        # if url_prefix:
+        #     args.extend(["--path_prefix", f"{url_prefix}/tensorboard"])
         self.tensorboard_process = subprocess.Popen(args)
         print(f"Tensorboard server has been started")
 

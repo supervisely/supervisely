@@ -173,8 +173,11 @@ class TrainApp:
     def _register_routes(self):
         if is_production():
 
-            @self._server.get(f"{self.__sly_url_prefix}/tensorboard/{{path:path}}")
+            @self._server.get("/tensorboard/{path:path}")
             async def proxy_tensorboard(path: str, response: Response):
+                logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXX")
+                logger.info(path)
+                logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXX")
                 async with httpx.AsyncClient() as client:
                     tensorboard_url = f"http://localhost:8001/{path}"
                     proxy = await client.get(tensorboard_url)
