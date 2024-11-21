@@ -3,13 +3,19 @@ from __future__ import annotations
 from typing import Dict, Literal
 
 from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
-from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
+from supervisely.nn.benchmark.visualization.widgets import (
+    ChartWidget,
+    ContainerWidget,
+    MarkdownWidget,
+    RadioGroupWidget,
+)
 
 
 class FrequentlyConfused(DetectionVisMetric):
     MARKDOWN = "frequently_confused"
     MARKDOWN_EMPTY = "frequently_confused_empty"
     CHART = "frequently_confused"
+    RADIO_GROUP = "frequently_confused_radio_group"
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -39,22 +45,31 @@ class FrequentlyConfused(DetectionVisMetric):
         return MarkdownWidget(self.MARKDOWN, "Frequently Confused Classes", text)
 
     @property
-    def chart_probability(self) -> ChartWidget:
-        chart = ChartWidget(self.CHART, self._get_figure("probability"))
-        chart.set_click_data(
-            self.explore_modal_table.id,
-            self.get_click_data(),
-            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+    def chart(self) -> ContainerWidget:
+        return ContainerWidget(
+            [self.radio_group(), self._get_chart("probability"), self._get_chart("count")],
+            self.CHART,
         )
-        return chart
 
-    @property
-    def chart_count(self) -> ChartWidget:
-        chart = ChartWidget(self.CHART, self._get_figure("count"))
+    def radio_group(self) -> RadioGroupWidget:
+        return RadioGroupWidget(
+            "Probability or Count",
+            self.RADIO_GROUP,
+            ["probability", "count"],
+        )
+
+    def _get_chart(self, switch_key: Literal["probability", "count"]) -> ChartWidget:
+        chart = ChartWidget(
+            self.CHART,
+            self._get_figure(switch_key),
+            switch_key=switch_key,
+            switchable=self.switchable,
+            radiogroup_id=self.RADIO_GROUP,
+        )
         chart.set_click_data(
             self.explore_modal_table.id,
             self.get_click_data(),
-            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}${'-'}${payload.points[0].y}`, 'keySeparator': '-',",
+            chart_click_extra="'getKey': (payload) => `${payload.points[0].x}`, 'keySeparator': '-',",
         )
         return chart
 
@@ -83,6 +98,7 @@ class FrequentlyConfused(DetectionVisMetric):
             # title="Frequently confused class pairs",
             xaxis_title="Class Pair",
             yaxis_title=y_labels.name.capitalize(),
+            width=1000 if len(x_labels) > 10 else 600,
         )
         fig.update_traces(text=y_labels.round(2))
         fig.update_traces(
@@ -102,7 +118,7 @@ class FrequentlyConfused(DetectionVisMetric):
 
         for keypair, v in self.eval_result.click_data.frequently_confused.items():
             subkey1, subkey2 = keypair
-            key = subkey1 + self._keypair_sep + subkey2
+            key = f"{subkey1} {self._keypair_sep} {subkey2}"
             res["clickData"][key] = {}
             res["clickData"][key]["imagesIds"] = []
             res["clickData"][key]["title"] = f"Confused classes: {subkey1} - {subkey2}"

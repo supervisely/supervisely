@@ -161,8 +161,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.frequently_confused_present = frequently_confused.is_empty is False
         if self.frequently_confused_present:
             self.frequently_confused_md = frequently_confused.md
-            self.frequently_confused_chart_1 = frequently_confused.chart_count
-            self.frequently_confused_chart_2 = frequently_confused.chart_probability
+            self.frequently_confused_chart = frequently_confused.chart
         else:
             self.frequently_confused_md = frequently_confused.empty_md
 
@@ -291,8 +290,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         ]
         if self.frequently_confused_present:
             is_anchors_widgets.append((0, self.clickable_label))
-            is_anchors_widgets.append((0, self.frequently_confused_chart_1))
-            is_anchors_widgets.append((0, self.frequently_confused_chart_2))
+            is_anchors_widgets.append((0, self.frequently_confused_chart))
 
         is_anchors_widgets.extend(
             [
@@ -477,7 +475,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                         self._update_match_data(gt_img_id, diff_image_info=diff_img_info)
 
         with self.pbar(
-            message="Visualizations: Adding tags to predictions", total=len(pred_tag_list)
+            message="Visualizations: Append tags to predictions", total=len(pred_tag_list)
         ) as p:
             self.api.image.tag.add_to_objects(
                 self.eval_result.pred_project_id, pred_tag_list, progress=p
@@ -509,7 +507,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                         f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
                     )
 
-                for item_names_batch in batched(pred_dataset.get_items_names(), 100):
+                for item_names_batch in batched(pred_dataset.get_items_names(), 50):
                     # diff project may be not created yet
                     item_names_batch.sort()
                     try:
@@ -624,7 +622,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         logger.info("Adding tags to DT project")
 
         with self.pbar(
-            message="Visualizations: Adding tags to DT project", total=len(matches)
+            message="Visualizations: Adding tags to predictions", total=len(matches)
         ) as p:
             for batch in batched(matches, 100):
                 pred_tag_list = []
