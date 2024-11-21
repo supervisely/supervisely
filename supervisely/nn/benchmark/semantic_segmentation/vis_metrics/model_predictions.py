@@ -89,9 +89,9 @@ class ModelPredictions(SemanticSegmVisMetric):
     def get_click_data(self) -> Dict:
         res = {}
         res["layoutTemplate"] = [
-            {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
-            {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
-            {"skipObjectTagsFiltering": ["confidence"], "columnTitle": "Difference"},
+            {"columnTitle": "Original Image"},
+            {"columnTitle": "Ground Truth Masks"},
+            {"columnTitle": "Predicted Masks"},
         ]
         click_data = res.setdefault("clickData", {})
 
