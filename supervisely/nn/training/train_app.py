@@ -138,7 +138,6 @@ class TrainApp:
         self._server = self._app.get_server()
         self._train_func = None
         # -------------------------- #
-        train_logger.start_tensorboard()
 
         # Train endpoints
         @self._server.post("/train_from_api")
@@ -1405,8 +1404,7 @@ class TrainApp:
             base_url = f"{self._api.server_address}{tb_url_prefix}"
             self.gui.training_process.tensorboard_button.link = base_url
 
-        # train_logger.start_tensorboard(tb_url_prefix)
-        # self.setup_tensorboard_proxy()
+        train_logger.start_tensorboard(tb_url_prefix)
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()
