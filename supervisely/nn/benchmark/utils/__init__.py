@@ -12,8 +12,5 @@ from supervisely.nn.benchmark.utils.semantic_segmentation.metric_provider import
     SemSegmMetricProvider,
 )
 from supervisely.nn.benchmark.utils.semantic_segmentation.evaluator import Evaluator
-from supervisely.nn.benchmark.utils.semantic_segmentation.loader import (
-    SegmentationLoader,
-    build_segmentation_loader,
-)
+from supervisely.nn.benchmark.utils.semantic_segmentation.loader import build_segmentation_loader
 from supervisely.nn.benchmark.utils.semantic_segmentation.functions import prepare_segmentation_data
