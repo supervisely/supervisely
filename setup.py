@@ -3,7 +3,7 @@ import re
 import subprocess
 
 import requests
-from pkg_resources import DistributionNotFound, get_distribution
+from importlib.metadata import PackageNotFoundError, Distribution
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -110,6 +110,7 @@ INSTALL_REQUIRES = [
     "pandas>=1.1.3, <=2.1.4",
     "async_asgi_testclient",
     "PyYAML",
+    "packaging",
     "distinctipy",
     "beautifulsoup4",
     "numerize",
@@ -145,9 +146,9 @@ def check_alternative_installation(install_require, alternative_install_requires
     for alternative_install_require in alternative_install_requires:
         try:
             alternative_pkg_name = re.split(r"[ !<>=]", alternative_install_require)[0]
-            get_distribution(alternative_pkg_name)
+            dist = Distribution.from_name(alternative_pkg_name)
             return str(alternative_install_require)
-        except DistributionNotFound:
+        except PackageNotFoundError:
             continue
 
     return str(install_require)
