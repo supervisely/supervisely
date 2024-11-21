@@ -79,7 +79,7 @@ class BaseVisualizer:
         self.gt_dataset_infos = None
         self.pbar = progress or tqdm_sly
 
-        with self.pbar("Fetching project and dataset infos", len(eval_results)) as p:
+        with self.pbar(message="Fetching project and dataset infos", total=len(eval_results)) as p:
             for eval_result in self.eval_results:
                 self._get_eval_project_infos(eval_result)
                 p.update()

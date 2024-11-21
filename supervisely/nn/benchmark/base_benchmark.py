@@ -333,12 +333,9 @@ class BaseBenchmark:
     def _download_projects(self, save_images=False):
         gt_path, dt_path = self.get_project_paths()
         if not os.path.exists(gt_path):
-            total = (
-                self.gt_project_info.items_count
-                if self.gt_images_ids is None
-                else len(self.gt_images_ids)
-            )
-            with self.pbar(message="Evaluation: Downloading GT annotations", total=total) as p:
+            with self.pbar(
+                message="Evaluation: Downloading GT annotations", total=self.num_items
+            ) as p:
                 download_project(
                     self.api,
                     self.gt_project_info.id,
@@ -353,12 +350,9 @@ class BaseBenchmark:
         else:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
-            total = (
-                self.gt_project_info.items_count
-                if self.gt_images_ids is None
-                else len(self.gt_images_ids)
-            )
-            with self.pbar(message="Evaluation: Downloading Pred annotations", total=total) as p:
+            with self.pbar(
+                message="Evaluation: Downloading Pred annotations", total=self.num_items
+            ) as p:
                 download_project(
                     self.api,
                     self.dt_project_info.id,
@@ -466,7 +460,7 @@ class BaseBenchmark:
             raise NotImplementedError("Visualizer class is not defined.")
         eval_result = self.evaluator.get_eval_result()
         vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)
-        with self.pbar("Visualizations: Rendering layout", total=1) as p:
+        with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
             vis.visualize()
             p.update(1)
 
