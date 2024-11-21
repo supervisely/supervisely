@@ -921,7 +921,7 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
-        # self.test_client = TestClient(self._fastapi)
+        self.test_client = TestClient(self._fastapi)
 
         if not headless:
             templates = Jinja2Templates()
@@ -938,12 +938,12 @@ class Application(metaclass=Singleton):
 
             logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
 
-            # if is_production():
-            #     # to save offline session
-            #     from supervisely.app.content import ContentOrigin
+            if is_production():
+                # to save offline session
+                from supervisely.app.content import ContentOrigin
 
-            #     ContentOrigin().start()
-            #     Thread(target=run_sync, args=(self.test_client.get("/"),)).start()
+                ContentOrigin().start()
+                Thread(target=run_sync, args=(self.test_client.get("/"),)).start()
 
         server = self.get_server()
 
