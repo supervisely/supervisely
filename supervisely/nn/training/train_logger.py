@@ -1,4 +1,5 @@
 import subprocess
+from time import sleep
 from typing import Callable
 
 from tensorboard.compat.proto.event_pb2 import Event
@@ -101,7 +102,6 @@ class TensorboardLogger(BaseTrainLogger):
         ]
         if url_prefix:
             args.extend(["--path_prefix", url_prefix])
-
         self.tensorboard_process = subprocess.Popen(args)
         print(f"Tensorboard server has been started")
 

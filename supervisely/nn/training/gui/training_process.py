@@ -1,7 +1,7 @@
 from supervisely._utils import is_development
+from supervisely.app.widgets import Card  # SelectCudaDevice,
 from supervisely.app.widgets import (
     Button,
-    Card,  # SelectCudaDevice,
     Container,
     DoneLabel,
     Empty,
@@ -9,6 +9,7 @@ from supervisely.app.widgets import (
     FolderThumbnail,
     Progress,
     ReportThumbnail,
+    SelectCudaDevice,
     SlyTqdm,
     TaskLogs,
     Text,
@@ -20,7 +21,8 @@ class TrainingProcess:
     title = "Training Process"
 
     def __init__(self):
-        # @TODO: add charts
+
+        self.select_device = SelectCudaDevice()
         self.success_message = DoneLabel(
             "Training completed. Training artifacts were uploaded to Team Files."
         )
@@ -32,14 +34,10 @@ class TrainingProcess:
         self.model_benchmark_report_thumbnail = ReportThumbnail()
         self.model_benchmark_report_thumbnail.hide()
 
-        self.model_benchmark_report_text = Text(
-            status="info", text="Creating report on model..."
-        )
+        self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
         self.model_benchmark_report_text.hide()
 
-        self.project_download_progress_main = Progress(
-            "Downloading datasets", hide_on_finish=True
-        )
+        self.project_download_progress_main = Progress("Downloading datasets", hide_on_finish=True)
         self.project_download_progress_main.hide()
 
         self.project_download_progress_secondary = Progress(
@@ -47,14 +45,10 @@ class TrainingProcess:
         )
         self.project_download_progress_secondary.hide()
 
-        self.model_download_progress_main = Progress(
-            "Downloading model files", hide_on_finish=True
-        )
+        self.model_download_progress_main = Progress("Downloading model files", hide_on_finish=True)
         self.model_download_progress_main.hide()
 
-        self.model_download_progress_secondary = Progress(
-            "Downloading file", hide_on_finish=True
-        )
+        self.model_download_progress_secondary = Progress("Downloading file", hide_on_finish=True)
         self.model_download_progress_secondary.hide()
 
         self.epoch_progress = Progress("Epochs")
@@ -69,9 +63,7 @@ class TrainingProcess:
         self.model_benchmark_progress_secondary = Progress(hide_on_finish=True)
         self.model_benchmark_progress_secondary.hide()
 
-        self.artifacts_upload_progress = Progress(
-            "Uploading artifacts", hide_on_finish=True
-        )
+        self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
         self.artifacts_upload_progress.hide()
 
         self.tensorboard_link = "http://localhost:8001/"
@@ -117,6 +109,7 @@ class TrainingProcess:
 
         container = Container(
             [
+                self.select_device,
                 self.validator_text,
                 button_container,
                 self.success_message,
@@ -182,3 +175,6 @@ class TrainingProcess:
             self.task_logs.hide()
             self.logs_button.text = "Show logs"
             self.logs_button.icon = "zmdi zmdi-caret-down-circle"
+
+    def get_device(self):
+        return self.select_device.get_device()

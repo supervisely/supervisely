@@ -138,6 +138,7 @@ class TrainApp:
         self._server = self._app.get_server()
         self._train_func = None
         # -------------------------- #
+        train_logger.start_tensorboard()
 
         # Train endpoints
         @self._server.post("/train_from_api")
@@ -153,6 +154,14 @@ class TrainApp:
             except Exception as e:
                 self.gui.training_process.start_button.loading = False
                 raise e
+
+        @self._server.get("/tensorboard/{path:path}")
+        async def proxy_tensorboard(path: str, response: Response):
+            async with httpx.AsyncClient() as client:
+                proxy = await client.get(f"http://localhost:8001/{path}")
+            response.body = proxy.content
+            response.status_code = proxy.status_code
+            return response
 
     # General
     @property
@@ -229,6 +238,10 @@ class TrainApp:
     def log_dir(self) -> str:
         return self._log_dir
 
+    @property
+    def device(self) -> str:
+        return self._gui.training_process.get_device()
+
     # Classes
     @property
     def classes(self) -> List[str]:
@@ -294,6 +307,7 @@ class TrainApp:
     def start(self):
         sly_fs.mkdir(self.work_dir, True)
         sly_fs.mkdir(self._output_dir, True)
+        sly_fs.mkdir(self._log_dir, True)
 
         def decorator(func):
             self._train_func = func
@@ -1391,8 +1405,8 @@ class TrainApp:
             base_url = f"{self._api.server_address}{tb_url_prefix}"
             self.gui.training_process.tensorboard_button.link = base_url
 
-        train_logger.start_tensorboard(tb_url_prefix)
-        self.setup_tensorboard_proxy()
+        # train_logger.start_tensorboard(tb_url_prefix)
+        # self.setup_tensorboard_proxy()
         self._setup_logger_callbacks()
         time.sleep(1)
         self._gui.training_process.tensorboard_button.enable()
@@ -1451,30 +1465,30 @@ class TrainApp:
         self.postprocess(experiment_info)
         self.gui.training_process.start_button.loading = False
 
-    def setup_tensorboard_proxy(self):
-        @self._server.api_route(
-            "/tensorboard/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
-        )
-        def proxy_to_tensorboard(path: str, request: Request):
-            url = f"http://localhost:8001/{path}"
-            try:
-                # Forward the request to TensorBoard
-                headers = dict(request.headers)
-                response = requests.request(
-                    method=request.method,
-                    url=url,
-                    headers=headers,
-                    data=request.body(),
-                    params=request.query_params,
-                    stream=True,
-                )
+    # def setup_tensorboard_proxy(self):
+    #     @self._server.api_route(
+    #         "/tensorboard/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+    #     )
+    #     def proxy_to_tensorboard(path: str, request: Request):
+    #         url = f"http://localhost:8001/{path}"
+    #         try:
+    #             # Forward the request to TensorBoard
+    #             headers = dict(request.headers)
+    #             response = requests.request(
+    #                 method=request.method,
+    #                 url=url,
+    #                 headers=headers,
+    #                 data=request.body(),
+    #                 params=request.query_params,
+    #                 stream=True,
+    #             )
 
-                # Create the response to return to the client
-                return StreamingResponse(
-                    response.raw, status_code=response.status_code, headers=dict(response.headers)
-                )
-            except requests.RequestException as exc:
-                return JSONResponse(
-                    status_code=502,
-                    content={"error": f"Unable to connect to the proxied server: {exc}"},
-                )
+    #             # Create the response to return to the client
+    #             return StreamingResponse(
+    #                 response.raw, status_code=response.status_code, headers=dict(response.headers)
+    #             )
+    #         except requests.RequestException as exc:
+    #             return JSONResponse(
+    #                 status_code=502,
+    #                 content={"error": f"Unable to connect to the proxied server: {exc}"},
+    #             )
