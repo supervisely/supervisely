@@ -136,28 +136,6 @@ class TrainingProcess:
             ]
         )
 
-        # container = Container(
-        #     [
-        #         self.success_message,
-        #         self.artifacts_thumbnail,
-        #         self.model_benchmark_report_thumbnail,
-        #         self.model_benchmark_report_text,
-        #         self.validator_text,
-        #         button_container,
-        #         self.tensorboard_button,
-        #         self.logs_button,
-        #         self.task_logs,
-        #         self.project_download_progress_main,
-        #         self.project_download_progress_secondary,
-        #         self.model_download_progress_main,
-        #         self.model_download_progress_secondary,
-        #         self.epoch_progress,
-        #         self.iter_progress,
-        #         self.artifacts_upload_progress,
-        #         self.model_benchmark_progress_main,
-        #         self.model_benchmark_progress_secondary,
-        #     ]
-        # )
         self.card = Card(
             title="Training Process",
             description="Track progress and manage training",

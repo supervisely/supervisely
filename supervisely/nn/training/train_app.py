@@ -11,6 +11,7 @@ import requests
 import yaml
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
@@ -160,14 +161,23 @@ class TrainApp:
                 raise e
 
     def _register_routes(self):
+        client = httpx.AsyncClient(base_url="http://127.0.0.1:8001/")
+
+        @self._server.post("/tensorboard/{path:path}")
         @self._server.get("/tensorboard/{path:path}")
-        async def proxy_tensorboard(path: str, response: Response):
-            async with httpx.AsyncClient() as client:
-                tensorboard_url = f"http://localhost:8001/{path}"
-                proxy = await client.get(tensorboard_url)
-            response.body = proxy.content
-            response.status_code = proxy.status_code
-            return response
+        async def _reverse_proxy(path: str, request: Request):
+            url = httpx.URL(path=path, query=request.url.query.encode("utf-8"))
+            headers = [(k, v) for k, v in request.headers.raw if k != b"host"]
+            req = client.build_request(
+                request.method, url, headers=headers, content=request.stream()
+            )
+            r = await client.send(req, stream=True)
+            return StreamingResponse(
+                r.aiter_raw(),
+                status_code=r.status_code,
+                headers=r.headers,
+                background=BackgroundTask(r.aclose),
+            )
 
     # General
     @property
@@ -324,6 +334,10 @@ class TrainApp:
 
     def preprocess(self):
         self.gui.disable_select_buttons()
+
+        self.gui.training_process.select_device.disable()
+        self.gui.training_process.select_device.hide()
+
         logger.info("Preprocessing")
         # Step 1. Workflow Input
         if is_production():
