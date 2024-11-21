@@ -60,6 +60,7 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             num_workers=4,
             class_names=self.classes_whitelist,
             result_dir=self.result_dir,
+            progress=self.progress,
         )
         self.eval_data["bg_cls_name"] = self.bg_cls_name
         logger.info("Successfully calculated evaluation metrics")

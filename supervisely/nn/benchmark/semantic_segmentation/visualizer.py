@@ -46,8 +46,8 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class SemanticSegmentationVisualizer(BaseVisualizer):
-    def __init__(self, api, eval_results, workdir="./visualizations"):
-        super().__init__(api, eval_results, workdir)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.vis_texts = vis_texts
         self._widgets_created = False
@@ -221,55 +221,60 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         diff_dataset_name_map = {_get_full_name(i, diff_map): ds for i, ds in diff_map.items()}
         pred_dataset_name_map = {_get_full_name(i, pred_map): ds for i, ds in pred_map.items()}
 
-        for pred_dataset in pred_project.datasets:
-            pred_dataset: Dataset
-            gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
-            try:
-                diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
-                pred_dataset_info = pred_dataset_name_map[pred_dataset.name]
-            except KeyError:
-                raise RuntimeError(
-                    f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
-                )
-
-            try:
-                for src_images in self.api.image.get_list_generator(
-                    pred_dataset_info.id, force_metadata_for_links=False, batch_size=100
-                ):
-                    dst_images = self.api.image.copy_batch_optimized(
-                        pred_dataset_info.id,
-                        src_images,
-                        diff_dataset_info.id,
-                        with_annotations=False,
-                        skip_validation=True,
+        with self.pbar(
+            message="Visualizations: Initializing match data", total=pred_project.total_items
+        ) as p:
+            for pred_dataset in pred_project.datasets:
+                pred_dataset: Dataset
+                gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
+                try:
+                    diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
+                    pred_dataset_info = pred_dataset_name_map[pred_dataset.name]
+                except KeyError:
+                    raise RuntimeError(
+                        f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
                     )
-                    for diff_image_info in dst_images:
-                        item_name = diff_image_info.name
 
-                        gt_image_info = gt_dataset.get_image_info(item_name)
-                        pred_image_info = pred_dataset.get_image_info(item_name)
-                        gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
-                        pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
-
-                        self._update_match_data(
-                            gt_image_info.id,
-                            gt_image_info=gt_image_info,
-                            pred_image_info=pred_image_info,
-                            diff_image_info=diff_image_info,
-                            gt_annotation=gt_ann,
-                            pred_annotation=pred_ann,
+                try:
+                    for src_images in self.api.image.get_list_generator(
+                        pred_dataset_info.id, force_metadata_for_links=False, batch_size=100
+                    ):
+                        dst_images = self.api.image.copy_batch_optimized(
+                            pred_dataset_info.id,
+                            src_images,
+                            diff_dataset_info.id,
+                            with_annotations=False,
+                            skip_validation=True,
                         )
+                        for diff_image_info in dst_images:
+                            item_name = diff_image_info.name
 
-                        assert item_name not in self.eval_result.images_map
+                            gt_image_info = gt_dataset.get_image_info(item_name)
+                            pred_image_info = pred_dataset.get_image_info(item_name)
+                            gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
+                            pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
 
-                        self.eval_result.images_map[item_name] = gt_image_info.id
-
-                        for label in pred_ann.labels:
-                            self.eval_result.images_by_class[label.obj_class.name].add(
-                                gt_image_info.id
+                            self._update_match_data(
+                                gt_image_info.id,
+                                gt_image_info=gt_image_info,
+                                pred_image_info=pred_image_info,
+                                diff_image_info=diff_image_info,
+                                gt_annotation=gt_ann,
+                                pred_annotation=pred_ann,
                             )
-            except Exception:
-                raise RuntimeError("Match data was not created properly")
+
+                            assert item_name not in self.eval_result.images_map
+
+                            self.eval_result.images_map[item_name] = gt_image_info.id
+
+                            for label in pred_ann.labels:
+                                self.eval_result.images_by_class[label.obj_class.name].add(
+                                    gt_image_info.id
+                                )
+
+                        p.update(len(src_images))
+                except Exception:
+                    raise RuntimeError("Match data was not created properly")
 
     def _get_sample_data_for_gallery(self):
         # get sample images with annotations for visualization

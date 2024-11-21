@@ -6,8 +6,8 @@ from supervisely.nn.benchmark.object_detection.visualizer import (
 
 
 class InstanceSegmentationVisualizer(ObjectDetectionVisualizer):
-    def __init__(self, api, eval_results, workdir="./visualizations"):
-        super().__init__(api, eval_results, workdir)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.vis_texts = vis_texts
         self._widgets = False

@@ -12,6 +12,7 @@ def calculate_metrics(
     num_workers,
     class_names,
     result_dir,
+    progress=None,
 ):
     if boundary_width % 1 == 0:
         boundary_width = int(boundary_width)
@@ -21,6 +22,7 @@ def calculate_metrics(
         boundary_implementation="exact",
         boundary_iou_d=boundary_iou_d,
         result_dir=result_dir,
+        progress=progress,
     )
     loader = build_segmentation_loader(
         pred_dir=pred_dir,

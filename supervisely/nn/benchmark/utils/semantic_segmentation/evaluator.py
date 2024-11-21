@@ -5,7 +5,6 @@ from typing import Dict, Iterable, List, Optional, Union
 import cv2
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 
 from supervisely.nn.benchmark.utils.semantic_segmentation.utils import (
     dilate_mask,
@@ -16,6 +15,7 @@ from supervisely.nn.benchmark.utils.semantic_segmentation.utils import (
     one_hot,
     single_one_hot,
 )
+from supervisely.task.progress import tqdm_sly
 
 ERROR_CODES = {
     "ignore": -1,
@@ -53,6 +53,7 @@ class Evaluator:
         boundary_iou_d: float = 0.02,
         boundary_implementation: str = "exact",
         result_dir: str = "output",
+        progress: Optional[tqdm_sly] = None,
     ):
         """The main class for running our error analysis.
         :param class_names: List of strings providing names for class ids 0,...,C.
@@ -86,6 +87,7 @@ class Evaluator:
             global numpy
             numpy = np
 
+        self.progress = progress or tqdm_sly
         self.class_names = class_names
         self.num_classes = len(self.class_names)
 
@@ -179,16 +181,17 @@ class Evaluator:
         self.boundary_iou_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         self.boundary_iou_union_counts = np.zeros(self.num_classes, dtype=np.int64)
 
-        for pred, gt, img_name in tqdm(loader, total=len(loader), desc="Calculating metrics..."):
-            sample_results = self.evaluate_sample(pred, gt, img_name)
-            self.update_results(sample_results, img_name)
-            self.confusion_matrix = self.calc_confusion_matrix(
-                pred,
-                gt,
-                self.confusion_matrix,
-                img_name,
-            )
-
+        with self.progress(message="Calculating metrics...", total=len(loader)) as pbar:
+            for pred, gt, img_name in loader:
+                sample_results = self.evaluate_sample(pred, gt, img_name)
+                self.update_results(sample_results, img_name)
+                self.confusion_matrix = self.calc_confusion_matrix(
+                    pred,
+                    gt,
+                    self.confusion_matrix,
+                    img_name,
+                )
+                pbar.update()
         if GPU:
             for key, value in self.results.items():
                 self.results[key] = value.get()

@@ -1,12 +1,13 @@
 # coding: utf-8
 
-from typing import List
+from typing import List, Optional
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.task.progress import tqdm_sly
 
 
 class TagApi(ModuleApi):
@@ -241,6 +242,7 @@ class TagApi(ModuleApi):
         tags_list: List[dict],
         batch_size: int = 100,
         log_progress: bool = False,
+        progress: Optional[tqdm_sly] = None,
     ) -> List[dict]:
         """
         Add Tags to existing Annotation Figures.
@@ -255,6 +257,8 @@ class TagApi(ModuleApi):
         :type batch_size: int
         :param log_progress: If True, will display a progress bar.
         :type log_progress: bool
+        :param progress: Progress bar object to display progress.
+        :type progress: Optional[tqdm_sly]
         :return: List of tags infos as dictionaries.
         :rtype: List[dict]
 
@@ -313,9 +317,12 @@ class TagApi(ModuleApi):
         if len(tags_list) == 0:
             return []
 
+        if progress is not None:
+            log_progress = False
+
         result = []
         if log_progress:
-            ds_progress = tqdm_sly(
+            progress = tqdm_sly(
                 desc="Adding tags to figures",
                 total=len(tags_list),
             )
@@ -323,6 +330,6 @@ class TagApi(ModuleApi):
             data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
             response = self._api.post("figures.tags.bulk.add", data)
             result.extend(response.json())
-            if log_progress:
-                ds_progress.update(len(batch))
+            if progress is not None:
+                progress.update(len(batch))
         return result

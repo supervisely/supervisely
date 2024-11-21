@@ -48,8 +48,8 @@ from supervisely.sly_logger import logger
 
 
 class ObjectDetectionVisualizer(BaseVisualizer):
-    def __init__(self, api, eval_results, workdir="./visualizations"):
-        super().__init__(api, eval_results, workdir)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.vis_texts = vis_texts
         self._widgets = False
@@ -392,88 +392,96 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         match_tag = meta.get_tag_meta("matched_gt_id")
 
         pred_tag_list = []
-        # with self.pbar(
-        #     message="Visualizations: Creating diff_project", total=pred_project.total_items
-        # ) as progress:
-        logger.debug(
-            "Creating diff project data",
-            extra={
-                "pred_project": [ds.name for ds in pred_project.datasets],
-                "gt_project": [ds.name for ds in gt_project.datasets],
-            },
-        )
-        for pred_dataset in pred_project.datasets:
-            pred_dataset: Dataset
-            gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
-            diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
-            diff_anns = []
-            gt_image_ids = []
-            pred_img_ids = []
-            for item_name in pred_dataset.get_items_names():
-                gt_image_info = gt_dataset.get_image_info(item_name)
-                gt_image_ids.append(gt_image_info.id)
-                pred_image_info = pred_dataset.get_image_info(item_name)
-                pred_img_ids.append(pred_image_info.id)
-                gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
-                pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
-                labels = []
+        with self.pbar(
+            message="Visualizations: Creating diff_project", total=pred_project.total_items
+        ) as progress:
+            logger.debug(
+                "Creating diff project data",
+                extra={
+                    "pred_project": [ds.name for ds in pred_project.datasets],
+                    "gt_project": [ds.name for ds in gt_project.datasets],
+                },
+            )
+            for pred_dataset in pred_project.datasets:
+                pred_dataset: Dataset
+                gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
+                diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
+                for batch_names in batched(pred_dataset.get_items_names(), 100):
+                    diff_anns = []
+                    gt_image_ids = []
+                    pred_img_ids = []
+                    for item_name in batch_names:
+                        gt_image_info = gt_dataset.get_image_info(item_name)
+                        gt_image_ids.append(gt_image_info.id)
+                        pred_image_info = pred_dataset.get_image_info(item_name)
+                        pred_img_ids.append(pred_image_info.id)
+                        gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
+                        pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
+                        labels = []
 
-                # TP and FP
-                for label in pred_ann.labels:
-                    match_tag_id = matched_id_map.get(label.geometry.sly_id)
-                    value = "TP" if match_tag_id else "FP"
-                    pred_tag_list.append(
-                        {
-                            "tagId": outcome_tag.sly_id,
-                            "figureId": label.geometry.sly_id,
-                            "value": value,
-                        }
-                    )
-                    conf = 1
-                    for tag in label.tags.items():
-                        tag: Tag
-                        if tag.name in ["confidence", "conf"]:
-                            conf = tag.value
-                            break
+                        # TP and FP
+                        for label in pred_ann.labels:
+                            match_tag_id = matched_id_map.get(label.geometry.sly_id)
+                            value = "TP" if match_tag_id else "FP"
+                            pred_tag_list.append(
+                                {
+                                    "tagId": outcome_tag.sly_id,
+                                    "figureId": label.geometry.sly_id,
+                                    "value": value,
+                                }
+                            )
+                            conf = 1
+                            for tag in label.tags.items():
+                                tag: Tag
+                                if tag.name in ["confidence", "conf"]:
+                                    conf = tag.value
+                                    break
 
-                    if conf < self.eval_result.mp.f1_optimal_conf:
-                        continue  # do not add labels with low confidence to diff project
-                    if match_tag_id:
-                        continue  # do not add TP labels to diff project
-                    label = label.add_tag(Tag(outcome_tag, value))
-                    label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
-                    labels.append(label)
+                            if conf < self.eval_result.mp.f1_optimal_conf:
+                                continue  # do not add labels with low confidence to diff project
+                            if match_tag_id:
+                                continue  # do not add TP labels to diff project
+                            label = label.add_tag(Tag(outcome_tag, value))
+                            label = label.add_tag(Tag(match_tag, int(label.geometry.sly_id)))
+                            labels.append(label)
 
-                # FN
-                for label in gt_ann.labels:
-                    if self.eval_result.classes_whitelist:
-                        if label.obj_class.name not in self.eval_result.classes_whitelist:
-                            continue
-                    if label.geometry.sly_id not in matched_gt_ids:
-                        if self._is_label_compatible_to_cv_task(label):
-                            new_label = label.add_tags([Tag(outcome_tag, "FN"), Tag(conf_meta, 1)])
-                            labels.append(new_label)
+                        # FN
+                        for label in gt_ann.labels:
+                            if self.eval_result.classes_whitelist:
+                                if label.obj_class.name not in self.eval_result.classes_whitelist:
+                                    continue
+                            if label.geometry.sly_id not in matched_gt_ids:
+                                if self._is_label_compatible_to_cv_task(label):
+                                    new_label = label.add_tags(
+                                        [Tag(outcome_tag, "FN"), Tag(conf_meta, 1)]
+                                    )
+                                    labels.append(new_label)
 
-                diff_ann = Annotation(gt_ann.img_size, labels)
-                diff_anns.append(diff_ann)
+                        diff_ann = Annotation(gt_ann.img_size, labels)
+                        diff_anns.append(diff_ann)
 
-                # comparison data
-                self._update_match_data(
-                    gt_image_info.id,
-                    gt_image_info=gt_image_info,
-                    pred_image_info=pred_image_info,
-                    gt_annotation=gt_ann,
-                    pred_annotation=pred_ann,
-                    diff_annotation=diff_ann,
-                )
+                        # comparison data
+                        self._update_match_data(
+                            gt_image_info.id,
+                            gt_image_info=gt_image_info,
+                            pred_image_info=pred_image_info,
+                            gt_annotation=gt_ann,
+                            pred_annotation=pred_ann,
+                            diff_annotation=diff_ann,
+                        )
 
-            diff_img_infos = self.api.image.copy_batch(diff_dataset_info.id, pred_img_ids)
-            ids = [img.id for img in diff_img_infos]
-            self.api.annotation.upload_anns(ids, diff_anns)  # , progress_cb=progress.update)
-            for gt_img_id, diff_img_info in zip(gt_image_ids, diff_img_infos):
-                self._update_match_data(gt_img_id, diff_image_info=diff_img_info)
+                    diff_img_infos = self.api.image.copy_batch(diff_dataset_info.id, pred_img_ids)
+                    ids = [img.id for img in diff_img_infos]
+                    self.api.annotation.upload_anns(ids, diff_anns, progress_cb=progress.update)
+                    for gt_img_id, diff_img_info in zip(gt_image_ids, diff_img_infos):
+                        self._update_match_data(gt_img_id, diff_image_info=diff_img_info)
 
-        self.api.image.tag.add_to_objects(self.eval_result.pred_project_id, pred_tag_list)
+        with self.pbar(
+            message="Visualizations: Adding tags to predictions", total=len(pred_tag_list)
+        ) as p:
+            self.api.image.tag.add_to_objects(
+                self.eval_result.pred_project_id, pred_tag_list, progress=p
+            )
 
     def _init_match_data(self):
         gt_project = Project(self.gt_project_path, OpenMode.READ)
@@ -488,67 +496,72 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         diff_dataset_name_map = {_get_full_name(i): ds for i, ds in diff_dataset_id_map.items()}
 
-        for pred_dataset in pred_project.datasets:
-            pred_dataset: Dataset
-            gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
-            try:
-                diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
-            except KeyError:
-                raise RuntimeError(
-                    f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
-                )
-
-            for item_names_batch in batched(pred_dataset.get_items_names(), 100):
-                # diff project may be not created yet
-                item_names_batch.sort()
+        with self.pbar(
+            message="Visualizations: Initializing match data", total=pred_project.total_items
+        ) as p:
+            for pred_dataset in pred_project.datasets:
+                pred_dataset: Dataset
+                gt_dataset: Dataset = gt_project.datasets.get(pred_dataset.name)
                 try:
-                    diff_img_infos_batch: List[ImageInfo] = sorted(
-                        self.api.image.get_list(
-                            diff_dataset_info.id,
-                            filters=[
-                                {"field": "name", "operator": "in", "value": item_names_batch}
-                            ],
-                            force_metadata_for_links=False,
-                        ),
-                        key=lambda x: x.name,
+                    diff_dataset_info = diff_dataset_name_map[pred_dataset.name]
+                except KeyError:
+                    raise RuntimeError(
+                        f"Difference project was not created properly. Dataset {pred_dataset.name} is missing"
                     )
-                    diff_anns_batch_dict = {
-                        ann_info.image_id: Annotation.from_json(
-                            ann_info.annotation, self.diff_project_meta
-                        )
-                        for ann_info in self.api.annotation.download_batch(
-                            diff_dataset_info.id,
-                            [img_info.id for img_info in diff_img_infos_batch],
-                            force_metadata_for_links=False,
-                        )
-                    }
-                    assert (
-                        len(item_names_batch)
-                        == len(diff_img_infos_batch)
-                        == len(diff_anns_batch_dict)
-                    ), "Some images are missing in the difference project"
 
-                    for item_name, diff_img_info in zip(item_names_batch, diff_img_infos_batch):
+                for item_names_batch in batched(pred_dataset.get_items_names(), 100):
+                    # diff project may be not created yet
+                    item_names_batch.sort()
+                    try:
+                        diff_img_infos_batch: List[ImageInfo] = sorted(
+                            self.api.image.get_list(
+                                diff_dataset_info.id,
+                                filters=[
+                                    {"field": "name", "operator": "in", "value": item_names_batch}
+                                ],
+                                force_metadata_for_links=False,
+                            ),
+                            key=lambda x: x.name,
+                        )
+                        diff_anns_batch_dict = {
+                            ann_info.image_id: Annotation.from_json(
+                                ann_info.annotation, self.diff_project_meta
+                            )
+                            for ann_info in self.api.annotation.download_batch(
+                                diff_dataset_info.id,
+                                [img_info.id for img_info in diff_img_infos_batch],
+                                force_metadata_for_links=False,
+                            )
+                        }
                         assert (
-                            item_name == diff_img_info.name
-                        ), "Image names in difference project and prediction project do not match"
-                        gt_image_info = gt_dataset.get_image_info(item_name)
-                        pred_image_info = pred_dataset.get_image_info(item_name)
-                        gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
-                        pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
-                        diff_ann = diff_anns_batch_dict[diff_img_info.id]
+                            len(item_names_batch)
+                            == len(diff_img_infos_batch)
+                            == len(diff_anns_batch_dict)
+                        ), "Some images are missing in the difference project"
 
-                        self._update_match_data(
-                            gt_image_info.id,
-                            gt_image_info=gt_image_info,
-                            pred_image_info=pred_image_info,
-                            diff_image_info=diff_img_info,
-                            gt_annotation=gt_ann,
-                            pred_annotation=pred_ann,
-                            diff_annotation=diff_ann,
-                        )
-                except Exception:
-                    raise RuntimeError("Difference project was not created properly")
+                        for item_name, diff_img_info in zip(item_names_batch, diff_img_infos_batch):
+                            assert (
+                                item_name == diff_img_info.name
+                            ), "Image names in difference project and prediction project do not match"
+                            gt_image_info = gt_dataset.get_image_info(item_name)
+                            pred_image_info = pred_dataset.get_image_info(item_name)
+                            gt_ann = gt_dataset.get_ann(item_name, gt_project.meta)
+                            pred_ann = pred_dataset.get_ann(item_name, pred_project.meta)
+                            diff_ann = diff_anns_batch_dict[diff_img_info.id]
+
+                            self._update_match_data(
+                                gt_image_info.id,
+                                gt_image_info=gt_image_info,
+                                pred_image_info=pred_image_info,
+                                diff_image_info=diff_img_info,
+                                gt_annotation=gt_ann,
+                                pred_annotation=pred_ann,
+                                diff_annotation=diff_ann,
+                            )
+
+                        p.update(len(item_names_batch))
+                    except Exception:
+                        raise RuntimeError("Difference project was not created properly")
 
     def _update_pred_meta_with_tags(self, project_id: int, meta: ProjectMeta) -> ProjectMeta:
         old_meta = meta
@@ -610,45 +623,45 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         # add tags to objects
         logger.info("Adding tags to DT project")
 
-        # with self.pbar(
-        #     message="Visualizations: Adding tags to DT project", total=len(matches)
-        # ) as p:
-        for batch in batched(matches, 100):
-            pred_tag_list = []
-            for match in batch:
-                if match["type"] == "TP":
-                    outcome = "TP"
-                    matched_gt_id = gt_ann_mapping[match["gt_id"]]
-                    ann_dt_id = dt_ann_mapping[match["dt_id"]]
-                    iou = match["iou"]
-                    # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
-                    if matched_gt_id is not None:
-                        pred_tag_list.extend(
-                            [
-                                {
-                                    "tagId": match_tag_meta.sly_id,
-                                    "figureId": ann_dt_id,
-                                    "value": int(matched_gt_id),
-                                },
-                                {
-                                    "tagId": iou_tag_meta.sly_id,
-                                    "figureId": ann_dt_id,
-                                    "value": float(iou),
-                                },
-                            ]
-                        )
+        with self.pbar(
+            message="Visualizations: Adding tags to DT project", total=len(matches)
+        ) as p:
+            for batch in batched(matches, 100):
+                pred_tag_list = []
+                for match in batch:
+                    if match["type"] == "TP":
+                        outcome = "TP"
+                        matched_gt_id = gt_ann_mapping[match["gt_id"]]
+                        ann_dt_id = dt_ann_mapping[match["dt_id"]]
+                        iou = match["iou"]
+                        # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
+                        if matched_gt_id is not None:
+                            pred_tag_list.extend(
+                                [
+                                    {
+                                        "tagId": match_tag_meta.sly_id,
+                                        "figureId": ann_dt_id,
+                                        "value": int(matched_gt_id),
+                                    },
+                                    {
+                                        "tagId": iou_tag_meta.sly_id,
+                                        "figureId": ann_dt_id,
+                                        "value": float(iou),
+                                    },
+                                ]
+                            )
+                        else:
+                            continue
+                    elif match["type"] == "FP":
+                        outcome = "FP"
+                        # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
+                    elif match["type"] == "FN":
+                        outcome = "FN"
                     else:
-                        continue
-                elif match["type"] == "FP":
-                    outcome = "FP"
-                    # api.advanced.add_tag_to_object(outcome_tag_meta.sly_id, ann_dt_id, str(outcome))
-                elif match["type"] == "FN":
-                    outcome = "FN"
-                else:
-                    raise ValueError(f"Unknown match type: {match['type']}")
+                        raise ValueError(f"Unknown match type: {match['type']}")
 
-            self.api.image.tag.add_to_objects(pred_project_id, pred_tag_list)
-            # p.update(len(batch))
+                self.api.image.tag.add_to_objects(pred_project_id, pred_tag_list)
+                p.update(len(batch))
 
     def _get_matched_id_map(self):
         gt_ann_mapping = self.eval_result.click_data.gt_id_mapper.map_obj

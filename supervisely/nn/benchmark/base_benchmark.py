@@ -40,6 +40,14 @@ class BaseBenchmark:
         self.diff_project_info: ProjectInfo = None
         self.gt_dataset_ids = gt_dataset_ids
         self.gt_images_ids = gt_images_ids
+        self.gt_dataset_infos = None
+        if gt_dataset_ids is not None:
+            self.gt_dataset_infos = self.api.dataset.get_list(
+                self.gt_project_info.id,
+                filters=[{"field": "id", "operator": "in", "value": gt_dataset_ids}],
+                recursive=True,
+            )
+        self.num_items = self._get_total_items_for_progress()
         self.output_dir = output_dir
         self.team_id = env.team_id()
         self.evaluator: BaseEvaluator = None
@@ -121,9 +129,7 @@ class BaseBenchmark:
                 batch_size=batch_size,
             )
         output_project_id = self.dt_project_info.id
-        with self.pbar(
-            message="Evaluation: Running inference", total=self.gt_project_info.items_count
-        ) as p:
+        with self.pbar(message="Evaluation: Running inference", total=self.num_items) as p:
             for _ in iterator:
                 p.update(1)
         inference_info = {
@@ -459,8 +465,10 @@ class BaseBenchmark:
         if self.visualizer_cls is None:
             raise NotImplementedError("Visualizer class is not defined.")
         eval_result = self.evaluator.get_eval_result()
-        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir())
-        vis.visualize()
+        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)
+        with self.pbar("Visualizations: Rendering layout", total=1) as p:
+            vis.visualize()
+            p.update(1)
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
 
@@ -570,3 +578,11 @@ class BaseBenchmark:
     def _validate_evaluation_params(self):
         if self.evaluation_params:
             self._get_evaluator_class().validate_evaluation_params(self.evaluation_params)
+
+    def _get_total_items_for_progress(self):
+        if self.gt_images_ids is not None:
+            return len(self.gt_images_ids)
+        elif self.gt_dataset_ids is not None:
+            return sum(ds.items_count for ds in self.gt_dataset_infos)
+        else:
+            return self.gt_project_info.items_count

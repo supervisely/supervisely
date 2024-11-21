@@ -9,6 +9,7 @@ from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import GalleryWidget
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import tqdm_sly
 
 
 class MatchedPairData:
@@ -65,6 +66,7 @@ class BaseVisualizer:
         api: Api,
         eval_results: List[BaseEvalResult],
         workdir="./visualizations",
+        progress=None,
     ):
         self.api = api
         self.workdir = workdir
@@ -75,9 +77,12 @@ class BaseVisualizer:
         self.gt_project_info = None
         self.gt_project_meta = None
         self.gt_dataset_infos = None
+        self.pbar = progress or tqdm_sly
 
-        for eval_result in self.eval_results:
-            self._get_eval_project_infos(eval_result)
+        with self.pbar("Fetching project and dataset infos", len(eval_results)) as p:
+            for eval_result in self.eval_results:
+                self._get_eval_project_infos(eval_result)
+                p.update()
 
     def _get_eval_project_infos(self, eval_result):
         # get project infos
