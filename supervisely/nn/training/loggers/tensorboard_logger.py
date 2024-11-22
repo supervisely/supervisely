@@ -8,10 +8,13 @@ from supervisely.nn.training.loggers.base_train_logger import BaseTrainLogger
 
 
 class TensorboardLogger(BaseTrainLogger):
-    def __init__(self, log_dir):
-
-        self.log_dir = log_dir
-        self.writer = SummaryWriter(log_dir)
+    def __init__(self, log_dir=None):
+        if log_dir is None:
+            self.log_dir = None
+            self.writer = None
+        else:
+            self.log_dir = log_dir
+            self.writer = SummaryWriter(log_dir)
         self.tensorboard_process = None
         super().__init__()
 
@@ -21,6 +24,9 @@ class TensorboardLogger(BaseTrainLogger):
 
     def start_tensorboard(self):
         """Start Tensorboard server in a subprocess"""
+        if self.log_dir is None:
+            self.log_dir = "logs"
+
         args = [
             "tensorboard",
             "--logdir",
@@ -54,4 +60,4 @@ class TensorboardLogger(BaseTrainLogger):
         self._log(logs, self.epoch_idx)
 
 
-tb_logger = TensorboardLogger("logs")
+tb_logger = TensorboardLogger()
