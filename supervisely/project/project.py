@@ -1967,6 +1967,8 @@ class Project:
         :type segmentation_type: :class:`str`
         :param default_bg_name: Default background class name, used for semantic segmentation.
         :type default_bg_name: :class:`str`, optional
+        :param default_bg_color: Default background class color, used for semantic segmentation.
+        :type default_bg_color: :class:`list`, optional. Default is [0, 0, 0]
         :return: None
         :rtype: NoneType
         :Usage example:
