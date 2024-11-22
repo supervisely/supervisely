@@ -45,17 +45,17 @@ class TensorboardLogger(BaseTrainLogger):
         else:
             print("Tensorboard server is not running")
 
-    def _log(self, logs: dict, idx: int):
+    def log(self, logs: dict, idx: int):
         for key, value in logs.items():
             if isinstance(value, (int, float)):
                 self.writer.add_scalar(key, value, idx)
         self.writer.flush()
 
-    def _log_step(self, logs: dict):
-        self._log(logs, self.step_idx)
+    def log_step(self, logs: dict):
+        self.log(logs, self.step_idx)
 
-    def _log_epoch(self, logs: dict):
-        self._log(logs, self.epoch_idx)
+    def log_epoch(self, logs: dict):
+        self.log(logs, self.epoch_idx)
 
 
 tb_logger = TensorboardLogger()
