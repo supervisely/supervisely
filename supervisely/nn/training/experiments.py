@@ -1,9 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from json import JSONDecodeError
 from os.path import dirname, join
 from typing import Any, Dict, List, NamedTuple
 
 import requests
+
 from supervisely import logger
 from supervisely.api.api import Api, ApiField
 
@@ -43,9 +44,7 @@ class ExperimentInfo(NamedTuple):
     """Evaluation metrics"""
 
 
-def get_experiment_infos(
-    api: Api, team_id: int, framework_name: str
-) -> List[ExperimentInfo]:
+def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
     """
     Get experiments from the specified framework folder for Train v2
 
@@ -72,9 +71,7 @@ def get_experiment_infos(
     experiments_folder = "/experiments"
     experiment_infos = []
 
-    file_infos = api.file.list(
-        team_id, experiments_folder, recursive=True, return_type="fileinfo"
-    )
+    file_infos = api.file.list(team_id, experiments_folder, recursive=True, return_type="fileinfo")
     sorted_file_infos = []
     for file_info in file_infos:
         if not file_info.path.endswith(metadata_name):
@@ -102,9 +99,7 @@ def get_experiment_infos(
                 return None
             return ExperimentInfo(**response_json)
         except requests.exceptions.RequestException as e:
-            logger.debug(
-                f"Failed to fetch train metadata from '{experiment_path}': {e}"
-            )
+            logger.debug(f"Failed to fetch train metadata from '{experiment_path}': {e}")
         except JSONDecodeError as e:
             logger.debug(f"Failed to decode JSON from '{experiment_path}': {e}")
         return None
