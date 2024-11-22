@@ -6,13 +6,13 @@ from supervisely.app.widgets import (
     Button,
     Card,
     Container,
-    CustomModelsSelectorV2,
     PretrainedModelsSelector,
     RadioTabs,
     Text,
 )
-
-# from supervisely.app.widgets.custom_models_selector_v2 import CustomModelsSelectorV2
+from supervisely.app.widgets.custom_models_selector_v2.custom_models_selector_v2 import (
+    CustomModelsSelectorV2,
+)
 from supervisely.nn.training.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource
 
