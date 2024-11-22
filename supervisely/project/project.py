@@ -1942,6 +1942,7 @@ class Project:
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
         default_bg_name: Optional[str] = "__bg__",
+        default_bg_color: Optional[List[int]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -1983,7 +1984,8 @@ class Project:
         """
 
         _bg_class_name = default_bg_name
-        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
+        default_bg_color = default_bg_color or [0, 0, 0]
+        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=default_bg_color)
 
         if dst_project_dir is None and inplace is False:
             raise ValueError(
