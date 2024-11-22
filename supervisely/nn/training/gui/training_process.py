@@ -1,18 +1,17 @@
+from typing import Any, Dict
+
 from supervisely import Api
 from supervisely._utils import is_production
-from supervisely.app.widgets import Card  # SelectCudaDevice,
 from supervisely.app.widgets import (
     Button,
+    Card,
     Container,
     DoneLabel,
     Empty,
-    Field,
     FolderThumbnail,
     Progress,
     ReportThumbnail,
     SelectCudaDevice,
-    SlyTqdm,
-    TaskLogs,
     Text,
 )
 from supervisely.io.env import task_id as get_task_id
@@ -21,10 +20,10 @@ from supervisely.io.env import task_id as get_task_id
 class TrainingProcess:
     title = "Training Process"
 
-    def __init__(self):
+    def __init__(self, app_options: Dict[str, Any]):
         api = Api.from_env()
+        self.app_options = app_options
 
-        self.select_device = SelectCudaDevice()
         self.success_message = DoneLabel(
             "Training completed. Training artifacts were uploaded to Team Files."
         )
@@ -39,34 +38,11 @@ class TrainingProcess:
         self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
         self.model_benchmark_report_text.hide()
 
-        self.project_download_progress_main = Progress("Downloading datasets", hide_on_finish=True)
-        self.project_download_progress_main.hide()
+        self.progress_bar_main = Progress(hide_on_finish=False)
+        self.progress_bar_main.hide()
 
-        self.project_download_progress_secondary = Progress(
-            "Processing splits", hide_on_finish=True
-        )
-        self.project_download_progress_secondary.hide()
-
-        self.model_download_progress_main = Progress("Downloading model files", hide_on_finish=True)
-        self.model_download_progress_main.hide()
-
-        self.model_download_progress_secondary = Progress("Downloading file", hide_on_finish=True)
-        self.model_download_progress_secondary.hide()
-
-        self.epoch_progress = Progress("Epochs")
-        self.epoch_progress.hide()
-
-        self.iter_progress = Progress("Iterations", hide_on_finish=False)
-        self.iter_progress.hide()
-
-        self.model_benchmark_progress_main = SlyTqdm()
-        self.model_benchmark_progress_main.hide()
-
-        self.model_benchmark_progress_secondary = Progress(hide_on_finish=True)
-        self.model_benchmark_progress_secondary.hide()
-
-        self.artifacts_upload_progress = Progress("Uploading artifacts", hide_on_finish=True)
-        self.artifacts_upload_progress.hide()
+        self.progress_bar_secondary = Progress(hide_on_finish=False)
+        self.progress_bar_secondary.hide()
 
         if is_production():
             task_id = get_task_id(raise_not_found=False)
@@ -93,8 +69,6 @@ class TrainingProcess:
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
 
-        # @TODO: Add GPU Selector
-
         button_container = Container(
             [self.start_button, self.tensorboard_button, Empty()],
             "horizontal",
@@ -103,38 +77,22 @@ class TrainingProcess:
             gap=1,
         )
 
-        self.logs_button = Button(
-            text="Show logs",
-            plain=True,
-            button_size="mini",
-            icon="zmdi zmdi-caret-down-circle",
-        )
+        container_widgets = [
+            self.validator_text,
+            button_container,
+            self.success_message,
+            self.artifacts_thumbnail,
+            self.model_benchmark_report_thumbnail,
+            self.model_benchmark_report_text,
+            self.progress_bar_main,
+            self.progress_bar_secondary,
+        ]
 
-        self.task_logs = TaskLogs(task_id)
-        self.task_logs.hide()
-        logs_container = Container([self.logs_button, self.task_logs])
+        if self.app_options.get("enable_device_selector", False):
+            self.select_device = SelectCudaDevice()
+            container_widgets.insert(1, self.select_device)
 
-        container = Container(
-            [
-                self.select_device,
-                self.validator_text,
-                button_container,
-                self.success_message,
-                self.artifacts_thumbnail,
-                self.model_benchmark_report_thumbnail,
-                self.model_benchmark_report_text,
-                self.project_download_progress_main,
-                self.project_download_progress_secondary,
-                self.model_download_progress_main,
-                self.model_download_progress_secondary,
-                self.epoch_progress,
-                self.iter_progress,
-                self.artifacts_upload_progress,
-                self.model_benchmark_progress_main,
-                self.model_benchmark_progress_secondary,
-                logs_container,
-            ]
-        )
+        container = Container(container_widgets)
 
         self.card = Card(
             title="Training Process",
@@ -151,15 +109,8 @@ class TrainingProcess:
     def validate_step(self):
         return True
 
-    def toggle_logs(self):
-        if self.task_logs.is_hidden():
-            self.task_logs.show()
-            self.logs_button.text = "Hide logs"
-            self.logs_button.icon = "zmdi zmdi-caret-up-circle"
-        else:
-            self.task_logs.hide()
-            self.logs_button.text = "Show logs"
-            self.logs_button.icon = "zmdi zmdi-caret-down-circle"
-
     def get_device(self):
-        return self.select_device.get_device()
+        if self.app_options.get("enable_device_selector", False):
+            return self.select_device.get_device()
+        else:
+            return "cuda:0"

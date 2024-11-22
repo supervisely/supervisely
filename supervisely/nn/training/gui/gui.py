@@ -44,7 +44,7 @@ class TrainGUI:
             hyperparameters=self.hyperparameters
         )
         # 6. Start Train
-        self.training_process = TrainingProcess()
+        self.training_process = TrainingProcess(app_options)
 
         # Stepper layout
         self.stepper = Stepper(
@@ -147,10 +147,6 @@ class TrainGUI:
             self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
 
         # Buttons
-        @self.training_process.logs_button.click
-        def show_logs():
-            self.training_process.toggle_logs()
-
         @self.hyperparameters_selector.button.click
         def select_hyperparameters():
             self.hyperparameters_selector_cb()

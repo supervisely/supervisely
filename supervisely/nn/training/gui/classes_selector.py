@@ -20,12 +20,6 @@ class ClassesSelector:
         qa_stats_text = Text(
             text=f"<i class='zmdi zmdi-chart-donut' style='color: #7f858e'></i> <a href='{qa_stats_link}' target='_blank'> <b> QA & Stats </b></a>"
         )
-        qa_stats_button = Button(
-            text="QA & Stats",
-            button_type="primary",
-            icon="zmdi zmdi-chart-donut",
-            link=qa_stats_link,
-        )
 
         self.validator_text = Text("")
         self.validator_text.hide()
@@ -46,7 +40,6 @@ class ClassesSelector:
             ),
             content=container,
             lock_message="Select training and validation splits to unlock",
-            content_top_right=qa_stats_button,
         )
         self.card.lock()
 
@@ -65,6 +58,12 @@ class ClassesSelector:
 
     def validate_step(self):
         self.validator_text.hide()
+
+        if len(self.classes_table.project_meta.obj_classes) == 0:
+            self.validator_text.set(text="Project has no classes", status="error")
+            self.validator_text.show()
+            return False
+
         selected_classes = self.classes_table.get_selected_classes()
         table_data = self.classes_table._table_data
 
