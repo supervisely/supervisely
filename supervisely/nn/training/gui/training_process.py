@@ -25,7 +25,11 @@ class TrainingProcess:
         self.app_options = app_options
 
         self.success_message = DoneLabel(
-            "Training completed. Training artifacts were uploaded to Team Files."
+            text=(
+                "Training completed. Training artifacts were uploaded to Team Files. "
+                "You can find and open tensorboard logs in the artifacts folder via the "
+                "<a href='https://ecosystem.supervisely.com/apps/tensorboard-logs-viewer' target='_blank'>Tensorboard</a> app."
+            )
         )
         self.success_message.hide()
 

@@ -427,7 +427,7 @@ class TrainApp:
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
         # Step 7. Shutdown app
-        self.app.shutdown()
+        self.app.stop()
 
         # region TRAIN END
 
@@ -1308,6 +1308,7 @@ class TrainApp:
         Sets the training output in the GUI.
         """
         logger.info("All training artifacts uploaded successfully")
+        self.gui.training_process.start_button.loading = False
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
         self.gui.training_process.tensorboard_button.disable()
