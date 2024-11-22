@@ -247,8 +247,7 @@ class TrainApp:
     def _prepare(self):
         logger.info("Preparing for training")
         self.gui.disable_select_buttons()
-        self.gui.training_process.select_device.disable()
-        self.gui.training_process.select_device.hide()
+        self._process_optional_widgets(self._app_options)
 
         # Step 0. Prepare working directory
         self._prepare_working_dir()
@@ -894,7 +893,9 @@ class TrainApp:
         remote_path = join(remote_dir, self._experiment_json_file)
         sly_json.dump_json_file(experiment_info, local_path)
         self._upload_json_file(
-            local_path, remote_path, f"Uploading '{self._experiment_json_file}' to Team Files"
+            local_path,
+            remote_path,
+            f"Uploading '{self._experiment_json_file}' to Team Files",
         )
 
     def _generate_app_state(self, remote_dir: str, experiment_info: Dict) -> None:
@@ -1028,6 +1029,11 @@ class TrainApp:
         self.gui.training_process.artifacts_thumbnail.set(file_info)
         self.gui.training_process.artifacts_thumbnail.show()
         self.gui.training_process.success_message.show()
+
+    def _process_optional_widgets(self, app_options: Dict[str, Any]) -> None:
+        if app_options.get("enable_device_selector", False):
+            self.gui.training_process.select_device.disable()
+            self.gui.training_process.select_device.hide()
 
     # Model Benchmark
     def _get_eval_results_dir_name(self) -> str:
