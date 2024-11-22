@@ -369,9 +369,6 @@ class TrainApp:
         self.gui.disable_select_buttons()
         self._process_optional_widgets(self._app_options)
 
-        # Step 0. Prepare working directory
-        self._prepare_working_dir()
-
         # Step 1. Workflow Input
         if is_production():
             self._workflow_input()
@@ -1640,7 +1637,6 @@ class TrainApp:
         """
         Initialize training logger. Set up Tensorboard and callbacks.
         """
-        self.log_dir = join(self.work_dir, "logs")
         tb_logger.set_log_dir(self.log_dir)
         tb_logger.start_tensorboard()
         self._setup_logger_callbacks()
@@ -1715,6 +1711,7 @@ class TrainApp:
         if self._train_func is None:
             raise ValueError("Train function is not defined")
 
+        self._prepare_working_dir()
         self._init_logger()
         experiment_info = None
         self._prepare()
