@@ -149,7 +149,7 @@ class Evaluator:
     def calc_confusion_matrix(self, pred, gt, cmat, img_name):
         assert pred.shape == gt.shape
 
-        cl = np.arange(cmat.shape[0])
+        cl = np.arange(1, self.num_classes + 1)
         for ig, gm in enumerate(self.extract_masks_gen(gt, cl)):
             if np.sum(gm) == 0:
                 continue
@@ -232,8 +232,8 @@ class Evaluator:
         boundary_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         boundary_union_counts = np.zeros(self.num_classes, dtype=np.int64)
         for c in range(self.num_classes):
-            gt_mask = gt == c
-            pred_mask = pred == c
+            gt_mask = gt == c + 1
+            pred_mask = pred == c + 1
             if not gt_mask.any() and not pred_mask.any():
                 results[c] = ERROR_CODES["TN"]
                 continue

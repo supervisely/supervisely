@@ -43,12 +43,12 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bg_cls_name = None
+        self.bg_cls_color = None
 
     def evaluate(self):
         self.bg_cls_name = self._get_bg_class_name()
-        if self.classes_whitelist is not None:
-            if self.bg_cls_name not in self.classes_whitelist:
-                self.classes_whitelist.append(self.bg_cls_name)
+        if self.bg_cls_name not in self.classes_whitelist:
+            self.classes_whitelist.append(self.bg_cls_name)
 
         gt_prep_path, pred_prep_path = self.prepare_segmentation_data()
 
@@ -96,6 +96,8 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                 logger.info(f"Preprocessed data already exists in {output_dir} directory")
                 continue
 
+            palette = self._get_palette(src_dir)
+            bg_color = palette[self.classes_whitelist.index(self.bg_cls_name)]
             output_dir.mkdir(parents=True)
             temp_seg_dir = src_dir + "_temp"
             if not os.path.exists(temp_seg_dir):
@@ -104,9 +106,9 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                     temp_seg_dir,
                     target_classes=self.classes_whitelist,
                     default_bg_name=self.bg_cls_name,
+                    default_bg_color=bg_color,
                 )
 
-            palette = self._get_palette(src_dir)
             palette_lookup = np.zeros(256**3, dtype=np.int32)
             for idx, color in enumerate(palette, 1):
                 key = (color[0] << 16) | (color[1] << 8) | color[2]
