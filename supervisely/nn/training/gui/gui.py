@@ -211,9 +211,9 @@ class TrainGUI:
         self.hyperparameters_selector.button.disable()
 
     # Set GUI from config
-    def validate_app_config(self, app_config: dict) -> dict:
-        if not isinstance(app_config, dict):
-            raise ValueError("app_config must be a dictionary")
+    def validate_app_state(self, app_state: dict) -> dict:
+        if not isinstance(app_state, dict):
+            raise ValueError("app_state must be a dictionary")
 
         required_keys = {
             "input": ["project_id"],
@@ -224,32 +224,32 @@ class TrainGUI:
         }
 
         for key, subkeys_or_type in required_keys.items():
-            if key not in app_config:
-                raise KeyError(f"Missing required key in app_config: {key}")
+            if key not in app_state:
+                raise KeyError(f"Missing required key in app_state: {key}")
 
             if isinstance(subkeys_or_type, list):
                 for subkey in subkeys_or_type:
-                    if subkey not in app_config[key]:
-                        raise KeyError(f"Missing required key in app_config['{key}']: {subkey}")
-            elif not isinstance(app_config[key], subkeys_or_type):
+                    if subkey not in app_state[key]:
+                        raise KeyError(f"Missing required key in app_state['{key}']: {subkey}")
+            elif not isinstance(app_state[key], subkeys_or_type):
                 valid_types = (
                     " or ".join([t.__name__ for t in subkeys_or_type])
                     if isinstance(subkeys_or_type, tuple)
                     else subkeys_or_type.__name__
                 )
-                raise ValueError(f"app_config['{key}'] must be of type {valid_types}")
+                raise ValueError(f"app_state['{key}'] must be of type {valid_types}")
 
-        model = app_config["model"]
+        model = app_state["model"]
         if model["source"] == "Pretrained models":
             if "model_name" not in model:
-                raise KeyError("Missing required key in app_config['model']: model_name")
+                raise KeyError("Missing required key in app_state['model']: model_name")
         elif model["source"] == "Custom models":
             custom_keys = ["task_id", "checkpoint"]
             for key in custom_keys:
                 if key not in model:
-                    raise KeyError(f"Missing required key in app_config['model']: {key}")
+                    raise KeyError(f"Missing required key in app_state['model']: {key}")
 
-        options = app_config.setdefault(
+        options = app_state.setdefault(
             "options",
             {
                 "model_benchmark": {
@@ -261,21 +261,21 @@ class TrainGUI:
         )
 
         if not isinstance(options, dict):
-            raise ValueError("app_config['options'] must be a dictionary")
+            raise ValueError("app_state['options'] must be a dictionary")
 
         model_benchmark = options.setdefault(
             "model_benchmark", {"enable": True, "speed_test": True}
         )
         if not isinstance(model_benchmark, dict):
-            raise ValueError("app_config['options']['model_benchmark'] must be a dictionary")
+            raise ValueError("app_state['options']['model_benchmark'] must be a dictionary")
         model_benchmark.setdefault("enable", True)
         model_benchmark.setdefault("speed_test", True)
 
         if not isinstance(options.get("cache_project"), bool):
-            raise ValueError("app_config['options']['cache_project'] must be a boolean")
+            raise ValueError("app_state['options']['cache_project'] must be a boolean")
 
         # Check train val splits
-        train_val_splits_settings = app_config.get("train_val_splits")
+        train_val_splits_settings = app_state.get("train_val_splits")
         if train_val_splits_settings.get("method") == "datasets":
             dataset_ids = []
             for parents, dataset in self._api.dataset.tree(self.project_id):
@@ -306,17 +306,17 @@ class TrainGUI:
                 raise ValueError("split must be 'train' or 'val'")
             if not isinstance(percent, int) or not 0 < percent < 100:
                 raise ValueError("percent must be an integer in range 1 to 99")
-        return app_config
+        return app_state
 
-    def load_from_config(self, app_config: dict) -> None:
-        app_config = self.validate_app_config(app_config)
+    def load_from_state(self, app_state: dict) -> None:
+        app_state = self.validate_app_state(app_state)
 
-        options = app_config["options"]
-        input_settings = app_config["input"]
-        train_val_splits_settings = app_config["train_val_splits"]
-        classes_settings = app_config["classes"]
-        model_settings = app_config["model"]
-        hyperparameters_settings = app_config["hyperparameters"]
+        options = app_state["options"]
+        input_settings = app_state["input"]
+        train_val_splits_settings = app_state["train_val_splits"]
+        classes_settings = app_state["classes"]
+        model_settings = app_state["model"]
+        hyperparameters_settings = app_state["hyperparameters"]
 
         self._init_input(input_settings, options)
         self._init_classes(classes_settings)

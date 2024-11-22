@@ -48,20 +48,11 @@ class BaseTrainLogger:
     def add_on_step_callback(self, callback: Callable):
         self._on_step_callbacks.append(callback)
 
-    def _log(self, logs: dict, idx: int):
-        raise NotImplementedError
-
-    def _log_step(self, logs: dict):
-        raise NotImplementedError
-
-    def _log_epoch(self, logs: dict):
-        raise NotImplementedError
-
     def log(self, logs: dict, idx: int):
-        self._log(logs, idx)
+        raise NotImplementedError
 
     def log_step(self, logs: dict):
-        self._log_step(logs)
+        raise NotImplementedError
 
     def log_epoch(self, logs: dict):
-        self._log_epoch(logs)
+        raise NotImplementedError

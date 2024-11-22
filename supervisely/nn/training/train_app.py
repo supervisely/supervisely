@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from os import listdir
 from os.path import basename, isdir, isfile, join
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.request import urlopen
 
 import httpx
@@ -59,9 +59,9 @@ class TrainApp:
     def __init__(
         self,
         framework_name: str,
-        models: List[Dict[str, Any]],
+        models: Union[str, List[Dict[str, Any]]],
         hyperparameters: str,
-        app_options: Dict[str, Any] = None,
+        app_options: Union[str,Dict[str, Any]] = None,
         work_dir: str = None,
     ):
 
@@ -83,8 +83,9 @@ class TrainApp:
         self.framework_name = framework_name
         self._team_id = sly_env.team_id()
         self._workspace_id = sly_env.workspace_id()
-        self.app_name = sly_env.app_name()
+        self._app_name = sly_env.app_name(raise_not_found=False)
 
+        # TODO: read files
         self._models = self._validate_models(models)
         self._hyperparameters = self._load_hyperparameters(hyperparameters)
         self._app_options = self._validate_app_options(app_options)
@@ -93,11 +94,13 @@ class TrainApp:
 
         # Input
         self.work_dir = work_dir
-        self.output_dir = join(self.work_dir, "result")
-        self.output_weights_dir = join(self.output_dir, "weights")
+        self.output_dir = join(self.work_dir, "output")
+        self.output_weights_dir = join(self.output_dir, "checkpoints")
         self.project_dir = join(self.work_dir, "sly_project")
+        self.train_dataset_dir = join(self.project_dir, "train")
+        self.val_dataset_dir = join(self.project_dir, "val")
         self.sly_project = None
-        self.train_split, self.val_split = None, None
+        self._train_split, self._val_split = None, None
         # ----------------------------------------- #
 
         # Classes
@@ -128,11 +131,11 @@ class TrainApp:
 
         # Train endpoints
         @self._server.post("/train_from_api")
-        def _deploy_from_api(response: Response, request: Request):
+        def _train_from_api(response: Response, request: Request):
             try:
                 state = request.state.state
-                app_config = state["app_config"]
-                self.gui.load_from_config(app_config)
+                app_state = state["app_state"]
+                self.gui.load_from_state(app_state)
 
                 self._wrapped_start_training()
 
@@ -251,7 +254,6 @@ class TrainApp:
 
         # Step 0. Prepare working directory
         self._prepare_working_dir()
-
         # Step 1. Workflow Input
         if is_production():
             self._workflow_input()
@@ -457,7 +459,7 @@ class TrainApp:
     def _split_project(self) -> None:
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
-        self.train_split, self.val_split = (
+        self._train_split, self._val_split = (
             self.gui.train_val_splits_selector.train_val_splits.get_splits()
         )
 
@@ -482,7 +484,7 @@ class TrainApp:
                 sly_fs.mkdir(path, True)
 
         # Format for image names
-        items_count = max(len(self.train_split), len(self.val_split))
+        items_count = max(len(self._train_split), len(self._val_split))
         num_digits = len(str(items_count))
         image_name_formats = {
             "train": f"train_img_{{:0{num_digits}d}}",
@@ -504,7 +506,7 @@ class TrainApp:
         ) as main_pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                split = self.train_split if dataset == "train" else self.val_split
+                split = self._train_split if dataset == "train" else self._val_split
                 with self.progress_bar_secondary(
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
@@ -686,7 +688,7 @@ class TrainApp:
         train_images_ids = None
 
         split_method = self.gui.train_val_splits_selector.get_split_method()
-        train_set, val_set = self.train_split, self.val_split
+        train_set, val_set = self._train_split, self._val_split
         if split_method == "Based on datasets":
             val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
             train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids
@@ -825,7 +827,7 @@ class TrainApp:
         local_train_split_path = join(self.output_dir, self._train_split_file)
         remote_train_split_path = join(remote_dir, self._train_split_file)
 
-        sly_json.dump_json_file(self.train_split, local_train_split_path)
+        sly_json.dump_json_file(self._train_split, local_train_split_path)
         self._upload_json_file(
             local_train_split_path,
             remote_train_split_path,
@@ -835,7 +837,7 @@ class TrainApp:
         local_val_split_path = join(self.output_dir, self._val_split_file)
         remote_val_split_path = join(remote_dir, self._val_split_file)
 
-        sly_json.dump_json_file(self.val_split, local_val_split_path)
+        sly_json.dump_json_file(self._val_split, local_val_split_path)
         self._upload_json_file(
             local_val_split_path,
             remote_val_split_path,
@@ -1225,8 +1227,8 @@ class TrainApp:
         try:
             project_version_id = self._api.project.version.create(
                 self.project_info,
-                self.app_name,
-                f"This backup was created automatically by Supervisely before the {self.app_name} task with ID: {self._api.task_id}",
+                self._app_name,
+                f"This backup was created automatically by Supervisely before the {self._app_name} task with ID: {self._api.task_id}",
             )
         except Exception as e:
             logger.warning(f"Failed to create a project version: {repr(e)}")
@@ -1270,7 +1272,7 @@ class TrainApp:
             logger.debug(f"Workflow Output: Model artifacts - '{team_files_dir}'")
 
             node_settings = WorkflowSettings(
-                title=self.app_name,
+                title=self._app_name,
                 url=(
                     f"/apps/{module_id}/sessions/{self._api.task_id}"
                     if module_id
