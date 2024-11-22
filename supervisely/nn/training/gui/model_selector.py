@@ -11,21 +11,6 @@ from supervisely.app.widgets import (
     RadioTabs,
     Text,
 )
-from supervisely.nn.artifacts import (
-    HRDA,
-    RITM,
-    RTDETR,
-    Detectron2,
-    MMClassification,
-    MMDetection,
-    MMDetection3,
-    MMSegmentation,
-    UNet,
-    YOLOv5,
-    YOLOv5v2,
-    YOLOv8,
-)
-from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 from supervisely.nn.training.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource
 
@@ -39,16 +24,6 @@ class ModelSelector:
 
         # Pretrained models
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
-
-        # [Legacy] Custom models
-        # framework = self._detect_framework(framework)
-        # if framework is not None:
-        #     artifacts: BaseTrainArtifacts = framework(self.team_id)
-        #     custom_artifacts = artifacts.get_list()
-        # else:
-        #     custom_artifacts = []
-
-        # Custom models
 
         custom_artifacts = get_experiment_infos(api, self.team_id, framework)
         self.custom_models_table = CustomModelsSelectorV2(self.team_id, custom_artifacts)
@@ -77,23 +52,6 @@ class ModelSelector:
     @property
     def widgets_to_disable(self):
         return [self.model_source_tabs, self.pretrained_models_table, self.custom_models_table]
-
-    def _detect_framework(self, framework: str):
-        app_map = {
-            "yolov5": YOLOv5,
-            "yolov5 2.0": YOLOv5v2,
-            "yolov8": YOLOv8,
-            "unet": UNet,
-            "hrda": HRDA,
-            "ritm": RITM,
-            "rt-detr": RTDETR,
-            "mmdetection": MMDetection,
-            "mmdetection 3.0": MMDetection3,
-            "mmsegmentation": MMSegmentation,
-            "mmclassification": MMClassification,
-            "detectron2": Detectron2,
-        }
-        return app_map.get(framework.lower(), None)
 
     def get_model_source(self):
         return self.model_source_tabs.get_active_tab()
