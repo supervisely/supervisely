@@ -1,3 +1,10 @@
+"""
+TrainApp module.
+
+This module contains the `TrainApp` class and related functionality to facilitate
+training workflows in a Supervisely application.
+"""
+
 import shutil
 import time
 from datetime import datetime
@@ -55,6 +62,23 @@ class StopTrainingException(Exception):
 
 
 class TrainApp:
+    """
+    A class representing the training application.
+
+    This class initializes and manages the training workflow, including
+    handling inputs, hyperparameters, project management, and output artifacts.
+
+    :param framework_name: Name of the ML framework used.
+    :type framework_name: str
+    :param models: List of model configurations.
+    :type models: List[Dict[str, Any]]
+    :param hyperparameters: Path or string content of hyperparameters in YAML format.
+    :type hyperparameters: str
+    :param app_options: Options for the application layout and behavior.
+    :type app_options: Optional[Dict[str, Any]]
+    :param work_dir: Path to the working directory for storing intermediate files.
+    :type work_dir: Optional[str]
+    """
 
     def __init__(
         self,
@@ -142,6 +166,12 @@ class TrainApp:
                 raise e
 
     def _register_routes(self):
+        """
+        Registers API routes for TensorBoard and training endpoints.
+
+        These routes enable communication with the application for training
+        and visualizing logs in TensorBoard.
+        """
         client = httpx.AsyncClient(base_url="http://127.0.0.1:8001/")
 
         @self._server.post("/tensorboard/{path:path}")
@@ -161,6 +191,9 @@ class TrainApp:
             )
 
     def _prepare_working_dir(self):
+        """
+        Prepares the working directory by creating required subdirectories.
+        """
         sly_fs.mkdir(self.work_dir, True)
         sly_fs.mkdir(self.output_dir, True)
         sly_fs.mkdir(self.output_weights_dir, True)
@@ -175,14 +208,32 @@ class TrainApp:
     # Input Data
     @property
     def project_id(self) -> int:
+        """
+        Returns the ID of the project.
+
+        :return: Project ID.
+        :rtype: int
+        """
         return self.gui.project_id
 
     @property
     def project_name(self) -> str:
+        """
+        Returns the name of the project.
+
+        :return: Project name.
+        :rtype: str
+        """
         return self.gui.project_info.name
 
     @property
     def project_info(self) -> ProjectInfo:
+        """
+        Returns ProjectInfo object, which contains information about the project.
+
+        :return: Project name.
+        :rtype: str
+        """
         return self.gui.project_info
 
     # ----------------------------------------- #
@@ -190,45 +241,105 @@ class TrainApp:
     # Model
     @property
     def model_source(self) -> str:
+        """
+        Return whether the model is pretrained or custom.
+
+        :return: Model source.
+        :rtype: str
+        """
         return self.gui.model_selector.get_model_source()
 
     @property
     def model_name(self) -> str:
+        """
+        Returns the name of the model.
+
+        :return: Model name.
+        :rtype: str
+        """
         return self.gui.model_selector.get_model_name()
 
     @property
-    def model_info(self) -> str:
+    def model_info(self) -> dict:
+        """
+        Returns a selected row in dict format from the models table.
+
+        :return: Model name.
+        :rtype: str
+        """
         return self.gui.model_selector.get_model_info()
 
     @property
     def device(self) -> str:
+        """
+        Returns the selected device for training.
+
+        :return: Device name.
+        :rtype: str
+        """
         return self.gui.training_process.get_device()
 
     # Classes
     @property
     def classes(self) -> List[str]:
+        """
+        Returns the selected classes for training.
+
+        :return: List of selected classes.
+        :rtype: List[str]
+        """
         return self.gui.classes_selector.get_selected_classes()
 
     @property
     def num_classes(self) -> int:
+        """
+        Returns the number of selected classes for training.
+
+        :return: Number of selected classes.
+        :rtype: int
+        """
         return len(self.gui.classes_selector.get_selected_classes())
 
     # Hyperparameters
     @property
     def hyperparameters(self) -> Dict[str, Any]:
+        """
+        Returns the selected hyperparameters for training in dict format.
+
+        :return: Hyperparameters in dict format.
+        :rtype: Dict[str, Any]
+        """
         return yaml.safe_load(self.hyperparameters_yaml)
 
     @property
     def hyperparameters_yaml(self) -> str:
+        """
+        Returns the selected hyperparameters for training in raw format as a string.
+
+        :return: Hyperparameters in raw format.
+        :rtype: str
+        """
         return self.gui.hyperparameters_selector.get_hyperparameters()
 
     # Train Process
     @property
     def progress_bar_main(self) -> Progress:
+        """
+        Returns the main progress bar widget.
+
+        :return: Main progress bar widget.
+        :rtype: Progress
+        """
         return self.gui.training_process.progress_bar_main
 
     @property
     def progress_bar_secondary(self) -> Progress:
+        """
+        Returns the secondary progress bar widget.
+
+        :return: Secondary progress bar widget.
+        :rtype: Progress
+        """
         return self.gui.training_process.progress_bar_secondary
 
     # Output
@@ -237,6 +348,11 @@ class TrainApp:
     # region TRAIN START
     @property
     def start(self):
+        """
+        Decorator for the training function defined by user.
+        It wraps user-defined training function and prepares and finalizes the training process.
+        """
+
         def decorator(func):
             self._train_func = func
             self.gui.training_process.start_button.click(self._wrapped_start_training)
@@ -244,7 +360,11 @@ class TrainApp:
 
         return decorator
 
-    def _prepare(self):
+    def _prepare(self) -> None:
+        """
+        Prepares the environment for training by setting up directories,
+        downloading project and model data.
+        """
         logger.info("Preparing for training")
         self.gui.disable_select_buttons()
         self._process_optional_widgets(self._app_options)
@@ -263,7 +383,14 @@ class TrainApp:
         # Step 5. Download Model files
         self._download_model()
 
-    def _finalize(self, experiment_info: dict):
+    def _finalize(self, experiment_info: dict) -> None:
+        """
+        Finalizes the training process by validating outputs, uploading artifacts,
+        and updating the UI.
+
+        :param experiment_info: Information about the experiment results that should be returned in user's training function.
+        :type experiment_info: dict
+        """
         logger.info("Finalizing training")
 
         # Step 1. Validate experiment_info
@@ -294,7 +421,7 @@ class TrainApp:
         # Step 4. Generate and upload additional files
         self._generate_experiment_info(remote_dir, experiment_info, splits_data, mb_eval_report_id)
         self._generate_app_state(remote_dir, experiment_info)
-        self._generate_train_val_splits(remote_dir, splits_data)
+        self._generate_train_val_splits(remote_dir)
 
         # Step 5. Set output widgets
         self._set_training_output(remote_dir, file_info)
@@ -308,11 +435,22 @@ class TrainApp:
         # region TRAIN END
 
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
+        """
+        Registers an inference class for the training application to do model benchmarking.
+
+        :param inference_class: Inference class to be registered inherited from `supervisely.nn.inference.Inference`.
+        :type inference_class: Any
+        :param inference_settings: Settings for the inference class.
+        :type inference_settings: dict
+        """
         self._inference_class = inference_class
         self._inference_settings = inference_settings
 
     # Loaders
     def _validate_models(self, models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Validates the models parameter to ensure it is in the correct format.
+        """
         if not isinstance(models, list):
             raise ValueError("models parameters must be a list of dicts")
         for item in models:
@@ -332,6 +470,14 @@ class TrainApp:
         return models
 
     def _load_hyperparameters(self, hyperparameters: str) -> dict:
+        """
+        Loads hyperparameters from file path.
+
+        :param hyperparameters: Path to hyperparameters file.
+        :type hyperparameters: str
+        :return: Hyperparameters in dict format.
+        :rtype: dict
+        """
         if not isinstance(hyperparameters, str):
             raise ValueError(
                 f"Expected a string with config or path for hyperparameters, but got {type(hyperparameters).__name__}"
@@ -345,6 +491,9 @@ class TrainApp:
         return hyperparameters
 
     def _validate_app_options(self, app_options: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validates the app_options parameter to ensure it is in the correct format.
+        """
         if not isinstance(app_options, dict):
             raise ValueError("app_options must be a dict")
         # @TODO: Validate app_options
@@ -355,6 +504,10 @@ class TrainApp:
     # Preprocess
     # Download Project
     def _download_project(self) -> None:
+        """
+        Downloads the project data from Supervisely.
+        If the cache is enabled, it will attempt to retrieve the project from the cache.
+        """
         dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
 
         if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
@@ -385,6 +538,14 @@ class TrainApp:
             logger.info(f"Project downloaded successfully to: '{self.project_dir}'")
 
     def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
+        """
+        Downloads the project data from Supervisely without using the cache.
+
+        :param dataset_infos: List of dataset information objects.
+        :type dataset_infos: List[DatasetInfo]
+        :param total_images: Total number of images to download.
+        :type total_images: int
+        """
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
             self.progress_bar_main.show()
             download_project(
@@ -402,6 +563,14 @@ class TrainApp:
         dataset_infos: List[DatasetInfo],
         total_images: int,
     ) -> None:
+        """
+        Downloads the project data from Supervisely using the cache.
+
+        :param dataset_infos: List of dataset information objects.
+        :type dataset_infos: List[DatasetInfo]
+        :param total_images: Total number of images to download.
+        :type total_images: int
+        """
         to_download = [
             info for info in dataset_infos if not is_cached(self.project_info.id, info.name)
         ]
@@ -437,6 +606,9 @@ class TrainApp:
         self.progress_bar_main.hide()
 
     def _get_cache_log_message(self, cached: bool, to_download: List[DatasetInfo]) -> str:
+        """
+        Utility method to generate a log message for cache status.
+        """
         if not cached:
             log_msg = "No cached datasets found"
         else:
@@ -455,6 +627,11 @@ class TrainApp:
 
     # Split Project
     def _split_project(self) -> None:
+        """
+        Split the project into training and validation sets.
+        All images and annotations will be renamed and moved to the appropriate directories.
+        Assigns self.sly_project to the new project, which contains only 2 datasets: train and val.
+        """
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
         self.train_split, self.val_split = (
@@ -491,6 +668,9 @@ class TrainApp:
 
         # Utility function to move files
         def move_files(split, paths, img_name_format, pbar):
+            """
+            Move files to the appropriate directories.
+            """
             for idx, item in enumerate(split, start=1):
                 item_name = img_name_format.format(idx) + sly_fs.get_file_ext(item.name)
                 ann_name = f"{item_name}.json"
@@ -545,6 +725,35 @@ class TrainApp:
     # ----------------------------------------- #
     # Download Model
     def _download_model(self) -> None:
+        """
+        Downloads the model data from the selected source.
+
+        For Pretrained models:
+            - The files that will be downloaded are specified in the `meta` key under `model_files`.
+            - All files listed in the `model_files` key will be downloaded by provided link.
+            Example of a pretrained model entry:
+                [
+                    {
+                            "Model": "example_model",
+                            "dataset": "COCO",
+                            "AP_val": 46.4,
+                            "Params(M)": 20,
+                            "FPS(T4)": 217,
+                            "meta": {
+                                    "task_type": "object detection",
+                                    "model_name": "example_model",
+                                    "model_files": {
+                                            "checkpoint": "https://example.com/checkpoint.pth"
+                                            "config": "https://example.com/config.yaml"
+                                    }
+                            }
+                    },
+                    ...
+                ]
+
+        For Custom models:
+            - All custom models trained inside Supervisely are managed automatically by this class.
+        """
         if self.model_source == ModelSource.PRETRAINED:
             self._download_pretrained_model()
 
@@ -553,6 +762,9 @@ class TrainApp:
         logger.info(f"Model files have been downloaded successfully to: '{self.model_dir}'")
 
     def _download_pretrained_model(self):
+        """
+        Downloads the pretrained model data.
+        """
         # General
         self.model_files = {}
         model_meta = self.model_info["meta"]
@@ -591,6 +803,9 @@ class TrainApp:
         self.progress_bar_secondary.hide()
 
     def _download_custom_model(self):
+        """
+        Downloads the custom model data.
+        """
         # General
         self.model_files = {}
 
@@ -639,6 +854,25 @@ class TrainApp:
     # Postprocess
 
     def _validate_experiment_info(self, experiment_info: dict) -> tuple:
+        """
+        Validates the experiment_info parameter to ensure it is in the correct format.
+        experiment_info is returned by the user's training function.
+
+        experiment_info should contain the following keys:
+            - experiment_name": str
+            - model_name": str
+            - task_type": str
+            - model_files": dict
+            - checkpoints": list
+            - best_checkpoint": str
+
+        Other keys are generated by the TrainApp class automatically
+
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        :return: Tuple of success status and reason for failure.
+        :rtype: tuple
+        """
         if not isinstance(experiment_info, dict):
             reason = f"Validation failed: 'experiment_info' must be a dictionary not '{type(experiment_info)}'"
             return False, reason
@@ -680,6 +914,9 @@ class TrainApp:
         return True, None
 
     def _postprocess_splits(self) -> dict:
+        """
+        Processes the train and val splits to generate the necessary data for the experiment_info.json file.
+        """
         val_dataset_ids = None
         val_images_ids = None
         train_dataset_ids = None
@@ -739,7 +976,13 @@ class TrainApp:
         }
         return splits_data
 
-    def _preprocess_artifacts(self, experiment_info: dict):
+    def _preprocess_artifacts(self, experiment_info: dict) -> None:
+        """
+        Preprocesses and move the artifacts generated by the training process to output directories.
+
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        """
         logger.info("Preprocessing artifacts")
         if "model_files" not in experiment_info:
             experiment_info["model_files"] = {}
@@ -819,8 +1062,13 @@ class TrainApp:
             )
             self.progress_bar_main.hide()
 
-    def _generate_train_val_splits(self, remote_dir: str, splits_data: dict) -> None:
+    def _generate_train_val_splits(self, remote_dir: str) -> None:
+        """
+        Generates and uploads the train and val splits to the output directory.
 
+        :param remote_dir: Remote directory path.
+        :type remote_dir: str
+        """
         # 1. Process train split
         local_train_split_path = join(self.output_dir, self._train_split_file)
         remote_train_split_path = join(remote_dir, self._train_split_file)
@@ -849,6 +1097,18 @@ class TrainApp:
         splits_data: Dict,
         evaluation_report_id: Optional[int] = None,
     ) -> None:
+        """
+        Generates and uploads the experiment_info.json file to the output directory.
+
+        :param remote_dir: Remote directory path.
+        :type remote_dir: str
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        :param splits_data: Information about the train and val splits.
+        :type splits_data: dict
+        :param evaluation_report_id: Evaluation report file ID.
+        :type evaluation_report_id: int
+        """
         logger.info("Updating experiment info")
         experiment_info.update(
             {
@@ -899,9 +1159,17 @@ class TrainApp:
         )
 
     def _generate_app_state(self, remote_dir: str, experiment_info: Dict) -> None:
+        """
+        Generates and uploads the app_state.json file to the output directory.
+
+        :param remote_dir: Remote directory path.
+        :type remote_dir: str
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        """
         input_data = {"project_id": self.project_id}
-        train_val_splits = self._get_train_val_splits()
-        model = self._get_model_config(experiment_info)
+        train_val_splits = self._get_train_val_splits_for_app_state()
+        model = self._get_model_config_for_app_state(experiment_info)
 
         options = {
             "model_benchmark": {
@@ -927,7 +1195,13 @@ class TrainApp:
             local_path, remote_path, f"Uploading '{self._app_state_file}' to Team Files"
         )
 
-    def _get_train_val_splits(self) -> Dict:
+    def _get_train_val_splits_for_app_state(self) -> Dict:
+        """
+        Gets the train and val splits information for app_state.json.
+
+        :return: Train and val splits information based on selected split method.
+        :rtype: dict
+        """
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_val_splits = {"method": split_method.lower()}
         if split_method == "Random":
@@ -954,7 +1228,13 @@ class TrainApp:
             )
         return train_val_splits
 
-    def _get_model_config(self, experiment_info: Dict) -> Dict:
+    def _get_model_config_for_app_state(self, experiment_info: Dict) -> Dict:
+        """
+        Gets the model configuration information for app_state.json.
+
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        """
         if self.model_source == ModelSource.PRETRAINED:
             return {
                 "source": ModelSource.PRETRAINED,
@@ -971,6 +1251,13 @@ class TrainApp:
 
     # Upload artifacts
     def _upload_artifacts(self) -> None:
+        """
+        Uploads the training artifacts to Supervisely.
+        Path is generated based on the project ID, task ID, and framework name.
+
+        Path: /experiments/{project_id}_{project_name}/{task_id}_{framework_name}/
+        Example path: /experiments/43192_Apples/68271_rt-detr/
+        """
         logger.info(f"Uploading directory: '{self.output_dir}' to Supervisely")
 
         experiments_dir = "experiments"
@@ -1020,6 +1307,9 @@ class TrainApp:
         return remote_dir, file_info
 
     def _set_training_output(self, remote_dir: str, file_info: FileInfo) -> None:
+        """
+        Sets the training output in the GUI.
+        """
         logger.info("All training artifacts uploaded successfully")
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
@@ -1031,12 +1321,18 @@ class TrainApp:
         self.gui.training_process.success_message.show()
 
     def _process_optional_widgets(self, app_options: Dict[str, Any]) -> None:
+        """
+        Process optional widget settings specified in the app options parameter.
+        """
         if app_options.get("enable_device_selector", False):
             self.gui.training_process.select_device.disable()
             self.gui.training_process.select_device.hide()
 
     # Model Benchmark
     def _get_eval_results_dir_name(self) -> str:
+        """
+        Returns the evaluation results path.
+        """
         task_info = self._api.task.get_info_by_id(self.task_id)
         task_dir = f"{self.task_id}_{task_info['meta']['app']['name']}"
         eval_res_dir = f"/model-benchmark/evaluation/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
@@ -1050,8 +1346,21 @@ class TrainApp:
         remote_artifacts_dir: str,
         experiment_info: dict,
         splits_data: dict,
-    ) -> bool:
+    ) -> tuple:
+        """
+        Runs the Model Benchmark evaluation process. Model benchmark runs only in production mode.
 
+        :param local_artifacts_dir: Local directory path.
+        :type local_artifacts_dir: str
+        :param remote_artifacts_dir: Remote directory path.
+        :type remote_artifacts_dir: str
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        :param splits_data: Information about the train and val splits.
+        :type splits_data: dict
+        :return: Evaluation report and report ID.
+        :rtype: tuple
+        """
         report, report_id = None, None
         if self._inference_class is None:
             logger.warn(
@@ -1222,6 +1531,9 @@ class TrainApp:
 
     # Workflow
     def _workflow_input(self):
+        """
+        Adds the input data to the workflow.
+        """
         try:
             project_version_id = self._api.project.version.create(
                 self.project_info,
@@ -1260,6 +1572,9 @@ class TrainApp:
         file_info: FileInfo,
         model_benchmark_report: Optional[FileInfo] = None,
     ):
+        """
+        Adds the output data to the workflow.
+        """
         try:
             module_id = (
                 self._api.task.get_info_by_id(self._api.task_id)
@@ -1322,6 +1637,9 @@ class TrainApp:
 
     # Logger
     def _init_logger(self):
+        """
+        Initialize training logger. Set up Tensorboard and callbacks.
+        """
         self.log_dir = join(self.work_dir, "logs")
         tb_logger.set_log_dir(self.log_dir)
         tb_logger.start_tensorboard()
@@ -1330,10 +1648,16 @@ class TrainApp:
         self.gui.training_process.tensorboard_button.enable()
 
     def _setup_logger_callbacks(self):
+        """
+        Set up callbacks for the training logger.
+        """
         epoch_pbar = None
         step_pbar = None
 
         def start_training_callback(total_epochs: int):
+            """
+            Callback function that is called when the training process starts.
+            """
             nonlocal epoch_pbar
             logger.info(f"Training started for {total_epochs} epochs")
             pbar_widget = self.progress_bar_main
@@ -1341,6 +1665,9 @@ class TrainApp:
             epoch_pbar = pbar_widget(message=f"Epochs", total=total_epochs)
 
         def finish_training_callback():
+            """
+            Callback function that is called when the training process finishes.
+            """
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
 
@@ -1349,6 +1676,9 @@ class TrainApp:
             tb_logger.stop_tensorboard()
 
         def start_epoch_callback(total_steps: int):
+            """
+            Callback function that is called when a new epoch starts.
+            """
             nonlocal step_pbar
             logger.info(f"Epoch started. Total steps: {total_steps}")
             pbar_widget = self.progress_bar_secondary
@@ -1356,9 +1686,15 @@ class TrainApp:
             step_pbar = pbar_widget(message=f"Steps", total=total_steps)
 
         def finish_epoch_callback():
+            """
+            Callback function that is called when an epoch finishes.
+            """
             epoch_pbar.update(1)
 
         def step_callback():
+            """
+            Callback function that is called when a step iteration is completed.
+            """
             step_pbar.update(1)
 
         tb_logger.add_on_train_started_callback(start_training_callback)
@@ -1371,6 +1707,9 @@ class TrainApp:
 
     # ----------------------------------------- #
     def _wrapped_start_training(self):
+        """
+        Wrapper function to wrap the training process.
+        """
         self.gui.training_process.start_button.loading = True
 
         if self._train_func is None:

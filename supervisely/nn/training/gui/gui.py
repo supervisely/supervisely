@@ -1,3 +1,10 @@
+"""
+GUI module for training application.
+
+This module provides the `TrainGUI` class that handles the graphical user interface (GUI) for managing
+training workflows in Supervisely.
+"""
+
 import supervisely.io.env as sly_env
 from supervisely import Api
 from supervisely.app.widgets import Stepper, Widget
@@ -12,6 +19,23 @@ from supervisely.nn.utils import ModelSource
 
 
 class TrainGUI:
+    """
+    A class representing the GUI for training workflows.
+
+    This class sets up and manages GUI components such as project selection,
+    train/validation split selection, model selection, hyperparameters selection,
+    and the training process.
+
+    :param framework_name: Name of the ML framework being used.
+    :type framework_name: str
+    :param models: List of available models.
+    :type models: list
+    :param hyperparameters: Hyperparameters for training.
+    :type hyperparameters: dict
+    :param app_options: Application options for customization.
+    :type app_options: dict, optional
+    """
+
     def __init__(
         self,
         framework_name: str,
@@ -197,6 +221,9 @@ class TrainGUI:
         self.layout: Widget = self.stepper
 
     def enable_select_buttons(self):
+        """
+        Makes all select buttons in the GUI available for interaction.
+        """
         self.input_selector.button.enable()
         self.train_val_splits_selector.button.enable()
         self.classes_selector.button.enable()
@@ -204,6 +231,9 @@ class TrainGUI:
         self.hyperparameters_selector.button.enable()
 
     def disable_select_buttons(self):
+        """
+        Makes all select buttons in the GUI unavailable for interaction.
+        """
         self.input_selector.button.disable()
         self.train_val_splits_selector.button.disable()
         self.classes_selector.button.disable()
@@ -212,6 +242,12 @@ class TrainGUI:
 
     # Set GUI from config
     def validate_app_config(self, app_config: dict) -> dict:
+        """
+        Validate the app configuration dictionary.
+
+        :param app_config: The app configuration dictionary.
+        :type app_config: dict
+        """
         if not isinstance(app_config, dict):
             raise ValueError("app_config must be a dictionary")
 
@@ -309,6 +345,12 @@ class TrainGUI:
         return app_config
 
     def load_from_config(self, app_config: dict) -> None:
+        """
+        Load the GUI state from a configuration dictionary.
+
+        :param app_config: The configuration dictionary.
+        :type app_config: dict
+        """
         app_config = self.validate_app_config(app_config)
 
         options = app_config["options"]
@@ -325,12 +367,26 @@ class TrainGUI:
         self._init_hyperparameters(hyperparameters_settings, options)
 
     def _init_input(self, input_settings: dict, options: dict) -> None:
+        """
+        Initialize the input selector with the given settings.
+
+        :param input_settings: The input settings.
+        :type input_settings: dict
+        :param options: The application options.
+        :type options: dict
+        """
         # Set Input
         self.input_selector.set_cache(options["cache_project"])
         self.input_selector_cb()
         # ----------------------------------------- #
 
     def _init_train_val_splits(self, train_val_splits_settings: dict) -> None:
+        """
+        Initialize the train/val splits selector with the given settings.
+
+        :param train_val_splits_settings: The train/val splits settings.
+        :type train_val_splits_settings: dict
+        """
         split_method = train_val_splits_settings["method"]
         if split_method == "random":
             split = train_val_splits_settings["split"]
@@ -352,12 +408,25 @@ class TrainGUI:
         self.train_val_splits_selector_cb()
 
     def _init_classes(self, classes_settings: list) -> None:
+        """
+        Initialize the classes selector with the given settings.
+
+        :param classes_settings: The classes settings.
+        :type classes_settings: list
+        """
         # Set Classes
         self.classes_selector.set_classes(classes_settings)
         self.classes_selector_cb()
         # ----------------------------------------- #
 
     def _init_model(self, model_settings: dict) -> None:
+        """
+        Initialize the model selector with the given settings.
+
+        :param model_settings: The model settings.
+        :type model_settings: dict
+        """
+
         # Pretrained
         if model_settings["source"] == ModelSource.PRETRAINED:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
@@ -380,6 +449,14 @@ class TrainGUI:
         # ----------------------------------------- #
 
     def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict) -> None:
+        """
+        Initialize the hyperparameters selector with the given settings.
+
+        :param hyperparameters_settings: The hyperparameters settings.
+        :type hyperparameters_settings: dict
+        :param options: The application options.
+        :type options: dict
+        """
         self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
         model_benchmark_settings = options["model_benchmark"]
