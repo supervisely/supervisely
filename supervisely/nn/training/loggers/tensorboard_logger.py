@@ -1,7 +1,5 @@
 import subprocess
 
-from tensorboard.compat.proto.event_pb2 import Event
-from tensorboard.compat.proto.summary_pb2 import Summary
 from tensorboardX import SummaryWriter
 
 from supervisely.nn.training.loggers.base_train_logger import BaseTrainLogger
