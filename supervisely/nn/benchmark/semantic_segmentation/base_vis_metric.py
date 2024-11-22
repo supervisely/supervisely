@@ -24,7 +24,7 @@ class SemanticSegmVisMetric(BaseVisMetric):
         for key, v in self.eval_result.images_by_class.items():
             res["clickData"][key] = {}
 
-            title = f"{key} class: {len(v)} object{'s' if len(v) > 1 else ''}"
+            title = f"Class {key}: {len(v)} image{'s' if len(v) > 1 else ''}"
             res["clickData"][key]["title"] = title
             img_ids = [
                 self.eval_result.matched_pair_data[gt_img_id].pred_image_info.id for gt_img_id in v

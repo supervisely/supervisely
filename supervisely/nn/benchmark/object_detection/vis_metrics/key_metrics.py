@@ -73,7 +73,7 @@ class KeyMetrics(DetectionVisMetric):
             go.Scatterpolar(
                 r=r + [r[0]],
                 theta=theta + [theta[0]],
-                fill="toself",
+                # fill="toself",
                 name="Overall Metrics",
                 hovertemplate="%{theta}: %{r:.2f}<extra></extra>",
             )

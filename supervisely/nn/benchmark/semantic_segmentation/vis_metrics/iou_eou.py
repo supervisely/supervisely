@@ -38,7 +38,7 @@ class IntersectionErrorOverUnion(SemanticSegmVisMetric):
                 hole=0.5,
                 textposition="outside",
                 textinfo="percent+label",
-                marker=dict(colors=["cornflowerblue", "moccasin", "lightgreen", "orangered"]),
+                marker=dict(colors=["#8ACAA1", "#FFE4B5", "#F7ADAA", "#dd3f3f"]),
             )
         )
 

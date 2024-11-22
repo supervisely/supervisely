@@ -36,7 +36,7 @@ class ClasswiseErrorAnalysis(SemanticSegmVisMetric):
 
         # # Classwise Segmentation Error Analysis figure
         bar_data, labels = self.eval_result.mp.classwise_segm_error_data
-        color_palette = ["cornflowerblue", "moccasin", "lightgreen", "orangered"]
+        color_palette = ["#8ACAA1", "#FFE4B5", "#F7ADAA", "#dd3f3f"]
 
         for i, column in enumerate(bar_data.columns):
             fig.add_trace(
@@ -45,10 +45,13 @@ class ClasswiseErrorAnalysis(SemanticSegmVisMetric):
                     y=bar_data[column],
                     x=labels,
                     marker_color=color_palette[i],
+                    hovertemplate="Class: %{x}<br> %{name}: %{y:.2f}<extra></extra>",
                 )
             )
 
         fig.update_layout(barmode="stack", xaxis_title="Class")
+        if len(labels) < 10:
+            fig.update_layout(width=800)
         fig.update_yaxes(range=[0, 1])
 
         return fig

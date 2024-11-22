@@ -57,13 +57,17 @@ class FrequentlyConfused(SemanticSegmVisMetric):
                 y=probs,
                 orientation="v",
                 text=probs,
+                marker=dict(color=probs, colorscale="Reds"),
             )
         )
+        fig.update_traces(hovertemplate="Class Pair: %{x}<br>Probability: %{y:.2f}<extra></extra>")
         fig.update_layout(
-            plot_bgcolor="rgba(0, 0, 0, 0)",
+            xaxis_title="Class Pair",
+            yaxis_title="Probability",
             yaxis_range=[0, max(probs) + 0.1],
             yaxis=dict(showticklabels=False),
             font=dict(size=24),
+            width=1000 if len(confused_classes) > 10 else 600,
         )
 
         return fig

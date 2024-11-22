@@ -24,7 +24,7 @@ class RenormalizedErrorOverUnion(SemanticSegmVisMetric):
         fig = go.Figure()
 
         # Renormalized Error over Union figure
-        labels = ["boundary", "extent", "segment"]
+        labels = ["Boundary EoU", "Extent EoU", "Segment EoU"]
         values = [
             self.eval_result.mp.boundary_renormed_eou,
             self.eval_result.mp.extent_renormed_eou,
@@ -38,8 +38,11 @@ class RenormalizedErrorOverUnion(SemanticSegmVisMetric):
                 text=values,
                 width=[0.5, 0.5, 0.5],
                 textposition="outside",
-                marker_color=["moccasin", "lightgreen", "orangered"],
+                marker_color=["#FFE4B5", "#F7ADAA", "#dd3f3f"],
+                hovertemplate="%{x}: %{y:.2f}<extra></extra>",
             )
         )
+        fig.update_traces(hovertemplate="%{x}: %{y:.2f}<extra></extra>")
+        fig.update_layout(width=600)
 
         return fig

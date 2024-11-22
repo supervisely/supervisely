@@ -41,14 +41,23 @@ class ConfusionMatrix(SemanticSegmVisMetric):
 
         x = class_names
         y = x[::-1].copy()
-        text_anns = [[str(el) for el in row] for row in confusion_matrix]
+        if len(x) >= 20:
+            text_anns = [[str(el) for el in row] for row in confusion_matrix]
+        else:
+            text_anns = [
+                [
+                    f"Predicted: {pred}<br>Ground Truth: {gt}<br> Probability: {confusion_matrix[ig][ip]}"
+                    for ip, pred in enumerate(x)
+                ]
+                for ig, gt in enumerate(y)
+            ]
 
         fig.add_trace(
             go.Heatmap(
                 z=confusion_matrix,
                 x=x,
                 y=y,
-                colorscale="orrd",
+                colorscale="Viridis",
                 showscale=False,
                 text=text_anns,
                 hoverinfo="text",
@@ -56,6 +65,8 @@ class ConfusionMatrix(SemanticSegmVisMetric):
         )
 
         fig.update_layout(xaxis_title="Predicted", yaxis_title="Ground Truth")
+        if len(x) <= 20:
+            fig.update_layout(width=600, height=600)
         return fig
 
     def get_click_data(self) -> Dict:

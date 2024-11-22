@@ -22,13 +22,13 @@ class KeyMetrics(SemanticSegmVisMetric):
         import plotly.graph_objects as go  # pylint: disable=import-error
 
         fig = go.Figure()
-        metrics = self.eval_result.mp.key_metrics()
+        metrics = self.eval_result.mp.key_metrics().copy()
+        metrics["mPixel accuracy"] = round(metrics["mPixel accuracy"] * 100, 2)
         fig.add_trace(
             go.Scatterpolar(
                 r=list(metrics.values()) + [list(metrics.values())[0]],
                 theta=list(metrics.keys()) + [list(metrics.keys())[0]],
-                line_color="blue",
-                fill="toself",
+                # fill="toself",
                 hovertemplate="%{theta}: %{r:.2f}<extra></extra>",
             )
         )
