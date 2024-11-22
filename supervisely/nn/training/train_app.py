@@ -5,6 +5,17 @@ This module contains the `TrainApp` class and related functionality to facilitat
 training workflows in a Supervisely application.
 """
 
+# @TODO:
+# 1. Save model_meta as file
+# 2. Check local paths in models.json (if not start with http) and do not download (and also do not move)
+# 3. Add start_tensorboard outside of TrainApp in user train_func
+# + 4. Weights rename to checkpoints
+# 5. Add load from file for hyperparameters, models and app_options
+# + 6. train_val_split.json -> contain train image ids and val image ids
+# + 7. Remove image_ids from experiment_info.json
+# 8. Remove artifacts dir from experiment_info.json? + fix widget return path
+# + 9. Add constants for directory names
+
 import shutil
 import time
 from datetime import datetime
@@ -37,6 +48,7 @@ from supervisely import (
     logger,
 )
 from supervisely.api.file_api import FileInfo
+from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
@@ -95,8 +107,15 @@ class TrainApp:
         # Constants
         self._experiment_json_file = "experiment_info.json"
         self._app_state_file = "app_state.json"
-        self._train_split_file = "train_split.json"
-        self._val_split_file = "val_split.json"
+        self._train_val_split_file = "train_val_split.json"
+
+        self._sly_project_dir_name = "sly_project"
+        self._model_dir_name = "model"
+        self._log_dir_name = "logs"
+        self._output_dir_name = "result"
+        self._output_checkpoints_dir_name = "checkpoints"
+        self._remote_checkpoints_dir_name = "checkpoints"
+        self._experiments_dir_name = "experiments"
 
         if is_production():
             self.task_id = sly_env.task_id()
@@ -107,7 +126,7 @@ class TrainApp:
         self.framework_name = framework_name
         self._team_id = sly_env.team_id()
         self._workspace_id = sly_env.workspace_id()
-        self.app_name = sly_env.app_name()
+        self._app_name = sly_env.app_name(raise_not_found=False)
 
         self._models = self._validate_models(models)
         self._hyperparameters = self._load_hyperparameters(hyperparameters)
@@ -116,12 +135,6 @@ class TrainApp:
         # ----------------------------------------- #
 
         # Input
-        self.work_dir = work_dir
-        self.output_dir = join(self.work_dir, "result")
-        self.output_weights_dir = join(self.output_dir, "weights")
-        self.project_dir = join(self.work_dir, "sly_project")
-        self.sly_project = None
-        self.train_split, self.val_split = None, None
         # ----------------------------------------- #
 
         # Classes
@@ -129,8 +142,8 @@ class TrainApp:
 
         # Model
         self.model_files = {}
-        self.model_dir = join(self.work_dir, "model")
-        self.log_dir = join(self.work_dir, "logs")
+        self.model_dir = join(self.work_dir, self._model_dir_name)
+        self.log_dir = join(self.work_dir, self._log_dir_name)
         # ----------------------------------------- #
 
         # Hyperparameters
@@ -144,6 +157,18 @@ class TrainApp:
         self._server = self.app.get_server()
         self._register_routes()
         self._train_func = None
+        # -------------------------- #
+
+        # Directories
+        if work_dir is not None:
+            self.work_dir = work_dir
+        else:
+            self.work_dir = join(get_synced_data_dir(), "work_dir")
+        self.output_dir = join(self.work_dir, self._output_dir_name)
+        self._output_checkpoints_dir = join(self.output_dir, self._output_checkpoints_dir)
+        self.project_dir = join(self.work_dir, self._sly_project_dir_name)
+        self.sly_project = None
+        self.train_split, self.val_split = None, None
         # -------------------------- #
 
         # Tensorboard debug
@@ -196,7 +221,7 @@ class TrainApp:
         """
         sly_fs.mkdir(self.work_dir, True)
         sly_fs.mkdir(self.output_dir, True)
-        sly_fs.mkdir(self.output_weights_dir, True)
+        sly_fs.mkdir(self._output_checkpoints_dir, True)
         sly_fs.mkdir(self.project_dir, True)
         sly_fs.mkdir(self.model_dir, True)
         sly_fs.mkdir(self.log_dir, True)
@@ -418,7 +443,7 @@ class TrainApp:
         # Step 4. Generate and upload additional files
         self._generate_experiment_info(remote_dir, experiment_info, splits_data, mb_eval_report_id)
         self._generate_app_state(remote_dir, experiment_info)
-        self._generate_train_val_splits(remote_dir)
+        self._generate_train_val_splits(remote_dir, splits_data)
 
         # Step 5. Set output widgets
         self._set_training_output(remote_dir, file_info)
@@ -776,13 +801,13 @@ class TrainApp:
                 file_url = model_files[file]
 
                 with urlopen(file_url) as f:
-                    weights_size = f.length
+                    checkpoint_size = f.length
 
                 file_path = join(self.model_dir, file)
 
                 with self.progress_bar_secondary(
                     message=f"Downloading '{file}' ",
-                    total=weights_size,
+                    total=checkpoint_size,
                     unit="bytes",
                     unit_scale=True,
                 ) as model_download_secondary_pbar:
@@ -1006,6 +1031,7 @@ class TrainApp:
             sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"]),
         )
 
+        # @TODO: Save sly_metadata as model_meta.json | Do not add to config
         # Add sly_metadata to config
         logger.info("Adding 'sly_metadata' to config file")
         with open(experiment_info["model_files"]["config"], "r") as file:
@@ -1033,7 +1059,8 @@ class TrainApp:
 
         for checkpoint_path in checkpoint_paths:
             new_checkpoint_path = join(
-                self.output_weights_dir, sly_fs.get_file_name_with_ext(checkpoint_path)
+                self._output_checkpoints_dir,
+                sly_fs.get_file_name_with_ext(checkpoint_path),
             )
             shutil.move(checkpoint_path, new_checkpoint_path)
 
@@ -1059,39 +1086,32 @@ class TrainApp:
             )
             self.progress_bar_main.hide()
 
-    def _generate_train_val_splits(self, remote_dir: str) -> None:
+    def _generate_train_val_splits(self, remote_dir: str, splits_data: dict) -> None:
         """
         Generates and uploads the train and val splits to the output directory.
 
         :param remote_dir: Remote directory path.
         :type remote_dir: str
         """
-        # 1. Process train split
-        local_train_split_path = join(self.output_dir, self._train_split_file)
-        remote_train_split_path = join(remote_dir, self._train_split_file)
+        local_train_val_split_path = join(self.output_dir, self._train_val_split_file)
+        remote_train_val_split_path = join(remote_dir, self._train_val_split_file)
 
-        sly_json.dump_json_file(self.train_split, local_train_split_path)
-        self._upload_json_file(
-            local_train_split_path,
-            remote_train_split_path,
-            f"Uploading '{self._train_split_file}' to Team Files",
-        )
-        # 2. Process val split
-        local_val_split_path = join(self.output_dir, self._val_split_file)
-        remote_val_split_path = join(remote_dir, self._val_split_file)
+        data = {
+            "train": splits_data["train"]["images_ids"],
+            "val": splits_data["val"]["images_ids"],
+        }
 
-        sly_json.dump_json_file(self.val_split, local_val_split_path)
+        sly_json.dump_json_file(data, local_train_val_split_path)
         self._upload_json_file(
-            local_val_split_path,
-            remote_val_split_path,
-            f"Uploading '{self._val_split_file}' to Team Files",
+            local_train_val_split_path,
+            remote_train_val_split_path,
+            f"Uploading '{self._train_val_split_file}' to Team Files",
         )
 
     def _generate_experiment_info(
         self,
         remote_dir: str,
         experiment_info: Dict,
-        splits_data: Dict,
         evaluation_report_id: Optional[int] = None,
     ) -> None:
         """
@@ -1101,8 +1121,6 @@ class TrainApp:
         :type remote_dir: str
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :param splits_data: Information about the train and val splits.
-        :type splits_data: dict
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
         """
@@ -1111,16 +1129,7 @@ class TrainApp:
             {
                 "framework_name": self.framework_name,
                 "app_state": self._app_state_file,
-                "train_val_splits": {
-                    "train": {
-                        "split": self._train_split_file,
-                        "images_ids": splits_data["train"]["images_ids"],
-                    },
-                    "val": {
-                        "split": self._val_split_file,
-                        "images_ids": splits_data["val"]["images_ids"],
-                    },
-                },
+                "train_val_splits": self._train_val_split_file,
                 "hyperparameters": self.hyperparameters,
                 "artifacts_dir": remote_dir,
                 "task_id": self.task_id,
@@ -1131,12 +1140,12 @@ class TrainApp:
             }
         )
 
-        remote_weights_dir = join(remote_dir, "weights")
+        remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
-            self._team_id, remote_weights_dir, return_type="fileinfo"
+            self._team_id, remote_checkpoints_dir, return_type="fileinfo"
         )
         experiment_info["checkpoints"] = [
-            f"weights/{checkpoint.name}" for checkpoint in checkpoint_files
+            f"checkpoints/{checkpoint.name}" for checkpoint in checkpoint_files
         ]
 
         experiment_info["best_checkpoint"] = sly_fs.get_file_name_with_ext(
@@ -1256,11 +1265,9 @@ class TrainApp:
         Example path: /experiments/43192_Apples/68271_rt-detr/
         """
         logger.info(f"Uploading directory: '{self.output_dir}' to Supervisely")
-
-        experiments_dir = "experiments"
         task_id = self.task_id
 
-        remote_artifacts_dir = f"/{experiments_dir}/{self.project_id}_{self.project_name}/{task_id}_{self.framework_name}/"
+        remote_artifacts_dir = f"/{self._experiments_dir_name}/{self.project_id}_{self.project_name}/{task_id}_{self.framework_name}/"
 
         # Clean debug directory if exists
         if task_id == "debug-session":
@@ -1382,10 +1389,10 @@ class TrainApp:
 
         logger.info("Running Model Benchmark evaluation")
         try:
-            remote_weights_dir = join(remote_artifacts_dir, "weights")
+            remote_checkpoints_dir = join(remote_artifacts_dir, "checkpoints")
             best_checkpoint = experiment_info.get("best_checkpoint", None)
             best_filename = sly_fs.get_file_name_with_ext(best_checkpoint)
-            remote_best_checkpoint = join(remote_weights_dir, best_filename)
+            remote_best_checkpoint = join(remote_checkpoints_dir, best_filename)
 
             config_path = experiment_info["model_files"].get("config")
             if config_path is not None:
@@ -1535,8 +1542,8 @@ class TrainApp:
         try:
             project_version_id = self._api.project.version.create(
                 self.project_info,
-                self.app_name,
-                f"This backup was created automatically by Supervisely before the {self.app_name} task with ID: {self._api.task_id}",
+                self._app_name,
+                f"This backup was created automatically by Supervisely before the {self._app_name} task with ID: {self._api.task_id}",
             )
         except Exception as e:
             logger.warning(f"Failed to create a project version: {repr(e)}")
@@ -1583,7 +1590,7 @@ class TrainApp:
             logger.debug(f"Workflow Output: Model artifacts - '{team_files_dir}'")
 
             node_settings = WorkflowSettings(
-                title=self.app_name,
+                title=self._app_name,
                 url=(
                     f"/apps/{module_id}/sessions/{self._api.task_id}"
                     if module_id
