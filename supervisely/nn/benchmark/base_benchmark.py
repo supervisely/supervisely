@@ -172,7 +172,7 @@ class BaseBenchmark:
             pred_project_path=dt_project_path,
             result_dir=eval_results_dir,
             progress=self.pbar,
-            items_count=self.dt_project_info.items_count,
+            items_count=self.num_items,
             classes_whitelist=self.classes_whitelist,
             evaluation_params=self.evaluation_params,
         )

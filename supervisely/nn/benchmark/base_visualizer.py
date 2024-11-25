@@ -112,8 +112,9 @@ class BaseVisualizer:
                 recursive=True,
             )
         eval_result.gt_dataset_infos = self.gt_dataset_infos
+        filters = [{"field": "name", "operator": "in", "value": [ds.name for ds in self.gt_dataset_infos]}]
         eval_result.pred_dataset_infos = self.api.dataset.get_list(
-            eval_result.pred_project_id, recursive=True
+            eval_result.pred_project_id, filters=filters, recursive=True
         )
 
         # get train task info

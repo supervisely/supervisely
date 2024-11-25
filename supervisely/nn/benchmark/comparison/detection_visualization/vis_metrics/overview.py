@@ -175,7 +175,6 @@ class Overview(BaseVisMetric):
 
         if train_info:
             train_task_id = train_info.get("app_session_id")
-            logger.info(f"{train_task_id=}")
             if train_task_id:
                 task_info = eval_result.api.task.get_info_by_id(int(train_task_id))
                 app_id = task_info["meta"]["app"]["id"]
