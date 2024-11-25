@@ -566,6 +566,10 @@ class BaseBenchmark:
             if not pred_meta.obj_classes.has_key(obj_cls.name):
                 pred_meta = pred_meta.add_obj_class(obj_cls)
                 chagned = True
+        for tag_meta in gt_meta.tag_metas:
+            if not pred_meta.tag_metas.has_key(tag_meta.name):
+                pred_meta = pred_meta.add_tag_meta(tag_meta)
+                chagned = True
         if chagned:
             self.api.project.update_meta(pred_project_id, pred_meta.to_json())
 
