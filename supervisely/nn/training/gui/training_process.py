@@ -52,27 +52,24 @@ class TrainingProcess:
             task_id = get_task_id(raise_not_found=False)
         else:
             task_id = None
-
-        if self.app_options.get("enable_tensorboard", True):
-            if is_production():
-                task_info = api.task.get_info_by_id(task_id)
-                session_token = task_info["meta"]["sessionToken"]
-                sly_url_prefix = f"/net/{session_token}"
-                self.tensorboard_link = f"{api.server_address}{sly_url_prefix}/tensorboard/"
-            else:
-                self.tensorboard_link = "http://localhost:8000/tensorboard"
-
-            self.tensorboard_button = Button(
-                "Open Tensorboard",
-                button_type="info",
-                plain=True,
-                icon="zmdi zmdi-chart",
-                link=self.tensorboard_link,
-            )
-            self.tensorboard_button.disable()
+        
+        
+        # Tensorboard button
+        if is_production():
+            task_info = api.task.get_info_by_id(task_id)
+            session_token = task_info["meta"]["sessionToken"]
+            sly_url_prefix = f"/net/{session_token}"
+            self.tensorboard_link = f"{api.server_address}{sly_url_prefix}/tensorboard/"
         else:
-            self.tensorboard_button = Empty()
-            self.tensorboard_link = None
+            self.tensorboard_link = "http://localhost:8000/tensorboard"
+        self.tensorboard_button = Button(
+            "Open Tensorboard",
+            button_type="info",
+            plain=True,
+            icon="zmdi zmdi-chart",
+            link=self.tensorboard_link,
+        )
+        self.tensorboard_button.disable()
 
         self.validator_text = Text("")
         self.validator_text.hide()

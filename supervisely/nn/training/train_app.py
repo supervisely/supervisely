@@ -5,18 +5,8 @@ This module contains the `TrainApp` class and related functionality to facilitat
 training workflows in a Supervisely application.
 """
 
-# @TODO:
-# + 1. Save model_meta as file
-# + 2. Check local paths in models.json (if not start with http) and do not download (and also do not move)
-# + 3. Add start_tensorboard outside of TrainApp in user train_func
-# + 4. Weights rename to checkpoints
-# + 5. Add load from file for hyperparameters, models and app_options
-# + 6. train_val_split.json -> contain train image ids and val image ids
-# + 7. Remove image_ids from experiment_info.json
-# + 8. Add constants for directory names
-# 9. Remove artifacts dir from experiment_info.json? + fix widget return path | won't fix
-
 import shutil
+import subprocess
 import time
 from datetime import datetime
 from os import listdir
@@ -113,11 +103,12 @@ class TrainApp:
         self._sly_project_dir_name = "sly_project"
         self._model_dir_name = "model"
         self._log_dir_name = "logs"
-        self._output_dir_name = "result"
+        self._output_dir_name = "output"
         self._output_checkpoints_dir_name = "checkpoints"
         self._remote_checkpoints_dir_name = "checkpoints"
         self._experiments_dir_name = "experiments"
         self._defalut_work_dir_name = "work_dir"
+        self._tensorboard_port = 6006
 
         if is_production():
             self.task_id = sly_env.task_id()
@@ -145,6 +136,8 @@ class TrainApp:
         self.output_dir = join(self.work_dir, self._output_dir_name)
         self._output_checkpoints_dir = join(self.output_dir, self._output_checkpoints_dir_name)
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
+        self.train_dataset_dir = join(self.project_dir, "train")
+        self.val_dataset_dir = join(self.project_dir, "val")
         self.sly_project = None
         self.train_split, self.val_split = None, None
         # -------------------------- #
@@ -172,15 +165,7 @@ class TrainApp:
         self._server = self.app.get_server()
         self._train_func = None
 
-        # @TODO: Think of better way to implement app_options
-        if self._app_options.get("enable_tensorboard", True):
-            self._register_routes()
         # -------------------------- #
-
-        # Tensorboard debug
-        # Use with train.gui.load_from_state(app_state) for faster debugging
-        # tb_logger.start_tensorboard()
-        # self.gui.training_process.tensorboard_button.enable()
 
         # Train endpoints
         @self._server.post("/train_from_api")
@@ -204,7 +189,7 @@ class TrainApp:
         These routes enable communication with the application for training
         and visualizing logs in TensorBoard.
         """
-        client = httpx.AsyncClient(base_url="http://127.0.0.1:8001/")
+        client = httpx.AsyncClient(base_url=f"http://127.0.0.1:{self._tensorboard_port}/")
 
         @self._server.post("/tensorboard/{path:path}")
         @self._server.get("/tensorboard/{path:path}")
@@ -482,7 +467,7 @@ class TrainApp:
         """
         if isinstance(models, str):
             if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
-                models = self._load_json(models)
+                models = sly_json.load_json_file(models)
             else:
                 raise ValueError(
                     "Invalid models file. Please provide a valid '.json' file or a list of model configurations."
@@ -531,6 +516,9 @@ class TrainApp:
         """
         Loads the app_options parameter to ensure it is in the correct format.
         """
+        if app_options is None:
+            return {}
+        
         if isinstance(app_options, str):
             if sly_fs.file_exists(app_options) and sly_fs.get_file_ext(app_options) in [
                 ".yaml",
@@ -556,18 +544,6 @@ class TrainApp:
         """
         with open(path, "r") as file:
             return yaml.safe_load(file)
-
-    def _load_json(self, path: str) -> dict:
-        """
-        Load a JSON file from the specified path.
-
-        :param path: Path to the JSON file.
-        :type path: str
-        :return: JSON file contents.
-        :rtype: dict
-        """
-        with open(path, "r") as file:
-            return sly_json.load_json_file(file)
 
     # ----------------------------------------- #
 
@@ -873,9 +849,6 @@ class TrainApp:
                         )
                     self.model_files[file] = file_path
                 else:
-                    if not sly_fs.file_exists(file_url):
-                        raise FileNotFoundError(f"Local file '{file_url}' does not exist")
-                    # shutil.copy(file_url, file_path)
                     self.model_files[file] = file_url
                 model_download_main_pbar.update(1)
 
@@ -1399,7 +1372,6 @@ class TrainApp:
         eval_res_dir = self._api.storage.get_free_dir_name(self._team_id(), eval_res_dir)
         return eval_res_dir
 
-    # Hot to pass inference_settings?
     def _run_model_benchmark(
         self,
         local_artifacts_dir: str,
@@ -1700,12 +1672,50 @@ class TrainApp:
         """
         Initialize training logger. Set up Tensorboard and callbacks.
         """
-        if self._app_options.get("enable_tensorboard", True):
+        train_logger = self._app_options.get("train_logger", "")
+        if train_logger.lower() == "tensorboard":
             tb_logger.set_log_dir(self.log_dir)
-            tb_logger.start_tensorboard()
             self._setup_logger_callbacks()
-            time.sleep(1)
-            self.gui.training_process.tensorboard_button.enable()
+            self._init_tensorboard()
+            
+    def _init_tensorboard(self):
+        self._register_routes()
+        args = [
+            "tensorboard",
+            "--logdir",
+            self.log_dir,
+            "--host=localhost",
+            f"--port={self._tensorboard_port}",
+            "--load_fast=true",
+            "--reload_multifile=true",
+        ]
+        self._tensorboard_process = subprocess.Popen(args)
+        print(f"Tensorboard server has been started")
+        self.gui.training_process.tensorboard_button.enable()
+
+    def start_tensorboard(self, log_dir: str, port: int = None):
+        """
+        Method to manually start Tensorboard in the user's training code.
+        Tensorboard is started automatically if the 'train_logger' is set to 'tensorboard' in app_options.yaml file.
+
+        :param log_dir: Directory path to the log files.
+        :type log_dir: str
+        :param port: Port number for Tensorboard, defaults to None
+        :type port: int, optional
+        """
+        if port is not None:
+            self._tensorboard_port = port
+        self.log_dir = log_dir
+        self._init_tensorboard()
+
+    def stop_tensorboard(self):
+        """Stop Tensorboard server"""
+        if self._tensorboard_process is not None:
+            self._tensorboard_process.terminate()
+            self._tensorboard_process = None
+            print(f"Tensorboard server has been stopped")
+        else:
+            print("Tensorboard server is not running")
 
     def _setup_logger_callbacks(self):
         """
@@ -1731,10 +1741,9 @@ class TrainApp:
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
 
-            if self._app_options.get("enable_tensorboard", True):
-                tb_logger.writer.close()
-                tb_logger.stop_tensorboard()
-                # @TODO: access tensorboard after training
+            train_logger = self._app_options.get("train_logger", "")
+            if train_logger == "tensorboard":
+                tb_logger.close()
 
         def start_epoch_callback(total_steps: int):
             """
