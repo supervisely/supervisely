@@ -85,8 +85,7 @@ class Overview(DetectionVisMetric):
         if train_info:
             train_task_id = train_info.get("app_session_id")
             if train_task_id:
-                task_info = self.eval_result.train_info
-                app_id = task_info["meta"]["app"]["id"]
+                app_id = self.eval_result.task_info["meta"]["app"]["id"]
                 train_session = f'- **Training dashboard**:  <a href="/apps/{app_id}/sessions/{train_task_id}" target="_blank">open</a>'
 
             train_imgs_cnt = train_info.get("images_count")
