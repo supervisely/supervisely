@@ -1,6 +1,7 @@
 from typing import List
 
 from supervisely._utils import abs_url
+from supervisely.sly_logger import logger
 from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
@@ -174,6 +175,7 @@ class Overview(BaseVisMetric):
 
         if train_info:
             train_task_id = train_info.get("app_session_id")
+            logger.info(f"{train_task_id=}")
             if train_task_id:
                 task_info = eval_result.api.task.get_info_by_id(int(train_task_id))
                 app_id = task_info["meta"]["app"]["id"]
