@@ -14,4 +14,4 @@
 # }
 
 # context_root: Download as, Run App (default), Report
-# [![Views](https://dev.supervise.ly/public/api/v3/ecosystem.counters?repo=supervisely-ecosystem/roads-test&counter=views&label=custom)](https://supervise.ly)
+# [![Views](https://app.supervisely.com/public/api/v3/ecosystem.counters?repo=supervisely-ecosystem/roads-test&counter=views&label=custom)](https://supervisely.com)

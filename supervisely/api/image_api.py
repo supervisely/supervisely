@@ -4,6 +4,7 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from time import sleep
 from typing import (
     Any,
+    AsyncGenerator,
     Callable,
     Dict,
     Generator,
@@ -29,6 +31,7 @@ from typing import (
 )
 from uuid import uuid4
 
+import aiofiles
 import numpy as np
 import requests
 from requests.exceptions import HTTPError
@@ -37,6 +40,7 @@ from tqdm import tqdm
 
 from supervisely._utils import (
     batched,
+    compare_dicts,
     generate_free_name,
     get_bytes_hash,
     resize_image_url,
@@ -57,6 +61,7 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
+    get_file_hash_async,
     get_file_name,
     get_file_name_with_ext,
     list_files,
@@ -320,6 +325,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return_first_response: Optional[bool] = False,
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -342,6 +348,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type project_id: :class:`int`
         :param only_labelled: If True, returns only images with labels.
         :type only_labelled: bool, optional
+        :param fields: List of fields to return. If None, returns all fields.
+        :type fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -414,7 +422,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -601,9 +610,13 @@ class ImageApi(RemoveableBulkModuleApi):
         infos_dict = {}
         ids_set = set(ids)
         while any(ids_set):
-            dataset_id = self.get_info_by_id(
-                ids_set.pop(), force_metadata_for_links=False
-            ).dataset_id
+            img_id = ids_set.pop()
+            image_info = self.get_info_by_id(img_id, force_metadata_for_links=False)
+            if image_info is None:
+                raise KeyError(
+                    f"Image (id: {img_id}) is either archived, doesn't exist or you don't have enough permissions to access it"
+                )
+            dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
                 temp_results = self.get_list_all_pages(
@@ -1127,7 +1140,14 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def upload_path(
-        self, dataset_id: int, name: str, path: str, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        path: str,
+        meta: Optional[Dict] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1140,6 +1160,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1155,7 +1181,15 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
         """
         metas = None if meta is None else [meta]
-        return self.upload_paths(dataset_id, [name], [path], metas=metas)[0]
+        return self.upload_paths(
+            dataset_id,
+            [name],
+            [path],
+            metas=metas,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
+        )[0]
 
     def upload_paths(
         self,
@@ -1165,6 +1199,9 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1181,6 +1218,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1206,7 +1249,14 @@ class ImageApi(RemoveableBulkModuleApi):
         self._upload_data_bulk(path_to_bytes_stream, zip(paths, hashes), progress_cb=progress_cb)
 
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+            dataset_id,
+            names,
+            hashes,
+            metas=metas,
+            conflict_resolution=conflict_resolution,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
         )
 
     def upload_np(
@@ -1484,6 +1534,9 @@ class ImageApi(RemoveableBulkModuleApi):
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1504,6 +1557,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1545,6 +1604,9 @@ class ImageApi(RemoveableBulkModuleApi):
             batch_size=batch_size,
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
         )
 
     def upload_id(
@@ -1742,8 +1804,44 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links=True,
         skip_validation=False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
     ):
         """ """
+        if use_strict_validation and not validate_meta:
+            raise ValueError(
+                "use_strict_validation is set to True, while validate_meta is set to False. "
+                "Please set validate_meta to True to use strict validation "
+                "or disable strict validation by setting use_strict_validation to False."
+            )
+        if validate_meta:
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+
+            validation_schema = self._api.project.get_validation_schema(
+                dataset_info.project_id, use_caching=use_caching_for_validation
+            )
+
+            if validation_schema is None:
+                raise ValueError(
+                    "Validation schema is not set for the project, while "
+                    "validate_meta is set to True. Either disable the validation "
+                    "or set the validation schema for the project using the "
+                    "api.project.set_validation_schema method."
+                )
+
+            for idx, meta in enumerate(metas):
+                missing_fields, extra_fields = compare_dicts(
+                    validation_schema, meta, strict=use_strict_validation
+                )
+
+                if missing_fields or extra_fields:
+                    raise ValueError(
+                        f"Validation failed for the metadata of the image with index {idx} and name {names[idx]}. "
+                        "Please check the metadata and try again. "
+                        f"Missing fields: {missing_fields}, Extra fields: {extra_fields}"
+                    )
+
         if (
             conflict_resolution is not None
             and conflict_resolution not in SUPPORTED_CONFLICT_RESOLUTIONS
@@ -1751,12 +1849,13 @@ class ImageApi(RemoveableBulkModuleApi):
             raise ValueError(
                 f"Conflict resolution should be one of the following: {SUPPORTED_CONFLICT_RESOLUTIONS}"
             )
+        if len(set(names)) != len(names):
+            raise ValueError("Some image names are duplicated, only unique images can be uploaded.")
+
         results = []
 
         def _add_timestamp(name: str) -> str:
-
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
         def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
@@ -1812,6 +1911,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     break
                 except HTTPError as e:
                     error_details = e.response.json().get("details", {})
+                    if isinstance(error_details, list):
+                        error_details = error_details[0]
                     if (
                         conflict_resolution is not None
                         and e.response.status_code == 400
@@ -2629,7 +2730,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         return resize_image_url(url, ext, method, width, height, quality)
 
-    def update_meta(self, id: int, meta: Dict) -> Dict:
+    def update_meta(self, id: int, meta: Dict) -> Dict[str, Any]:
         """
         It is possible to add custom JSON data to every image for storing some additional information.
         Updates Image metadata by ID. Metadata is visible in Labeling Tool.
@@ -2669,10 +2770,93 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "Focal Length": "16 mm"
             # }
         """
-        if type(meta) is not dict:
-            raise TypeError("Meta must be dict, not {}".format(type(meta)))
-        response = self._api.post("images.editInfo", {ApiField.ID: id, ApiField.META: meta})
-        return response.json()
+        return self.edit(id=id, meta=meta, return_json=True)
+
+    def edit(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        meta: Optional[Dict] = None,
+        return_json: bool = False,
+    ) -> Union[ImageInfo, Dict[str, Any]]:
+        """Updates the information about the image by given ID with provided parameters.
+        At least one parameter must be set, otherwise ValueError will be raised.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param name: New Image name.
+        :type name: str, optional
+        :param description: New Image description.
+        :type description: str, optional
+        :param meta: New Image metadata.
+        :type meta: dict, optional
+        :return_json: If True, return response in JSON format, otherwise convert it ImageInfo object.
+            This parameter is only added for backward compatibility for update_meta method.
+            It's not recommended to use it in new code.
+        :type return_json: bool, optional
+        :raises: :class:`ValueError` if at least one parameter is not set
+        :raises: :class:`ValueError if meta parameter was set and it is not a dictionary
+        :return: Information about updated image as ImageInfo object or as dict if return_json is True
+        :rtype: :class:`ImageInfo` or :class:`dict`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            image_id = 123456
+            new_image_name = "IMG_3333_new.jpg"
+
+            api.image.edit(id=image_id, name=new_image_name)
+        """
+        if name is None and description is None and meta is None:
+            raise ValueError("At least one parameter must be set")
+
+        if meta is not None and not isinstance(meta, dict):
+            raise ValueError("meta parameter must be a dictionary")
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+            ApiField.DESCRIPTION: description,
+            ApiField.META: meta,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+
+        response = self._api.post("images.editInfo", data)
+        if return_json:
+            return response.json()
+        return self._convert_json_info(response.json(), skip_missing=True)
+
+    def rename(self, id: int, name: str) -> ImageInfo:
+        """
+        Renames Image with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param name: New Image name.
+        :type name: str
+        :return: Information about updated Image.
+        :rtype: :class:`ImageInfo`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 376729
+            new_image_name = 'new_image_name.jpg'
+            img_info = api.image.rename(image_id, new_image_name)
+        """
+        return self.edit(id=id, name=name)
 
     def add_tag(self, image_id: int, tag_id: int, value: Optional[Union[str, int]] = None) -> None:
         """
@@ -3367,3 +3551,463 @@ class ImageApi(RemoveableBulkModuleApi):
         data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("images.update.links", data)
         return r.json()
+
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+    ) -> AsyncGenerator:
+        """
+        Download Image with given ID asynchronously.
+        If is_stream is True, returns stream of bytes, otherwise returns response object.
+        For streaming, returns tuple of chunk and hash.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "images.download"
+
+        json_body = {ApiField.ID: id}
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def download_np_async(
+        self,
+        id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        keep_alpha: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> np.ndarray:
+        """
+        Downloads Image with given ID in NumPy format asynchronously.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param keep_alpha: If True keeps alpha mask for image, otherwise don't.
+        :type keep_alpha: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Image in RGB numpy matrix format
+        :rtype: :class:`np.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+            from tqdm.asyncio import tqdm
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            DATASET_ID = 98357
+            semaphore = asyncio.Semaphore(100)
+            images = api.image.get_list(DATASET_ID)
+            tasks = []
+            pbar = tqdm(total=len(images), desc="Downloading images", unit="image")
+            for image in images:
+                task = api.image.download_np_async(image.id, semaphore, progress_cb=pbar)
+                tasks.append(task)
+            results = await asyncio.gather(*tasks)
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async with semaphore:
+            async for response in self._download_async(id):
+                img = sly_image.read_bytes(response.content, keep_alpha)
+                if progress_cb is not None:
+                    if progress_cb_type == "number":
+                        progress_cb(1)
+                    elif progress_cb_type == "size":
+                        progress_cb(len(response.content))
+            return img
+
+    async def download_nps_async(
+        self,
+        ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        keep_alpha: Optional[bool] = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> List[np.ndarray]:
+        """
+        Downloads Images with given IDs in NumPy format asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param keep_alpha: If True keeps alpha mask for images, otherwise don't.
+        :type keep_alpha: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: List of Images in RGB numpy matrix format
+        :rtype: :class:`List[np.ndarray]`
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                DATASET_ID = 98357
+                semaphore = asyncio.Semaphore(100)
+                images = api.image.get_list(DATASET_ID)
+                img_ids = [image.id for image in images]
+                loop = sly.utils.get_or_create_event_loop()
+                results = loop.run_until_complete(
+                                api.image.download_nps_async(img_ids, semaphore)
+                            )
+
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        tasks = [
+            self.download_np_async(id, semaphore, keep_alpha, progress_cb, progress_cb_type)
+            for id in ids
+        ]
+        return await asyncio.gather(*tasks)
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Downloads Image with given ID to local path.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Image.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_info = api.image.get_info_by_id(770918)
+            save_path = os.path.join("/path/to/save/", img_info.name)
+
+            semaphore = asyncio.Semaphore(100)
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(
+                    api.image.download_path_async(img_info.id, save_path, semaphore)
+                )
+        """
+        if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    range_start=range_start,
+                    range_end=range_end,
+                    headers=headers,
+                ):
+                    await fd.write(chunk)
+                    hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_file_hash = await get_file_hash_async(path)
+                    if hash_to_check != downloaded_file_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        )
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Download Images with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Images.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded images.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            ids = [770918, 770919]
+            paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(api.image.download_paths_async(ids, paths))
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError(
+                f'Length of "ids" and "paths" should be equal. {len(ids)} != {len(paths)}'
+            )
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(
+                img_id,
+                img_path,
+                semaphore,
+                headers=headers,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
+    async def download_bytes_single_async(
+        self,
+        id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> bytes:
+        """
+        Downloads Image bytes with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded bytes.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Bytes of downloaded image.
+        :rtype: :class:`bytes`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            img_id = 770918
+            loop = sly.utils.get_or_create_event_loop()
+            img_bytes = loop.run_until_complete(api.image.download_bytes_async(img_id))
+
+        """
+        if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        hash_to_check = None
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            content = b""
+            async for chunk, hhash in self._download_async(
+                id,
+                is_stream=True,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+            ):
+                content += chunk
+                hash_to_check = hhash
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(chunk))
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_bytes_hash = get_bytes_hash(content)
+                    if hash_to_check != downloaded_bytes_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            return content
+
+    async def download_bytes_many_async(
+        self,
+        ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> List[bytes]:
+        """
+        Downloads Images bytes with given IDs asynchronously
+        and returns reults in the same order as in the input list.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for every request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded images.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: List of bytes of downloaded images.
+        :rtype: :class:`List[bytes]`
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN
+                api = sly.Api.from_env()
+
+                loop = sly.utils.get_or_create_event_loop()
+                semaphore = asyncio.Semaphore(100)
+                img_bytes_list = loop.run_until_complete(api.image.download_bytes_imgs_async(ids, semaphore))
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        tasks = []
+        for id in ids:
+            task = self.download_bytes_single_async(
+                id,
+                semaphore,
+                headers=headers,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        results = await asyncio.gather(*tasks)
+        return results

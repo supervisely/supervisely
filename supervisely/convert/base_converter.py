@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from supervisely._utils import is_production
+from supervisely._utils import batched, get_or_create_event_loop, is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.io.env import team_id
+from supervisely.io.fs import (
+    get_file_ext,
+    get_file_name_with_ext,
+    is_archive,
+    remove_dir,
+    silent_remove,
+    unpack_archive,
+)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -145,12 +154,16 @@ class BaseConverter:
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
         self._input_data: str = input_data
-        self._items: List[self.BaseItem] = []
+        self._items: List[BaseConverter.BaseItem] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+
+        # import as links settings
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
+        self._api = Api.from_env() if self._upload_as_links else None
+        self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
@@ -286,15 +299,23 @@ class BaseConverter:
             return found_formats[0]
 
     def _collect_items_if_format_not_detected(self):
+        from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
+            PointcloudEpisodeConverter,
+        )
+
         only_modality_items = True
         unsupported_exts = set()
         items = []
+        is_episode = isinstance(self, PointcloudEpisodeConverter)
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
-                    items.append(self.Item(full_path))  # pylint: disable=no-member
+                    if is_episode:
+                        items.append(self.Item(full_path, len(items)))  # pylint: disable=no-member
+                    else:
+                        items.append(self.Item(full_path))  # pylint: disable=no-member
                     continue
                 only_modality_items = False
                 if ext.lower() in self.unsupported_exts:
@@ -411,3 +432,85 @@ class BaseConverter:
 
             return meta1.clone(project_settings=new_settings)
         return meta1
+
+    def _download_remote_ann_files(self) -> None:
+        """
+        Download all annotation files from Cloud Storage to the local storage.
+        Needed to detect annotation format if "upload_as_links" is enabled.
+        """
+        if not self.upload_as_links:
+            return
+
+        ann_archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
+
+        anns_to_download = {
+            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
+        }
+        if not anns_to_download and not ann_archives:
+            return
+
+        import asyncio
+
+        for files_type, files in {
+            "annotations": anns_to_download,
+            "archives": ann_archives,
+        }.items():
+            if not files:
+                continue
+
+            is_archive_type = files_type == "archives"
+
+            file_size = None
+            if is_archive_type:
+                logger.info(f"Remote archives detected.")
+                file_size = sum(
+                    self._api.storage.get_info_by_path(self._team_id, remote_path).sizeb
+                    for remote_path in files.values()
+                )
+
+            loop = get_or_create_event_loop()
+            _, progress_cb = self.get_progress(
+                len(files) if not is_archive_type else file_size,
+                f"Downloading {files_type} from remote storage",
+                is_size=is_archive_type,
+            )
+
+            for local_path in files.keys():
+                silent_remove(local_path)
+
+            logger.info(f"Downloading {files_type} from remote storage...")
+            download_coro = self._api.storage.download_bulk_async(
+                team_id=self._team_id,
+                remote_paths=list(files.values()),
+                local_save_paths=list(files.keys()),
+                progress_cb=progress_cb,
+                progress_cb_type="number" if not is_archive_type else "size",
+            )
+
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+                future.result()
+            else:
+                loop.run_until_complete(download_coro)
+            logger.info("Possible annotations downloaded successfully.")
+
+            if is_archive_type:
+                for local_path in files.keys():
+                    parent_dir = Path(local_path).parent
+                    if parent_dir.name == "ann":
+                        target_dir = parent_dir
+                    else:
+                        target_dir = parent_dir / "ann"
+                        target_dir.mkdir(parents=True, exist_ok=True)
+
+                    unpack_archive(local_path, str(target_dir))
+                    silent_remove(local_path)
+
+                    dirs = [d for d in target_dir.iterdir() if d.is_dir()]
+                    files = [f for f in target_dir.iterdir() if f.is_file()]
+                    if len(dirs) == 1 and len(files) == 0:
+                        for file in dirs[0].iterdir():
+                            file.rename(target_dir / file.name)
+                        remove_dir(str(dirs[0]))
+
+                    logger.info(f"Archive {local_path} unpacked successfully to {str(target_dir)}")

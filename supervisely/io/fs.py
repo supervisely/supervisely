@@ -10,11 +10,12 @@ import subprocess
 import tarfile
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
+import aiofiles
 import requests
 from requests.structures import CaseInsensitiveDict
 from tqdm import tqdm
 
-from supervisely._utils import get_bytes_hash, get_string_hash
+from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -1348,3 +1349,174 @@ def str_is_url(string: str) -> bool:
         return all([result.scheme, result.netloc])
     except ValueError:
         return False
+
+
+async def copy_file_async(
+    src: str,
+    dst: str,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    progress_cb_type: Literal["number", "size"] = "size",
+) -> None:
+    """
+    Asynchronously copy file from one path to another, if destination directory doesn't exist it will be created.
+
+    :param src: Source file path.
+    :type src: str
+    :param dst: Destination file path.
+    :type dst: str
+    :param progress_cb: Function for tracking copy progress.
+    :type progress_cb: Union[tqdm, Callable], optional
+    :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+    :type progress_cb_type: Literal["number", "size"], optional
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
+    """
+    ensure_base_path(dst)
+    async with aiofiles.open(dst, "wb") as out_f:
+        async with aiofiles.open(src, "rb") as in_f:
+            while True:
+                chunk = await in_f.read(1024 * 1024)
+                if not chunk:
+                    break
+                await out_f.write(chunk)
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(chunk))
+    if progress_cb is not None and progress_cb_type == "number":
+        progress_cb(1)
+
+
+async def get_file_hash_async(path: str) -> str:
+    """
+    Get hash from target file asynchronously.
+
+    :param path: Target file path.
+    :type path: str
+    :returns: File hash
+    :rtype: :class:`str`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            hash = future.result()
+        else:
+            hash = loop.run_until_complete(coro)
+    """
+    async with aiofiles.open(path, "rb") as file:
+        file_bytes = await file.read()
+        return get_bytes_hash(file_bytes)
+
+
+async def unpack_archive_async(
+    archive_path: str, target_dir: str, remove_junk=True, is_split=False, chunk_size_mb: int = 50
+) -> None:
+    """
+    Unpacks archive to the target directory, removes junk files and directories.
+    To extract a split archive, you must pass the path to the first part in archive_path. Archive parts must be in the same directory. Format: archive_name.tar.001, archive_name.tar.002, etc. Works with tar and zip.
+    You can adjust the size of the chunk to read from the file, while unpacking the file from parts.
+    Be careful with this parameter, it can affect the performance of the function.
+
+    :param archive_path: Path to the archive.
+    :type archive_path: str
+    :param target_dir: Path to the target directory.
+    :type target_dir: str
+    :param remove_junk: Remove junk files and directories. Default is True.
+    :type remove_junk: bool
+    :param is_split: Determines if the source archive is split into parts. If True, archive_path must be the path to the first part. Default is False.
+    :type is_split: bool
+    :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
+    :type chunk_size_mb: int
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        archive_path = '/home/admin/work/examples.tar'
+        target_dir = '/home/admin/work/projects'
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.unpack_archive_async(archive_path, target_dir)
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
+    """
+    if is_split:
+        chunk = chunk_size_mb * 1024 * 1024
+        base_name = get_file_name(archive_path)
+        dir_name = os.path.dirname(archive_path)
+        if get_file_ext(base_name) in (".zip", ".tar"):
+            ext = get_file_ext(base_name)
+            base_name = get_file_name(base_name)
+        else:
+            ext = get_file_ext(archive_path)
+        parts = sorted([f for f in os.listdir(dir_name) if f.startswith(base_name)])
+        combined = os.path.join(dir_name, f"combined{ext}")
+
+        async with aiofiles.open(combined, "wb") as output_file:
+            for part in parts:
+                part_path = os.path.join(dir_name, part)
+                async with aiofiles.open(part_path, "rb") as input_file:
+                    while True:
+                        data = await input_file.read(chunk)
+                        if not data:
+                            break
+                        await output_file.write(data)
+        archive_path = combined
+
+    loop = get_or_create_event_loop()
+    await loop.run_in_executor(None, shutil.unpack_archive, archive_path, target_dir)
+    if is_split:
+        silent_remove(archive_path)
+    if remove_junk:
+        remove_junk_from_dir(target_dir)
+
+
+async def touch_async(path: str) -> None:
+    """
+    Sets access and modification times for a file asynchronously.
+
+    :param path: Target file path.
+    :type path: str
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        loop = sly.utils.get_or_create_event_loop()
+        coro = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            future.result()
+        else:
+            loop.run_until_complete(coro)
+    """
+    ensure_base_path(path)
+    async with aiofiles.open(path, "a"):
+        loop = get_or_create_event_loop()
+        await loop.run_in_executor(None, os.utime, path, None)

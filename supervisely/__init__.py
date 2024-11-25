@@ -55,7 +55,7 @@ from supervisely.task.progress import (
 
 import supervisely.project as project
 from supervisely.project import read_project, get_project_class
-from supervisely.project.download import download
+from supervisely.project.download import download, download_async
 from supervisely.project.upload import upload
 from supervisely.project.project import (
     Project,
@@ -309,4 +309,4 @@ except Exception as e:
 # If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
 # set a new value for the environment variable MINIMUM_INSTANCE_VERSION_FOR_SDK, otherwise
 # users can face compatibility issues, if the instance version is lower than the SDK version.
-os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.11.16"
+os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.12.5"

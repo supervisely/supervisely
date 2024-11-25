@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import os
 import pickle
@@ -11,11 +12,18 @@ from collections import defaultdict, namedtuple
 from enum import Enum
 from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
+import aiofiles
 import numpy as np
 from tqdm import tqdm
 
 import supervisely as sly
-from supervisely._utils import abs_url, batched, is_development, snake_to_human
+from supervisely._utils import (
+    abs_url,
+    batched,
+    get_or_create_event_loop,
+    is_development,
+    snake_to_human,
+)
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
@@ -28,7 +36,9 @@ from supervisely.collection.key_indexed_collection import (
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
+    clean_dir,
     copy_file,
+    copy_file_async,
     dir_empty,
     file_exists,
     dir_exists,
@@ -42,7 +52,7 @@ from supervisely.io.fs import (
     subdirs_tree,
 )
 from supervisely.io.fs_cache import FileCache
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -1124,6 +1134,20 @@ class Dataset(KeyObject):
             # item info named tuple (ImageInfo, VideoInfo, PointcloudInfo, ..)
             dump_json_file(item_info._asdict(), dst_info_path, indent=4)
 
+    async def _add_item_info_async(self, item_name, item_info=None):
+        if item_info is None:
+            return
+
+        dst_info_path = self.get_item_info_path(item_name)
+        ensure_base_path(dst_info_path)
+        if type(item_info) is dict:
+            dump_json_file(item_info, dst_info_path, indent=4)
+        elif type(item_info) is str and os.path.isfile(item_info):
+            shutil.copy(item_info, dst_info_path)
+        else:
+            # item info named tuple (ImageInfo, VideoInfo, PointcloudInfo, ..)
+            dump_json_file(item_info._asdict(), dst_info_path, indent=4)
+
     def _check_add_item_name(self, item_name):
         """
         Generate exception error if item name already exists in dataset or has unsupported extension
@@ -1153,6 +1177,76 @@ class Dataset(KeyObject):
         with open(dst_img_path, "wb") as fout:
             fout.write(item_raw_bytes)
         self._validate_added_item_or_die(dst_img_path)
+
+    async def _add_item_raw_bytes_async(self, item_name, item_raw_bytes):
+        """
+        Write given binary object to dataset items directory, Generate exception error if item_name already exists in
+        dataset or item name has unsupported extension. Make sure we actually received a valid image file, clean it up and fail if not so.
+        :param item_name: str
+        :param item_raw_bytes: binary object
+        """
+        if item_raw_bytes is None:
+            return
+
+        self._check_add_item_name(item_name)
+        item_name = item_name.strip("/")
+        dst_img_path = os.path.join(self.item_dir, item_name)
+        os.makedirs(os.path.dirname(dst_img_path), exist_ok=True)
+        async with aiofiles.open(dst_img_path, "wb") as fout:
+            await fout.write(item_raw_bytes)
+
+        self._validate_added_item_or_die(dst_img_path)
+
+    async def add_item_raw_bytes_async(
+        self,
+        item_name: str,
+        item_raw_bytes: bytes,
+        ann: Optional[Union[Annotation, str]] = None,
+        img_info: Optional[Union[ImageInfo, Dict, str]] = None,
+    ) -> None:
+        """
+        Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory.
+        If ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param item_raw_bytes: Binary object.
+        :type item_raw_bytes: :class:`bytes`
+        :param ann: Annotation object or path to annotation json file.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :param img_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            img_path = "/home/admin/Pictures/Clouds.jpeg"
+            img_np = sly.image.read(img_path)
+            img_bytes = sly.image.write_bytes(img_np, "jpeg")
+            loop = sly.utils.get_or_create_event_loop()
+            coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
+
+            print(ds.item_exists("IMG_050.jpeg"))
+            # Output: True
+        """
+        if item_raw_bytes is None and ann is None and img_info is None:
+            raise RuntimeError("No item_raw_bytes or ann or img_info provided.")
+
+        await self._add_item_raw_bytes_async(item_name, item_raw_bytes)
+        await self._add_ann_by_type_async(item_name, ann)
+        self._add_item_info(item_name, img_info)
 
     def generate_item_path(self, item_name: str) -> str:
         """
@@ -1220,6 +1314,18 @@ class Dataset(KeyObject):
                 self._validate_added_item_or_die(item_path)
 
     def _validate_added_item_or_die(self, item_path):
+        """
+        Make sure we actually received a valid image file, clean it up and fail if not so
+        :param item_path: str
+        """
+        # Make sure we actually received a valid image file, clean it up and fail if not so.
+        try:
+            sly_image.validate_format(item_path)
+        except (sly_image.UnsupportedImageFormat, sly_image.ImageReadException):
+            os.remove(item_path)
+            raise
+
+    async def _validate_added_item_or_die_async(self, item_path):
         """
         Make sure we actually received a valid image file, clean it up and fail if not so
         :param item_path: str
@@ -1449,6 +1555,241 @@ class Dataset(KeyObject):
         if is_development():
             res = abs_url(res)
         return res
+
+    async def set_ann_file_async(self, item_name: str, ann_path: str) -> None:
+        """
+        Replaces given annotation json file for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item Name.
+        :type item_name: :class:`str`
+        :param ann_path: Path to the :class:`Annotation<supervisely.annotation.annotation.Annotation>` json file.
+        :type ann_path: :class:`str`
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if ann_path is not str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
+
+            loop = sly.utils.get_or_create_event_loop()
+            coroutine = ds.set_ann_file_async("IMG_1812.jpeg", new_ann)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
+        """
+        if type(ann_path) is not str:
+            raise TypeError("Annotation path should be a string, not a {}".format(type(ann_path)))
+        dst_ann_path = self.get_ann_path(item_name)
+        await copy_file_async(ann_path, dst_ann_path)
+
+    async def set_ann_dict_async(self, item_name: str, ann: Dict) -> None:
+        """
+        Replaces given annotation json for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` as a dict in json format.
+        :type ann: :class:`dict`
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if ann_path is not str
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            new_ann_json = {
+                "description":"",
+                "size":{
+                    "height":500,
+                    "width":700
+                },
+                "tags":[],
+                "objects":[],
+                "customBigData":{}
+            }
+
+            loop = sly.utils.get_or_create_event_loop()
+            coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
+        """
+        if type(ann) is not dict:
+            raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
+        dst_ann_path = self.get_ann_path(item_name)
+        os.makedirs(os.path.dirname(dst_ann_path), exist_ok=True)
+        await dump_json_file_async(ann, dst_ann_path, indent=4)
+
+    async def set_ann_async(self, item_name: str, ann: Annotation) -> None:
+        """
+        Replaces given annotation for given item name to dataset annotations directory in json format.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param ann: Annotation object.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            height, width = 500, 700
+            new_ann = sly.Annotation((height, width))
+            loop = sly.utils.get_or_create_event_loop()
+            coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
+        """
+        if type(ann) is not self.annotation_class:
+            raise TypeError(
+                f"Type of 'ann' should be {self.annotation_class.__name__}, not a {type(ann).__name__}"
+            )
+        dst_ann_path = self.get_ann_path(item_name)
+        await dump_json_file_async(ann.to_json(), dst_ann_path, indent=4)
+
+    async def _add_ann_by_type_async(self, item_name, ann):
+        """
+        Add given annotation to dataset annotations dir and to dictionary items: item file name -> annotation file name
+        :param item_name: str
+        :param ann: Annotation class object, str, dict, None (generate exception error if param type is another)
+        """
+        # This is a new-style annotation name, so if there was no image with this name yet, there should not have been
+        # an annotation either.
+        self._item_to_ann[item_name] = item_name + ANN_EXT
+        if ann is None:
+            await self.set_ann_async(item_name, self._get_empty_annotaion(item_name))
+        elif type(ann) is self.annotation_class:
+            await self.set_ann_async(item_name, ann)
+        elif type(ann) is str:
+            await self.set_ann_file_async(item_name, ann)
+        elif type(ann) is dict:
+            await self.set_ann_dict_async(item_name, ann)
+        else:
+            raise TypeError("Unsupported type {!r} for ann argument".format(type(ann)))
+
+    async def _add_item_file_async(
+        self, item_name, item_path, _validate_item=True, _use_hardlink=False
+    ):
+        """
+        Add given item file to dataset items directory. Generate exception error if item_name already exists in dataset
+        or item name has unsupported extension
+        :param item_name: str
+        :param item_path: str
+        :param _validate_item: bool
+        :param _use_hardlink: bool
+        """
+        if item_path is None:
+            return
+
+        self._check_add_item_name(item_name)
+        dst_item_path = os.path.join(self.item_dir, item_name)
+        if (
+            item_path != dst_item_path and item_path is not None
+        ):  # used only for agent + api during download project + None to optimize internal usage
+            hardlink_done = False
+            if _use_hardlink:
+                try:
+                    loop = get_or_create_event_loop()
+                    await loop.run_in_executor(None, os.link, item_path, dst_item_path)
+                    hardlink_done = True
+                except OSError:
+                    pass
+            if not hardlink_done:
+                await copy_file_async(item_path, dst_item_path)
+            if _validate_item:
+                await self._validate_added_item_or_die_async(item_path)
+
+    async def add_item_file_async(
+        self,
+        item_name: str,
+        item_path: str,
+        ann: Optional[Union[Annotation, str]] = None,
+        _validate_item: Optional[bool] = True,
+        _use_hardlink: Optional[bool] = False,
+        item_info: Optional[Union[ImageInfo, Dict, str]] = None,
+        img_info: Optional[Union[ImageInfo, Dict, str]] = None,
+    ) -> None:
+        """
+        Adds given item file to dataset items directory, and adds given annotation to dataset annotations directory.
+        If ann is None, creates empty annotation file.
+
+        :param item_name: Item name.
+        :type item_name: :class:`str`
+        :param item_path: Path to the item.
+        :type item_path: :class:`str`
+        :param ann: Annotation object or path to annotation json file.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :param _validate_item: Checks input files format.
+        :type _validate_item: :class:`bool`, optional
+        :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
+        :type _use_hardlink: :class:`bool`, optional
+        :param item_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
+        :type item_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :param img_info: Deprecated version of item_info parameter. Can be removed in future versions.
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :return: None
+        :rtype: NoneType
+        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+            ann = "/home/admin/work/supervisely/projects/lemons_annotated/ds1/ann/IMG_8888.jpeg.json"
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(
+                    ds.add_item_file_async("IMG_8888.jpeg", "/home/admin/work/supervisely/projects/lemons_annotated/ds1/img/IMG_8888.jpeg", ann=ann)
+                )
+            print(ds.item_exists("IMG_8888.jpeg"))
+            # Output: True
+        """
+        # item_path is None when image is cached
+        if item_path is None and ann is None and img_info is None:
+            raise RuntimeError("No item_path or ann or img_info provided.")
+
+        if item_info is not None and img_info is not None:
+            raise RuntimeError(
+                "At least one parameter of two (item_info and img_info) must be None."
+            )
+
+        if img_info is not None:
+            logger.warning(
+                "img_info parameter of add_item_file() method is deprecated and can be removed in future versions. Use item_info parameter instead."
+            )
+            item_info = img_info
+
+        await self._add_item_file_async(
+            item_name,
+            item_path,
+            _validate_item=_validate_item,
+            _use_hardlink=_use_hardlink,
+        )
+        await self._add_ann_by_type_async(item_name, ann)
+        await self._add_item_info_async(item_name, item_info)
 
 
 class Project:
@@ -2512,6 +2853,7 @@ class Project:
         save_image_info: Optional[bool] = False,
         save_images: bool = True,
         save_image_meta: bool = False,
+        resume_download: bool = False,
     ) -> None:
         """
         Download project from Supervisely to the given directory.
@@ -2577,6 +2919,7 @@ class Project:
             save_image_info=save_image_info,
             save_images=save_images,
             save_image_meta=save_image_meta,
+            resume_download=resume_download,
         )
 
     @staticmethod
@@ -3076,6 +3419,91 @@ class Project:
             progress_cb=progress_cb,
         )
 
+    @staticmethod
+    async def download_async(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        dataset_ids: Optional[List[int]] = None,
+        log_progress: bool = True,
+        semaphore: asyncio.Semaphore = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        only_image_tags: Optional[bool] = False,
+        save_image_info: Optional[bool] = False,
+        save_images: bool = True,
+        save_image_meta: bool = False,
+        images_ids: Optional[List[int]] = None,
+        resume_download: Optional[bool] = False,
+    ) -> None:
+        """
+        Download project from Supervisely to the given directory in asynchronous mode.
+
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Supervisely downloadable project ID.
+        :type project_id: :class:`int`
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`
+        :param dataset_ids: Filter datasets by IDs.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param semaphore: Semaphore to limit the number of concurrent downloads of items.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param only_image_tags: Download project with only images tags (without objects tags).
+        :type only_image_tags: :class:`bool`, optional
+        :param save_image_info: Download images infos or not.
+        :type save_image_info: :class:`bool`, optional
+        :param save_images: Download images or not.
+        :type save_images: :class:`bool`, optional
+        :param save_image_meta: Download images metadata in JSON format or not.
+        :type save_image_meta: :class:`bool`, optional
+        :param images_ids: Filter images by IDs.
+        :type images_ids: :class:`list` [ :class:`int` ], optional
+        :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+        :type resume_download: :class:`bool`, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                project_id = 8888
+                save_directory = "/path/to/save/projects"
+
+                loop = sly.utils.get_or_create_event_loop()
+                coro = sly.Project.download_async(api, project_id, save_directory)
+                if loop.is_running():
+                    future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                    future.result()
+                else:
+                    loop.run_until_complete(coroutine)
+        """
+        await _download_project_async(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            semaphore=semaphore,
+            only_image_tags=only_image_tags,
+            save_image_info=save_image_info,
+            save_images=save_images,
+            progress_cb=progress_cb,
+            save_image_meta=save_image_meta,
+            images_ids=images_ids,
+            resume_download=resume_download,
+        )
+
 
 def read_single_project(
     dir: str,
@@ -3170,10 +3598,23 @@ def _download_project(
     progress_cb: Optional[Callable] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
+    resume_download: Optional[bool] = False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
-    project_fs = Project(dest_dir, OpenMode.CREATE)
+    project_fs = None
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        try:
+            project_fs = Project(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
+    if project_fs is None:
+        project_fs = Project(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
 
     if progress_cb is not None:
@@ -3183,19 +3624,20 @@ def _download_project(
     if only_image_tags is True:
         id_to_tagmeta = meta.tag_metas.get_id_mapping()
 
-    images_filter = None
-    if images_ids is not None:
-        images_filter = [{"field": "id", "operator": "in", "value": images_ids}]
-
+    existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
         dataset_id = dataset.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
             continue
 
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
-        images = api.image.get_list(dataset_id, filters=images_filter)
+        all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
+        images = [image for image in all_images if images_ids is None or image.id in images_ids]
         ds_total = len(images)
 
         ds_progress = progress_cb
@@ -3223,42 +3665,79 @@ def _download_project(
                 image_ids = [image_info.id for image_info in batch]
                 image_names = [image_info.name for image_info in batch]
 
-                # download images in numpy format
-                if save_images:
-                    batch_imgs_bytes = api.image.download_bytes(dataset_id, image_ids)
-                else:
-                    batch_imgs_bytes = [None] * len(image_ids)
+                existing_image_infos: Dict[str, ImageInfo] = {}
+                for image_name in image_names:
+                    try:
+                        image_info = dataset_fs.get_item_info(image_name)
+                    except:
+                        image_info = None
+                    existing_image_infos[image_name] = image_info
 
-                if log_progress or progress_cb is not None:
-                    ds_progress(len(batch))
+                indexes_to_download = []
+                for i, image_info in enumerate(batch):
+                    existing_image_info = existing_image_infos[image_info.name]
+                    if (
+                        existing_image_info is None
+                        or existing_image_info.updated_at != image_info.updated_at
+                    ):
+                        indexes_to_download.append(i)
+
+                # download images in numpy format
+                batch_imgs_bytes = [None] * len(image_ids)
+                if save_images and indexes_to_download:
+                    for index, img in zip(
+                        indexes_to_download,
+                        api.image.download_bytes(
+                            dataset_id,
+                            [image_ids[i] for i in indexes_to_download],
+                            progress_cb=ds_progress,
+                        ),
+                    ):
+                        batch_imgs_bytes[index] = img
+
+                if ds_progress is not None:
+                    ds_progress(len(batch) - len(indexes_to_download))
 
                 # download annotations in json format
+                ann_jsons = [None] * len(image_ids)
                 if only_image_tags is False:
-                    ann_infos = api.annotation.download_batch(
-                        dataset_id, image_ids, progress_cb=anns_progress
-                    )
-                    ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+                    if indexes_to_download:
+                        for index, ann_info in zip(
+                            indexes_to_download,
+                            api.annotation.download_batch(
+                                dataset_id,
+                                [image_ids[i] for i in indexes_to_download],
+                                progress_cb=anns_progress,
+                            ),
+                        ):
+                            ann_jsons[index] = ann_info.annotation
                 else:
-                    ann_jsons = []
-                    for image_info in batch:
-                        # pylint: disable=possibly-used-before-assignment
-                        tags = TagCollection.from_api_response(
-                            image_info.tags,
-                            meta.tag_metas,
-                            id_to_tagmeta,
-                        )
-                        tmp_ann = Annotation(
-                            img_size=(image_info.height, image_info.width), img_tags=tags
-                        )
-                        ann_jsons.append(tmp_ann.to_json())
+                    if indexes_to_download:
+                        for index in indexes_to_download:
+                            image_info = batch[index]
+                            tags = TagCollection.from_api_response(
+                                image_info.tags,
+                                meta.tag_metas,
+                                id_to_tagmeta,
+                            )
+                            tmp_ann = Annotation(
+                                img_size=(image_info.height, image_info.width), img_tags=tags
+                            )
+                            ann_jsons[index] = tmp_ann.to_json()
+                            if anns_progress is not None:
+                                anns_progress(len(indexes_to_download))
+                if anns_progress is not None:
+                    anns_progress(len(batch) - len(indexes_to_download))
 
                 for img_info, name, img_bytes, ann in zip(
                     batch, image_names, batch_imgs_bytes, ann_jsons
                 ):
+                    dataset_fs: Dataset
+
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,
-                        ann=ann,
+                        ann=dataset_fs.get_ann(name) if ann is None else ann,
                         img_info=img_info if save_image_info is True else None,
                     )
 
@@ -3270,6 +3749,12 @@ def _download_project(
                     sly.json.dump_json_file(
                         image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
                     )
+
+        # delete redundant items
+        items_names_set = set([img.name for img in all_images])
+        for item_name in dataset_fs.get_items_names():
+            if item_name not in items_names_set:
+                dataset_fs.delete_item(item_name)
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:
@@ -3333,7 +3818,7 @@ def upload_project(
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
-            
+
             if img_paths == []:
                 # Dataset is empty
                 continue
@@ -3435,6 +3920,7 @@ def download_project(
     save_images: bool = True,
     save_image_meta: bool = False,
     images_ids: Optional[List[int]] = None,
+    resume_download: Optional[bool] = False,
 ) -> None:
     """
     Download image project to the local directory.
@@ -3463,7 +3949,10 @@ def download_project(
     :type save_images, bool, optional
     :param save_image_meta: Include images metadata in JSON format in the download.
     :type save_imgge_meta: bool, optional
-
+    :param images_ids: Specified list of Image IDs which will be downloaded.
+    :type images_ids: list(int), optional
+    :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+    :type resume_download: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:
@@ -3514,6 +4003,7 @@ def download_project(
             progress_cb=progress_cb,
             save_image_meta=save_image_meta,
             images_ids=images_ids,
+            resume_download=resume_download,
         )
     else:
         _download_project_optimized(
@@ -3542,7 +4032,7 @@ def _download_project_optimized(
     save_image_info=False,
     save_images=True,
     log_progress=True,
-    images_ids:List[int]=None,
+    images_ids: List[int] = None,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -3899,6 +4389,184 @@ def _dataset_structure_md(
             )
 
     return result_md
+
+
+async def _download_project_async(
+    api: sly.Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: bool = True,
+    semaphore: asyncio.Semaphore = None,
+    only_image_tags: Optional[bool] = False,
+    save_image_info: Optional[bool] = False,
+    save_images: Optional[bool] = True,
+    progress_cb: Optional[Callable] = None,
+    save_image_meta: Optional[bool] = False,
+    images_ids: Optional[List[int]] = None,
+    resume_download: Optional[bool] = False,
+):
+    if semaphore is None:
+        semaphore = api.get_default_semaphore()
+
+    dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+    project_fs = None
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        try:
+            project_fs = Project(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
+    if project_fs is None:
+        project_fs = Project(dest_dir, OpenMode.CREATE)
+    project_fs.set_meta(meta)
+
+    if progress_cb is not None:
+        log_progress = False
+
+    id_to_tagmeta = None
+    if only_image_tags is True:
+        id_to_tagmeta = meta.tag_metas.get_id_mapping()
+
+    existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
+    for parents, dataset in api.dataset.tree(project_id):
+        dataset_path = Dataset._get_dataset_path(dataset.name, parents)
+        dataset_id = dataset.id
+        if dataset_ids is not None and dataset_id not in dataset_ids:
+            continue
+
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+
+        force_metadata_for_links = False
+        if save_images is False and only_image_tags is True:
+            force_metadata_for_links = True
+        all_images = api.image.get_list(
+            dataset_id, force_metadata_for_links=force_metadata_for_links
+        )
+        images = [image for image in all_images if images_ids is None or image.id in images_ids]
+
+        ds_progress = progress_cb
+        if log_progress is True:
+            ds_progress = tqdm_sly(
+                desc="Downloading images from {!r}".format(dataset.name),
+                total=len(images),
+            )
+
+        with ApiContext(
+            api,
+            project_id=project_id,
+            dataset_id=dataset_id,
+            project_meta=meta,
+        ):
+            tasks = []
+            for image in images:
+                try:
+                    existing = dataset_fs.get_item_info(image.name)
+                except:
+                    existing = None
+                else:
+                    if existing.updated_at == image.updated_at:
+                        if ds_progress is not None:
+                            ds_progress(1)
+                        continue
+
+                task = _download_project_item_async(
+                    api=api,
+                    img_info=image,
+                    meta=meta,
+                    dataset_fs=dataset_fs,
+                    id_to_tagmeta=id_to_tagmeta,
+                    semaphore=semaphore,
+                    save_images=save_images,
+                    save_image_info=save_image_info,
+                    only_image_tags=only_image_tags,
+                    progress_cb=ds_progress,
+                )
+                tasks.append(task)
+            await asyncio.gather(*tasks)
+        if save_image_meta:
+            meta_dir = dataset_fs.meta_dir
+            for image_info in images:
+                if image_info.meta:
+                    sly.fs.mkdir(meta_dir)
+                    sly.json.dump_json_file(
+                        image_info.meta, dataset_fs.get_item_meta_path(image_info.name)
+                    )
+
+        # delete redundant items
+        items_names_set = set([img.name for img in all_images])
+        for item_name in dataset_fs.get_items_names():
+            if item_name not in items_names_set:
+                dataset_fs.delete_item(item_name)
+    try:
+        create_readme(dest_dir, project_id, api)
+    except Exception as e:
+        logger.info(f"There was an error while creating README: {e}")
+
+
+async def _download_project_item_async(
+    api: sly.Api,
+    img_info: sly.ImageInfo,
+    meta: ProjectMeta,
+    dataset_fs: Dataset,
+    id_to_tagmeta: Dict[int, sly.TagMeta],
+    semaphore: asyncio.Semaphore,
+    save_images: bool,
+    save_image_info: bool,
+    only_image_tags: bool,
+    progress_cb: Optional[Callable],
+) -> None:
+    """Download image and annotation from Supervisely API and save it to the local filesystem.
+    Uses parameters from the parent function _download_project_async.
+    """
+    if save_images:
+        img_bytes = await api.image.download_bytes_single_async(
+            img_info.id, semaphore=semaphore, check_hash=True
+        )
+        if None in [img_info.height, img_info.width]:
+            width, height = sly.image.get_size_from_bytes(img_bytes)
+            img_info = img_info._replace(height=height, width=width)
+    else:
+        img_bytes = None
+
+    if only_image_tags is False:
+        ann_info = await api.annotation.download_async(
+            img_info.id,
+            semaphore=semaphore,
+            force_metadata_for_links=not save_images,
+        )
+        ann_json = ann_info.annotation
+        tmp_ann = Annotation.from_json(ann_json, meta)
+        if None in tmp_ann.img_size:
+            tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+            ann_json = tmp_ann.to_json()
+    else:
+        tags = TagCollection.from_api_response(
+            img_info.tags,
+            meta.tag_metas,
+            id_to_tagmeta,
+        )
+        tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
+        ann_json = tmp_ann.to_json()
+
+    if dataset_fs.item_exists(img_info.name):
+        dataset_fs.delete_item(img_info.name)
+    await dataset_fs.add_item_raw_bytes_async(
+        item_name=img_info.name,
+        item_raw_bytes=img_bytes if save_images is True else None,
+        ann=ann_json,
+        img_info=img_info if save_image_info is True else None,
+    )
+    if progress_cb is not None:
+        progress_cb(1)
 
 
 DatasetDict = Project.DatasetDict

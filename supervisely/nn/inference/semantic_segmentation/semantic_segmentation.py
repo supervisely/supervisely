@@ -3,9 +3,11 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from supervisely.annotation.label import Label
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.prediction_dto import PredictionSegmentation
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 
@@ -24,33 +26,48 @@ class SemanticSegmentation(Inference):
     def _get_obj_class_shape(self):
         return Bitmap
 
-    def _create_label(self, dto: PredictionSegmentation, classes_whitelist: Optional[List[str]] = None):
-        class_names = self.get_classes()
-        if classes_whitelist is not None:
-            idx_to_remove = [
-                idx
-                for idx, _ in enumerate(class_names)
-                if class_names[idx] not in classes_whitelist
-            ]
-            if idx_to_remove:
-                logger.debug(
-                    f"Classes {idx_to_remove} are not in classes whitelist and will be set to background"
-                )
-                dto.mask[np.isin(dto.mask, idx_to_remove)] = 0
-        image_classes = np.unique(dto.mask)
+    def _find_bg_class_index(self, class_names: List[str]):
+        possible_bg_names = ["background", "bg", "unlabeled", "neutral", "__bg__"]
+        bg_class_index = None
+        for i, name in enumerate(class_names):
+            if name in possible_bg_names:
+                bg_class_index = i
+                break
+        return bg_class_index
 
+    def _add_default_bg_class(self, meta: ProjectMeta):
+        default_bg_class_name = "__bg__"
+        obj_class = meta.get_obj_class(default_bg_class_name)
+        if obj_class is None:
+            obj_class = ObjClass(default_bg_class_name, self._get_obj_class_shape())
+            meta = meta.add_obj_class(obj_class)
+        return meta, obj_class
+
+    def _get_or_create_bg_obj_class(self, classes):
+        bg_class_index = self._find_bg_class_index(classes)
+        if bg_class_index is None:
+            self._model_meta, bg_obj_class = self._add_default_bg_class(self.model_meta)
+        else:
+            bg_class_name = classes[bg_class_index]
+            bg_obj_class = self.model_meta.get_obj_class(bg_class_name)
+        return bg_obj_class
+
+    def _create_label(self, dto: PredictionSegmentation, classes_whitelist: List[str] = None):
+        classes = self.get_classes()
+
+        image_classes_indexes = np.unique(dto.mask)
         labels = []
-        for class_idx in image_classes:
+        for class_idx in image_classes_indexes:
             class_mask = dto.mask == class_idx
-            class_name = class_names[class_idx]
-            obj_class = self.model_meta.get_obj_class(class_name)
+            class_name = classes[class_idx]
+            if classes_whitelist not in (None, "all") and class_name not in classes_whitelist:
+                obj_class = self._get_or_create_bg_obj_class(classes)
+            else:
+                obj_class = self.model_meta.get_obj_class(class_name)
             if obj_class is None:
                 raise KeyError(
                     f"Class {class_name} not found in model classes {class_names}"
                 )
-            if not class_mask.any():  # skip empty masks
-                logger.debug(f"Mask of class {class_name} is empty and will be sklipped")
-                return None
             geometry = Bitmap(class_mask, extra_validation=False)
             label = Label(geometry, obj_class)
             labels.append(label)

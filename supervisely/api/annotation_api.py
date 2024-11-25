@@ -4,10 +4,11 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import json
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
 from tqdm import tqdm
 
@@ -1307,36 +1308,36 @@ class AnnotationApi(ModuleApi):
         Priority increases with the number: a higher number indicates a higher priority.
         The higher priority means that the label will be displayed on top of the others.
         The lower priority means that the label will be displayed below the others.
-        
+
         :param label_id: ID of the label to update
         :type label_id: int
         :param priority: New priority of the label
         :type priority: int
-        
-        :Usage example: 
-        
+
+        :Usage example:
+
             .. code-block:: python
-            
+
             import os
             from dotenv import load_dotenv
-            
+
             import supervisely as sly
-            
+
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             load_dotenv(os.path.expanduser("~/supervisely.env"))
-            
+
             api = sly.Api.from_env()
-            
+
             label_ids = [123, 456, 789]
             priorities = [1, 2, 3]
-            
+
             for label_id, priority in zip(label_ids, priorities):
                 api.annotation.update_label_priority(label_id, priority)
-                
+
             # The label with ID 789 will be displayed on top of the others.
             # The label with ID 123 will be displayed below the others.
-        
+
         """
         self._api.post(
             "figures.priority.update",
@@ -1345,3 +1346,172 @@ class AnnotationApi(ModuleApi):
                 ApiField.PRIORITY: priority,
             },
         )
+
+    async def download_async(
+        self,
+        image_id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> AnnotationInfo:
+        """
+        Download AnnotationInfo by image ID from API.
+
+        :param image_id: Image ID in Supervisely.
+        :type image_id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: str, optional
+        :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`AnnotationInfo`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_id = 121236918
+            loop = sly.utils.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.annotation.download_async(image_id))
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            response = await self._api.post_async(
+                "annotations.info",
+                {
+                    ApiField.IMAGE_ID: image_id,
+                    ApiField.WITH_CUSTOM_DATA: with_custom_data,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    ApiField.INTEGER_COORDS: False,
+                },
+            )
+            if progress_cb is not None and progress_cb_type == "size":
+                progress_cb(len(response.content))
+
+            result = response.json()
+            # Convert annotation to pixel coordinate system
+            result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+                result[ApiField.ANNOTATION]
+            )
+            # check if there are any AlphaMask geometries in the batch
+            additonal_geometries = defaultdict(int)
+            labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+            for idx, label in enumerate(labels):
+                if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                    figure_id = label[LabelJsonFields.ID]
+                    additonal_geometries[figure_id] = idx
+
+            # if so, download them separately and update the annotation
+            if len(additonal_geometries) > 0:
+                figure_ids = list(additonal_geometries.keys())
+                figures = self._api.image.figure.download_geometries_batch(
+                    figure_ids,
+                    (
+                        progress_cb
+                        if progress_cb is not None and progress_cb_type == "size"
+                        else None
+                    ),
+                )
+                for figure_id, geometry in zip(figure_ids, figures):
+                    label_idx = additonal_geometries[figure_id]
+                    labels[label_idx].update({BITMAP: geometry})
+            ann_info = self._convert_json_info(result)
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            return ann_info
+
+    async def download_batch_async(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> List[AnnotationInfo]:
+        """
+        Get list of AnnotationInfos for given dataset ID from API.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of integers.
+        :type image_ids: List[int]
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param progress_cb: Function for tracking download progress. Total should be equal to len(image_ids) or None.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: str, optional
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[AnnotationInfo]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            pbar = tqdm(desc="Download annotations", total=len(image_ids))
+
+            loop = sly.utils.get_or_create_event_loop()
+            ann_infos = loop.run_until_complete(
+                                api.annotation.download_batch_async(dataset_id, image_ids, progress_cb=pbar)
+                            )
+        """
+
+        # use context to avoid redundant API calls
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_meta = context.get("project_meta")
+        project_id = context.get("project_id")
+        if dataset_id != context_dataset_id:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
+
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        tasks = []
+        for image in image_ids:
+            task = self.download_async(
+                image_id=image,
+                semaphore=semaphore,
+                with_custom_data=with_custom_data,
+                force_metadata_for_links=force_metadata_for_links,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        ann_infos = await asyncio.gather(*tasks)
+        return ann_infos
