@@ -30,6 +30,7 @@ from supervisely import (
     OpenMode,
     Project,
     ProjectInfo,
+    ProjectMeta,
     WorkflowMeta,
     WorkflowSettings,
     download_project,
@@ -1161,12 +1162,14 @@ class TrainApp:
         local_path = join(self.output_dir, self._model_meta_file)
         remote_path = join(remote_dir, self._model_meta_file)
 
-        model_meta_json = self.sly_project.meta.to_json()
-        model_meta_json["classes"] = [
-            item for item in model_meta_json["classes"] if item["title"] in self.classes
-        ]
+        project_meta_json = self.sly_project.meta.to_json()
+        model_meta = {
+            "classes": [
+                item for item in project_meta_json["classes"] if item["title"] in self.classes
+            ]
+        }
 
-        sly_json.dump_json_file(model_meta_json, local_path)
+        sly_json.dump_json_file(model_meta, local_path)
         self._upload_file_to_team_files(
             local_path,
             remote_path,
