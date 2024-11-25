@@ -12,32 +12,34 @@ from supervisely.api.api import Api, ApiField
 class ExperimentInfo(NamedTuple):
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
+    framework_name: str
+    """Name of the framework used in the experiment"""
     model_name: str
     """Name of the model used in the experiment. Defined by the user in the training app"""
     task_type: str
     """Task type of the experiment"""
+
+    project_id: int
+    """Project ID in Supervisely"""
+    task_id: int
+    """Task ID in Supervisely"""
+
     model_files: Dict[str, str]
     """Dictionary with paths to model files that needs to be downloaded for training"""
     checkpoints: List[str]
     """List of relative paths to checkpoints"""
     best_checkpoint: str
     """Name of the best checkpoint. Defined by the user in the training app"""
-    framework_name: str
-    """Name of the framework used in the experiment"""
-    hyperparameters: Dict[str, Any]
-    """Dictionary with hyperparameters used in the experiment"""
-    model_meta: Dict[str, Any]
-    """Dictionary with model metadata such as model name, project id, project name and classes used for training"""
+    app_state: str
+    """Path to file with settings that were used in the app"""
+    model_meta: str
+    """Path to file with model metadata such as model name, project id, project name and classes used for training"""
+    train_val_split: str
+    """Path to train and validation splits, which contains IDs of the images used in each split"""
+    hyperparameters: str
+    """Path to .yaml file with hyperparameters used in the experiment"""
     artifacts_dir: str
     """Path to the directory with artifacts"""
-    task_id: int
-    """Task ID in Supervisely"""
-    project_id: int
-    """Project ID in Supervisely"""
-    train_val_splits: dict
-    """Train and validation splits"""
-    app_state: dict
-    """Settings that were used in the app"""
     datetime: str
     """Date and time when the experiment was started"""
     evaluation_report_id: int

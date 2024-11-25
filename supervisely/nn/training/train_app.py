@@ -98,6 +98,7 @@ class TrainApp:
         self._experiment_json_file = "experiment_info.json"
         self._app_state_file = "app_state.json"
         self._train_val_split_file = "train_val_split.json"
+        self._hyperparameters_file = "hyperparameters.yaml"
         self._model_meta_file = "model_meta.json"
 
         self._sly_project_dir_name = "sly_project"
@@ -107,7 +108,7 @@ class TrainApp:
         self._output_checkpoints_dir_name = "checkpoints"
         self._remote_checkpoints_dir_name = "checkpoints"
         self._experiments_dir_name = "experiments"
-        self._defalut_work_dir_name = "work_dir"
+        self._default_work_dir_name = "work_dir"
         self._tensorboard_port = 6006
 
         if is_production():
@@ -132,7 +133,7 @@ class TrainApp:
         if work_dir is not None:
             self.work_dir = work_dir
         else:
-            self.work_dir = join(get_synced_data_dir(), self._defalut_work_dir_name)
+            self.work_dir = join(get_synced_data_dir(), self._default_work_dir_name)
         self.output_dir = join(self.work_dir, self._output_dir_name)
         self._output_checkpoints_dir = join(self.output_dir, self._output_checkpoints_dir_name)
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
@@ -435,7 +436,9 @@ class TrainApp:
         # Step 4. Generate and upload additional files
         self._generate_experiment_info(remote_dir, experiment_info, mb_eval_report_id)
         self._generate_app_state(remote_dir, experiment_info)
+        self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
+        self._generate_model_meta(remote_dir, experiment_info)
 
         # Step 5. Set output widgets
         self._set_training_output(remote_dir, file_info)
@@ -518,7 +521,7 @@ class TrainApp:
         """
         if app_options is None:
             return {}
-        
+
         if isinstance(app_options, str):
             if sly_fs.file_exists(app_options) and sly_fs.get_file_ext(app_options) in [
                 ".yaml",
@@ -959,8 +962,27 @@ class TrainApp:
                     reason = f"Validation failed: Checkpoint file: '{checkpoint}' does not exist"
                     return False, reason
 
-        if not sly_fs.file_exists(experiment_info["best_checkpoint"]):
-            reason = f"Validation failed: Best checkpoint file: '{experiment_info['best_checkpoint']}' does not exist"
+        best_checkpoint = experiment_info["best_checkpoint"]
+        checkpoints = experiment_info["checkpoints"]
+        if isinstance(checkpoints, list):
+            checkpoints = [sly_fs.get_file_name_with_ext(checkpoint) for checkpoint in checkpoints]
+            if best_checkpoint not in checkpoints:
+                reason = (
+                    f"Validation failed: Best checkpoint file: '{best_checkpoint}' does not exist"
+                )
+                return False, reason
+        elif isinstance(checkpoints, str):
+            checkpoints = [
+                sly_fs.get_file_name_with_ext(checkpoint)
+                for checkpoint in sly_fs.list_dir_recursively(checkpoints, [".pt", ".pth"])
+            ]
+            if best_checkpoint not in checkpoints:
+                reason = (
+                    f"Validation failed: Best checkpoint file: '{best_checkpoint}' does not exist"
+                )
+                return False, reason
+        else:
+            reason = "Validation failed: 'checkpoints' should be a list of paths or a path to directory with checkpoints"
             return False, reason
 
         logger.info("Validation successful")
@@ -1086,20 +1108,9 @@ class TrainApp:
             logs_dir = join(self.output_dir, "logs")
             shutil.move(self.log_dir, logs_dir)
 
-        # Generate model_meta.json
-        logger.info("Generating model_meta.json")
-        sly_metadata = {
-            "classes": self.classes,
-            "model": experiment_info["model_name"],
-            "project_id": self.project_info.id,
-            "project_name": self.project_info.name,
-        }
-        model_meta_path = join(self.output_dir, self._model_meta_file)
-        sly_json.dump_json_file(sly_metadata, model_meta_path)
-
     # Generate experiment_info.json and app_state.json
-    def _upload_json_file(self, local_path: str, remote_path: str, message: str) -> None:
-        """Helper function to upload a JSON file with progress."""
+    def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
+        """Helper function to upload a file with progress."""
         logger.info(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
         with self.progress_bar_main(
@@ -1130,10 +1141,36 @@ class TrainApp:
         }
 
         sly_json.dump_json_file(data, local_train_val_split_path)
-        self._upload_json_file(
+        self._upload_file_to_team_files(
             local_train_val_split_path,
             remote_train_val_split_path,
             f"Uploading '{self._train_val_split_file}' to Team Files",
+        )
+
+    def _generate_model_meta(self, remote_dir: str, experiment_info: dict) -> None:
+        """
+        Generates and uploads the model_meta.json file to the output directory.
+
+        :param remote_dir: Remote directory path.
+        :type remote_dir: str
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        """
+        # @TODO: Handle tags for classification tasks
+        logger.info("Generating model_meta.json")
+        local_path = join(self.output_dir, self._model_meta_file)
+        remote_path = join(remote_dir, self._model_meta_file)
+
+        model_meta_json = self.sly_project.meta.to_json()
+        model_meta_json["classes"] = [
+            item for item in model_meta_json["classes"] if item["title"] in self.classes
+        ]
+
+        sly_json.dump_json_file(model_meta_json, local_path)
+        self._upload_file_to_team_files(
+            local_path,
+            remote_path,
+            f"Uploading '{self._model_meta_file}' to Team Files",
         )
 
     def _generate_experiment_info(
@@ -1153,20 +1190,30 @@ class TrainApp:
         :type evaluation_report_id: int
         """
         logger.info("Updating experiment info")
-        experiment_info.update(
-            {
-                "framework_name": self.framework_name,
-                "app_state": self._app_state_file,
-                "train_val_splits": self._train_val_split_file,
-                "hyperparameters": self.hyperparameters,
-                "artifacts_dir": remote_dir,
-                "task_id": self.task_id,
-                "project_id": self.project_info.id,
-                "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "evaluation_report_id": evaluation_report_id,
-                # "eval_metrics": {"mAP": None, "mIoU": None, "f1_conf_threshold": None},
-            }
+
+        default_experiment_name = (
+            f"{self.task_id}_{self.project_name}_{experiment_info['model_name']}"
         )
+        experiment_name = experiment_info.get("experiment_name", default_experiment_name)
+        experiment_info = {
+            "experiment_name": experiment_name,
+            "framework_name": self.framework_name,
+            "model_name": experiment_info["model_name"],
+            "task_type": experiment_info["task_type"],
+            "project_id": self.project_info.id,
+            "task_id": self.task_id,
+            "model_files": experiment_info["model_files"],
+            "checkpoints": experiment_info["checkpoints"],
+            "best_checkpoint": experiment_info["best_checkpoint"],
+            "app_state": self._app_state_file,
+            "model_meta": self._model_meta_file,
+            "train_val_split": self._train_val_split_file,
+            "hyperparameters": self._hyperparameters_file,
+            "artifacts_dir": remote_dir,
+            "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "evaluation_report_id": evaluation_report_id,
+            "eval_metrics": {},
+        }
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
@@ -1186,10 +1233,31 @@ class TrainApp:
         local_path = join(self.output_dir, self._experiment_json_file)
         remote_path = join(remote_dir, self._experiment_json_file)
         sly_json.dump_json_file(experiment_info, local_path)
-        self._upload_json_file(
+        self._upload_file_to_team_files(
             local_path,
             remote_path,
             f"Uploading '{self._experiment_json_file}' to Team Files",
+        )
+
+    def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
+        """
+        Generates and uploads the hyperparameters.yaml file to the output directory.
+
+        :param remote_dir: Remote directory path.
+        :type remote_dir: str
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        """
+        local_path = join(self.output_dir, self._hyperparameters_file)
+        remote_path = join(remote_dir, self._hyperparameters_file)
+
+        with open(local_path, "w") as file:
+            file.write(self.hyperparameters_yaml)
+
+        self._upload_file_to_team_files(
+            local_path,
+            remote_path,
+            f"Uploading '{self._hyperparameters_file}' to Team Files",
         )
 
     def _generate_app_state(self, remote_dir: str, experiment_info: Dict) -> None:
@@ -1215,7 +1283,7 @@ class TrainApp:
 
         app_state = {
             "input": input_data,
-            "train_val_splits": train_val_splits,
+            "train_val_split": train_val_splits,
             "classes": self.classes,
             "model": model,
             "hyperparameters": self.hyperparameters_yaml,
@@ -1225,7 +1293,7 @@ class TrainApp:
         local_path = join(self.output_dir, self._app_state_file)
         remote_path = join(remote_dir, self._app_state_file)
         sly_json.dump_json_file(app_state, local_path)
-        self._upload_json_file(
+        self._upload_file_to_team_files(
             local_path, remote_path, f"Uploading '{self._app_state_file}' to Team Files"
         )
 
@@ -1677,7 +1745,7 @@ class TrainApp:
             tb_logger.set_log_dir(self.log_dir)
             self._setup_logger_callbacks()
             self._init_tensorboard()
-            
+
     def _init_tensorboard(self):
         self._register_routes()
         args = [
