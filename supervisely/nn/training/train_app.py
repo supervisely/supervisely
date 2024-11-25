@@ -867,28 +867,27 @@ class TrainApp:
         self.model_files = {}
 
         # Need to merge file_url with arts dir
+        artifacts_dir = self.model_info["artifacts_dir"]  # TODO: get from custom_model_selector
         model_files = self.model_info["model_files"]
-        for file in model_files:
-            model_files[file] = join(self.model_info["artifacts_dir"], model_files[file])
+        remote_paths = {name: join(artifacts_dir, file) for name, file in model_files.items()}
 
         # Add selected checkpoint to model_files
         checkpoint = self.gui.model_selector.custom_models_table.get_selected_checkpoint_path()
-        model_files["checkpoint"] = checkpoint
+        remote_paths["checkpoint"] = checkpoint
 
         with self.progress_bar_main(
             message="Downloading model files",
             total=len(model_files),
         ) as model_download_main_pbar:
             self.progress_bar_main.show()
-            for file in model_files:
-                file_url = model_files[file]
-
-                file_info = self._api.file.get_info_by_path(self._team_id, file_url)
-                file_path = join(self.model_dir, file)
+            for name, remote_path in remote_paths.items():
+                file_info = self._api.file.get_info_by_path(self._team_id, remote_path)
+                file_name = basename(remote_path)
+                local_path = join(self.model_dir, file_name)
                 file_size = file_info.sizeb
 
                 with self.progress_bar_secondary(
-                    message=f"Downloading {file}",
+                    message=f"Downloading {file_name}",
                     total=file_size,
                     unit="bytes",
                     unit_scale=True,
@@ -896,12 +895,12 @@ class TrainApp:
                     self.progress_bar_secondary.show()
                     self._api.file.download(
                         self._team_id,
-                        file_url,
-                        file_path,
+                        remote_path,
+                        local_path,
                         progress_cb=model_download_secondary_pbar.update,
                     )
                 model_download_main_pbar.update(1)
-                self.model_files[file] = file_path
+                self.model_files[name] = local_path
 
         self.progress_bar_main.hide()
         self.progress_bar_secondary.hide()
