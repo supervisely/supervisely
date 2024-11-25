@@ -107,7 +107,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.explore_predictions_gallery = explore_predictions.gallery(opacity=self.ann_opacity)
 
         # Model Predictions
-        model_predictions = ModelPredictions(self.vis_texts, self.eval_result, self.explore_modal)
+        model_predictions = ModelPredictions(self.vis_texts, self.eval_result, self.diff_modal)
         self.model_predictions_md = model_predictions.md
         self.model_predictions_table = model_predictions.table
 
