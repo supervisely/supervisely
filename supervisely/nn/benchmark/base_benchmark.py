@@ -114,7 +114,11 @@ class BaseBenchmark:
     ):
         model_info = self._fetch_model_info(self.session)
         self.dt_project_info = self._get_or_create_dt_project(output_project_id, model_info)
-        logger.info(f"Predictions project ID: {self.dt_project_info.id}")
+        logger.info(
+            f"""
+            Predictions project ID: {self.dt_project_info.id},
+                        workspace ID: {self.dt_project_info.workspace_id}"""
+        )
         if self.gt_images_ids is None:
             iterator = self.session.inference_project_id_async(
                 self.gt_project_info.id,
