@@ -26,6 +26,8 @@ class ExperimentInfo(NamedTuple):
     """Name of the framework used in the experiment"""
     hyperparameters: Dict[str, Any]
     """Dictionary with hyperparameters used in the experiment"""
+    model_meta: Dict[str, Any]
+    """Dictionary with model metadata such as model name, project id, project name and classes used for training"""
     artifacts_dir: str
     """Path to the directory with artifacts"""
     task_id: int

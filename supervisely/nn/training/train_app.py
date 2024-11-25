@@ -6,15 +6,15 @@ training workflows in a Supervisely application.
 """
 
 # @TODO:
-# 1. Save model_meta as file
-# 2. Check local paths in models.json (if not start with http) and do not download (and also do not move)
-# 3. Add start_tensorboard outside of TrainApp in user train_func
+# + 1. Save model_meta as file
+# + 2. Check local paths in models.json (if not start with http) and do not download (and also do not move)
+# + 3. Add start_tensorboard outside of TrainApp in user train_func
 # + 4. Weights rename to checkpoints
-# 5. Add load from file for hyperparameters, models and app_options
+# + 5. Add load from file for hyperparameters, models and app_options
 # + 6. train_val_split.json -> contain train image ids and val image ids
 # + 7. Remove image_ids from experiment_info.json
-# 8. Remove artifacts dir from experiment_info.json? + fix widget return path
-# + 9. Add constants for directory names
+# + 8. Add constants for directory names
+# 9. Remove artifacts dir from experiment_info.json? + fix widget return path | won't fix
 
 import shutil
 import time
@@ -25,13 +25,14 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.request import urlopen
 
 import httpx
-import supervisely.io.env as sly_env
-import supervisely.io.fs as sly_fs
-import supervisely.io.json as sly_json
 import yaml
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
+
+import supervisely.io.env as sly_env
+import supervisely.io.fs as sly_fs
+import supervisely.io.json as sly_json
 from supervisely import (
     Api,
     Application,
@@ -107,6 +108,7 @@ class TrainApp:
         self._experiment_json_file = "experiment_info.json"
         self._app_state_file = "app_state.json"
         self._train_val_split_file = "train_val_split.json"
+        self._model_meta_file = "model_meta.json"
 
         self._sly_project_dir_name = "sly_project"
         self._model_dir_name = "model"
@@ -115,6 +117,7 @@ class TrainApp:
         self._output_checkpoints_dir_name = "checkpoints"
         self._remote_checkpoints_dir_name = "checkpoints"
         self._experiments_dir_name = "experiments"
+        self._defalut_work_dir_name = "work_dir"
 
         if is_production():
             self.task_id = sly_env.task_id()
@@ -128,11 +131,23 @@ class TrainApp:
         self._app_name = sly_env.app_name(raise_not_found=False)
 
         # TODO: read files
-        self._models = self._validate_models(models)
+        self._models = self._load_models(models)
         self._hyperparameters = self._load_hyperparameters(hyperparameters)
-        self._app_options = self._validate_app_options(app_options)
+        self._app_options = self._load_app_options(app_options)
         self._inference_class = None
         # ----------------------------------------- #
+
+        # Directories
+        if work_dir is not None:
+            self.work_dir = work_dir
+        else:
+            self.work_dir = join(get_synced_data_dir(), self._defalut_work_dir_name)
+        self.output_dir = join(self.work_dir, self._output_dir_name)
+        self._output_checkpoints_dir = join(self.output_dir, self._output_checkpoints_dir_name)
+        self.project_dir = join(self.work_dir, self._sly_project_dir_name)
+        self.sly_project = None
+        self.train_split, self.val_split = None, None
+        # -------------------------- #
 
         # Input
         # ----------------------------------------- #
@@ -155,25 +170,15 @@ class TrainApp:
         )
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
-        self._register_routes()
         self._train_func = None
-        # -------------------------- #
 
-        # Directories
-        if work_dir is not None:
-            self.work_dir = work_dir
-        else:
-            self.work_dir = join(get_synced_data_dir(), "work_dir")
-        self.output_dir = join(self.work_dir, self._output_dir_name)
-        self._output_checkpoints_dir = join(
-            self.output_dir, self._output_checkpoints_dir
-        )
-        self.project_dir = join(self.work_dir, self._sly_project_dir_name)
-        self.sly_project = None
-        self.train_split, self.val_split = None, None
+        # @TODO: Think of better way to implement app_options
+        if self._app_options.get("enable_tensorboard", True):
+            self._register_routes()
         # -------------------------- #
 
         # Tensorboard debug
+        # Use with train.gui.load_from_state(app_state) for faster debugging
         # tb_logger.start_tensorboard()
         # self.gui.training_process.tensorboard_button.enable()
 
@@ -433,10 +438,7 @@ class TrainApp:
 
         # Step 4. Run Model Benchmark
         mb_eval_report, mb_eval_report_id = None, None
-        if (
-            self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value()
-            is True
-        ):
+        if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value() is True:
             if is_production():
                 try:
                     mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
@@ -446,9 +448,7 @@ class TrainApp:
                     logger.error(f"Model benchmark failed: {e}")
 
         # Step 4. Generate and upload additional files
-        self._generate_experiment_info(
-            remote_dir, experiment_info, splits_data, mb_eval_report_id
-        )
+        self._generate_experiment_info(remote_dir, experiment_info, mb_eval_report_id)
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
 
@@ -463,9 +463,7 @@ class TrainApp:
 
         # region TRAIN END
 
-    def register_inference_class(
-        self, inference_class: Any, inference_settings: dict = {}
-    ) -> None:
+    def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
         """
         Registers an inference class for the training application to do model benchmarking.
 
@@ -478,10 +476,18 @@ class TrainApp:
         self._inference_settings = inference_settings
 
     # Loaders
-    def _validate_models(self, models: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """
-        Validates the models parameter to ensure it is in the correct format.
+        Loads models from the provided file or list of model configurations.
         """
+        if isinstance(models, str):
+            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
+                models = self._load_json(models)
+            else:
+                raise ValueError(
+                    "Invalid models file. Please provide a valid '.json' file or a list of model configurations."
+                )
+
         if not isinstance(models, list):
             raise ValueError("models parameters must be a list of dicts")
         for item in models:
@@ -518,19 +524,50 @@ class TrainApp:
                 with open(hyperparameters, "r") as file:
                     return file.read()
             except Exception as e:
-                raise ValueError(
-                    f"Failed to load YAML file: {hyperparameters}. Error: {e}"
-                )
+                raise ValueError(f"Failed to load YAML file: {hyperparameters}. Error: {e}")
         return hyperparameters
 
-    def _validate_app_options(self, app_options: Dict[str, Any]) -> Dict[str, Any]:
+    def _load_app_options(self, app_options: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Validates the app_options parameter to ensure it is in the correct format.
+        Loads the app_options parameter to ensure it is in the correct format.
         """
+        if isinstance(app_options, str):
+            if sly_fs.file_exists(app_options) and sly_fs.get_file_ext(app_options) in [
+                ".yaml",
+                ".yml",
+            ]:
+                app_options = self._load_yaml(app_options)
+            else:
+                raise ValueError(
+                    "Invalid app_options file provided. Please provide a valid '.yaml' or '.yml' file or a dictionary with app_options."
+                )
         if not isinstance(app_options, dict):
             raise ValueError("app_options must be a dict")
-        # @TODO: Validate app_options
         return app_options
+
+    def _load_yaml(self, path: str) -> dict:
+        """
+        Load a YAML file from the specified path.
+
+        :param path: Path to the YAML file.
+        :type path: str
+        :return: YAML file contents.
+        :rtype: dict
+        """
+        with open(path, "r") as file:
+            return yaml.safe_load(file)
+
+    def _load_json(self, path: str) -> dict:
+        """
+        Load a JSON file from the specified path.
+
+        :param path: Path to the JSON file.
+        :type path: str
+        :return: JSON file contents.
+        :rtype: dict
+        """
+        with open(path, "r") as file:
+            return sly_json.load_json_file(file)
 
     # ----------------------------------------- #
 
@@ -541,18 +578,14 @@ class TrainApp:
         Downloads the project data from Supervisely.
         If the cache is enabled, it will attempt to retrieve the project from the cache.
         """
-        dataset_infos = [
-            dataset for _, dataset in self._api.dataset.tree(self.project_id)
-        ]
+        dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
 
         if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
             selected_ds_ids = (
                 self.gui.train_val_splits_selector.get_train_dataset_ids()
                 + self.gui.train_val_splits_selector.get_val_dataset_ids()
             )
-            dataset_infos = [
-                ds_info for ds_info in dataset_infos if ds_info.id in selected_ds_ids
-            ]
+            dataset_infos = [ds_info for ds_info in dataset_infos if ds_info.id in selected_ds_ids]
 
         total_images = sum(ds_info.images_count for ds_info in dataset_infos)
         if not self.gui.input_selector.get_cache_value() or is_development():
@@ -574,9 +607,7 @@ class TrainApp:
             self.sly_project = Project(self.project_dir, OpenMode.READ)
             logger.info(f"Project downloaded successfully to: '{self.project_dir}'")
 
-    def _download_no_cache(
-        self, dataset_infos: List[DatasetInfo], total_images: int
-    ) -> None:
+    def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
         """
         Downloads the project data from Supervisely without using the cache.
 
@@ -585,9 +616,7 @@ class TrainApp:
         :param total_images: Total number of images to download.
         :type total_images: int
         """
-        with self.progress_bar_main(
-            message="Downloading input data", total=total_images
-        ) as pbar:
+        with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
             self.progress_bar_main.show()
             download_project(
                 api=self._api,
@@ -613,18 +642,12 @@ class TrainApp:
         :type total_images: int
         """
         to_download = [
-            info
-            for info in dataset_infos
-            if not is_cached(self.project_info.id, info.name)
+            info for info in dataset_infos if not is_cached(self.project_info.id, info.name)
         ]
-        cached = [
-            info for info in dataset_infos if is_cached(self.project_info.id, info.name)
-        ]
+        cached = [info for info in dataset_infos if is_cached(self.project_info.id, info.name)]
 
         logger.info(self._get_cache_log_message(cached, to_download))
-        with self.progress_bar_main(
-            message="Downloading input data", total=total_images
-        ) as pbar:
+        with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
             self.progress_bar_main.show()
             download_to_cache(
                 api=self._api,
@@ -652,9 +675,7 @@ class TrainApp:
             )
         self.progress_bar_main.hide()
 
-    def _get_cache_log_message(
-        self, cached: bool, to_download: List[DatasetInfo]
-    ) -> str:
+    def _get_cache_log_message(self, cached: bool, to_download: List[DatasetInfo]) -> str:
         """
         Utility method to generate a log message for cache status.
         """
@@ -738,9 +759,7 @@ class TrainApp:
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
                     self.progress_bar_secondary.show()
-                    move_files(
-                        split, paths[dataset], image_name_formats[dataset], second_pbar
-                    )
+                    move_files(split, paths[dataset], image_name_formats[dataset], second_pbar)
                     main_pbar.update(1)
                 self.progress_bar_secondary.hide()
             self.progress_bar_main.hide()
@@ -778,6 +797,7 @@ class TrainApp:
     def _download_model(self) -> None:
         """
         Downloads the model data from the selected source.
+        - Checkpoint and config keys inside the model_files dict can be provided as local paths.
 
         For Pretrained models:
             - The files that will be downloaded are specified in the `meta` key under `model_files`.
@@ -794,8 +814,13 @@ class TrainApp:
                                     "task_type": "object detection",
                                     "model_name": "example_model",
                                     "model_files": {
-                                            "checkpoint": "https://example.com/checkpoint.pth"
+                                            # For remote files provide as links
+                                            "checkpoint": "https://example.com/checkpoint.pth",
                                             "config": "https://example.com/config.yaml"
+
+                                            # For local files provide as paths
+                                            # "checkpoint": "/path/to/checkpoint.pth",
+                                            # "config": "/path/to/config.yaml"
                                     }
                             }
                     },
@@ -810,9 +835,7 @@ class TrainApp:
 
         else:
             self._download_custom_model()
-        logger.info(
-            f"Model files have been downloaded successfully to: '{self.model_dir}'"
-        )
+        logger.info(f"Model files have been downloaded successfully to: '{self.model_dir}'")
 
     def _download_pretrained_model(self):
         """
@@ -830,27 +853,31 @@ class TrainApp:
             self.progress_bar_main.show()
             for file in model_files:
                 file_url = model_files[file]
-
-                with urlopen(file_url) as f:
-                    checkpoint_size = f.length
-
                 file_path = join(self.model_dir, file)
 
-                with self.progress_bar_secondary(
-                    message=f"Downloading '{file}' ",
-                    total=checkpoint_size,
-                    unit="bytes",
-                    unit_scale=True,
-                ) as model_download_secondary_pbar:
-                    self.progress_bar_secondary.show()
-                    sly_fs.download(
-                        url=file_url,
-                        save_path=file_path,
-                        progress=model_download_secondary_pbar.update,
-                    )
+                if file_url.startswith("http"):
+                    with urlopen(file_url) as f:
+                        checkpoint_size = f.length
 
+                    with self.progress_bar_secondary(
+                        message=f"Downloading '{file}' ",
+                        total=checkpoint_size,
+                        unit="bytes",
+                        unit_scale=True,
+                    ) as model_download_secondary_pbar:
+                        self.progress_bar_secondary.show()
+                        sly_fs.download(
+                            url=file_url,
+                            save_path=file_path,
+                            progress=model_download_secondary_pbar.update,
+                        )
+                    self.model_files[file] = file_path
+                else:
+                    if not sly_fs.file_exists(file_url):
+                        raise FileNotFoundError(f"Local file '{file_url}' does not exist")
+                    # shutil.copy(file_url, file_path)
+                    self.model_files[file] = file_url
                 model_download_main_pbar.update(1)
-                self.model_files[file] = file_path
 
         self.progress_bar_main.hide()
         self.progress_bar_secondary.hide()
@@ -865,14 +892,10 @@ class TrainApp:
         # Need to merge file_url with arts dir
         model_files = self.model_info["model_files"]
         for file in model_files:
-            model_files[file] = join(
-                self.model_info["artifacts_dir"], model_files[file]
-            )
+            model_files[file] = join(self.model_info["artifacts_dir"], model_files[file])
 
         # Add selected checkpoint to model_files
-        checkpoint = (
-            self.gui.model_selector.custom_models_table.get_selected_checkpoint_path()
-        )
+        checkpoint = self.gui.model_selector.custom_models_table.get_selected_checkpoint_path()
         model_files["checkpoint"] = checkpoint
 
         with self.progress_bar_main(
@@ -949,7 +972,9 @@ class TrainApp:
                 return False, reason
 
             if not isinstance(experiment_info[key], expected_type):
-                reason = f"Validation failed: Key '{key}' should be of type {expected_type.__name__}"
+                reason = (
+                    f"Validation failed: Key '{key}' should be of type {expected_type.__name__}"
+                )
                 return False, reason
 
         if isinstance(experiment_info["checkpoints"], list):
@@ -983,9 +1008,7 @@ class TrainApp:
             val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
             train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids
         else:
-            dataset_infos = [
-                dataset for _, dataset in self._api.dataset.tree(self.project_id)
-            ]
+            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
             ds_infos_dict = {}
             for dataset in dataset_infos:
                 if dataset.parent_id is not None:
@@ -998,9 +1021,7 @@ class TrainApp:
             def get_image_infos_by_split(ds_infos_dict: dict, split: list):
                 image_names_per_dataset = {}
                 for item in split:
-                    image_names_per_dataset.setdefault(item.dataset_name, []).append(
-                        item.name
-                    )
+                    image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
                 image_infos = []
                 for dataset_name, image_names in image_names_per_dataset.items():
                     ds_info = ds_infos_dict[dataset_name]
@@ -1042,14 +1063,13 @@ class TrainApp:
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         """
+        # Preprocess artifacts
         logger.info("Preprocessing artifacts")
         if "model_files" not in experiment_info:
             experiment_info["model_files"] = {}
         else:
-            # Move model files to output directory except config, config will be processed later
-            files = {
-                k: v for k, v in experiment_info["model_files"].items() if k != "config"
-            }
+            # Move model files to output directory except config, config will be processed next
+            files = {k: v for k, v in experiment_info["model_files"].items() if k != "config"}
             for file in files:
                 if isfile:
                     shutil.move(
@@ -1059,44 +1079,27 @@ class TrainApp:
                 elif isdir:
                     shutil.move(file, join(self.output_dir, basename(file)))
 
-        # Prepare or create config
+        # Preprocess config
+        logger.info("Preprocessing config")
         config = experiment_info["model_files"].get("config")
-        if config is None:
-            config = "config.yaml"
-            experiment_info["model_files"]["config"] = config
-
-        output_config_path = join(
-            self.output_dir,
-            sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"]),
-        )
-
-        # @TODO: Save sly_metadata as model_meta.json | Do not add to config
-        # Add sly_metadata to config
-        logger.info("Adding 'sly_metadata' to config file")
-        with open(experiment_info["model_files"]["config"], "r") as file:
-            custom_config = yaml.safe_load(file)
-
-        custom_config["sly_metadata"] = {
-            "classes": self.classes,
-            "model": experiment_info["model_name"],
-            "project_id": self.project_info.id,
-            "project_name": self.project_info.name,
-        }
-
-        with open(experiment_info["model_files"]["config"], "w") as f:
-            yaml.safe_dump(custom_config, f)
-        shutil.move(experiment_info["model_files"]["config"], output_config_path)
+        if config is not None:
+            config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
+            output_config_path = join(self.output_dir, config_name)
+            shutil.move(experiment_info["model_files"]["config"], output_config_path)
 
         # Prepare checkpoints
         checkpoints = experiment_info["checkpoints"]
+        # If checkpoints returned as directory
         if isinstance(checkpoints, str):
             checkpoint_paths = []
-            for checkpoint_path in sly_fs.list_files_recursively(
-                checkpoints, [".pt", ".pth"]
-            ):
+            for checkpoint_path in sly_fs.list_files_recursively(checkpoints, [".pt", ".pth"]):
                 checkpoint_paths.append(checkpoint_path)
-        else:
+        elif isinstance(checkpoints, list):
             checkpoint_paths = checkpoints
+        else:
+            raise ValueError(
+                "Checkpoints should be a list of paths or a path to directory with checkpoints"
+            )
 
         for checkpoint_path in checkpoint_paths:
             new_checkpoint_path = join(
@@ -1110,10 +1113,19 @@ class TrainApp:
             logs_dir = join(self.output_dir, "logs")
             shutil.move(self.log_dir, logs_dir)
 
+        # Generate model_meta.json
+        logger.info("Generating model_meta.json")
+        sly_metadata = {
+            "classes": self.classes,
+            "model": experiment_info["model_name"],
+            "project_id": self.project_info.id,
+            "project_name": self.project_info.name,
+        }
+        model_meta_path = join(self.output_dir, self._model_meta_file)
+        sly_json.dump_json_file(sly_metadata, model_meta_path)
+
     # Generate experiment_info.json and app_state.json
-    def _upload_json_file(
-        self, local_path: str, remote_path: str, message: str
-    ) -> None:
+    def _upload_json_file(self, local_path: str, remote_path: str, message: str) -> None:
         """Helper function to upload a JSON file with progress."""
         logger.info(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
@@ -1314,17 +1326,13 @@ class TrainApp:
 
         # Clean debug directory if exists
         if task_id == "debug-session":
-            if self._api.file.dir_exists(
-                self._team_id, f"{remote_artifacts_dir}/", True
-            ):
+            if self._api.file.dir_exists(self._team_id, f"{remote_artifacts_dir}/", True):
                 with self.progress_bar_main(
                     message=f"[Debug] Cleaning train artifacts: '{remote_artifacts_dir}/'",
                     total=1,
                 ) as upload_artifacts_pbar:
                     self.progress_bar_main.show()
-                    self._api.file.remove_dir(
-                        self._team_id, f"{remote_artifacts_dir}", True
-                    )
+                    self._api.file.remove_dir(self._team_id, f"{remote_artifacts_dir}", True)
                     upload_artifacts_pbar.update(1)
                     self.progress_bar_main.hide()
 
@@ -1354,9 +1362,7 @@ class TrainApp:
             )
             self.progress_bar_main.hide()
 
-        file_info = self._api.file.get_info_by_path(
-            self._team_id, join(remote_dir, "open_app.lnk")
-        )
+        file_info = self._api.file.get_info_by_path(self._team_id, join(remote_dir, "open_app.lnk"))
         return remote_dir, file_info
 
     def _set_training_output(self, remote_dir: str, file_info: FileInfo) -> None:
@@ -1390,9 +1396,7 @@ class TrainApp:
         task_info = self._api.task.get_info_by_id(self.task_id)
         task_dir = f"{self.task_id}_{task_info['meta']['app']['name']}"
         eval_res_dir = f"/model-benchmark/evaluation/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
-        eval_res_dir = self._api.storage.get_free_dir_name(
-            self._team_id(), eval_res_dir
-        )
+        eval_res_dir = self._api.storage.get_free_dir_name(self._team_id(), eval_res_dir)
         return eval_res_dir
 
     # Hot to pass inference_settings?
@@ -1455,9 +1459,7 @@ class TrainApp:
 
             logger.info(f"Creating the report for the best model: {best_filename!r}")
             self.gui.training_process.model_benchmark_report_text.show()
-            self.progress_bar_main(
-                message="Starting Model Benchmark evaluation", total=1
-            )
+            self.progress_bar_main(message="Starting Model Benchmark evaluation", total=1)
             self.progress_bar_main.show()
 
             # 0. Serve trained model
@@ -1605,9 +1607,7 @@ class TrainApp:
         try:
             if project_version_id is None:
                 project_version_id = (
-                    self.project_info.version.get("id", None)
-                    if self.project_info.version
-                    else None
+                    self.project_info.version.get("id", None) if self.project_info.version else None
                 )
             self._api.app.workflow.add_input_project(
                 self.project_info.id, version_id=project_version_id
@@ -1667,9 +1667,7 @@ class TrainApp:
                     relation_settings=relation_settings, node_settings=node_settings
                 )
                 logger.debug(f"Workflow Output: meta \n    {meta}")
-                self._api.app.workflow.add_output_file(
-                    file_info, model_weight=True, meta=meta
-                )
+                self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
             else:
                 logger.debug(
                     f"File with checkpoints not found in Team Files. Cannot set workflow output."
@@ -1688,9 +1686,7 @@ class TrainApp:
                 meta = WorkflowMeta(
                     relation_settings=mb_relation_settings, node_settings=node_settings
                 )
-                self._api.app.workflow.add_output_file(
-                    model_benchmark_report, meta=meta
-                )
+                self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
             else:
                 logger.debug(
                     f"File with model benchmark report not found in Team Files. Cannot set workflow output."
@@ -1704,11 +1700,12 @@ class TrainApp:
         """
         Initialize training logger. Set up Tensorboard and callbacks.
         """
-        tb_logger.set_log_dir(self.log_dir)
-        tb_logger.start_tensorboard()
-        self._setup_logger_callbacks()
-        time.sleep(1)
-        self.gui.training_process.tensorboard_button.enable()
+        if self._app_options.get("enable_tensorboard", True):
+            tb_logger.set_log_dir(self.log_dir)
+            tb_logger.start_tensorboard()
+            self._setup_logger_callbacks()
+            time.sleep(1)
+            self.gui.training_process.tensorboard_button.enable()
 
     def _setup_logger_callbacks(self):
         """
@@ -1734,9 +1731,10 @@ class TrainApp:
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
 
-            # @TODO: access tensorboard after training
-            tb_logger.writer.close()
-            tb_logger.stop_tensorboard()
+            if self._app_options.get("enable_tensorboard", True):
+                tb_logger.writer.close()
+                tb_logger.stop_tensorboard()
+                # @TODO: access tensorboard after training
 
         def start_epoch_callback(total_steps: int):
             """
