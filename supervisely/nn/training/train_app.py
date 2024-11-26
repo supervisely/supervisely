@@ -867,12 +867,12 @@ class TrainApp:
         self.model_files = {}
 
         # Need to merge file_url with arts dir
-        artifacts_dir = self.model_info["artifacts_dir"]  # TODO: get from custom_model_selector
+        artifacts_dir = self.model_info["artifacts_dir"]
         model_files = self.model_info["model_files"]
         remote_paths = {name: join(artifacts_dir, file) for name, file in model_files.items()}
 
         # Add selected checkpoint to model_files
-        checkpoint = self.gui.model_selector.custom_models_table.get_selected_checkpoint_path()
+        checkpoint = self.gui.model_selector.experiment_selector.get_selected_checkpoint_path()
         remote_paths["checkpoint"] = checkpoint
 
         with self.progress_bar_main(
@@ -1658,7 +1658,7 @@ class TrainApp:
             if self.model_source == ModelSource.CUSTOM:
                 file_info = self._api.file.get_info_by_path(
                     self._team_id,
-                    self.gui.model_selector.custom_models_table.get_selected_checkpoint_path(),
+                    self.gui.model_selector.experiment_selector.get_selected_checkpoint_path(),
                 )
                 if file_info is not None:
                     self._api.app.workflow.add_input_file(file_info, model_weight=True)

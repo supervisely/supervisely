@@ -451,10 +451,10 @@ class TrainGUI:
         # Custom
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.custom_models_table.set_by_task_id(
+            self.model_selector.experiment_selector.set_by_task_id(
                 model_settings["task_id"]
             )
-            active_row = self.model_selector.custom_models_table.get_selected_row()
+            active_row = self.model_selector.experiment_selector.get_selected_row()
             if model_settings["checkpoint"] not in active_row.checkpoints_names:
                 raise ValueError(
                     f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
