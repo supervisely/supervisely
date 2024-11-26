@@ -49,7 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
-    return "v6.73.229"  # TODO: remove after tests!!!
+    return "v6.73.230"  # TODO: remove after tests!!!
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -278,6 +278,8 @@ setup(
             "pycocotools",
             "scikit-learn",
             "plotly==5.22.0",
+            "torch==1.13.0",
+            "torchvision==0.14.0",
         ],
         # legacy dependencies
         "plugins": [
