@@ -20,6 +20,9 @@ from supervisely.task.progress import tqdm_sly
 
 class BaseBenchmark:
     visualizer_cls = None
+    EVALUATION_DIR_NAME = "evaluation"
+    SPEEDTEST_DIR_NAME = "speedtest"
+    VISUALIZATIONS_DIR_NAME = "visualizations"
 
     def __init__(
         self,
@@ -268,12 +271,12 @@ class BaseBenchmark:
         return gt_path, dt_path
 
     def get_eval_results_dir(self) -> str:
-        eval_dir = os.path.join(self.get_base_dir(), "evaluation")
+        eval_dir = os.path.join(self.get_base_dir(), self.EVALUATION_DIR_NAME)
         os.makedirs(eval_dir, exist_ok=True)
         return eval_dir
 
     def get_speedtest_results_dir(self) -> str:
-        speedtest_dir = os.path.join(self.get_base_dir(), "speedtest")
+        speedtest_dir = os.path.join(self.get_base_dir(), self.SPEEDTEST_DIR_NAME)
         os.makedirs(speedtest_dir, exist_ok=True)
         return speedtest_dir
 
@@ -298,7 +301,7 @@ class BaseBenchmark:
             )
 
     def get_layout_results_dir(self) -> str:
-        dir = os.path.join(self.get_base_dir(), "visualizations")
+        dir = os.path.join(self.get_base_dir(), self.VISUALIZATIONS_DIR_NAME)
         os.makedirs(dir, exist_ok=True)
         return dir
 
