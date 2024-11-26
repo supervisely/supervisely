@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -66,7 +66,7 @@ class SemanticSegmentation(Inference):
                 obj_class = self.model_meta.get_obj_class(class_name)
             if obj_class is None:
                 raise KeyError(
-                    f"Class {class_name} not found in model classes {class_names}"
+                    f"Class {class_name} not found in model classes {self.get_classes()}"
                 )
             geometry = Bitmap(class_mask, extra_validation=False)
             label = Label(geometry, obj_class)
