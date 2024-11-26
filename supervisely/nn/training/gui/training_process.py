@@ -12,6 +12,7 @@ from supervisely.app.widgets import (
     Progress,
     ReportThumbnail,
     SelectCudaDevice,
+    TaskLogs,
     Text,
 )
 from supervisely.io.env import task_id as get_task_id
@@ -39,9 +40,7 @@ class TrainingProcess:
         self.model_benchmark_report_thumbnail = ReportThumbnail()
         self.model_benchmark_report_thumbnail.hide()
 
-        self.model_benchmark_report_text = Text(
-            status="info", text="Creating report on model..."
-        )
+        self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
         self.model_benchmark_report_text.hide()
 
         self.progress_bar_main = Progress(hide_on_finish=False)
@@ -101,6 +100,19 @@ class TrainingProcess:
             self.select_device = SelectCudaDevice()
             container_widgets.insert(1, self.select_device)
 
+        # if is_production(): # Uncomment later
+        if app_options.get("show_app_logger", False):
+            self.logs_button = Button(
+                text="Show logs",
+                plain=True,
+                button_size="mini",
+                icon="zmdi zmdi-caret-down-circle",
+            )
+            self.task_logs = TaskLogs(task_id)
+            self.task_logs.hide()
+            logs_container = Container([self.logs_button, self.task_logs])
+            container_widgets.insert(6, logs_container)
+
         container = Container(container_widgets)
 
         self.card = Card(
@@ -123,3 +135,13 @@ class TrainingProcess:
             return self.select_device.get_device()
         else:
             return "cuda:0"
+
+    def toggle_logs(self):
+        if self.task_logs.is_hidden():
+            self.task_logs.show()
+            self.logs_button.text = "Hide logs"
+            self.logs_button.icon = "zmdi zmdi-caret-up-circle"
+        else:
+            self.task_logs.hide()
+            self.logs_button.text = "Show logs"
+            self.logs_button.icon = "zmdi zmdi-caret-down-circle"
