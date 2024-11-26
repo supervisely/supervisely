@@ -390,7 +390,7 @@ class BaseBenchmark:
                 "id": app_info["id"],
             }
         else:
-            logger.warn("session.task_id is not set. App info will not be fetched.")
+            logger.warning("session.task_id is not set. App info will not be fetched.")
             app_info = None
         model_info = {
             **deploy_info,
@@ -468,8 +468,8 @@ class BaseBenchmark:
 
         if self.visualizer_cls is None:
             raise RuntimeError(
-                f"Visualizer class is not defined in {self.__class__.__name__}.
-                It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
+                f"Visualizer class is not defined in {self.__class__.__name__}. "
+                "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.evaluator.get_eval_result()
         vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)
