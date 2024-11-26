@@ -111,7 +111,7 @@ This chart is used to evaluate the overall model performance by breaking down al
 
 markdown_R = """## Recall
 
-This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, it answers the question: “Of all instances in the dataset, how many of them is the model managed to find out?”
+This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, it answers the question: "Of all instances in the dataset, how many of them is the model managed to find out?"
 
 To measure this, we calculate **Recall**. Recall counts errors, when the model does not detect an object that actually is present in a dataset and should be detected. Recall is calculated as the portion of correct predictions (true positives) over all instances in the dataset (true positives + false negatives).
 """
@@ -134,7 +134,7 @@ _Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unif
 
 markdown_P = """## Precision
 
-This section measures the accuracy of all predictions made by the model. In other words, it answers the question: “Of all predictions made by the model, how many of them are actually correct?”.
+This section measures the accuracy of all predictions made by the model. In other words, it answers the question: "Of all predictions made by the model, how many of them are actually correct?".
 
 To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
 """
@@ -216,7 +216,7 @@ markdown_frequently_confused = """### Frequently Confused Classes
 
 This chart displays the most frequently confused pairs of classes. In general, it finds out which classes visually seem very similar to the model.
 
-The chart calculates the **probability of confusion** between different pairs of classes. For instance, if the probability of confusion for the pair “{} - {}” is {}, this means that when the model predicts either “{}” or “{}”, there is a {}% chance that the model might mistakenly predict one instead of the other.
+The chart calculates the **probability of confusion** between different pairs of classes. For instance, if the probability of confusion for the pair "{} - {}" is {}, this means that when the model predicts either "{}" or "{}", there is a {}% chance that the model might mistakenly predict one instead of the other.
 
 The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
 
