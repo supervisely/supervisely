@@ -25,9 +25,9 @@ class ModelSelector:
         # Pretrained models
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
 
-        custom_artifacts = get_experiment_infos(api, self.team_id, framework)
+        experiment_infos = get_experiment_infos(api, self.team_id, framework)
         self.experiment_selector = ExperimentSelector(
-            self.team_id, custom_artifacts
+            self.team_id, experiment_infos
         )
         # Model source tabs
         self.model_source_tabs = RadioTabs(
