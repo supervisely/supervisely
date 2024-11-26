@@ -18,12 +18,10 @@ class ExperimentInfo(NamedTuple):
     """Name of the model used in the experiment. Defined by the user in the training app"""
     task_type: str
     """Task type of the experiment"""
-
     project_id: int
     """Project ID in Supervisely"""
     task_id: int
     """Task ID in Supervisely"""
-
     model_files: Dict[str, str]
     """Dictionary with paths to model files that needs to be downloaded for training"""
     checkpoints: List[str]

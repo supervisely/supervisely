@@ -58,11 +58,6 @@ from supervisely.project.download import (
 )
 
 
-class StopTrainingException(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
 class TrainApp:
     """
     A class representing the training application.
@@ -933,7 +928,7 @@ class TrainApp:
             reason = f"Validation failed: 'experiment_info' must be a dictionary not '{type(experiment_info)}'"
             return False, reason
 
-        logger.info("Starting validation of 'experiment_info'")
+        logger.debug("Starting validation of 'experiment_info'")
         required_keys = {
             "model_name": str,
             "task_type": str,
@@ -985,7 +980,7 @@ class TrainApp:
             reason = "Validation failed: 'checkpoints' should be a list of paths or a path to directory with checkpoints"
             return False, reason
 
-        logger.info("Validation successful")
+        logger.debug("Validation successful")
         return True, None
 
     def _postprocess_splits(self) -> dict:
@@ -1059,7 +1054,7 @@ class TrainApp:
         :type experiment_info: dict
         """
         # Preprocess artifacts
-        logger.info("Preprocessing artifacts")
+        logger.debug("Preprocessing artifacts")
         if "model_files" not in experiment_info:
             experiment_info["model_files"] = {}
         else:
@@ -1075,7 +1070,7 @@ class TrainApp:
                     shutil.move(file, join(self.output_dir, basename(file)))
 
         # Preprocess config
-        logger.info("Preprocessing config")
+        logger.debug("Preprocessing config")
         config = experiment_info["model_files"].get("config")
         if config is not None:
             config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
@@ -1111,7 +1106,7 @@ class TrainApp:
     # Generate experiment_info.json and app_state.json
     def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
         """Helper function to upload a file with progress."""
-        logger.info(f"Uploading '{local_path}' to Supervisely")
+        logger.debug(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
         with self.progress_bar_main(
             message=message, total=total_size, unit="bytes", unit_scale=True
@@ -1157,7 +1152,6 @@ class TrainApp:
         :type experiment_info: dict
         """
         # @TODO: Handle tags for classification tasks
-        logger.info("Generating model_meta.json")
         local_path = join(self.output_dir, self._model_meta_file)
         remote_path = join(remote_dir, self._model_meta_file)
 
@@ -1191,7 +1185,7 @@ class TrainApp:
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
         """
-        logger.info("Updating experiment info")
+        logger.debug("Updating experiment info")
 
         default_experiment_name = (
             f"{self.task_id}_{self.project_name}_{experiment_info['model_name']}"

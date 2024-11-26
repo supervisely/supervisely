@@ -17,7 +17,7 @@ from supervisely.app.widgets import (
     Widget,
 )
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely.nn.training.experiments import ExperimentInfo
+from supervisely.nn.experiments import ExperimentInfo
 
 WEIGHTS_DIR = "weights"
 
