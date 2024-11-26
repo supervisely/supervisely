@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
 class HyperparametersSelector:
     title = "Hyperparameters Selector"
 
-    def __init__(self, hyperparameters: dict):
+    def __init__(self, hyperparameters: dict, app_options: dict = {}):
         self.editor = Editor(
             hyperparameters, height_lines=50, language_mode="yaml", auto_format=True
         )
@@ -40,6 +40,13 @@ class HyperparametersSelector:
             f"Learn more about Model Benchmark in the {docs_link}.", status="info"
         )
 
+        if app_options.get("model_benchmark", True):
+            self.model_benchmark_field.show()
+            self.model_benchmark_learn_more.show()
+        else:
+            self.model_benchmark_field.hide()
+            self.model_benchmark_learn_more.hide()
+
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
@@ -62,7 +69,11 @@ class HyperparametersSelector:
 
     @property
     def widgets_to_disable(self):
-        return [self.editor, self.run_model_benchmark_checkbox, self.run_speedtest_checkbox]
+        return [
+            self.editor,
+            self.run_model_benchmark_checkbox,
+            self.run_speedtest_checkbox,
+        ]
 
     def set_hyperparameters(self, hyperparameters: Union[str, dict]):
         self.editor.set_text(hyperparameters)

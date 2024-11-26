@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
 class TrainValSplitsSelector:
     title = "Train/Val Splits Selector"
 
-    def __init__(self, api: Api, project_id: int):
+    def __init__(self, api: Api, project_id: int, app_options: dict = {}):
         self.api = api
         self.project_id = project_id
         self.train_val_splits = TrainValSplits(project_id)
@@ -136,7 +136,9 @@ class TrainValSplitsSelector:
                     status="warning",
                 )
             else:
-                self.validator_text.set("Train and val tags are selected", status="success")
+                self.validator_text.set(
+                    "Train and val tags are selected", status="success"
+                )
 
         elif split_method == "Based on datasets":
             train_dataset_id = self.get_train_dataset_ids()
@@ -173,7 +175,9 @@ class TrainValSplitsSelector:
                     status="warning",
                 )
             else:
-                self.validator_text.set("Train and val datasets are selected", status="success")
+                self.validator_text.set(
+                    "Train and val datasets are selected", status="success"
+                )
         self.validator_text.show()
         return True
 

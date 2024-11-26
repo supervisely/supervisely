@@ -56,19 +56,23 @@ class TrainGUI:
         self.project_info = self._api.project.get_info_by_id(self.project_id)
 
         # 1. Project selection + Train/val split
-        self.input_selector = InputSelector(self.project_info)
+        self.input_selector = InputSelector(self.project_info, self.app_options)
         # 2. Select train val splits
-        self.train_val_splits_selector = TrainValSplitsSelector(self._api, self.project_id)
+        self.train_val_splits_selector = TrainValSplitsSelector(
+            self._api, self.project_id, self.app_options
+        )
         # 3. Select classes
-        self.classes_selector = ClassesSelector(self.project_id, [])
+        self.classes_selector = ClassesSelector(self.project_id, [], self.app_options)
         # 4. Model selection
-        self.model_selector = ModelSelector(self._api, self.framework_name, self.models)
+        self.model_selector = ModelSelector(
+            self._api, self.framework_name, self.models, self.app_options
+        )
         # 5. Training parameters (yaml), scheduler preview
         self.hyperparameters_selector = HyperparametersSelector(
-            hyperparameters=self.hyperparameters
+            self.hyperparameters, self.app_options
         )
         # 6. Start Train
-        self.training_process = TrainingProcess(app_options)
+        self.training_process = TrainingProcess(self.app_options)
 
         # Stepper layout
         self.stepper = Stepper(
@@ -266,7 +270,9 @@ class TrainGUI:
             if isinstance(subkeys_or_type, list):
                 for subkey in subkeys_or_type:
                     if subkey not in app_state[key]:
-                        raise KeyError(f"Missing required key in app_state['{key}']: {subkey}")
+                        raise KeyError(
+                            f"Missing required key in app_state['{key}']: {subkey}"
+                        )
             elif not isinstance(app_state[key], subkeys_or_type):
                 valid_types = (
                     " or ".join([t.__name__ for t in subkeys_or_type])
@@ -303,7 +309,9 @@ class TrainGUI:
             "model_benchmark", {"enable": True, "speed_test": True}
         )
         if not isinstance(model_benchmark, dict):
-            raise ValueError("app_state['options']['model_benchmark'] must be a dictionary")
+            raise ValueError(
+                "app_state['options']['model_benchmark'] must be a dictionary"
+            )
         model_benchmark.setdefault("enable", True)
         model_benchmark.setdefault("speed_test", True)
 
@@ -326,7 +334,9 @@ class TrainGUI:
                     missing_datasets_ids.append(ds_id)
 
             if len(missing_datasets_ids) > 0:
-                missing_datasets_text = ", ".join([str(ds_id) for ds_id in missing_datasets_ids])
+                missing_datasets_text = ", ".join(
+                    [str(ds_id) for ds_id in missing_datasets_ids]
+                )
                 raise ValueError(
                     f"Datasets with ids: {missing_datasets_text} not found in the project"
                 )
@@ -334,7 +344,9 @@ class TrainGUI:
             train_tag = train_val_splits_settings.get("train_tag")
             val_tag = train_val_splits_settings.get("val_tag")
             if not train_tag or not val_tag:
-                raise ValueError("train_tag and val_tag must be specified in tags split method")
+                raise ValueError(
+                    "train_tag and val_tag must be specified in tags split method"
+                )
         elif train_val_splits_settings.get("method") == "random":
             split = train_val_splits_settings.get("split")
             percent = train_val_splits_settings.get("percent")
@@ -391,7 +403,9 @@ class TrainGUI:
         if split_method == "random":
             split = train_val_splits_settings["split"]
             percent = train_val_splits_settings["percent"]
-            self.train_val_splits_selector.train_val_splits.set_random_splits(split, percent)
+            self.train_val_splits_selector.train_val_splits.set_random_splits(
+                split, percent
+            )
         elif split_method == "tags":
             train_tag = train_val_splits_settings["train_tag"]
             val_tag = train_val_splits_settings["val_tag"]
@@ -437,7 +451,9 @@ class TrainGUI:
         # Custom
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.custom_models_table.set_by_task_id(model_settings["task_id"])
+            self.model_selector.custom_models_table.set_by_task_id(
+                model_settings["task_id"]
+            )
             active_row = self.model_selector.custom_models_table.get_selected_row()
             if model_settings["checkpoint"] not in active_row.checkpoints_names:
                 raise ValueError(
@@ -448,7 +464,9 @@ class TrainGUI:
         self.model_selector_cb()
         # ----------------------------------------- #
 
-    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict) -> None:
+    def _init_hyperparameters(
+        self, hyperparameters_settings: dict, options: dict
+    ) -> None:
         """
         Initialize the hyperparameters selector with the given settings.
 

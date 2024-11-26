@@ -18,7 +18,7 @@ from supervisely.nn.utils import ModelSource
 class ModelSelector:
     title = "Model Selector"
 
-    def __init__(self, api: Api, framework: str, models: list):
+    def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
         self.team_id = sly_env.team_id()  # get from project id
         self.models = models
 
@@ -26,7 +26,9 @@ class ModelSelector:
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
 
         custom_artifacts = get_experiment_infos(api, self.team_id, framework)
-        self.custom_models_table = CustomModelsSelectorV2(self.team_id, custom_artifacts)
+        self.custom_models_table = CustomModelsSelectorV2(
+            self.team_id, custom_artifacts
+        )
         # Model source tabs
         self.model_source_tabs = RadioTabs(
             titles=[ModelSource.PRETRAINED, ModelSource.CUSTOM],
@@ -40,7 +42,9 @@ class ModelSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        container = Container([self.model_source_tabs, self.validator_text, self.button])
+        container = Container(
+            [self.model_source_tabs, self.validator_text, self.button]
+        )
         self.card = Card(
             title="Select Model",
             description="Select a model for training",
@@ -51,7 +55,11 @@ class ModelSelector:
 
     @property
     def widgets_to_disable(self):
-        return [self.model_source_tabs, self.pretrained_models_table, self.custom_models_table]
+        return [
+            self.model_source_tabs,
+            self.pretrained_models_table,
+            self.custom_models_table,
+        ]
 
     def get_model_source(self):
         return self.model_source_tabs.get_active_tab()

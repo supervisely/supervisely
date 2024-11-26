@@ -39,7 +39,9 @@ class TrainingProcess:
         self.model_benchmark_report_thumbnail = ReportThumbnail()
         self.model_benchmark_report_thumbnail.hide()
 
-        self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
+        self.model_benchmark_report_text = Text(
+            status="info", text="Creating report on model..."
+        )
         self.model_benchmark_report_text.hide()
 
         self.progress_bar_main = Progress(hide_on_finish=False)
@@ -52,8 +54,7 @@ class TrainingProcess:
             task_id = get_task_id(raise_not_found=False)
         else:
             task_id = None
-        
-        
+
         # Tensorboard button
         if is_production():
             task_info = api.task.get_info_by_id(task_id)
@@ -96,7 +97,7 @@ class TrainingProcess:
             self.progress_bar_secondary,
         ]
 
-        if self.app_options.get("enable_device_selector", False):
+        if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice()
             container_widgets.insert(1, self.select_device)
 
@@ -118,7 +119,7 @@ class TrainingProcess:
         return True
 
     def get_device(self):
-        if self.app_options.get("enable_device_selector", False):
+        if self.app_options.get("device_selector", False):
             return self.select_device.get_device()
         else:
             return "cuda:0"

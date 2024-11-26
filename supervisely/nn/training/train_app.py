@@ -7,7 +7,6 @@ training workflows in a Supervisely application.
 
 import shutil
 import subprocess
-import time
 from datetime import datetime
 from os import listdir
 from os.path import basename, isdir, isfile, join
@@ -425,8 +424,9 @@ class TrainApp:
 
         # Step 4. Run Model Benchmark
         mb_eval_report, mb_eval_report_id = None, None
-        if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value() is True:
-            if is_production():
+
+        if self._app_options.get("model_benchmark", True):
+            if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value() is True:
                 try:
                     mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
                         self.output_dir, remote_dir, experiment_info, splits_data
@@ -1427,7 +1427,7 @@ class TrainApp:
         """
         Process optional widget settings specified in the app options parameter.
         """
-        if app_options.get("enable_device_selector", False):
+        if app_options.get("device_selector", False):
             self.gui.training_process.select_device.disable()
             self.gui.training_process.select_device.hide()
 

@@ -14,7 +14,7 @@ from supervisely.project.download import is_cached
 class InputSelector:
     title = "Input Selector"
 
-    def __init__(self, project_info: ProjectInfo):
+    def __init__(self, project_info: ProjectInfo, app_options: dict = {}):
         self.project_id = project_info.id
         self.project_info = project_info
 

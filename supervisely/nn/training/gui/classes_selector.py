@@ -5,7 +5,7 @@ from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text
 class ClassesSelector:
     title = "Classes Selector"
 
-    def __init__(self, project_id: int, classes: list):
+    def __init__(self, project_id: int, classes: list, app_options: dict = {}):
         self.classes_table = ClassesTable(project_id=project_id)  # use dataset_ids
         if len(classes) > 0:
             self.classes_table.select_classes(classes)  # from app options
@@ -70,12 +70,16 @@ class ClassesSelector:
         empty_classes = [
             row[0]["data"]
             for row in table_data
-            if row[0]["data"] in selected_classes and row[2]["data"] == 0 and row[3]["data"] == 0
+            if row[0]["data"] in selected_classes
+            and row[2]["data"] == 0
+            and row[3]["data"] == 0
         ]
 
         n_classes = len(selected_classes)
         if n_classes == 0:
-            self.validator_text.set(text="Please select at least one class", status="error")
+            self.validator_text.set(
+                text="Please select at least one class", status="error"
+            )
         else:
             warning_text = ""
             status = "success"
