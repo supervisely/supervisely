@@ -80,7 +80,7 @@ class Overview(DetectionVisMetric):
             datasets = self.eval_result.gt_dataset_infos
             val_imgs_cnt = sum(ds.items_count for ds in datasets)
         else:
-            val_imgs_cnt = total_imgs_cnt
+            val_imgs_cnt = self.eval_result.pred_project_info.items_count
 
         if train_info:
             train_task_id = train_info.get("app_session_id")
@@ -93,7 +93,7 @@ class Overview(DetectionVisMetric):
 
         if gt_images_ids is not None:
             images_str += (
-                f", total {total_imgs_cnt} images. Evaluated using subset - {val_imgs_cnt} images"
+                f", total {total_imgs_cnt} images. Evaluated using subset - {len(gt_images_ids)} images"
             )
         elif gt_dataset_ids is not None:
             links = [

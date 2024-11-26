@@ -148,6 +148,8 @@ class BaseBenchmark:
             inference_info["train_info"] = self.train_info
         if self.evaluator_app_info:
             inference_info["evaluator_app_info"] = self.evaluator_app_info
+        if self.gt_images_ids:
+            inference_info["gt_images_ids"] = self.gt_images_ids
         self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
         logger.debug(
             "Inference is finished.",
