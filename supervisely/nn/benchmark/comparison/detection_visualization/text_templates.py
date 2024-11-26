@@ -188,7 +188,7 @@ markdown_P = """## Precision
 
 This section measures the accuracy of all predictions made by the model. In other words, it answers the question: "Of all predictions made by the model, how many of them are actually correct?".
 
-To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
+To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model's predictions (true positives + false positives).
 """
 
 notification_precision = {

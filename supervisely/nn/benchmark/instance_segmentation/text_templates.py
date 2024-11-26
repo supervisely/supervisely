@@ -111,7 +111,7 @@ markdown_P = """## Precision
 
 This section measures the accuracy of all predictions made by the model. In other words, it answers the question: "Of all predictions made by the model, how many of them are actually correct?".
 
-To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object, but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model’s predictions (true positives + false positives).
+To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object, but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model's predictions (true positives + false positives).
 """
 
 notification_precision = {
@@ -234,7 +234,7 @@ Reliability diagram, also known as a Calibration curve, helps in understanding w
 """
 
 markdown_calibration_curve_interpretation = """
-1. **The curve is above the perfect line (Underconfidence):** If the calibration curve is consistently above the perfect line, this indicates underconfidence. The model’s predictions are more correct than the confidence scores suggest. For example, if the model assigns 70% confidence to some predictions but, empirically, 90% of these predictions are correct, the model is underconfident.
+1. **The curve is above the perfect line (Underconfidence):** If the calibration curve is consistently above the perfect line, this indicates underconfidence. The model's predictions are more correct than the confidence scores suggest. For example, if the model assigns 70% confidence to some predictions but, empirically, 90% of these predictions are correct, the model is underconfident.
 2. **The curve is below the perfect line (Overconfidence):** If the calibration curve is below the perfect line, the model exhibits overconfidence. This means it is too sure of its predictions. For example, if the model assigns 80% confidence to some predictions, but only 40% of these predictions are correct, the model is overconfident.
 
 To quantify the calibration, we calculate **Expected Calibration Error (ECE).** Intuitively, ECE can be viewed as a deviation of the model's calibration curve from the diagonal line, that corresponds to a perfectly calibrated model. When ECE is high, we can not trust predicted probabilities so much.
