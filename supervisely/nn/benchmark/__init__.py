@@ -12,12 +12,3 @@ from supervisely.nn.benchmark.semantic_segmentation.benchmark import (
 from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
     SemanticSegmentationEvaluator,
 )
-
-__all__ = [
-    "InstanceSegmentationBenchmark",
-    "InstanceSegmentationEvaluator",
-    "ObjectDetectionBenchmark",
-    "ObjectDetectionEvaluator",
-    "SemanticSegmentationBenchmark",
-    "SemanticSegmentationEvaluator",
-]
