@@ -380,7 +380,6 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
 
         diff_dataset_name_map = {_get_full_name(i): ds for i, ds in diff_dataset_id_map.items()}
-        logger.info(f"Datasets name map: {diff_dataset_name_map.keys()}")
 
         matched_id_map = self._get_matched_id_map()  # dt_id -> gt_id
         matched_gt_ids = set(matched_id_map.values())
@@ -496,7 +495,6 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
 
         diff_dataset_name_map = {_get_full_name(i): ds for i, ds in diff_dataset_id_map.items()}
-        logger.info(f"Datasets name map: {diff_dataset_name_map.keys()}")
 
         with self.pbar(
             message="Visualizations: Initializing match data", total=pred_project.total_items

@@ -1,7 +1,6 @@
 from typing import List
 
 from supervisely._utils import abs_url
-from supervisely.sly_logger import logger
 from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
