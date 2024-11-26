@@ -134,7 +134,7 @@ class TrainingProcess:
         if self.app_options.get("device_selector", False):
             return self.select_device.get_device()
         else:
-            return "cuda:0"  # @TODO: implement default device
+            return "cuda:0"
 
     def toggle_logs(self):
         if self.task_logs.is_hidden():
