@@ -6,12 +6,12 @@ from supervisely.app.widgets import (
     Button,
     Card,
     Container,
-    CustomModelsSelectorV2,
+    ExperimentSelector,
     PretrainedModelsSelector,
     RadioTabs,
     Text,
 )
-from supervisely.nn.training.experiments import get_experiment_infos
+from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource
 
 
@@ -25,9 +25,9 @@ class ModelSelector:
         # Pretrained models
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
 
-        custom_artifacts = get_experiment_infos(api, self.team_id, framework)
-        self.custom_models_table = CustomModelsSelectorV2(
-            self.team_id, custom_artifacts
+        experiment_infos = get_experiment_infos(api, self.team_id, framework)
+        self.experiment_selector = ExperimentSelector(
+            self.team_id, experiment_infos
         )
         # Model source tabs
         self.model_source_tabs = RadioTabs(
@@ -36,7 +36,7 @@ class ModelSelector:
                 "Publicly available models",
                 "Models trained by you in Supervisely",
             ],
-            contents=[self.pretrained_models_table, self.custom_models_table],
+            contents=[self.pretrained_models_table, self.experiment_selector],
         )
 
         self.validator_text = Text("")
@@ -58,7 +58,7 @@ class ModelSelector:
         return [
             self.model_source_tabs,
             self.pretrained_models_table,
-            self.custom_models_table,
+            self.experiment_selector,
         ]
 
     def get_model_source(self):
@@ -73,7 +73,7 @@ class ModelSelector:
             model_meta = selected_row.get("meta", {})
             model_name = model_meta.get("model_name", None)
         else:
-            selected_row = self.custom_models_table.get_selected_experiment_info()
+            selected_row = self.experiment_selector.get_selected_experiment_info()
             model_name = selected_row.get("model_name", None)
         return model_name
 
@@ -81,7 +81,7 @@ class ModelSelector:
         if self.get_model_source() == ModelSource.PRETRAINED:
             return self.pretrained_models_table.get_selected_row()
         else:
-            return self.custom_models_table.get_selected_experiment_info()
+            return self.experiment_selector.get_selected_experiment_info()
 
     def validate_step(self):
         self.validator_text.hide()

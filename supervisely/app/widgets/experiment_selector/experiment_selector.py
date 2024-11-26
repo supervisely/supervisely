@@ -17,7 +17,7 @@ from supervisely.app.widgets import (
     Widget,
 )
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely.nn.training.experiments import ExperimentInfo
+from supervisely.nn.experiments import ExperimentInfo
 
 WEIGHTS_DIR = "weights"
 
@@ -31,7 +31,7 @@ COL_BENCHMARK = "benchmark".upper()
 columns = [COL_ID, COL_MODEL, COL_PROJECT, COL_CHECKPOINTS, COL_SESSION, COL_BENCHMARK]
 
 
-class CustomModelsSelectorV2(Widget):
+class ExperimentSelector(Widget):
     class Routes:
         TASK_TYPE_CHANGED = "task_type_changed"
         VALUE_CHANGED = "value_changed"
@@ -350,7 +350,7 @@ class CustomModelsSelectorV2(Widget):
 
         def process_experiment_info(experiment_info: ExperimentInfo):
             try:
-                model_row = CustomModelsSelectorV2.ModelRow(
+                model_row = ExperimentSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
                     task_type=experiment_info.task_type,
@@ -462,7 +462,7 @@ class CustomModelsSelectorV2(Widget):
         return None
 
     def task_type_changed(self, func: Callable):
-        route_path = self.get_route_path(CustomModelsSelectorV2.Routes.TASK_TYPE_CHANGED)
+        route_path = self.get_route_path(ExperimentSelector.Routes.TASK_TYPE_CHANGED)
         server = self._sly_app.get_server()
         self._task_type_changes_handled = True
 
@@ -474,7 +474,7 @@ class CustomModelsSelectorV2(Widget):
         return _task_type_changed
 
     def value_changed(self, func: Callable):
-        route_path = self.get_route_path(CustomModelsSelectorV2.Routes.VALUE_CHANGED)
+        route_path = self.get_route_path(ExperimentSelector.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
 
