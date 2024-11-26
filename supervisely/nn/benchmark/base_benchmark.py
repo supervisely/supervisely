@@ -467,7 +467,10 @@ class BaseBenchmark:
             self.dt_project_info = self.api.project.get_info_by_id(dt_project_id)
 
         if self.visualizer_cls is None:
-            raise NotImplementedError("Visualizer class is not defined.")
+            raise RuntimeError(
+                f"Visualizer class is not defined in {self.__class__.__name__}.
+                It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
+            )
         eval_result = self.evaluator.get_eval_result()
         vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
