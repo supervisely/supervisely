@@ -158,7 +158,7 @@ class TrainGUI:
         )
         # ------------------------------------------------- #
 
-        # Handlers
+        # Main Buttons
 
         # Define outside. Used by user in app
         # @self.training_process.start_button.click
@@ -169,12 +169,9 @@ class TrainGUI:
         # def stop_training():
         #     pass
 
-        # Other handlers
-        @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
-        def show_mb_speedtest(is_checked: bool):
-            self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
+        # ------------------------------------------------- #
 
-        # Buttons
+        # Select Buttons
         @self.hyperparameters_selector.button.click
         def select_hyperparameters():
             self.hyperparameters_selector_cb()
@@ -219,6 +216,20 @@ class TrainGUI:
                 self.input_selector.button,
                 next_pos=2,
             )
+
+        # ------------------------------------------------- #
+
+        # Other Buttons
+        if app_options.get("show_logs_in_gui", False):
+
+            @self.training_process.logs_button.click
+            def show_logs():
+                self.training_process.toggle_logs()
+
+        # Other handlers
+        @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
+        def show_mb_speedtest(is_checked: bool):
+            self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
 
         # ------------------------------------------------- #
 
@@ -270,9 +281,7 @@ class TrainGUI:
             if isinstance(subkeys_or_type, list):
                 for subkey in subkeys_or_type:
                     if subkey not in app_state[key]:
-                        raise KeyError(
-                            f"Missing required key in app_state['{key}']: {subkey}"
-                        )
+                        raise KeyError(f"Missing required key in app_state['{key}']: {subkey}")
             elif not isinstance(app_state[key], subkeys_or_type):
                 valid_types = (
                     " or ".join([t.__name__ for t in subkeys_or_type])
@@ -309,9 +318,7 @@ class TrainGUI:
             "model_benchmark", {"enable": True, "speed_test": True}
         )
         if not isinstance(model_benchmark, dict):
-            raise ValueError(
-                "app_state['options']['model_benchmark'] must be a dictionary"
-            )
+            raise ValueError("app_state['options']['model_benchmark'] must be a dictionary")
         model_benchmark.setdefault("enable", True)
         model_benchmark.setdefault("speed_test", True)
 
@@ -334,9 +341,7 @@ class TrainGUI:
                     missing_datasets_ids.append(ds_id)
 
             if len(missing_datasets_ids) > 0:
-                missing_datasets_text = ", ".join(
-                    [str(ds_id) for ds_id in missing_datasets_ids]
-                )
+                missing_datasets_text = ", ".join([str(ds_id) for ds_id in missing_datasets_ids])
                 raise ValueError(
                     f"Datasets with ids: {missing_datasets_text} not found in the project"
                 )
@@ -344,9 +349,7 @@ class TrainGUI:
             train_tag = train_val_splits_settings.get("train_tag")
             val_tag = train_val_splits_settings.get("val_tag")
             if not train_tag or not val_tag:
-                raise ValueError(
-                    "train_tag and val_tag must be specified in tags split method"
-                )
+                raise ValueError("train_tag and val_tag must be specified in tags split method")
         elif train_val_splits_settings.get("method") == "random":
             split = train_val_splits_settings.get("split")
             percent = train_val_splits_settings.get("percent")
@@ -356,12 +359,36 @@ class TrainGUI:
                 raise ValueError("percent must be an integer in range 1 to 99")
         return app_state
 
-    def load_from_state(self, app_state: dict) -> None:
+    def load_from_app_state(self, app_state: dict) -> None:
         """
-        Load the GUI state from a state dictionary.
+        Load the GUI state from app state dictionary.
 
         :param app_state: The state dictionary.
         :type app_state: dict
+
+        app_state example:
+
+            app_state = {
+                "input": {"project_id": 43192},
+                "train_val_splits": {
+                    "method": "random",
+                    "split": "train",
+                    "percent": 90
+                },
+                "classes": ["apple"],
+                "model": {
+                    "source": "Pretrained models",
+                    "model_name": "rtdetr_r50vd_coco_objects365"
+                },
+                "hyperparameters": hyperparameters, # yaml string
+                "options": {
+                    "model_benchmark": {
+                        "enable": True,
+                        "speed_test": True
+                    },
+                    "cache_project": True
+                }
+            }
         """
         app_state = self.validate_app_state(app_state)
 
@@ -403,9 +430,7 @@ class TrainGUI:
         if split_method == "random":
             split = train_val_splits_settings["split"]
             percent = train_val_splits_settings["percent"]
-            self.train_val_splits_selector.train_val_splits.set_random_splits(
-                split, percent
-            )
+            self.train_val_splits_selector.train_val_splits.set_random_splits(split, percent)
         elif split_method == "tags":
             train_tag = train_val_splits_settings["train_tag"]
             val_tag = train_val_splits_settings["val_tag"]
@@ -451,9 +476,7 @@ class TrainGUI:
         # Custom
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.experiment_selector.set_by_task_id(
-                model_settings["task_id"]
-            )
+            self.model_selector.experiment_selector.set_by_task_id(model_settings["task_id"])
             active_row = self.model_selector.experiment_selector.get_selected_row()
             if model_settings["checkpoint"] not in active_row.checkpoints_names:
                 raise ValueError(
@@ -464,9 +487,7 @@ class TrainGUI:
         self.model_selector_cb()
         # ----------------------------------------- #
 
-    def _init_hyperparameters(
-        self, hyperparameters_settings: dict, options: dict
-    ) -> None:
+    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict) -> None:
         """
         Initialize the hyperparameters selector with the given settings.
 

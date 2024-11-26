@@ -459,6 +459,68 @@ class TrainApp:
         self._inference_class = inference_class
         self._inference_settings = inference_settings
 
+    def get_app_state(self, experiment_info: dict = None) -> dict:
+        """
+        Returns the current state of the application.
+
+        :return: Application state.
+        :rtype: dict
+        """
+        input_data = {"project_id": self.project_id}
+        train_val_splits = self._get_train_val_splits_for_app_state()
+        model = self._get_model_config_for_app_state(experiment_info)
+
+        options = {
+            "model_benchmark": {
+                "enable": self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value(),
+                "speed_test": self.gui.hyperparameters_selector.get_speedtest_checkbox_value(),
+            },
+            "cache_project": self.gui.input_selector.get_cache_value(),
+        }
+
+        app_state = {
+            "input": input_data,
+            "train_val_split": train_val_splits,
+            "classes": self.classes,
+            "model": model,
+            "hyperparameters": self.hyperparameters_yaml,
+            "options": options,
+        }
+        return app_state
+
+    def load_app_state(self, app_state: dict) -> None:
+        """
+        Load the GUI state from app state dictionary.
+
+        :param app_state: The state dictionary.
+        :type app_state: dict
+
+        app_state example:
+
+            app_state = {
+                "input": {"project_id": 55555},
+                "train_val_splits": {
+                    "method": "random",
+                    "split": "train",
+                    "percent": 90
+                },
+                "classes": ["apple"],
+                "model": {
+                    "source": "Pretrained models",
+                    "model_name": "rtdetr_r50vd_coco_objects365"
+                },
+                "hyperparameters": hyperparameters, # yaml string
+                "options": {
+                    "model_benchmark": {
+                        "enable": True,
+                        "speed_test": True
+                    },
+                    "cache_project": True
+                }
+            }
+        """
+        self.gui.load_from_app_state(app_state)
+
     # Loaders
     def _load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """
@@ -1265,26 +1327,7 @@ class TrainApp:
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         """
-        input_data = {"project_id": self.project_id}
-        train_val_splits = self._get_train_val_splits_for_app_state()
-        model = self._get_model_config_for_app_state(experiment_info)
-
-        options = {
-            "model_benchmark": {
-                "enable": self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value(),
-                "speed_test": self.gui.hyperparameters_selector.get_speedtest_checkbox_value(),
-            },
-            "cache_project": self.gui.input_selector.get_cache_value(),
-        }
-
-        app_state = {
-            "input": input_data,
-            "train_val_split": train_val_splits,
-            "classes": self.classes,
-            "model": model,
-            "hyperparameters": self.hyperparameters_yaml,
-            "options": options,
-        }
+        app_state = self.get_app_state(experiment_info)
 
         local_path = join(self.output_dir, self._app_state_file)
         remote_path = join(remote_dir, self._app_state_file)
@@ -1326,17 +1369,22 @@ class TrainApp:
             )
         return train_val_splits
 
-    def _get_model_config_for_app_state(self, experiment_info: Dict) -> Dict:
+    def _get_model_config_for_app_state(self, experiment_info: Dict = None) -> Dict:
         """
         Gets the model configuration information for app_state.json.
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         """
+        experiment_info = experiment_info or {}
+
         if self.model_source == ModelSource.PRETRAINED:
+            model_name = experiment_info.get("model_name") or self.model_info.get("meta", {}).get(
+                "model_name"
+            )
             return {
                 "source": ModelSource.PRETRAINED,
-                "model_name": experiment_info["model_name"],
+                "model_name": model_name,
             }
         elif self.model_source == ModelSource.CUSTOM:
             return {

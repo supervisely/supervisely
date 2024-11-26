@@ -101,7 +101,7 @@ class TrainingProcess:
             container_widgets.insert(1, self.select_device)
 
         # if is_production(): # Uncomment later
-        if app_options.get("show_app_logger", False):
+        if app_options.get("show_logs_in_gui", False):
             self.logs_button = Button(
                 text="Show logs",
                 plain=True,
@@ -134,7 +134,7 @@ class TrainingProcess:
         if self.app_options.get("device_selector", False):
             return self.select_device.get_device()
         else:
-            return "cuda:0"
+            return "cuda:0"  # @TODO: implement default device
 
     def toggle_logs(self):
         if self.task_logs.is_hidden():

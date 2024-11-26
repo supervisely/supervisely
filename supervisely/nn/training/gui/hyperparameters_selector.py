@@ -15,6 +15,7 @@ class HyperparametersSelector:
     title = "Hyperparameters Selector"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
+        self.app_options = app_options
         self.editor = Editor(
             hyperparameters, height_lines=50, language_mode="yaml", auto_format=True
         )
@@ -82,7 +83,9 @@ class HyperparametersSelector:
         return self.editor.get_value()
 
     def get_model_benchmark_checkbox_value(self) -> bool:
-        return self.run_model_benchmark_checkbox.is_checked()
+        if self.app_options.get("model_benchmark", True):
+            return self.run_model_benchmark_checkbox.is_checked()
+        return False
 
     def set_model_benchmark_checkbox_value(self, is_checked: bool) -> bool:
         if is_checked:
@@ -91,7 +94,9 @@ class HyperparametersSelector:
             self.run_model_benchmark_checkbox.uncheck()
 
     def get_speedtest_checkbox_value(self) -> bool:
-        return self.run_speedtest_checkbox.is_checked()
+        if self.app_options.get("model_benchmark", True):
+            return self.run_speedtest_checkbox.is_checked()
+        return False
 
     def set_speedtest_checkbox_value(self, is_checked: bool) -> bool:
         if is_checked:
