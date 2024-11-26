@@ -371,6 +371,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         gt_project = Project(self.gt_project_path, OpenMode.READ)
         pred_project = Project(self.pred_project_path, OpenMode.READ)
         diff_dataset_id_map = {ds.id: ds for ds in self.eval_result.diff_dataset_infos}
+        logger.info(f"Diff datasets names: {[ds.name for ds in diff_dataset_id_map.values()]}")
 
         def _get_full_name(ds_id: int):
             ds_info = diff_dataset_id_map[ds_id]
@@ -379,6 +380,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
 
         diff_dataset_name_map = {_get_full_name(i): ds for i, ds in diff_dataset_id_map.items()}
+        logger.info(f"Datasets name map: {diff_dataset_name_map.keys()}")
 
         matched_id_map = self._get_matched_id_map()  # dt_id -> gt_id
         matched_gt_ids = set(matched_id_map.values())
@@ -485,6 +487,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         gt_project = Project(self.gt_project_path, OpenMode.READ)
         pred_project = Project(self.pred_project_path, OpenMode.READ)
         diff_dataset_id_map = {ds.id: ds for ds in self.eval_result.diff_dataset_infos}
+        logger.info(f"Diff datasets names: {[ds.name for ds in diff_dataset_id_map.values()]}")
 
         def _get_full_name(ds_id: int):
             ds_info = diff_dataset_id_map[ds_id]
@@ -493,6 +496,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
 
         diff_dataset_name_map = {_get_full_name(i): ds for i, ds in diff_dataset_id_map.items()}
+        logger.info(f"Datasets name map: {diff_dataset_name_map.keys()}")
 
         with self.pbar(
             message="Visualizations: Initializing match data", total=pred_project.total_items
