@@ -3229,7 +3229,13 @@ class ImageApi(RemoveableBulkModuleApi):
 
         uploaded_image_infos = self.get_list(
             dataset_id,
-            filters=[{"field": "id", "operator": "in", "value": image_ids}],
+            filters=[
+                {
+                    ApiField.FIELD: ApiField.ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: image_ids,
+                }
+            ],
             force_metadata_for_links=force_metadata_for_links,
         )
         return uploaded_image_infos
