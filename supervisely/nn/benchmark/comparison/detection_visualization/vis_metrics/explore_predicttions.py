@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.module_api import ApiField
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
@@ -66,7 +67,9 @@ class ExplorePredictions(BaseVisMetric):
             assert names is not None, "Failed to get GT image names for gallery"
             image_infos = eval_res.api.image.get_list(
                 dataset_info.id,
-                filters=[{"field": "name", "operator": "in", "value": names}],
+                filters=[
+                    {ApiField.FIELD: ApiField.NAME, ApiField.OPERATOR: "in", ApiField.VALUE: names}
+                ],
             )
             images_ids = [image_info.id for image_info in image_infos]
             images.append(image_infos)

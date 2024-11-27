@@ -6,6 +6,7 @@ import pandas as pd
 
 from supervisely.annotation.annotation import ProjectMeta
 from supervisely.api.api import Api
+from supervisely.api.module_api import ApiField
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
@@ -121,7 +122,13 @@ class EvalResult:
         if self._gt_dataset_infos is None:
             filters = None
             if self.gt_dataset_ids is not None:
-                filters = [{"field": "id", "operator": "in", "value": self.gt_dataset_ids}]
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: self.gt_dataset_ids,
+                    }
+                ]
             self._gt_dataset_infos = self.api.dataset.get_list(
                 self.gt_project_id,
                 filters=filters,

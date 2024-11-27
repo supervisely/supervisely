@@ -5,6 +5,7 @@ import numpy as np
 
 from supervisely._utils import is_development
 from supervisely.api.api import Api
+from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io import env, fs, json
@@ -49,7 +50,13 @@ class BaseBenchmark:
         if gt_dataset_ids is not None:
             self.gt_dataset_infos = self.api.dataset.get_list(
                 self.gt_project_info.id,
-                filters=[{"field": "id", "operator": "in", "value": gt_dataset_ids}],
+                filters=[
+                    {
+                        ApiField.FIELD: ApiField.ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: gt_dataset_ids,
+                    }
+                ],
                 recursive=True,
             )
         self.num_items = self._get_total_items_for_progress()

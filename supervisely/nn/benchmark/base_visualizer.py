@@ -3,6 +3,7 @@ from typing import List, Tuple
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult
 from supervisely.nn.benchmark.cv_tasks import CVTask
@@ -104,7 +105,13 @@ class BaseVisualizer:
         # get dataset infos
         filters = None
         if eval_result.gt_dataset_ids is not None:
-            filters = [{"field": "id", "operator": "in", "value": eval_result.gt_dataset_ids}]
+            filters = [
+                {
+                    ApiField.FIELD: ApiField.ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: eval_result.gt_dataset_ids,
+                }
+            ]
         if self.gt_dataset_infos is None:
             self.gt_dataset_infos = self.api.dataset.get_list(
                 eval_result.gt_project_id,
@@ -112,7 +119,13 @@ class BaseVisualizer:
                 recursive=True,
             )
         eval_result.gt_dataset_infos = self.gt_dataset_infos
-        filters = [{"field": "name", "operator": "in", "value": [ds.name for ds in self.gt_dataset_infos]}]
+        filters = [
+            {
+                ApiField.FIELD: ApiField.NAME,
+                ApiField.OPERATOR: "in",
+                ApiField.VALUE: [ds.name for ds in self.gt_dataset_infos],
+            }
+        ]
         eval_result.pred_dataset_infos = self.api.dataset.get_list(
             eval_result.pred_project_id, filters=filters, recursive=True
         )

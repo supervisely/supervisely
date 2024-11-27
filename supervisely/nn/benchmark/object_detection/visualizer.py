@@ -9,6 +9,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -517,7 +518,11 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                             self.api.image.get_list(
                                 diff_dataset_info.id,
                                 filters=[
-                                    {"field": "name", "operator": "in", "value": item_names_batch}
+                                    {
+                                        ApiField.FIELD: ApiField.NAME,
+                                        ApiField.OPERATOR: "in",
+                                        ApiField.VALUE: item_names_batch,
+                                    }
                                 ],
                                 force_metadata_for_links=False,
                             ),
