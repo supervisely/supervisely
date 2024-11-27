@@ -10,12 +10,14 @@ from supervisely.app.widgets import SlyTqdm
 from supervisely.io import env, fs, json
 from supervisely.io.fs import get_directory_size
 from supervisely.nn.benchmark.base_evaluator import BaseEvaluator
-from supervisely.nn.benchmark.utils.utils import WORKSPACE_DESCRIPTION, WORKSPACE_NAME
 from supervisely.nn.inference import SessionJSON
 from supervisely.project.project import download_project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
+
+WORKSPACE_NAME = "Model Benchmark: predictions and differences"
+WORKSPACE_DESCRIPTION = "Technical workspace for model benchmarking. Contains predictions and differences between ground truth and predictions."
 
 
 class BaseBenchmark:
