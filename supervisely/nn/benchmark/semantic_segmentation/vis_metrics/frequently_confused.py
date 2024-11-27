@@ -19,7 +19,7 @@ class FrequentlyConfused(SemanticSegmVisMetric):
             text = self.vis_texts.markdown_frequently_confused_empty
         else:
             text = self.vis_texts.markdown_frequently_confused
-        return MarkdownWidget("frequently_confused", "Frequency Confused Classes", text=text)
+        return MarkdownWidget("frequently_confused", "Frequently Confused Classes", text=text)
 
     @property
     def chart(self) -> ChartWidget:
