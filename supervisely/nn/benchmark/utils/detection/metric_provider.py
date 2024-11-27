@@ -266,12 +266,12 @@ class _MetricProvider:
     def _init_counts(self):
         cat_ids = self.cat_ids
         iouThrs = self.iouThrs
-        catId2idx = {cat_id: idx for idx, cat_id in enumerate(cat_ids)}
+        cat_id_to_idx = {cat_id: idx for idx, cat_id in enumerate(cat_ids)}
         ious = []
         cats = []
         for match in self.tp_matches:
             ious.append(match["iou"])
-            cats.append(catId2idx[match["category_id"]])
+            cats.append(cat_id_to_idx[match["category_id"]])
         ious = np.array(ious) + np.spacing(1)
         iou_idxs = np.searchsorted(iouThrs, ious) - 1
         cats = np.array(cats)
@@ -285,7 +285,7 @@ class _MetricProvider:
         true_positives = true_positives[:, ::-1].cumsum(1)[:, ::-1]
         tp_count = true_positives[:, 0]
         # FN
-        cats_fn = np.array([catId2idx[match["category_id"]] for match in self.fn_matches])
+        cats_fn = np.array([cat_id_to_idx[match["category_id"]] for match in self.fn_matches])
         if cats_fn.size == 0:
             fn_count = np.zeros((len(cat_ids),), dtype=int)
         else:
@@ -293,7 +293,7 @@ class _MetricProvider:
         gt_count = fn_count + tp_count
         false_negatives = gt_count[:, None] - true_positives
         # FP
-        cats_fp = np.array([catId2idx[match["category_id"]] for match in self.fp_matches])
+        cats_fp = np.array([cat_id_to_idx[match["category_id"]] for match in self.fp_matches])
         if cats_fp.size == 0:
             fp_count = np.zeros((len(cat_ids),), dtype=int)
         else:
@@ -380,26 +380,26 @@ class _MetricProvider:
 
     def confusion_matrix(self):
         K = len(self.cat_ids)
-        catId2idx = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
-        idx2catId = {i: cat_id for cat_id, i in catId2idx.items()}
+        cat_id_to_idx = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
+        idx2catId = {i: cat_id for cat_id, i in cat_id_to_idx.items()}
 
         confusion_matrix = np.zeros((K + 1, K + 1), dtype=int)
 
         for m in self.confused_matches:
-            cat_idx_pred = catId2idx[m["category_id"]]
-            cat_idx_gt = catId2idx[self.cocoGt.anns[m["gt_id"]]["category_id"]]
+            cat_idx_pred = cat_id_to_idx[m["category_id"]]
+            cat_idx_gt = cat_id_to_idx[self.cocoGt.anns[m["gt_id"]]["category_id"]]
             confusion_matrix[cat_idx_pred, cat_idx_gt] += 1
 
         for m in self.tp_matches:
-            cat_idx = catId2idx[m["category_id"]]
+            cat_idx = cat_id_to_idx[m["category_id"]]
             confusion_matrix[cat_idx, cat_idx] += 1
 
         for m in self.fp_not_confused_matches:
-            cat_idx_pred = catId2idx[m["category_id"]]
+            cat_idx_pred = cat_id_to_idx[m["category_id"]]
             confusion_matrix[cat_idx_pred, -1] += 1
 
         for m in self.fn_matches:
-            cat_idx_gt = catId2idx[m["category_id"]]
+            cat_idx_gt = cat_id_to_idx[m["category_id"]]
             confusion_matrix[-1, cat_idx_gt] += 1
 
         return confusion_matrix
