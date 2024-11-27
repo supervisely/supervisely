@@ -3126,6 +3126,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         links: Optional[List[str]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
+        force_metadata_for_links: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
@@ -3153,6 +3154,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 - 'skip': Ignores uploading the new images if there is a conflict; the original image's ImageInfo list will be returned instead.
                 - 'rename': (default) Renames the new images to prevent name conflicts.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param force_metadata_for_links: Specifies whether to force retrieving metadata for images from links.
+                                         If False, metadata fields in the response can be empty (if metadata has not been retrieved yet).
+        :type force_metadata_for_links: Optional[bool]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -3215,6 +3219,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 links=links,
                 progress_cb=progress_cb,
                 conflict_resolution=conflict_resolution,
+                force_metadata_for_links=force_metadata_for_links,
             )
             image_infos.extend(image_infos_by_links)
 
@@ -3223,9 +3228,150 @@ class ImageApi(RemoveableBulkModuleApi):
         self._api.annotation.upload_anns(image_ids, anns)
 
         uploaded_image_infos = self.get_list(
-            dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
+            dataset_id,
+            filters=[
+                {
+                    ApiField.FIELD: ApiField.ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: image_ids,
+                }
+            ],
+            force_metadata_for_links=force_metadata_for_links,
         )
         return uploaded_image_infos
+
+    def group_images_for_multiview(
+        self,
+        image_ids: List[int],
+        group_name: str,
+        multiview_tag_name: Optional[str] = None,
+    ) -> None:
+        """
+        Group images for multi-view by tag with given name. If tag does not exist in project, will create it first.
+
+        Note:
+            * All images must belong to the same project.
+            * Tag must be of type ANY_STRING and applicable to images.
+            * Recommended number of images in group is 6-12.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param group_name: Group name. Images will be assigned by group tag with this value.
+        :type group_name: str
+        :param multiview_tag_name: Multiview tag name in Supervisely.
+                                If None, will use default 'multiview' tag name.
+                                If tag does not exist in project, will create it first.
+        :type multiview_tag_name: str, optional
+        :return: :class:`None<None>`
+
+        :rtype: :class:`NoneType<NoneType>`
+        :raises ValueError: if tag is not of type ANY_STRING or not applicable to images
+
+        :Usage example:
+
+         .. code-block:: python
+
+            # ? option 1
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            BATCH_SIZE = 6
+            image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
+
+            # group images for multiview
+            for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
+                api.image.group_images_for_multiview(ids, group_name)
+
+
+            # ? option 2 (with sly.ApiContext)
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            BATCH_SIZE = 6
+            image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
+            project_id = 111111 # change to your project id
+
+
+            # * make sure that `with_settings=True` is set to get project settings from server
+            project_meta_json = api.project.get_meta(project_id, with_settings=True)
+            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+
+            # create custom tag meta (optional)
+            multiview_tag_name = 'cars'
+            tag_meta = sly.TagMeta(multiview_tag_name, sly.TagValueType.ANY_STRING)
+            project_meta = project_meta.add_tag_meta(tag_meta)
+            project_meta = api.project.update_meta(project_id, project_meta) # update meta on server
+
+            # group images for multiview
+            with sly.ApiContext(api, project_id=project_id, project_meta=project_meta):
+                for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
+                    api.image.group_images_for_multiview(ids, group_name, multiview_tag_name)
+
+        """
+
+        # ============= Api Context ===================================
+        # using context for optimization (avoiding extra API requests)
+        context = self._api.optimization_context
+        project_meta = context.get("project_meta")
+        project_id = context.get("project_id")
+        if project_id is None:
+            project_id = self.get_project_id(image_ids[0])
+            context["project_id"] = project_id
+        if project_meta is None:
+            project_meta = ProjectMeta.from_json(
+                self._api.project.get_meta(project_id, with_settings=True)
+            )
+            context["project_meta"] = project_meta
+        # =============================================================
+
+        need_update_project_meta = False
+        multiview_tag_name = multiview_tag_name or _MULTIVIEW_TAG_NAME
+        multiview_tag_meta = project_meta.get_tag_meta(multiview_tag_name)
+
+        if multiview_tag_meta is None:
+            multiview_tag_meta = TagMeta(
+                multiview_tag_name,
+                TagValueType.ANY_STRING,
+                applicable_to=TagApplicableTo.IMAGES_ONLY,
+            )
+            project_meta = project_meta.add_tag_meta(multiview_tag_meta)
+            need_update_project_meta = True
+        elif multiview_tag_meta.sly_id is None:
+            logger.warning(f"`sly_id` is None for group tag, trying to get it from server")
+            need_update_project_meta = True
+
+        if multiview_tag_meta.value_type != TagValueType.ANY_STRING:
+            raise ValueError(f"Tag '{multiview_tag_name}' is not of type ANY_STRING.")
+        elif multiview_tag_meta.applicable_to == TagApplicableTo.OBJECTS_ONLY:
+            raise ValueError(f"Tag '{multiview_tag_name}' is not applicable to images.")
+
+        if need_update_project_meta:
+            project_meta = self._api.project.update_meta(id=project_id, meta=project_meta)
+            context["project_meta"] = project_meta
+            multiview_tag_meta = project_meta.get_tag_meta(multiview_tag_name)
+
+        if not project_meta.project_settings.multiview_enabled:
+            if multiview_tag_name == _MULTIVIEW_TAG_NAME:
+                self._api.project.set_multiview_settings(project_id)
+            else:
+                self._api.project._set_custom_grouping_settings(
+                    id=project_id,
+                    group_images=True,
+                    tag_name=multiview_tag_name,
+                    sync=False,
+                )
+            project_meta = ProjectMeta.from_json(
+                self._api.project.get_meta(project_id, with_settings=True)
+            )
+            context["project_meta"] = project_meta
+
+        self.add_tag_batch(image_ids, multiview_tag_meta.sly_id, group_name)
 
     def upload_medical_images(
         self,
