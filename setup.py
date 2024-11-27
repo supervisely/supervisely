@@ -79,10 +79,10 @@ version = get_version()
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
     "numpy>=1.19, <2.0.0",
-    "opencv-python>=4.5.5.62, <5.0.0.0",
+    "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <=10.2.0",
-    "protobuf>=3.14.0, <=3.20.3",
+    "pillow>=9.0.1, <=10.2.0",
+    "protobuf>=3.19.5, <=3.20.3",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
@@ -109,7 +109,7 @@ INSTALL_REQUIRES = [
     "tqdm>=4.62.3, <5.0.0",
     "pandas>=1.1.3, <=2.1.4",
     "async_asgi_testclient",
-    "PyYAML",
+    "PyYAML>=5.4.0",
     "distinctipy",
     "beautifulsoup4",
     "numerize",
@@ -130,8 +130,8 @@ INSTALL_REQUIRES = [
 ]
 
 ALT_INSTALL_REQUIRES = {
-    "opencv-python>=4.5.5.62, <5.0.0.0": [
-        "opencv-python-headless",
+    "opencv-python>=4.6.0.66, <5.0.0.0": [
+        "opencv-python-headless>=4.8.1.78",
         "opencv-contrib-python",
         "opencv-contrib-python-headless",
     ],
@@ -231,7 +231,7 @@ setup(
             "scikit-image>=0.17.1, <1.0.0",
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
-            "scipy>=1.5.2, <2.0.0",
+            "scipy>=1.8.0, <2.0.0",
             "pandas>=1.1.3, <1.4.0",
             "ruamel.yaml==0.17.21",
         ],
@@ -257,7 +257,7 @@ setup(
             "myst-parser==0.18.0",
         ],
         "sdk-no-usages": [
-            "grpcio>=1.34.1, <2.0.0",
+            "grpcio>=1.53.2, <2.0.0",
             "plotly>=4.11.0, <6.0.0",
             "psutil>=5.4.5, <6.0.0",
         ],
