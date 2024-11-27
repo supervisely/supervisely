@@ -657,6 +657,14 @@ class tqdm_sly(tqdm, Progress):
                     except KeyError:
                         kw[name] = param.default
 
+        # Ensure all necessary attributes are set
+        necessary_attrs = [
+            'mininterval', 'last_print_t', 'last_print_n', 'start_t', 'delay', 'n', '_time'
+        ]
+        for attr in necessary_attrs:
+            if attr not in kw:
+                kw[attr] = vrs.get(attr, sgn.parameters[attr].default if attr in sgn.parameters else None)
+
         # legacy tqdm 'nested' in kwargs
         kw.update({k: v for k, v in kwargs.items() if k not in kw})
         return cls(**kw)
