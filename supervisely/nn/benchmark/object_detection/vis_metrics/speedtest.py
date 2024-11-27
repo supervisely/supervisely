@@ -42,7 +42,7 @@ class Speedtest(DetectionVisMetric):
 
     @property
     def table(self) -> TableWidget:
-        columns = [" ", "Infrence time", "FPS"]
+        columns = [" ", "Inference time", "FPS"]
         content = []
         temp_res = {}
         max_fps = 0
@@ -115,7 +115,7 @@ class Speedtest(DetectionVisMetric):
             go.Scatter(
                 x=list(temp_res["ms"].keys()),
                 y=list(temp_res["ms"].values()),
-                name="Infrence time (ms)",
+                name="Inference time (ms)",
                 line=dict(color=ms_color),
                 customdata=list(temp_res["ms_std"].values()),
                 error_y=dict(

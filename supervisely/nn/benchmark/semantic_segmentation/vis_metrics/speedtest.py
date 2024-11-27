@@ -53,7 +53,7 @@ class Speedtest(SemanticSegmVisMetric):
     def intro_table(self) -> TableWidget:
         res = {}
 
-        columns = [" ", "Infrence time", "FPS"]
+        columns = [" ", "Inference time", "FPS"]
         temp_res = {}
         max_fps = 0
         for test in self.eval_result.speedtest_info["speedtest"]:
@@ -142,7 +142,7 @@ class Speedtest(SemanticSegmVisMetric):
             go.Scatter(
                 x=list(temp_res["ms"].keys()),
                 y=list(temp_res["ms"].values()),
-                name="Infrence time (ms)",
+                name="Inference time (ms)",
                 line=dict(color=ms_color),
                 customdata=list(temp_res["ms_std"].values()),
                 error_y=dict(

@@ -556,7 +556,7 @@ class Evaluator:
         for c, (pred_c, gt_c) in enumerate(zip(pred_one_hot, gt_one_hot)):
             if pred_c.any():
                 if gt_c.any():
-                    # positve
+                    # positive
                     for pred_segment in pred_segments[c]:
                         results_on_segment = results[c][pred_segment]
                         if (results_on_segment == ERROR_CODES["unassigned"]).any():
@@ -615,7 +615,7 @@ class Evaluator:
 
         if pred_mask.any():
             if gt_mask.any():
-                # positve
+                # positive
                 for pred_segment in pred_segments:
                     results_on_segment = class_results[pred_segment]
                     if (results_on_segment == ERROR_CODES["unassigned"]).any():
