@@ -2282,8 +2282,8 @@ class Project:
         target_classes: Optional[List[str]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
-        default_bg_name: Optional[str] = "__bg__",
-        default_bg_color: Optional[List[int]] = None,
+        bg_name: Optional[str] = "__bg__",
+        bg_color: Optional[List[int]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -2306,10 +2306,10 @@ class Project:
         :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class
                                   will be added automatically (by default "__bg__") and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
-        :param default_bg_name: Default background class name, used for semantic segmentation.
-        :type default_bg_name: :class:`str`, optional
-        :param default_bg_color: Default background class color, used for semantic segmentation.
-        :type default_bg_color: :class:`list`, optional. Default is [0, 0, 0]
+        :param bg_name: Default background class name, used for semantic segmentation.
+        :type bg_name: :class:`str`, optional
+        :param bg_color: Default background class color, used for semantic segmentation.
+        :type bg_color: :class:`list`, optional. Default is [0, 0, 0]
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2326,9 +2326,9 @@ class Project:
             seg_project = sly.Project(seg_project_path, sly.OpenMode.READ)
         """
 
-        _bg_class_name = default_bg_name
-        default_bg_color = default_bg_color or [0, 0, 0]
-        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=default_bg_color)
+        _bg_class_name = bg_name
+        bg_color = bg_color or [0, 0, 0]
+        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=bg_color)
 
         if dst_project_dir is None and inplace is False:
             raise ValueError(

@@ -105,8 +105,8 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                     src_dir,
                     temp_seg_dir,
                     target_classes=self.classes_whitelist,
-                    default_bg_name=self.bg_cls_name,
-                    default_bg_color=bg_color,
+                    bg_name=self.bg_cls_name,
+                    bg_color=bg_color,
                 )
 
             palette_lookup = np.zeros(256**3, dtype=np.int32)
