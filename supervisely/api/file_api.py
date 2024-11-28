@@ -1067,7 +1067,7 @@ class FileApi(ModuleApiBase):
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param batch_size: Number of files to remove in one request. Default is 1000.
+        :param batch_size: Number of files to remove in one request. Default is 1000. Maximum is 20000.
         :type batch_size: int
         :return: None
         :rtype: :class:`NoneType`
