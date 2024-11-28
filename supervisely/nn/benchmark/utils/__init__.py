@@ -8,9 +8,5 @@ from supervisely.nn.benchmark.utils.detection.utlis import try_set_conf_auto
 from supervisely.nn.benchmark.utils.semantic_segmentation.calculate_metrics import (
     calculate_metrics as calculate_semsegm_metrics,
 )
-from supervisely.nn.benchmark.utils.semantic_segmentation.metric_provider import (
-    SemSegmMetricProvider,
-)
 from supervisely.nn.benchmark.utils.semantic_segmentation.evaluator import Evaluator
 from supervisely.nn.benchmark.utils.semantic_segmentation.loader import build_segmentation_loader
-from supervisely.nn.benchmark.utils.semantic_segmentation.functions import prepare_segmentation_data
