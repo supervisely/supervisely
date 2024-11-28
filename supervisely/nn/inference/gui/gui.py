@@ -5,10 +5,9 @@
 from functools import wraps
 from typing import Callable, Dict, List, Optional, Union
 
-import yaml
-
 import supervisely.app.widgets as Widgets
 import supervisely.io.env as env
+import yaml
 from supervisely import Api
 from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
 from supervisely.api.file_api import FileApi
@@ -97,7 +96,9 @@ class InferenceGUI(BaseInferenceGUI):
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
-        self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
+        self._download_progress = Widgets.Progress(
+            "Downloading model...", hide_on_finish=True
+        )
         self._download_progress.hide()
         self._change_model_button = Widgets.Button(
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
@@ -123,7 +124,9 @@ class InferenceGUI(BaseInferenceGUI):
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
         self._model_classes_plug = Widgets.Text("No classes provided")
         self._model_classes_widget_container = Widgets.Field(
-            content=Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
+            content=Widgets.Container(
+                [self._model_classes_widget, self._model_classes_plug]
+            ),
             title="Model classes",
             description="List of classes model predicts",
         )
@@ -152,7 +155,9 @@ class InferenceGUI(BaseInferenceGUI):
 
         self._model_full_info_card.collapse()
         self._additional_ui_content = []
-        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(
+            self._model_full_info_card
+        )
 
         tabs_titles = []
         tabs_contents = []
@@ -166,7 +171,9 @@ class InferenceGUI(BaseInferenceGUI):
                 def update_table(selected_model):
                     cols = [
                         model_key
-                        for model_key in self._models[selected_model]["checkpoints"][0].keys()
+                        for model_key in self._models[selected_model]["checkpoints"][
+                            0
+                        ].keys()
                     ]
                     rows = [
                         [value for param_name, value in model.items()]
@@ -255,7 +262,9 @@ class InferenceGUI(BaseInferenceGUI):
             custom_tab_content = Widgets.Container(custom_tab_widgets)
             tabs_titles.append("Custom models")
             tabs_contents.append(custom_tab_content)
-            tabs_descriptions.append("Models trained in Supervisely and located in Team Files")
+            tabs_descriptions.append(
+                "Models trained in Supervisely and located in Team Files"
+            )
 
         self._tabs = Widgets.RadioTabs(
             titles=tabs_titles,
@@ -263,7 +272,9 @@ class InferenceGUI(BaseInferenceGUI):
             descriptions=tabs_descriptions,
         )
 
-        self.on_change_model_callbacks: List[CallbackT] = [InferenceGUI._hide_info_after_change]
+        self.on_change_model_callbacks: List[CallbackT] = [
+            InferenceGUI._hide_info_after_change
+        ]
         self.on_serve_callbacks: List[CallbackT] = []
 
         @self.serve_button.click
@@ -334,7 +345,9 @@ class InferenceGUI(BaseInferenceGUI):
 
         table_subtitles, cols = self._get_table_subtitles(cols)
         if self._models_table is None:
-            self._models_table = Widgets.RadioTable(cols, rows, subtitles=table_subtitles)
+            self._models_table = Widgets.RadioTable(
+                cols, rows, subtitles=table_subtitles
+            )
         else:
             self._models_table.set_data(cols, rows, subtitles=table_subtitles)
 
@@ -470,15 +483,21 @@ class InferenceGUI(BaseInferenceGUI):
         try:
             classes = inference.get_classes()
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(inference)} object.")
+            logger.warn(
+                f"get_classes() function not implemented for {type(inference)} object."
+            )
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warn(
+                "Probably, get_classes() function not working without model deploy."
+            )
         except Exception as exc:
             logger.warn("Skip getting classes info due to exception")
             logger.exception(exc)
 
         if classes is None or len(classes) == 0:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warn(
+                f"get_classes() function return {classes}; skip classes processing."
+            )
             return None
         return classes
 
@@ -523,14 +542,6 @@ class InferenceGUI(BaseInferenceGUI):
 class ServingGUI:
     def __init__(self) -> None:
 
-        # 1. ServingAutoGUI(ServingGUI) __init__(self, app_options: dict)
-        # 2. Show pretrained: True
-        # 3. Show custom : True
-        # 4. Show runtime selector: False
-
-        # 5. download model_files (add to inference) => load_model wont download model files
-        # 6. model meta for pretrained models? set_model_meta_from_classes()
-
         device_values = []
         device_names = []
         try:
@@ -555,7 +566,9 @@ class ServingGUI:
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
         self._success_label.hide()
-        self._download_progress = Widgets.Progress("Downloading model...", hide_on_finish=True)
+        self._download_progress = Widgets.Progress(
+            "Downloading model...", hide_on_finish=True
+        )
         self._download_progress.hide()
         self._change_model_button = Widgets.Button(
             "STOP AND CHOOSE ANOTHER MODEL", button_type="danger"
@@ -581,7 +594,9 @@ class ServingGUI:
         self._model_classes_widget = Widgets.ClassesTable(selectable=False)
         self._model_classes_plug = Widgets.Text("No classes provided")
         self._model_classes_widget_container = Widgets.Field(
-            content=Widgets.Container([self._model_classes_widget, self._model_classes_plug]),
+            content=Widgets.Container(
+                [self._model_classes_widget, self._model_classes_plug]
+            ),
             title="Model classes",
             description="List of classes model predicts",
         )
@@ -610,9 +625,13 @@ class ServingGUI:
 
         self._model_full_info_card.collapse()
         self._additional_ui_content = []
-        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(
+            self._model_full_info_card
+        )
 
-        self.on_change_model_callbacks: List[CallbackT] = [ServingGUI._hide_info_after_change]
+        self.on_change_model_callbacks: List[CallbackT] = [
+            ServingGUI._hide_info_after_change
+        ]
         self.on_serve_callbacks: List[CallbackT] = []
 
         @self.serve_button.click
@@ -700,15 +719,21 @@ class ServingGUI:
         try:
             classes = inference.get_classes()
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(inference)} object.")
+            logger.warn(
+                f"get_classes() function not implemented for {type(inference)} object."
+            )
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warn(
+                "Probably, get_classes() function not working without model deploy."
+            )
         except Exception as exc:
             logger.warn("Skip getting classes info due to exception")
             logger.exception(exc)
 
         if classes is None or len(classes) == 0:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warn(
+                f"get_classes() function return {classes}; skip classes processing."
+            )
             return None
         return classes
 
