@@ -67,7 +67,9 @@ def calculate_metrics(
 
     iou_t = 0
     is_custom_iou_threshold = (
-        evaluation_params is not None and evaluation_params.get("iou_threshold") and evaluation_params["iou_threshold"] != 0.5
+        evaluation_params is not None
+        and evaluation_params.get("iou_threshold")
+        and evaluation_params["iou_threshold"] != 0.5
     )
     if is_custom_iou_threshold:
         iou_t = np.where(cocoEval.params.iouThrs == evaluation_params["iou_threshold"])[0][0]
@@ -243,13 +245,13 @@ def get_matches(eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls, iou_
     """
     type cocoEval_cls: COCOeval
     """
-    catIds = cocoEval_cls.cocoGt.getCatIds()
+    cat_ids = cocoEval_cls.cocoGt.getCatIds()
     matches = []
     for img_id, eval_imgs in eval_img_dict.items():
 
         # get miss-classified
         eval_img_cls = eval_img_dict_cls[img_id][0]
-        gtIds_orig_cls = [_["id"] for cId in catIds for _ in cocoEval_cls._gts[img_id, cId]]
+        gt_ids_orig_cls = [_["id"] for i in cat_ids for _ in cocoEval_cls._gts[img_id, i]]
 
         for eval_img in eval_imgs:
 
@@ -301,7 +303,7 @@ def get_matches(eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls, iou_
 
                 # Correction on miss-classification
                 cls_gt_id, iou = _get_missclassified_match(
-                    eval_img_cls, dt_id, gtIds_orig_cls, eval_img_cls["dtIds"], iou_t
+                    eval_img_cls, dt_id, gt_ids_orig_cls, eval_img_cls["dtIds"], iou_t
                 )
                 if cls_gt_id is not None:
                     assert iou >= 0.5, iou

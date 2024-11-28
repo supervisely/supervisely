@@ -31,7 +31,7 @@ def sly2coco(
         accepted_shapes = set(accepted_shapes)
         accepted_shapes.add("any")
 
-    cat2id = {}
+    cat_id_map = {}
     i = 1
     for obj_cls in classes_sorted:
         if accepted_shapes is not None and obj_cls["shape"] not in accepted_shapes:
@@ -39,10 +39,10 @@ def sly2coco(
         if classes_whitelist:
             if obj_cls["title"] not in classes_whitelist:
                 continue
-        cat2id[obj_cls["title"]] = i
+        cat_id_map[obj_cls["title"]] = i
         i += 1
 
-    categories = [{"id": id, "name": cat} for cat, id in cat2id.items()]
+    categories = [{"id": id, "name": cat} for cat, id in cat_id_map.items()]
 
     # Images + Annotations
     images = []
@@ -82,7 +82,7 @@ def sly2coco(
                         if classes_whitelist:
                             if class_name not in classes_whitelist:
                                 continue
-                        category_id = cat2id[class_name]
+                        category_id = cat_id_map[class_name]
                         sly_id = label["id"]
                         if geometry_type == "rectangle":
                             ((left, top), (right, bottom)) = label["points"]["exterior"]

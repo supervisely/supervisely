@@ -381,7 +381,6 @@ class _MetricProvider:
     def confusion_matrix(self):
         K = len(self.cat_ids)
         cat_id_to_idx = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
-        idx2catId = {i: cat_id for cat_id, i in cat_id_to_idx.items()}
 
         confusion_matrix = np.zeros((K + 1, K + 1), dtype=int)
 
@@ -406,7 +405,7 @@ class _MetricProvider:
 
     def frequently_confused(self, confusion_matrix, topk_pairs=20):
         # Frequently confused class pairs
-        idx2catId = {i: cat_id for i, cat_id in enumerate(self.cat_ids)}
+        cat_id_enum = {i: cat_id for i, cat_id in enumerate(self.cat_ids)}
         cm = confusion_matrix[:-1, :-1]
         cm_l = np.tril(cm, -1)
         cm_u = np.triu(cm, 1)
@@ -427,7 +426,7 @@ class _MetricProvider:
         confused_name_pairs = [(self.cat_names[i], self.cat_names[j]) for i, j in confused_idxs]
         confused_counts = confused_counts[inds_sort2]
         confused_prob = confused_prob[inds_sort2]
-        confused_catIds = [(idx2catId[i], idx2catId[j]) for i, j in confused_idxs]
+        confused_catIds = [(cat_id_enum[i], cat_id_enum[j]) for i, j in confused_idxs]
 
         return pd.DataFrame(
             {

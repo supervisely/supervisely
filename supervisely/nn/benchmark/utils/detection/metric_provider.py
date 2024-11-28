@@ -22,11 +22,11 @@ def _get_outcomes_per_image(matches, cocoGt):
     type cocoGt: COCO
     """
     img_ids = sorted(cocoGt.getImgIds())
-    imgId2idx = {img_id: idx for idx, img_id in enumerate(img_ids)}
+    img_id_enum = {img_id: idx for idx, img_id in enumerate(img_ids)}
     outcomes_per_image = np.zeros((len(img_ids), 3), dtype=float)
     for m in matches:
         img_id = m["image_id"]
-        idx = imgId2idx[img_id]
+        idx = img_id_enum[img_id]
         if m["type"] == "TP":
             outcomes_per_image[idx, 0] += 1
         elif m["type"] == "FP":
@@ -381,7 +381,6 @@ class _MetricProvider:
     def confusion_matrix(self):
         K = len(self.cat_ids)
         cat_id_to_idx = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
-        idx2catId = {i: cat_id for cat_id, i in cat_id_to_idx.items()}
 
         confusion_matrix = np.zeros((K + 1, K + 1), dtype=int)
 
@@ -406,7 +405,7 @@ class _MetricProvider:
 
     def frequently_confused(self, confusion_matrix, topk_pairs=20):
         # Frequently confused class pairs
-        idx2catId = {i: cat_id for i, cat_id in enumerate(self.cat_ids)}
+        cat_id_enum = {i: cat_id for i, cat_id in enumerate(self.cat_ids)}
         cm = confusion_matrix[:-1, :-1]
         cm_l = np.tril(cm, -1)
         cm_u = np.triu(cm, 1)
@@ -427,7 +426,7 @@ class _MetricProvider:
         confused_name_pairs = [(self.cat_names[i], self.cat_names[j]) for i, j in confused_idxs]
         confused_counts = confused_counts[inds_sort2]
         confused_prob = confused_prob[inds_sort2]
-        confused_catIds = [(idx2catId[i], idx2catId[j]) for i, j in confused_idxs]
+        confused_catIds = [(cat_id_enum[i], cat_id_enum[j]) for i, j in confused_idxs]
 
         return pd.DataFrame(
             {
