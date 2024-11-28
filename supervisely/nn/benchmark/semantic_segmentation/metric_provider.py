@@ -69,7 +69,26 @@ class MetricProvider:
         )
 
     def json_metrics(self):
-        pass
+        return {
+            "mIoU": self.eval_data.loc["mean"]["IoU"] * 100,
+            "mE_boundary_oU": self.eval_data.loc["mean"]["E_boundary_oU"] * 100,
+            "mFP_boundary_oU": self.eval_data.loc["mean"]["FP_boundary_oU"] * 100,
+            "mFN_boundary_oU": self.eval_data.loc["mean"]["FN_boundary_oU"] * 100,
+            "mE_boundary_oU_renormed": self.eval_data.loc["mean"]["E_boundary_oU_renormed"] * 100,
+            "mE_extent_oU": self.eval_data.loc["mean"]["E_extent_oU"] * 100,
+            "mFP_extent_oU": self.eval_data.loc["mean"]["FP_extent_oU"] * 100,
+            "mFN_extent_oU": self.eval_data.loc["mean"]["FN_extent_oU"] * 100,
+            "mE_extent_oU_renormed": self.eval_data.loc["mean"]["E_extent_oU_renormed"] * 100,
+            "mE_segment_oU": self.eval_data.loc["mean"]["E_segment_oU"] * 100,
+            "mFP_segment_oU": self.eval_data.loc["mean"]["FP_segment_oU"] * 100,
+            "mFN_segment_oU": self.eval_data.loc["mean"]["FN_segment_oU"] * 100,
+            "mE_segment_oU_renormed": self.eval_data.loc["mean"]["E_segment_oU_renormed"] * 100,
+            "mPrecision": self.eval_data.loc["mean"]["precision"] * 100,
+            "mRecall": self.eval_data.loc["mean"]["recall"] * 100,
+            "mF1_score": self.eval_data.loc["mean"]["F1_score"] * 100,
+            "PixelAcc": self.pixel_accuracy * 100,
+            "mBoundaryIoU": self.eval_data.loc["mean"]["boundary_IoU"] * 100,
+        }
 
     def metric_table(self):
         names_map = {
