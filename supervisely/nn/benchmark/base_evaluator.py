@@ -52,8 +52,8 @@ class BaseEvalResult:
         return self.inference_info.get("evaluator_app_info", None)  # TODO: check
 
     @property
-    def gt_images_ids(self):
-        return self.inference_info.get("gt_images_ids", None)  # TODO: check
+    def val_images_cnt(self):
+        return self.inference_info.get("val_images_cnt", None)  # TODO: check
 
     @property
     def classes_whitelist(self):

@@ -157,11 +157,13 @@ class BaseBenchmark:
             **model_info,
         }
         if self.train_info:
+            self.train_info.pop("train_images_ids", None)
             inference_info["train_info"] = self.train_info
         if self.evaluator_app_info:
+            self.evaluator_app_info.pop("settings", None)
             inference_info["evaluator_app_info"] = self.evaluator_app_info
         if self.gt_images_ids:
-            inference_info["gt_images_ids"] = self.gt_images_ids
+            inference_info["val_images_cnt"] = len(self.gt_images_ids)
         self.dt_project_info = self.api.project.get_info_by_id(self.dt_project_info.id)
         logger.debug(
             "Inference is finished.",

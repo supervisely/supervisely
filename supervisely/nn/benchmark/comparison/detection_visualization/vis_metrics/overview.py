@@ -1,10 +1,10 @@
 from typing import List
 
 from supervisely._utils import abs_url
-from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
     BaseVisMetric,
 )
+from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     MarkdownWidget,
@@ -162,10 +162,11 @@ class Overview(BaseVisMetric):
         train_session, images_str = "", ""
         gt_project_id = eval_result.gt_project_info.id
         gt_dataset_ids = eval_result.gt_dataset_ids
-        gt_images_ids = eval_result.gt_images_ids
+        gt_images_cnt = eval_result.val_images_cnt
         train_info = eval_result.train_info
-        if gt_images_ids is not None:
-            val_imgs_cnt = len(gt_images_ids)
+        total_imgs_cnt = self.eval_result.gt_project_info.items_count
+        if gt_images_cnt is not None:
+            val_imgs_cnt = gt_images_cnt
         elif gt_dataset_ids is not None:
             datasets = eval_result.gt_dataset_infos
             val_imgs_cnt = sum(ds.items_count for ds in datasets)
@@ -182,18 +183,18 @@ class Overview(BaseVisMetric):
             train_imgs_cnt = train_info.get("images_count")
             images_str = f", {train_imgs_cnt} images in train, {val_imgs_cnt} images in validation"
 
-        if gt_images_ids is not None:
-            images_str += f". Evaluated using subset - {val_imgs_cnt} images"
+        if gt_images_cnt is not None:
+            images_str += (
+                f", total {total_imgs_cnt} images. Evaluated using subset - {val_imgs_cnt} images"
+            )
         elif gt_dataset_ids is not None:
             links = [
                 f'<a href="/projects/{gt_project_id}/datasets/{ds.id}" target="_blank">{ds.name}</a>'
                 for ds in datasets
             ]
-            images_str += (
-                f". Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
-            )
+            images_str += f", total {total_imgs_cnt} images. Evaluated on the dataset{'s' if len(links) > 1 else ''}: {', '.join(links)}"
         else:
-            images_str += f". Evaluated on the whole project ({val_imgs_cnt} images)"
+            images_str += f", total {total_imgs_cnt} images. Evaluated on the whole project ({val_imgs_cnt} images)"
 
         return classes_str, images_str, train_session
 
