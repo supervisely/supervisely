@@ -1,12 +1,11 @@
 import json
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from jinja2 import Template
 
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.image_api import ImageInfo
-from supervisely.app.widgets import GridGalleryV2
 from supervisely.io.fs import ensure_base_path
 from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 from supervisely.project.project_meta import ProjectMeta
@@ -19,23 +18,34 @@ class GalleryWidget(BaseWidget):
         filters: Optional[List] = None,
         is_modal: Optional[bool] = False,
         columns_number: int = 3,
+        click_gallery_id: Optional[str] = None,
+        opacity: Optional[float] = 0.4,
+        limit: Optional[int] = None,
     ):
         super().__init__(name)
         self.reference = self.id
         self.is_modal = is_modal
         self.click_handled = False
-        self.click_gallery_id = None
+        self.click_gallery_id = click_gallery_id
         self.click_data = None
-        self.click_gallery_items_limit = None
+        self.click_gallery_items_limit = limit or columns_number * 3
         self.image_left_header = False
         self._project_meta = None
         self.show_all_button = False
+        self.show_all_gallery_id = None
+        self.show_all_data = None
+        self.show_all_data_source = f"/data/{self.name}_{self.id}_show_all_data.json"
         self.columns_number = columns_number
+        self.get_key = None
+        self.opacity = opacity or 0.4
 
         filters = filters  # or [{"confidence": [0.6, 1]}]
+
+        from supervisely.app.widgets import GridGalleryV2
+
         self._gallery = GridGalleryV2(
             columns_number=columns_number,
-            annotations_opacity=0.4,
+            annotations_opacity=self.opacity,
             border_width=4,
             enable_zoom=False,
             default_tag_filters=filters,
@@ -94,6 +104,12 @@ class GalleryWidget(BaseWidget):
             with open(basepath + self.click_data_source, "w") as f:
                 json.dump(self.click_data, f)
 
+        # show all data
+        if self.show_all_data is not None:
+            ensure_base_path(basepath + self.show_all_data_source)
+            with open(basepath + self.show_all_data_source, "w") as f:
+                json.dump(self.show_all_data, f)
+
     def get_state(self) -> None:
         return {}
 
@@ -101,11 +117,19 @@ class GalleryWidget(BaseWidget):
         template_str = Path(__file__).parent / "template.html"
         return Template(template_str.read_text()).render(self._get_template_data())
 
-    def add_on_click(self, gallery_id, click_data, gallery_items_limit):
+    def set_click_data(
+        self, click_gallery_id: str, click_data: Any, get_key: Optional[str] = None
+    ) -> None:
         self.click_handled = True
-        self.click_gallery_id = gallery_id
         self.click_data = click_data
-        self.click_gallery_items_limit = gallery_items_limit
+        self.click_gallery_id = click_gallery_id
+        if get_key is not None:
+            self.get_key = get_key
+
+    def set_show_all_data(self, gallery_id: str, data: str) -> None:
+        self.show_all_button = True
+        self.show_all_gallery_id = gallery_id
+        self.show_all_data = data
 
     def add_image_left_header(self, html: str):
         self.image_left_header = html
@@ -118,8 +142,11 @@ class GalleryWidget(BaseWidget):
             "is_modal": str(self.is_modal).lower(),
             "click_handled": self.click_handled,
             "show_all_button": self.show_all_button,
+            "show_all_gallery_id": self.show_all_gallery_id,
+            "show_all_data_source": self.show_all_data_source,
             "click_data_source": self.click_data_source,
             "click_gallery_id": self.click_gallery_id,
             "click_gallery_items_limit": self.click_gallery_items_limit,
             "image_left_header": self.image_left_header,
+            "get_key": self.get_key,
         }
