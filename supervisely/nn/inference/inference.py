@@ -147,11 +147,24 @@ class Inference:
                 self._gui = GUI.ServingGUI()
                 self._user_layout = self.initialize_custom_gui()
             else:
-                self.initialize_gui()
+                initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+                original_initialize_custom_gui_method = getattr(
+                    Inference, "initialize_custom_gui", None
+                )
+                if (
+                    initialize_custom_gui_method.__func__
+                    is not original_initialize_custom_gui_method
+                ):
+                    self._gui = GUI.ServingGUI()
+                    self._user_layout = self.initialize_custom_gui()
+                else:
+                    self.initialize_gui()
 
-            def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+            def on_serve_callback(
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+            ):
                 Progress("Deploying model ...", 1)
-                if isinstance(self.gui, GUI.ServingGUI):
+                if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
                     deploy_params = self.get_params_from_gui()
                     self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
@@ -251,6 +264,10 @@ class Inference:
         )
 
     def _initialize_app_layout(self):
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            self._app_layout = self.gui.get_ui()
+            return  # @TODO: need to implement this correctly here?
+
         if hasattr(self, "_user_layout"):
             self._user_layout_card = Card(
                 title="Select Model",

@@ -1,6 +1,8 @@
 from functools import wraps
 from typing import Callable, Dict, List, Optional, Union
+
 import yaml
+
 import supervisely.app.widgets as Widgets
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -8,26 +10,7 @@ from supervisely.task.progress import Progress
 
 class ServingGUI:
     def __init__(self) -> None:
-        device_values = []
-        device_names = []
-        try:
-            import torch
-
-            if torch.cuda.is_available():
-                gpus = torch.cuda.device_count()
-                for i in range(gpus):
-                    device_values.append(f"cuda:{i}")
-                    device_names.append(f"{torch.cuda.get_device_name(i)} (cuda:{i})")
-        except:
-            pass
-        device_values.append("cpu")
-        device_names.append("CPU")
-
-        self._device_select = Widgets.SelectString(
-            values=device_values,
-            labels=device_names,
-            width_percent=30,
-        )
+        self._device_select = Widgets.SelectCudaDevice(include_cpu_option=True)
         self._device_field = Widgets.Field(self._device_select, title="Device")
         self._serve_button = Widgets.Button("SERVE")
         self._success_label = Widgets.DoneLabel()
@@ -102,6 +85,21 @@ class ServingGUI:
                 cb(self)
             self.change_model()
 
+    @property
+    def serve_button(self) -> Widgets.Button:
+        return self._serve_button
+
+    @property
+    def download_progress(self) -> Widgets.Progress:
+        return self._download_progress
+
+    @property
+    def device(self) -> str:
+        return self._device_select.get_device()
+
+    def get_device(self) -> str:
+        return self._device_select.get_device()
+
     def deploy_with_current_params(self):
         for cb in self.on_serve_callbacks:
             cb(self)
@@ -111,6 +109,7 @@ class ServingGUI:
         self._success_label.text = ""
         self._success_label.hide()
         self._serve_button.show()
+        self._device_select._select.enable()
         self._device_select.enable()
         self._change_model_button.hide()
         Progress("model deployment canceled", 1).iter_done_report()
@@ -120,23 +119,13 @@ class ServingGUI:
         self._model_full_info.hide()
         self._before_deploy_msg.show()
 
-    def get_device(self) -> str:
-        return self._device_select.get_value()
-
-    @property
-    def serve_button(self) -> Widgets.Button:
-        return self._serve_button
-
-    @property
-    def download_progress(self) -> Widgets.Progress:
-        return self._download_progress
-
     def set_deployed(self, device: str = None):
         if device is not None:
-            self._device_select.set_value(device)
-        self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_value().upper()} device"
+            self._device_select.set_device(device)
+        self._success_label.text = f"Model has been successfully loaded on {self._device_select.get_device().upper()} device"
         self._success_label.show()
         self._serve_button.hide()
+        self._device_select._select.disable()
         self._device_select.disable()
         self._change_model_button.show()
         Progress("Model deployed", 1).iter_done_report()
