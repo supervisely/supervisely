@@ -164,7 +164,7 @@ class Overview(BaseVisMetric):
         gt_dataset_ids = eval_result.gt_dataset_ids
         gt_images_cnt = eval_result.val_images_cnt
         train_info = eval_result.train_info
-        total_imgs_cnt = self.eval_result.gt_project_info.items_count
+        total_imgs_cnt = eval_result.gt_project_info.items_count
         if gt_images_cnt is not None:
             val_imgs_cnt = gt_images_cnt
         elif gt_dataset_ids is not None:

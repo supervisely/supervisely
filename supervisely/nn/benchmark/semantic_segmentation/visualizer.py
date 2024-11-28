@@ -212,11 +212,11 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         diff_map = {ds.id: ds for ds in self.eval_result.diff_dataset_infos}
         pred_map = {ds.id: ds for ds in self.eval_result.pred_dataset_infos}
 
-        def _get_full_name(ds_id: int, ds_id_map):
+        def _get_full_name(ds_id: int, ds_id_map: dict):
             ds_info = ds_id_map[ds_id]
             if ds_info.parent_id is None:
                 return ds_info.name
-            return f"{_get_full_name(ds_info.parent_id)}/{ds_info.name}"
+            return f"{_get_full_name(ds_info.parent_id, ds_id_map)}/{ds_info.name}"
 
         diff_dataset_name_map = {_get_full_name(i, diff_map): ds for i, ds in diff_map.items()}
         pred_dataset_name_map = {_get_full_name(i, pred_map): ds for i, ds in pred_map.items()}

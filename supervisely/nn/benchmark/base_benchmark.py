@@ -483,7 +483,7 @@ class BaseBenchmark:
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.evaluator.get_eval_result()
-        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)
+        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)  # pylint: disable=not-callable
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
             vis.visualize()
             p.update(1)

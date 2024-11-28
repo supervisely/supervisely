@@ -497,6 +497,9 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         diff_dataset_name_map = {_get_full_name(i): ds for i, ds in diff_dataset_id_map.items()}
 
+        meta_json = self.api.project.get_meta(self.eval_result.diff_project_info.id)
+        self.eval_result.diff_project_meta = ProjectMeta.from_json(meta_json)
+
         with self.pbar(
             message="Visualizations: Initializing match data", total=pred_project.total_items
         ) as p:
@@ -530,7 +533,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                         )
                         diff_anns_batch_dict = {
                             ann_info.image_id: Annotation.from_json(
-                                ann_info.annotation, self.diff_project_meta
+                                ann_info.annotation, self.eval_result.diff_project_meta
                             )
                             for ann_info in self.api.annotation.download_batch(
                                 diff_dataset_info.id,

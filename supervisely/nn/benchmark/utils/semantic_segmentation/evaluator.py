@@ -15,6 +15,7 @@ from supervisely.nn.benchmark.utils.semantic_segmentation.utils import (
     one_hot,
     single_one_hot,
 )
+from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 ERROR_CODES = {
@@ -67,6 +68,7 @@ class Evaluator:
 
         if torch.cuda.is_available():
             GPU = True
+            logger.info("Using GPU for evaluation.")
             try:
                 # gpu-compatible numpy analogue
                 import cupy as np  # pylint: disable=import-error
@@ -74,9 +76,7 @@ class Evaluator:
                 global numpy
                 import numpy as numpy
             except:
-                import warnings
-
-                warnings.warn(
+                logger.warning(
                     "Failed to import cupy. Use cupy official documentation to install this "
                     "module: https://docs.cupy.dev/en/stable/install.html"
                 )
@@ -191,10 +191,10 @@ class Evaluator:
                     self.confusion_matrix,
                     img_name,
                 )
-                pbar.update()
+                pbar.update(1)
         if GPU:
             for key, value in self.results.items():
-                self.results[key] = value.get()
+                self.results[key] = value.get()  # pylint: disable=no-member
             self.boundary_iou_intersection_counts = self.boundary_iou_intersection_counts.get()
             self.boundary_iou_union_counts = self.boundary_iou_union_counts.get()
 
@@ -746,25 +746,6 @@ class Evaluator:
             boundary_intersection_counts,
             boundary_union_counts,
         )
-
-    def visualize_single_sample(self, pred, gt, output_dir):
-        sample_results = self.evaluate_sample(pred, gt)["main_results"]
-        os.makedirs(output_dir, exist_ok=True)
-        active_classes = np.unique(np.concatenate([pred, gt]))
-        H, W = sample_results.shape[-2:]
-
-        for c in active_classes:
-            pred_c = (pred == c).astype(np.uint8) * 255
-            cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_pred.png"), pred_c)
-            gt_c = (gt == c).astype(np.uint8) * 255
-            cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_gt.png"), gt_c)
-            error_map = np.zeros((H, W, 3), dtype=np.uint8)
-            for error_type, error_color in ERROR_PALETTE.items():
-                error_map[sample_results[c] == error_type] = error_color
-            error_map = cv2.cvtColor(error_map, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(os.path.join(output_dir, f"{self.class_names[c]}_errors.png"), error_map)
-        print(f"Saved visualization to {output_dir}.")
-        return
 
     def calculate_error_metrics(self):
         dataframe = pd.DataFrame(index=self.class_names)
