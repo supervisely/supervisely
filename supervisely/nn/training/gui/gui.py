@@ -7,12 +7,14 @@ training workflows in Supervisely.
 
 import supervisely.io.env as sly_env
 from supervisely import Api
+from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
 from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
 from supervisely.nn.training.gui.input_selector import InputSelector
 from supervisely.nn.training.gui.model_selector import ModelSelector
 from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
+from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
 from supervisely.nn.utils import ModelSource
@@ -45,10 +47,16 @@ class TrainGUI:
     ):
         self._api = Api.from_env()
 
+        if is_production():
+            self.task_id = sly_env.task_id()
+        else:
+            self.task_id = "debug-session"
+
         self.framework_name = framework_name
         self.models = models
         self.hyperparameters = hyperparameters
         self.app_options = app_options
+        self.collapsable = app_options.get("collapsable", False)
 
         self.team_id = sly_env.team_id()
         self.workspace_id = sly_env.workspace_id()
@@ -74,6 +82,9 @@ class TrainGUI:
         # 6. Start Train
         self.training_process = TrainingProcess(self.app_options)
 
+        # 7. Training logs
+        self.training_logs = TrainingLogs(self.app_options)
+
         # Stepper layout
         self.stepper = Stepper(
             widgets=[
@@ -83,6 +94,7 @@ class TrainGUI:
                 self.model_selector.card,
                 self.hyperparameters_selector.card,
                 self.training_process.card,
+                self.training_logs.card,
             ],
         )
         # ------------------------------------------------- #
@@ -97,12 +109,23 @@ class TrainGUI:
             else:
                 self.hyperparameters_selector.editor.readonly = True
 
+        def set_experiment_name():
+            model_name = self.model_selector.get_model_name()
+            if model_name is None:
+                experiment_name = "Enter experiment name"
+            else:
+                experiment_name = f"{self.task_id}_{self.project_info.name}_{model_name}"
+
+            if experiment_name == self.training_process.get_experiment_name():
+                return
+            self.training_process.set_experiment_name(experiment_name)
+
         # ------------------------------------------------- #
 
         # Wrappers
         self.training_process_cb = wrap_button_click(
             button=self.hyperparameters_selector.button,
-            cards_to_unlock=[],
+            cards_to_unlock=[self.training_logs.card],
             widgets_to_disable=self.training_process.widgets_to_disable,
             callback=None,
             validation_text=self.training_process.validator_text,
@@ -116,8 +139,9 @@ class TrainGUI:
             callback=self.training_process_cb,
             validation_text=self.hyperparameters_selector.validator_text,
             validation_func=self.hyperparameters_selector.validate_step,
-            on_select_click=disable_hyperparams_editor,
-            on_reselect_click=disable_hyperparams_editor,
+            on_select_click=[disable_hyperparams_editor],
+            on_reselect_click=[disable_hyperparams_editor],
+            collapse_card=(self.hyperparameters_selector.card, self.collapsable),
         )
 
         self.model_selector_cb = wrap_button_click(
@@ -127,6 +151,8 @@ class TrainGUI:
             callback=self.hyperparameters_selector_cb,
             validation_text=self.model_selector.validator_text,
             validation_func=self.model_selector.validate_step,
+            on_select_click=[set_experiment_name],
+            collapse_card=(self.model_selector.card, self.collapsable),
         )
 
         self.classes_selector_cb = wrap_button_click(
@@ -136,6 +162,7 @@ class TrainGUI:
             callback=self.model_selector_cb,
             validation_text=self.classes_selector.validator_text,
             validation_func=self.classes_selector.validate_step,
+            collapse_card=(self.classes_selector.card, self.collapsable),
         )
 
         self.train_val_splits_selector_cb = wrap_button_click(
@@ -145,6 +172,7 @@ class TrainGUI:
             callback=self.classes_selector_cb,
             validation_text=self.train_val_splits_selector.validator_text,
             validation_func=self.train_val_splits_selector.validate_step,
+            collapse_card=(self.train_val_splits_selector.card, self.collapsable),
         )
 
         self.input_selector_cb = wrap_button_click(
@@ -154,7 +182,8 @@ class TrainGUI:
             callback=self.train_val_splits_selector_cb,
             validation_text=self.input_selector.validator_text,
             validation_func=self.input_selector.validate_step,
-            on_select_click=update_classes_table,
+            on_select_click=[update_classes_table],
+            collapse_card=(self.input_selector.card, self.collapsable),
         )
         # ------------------------------------------------- #
 
@@ -222,9 +251,9 @@ class TrainGUI:
         # Other Buttons
         if app_options.get("show_logs_in_gui", False):
 
-            @self.training_process.logs_button.click
+            @self.training_logs.logs_button.click
             def show_logs():
-                self.training_process.toggle_logs()
+                self.training_logs.toggle_logs()
 
         # Other handlers
         @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed

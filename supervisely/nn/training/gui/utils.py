@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button, Card, Stepper, Text, Widget
@@ -48,6 +48,14 @@ def unlock_lock(cards: List[Card], unlock: bool = True, message: str = None):
             # w.collapse()
 
 
+def collapse_uncollapse(cards: List[Card], collapse: bool = True):
+    for w in cards:
+        if collapse:
+            w.collapse()
+        else:
+            w.uncollapse()
+
+
 def wrap_button_click(
     button: Button,
     cards_to_unlock: List[Card],
@@ -59,6 +67,7 @@ def wrap_button_click(
     validation_func: Optional[Callable] = None,
     on_select_click: Optional[Callable] = None,
     on_reselect_click: Optional[Callable] = None,
+    collapse_card: Tuple[Card, bool] = None,
 ) -> Callable[[Optional[bool]], None]:
     global button_clicked
 
@@ -82,11 +91,13 @@ def wrap_button_click(
         if button_clicked[bid] and upd_params:
             update_custom_button_params(button, reselect_params)
             if on_select_click is not None:
-                on_select_click()
+                for func in on_select_click:
+                    func()
         else:
             update_custom_button_params(button, select_params)
             if on_reselect_click is not None:
-                on_reselect_click()
+                for func in on_reselect_click:
+                    func()
             validation_text.hide()
 
         unlock_lock(
@@ -100,6 +111,11 @@ def wrap_button_click(
         )
         if callback is not None and not button_clicked[bid]:
             callback(False)
+
+        if collapse_card is not None:
+            card, collapse = collapse_card
+            if collapse:
+                collapse_uncollapse([card], collapse)
 
     return button_click
 

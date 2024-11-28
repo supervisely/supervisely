@@ -12,7 +12,9 @@ from supervisely.project.download import is_cached
 
 
 class InputSelector:
-    title = "Input Selector"
+    title = "Input project"
+    description = "Selected project from which images and annotations will be downloaded"
+    lock_message = None
 
     def __init__(self, project_info: ProjectInfo, app_options: dict = {}):
         self.project_id = project_info.id
@@ -38,29 +40,31 @@ class InputSelector:
                 self.button,
             ]
         )
+
         self.card = Card(
-            title="Input project",
-            description="Selected project from which images and annotations will be downloaded",
+            title=self.title,
+            description=self.description,
             content=container,
+            collapsable=app_options.get("collapsable", False),
         )
 
     @property
-    def widgets_to_disable(self):
+    def widgets_to_disable(self) -> list:
         return [
             self.use_cache_checkbox,
         ]
 
-    def get_project_id(self):
+    def get_project_id(self) -> int:
         return self.project_id
 
-    def set_cache(self, value: bool):
+    def set_cache(self, value: bool) -> None:
         if value:
             self.use_cache_checkbox.check()
         else:
             self.use_cache_checkbox.uncheck()
 
-    def get_cache_value(self):
+    def get_cache_value(self) -> bool:
         return self.use_cache_checkbox.is_checked()
 
-    def validate_step(self):
+    def validate_step(self) -> bool:
         return True

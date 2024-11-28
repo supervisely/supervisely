@@ -1,18 +1,13 @@
-from typing import List, Union
+from typing import List
 
 from supervisely import Api, Project
-from supervisely.app.widgets import (
-    Button,
-    Card,
-    Container,
-    NotificationBox,
-    Text,
-    TrainValSplits,
-)
+from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
 
 
 class TrainValSplitsSelector:
-    title = "Train/Val Splits Selector"
+    title = "Train / Val Splits"
+    description = "Select train and val splits for training"
+    lock_message = "Select input options to unlock"
 
     def __init__(self, api: Api, project_id: int, app_options: dict = {}):
         self.api = api
@@ -44,18 +39,19 @@ class TrainValSplitsSelector:
             ]
         )
         self.card = Card(
-            title="Train / Val Splits",
-            description="Select train and val splits for training",
+            title=self.title,
+            description=self.description,
             content=container,
-            lock_message="Select input options to unlock",
+            lock_message=self.lock_message,
+            collapsable=app_options.get("collapsable", False),
         )
         self.card.lock()
 
     @property
-    def widgets_to_disable(self):
+    def widgets_to_disable(self) -> list:
         return [self.train_val_splits]
 
-    def validate_step(self):
+    def validate_step(self) -> bool:
         split_method = self.train_val_splits.get_split_method()
         warning_text = "Using the same data for training and validation leads to overfitting, poor generalization and biased model selection."
         ensure_text = "Ensure this is intentional."
@@ -136,9 +132,7 @@ class TrainValSplitsSelector:
                     status="warning",
                 )
             else:
-                self.validator_text.set(
-                    "Train and val tags are selected", status="success"
-                )
+                self.validator_text.set("Train and val tags are selected", status="success")
 
         elif split_method == "Based on datasets":
             train_dataset_id = self.get_train_dataset_ids()
@@ -175,26 +169,24 @@ class TrainValSplitsSelector:
                     status="warning",
                 )
             else:
-                self.validator_text.set(
-                    "Train and val datasets are selected", status="success"
-                )
+                self.validator_text.set("Train and val datasets are selected", status="success")
         self.validator_text.show()
         return True
 
-    def set_sly_project(self, project: Project):
+    def set_sly_project(self, project: Project) -> None:
         self.train_val_splits._project_fs = project
 
-    def get_split_method(self):
+    def get_split_method(self) -> str:
         return self.train_val_splits.get_split_method()
 
-    def get_train_dataset_ids(self):
+    def get_train_dataset_ids(self) -> List[int]:
         return self.train_val_splits._train_ds_select.get_selected_ids()
 
-    def set_train_dataset_ids(self, dataset_ids: List[int]):
+    def set_train_dataset_ids(self, dataset_ids: List[int]) -> None:
         self.train_val_splits._train_ds_select.set_selected_ids(dataset_ids)
 
-    def get_val_dataset_ids(self):
+    def get_val_dataset_ids(self) -> List[int]:
         return self.train_val_splits._val_ds_select.get_selected_ids()
 
-    def set_val_dataset_ids(self, dataset_ids: List[int]):
+    def set_val_dataset_ids(self, dataset_ids: List[int]) -> None:
         self.train_val_splits._val_ds_select.set_selected_ids(dataset_ids)

@@ -12,7 +12,9 @@ from supervisely.app.widgets import (
 
 
 class HyperparametersSelector:
-    title = "Hyperparameters Selector"
+    title = "Hyperparameters"
+    description = "Set hyperparameters for training"
+    lock_message = "Select model to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
         self.app_options = app_options
@@ -61,22 +63,23 @@ class HyperparametersSelector:
             ]
         )
         self.card = Card(
-            title="Hyperparameters",
-            description="Set hyperparameters for training",
+            title=self.title,
+            description=self.description,
             content=container,
-            lock_message="Select model to unlock",
+            lock_message=self.lock_message,
+            collapsable=app_options.get("collapsable", False),
         )
         self.card.lock()
 
     @property
-    def widgets_to_disable(self):
+    def widgets_to_disable(self) -> list:
         return [
             self.editor,
             self.run_model_benchmark_checkbox,
             self.run_speedtest_checkbox,
         ]
 
-    def set_hyperparameters(self, hyperparameters: Union[str, dict]):
+    def set_hyperparameters(self, hyperparameters: Union[str, dict]) -> None:
         self.editor.set_text(hyperparameters)
 
     def get_hyperparameters(self) -> dict:
@@ -104,11 +107,11 @@ class HyperparametersSelector:
         else:
             self.run_speedtest_checkbox.uncheck()
 
-    def toggle_mb_speedtest(self, is_checked: bool):
+    def toggle_mb_speedtest(self, is_checked: bool) -> None:
         if is_checked:
             self.run_speedtest_checkbox.show()
         else:
             self.run_speedtest_checkbox.hide()
 
-    def validate_step(self):
+    def validate_step(self) -> bool:
         return True

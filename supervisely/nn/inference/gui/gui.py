@@ -521,7 +521,16 @@ class InferenceGUI(BaseInferenceGUI):
 
 
 class ServingGUI:
-    def __init__(self) -> None:
+    def __init__(self, app_options: dict) -> None:
+
+        # 1. ServingAutoGUI(ServingGUI)
+        # 2. Show pretrained: True
+        # 3. Show custom : True
+        # 4. Show runtime selector: False
+
+        # 5. download model_files (add to inference) => load_model wont download model files
+        # 6. model meta for pretrained models? set_model_meta_from_classes()
+
         device_values = []
         device_names = []
         try:
