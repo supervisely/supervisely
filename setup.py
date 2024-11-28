@@ -264,7 +264,7 @@ setup(
         "tracking": [
             "yacs",
             "matplotlib>=3.3.2, <4.0.0",
-            "scipy>=1.5.2, <2.0.0",
+            "scipy>=1.8.0, <2.0.0",
             "lap",
             "cython_bbox",
             "termcolor",
