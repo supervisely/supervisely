@@ -521,9 +521,9 @@ class InferenceGUI(BaseInferenceGUI):
 
 
 class ServingGUI:
-    def __init__(self, app_options: dict) -> None:
+    def __init__(self) -> None:
 
-        # 1. ServingAutoGUI(ServingGUI)
+        # 1. ServingAutoGUI(ServingGUI) __init__(self, app_options: dict)
         # 2. Show pretrained: True
         # 3. Show custom : True
         # 4. Show runtime selector: False
