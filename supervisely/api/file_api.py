@@ -1094,7 +1094,7 @@ class FileApi(ModuleApiBase):
                 "If you gettting error, try to reduce batch size."
             )
             batch_size = 20000
-        if batch_size < 100:
+        elif batch_size < 100:
             logger.warning("Batch size is too small. Minimum is 100. Set to 100. ")
             batch_size = 100
 
