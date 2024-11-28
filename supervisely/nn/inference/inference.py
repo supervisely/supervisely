@@ -75,6 +75,12 @@ except ImportError:
 
 class Inference:
     DEFAULT_BATCH_SIZE = 16
+    FRAMEWORK_NAME: str = None
+    """Name of framework to register models in Supervisely"""
+    MODELS: str = None
+    """Path to file with list of models"""
+    APP_OPTIONS: str = None
+    """Path to file with app options"""
 
     def __init__(
         self,
@@ -85,6 +91,7 @@ class Inference:
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
         multithread_inference: Optional[bool] = True,
+        use_serving_gui_template: Optional[bool] = False,
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
@@ -117,6 +124,7 @@ class Inference:
         self._custom_inference_settings = custom_inference_settings
 
         self._use_gui = use_gui
+        self._use_serving_gui_template = use_serving_gui_template
         self._gui = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
@@ -124,7 +132,12 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        if use_gui:
+        if self._use_gui:
+            if self._use_serving_gui_template:
+                if self.FRAMEWORK_NAME is None:
+                    raise ValueError("FRAMEWORK_NAME is not defined")
+                self._gui = ServingGUITemplate(self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS)
+
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
             original_initialize_custom_gui_method = getattr(
                 Inference, "initialize_custom_gui", None
