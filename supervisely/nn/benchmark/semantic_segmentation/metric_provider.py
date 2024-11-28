@@ -15,21 +15,6 @@ METRIC_NAMES = {
 
 class MetricProvider:
     def __init__(self, eval_data: Dict[str, Any]):
-        """
-        Main class for calculating prediction metrics.
-
-        :param matches: dictionary with matches between ground truth and predicted objects
-        :type matches: list
-        :param coco_metrics: dictionary with COCO metrics
-        :type coco_metrics: dict
-        :param params: dictionary with evaluation parameters
-        :type params: dict
-        :param cocoGt: COCO object with ground truth annotations
-        :type cocoGt: COCO
-        :param cocoDt: COCO object with predicted annotations
-        :type cocoDt: COCO
-        """
-
         # self.params = params
         self.metric_names = METRIC_NAMES
 
@@ -139,9 +124,6 @@ class MetricProvider:
             "mBoundaryIoU": self.boundary_iou,
             "mPixel accuracy": self.pixel_accuracy,
         }
-
-    def error_metrics(self):
-        pass
 
     def get_classwise_error_data(self):
         self.eval_data.drop(["mean"], inplace=True)
