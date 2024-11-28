@@ -97,7 +97,7 @@ class OutcomeCounts(BaseVisMetric):
         tp_counts = [eval_result.mp.TP_count for eval_result in self.eval_results][::-1]
         fn_counts = [eval_result.mp.FN_count for eval_result in self.eval_results][::-1]
         fp_counts = [eval_result.mp.FP_count for eval_result in self.eval_results][::-1]
-        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1]
+        model_names = [f"[{i}] {e.model_name}" for i, e in enumerate(self.eval_results, 1)][::-1]
         counts = [tp_counts, fn_counts, fp_counts]
         names = ["TP", "FN", "FP"]
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
@@ -123,7 +123,7 @@ class OutcomeCounts(BaseVisMetric):
         fig = go.Figure()
 
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
-        model_names = [f"Model {idx}" for idx in range(1, len(self.eval_results) + 1)][::-1]
+        model_names = [f"[{i}] {e.model_name}" for i, e in enumerate(self.eval_results, 1)][::-1]
         model_names.append("Common")
 
         diff_tps, common_tps = self.common_and_diff_tp
@@ -263,7 +263,7 @@ class OutcomeCounts(BaseVisMetric):
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
         for i, eval_result in enumerate(self.eval_results, 1):
-            model_name = f"Model {i}"
+            model_name = f"[{i}] {eval_result.model_name}"
             for outcome, matches_data in eval_result.click_data.outcome_counts.items():
                 key = f"{model_name}_{outcome}"
                 outcome_dict = res["clickData"].setdefault(key, {})
@@ -327,7 +327,7 @@ class OutcomeCounts(BaseVisMetric):
             _update_outcome_dict("Common", outcome, outcome_dict, common_ids)
 
             for i, diff_ids in enumerate(diff_ids, 1):
-                name = f"Model {i}"
+                name = f"[{i}] {self.eval_results[i - 1].model_name}"
                 key = f"{name}_{outcome}"
                 outcome_dict = res["clickData"].setdefault(key, {})
 

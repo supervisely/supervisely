@@ -1,0 +1,2 @@
+# Intersection over Union threshold that will be used for objects mathcing
+iou_threshold: 0.5
