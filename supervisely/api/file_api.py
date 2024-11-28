@@ -1094,6 +1094,9 @@ class FileApi(ModuleApiBase):
                 "If you gettting error, try to reduce batch size."
             )
             batch_size = 20000
+        if batch_size < 100:
+            logger.warning("Batch size is too small. Minimum is 100. Set to 100. ")
+            batch_size = 100
 
         initial_batch_size = batch_size
 
@@ -1102,16 +1105,18 @@ class FileApi(ModuleApiBase):
             paths_batch = paths[start_index : start_index + batch_size]
             while True:
                 try:
+                    filtered_paths_batch = []
                     for path in paths_batch:
                         if self.is_on_agent(path) is True:
                             logger.warning(
                                 f"Data '{path}' is on agent. File skipped. Method does not support agent storage. Remove your data manually on the computer with agent."
                             )
-                            paths_batch.remove(path)
+                        else:
+                            filtered_paths_batch.append(path)
 
                     self._api.post(
                         "file-storage.bulk.remove",
-                        {ApiField.TEAM_ID: team_id, ApiField.PATHS: paths_batch},
+                        {ApiField.TEAM_ID: team_id, ApiField.PATHS: filtered_paths_batch},
                         raise_error=True,
                     )
                     if progress_cb is not None:
