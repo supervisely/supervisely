@@ -1065,7 +1065,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param paths: List of paths to Files in Team Files.
         :type paths: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking progress.
         :type progress_cb: tqdm or callable, optional
         :param batch_size: Number of files to remove in one request. Default is 1000. Maximum is 20000.
         :type batch_size: int
@@ -1086,7 +1086,7 @@ class FileApi(ModuleApiBase):
                 "/999_App_Test/ds1/01588.json",
                 "/999_App_Test/ds1/01587.json"
             ]
-            api.file.remove(8, paths_to_del)
+            api.file.remove_batch(8, paths_to_del)
         """
         if batch_size > 20000:
             logger.warning(
