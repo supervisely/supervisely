@@ -876,10 +876,9 @@ class Rectangle(Geometry):
         data = deepcopy(data)  # Avoid modifying the original data
         height, width = image_size[:2]
 
-        top = data[POINTS][EXTERIOR][0][1]
-        left = data[POINTS][EXTERIOR][0][0]
-        bottom = data[POINTS][EXTERIOR][1][1]
-        right = data[POINTS][EXTERIOR][1][0]
+        exterior = data[POINTS][EXTERIOR]
+        [top, bottom] = sorted([exterior[0][1], exterior[1][1]])
+        [left, right] = sorted([exterior[0][0], exterior[1][0]])
 
         top, left, bottom, right = cls._round_subpixel_coordinates(top, left, bottom, right)
         right = max(left, right - 1)
@@ -904,10 +903,10 @@ class Rectangle(Geometry):
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
-        top = data[POINTS][EXTERIOR][0][1]
-        left = data[POINTS][EXTERIOR][0][0]
-        bottom = data[POINTS][EXTERIOR][1][1]
-        right = data[POINTS][EXTERIOR][1][0]
+
+        exterior = data[POINTS][EXTERIOR]
+        [top, bottom] = sorted([exterior[0][1], exterior[1][1]])
+        [left, right] = sorted([exterior[0][0], exterior[1][0]])
 
         right = max(left, right + 1)
         bottom = max(top, bottom + 1)
