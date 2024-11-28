@@ -225,7 +225,14 @@ def download_async_or_sync(
     semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ):
-    project_info = api.project.get_info_by_id(project_id)
+    """ 
+        Download project asynchronously if possible, otherwise download synchronously. 
+        Automatically detects project type.
+        You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+    """
+    project_info = kwargs.pop('project_info', None)
+    if not isinstance(project_info, ProjectInfo) or project_info.id != project_id:
+        project_info = api.project.get_info_by_id(project_id)
 
     if progress_cb is not None:
         log_progress = False

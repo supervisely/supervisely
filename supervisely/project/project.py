@@ -3422,6 +3422,7 @@ class Project:
         save_image_meta: bool = False,
         images_ids: Optional[List[int]] = None,
         resume_download: Optional[bool] = False,
+        **kwargs,
     ) -> None:
         """
         Download project from Supervisely to the given directory in asynchronous mode.
@@ -3476,6 +3477,10 @@ class Project:
                 else:
                     loop.run_until_complete(coroutine)
         """
+        if kwargs.pop("cache", None) is not None:
+            logger.warning("Cache is not supported in async mode and will be ignored. "
+                           "Use resume_download parameter instead to optimize download process.")
+
         await _download_project_async(
             api=api,
             project_id=project_id,
