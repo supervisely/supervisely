@@ -288,7 +288,7 @@ class Inference:
         )
         self._api_request_model_layout.hide()
         self._app_layout = Container(
-            [self._user_layout_card, self._api_request_model_layout, self.get_ui()]
+            [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
         )
 
     def support_custom_models(self) -> bool:

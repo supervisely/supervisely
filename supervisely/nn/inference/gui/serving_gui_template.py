@@ -1,9 +1,10 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
-import yaml
 from supervisely import Api
 from supervisely.app.widgets import (
     Card,
@@ -26,39 +27,43 @@ from supervisely.nn.utils import ModelSource, RuntimeType
 
 class ServingGUITemplate(ServingGUI):
     def __init__(
-        self, framework_name: str, models: str = None, app_options: str = None
+        self,
+        framework_name: str,
+        models: Optional[str] = None,
+        app_options: Optional[str] = None,
     ):
+        if not isinstance(framework_name, str):
+            raise ValueError("'framework_name' must be a string")
+        super().__init__()
+
         self.api = Api.from_env()
         self.team_id = sly_env.team_id()
 
         self.framework_name = framework_name
-
-        if models is not None:
-            self.models = self._load_models(models)
-        else:
-
-            self.models = []
-        if app_options is not None:
-            self.app_options = self._load_app_options(app_options)
-        else:
-            self.app_options = {}
+        self.models = self._load_models(models) if models else []
+        self.app_options = self._load_app_options(app_options) if app_options else {}
 
         self._template_widgets = None
         self._initialize_layout()
-        super().__init__()
 
     def _initialize_layout(self) -> Widget:
         # Pretrained models
-        if self.app_options.get("pretrained_models", True) and self.models is not None:
+        use_pretrained_models = self.app_options.get("pretrained_models", True)
+        use_custom_models = self.app_options.get("custom_models", True)
+
+        if not use_pretrained_models and not use_custom_models:
+            raise ValueError(
+                "At least one of 'pretrained_models' or 'custom_models' must be enabled."
+            )
+
+        if use_pretrained_models and self.models is not None:
             self.pretrained_models_table = PretrainedModelsSelector(self.models)
         else:
             self.pretrained_models_table = None
 
         # Custom models
-        if self.app_options.get("custom_models", True):
-            experiments = get_experiment_infos(
-                self.api, self.team_id, self.framework_name
-            )
+        if use_custom_models:
+            experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
             self.experiment_selector = ExperimentSelector(self.team_id, experiments)
         else:
             self.experiment_selector = None
@@ -81,23 +86,33 @@ class ServingGUITemplate(ServingGUI):
                     self.experiment_selector,
                 )
             )
-        titles, descriptions, content = zip(*tabs)
-        self.model_source_tabs = RadioTabs(
-            titles=titles,
-            descriptions=descriptions,
-            contents=content,
-        )
+        if tabs:
+            titles, descriptions, content = zip(*tabs)
+            self.model_source_tabs = RadioTabs(
+                titles=titles,
+                descriptions=descriptions,
+                contents=content,
+            )
+        else:
+            self.model_source_tabs = None
 
         # Runtime
-        # @TODO: check runtimes lowercase and set like RuntimeType
-        supported_runtimes = self.app_options.get(
-            "supported_runtimes", [RuntimeType.PYTORCH]
-        )
-        if supported_runtimes != [RuntimeType.PYTORCH] and supported_runtimes != []:
+        default_runtime = RuntimeType.PYTORCH
+        available_runtimes = {
+            value.lower(): value
+            for name, value in vars(RuntimeType).items()
+            if not name.startswith("__")  # exclude private attributes
+        }
+        supported_runtimes_input = self.app_options.get("supported_runtimes", [default_runtime])
+        supported_runtimes = [
+            available_runtimes[runtime.lower()]
+            for runtime in supported_runtimes_input
+            if runtime.lower() in available_runtimes
+        ]
+
+        if len(supported_runtimes) > 1:
             self.runtime_select = SelectString(supported_runtimes)
-            runtime_field = Field(
-                self.runtime_select, "Runtime", "Select a runtime for inference."
-            )
+            runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
         else:
             self.runtime_select = None
             runtime_field = None
@@ -110,7 +125,8 @@ class ServingGUITemplate(ServingGUI):
         card = Card(
             title="Select Model",
             description="Select the model to deploy and press the 'Serve' button.",
-            content=Container(widgets=card_widgets),
+            content=Container(widgets=card_widgets, gap=10),
+            overflow="unset",
         )
 
         self._template_widgets = [card]
@@ -121,11 +137,8 @@ class ServingGUITemplate(ServingGUI):
         return self.model_source_tabs.get_active_tab()
 
     @property
-    def model_info(self) -> str:
-        if self.model_source == ModelSource.PRETRAINED:
-            return self.pretrained_models_table.get_selected_row()
-        elif self.model_source == ModelSource.CUSTOM:
-            return self.experiment_selector.get_selected_experiment_info()
+    def model_info(self) -> Dict[str, Any]:
+        return self._get_selected_row()
 
     @property
     def model_name(self) -> str:
@@ -139,34 +152,30 @@ class ServingGUITemplate(ServingGUI):
         return model_name
 
     @property
+    def model_name(self) -> Optional[str]:
+        if self.model_source == ModelSource.PRETRAINED:
+            model_meta = self.model_info.get("meta", {})
+            return model_meta.get("model_name")
+        else:
+            return self.model_info.get("model_name")
+
+    @property
     def model_files(self) -> List[str]:
         if self.model_source == ModelSource.PRETRAINED:
-            selected_row = self.pretrained_models_table.get_selected_row()
-            model_meta = selected_row.get("meta", {})
-            model_files = model_meta.get("model_files", [])
+            model_meta = self.model_info.get("meta", {})
+            return model_meta.get("model_files", [])
         else:
-            selected_row = self.experiment_selector.get_selected_experiment_info()
-            model_files = selected_row.get("model_files", [])
-        return model_files
+            return self.model_info.get("model_files", [])
 
     @property
     def runtime(self) -> str:
         if self.runtime_select is not None:
             return self.runtime_select.get_value()
-        else:
-            return RuntimeType.PYTORCH
+        return RuntimeType.PYTORCH
 
     def get_ui(self) -> Widget:
-        self._template_widgets.extend(
-            [
-                self._device_field,
-                self._download_progress,
-                self._success_label,
-                self._serve_button,
-                self._change_model_button,
-            ]
-        )
-        return Container(widgets=self._template_widgets, gap=3)
+        self._template_widgets.extend([self.serve_model_card])
+        return Container(widgets=self._template_widgets, gap=10)
 
     def get_params_from_gui(self) -> Dict[str, Any]:
         return {
@@ -229,3 +238,10 @@ class ServingGUITemplate(ServingGUI):
         if not isinstance(app_options, dict):
             raise ValueError("app_options must be a dict")
         return app_options
+
+    def _get_selected_row(self) -> Dict[str, Any]:
+        if self.model_source == ModelSource.PRETRAINED and self.pretrained_models_table:
+            return self.pretrained_models_table.get_selected_row()
+        elif self.model_source == ModelSource.CUSTOM and self.experiment_selector:
+            return self.experiment_selector.get_selected_experiment_info()
+        return {}

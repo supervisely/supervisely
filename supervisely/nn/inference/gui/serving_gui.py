@@ -22,6 +22,21 @@ class ServingGUI:
         )
         self._change_model_button.hide()
 
+        self.serve_container = Widgets.Container(
+            [
+                self._device_field,
+                self._download_progress,
+                self._success_label,
+                self._serve_button,
+                self._change_model_button,
+            ],
+        )
+        self.serve_model_card = Widgets.Card(
+            title="Serve Model",
+            description="Download and deploy the model on the selected device.",
+            content=self.serve_container,
+        )
+
         self._model_inference_settings_widget = Widgets.Editor(
             readonly=True, restore_default_button=False
         )
@@ -179,16 +194,7 @@ class ServingGUI:
         return classes
 
     def get_ui(self) -> Widgets.Widget:
-        return Widgets.Container(
-            [
-                self._device_field,
-                self._download_progress,
-                self._success_label,
-                self._serve_button,
-                self._change_model_button,
-            ],
-            gap=3,
-        )
+        return Widgets.Container([self.serve_model_card])
 
     def add_content_to_default_ui(
         self, widgets: Union[Widgets.Widget, List[Widgets.Widget]]
