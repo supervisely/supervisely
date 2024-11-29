@@ -1515,3 +1515,125 @@ class AnnotationApi(ModuleApi):
             tasks.append(task)
         ann_infos = await asyncio.gather(*tasks)
         return ann_infos
+
+    async def download_bulk_async(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> List[AnnotationInfo]:
+        """
+        Get list of AnnotationInfos for given dataset ID from API.
+        This method is optimized for downloading a large number of small size annotations with a single API call.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of integers.
+        :type image_ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Force metadata for links.
+        :type force_metadata_for_links: bool, optional
+
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[AnnotationInfo]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            p = tqdm(desc="Annotations downloaded: ", total=len(image_ids))
+
+            ann_infos = api.annotation.download_batch(dataset_id, image_ids, progress_cb=p)
+            # Output:
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
+
+            Optimizing the download process by using the context to avoid redundant API calls.:
+            # 1. Download the project meta
+            project_id = api.dataset.get_info_by_id(dataset_id).project_id
+            project_meta = api.project.get_meta(project_id)
+
+            # 2. Use the context to avoid redundant API calls
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
+                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+        """
+        # use context to avoid redundant API calls
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_meta = context.get("project_meta")
+        project_id = context.get("project_id")
+        if dataset_id != context_dataset_id:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
+
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
+
+        need_download_alpha_masks = False
+        for obj_cls in project_meta.obj_classes:
+            if obj_cls.geometry_type == AlphaMask:
+                need_download_alpha_masks = True
+                break
+
+        id_to_ann = {}
+        for batch in batched(image_ids):
+            post_data = {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.IMAGE_IDS: batch,
+                ApiField.WITH_CUSTOM_DATA: with_custom_data,
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.INTEGER_COORDS: False,
+            }
+            results = self._api.post("annotations.bulk.info", data=post_data).json()
+            if need_download_alpha_masks is True:
+                additonal_geometries = defaultdict(tuple)
+                for ann_idx, ann_dict in enumerate(results):
+                    # check if there are any AlphaMask geometries in the batch
+                    for label_idx, label in enumerate(
+                        ann_dict[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+                    ):
+                        if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                            figure_id = label[LabelJsonFields.ID]
+                            additonal_geometries[figure_id] = (ann_idx, label_idx)
+
+                # if there are any AlphaMask geometries, download them separately and update the annotation
+                if len(additonal_geometries) > 0:
+                    figure_ids = list(additonal_geometries.keys())
+                    figures = self._api.image.figure.download_geometries_batch(figure_ids)
+                    for figure_id, geometry in zip(figure_ids, figures):
+                        ann_idx, label_idx = additonal_geometries[figure_id]
+                        results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][
+                            label_idx
+                        ].update({BITMAP: geometry})
+
+            for ann_dict in results:
+                # Convert annotation to pixel coordinate system
+                ann_dict[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+                    ann_dict[ApiField.ANNOTATION]
+                )
+                ann_info = self._convert_json_info(ann_dict)
+                id_to_ann[ann_info.image_id] = ann_info
+
+            if progress_cb is not None:
+                progress_cb(len(batch))
+        ordered_results = [id_to_ann[image_id] for image_id in image_ids]
+        return ordered_results

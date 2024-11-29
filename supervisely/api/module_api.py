@@ -1,7 +1,7 @@
 # coding: utf-8
 from collections import namedtuple
 from copy import deepcopy
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
 import requests
 
@@ -866,6 +866,26 @@ class ModuleApiBase(_JsonConvertibleModule):
         """_get_info_by_id"""
         response = self._get_response_by_id(id, method, id_field=ApiField.ID, fields=fields)
         return self._convert_json_info(response.json()) if (response is not None) else None
+
+    async def get_list_idx_page_async(
+        self,
+        method: str,
+        data: dict,
+    ) -> List[Any]:
+        """
+        Get the list of items for a given page number.
+
+        :param method: Method to call for listing items.
+        :type method: str
+        :param data: Data to pass to the API method.
+        :type data: dict
+        :return: List of items.
+        :rtype: List[Any]
+        """
+
+        response = await self._api.post_async(method, data)
+        results = response.json().get("entities", [])
+        return [self._convert_json_info(item) for item in results]
 
 
 class ModuleApi(ModuleApiBase):

@@ -3478,8 +3478,10 @@ class Project:
                     loop.run_until_complete(coroutine)
         """
         if kwargs.pop("cache", None) is not None:
-            logger.warning("Cache is not supported in async mode and will be ignored. "
-                           "Use resume_download parameter instead to optimize download process.")
+            logger.warning(
+                "Cache is not supported in async mode and will be ignored. "
+                "Use resume_download parameter instead to optimize download process."
+            )
 
         await _download_project_async(
             api=api,
@@ -4394,13 +4396,15 @@ async def _download_project_async(
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: Optional[bool] = True,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
 ):
     if semaphore is None:
         semaphore = api.get_default_semaphore()
+
+    queue = asyncio.Queue(maxsize=50)
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4441,10 +4445,35 @@ async def _download_project_async(
         force_metadata_for_links = False
         if save_images is False and only_image_tags is True:
             force_metadata_for_links = True
-        all_images = api.image.get_list(
+        all_images = api.image.get_list_async(
             dataset_id, force_metadata_for_links=force_metadata_for_links
         )
         images = [image for image in all_images if images_ids is None or image.id in images_ids]
+
+        # async def listing_task(
+        #     queue: asyncio.Queue,
+        #     api: Api,
+        #     dataset_id: int,
+        #     force_metadata_for_links: bool = True,
+        #     images_ids: Optional[List[int]] = None,
+        # ):
+        #     while True:
+        #         all_images = await api.image.get_list_async(
+        #             dataset_id, force_metadata_for_links=force_metadata_for_links
+        #         )
+        #         images = [
+        #             image for image in all_images if images_ids is None or image.id in images_ids
+        #         ]
+
+        #         for image in images:
+        #             await queue.put(image)
+
+        #         if not all_images:
+        #             break
+
+        # listing = asyncio.create_task(
+        #     listing_task(queue, api, dataset_id, force_metadata_for_links, images_ids)
+        # )
 
         ds_progress = progress_cb
         if log_progress is True:
@@ -4560,6 +4589,146 @@ async def _download_project_item_async(
     )
     if progress_cb is not None:
         progress_cb(1)
+
+
+async def download_project_items_batch_async(
+    api: sly.Api,
+    img_infos: List[sly.ImageInfo],
+    meta: ProjectMeta,
+    dataset_fs: Dataset,
+    id_to_tagmeta: Dict[int, sly.TagMeta],
+    semaphore: asyncio.Semaphore,
+    save_images: bool,
+    save_image_info: bool,
+    only_image_tags: bool,
+    progress_cb: Optional[Callable],
+):
+    if save_images:
+        img_ids = [img_info.id for img_info in img_infos]
+        imgs_bytes = await api.image.download_bytes_batch_async(
+            dataset_fs.dataset_id, img_ids, semaphore=semaphore, check_hash=True
+        )
+        for img_bytes, img_info in zip(imgs_bytes, img_infos):
+            if None in [img_info.height, img_info.width]:
+                width, height = sly.image.get_size_from_bytes(img_bytes)
+                img_info = img_info._replace(height=height, width=width)
+    else:
+        img_bytes = [None] * len(img_infos)
+
+    if only_image_tags is False:
+        ann_infos = await api.annotation.download_async(
+            img_info.id,
+            semaphore=semaphore,
+            force_metadata_for_links=not save_images,
+        )
+        ann_jsons = [ann_info.annotation for ann_info in ann_infos]
+        tmp_ann = Annotation.from_json(ann_json, meta)
+        if None in tmp_ann.img_size:
+            tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+            ann_json = tmp_ann.to_json()
+    else:
+        tags = TagCollection.from_api_response(
+            img_info.tags,
+            meta.tag_metas,
+            id_to_tagmeta,
+        )
+        tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
+        ann_json = tmp_ann.to_json()
+
+    if dataset_fs.item_exists(img_info.name):
+        dataset_fs.delete_item(img_info.name)
+    await dataset_fs.add_item_raw_bytes_async(
+        item_name=img_info.name,
+        item_raw_bytes=img_bytes,
+        ann=ann_json,
+        img_info=img_info if save_image_info is True else None,
+    )
+    if progress_cb is not None:
+        progress_cb(1)
+
+
+async def _download_dataset_items(
+    api: Api,
+    images: List[ImageInfo],
+    dataset_fs: Dataset,
+    ds_progress: Optional[Union[tqdm, Callable]],
+    meta: ProjectMeta,
+    id_to_tagmeta: Dict[int, sly.TagMeta],
+    semaphore: asyncio.Semaphore,
+    save_images: bool,
+    save_image_info: bool,
+    only_image_tags: bool,
+    small_image_size: int = 400 * 1024,
+):
+    """
+    Automatically determine method for images download.
+    If images have a very small size, download them via bulk download.
+    Otherwise, download them one by one.
+    """
+    from statistics import mean
+
+    tasks = []
+    average_size = mean([image.size for image in images])
+    if average_size > small_image_size:
+        for image in images:
+            try:
+                existing = dataset_fs.get_item_info(image.name)
+            except:
+                existing = None
+            else:
+                if existing.updated_at == image.updated_at:
+                    if ds_progress is not None:
+                        ds_progress(1)
+                    continue
+
+            task = _download_project_item_async(
+                api=api,
+                img_info=image,
+                meta=meta,
+                dataset_fs=dataset_fs,
+                id_to_tagmeta=id_to_tagmeta,
+                semaphore=semaphore,
+                save_images=save_images,
+                save_image_info=save_image_info,
+                only_image_tags=only_image_tags,
+                progress_cb=ds_progress,
+            )
+            tasks.append(task)
+    else:
+        batch_size = 8 * 1024 * 1024  # 8 MB
+        current_batch: List[ImageInfo] = []
+        current_batch_size = 0
+
+        for image in images:
+            try:
+                existing = dataset_fs.get_item_info(image.name)
+            except:
+                existing = None
+            else:
+                if existing.updated_at == image.updated_at:
+                    if ds_progress is not None:
+                        ds_progress(1)
+                    continue
+            if current_batch_size + image.size > batch_size:
+                tasks.append(
+                    download_project_items_batch_async(
+                        api, dataset_fs.dataset_id, [img for img in current_batch]
+                    )
+                )
+                current_batch = []
+                current_batch_size = 0
+
+            current_batch.append(image)
+            current_batch_size += image.size
+
+        if current_batch:
+            tasks.append(
+                download_project_items_batch_async(
+                    api, dataset_fs.dataset_id, [img for img in current_batch]
+                )
+            )
+
+    await asyncio.gather(*tasks)
 
 
 DatasetDict = Project.DatasetDict

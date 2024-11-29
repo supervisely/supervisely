@@ -13,6 +13,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
+from math import ceil
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -4157,3 +4158,197 @@ class ImageApi(RemoveableBulkModuleApi):
             tasks.append(task)
         results = await asyncio.gather(*tasks)
         return results
+
+    async def download_bytes_batch_async(
+        self,
+        dataset_id: int,
+        img_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> List[bytes]:
+        """
+        Downloads Image bytes with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded bytes.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Bytes of downloaded image.
+        :rtype: :class:`bytes`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            datraset_id = 123456
+            img_ids = [770918, 770919, 770920, 770921]
+            loop = sly.utils.get_or_create_event_loop()
+            img_bytes = loop.run_until_complete(api.image.download_bytes_async(datraset_id, img_ids))
+
+        """
+        api_method_name = "images.bulk.download"
+        json_body = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.IDS: img_ids,
+        }
+
+        if range_start is not None or range_end is not None:
+            check_hash = False  # hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        hash_to_check = None
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            content = b""
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+            ):
+                chunk, hhash
+                content += chunk
+                hash_to_check = hhash
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(chunk))
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_bytes_hash = get_bytes_hash(content)
+                    if hash_to_check != downloaded_bytes_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            return content
+
+    async def get_list_async(
+        self,
+        dataset_id: int = None,
+        filters: Optional[List[Dict[str, str]]] = None,
+        sort: Optional[str] = "id",
+        sort_order: Optional[str] = "asc",
+        force_metadata_for_links: Optional[bool] = True,
+        only_labelled: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
+        per_page: Optional[int] = 500,
+        semaphore: Optional[List[asyncio.Semaphore]] = None,
+        queue: Optional[asyncio.Queue] = None,
+    ) -> AsyncGenerator[List[ImageInfo]]:
+        """
+        Returns list of images in dataset asynchronously.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param filters: Filters for images.
+        :type filters: List[Dict[str, str]], optional
+        :param sort: Sort images by field.
+        :type sort: str, optional
+        :param sort_order: Sort order for images.
+        :type sort_order: str, optional
+        :param force_metadata_for_links: If True, forces metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param only_labelled: If True, returns only labelled images.
+        :type only_labelled: bool, optional
+        :param fields: List of fields to return.
+        :type fields: List[str], optional
+        :param per_page: Number of images to return per page.
+        :type per_page: int, optional
+        :param semaphore: Semaphore for limiting the number of simultaneous requests.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param queue: Queue for controlling the number of simultaneous requests.
+        :type queue: :class:`asyncio.Queue`, optional
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+                    import asyncio
+
+                    os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                    os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                    api = sly.Api.from_env()
+
+                    loop = sly.utils.get_or_create_event_loop()
+                    images = loop.run_until_complete(api.image.get_list_async(123456, per_page=600))
+        """
+
+        method = "images.list"
+
+        if queue is not None:
+            per_page = queue.maxsize
+
+        if dataset_info is None:
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+
+        total_pages = ceil(dataset_info.items_count / per_page)
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def sem_task(task):
+            async with semaphore:
+                return await task
+
+        for page_num in range(1, total_pages + 1):
+            if queue is not None:
+                await queue.put(None)  # Placeholder to wait for space
+                await queue.get()
+            data = {
+                ApiField.DATASET_ID: dataset_info.id,
+                ApiField.PROJECT_ID: dataset_info.project_id,
+                ApiField.SORT: sort,
+                ApiField.SORT_ORDER: sort_order,
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.FILTER: filters or [],
+                ApiField.PER_PAGE: per_page,
+                ApiField.PAGE: page_num,
+            }
+            if fields is not None:
+                data[ApiField.FIELDS] = fields
+            if only_labelled:
+                data[ApiField.FILTERS] = [
+                    {
+                        "type": "objects_class",
+                        "data": {
+                            "from": 1,
+                            "to": 9999,
+                            "include": True,
+                            "classId": None,
+                        },
+                    }
+                ]
+            items = await sem_task(self.get_list_idx_page_async(method, data))
+            yield items
