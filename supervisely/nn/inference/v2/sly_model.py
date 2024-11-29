@@ -29,6 +29,7 @@ class SlyModel():
         pass
     
     def inference(self, input: Union[str, np.ndarray, PIL_Image, list], settings: dict = None):
+        single_input = False
         if not isinstance(input, list):
             single_input = True
             input = [input]
@@ -79,7 +80,7 @@ class SlyModel():
             benchmark = {}
         else:
             raise NotImplementedError("Batch inference is not implemented.")
-        total_time = (time() - t0) * 1000  # milliseconds
+        total_time = (time() - t0) * 1000  # ms
         benchmark = {
             "total": total_time,
             "preprocess": benchmark.get("preprocess"),
