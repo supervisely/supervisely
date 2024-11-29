@@ -84,13 +84,13 @@ except ImportError:
 
 
 class Inference:
-    DEFAULT_BATCH_SIZE = 16
     FRAMEWORK_NAME: str = None
     """Name of framework to register models in Supervisely"""
     MODELS: str = None
     """Path to file with list of models"""
     APP_OPTIONS: str = None
     """Path to file with app options"""
+    DEFAULT_BATCH_SIZE = 16
 
     def __init__(
         self,
@@ -479,7 +479,7 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
-    def _download_model_files(self, model_source: str, model_files: List[str]) -> List[str]:
+    def _download_model_files(self, model_source: str, model_files: List[str]) -> dict:
         if model_source == ModelSource.PRETRAINED:
             return self._download_pretrained_model(model_files)
         elif model_source == ModelSource.CUSTOM:
@@ -557,17 +557,9 @@ class Inference:
                 self.model_source, deploy_params["model_files"]
             )
             deploy_params["model_files"] = model_files
-            # set model_meta for custom models
-
-            model_meta_url = self.gui.model_info.get("model_meta")
-            if model_meta_url is not None:
-                remote_artifacts_dir = self.gui.model_info["artifacts_dir"]
-                model_meta_url = os.path.join(remote_artifacts_dir, model_meta_url)
-                model_meta_path = self.download(model_meta_url)
-                model_meta = sly_json.load_json_file(model_meta_path)
-                self._model_meta = ProjectMeta.from_json(model_meta)
-                self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
-                self._get_confidence_tag_meta()
+            model_info = deploy_params.get("model_info", {})
+            self._set_model_meta_custom_model(model_info)
+            self._set_checkpoint_info_custom_model(deploy_params)
 
         self.load_model(**deploy_params)
 
@@ -583,6 +575,32 @@ class Inference:
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
+
+    def _set_model_meta_custom_model(self, model_info: dict):
+        # set model_meta for custom models
+        model_meta_url = model_info.get("model_meta")
+        if model_meta_url is None:
+            return
+        remote_artifacts_dir = model_info["artifacts_dir"]
+        model_meta_url = os.path.join(remote_artifacts_dir, model_meta_url)
+        model_meta_path = self.download(model_meta_url)
+        model_meta = sly_json.load_json_file(model_meta_path)
+        self._model_meta = ProjectMeta.from_json(model_meta)
+        self._get_confidence_tag_meta()
+        self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
+    
+    def _set_checkpoint_info_custom_model(self, deploy_params: dict):
+        model_info = deploy_params.get("model_info", {})
+        model_files = deploy_params.get("model_files", {})
+        if model_info:
+            checkpoint_name = os.path.basename(model_files.get("checkpoint"))
+            self.checkpoint_info = CheckpointInfo(
+                checkpoint_name=checkpoint_name,
+                model_name=model_info.get("model_name"),
+                architecture=model_info.get("framework_name"),
+                custom_checkpoint_path=os.path.join(model_info.get("artifacts_dir"), checkpoint_name),
+                model_source=ModelSource.CUSTOM,
+            )
 
     def shutdown_model(self):
         self._model_served = False
