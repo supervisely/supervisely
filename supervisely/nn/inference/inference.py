@@ -13,6 +13,7 @@ from dataclasses import asdict
 from functools import partial, wraps
 from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from urllib.request import urlopen
 
 import numpy as np
 import requests
@@ -25,6 +26,8 @@ import supervisely.app.development as sly_app_development
 import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
+import supervisely.io.fs as sly_fs
+import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
 from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
 from supervisely._utils import (
@@ -59,13 +62,18 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.utils import CheckpointInfo, DeployInfo, ModelPrecision, RuntimeType
+from supervisely.nn.utils import (
+    CheckpointInfo,
+    DeployInfo,
+    ModelPrecision,
+    ModelSource,
+    RuntimeType,
+)
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
-from supervisely.io.json import load_json_file
 
 try:
     from typing import Literal
@@ -142,7 +150,9 @@ class Inference:
             if self._use_serving_gui_template:
                 if self.FRAMEWORK_NAME is None:
                     raise ValueError("FRAMEWORK_NAME is not defined")
-                self._gui = GUI.ServingGUITemplate(self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS)
+                self._gui = GUI.ServingGUITemplate(
+                    self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS
+                )
             elif initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
                 self._gui = GUI.ServingGUI()
                 self._user_layout = self.initialize_custom_gui()
@@ -173,7 +183,9 @@ class Inference:
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
 
-            def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+            def on_change_model_callback(
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+            ):
                 self.shutdown_model()
                 if isinstance(self.gui, GUI.ServingGUI):
                     self._api_request_model_layout.unlock()
@@ -238,6 +250,8 @@ class Inference:
             self._api_request_model_layout.show()
 
     def get_params_from_gui(self) -> dict:
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            return self.gui.get_params_from_gui()
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
@@ -458,20 +472,59 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _download_model_files(self, model_source: str, model_files: List[str]) -> List[str]:
+        if model_source == ModelSource.PRETRAINED:
+            return self._download_pretrained_model(model_files)
+        elif model_source == ModelSource.CUSTOM:
+            return self._download_custom_model(model_files)
+
+    def _download_pretrained_model(self, model_files: dict):
+        """
+        Downloads the pretrained model data.
+        """
+        local_model_files = {}
+        for file in model_files:
+            file_url = model_files[file]
+            file_path = os.path.join(self.model_dir, file)
+            if file_url.startswith("http"):
+                with urlopen(file_url) as f:
+                    # checkpoint_size = f.length
+                    sly_fs.download(url=file_url, save_path=file_path)
+                    local_model_files[file] = file_path
+            else:
+                local_model_files[file] = file_url
+        return local_model_files
+
+    def _download_custom_model(self, model_files: dict):
+        """
+        Downloads the custom model data.
+        """
+        team_id = env.team_id()
+        local_model_files = {}
+        for file in model_files:
+            file_url = model_files[file]
+            file_path = os.path.join(self.model_dir, file)
+            self._api.file.download(team_id, file_url, file_path)
+            local_model_files[file] = file_path
+        return local_model_files
+
     def _load_model(self, deploy_params: dict):
+        self.model_source = deploy_params.get("model_source")
         self.device = deploy_params.get("device")
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
         if isinstance(self.gui, GUI.ServingGUITemplate):
             # download model files
-            model_files = self._download_model_files(deploy_params["model_files"])
+            model_files = self._download_model_files(
+                self.model_source, deploy_params["model_files"]
+            )
             deploy_params["model_files"] = model_files
             # set model_meta for custom models
             model_meta_url = self.gui.model_info.get("model_meta")
             if model_meta_url is not None:
                 model_meta_path = self.download(model_meta_url)
-                model_meta = load_json_file(model_meta_path)
+                model_meta = sly_json.load_json_file(model_meta_path)
                 self._model_meta = ProjectMeta.from_json(model_meta)
                 self._model_meta = None
                 self._get_confidence_tag_meta()
@@ -480,7 +533,9 @@ class Inference:
 
         if isinstance(self.gui, GUI.ServingGUITemplate) and self._model_meta is None:
             if self._model_meta is None and not self.get_classes():
-                raise ValueError("Can't craete model meta. Please, set the `self.classes` attribute.")
+                raise ValueError(
+                    "Can't create model meta. Please, set the `self.classes` attribute."
+                )
             self._model_meta = self._create_model_meta_by_classes()
             self._get_confidence_tag_meta()
         self._model_served = True
@@ -599,7 +654,7 @@ class Inference:
             classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
         self._model_meta = ProjectMeta(classes)
         self._get_confidence_tag_meta()
-    
+
     def _create_model_meta_by_classes(self):
         classes = self.get_classes()
         shape = self._get_obj_class_shape()

@@ -1,3 +1,4 @@
+from os.path import join
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
@@ -163,9 +164,9 @@ class ServingGUITemplate(ServingGUI):
     def model_files(self) -> List[str]:
         if self.model_source == ModelSource.PRETRAINED:
             model_meta = self.model_info.get("meta", {})
-            return model_meta.get("model_files", [])
+            return model_meta.get("model_files", {})
         else:
-            return self.model_info.get("model_files", [])
+            return self.experiment_selector.get_model_files()
 
     @property
     def runtime(self) -> str:
@@ -179,9 +180,11 @@ class ServingGUITemplate(ServingGUI):
 
     def get_params_from_gui(self) -> Dict[str, Any]:
         return {
+            "model_source": self.model_source,
             "model_files": self.model_files,
             "model_info": self.model_info,
             "device": self.device,
+            "runtime": self.runtime,
         }
 
     # Loaders
