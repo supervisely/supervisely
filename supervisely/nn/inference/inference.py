@@ -65,6 +65,7 @@ from supervisely.project.download import download_to_cache, read_from_cached_pro
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+from supervisely.io.json import load_json_file
 
 try:
     from typing import Literal
@@ -101,6 +102,7 @@ class Inference:
         self.model_precision: str = None
         self.checkpoint_info: CheckpointInfo = None
         self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
+        self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
         self._deploy_params: dict = None
@@ -133,12 +135,17 @@ class Inference:
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
         if self._use_gui:
+            initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+            original_initialize_custom_gui_method = getattr(
+                Inference, "initialize_custom_gui", None
+            )
             if self._use_serving_gui_template:
                 if self.FRAMEWORK_NAME is None:
                     raise ValueError("FRAMEWORK_NAME is not defined")
-                self._gui = GUI.ServingGUITemplate(
-                    self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS
-                )
+                self._gui = GUI.ServingGUITemplate(self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS)
+            elif initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
+                self._gui = GUI.ServingGUI()
+                self._user_layout = self.initialize_custom_gui()
             else:
                 initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
                 original_initialize_custom_gui_method = getattr(
@@ -456,7 +463,26 @@ class Inference:
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            # download model files
+            model_files = self._download_model_files(deploy_params["model_files"])
+            deploy_params["model_files"] = model_files
+            # set model_meta for custom models
+            model_meta_url = self.gui.model_info.get("model_meta")
+            if model_meta_url is not None:
+                model_meta_path = self.download(model_meta_url)
+                model_meta = load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                self._model_meta = None
+                self._get_confidence_tag_meta()
+
         self.load_model(**deploy_params)
+
+        if isinstance(self.gui, GUI.ServingGUITemplate) and self._model_meta is None:
+            if self._model_meta is None and not self.get_classes():
+                raise ValueError("Can't craete model meta. Please, set the `self.classes` attribute.")
+            self._model_meta = self._create_model_meta_by_classes()
+            self._get_confidence_tag_meta()
         self._model_served = True
         self._deploy_params = deploy_params
         if self.gui is not None:
@@ -477,7 +503,7 @@ class Inference:
         pass
 
     def get_classes(self) -> List[str]:
-        raise NotImplementedError("Have to be implemented in child class after inheritance")
+        return self.classes
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -573,6 +599,11 @@ class Inference:
             classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
         self._model_meta = ProjectMeta(classes)
         self._get_confidence_tag_meta()
+    
+    def _create_model_meta_by_classes(self):
+        classes = self.get_classes()
+        shape = self._get_obj_class_shape()
+        return ProjectMeta([ObjClass(name, shape) for name in classes])
 
     @property
     def task_id(self) -> int:
