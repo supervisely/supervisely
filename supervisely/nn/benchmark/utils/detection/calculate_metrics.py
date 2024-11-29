@@ -3,14 +3,14 @@ from typing import Callable, List, Literal, Optional
 
 import numpy as np
 
-# pylint: disable=import-error
-from pycocotools.cocoeval import COCOeval
-
 
 def set_cocoeval_params(
-    cocoeval: COCOeval,
+    cocoeval,
     parameters: dict,
 ):
+    """
+    type cocoeval: COCOeval
+    """
     if parameters is None:
         return
     param_names = (
@@ -48,6 +48,7 @@ def calculate_metrics(
     :return: Results of the evaluation
     :rtype: dict
     """
+    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
 
     cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
     cocoEval.evaluate()
