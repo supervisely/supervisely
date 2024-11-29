@@ -43,10 +43,9 @@ class ServingGUITemplate(ServingGUI):
         self.models = self._load_models(models) if models else []
         self.app_options = self._load_app_options(app_options) if app_options else {}
 
-        self._template_widgets = None
-        self._initialize_layout()
+        self._template_widgets = self._initialize_layout()
 
-    def _initialize_layout(self) -> Widget:
+    def _initialize_layout(self) -> List[Widget]:
         # Pretrained models
         use_pretrained_models = self.app_options.get("pretrained_models", True)
         use_custom_models = self.app_options.get("custom_models", True)
@@ -129,8 +128,8 @@ class ServingGUITemplate(ServingGUI):
             overflow="unset",
         )
 
-        self._template_widgets = [card]
-        return self._template_widgets
+        content = [card]
+        return content
 
     @property
     def model_source(self) -> str:
@@ -174,8 +173,8 @@ class ServingGUITemplate(ServingGUI):
         return RuntimeType.PYTORCH
 
     def get_ui(self) -> Widget:
-        self._template_widgets.extend([self.serve_model_card])
-        return Container(widgets=self._template_widgets, gap=10)
+        widgets = [self._template_widgets, self.serve_model_card]
+        return Container(widgets=widgets, gap=10)
 
     def get_params_from_gui(self) -> Dict[str, Any]:
         return {
