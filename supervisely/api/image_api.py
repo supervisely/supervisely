@@ -4229,7 +4229,7 @@ class ImageApi(RemoveableBulkModuleApi):
             semaphore = self._api.get_default_semaphore()
         async with semaphore:
             content = b""
-            async for chunk, hhash in self._api.stream_async(
+            async for chunk, hhash in self._api.post_async(
                 api_method_name,
                 "POST",
                 json_body,
