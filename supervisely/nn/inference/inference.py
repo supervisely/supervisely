@@ -32,6 +32,7 @@ import supervisely.nn.inference.gui as GUI
 from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
 from supervisely._utils import (
     add_callback,
+    get_filename_from_headers,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -153,6 +154,8 @@ class Inference:
                 self._gui = GUI.ServingGUITemplate(
                     self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS
                 )
+                self._user_layout = self._gui.widgets
+                self._user_layout_card = self._gui.card
             elif initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
                 self._gui = GUI.ServingGUI()
                 self._user_layout = self.initialize_custom_gui()
@@ -187,7 +190,7 @@ class Inference:
                 gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
             ):
                 self.shutdown_model()
-                if isinstance(self.gui, GUI.ServingGUI):
+                if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
                     self._api_request_model_layout.unlock()
                     self._api_request_model_layout.hide()
                     self.update_gui(self._model_served)
@@ -237,7 +240,7 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def update_gui(self, is_model_deployed: bool = True) -> None:
-        if isinstance(self.gui, GUI.ServingGUI):
+        if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
             if is_model_deployed:
                 self._user_layout_card.lock()
             else:
@@ -278,9 +281,24 @@ class Inference:
         )
 
     def _initialize_app_layout(self):
+        self._api_request_model_info = Editor(
+            height_lines=12,
+            language_mode="json",
+            readonly=True,
+            restore_default_button=False,
+            auto_format=True,
+        )
+        self._api_request_model_layout = Card(
+            title="Model was deployed from API request with the following settings",
+            content=self._api_request_model_info,
+        )
+        self._api_request_model_layout.hide()
+
         if isinstance(self.gui, GUI.ServingGUITemplate):
-            self._app_layout = self.gui.get_ui()
-            return  # @TODO: need to implement this correctly here?
+            self._app_layout = Container(
+                [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
+            )
+            return
 
         if hasattr(self, "_user_layout"):
             self._user_layout_card = Card(
@@ -296,18 +314,7 @@ class Inference:
                 content=self._gui,
                 lock_message="Model is deployed. To change the model, stop the serving first.",
             )
-        self._api_request_model_info = Editor(
-            height_lines=12,
-            language_mode="json",
-            readonly=True,
-            restore_default_button=False,
-            auto_format=True,
-        )
-        self._api_request_model_layout = Card(
-            title="Model was deployed from API request with the following settings",
-            content=self._api_request_model_info,
-        )
-        self._api_request_model_layout.hide()
+
         self._app_layout = Container(
             [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
         )
@@ -483,29 +490,59 @@ class Inference:
         Downloads the pretrained model data.
         """
         local_model_files = {}
+
         for file in model_files:
             file_url = model_files[file]
             file_path = os.path.join(self.model_dir, file)
             if file_url.startswith("http"):
                 with urlopen(file_url) as f:
-                    # checkpoint_size = f.length
-                    sly_fs.download(url=file_url, save_path=file_path)
+                    file_size = f.length
+                    file_name = get_filename_from_headers(file_url)
+                    file_path = os.path.join(self.model_dir, file_name)
+                    if file_name is None:
+                        file_name = file
+                    with self.gui.download_progress(
+                        message=f"Downloading: '{file_name}'",
+                        total=file_size,
+                        unit="bytes",
+                        unit_scale=True,
+                    ) as download_pbar:
+                        self.gui.download_progress.show()
+                        sly_fs.download(
+                            url=file_url, save_path=file_path, progress=download_pbar.update
+                        )
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
+        self.gui.download_progress.hide()
         return local_model_files
 
     def _download_custom_model(self, model_files: dict):
         """
         Downloads the custom model data.
         """
+
         team_id = env.team_id()
         local_model_files = {}
+
         for file in model_files:
             file_url = model_files[file]
-            file_path = os.path.join(self.model_dir, file)
-            self._api.file.download(team_id, file_url, file_path)
+            file_info = self.api.file.get_info_by_path(team_id, file_url)
+            file_size = file_info.sizeb
+            file_name = os.path.basename(file_url)
+            file_path = os.path.join(self.model_dir, file_name)
+            with self.gui.download_progress(
+                message=f"Downloading: '{file_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(
+                    team_id, file_url, file_path, progress_cb=download_pbar.update
+                )
             local_model_files[file] = file_path
+        self.gui.download_progress.hide()
         return local_model_files
 
     def _load_model(self, deploy_params: dict):
@@ -521,12 +558,15 @@ class Inference:
             )
             deploy_params["model_files"] = model_files
             # set model_meta for custom models
+
             model_meta_url = self.gui.model_info.get("model_meta")
             if model_meta_url is not None:
+                remote_artifacts_dir = self.gui.model_info["artifacts_dir"]
+                model_meta_url = os.path.join(remote_artifacts_dir, model_meta_url)
                 model_meta_path = self.download(model_meta_url)
                 model_meta = sly_json.load_json_file(model_meta_path)
                 self._model_meta = ProjectMeta.from_json(model_meta)
-                self._model_meta = None
+                self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
                 self._get_confidence_tag_meta()
 
         self.load_model(**deploy_params)

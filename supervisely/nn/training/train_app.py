@@ -37,6 +37,7 @@ from supervisely import (
     is_production,
     logger,
 )
+from supervisely._utils import get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
@@ -893,11 +894,12 @@ class TrainApp:
 
                 if file_url.startswith("http"):
                     with urlopen(file_url) as f:
-                        checkpoint_size = f.length
-
+                        file_size = f.length
+                        file_name = get_filename_from_headers(file_url)
+                        file_path = join(self.model_dir, file_name)
                     with self.progress_bar_secondary(
-                        message=f"Downloading '{file}' ",
-                        total=checkpoint_size,
+                        message=f"Downloading '{file_name}' ",
+                        total=file_size,
                         unit="bytes",
                         unit_scale=True,
                     ) as model_download_secondary_pbar:

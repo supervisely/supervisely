@@ -44,7 +44,19 @@ class ServingGUITemplate(ServingGUI):
         self.models = self._load_models(models) if models else []
         self.app_options = self._load_app_options(app_options) if app_options else {}
 
-        self._template_widgets = self._initialize_layout()
+        base_widgets = self._initialize_layout()
+        extra_widgets = self._initialize_extra_widgets()
+
+        self.widgets = base_widgets + extra_widgets
+        self.card = self._get_card()
+
+    def _get_card(self) -> Card:
+        return Card(
+            title="Select Model",
+            description="Select the model to deploy and press the 'Serve' button.",
+            content=Container(widgets=self.widgets, gap=10),
+            overflow="unset",
+        )
 
     def _initialize_layout(self) -> List[Widget]:
         # Pretrained models
@@ -121,16 +133,10 @@ class ServingGUITemplate(ServingGUI):
         card_widgets = [self.model_source_tabs]
         if runtime_field is not None:
             card_widgets.append(runtime_field)
+        return card_widgets
 
-        card = Card(
-            title="Select Model",
-            description="Select the model to deploy and press the 'Serve' button.",
-            content=Container(widgets=card_widgets, gap=10),
-            overflow="unset",
-        )
-
-        content = [card]
-        return content
+    def _initialize_extra_widgets(self) -> List[Widget]:
+        return []
 
     @property
     def model_source(self) -> str:
@@ -172,10 +178,6 @@ class ServingGUITemplate(ServingGUI):
         if self.runtime_select is not None:
             return self.runtime_select.get_value()
         return RuntimeType.PYTORCH
-
-    def get_ui(self) -> Widget:
-        widgets = [self._template_widgets, self.serve_model_card]
-        return Container(widgets=widgets, gap=10)
 
     def get_params_from_gui(self) -> Dict[str, Any]:
         return {

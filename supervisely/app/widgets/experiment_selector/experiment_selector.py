@@ -445,7 +445,6 @@ class ExperimentSelector(Widget):
         """
         Returns a dictionary with full paths to model files in Supervisely Team Files.
         """
-        full_model_files = {}
         experiment_info = self.get_selected_experiment_info()
         artifacts_dir = experiment_info.get("artifacts_dir")
         model_files = experiment_info.get("model_files", {})
@@ -454,7 +453,7 @@ class ExperimentSelector(Widget):
             name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
         }
         full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
-        return model_files
+        return full_model_files
 
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:
