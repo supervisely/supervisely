@@ -40,6 +40,7 @@ from supervisely.io.fs import (
     copy_file,
     copy_file_async,
     dir_empty,
+    file_exists,
     dir_exists,
     ensure_base_path,
     get_file_name_with_ext,
@@ -2281,6 +2282,8 @@ class Project:
         target_classes: Optional[List[str]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
+        bg_name: Optional[str] = "__bg__",
+        bg_color: Optional[List[int]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -2296,13 +2299,17 @@ class Project:
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
-                               background class "__bg__" will be added automatically.
+                               background class will be added automatically (by default "__bg__").
         :type target_classes: :class:`list` [ :class:`str` ], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
-                                  will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
+        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class
+                                  will be added automatically (by default "__bg__") and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
+        :param bg_name: Default background class name, used for semantic segmentation.
+        :type bg_name: :class:`str`, optional
+        :param bg_color: Default background class color, used for semantic segmentation.
+        :type bg_color: :class:`list`, optional. Default is [0, 0, 0]
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2319,8 +2326,9 @@ class Project:
             seg_project = sly.Project(seg_project_path, sly.OpenMode.READ)
         """
 
-        _bg_class_name = "__bg__"
-        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
+        _bg_class_name = bg_name
+        bg_color = bg_color or [0, 0, 0]
+        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=bg_color)
 
         if dst_project_dir is None and inplace is False:
             raise ValueError(
@@ -2388,7 +2396,11 @@ class Project:
 
                 seg_path = None
                 if inplace is False:
-                    dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    if file_exists(img_path):
+                        dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    else:
+                        # if local project has no images
+                        dst_dataset._add_ann_by_type(item_name, seg_ann)
                     seg_path = dst_dataset.get_seg_path(item_name)
                 else:
                     # replace existing annotation
@@ -3732,7 +3744,7 @@ def _download_project(
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,
-                        ann=dataset_fs.get_ann(name) if ann is None else ann,
+                        ann=dataset_fs.get_ann(name, meta) if ann is None else ann,
                         img_info=img_info if save_image_info is True else None,
                     )
 

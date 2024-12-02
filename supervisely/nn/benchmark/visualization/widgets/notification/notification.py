@@ -21,18 +21,22 @@ class NotificationWidget(BaseWidget):
         return {}
 
     def to_html(self) -> str:
-        return f"""
+        res = f"""
                     <div style="margin-top: 20px; margin-bottom: 20px;">
                         <sly-iw-notification              
                         iw-widget-id="{ self.id }"
-                        >
+                        >"""
+        if self.title:
+            res += f"""
                             <span slot="title">
                                 { self.title }
-                            </span>
-
+                            </span>"""
+        if self.desc:
+            res += f"""
                             <span slot="description">
                                 { self.desc }
-                            </span>
+                            </span>"""
+        res += """
                         </sly-iw-notification>
-                    </div>
-        """
+                    </div>"""
+        return res

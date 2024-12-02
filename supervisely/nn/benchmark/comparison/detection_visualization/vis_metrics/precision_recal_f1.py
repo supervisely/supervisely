@@ -136,7 +136,7 @@ class PrecisionRecallF1(BaseVisMetric):
             precision = eval_result.mp.json_metrics()["precision"]
             recall = eval_result.mp.json_metrics()["recall"]
             f1 = eval_result.mp.json_metrics()["f1"]
-            model_name = f"[{i}] {eval_result.name}"
+            model_name = f"[{i}] {eval_result.model_name}"
             fig.add_trace(
                 go.Bar(
                     x=["Precision", "Recall", "F1-score"],
@@ -163,7 +163,7 @@ class PrecisionRecallF1(BaseVisMetric):
         fig = go.Figure()
         classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
-            model_name = f"[{i}] {eval_result.name}"
+            model_name = f"[{i}] {eval_result.model_name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -191,7 +191,7 @@ class PrecisionRecallF1(BaseVisMetric):
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
         for i, eval_result in enumerate(self.eval_results):
-            model_name = f"Model [{i + 1}] {eval_result.name}"
+            model_name = f"Model [{i + 1}] {eval_result.model_name}"
             for key, v in eval_result.click_data.objects_by_class.items():
                 click_data = res["clickData"].setdefault(f"{i}_{key}", {})
                 img_ids, obj_ids = set(), set()
@@ -220,7 +220,7 @@ class PrecisionRecallF1(BaseVisMetric):
         fig = go.Figure()
         classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
-            model_name = f"[{i}] {eval_result.name}"
+            model_name = f"[{i}] {eval_result.model_name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -249,7 +249,7 @@ class PrecisionRecallF1(BaseVisMetric):
         fig = go.Figure()
         classes_cnt = len(self.eval_results[0].mp.cat_names)
         for i, eval_result in enumerate(self.eval_results, 1):
-            model_name = f"[{i}] {eval_result.name}"
+            model_name = f"[{i}] {eval_result.model_name}"
             sorted_by_f1 = eval_result.mp.per_class_metrics().sort_values(by="f1")
 
             fig.add_trace(
@@ -278,7 +278,7 @@ class PrecisionRecallF1(BaseVisMetric):
         res["clickData"] = {}
 
         for i, eval_result in enumerate(self.eval_results):
-            model_name = f"Model [{i + 1}] {eval_result.name}"
+            model_name = f"Model [{i + 1}] {eval_result.model_name}"
             click_data = res["clickData"].setdefault(i, {})
             img_ids, obj_ids = set(), set()
             objects_cnt = 0
