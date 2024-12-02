@@ -3737,7 +3737,7 @@ def _download_project(
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,
-                        ann=dataset_fs.get_ann(name) if ann is None else ann,
+                        ann=dataset_fs.get_ann(name, meta) if ann is None else ann,
                         img_info=img_info if save_image_info is True else None,
                     )
 
