@@ -291,5 +291,8 @@ setup(
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
         ],
+        "training": [
+            "tensorboardX",
+        ],
     },
 )
