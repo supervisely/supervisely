@@ -4422,17 +4422,18 @@ async def _download_project_async(
     if semaphore is None:
         semaphore = api.get_default_semaphore()
 
-    async def worker(queue: asyncio.Queue):
+    async def worker(queue: asyncio.Queue, semaphore: asyncio.Semaphore):
         while True:
             task = await queue.get()
             if task is None:
                 break
-            await task
+            async with semaphore:
+                await task
             queue.task_done()
 
     queue = asyncio.Queue()
     num_workers = 5
-    workers = [asyncio.create_task(worker(queue)) for _ in range(num_workers)]
+    workers = [asyncio.create_task(worker(queue, semaphore)) for _ in range(num_workers)]
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
