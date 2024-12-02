@@ -581,8 +581,9 @@ class Inference:
             "runtime": runtime,
             **kwargs,
         }
-        self._set_model_meta_custom_model(model_info)
-        self._set_checkpoint_info_custom_model(deploy_params)
+        if model_source == ModelSource.CUSTOM:
+            self._set_model_meta_custom_model(model_info)
+            self._set_checkpoint_info_custom_model(deploy_params)
         self._load_model(deploy_params)
         if self._model_meta is None:
             self._set_model_meta_from_classes()
