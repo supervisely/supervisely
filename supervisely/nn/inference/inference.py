@@ -568,8 +568,7 @@ class Inference:
                 raise ValueError(
                     "Can't create model meta. Please, set the `self.classes` attribute."
                 )
-            self._model_meta = self._create_model_meta_by_classes()
-            self._get_confidence_tag_meta()
+            self._set_model_meta_from_classes()
         self._model_served = True
         self._deploy_params = deploy_params
         if self.gui is not None:
@@ -713,10 +712,11 @@ class Inference:
         self._model_meta = ProjectMeta(classes)
         self._get_confidence_tag_meta()
 
-    def _create_model_meta_by_classes(self):
+    def _set_model_meta_from_classes(self):
         classes = self.get_classes()
         shape = self._get_obj_class_shape()
-        return ProjectMeta([ObjClass(name, shape) for name in classes])
+        self._model_meta = ProjectMeta([ObjClass(name, shape) for name in classes])
+        self._get_confidence_tag_meta()
 
     @property
     def task_id(self) -> int:
