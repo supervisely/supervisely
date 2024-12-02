@@ -3706,11 +3706,12 @@ class ImageApi(RemoveableBulkModuleApi):
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: Optional[dict] = None,
+        chunk_size: Optional[int] = None,
     ) -> AsyncGenerator:
         """
         Download Image with given ID asynchronously.
         If is_stream is True, returns stream of bytes, otherwise returns response object.
-        For streaming, returns tuple of chunk and hash.
+        For streaming, returns tuple of chunk and hash. Chunk size is 8 MB by default.
 
         :param id: Image ID in Supervisely.
         :type id: int
@@ -3722,10 +3723,15 @@ class ImageApi(RemoveableBulkModuleApi):
         :type range_end: int, optional
         :param headers: Headers for request.
         :type headers: dict, optional
+        :param chunk_size: Size of chunk for streaming. Default is 8 MB.
+        :type chunk_size: int, optional
         :return: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "images.download"
+
+        if chunk_size is None:
+            chunk_size = 8 * 1024 * 1024
 
         json_body = {ApiField.ID: id}
 
@@ -3737,6 +3743,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 headers=headers,
                 range_start=range_start,
                 range_end=range_end,
+                chunk_size=chunk_size,
             ):
                 yield chunk, hhash
         else:
@@ -4164,36 +4171,30 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         img_ids: List[int],
         semaphore: Optional[asyncio.Semaphore] = None,
-        range_start: Optional[int] = None,
-        range_end: Optional[int] = None,
         headers: Optional[dict] = None,
         check_hash: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
-    ) -> List[bytes]:
+    ) -> AsyncGenerator[Tuple[int, bytes]]:
         """
         Downloads Image bytes with given ID.
 
-        :param id: Image ID in Supervisely.
-        :type id: int
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param img_ids: List of Image IDs in Supervisely.
+        :type img_ids: :class:`List[int]`
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: :class:`asyncio.Semaphore`, optional
-        :param range_start: Start byte of range for partial download.
-        :type range_start: int, optional
-        :param range_end: End byte of range for partial download.
-        :type range_end: int, optional
         :param headers: Headers for request.
         :type headers: dict, optional
         :param check_hash: If True, checks hash of downloaded bytes.
-                        Check is not supported for partial downloads.
-                        When range is set, hash check is disabled.
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: Bytes of downloaded image.
-        :rtype: :class:`bytes`
+        :return: Tuple of Image ID and bytes of downloaded image.
+        :rtype: :class:`Tuple[int, bytes]`
         :Usage example:
 
          .. code-block:: python
@@ -4205,53 +4206,45 @@ class ImageApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            datraset_id = 123456
-            img_ids = [770918, 770919, 770920, 770921]
-            loop = sly.utils.get_or_create_event_loop()
-            img_bytes = loop.run_until_complete(api.image.download_bytes_async(datraset_id, img_ids))
-
+            dataset_id = 123456
+            img_ids = [770918, 770919, 770920, 770921, ... , 770992]
+            tasks = []
+            for batch in batched(img_ids, 50):
+                task = api.image.download_bytes_batch_async(dataset_id, batch)
+                tasks.append(task)
+            results = await asyncio.gather(*tasks)
         """
         api_method_name = "images.bulk.download"
         json_body = {
             ApiField.DATASET_ID: dataset_id,
-            ApiField.IDS: img_ids,
+            ApiField.IMAGE_IDS: img_ids,
         }
-
-        if range_start is not None or range_end is not None:
-            check_hash = False  # hash check is not supported for partial downloads
-            headers = headers or {}
-            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
-            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
-
-        hash_to_check = None
 
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
         async with semaphore:
-            content = b""
-            async for chunk, hhash in self._api.post_async(
+            response = await self._api.post_async(
                 api_method_name,
-                "POST",
-                json_body,
+                json=json_body,
                 headers=headers,
-                range_start=range_start,
-                range_end=range_end,
-            ):
-                chunk, hhash
-                content += chunk
-                hash_to_check = hhash
-                if progress_cb is not None and progress_cb_type == "size":
-                    progress_cb(len(chunk))
-            if check_hash:
-                if hash_to_check is not None:
-                    downloaded_bytes_hash = get_bytes_hash(content)
-                    if hash_to_check != downloaded_bytes_hash:
-                        raise RuntimeError(
-                            f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_bytes_hash} != {hash_to_check}"
-                        )
-            if progress_cb is not None and progress_cb_type == "number":
-                progress_cb(1)
-            return content
+            )
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                if check_hash:
+                    hhash = part.headers.get("x-content-checksum-sha256", None)
+                    if hhash is not None:
+                        downloaded_bytes_hash = get_bytes_hash(part)
+                        if hhash != downloaded_bytes_hash:
+                            raise RuntimeError(
+                                f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
+                            )
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
+                yield img_id, part.content
 
     async def get_list_async(
         self,
@@ -4264,7 +4257,7 @@ class ImageApi(RemoveableBulkModuleApi):
         fields: Optional[List[str]] = None,
         per_page: Optional[int] = 500,
         semaphore: Optional[List[asyncio.Semaphore]] = None,
-        queue: Optional[asyncio.Queue] = None,
+        **kwargs,
     ) -> AsyncGenerator[List[ImageInfo]]:
         """
         Returns list of images in dataset asynchronously.
@@ -4287,8 +4280,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :type per_page: int, optional
         :param semaphore: Semaphore for limiting the number of simultaneous requests.
         :type semaphore: :class:`asyncio.Semaphore`, optional
-        :param queue: Queue for controlling the number of simultaneous requests.
-        :type queue: :class:`asyncio.Queue`, optional
+        :param kwargs: Additional arguments.
+        :return: List of images in dataset.
+        :rtype: AsyncGenerator[List[ImageInfo]]
 
         :Usage example:
 
@@ -4306,9 +4300,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
 
         method = "images.list"
-
-        if queue is not None:
-            per_page = queue.maxsize
+        dataset_info = kwargs.get("dataset_info", None)
 
         if dataset_info is None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
@@ -4323,9 +4315,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 return await task
 
         for page_num in range(1, total_pages + 1):
-            if queue is not None:
-                await queue.put(None)  # Placeholder to wait for space
-                await queue.get()
             data = {
                 ApiField.DATASET_ID: dataset_info.id,
                 ApiField.PROJECT_ID: dataset_info.project_id,
