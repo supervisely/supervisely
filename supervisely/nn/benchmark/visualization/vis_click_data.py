@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from supervisely.nn.benchmark.evaluation.coco.metric_provider import (
+from supervisely.nn.benchmark.utils.detection.metric_provider import (
     MetricProvider,
 )
 

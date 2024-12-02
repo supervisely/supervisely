@@ -7,6 +7,7 @@ from typing import List
 import cv2
 import numpy as np
 
+
 class HiddenCocoPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -34,11 +35,12 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.image.image_converter import ImageConverter
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.graph import KeypointsTemplate
 from supervisely.imaging.color import generate_rgb
-from supervisely.convert.image.image_helper import validate_image_bounds
 
 conflict_classes = []
+
 
 # COCO Convert funcs
 def create_supervisely_annotation(
@@ -53,21 +55,29 @@ def create_supervisely_annotation(
     name_cat_id_map = coco_category_to_class_name(coco_categories)
     renamed_classes = {} if renamed_classes is None else renamed_classes
     renamed_tags = {} if renamed_tags is None else renamed_tags
-    for object in item.ann_data:
-        caption = object.get("caption")
+    for coco_data in item.ann_data:
+        caption = coco_data.get("caption")
         if caption is not None:
             tag_name = renamed_tags.get("caption", "caption")
             imag_tags.append(Tag(meta.get_tag_meta(tag_name), caption))
-        category_id = object.get("category_id")
+        category_id = coco_data.get("category_id")
         if category_id is None:
             continue
         obj_class_name = name_cat_id_map.get(category_id)
         if obj_class_name is None:
-            logger.warn(f"Category with id {category_id} not found in categories list")
+            logger.warning(f"Category with id {category_id} not found in categories list")
             continue
         renamed_class_name = renamed_classes.get(obj_class_name, obj_class_name)
         key = None
-        segm = object.get("segmentation")
+
+        segm = coco_data.get("segmentation")
+        keypoints = coco_data.get("keypoints")
+        bbox = coco_data.get("bbox")
+
+        if len([f for f in (segm, keypoints, bbox) if f]) > 1:
+            # create a binding key if more than one of the following fields are present
+            key = uuid.uuid4().hex
+
         curr_labels = []
         if segm is not None and len(segm) > 0:
             obj_class_polygon = meta.get_obj_class(renamed_class_name)
@@ -75,30 +85,24 @@ def create_supervisely_annotation(
                 if obj_class_name not in conflict_classes:
                     geometry_name = obj_class_polygon.geometry_type.geometry_name().capitalize()
                     conflict_classes.append(obj_class_name)
-                    logger.warn(
+                    logger.warning(
                         "Conflict in class geometry type: "
                         f"object class '{obj_class_name}' (category ID: {category_id}) "
                         f"has type '{geometry_name}', but expected type is 'Polygon'."
                     )
                 continue
             if type(segm) is dict:
-                polygons = convert_rle_mask_to_polygon(object)
+                polygons = convert_rle_mask_to_polygon(coco_data)
                 for polygon in polygons:
-                    figure = polygon
-                    key = uuid.uuid4().hex
-                    label = Label(figure, obj_class_polygon, binding_key=key)
-                    curr_labels.append(label)
-            elif type(segm) is list and object["segmentation"]:
-                figures = convert_polygon_vertices(object, item.shape)
-                for figure in figures:
-                    key = uuid.uuid4().hex
-                    label = Label(figure, obj_class_polygon, binding_key=key)
-                    curr_labels.append(label)
+                    curr_labels.append(Label(polygon, obj_class_polygon, binding_key=key))
+            elif type(segm) is list and coco_data["segmentation"]:
+                polygons = convert_polygon_vertices(coco_data, item.shape)
+                for polygon in polygons:
+                    curr_labels.append(Label(polygon, obj_class_polygon, binding_key=key))
 
-        keypoints = object.get("keypoints")
         if keypoints is not None:
             obj_class_keypoints = meta.get_obj_class(renamed_class_name)
-            keypoints = list(get_coords(object["keypoints"]))
+            keypoints = list(get_coords(keypoints))
             coco_categorie, keypoint_names = None, None
             for cat in coco_categories:
                 if cat["id"] == category_id and cat["supercategory"] == obj_class_name:
@@ -116,11 +120,10 @@ def create_supervisely_annotation(
                     node = Node(label=keypoint_name, row=row, col=col)  # , disabled=v)
                     nodes.append(node)
                 if len(nodes) != 0:
-                    key = uuid.uuid4().hex
                     label = Label(GraphNodes(nodes), obj_class_keypoints, binding_key=key)
                     curr_labels.append(label)
         labels.extend(curr_labels)
-        bbox = object.get("bbox")
+
         if bbox is not None and len(bbox) == 4:
             if not obj_class_name.endswith("bbox"):
                 obj_class_name = add_tail(obj_class_name, "bbox")
@@ -130,24 +133,15 @@ def create_supervisely_annotation(
                 if obj_class_name not in conflict_classes:
                     geometry_name = obj_class_rectangle.geometry_type.geometry_name().capitalize()
                     conflict_classes.append(obj_class_name)
-                    logger.warn(
+                    logger.warning(
                         "Conflict in class geometry type: "
                         f"object class '{obj_class_name}' (category ID: {category_id}) "
                         f"has type '{geometry_name}', but expected type is 'Rectangle'."
                     )
                 continue
-            if len(curr_labels) > 1:
-                for label in curr_labels:
-                    bbox = label.geometry.to_bbox()
-                    labels.append(Label(bbox, obj_class_rectangle, binding_key=label.binding_key))
-            else:
-                if len(curr_labels) == 1:
-                    key = curr_labels[0].binding_key
-                x, y, w, h = bbox
-                rectangle = Label(
-                    Rectangle(y, x, y + h, x + w), obj_class_rectangle, binding_key=key
-                )
-                labels.append(rectangle)
+            x, y, w, h = bbox
+            geometry = Rectangle(y, x, y + h, x + w)
+            labels.append(Label(geometry, obj_class_rectangle, binding_key=key))
     labels = validate_image_bounds(labels, Rectangle.from_size(item.shape))
     return Annotation(item.shape, labels=labels, img_tags=imag_tags)
 

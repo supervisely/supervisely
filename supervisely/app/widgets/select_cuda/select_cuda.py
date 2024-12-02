@@ -47,7 +47,10 @@ class SelectCudaDevice(Widget):
         """
         cuda_devices = self._get_gpu_infos(self._sort_by_free_ram)
         if cuda_devices is None:
-            self._select.set([Select.Item(None, "No devices available")])
+            if self._include_cpu_option is True:
+                self._select.set([Select.Item(value="cpu", label="CPU")])
+            else:
+                self._select.set([Select.Item(None, "No devices available")])
             self._select.disable()
             return
         items = [
@@ -85,9 +88,12 @@ class SelectCudaDevice(Widget):
             return
 
         devices = {}
-        cuda.init()
-        if not cuda.is_available():
-            logger.warn("CUDA is not available")
+        try:
+            cuda.init()
+            if not cuda.is_available():
+                raise RuntimeError("CUDA is not available")
+        except Exception as e:
+            logger.warn(f"Failed to initialize CUDA: {e}")
             return
         try:
             for idx in range(cuda.device_count()):

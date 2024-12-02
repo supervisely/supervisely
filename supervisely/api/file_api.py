@@ -1056,6 +1056,7 @@ class FileApi(ModuleApiBase):
         team_id: int,
         paths: List[str],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        batch_size: int = 1000,
     ) -> None:
         """
         Removes list of files from Team Files.
@@ -1064,6 +1065,10 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param paths: List of paths to Files in Team Files.
         :type paths: List[str]
+        :param progress_cb: Function for tracking progress.
+        :type progress_cb: tqdm or callable, optional
+        :param batch_size: Number of files to remove in one request. Default is 1000. Maximum is 20000.
+        :type batch_size: int
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1081,13 +1086,22 @@ class FileApi(ModuleApiBase):
                 "/999_App_Test/ds1/01588.json",
                 "/999_App_Test/ds1/01587.json"
             ]
-            api.file.remove(8, paths_to_del)
+            api.file.remove_batch(8, paths_to_del)
         """
+        if batch_size > 20000:
+            logger.warning(
+                "Batch size is more than maximum and automatically reduced to 20000. "
+                "If you get an error, try reducing the batch size."
+            )
+            batch_size = 20000
+        elif batch_size < 100:
+            logger.warning("Batch size is less than minimum and automatically increased to 100.")
+            batch_size = 100
 
-        for paths_batch in batched(paths, batch_size=100):
+        for paths_batch in batched(paths, batch_size=batch_size):
             for path in paths_batch:
                 if self.is_on_agent(path) is True:
-                    logger.warn(
+                    logger.warning(
                         f"Data '{path}' is on agent. File skipped. Method does not support agent storage. Remove your data manually on the computer with agent."
                     )
                     paths_batch.remove(path)

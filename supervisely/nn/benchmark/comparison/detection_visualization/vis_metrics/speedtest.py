@@ -248,7 +248,7 @@ class Speedtest(BaseVisMetric):
 
         fig = make_subplots(cols=2)
 
-        for eval_result in self.eval_results:
+        for idx, eval_result in enumerate(self.eval_results, 1):
             if eval_result.speedtest_info is None:
                 continue
             temp_res = {}
@@ -272,7 +272,7 @@ class Speedtest(BaseVisMetric):
                 go.Scatter(
                     x=list(temp_res["ms"].keys()),
                     y=list(temp_res["ms"].values()),
-                    name="Infrence time (ms)",
+                    name=f"[{idx}] {eval_result.model_name} (ms)",
                     line=dict(color=eval_result.color),
                     customdata=list(temp_res["ms_std"].values()),
                     error_y=dict(
@@ -290,7 +290,7 @@ class Speedtest(BaseVisMetric):
                 go.Scatter(
                     x=list(temp_res["fps"].keys()),
                     y=list(temp_res["fps"].values()),
-                    name="FPS",
+                    name=f"[{idx}] {eval_result.model_name} (fps)",
                     line=dict(color=eval_result.color),
                     hovertemplate="Batch Size: %{x}<br>FPS: %{y:.2f}<extra></extra>",  # <br> Standard deviation: %{customdata:.2f}<extra></extra>",
                 ),
