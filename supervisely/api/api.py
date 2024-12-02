@@ -1437,7 +1437,7 @@ class Api:
         :type range_start: int, optional
         :param range_end: End byte position for streaming.
         :type range_end: int, optional
-        :param chunk_size: Size of the chunk to read from the stream.
+        :param chunk_size: Size of the chunk to read from the stream. Default is 8192.
         :type chunk_size: int, optional
         :param use_public_api: Define if public API should be used.
         :type use_public_api: bool, optional
