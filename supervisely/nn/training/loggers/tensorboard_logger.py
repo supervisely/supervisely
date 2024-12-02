@@ -1,6 +1,11 @@
-import subprocess
+from supervisely import logger
 
-from tensorboardX import SummaryWriter
+try:
+    from tensorboardX import SummaryWriter
+    _tensorboard_supported = True
+except ImportError:
+    logger.warning("TensorboardX is not installed. TensorboardLogger will not work.")
+    _tensorboard_supported = False
 
 from supervisely.nn.training.loggers.base_train_logger import BaseTrainLogger
 
@@ -37,4 +42,5 @@ class TensorboardLogger(BaseTrainLogger):
         self.log(logs, self.epoch_idx)
 
 
-tb_logger = TensorboardLogger()
+if _tensorboard_supported:
+    tb_logger = TensorboardLogger()
