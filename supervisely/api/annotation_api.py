@@ -1418,13 +1418,14 @@ class AnnotationApi(ModuleApi):
             # if so, download them separately and update the annotation
             if len(additonal_geometries) > 0:
                 figure_ids = list(additonal_geometries.keys())
-                figures = self._api.image.figure.download_geometries_batch(
+                figures = await self._api.image.figure.download_geometries_batch_async(
                     figure_ids,
                     (
                         progress_cb
                         if progress_cb is not None and progress_cb_type == "size"
                         else None
                     ),
+                    semaphore=semaphore,
                 )
                 for figure_id, geometry in zip(figure_ids, figures):
                     label_idx = additonal_geometries[figure_id]
@@ -1523,6 +1524,7 @@ class AnnotationApi(ModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         with_custom_data: Optional[bool] = False,
         force_metadata_for_links: Optional[bool] = True,
+        semaphore: Optional[asyncio.Semaphore] = None,
     ) -> List[AnnotationInfo]:
         """
         Get list of AnnotationInfos for given dataset ID from API.
@@ -1538,7 +1540,8 @@ class AnnotationApi(ModuleApi):
         :type with_custom_data: bool, optional
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
-
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
         :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
@@ -1572,6 +1575,9 @@ class AnnotationApi(ModuleApi):
             with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
                 ann_infos = api.annotation.download_batch(dataset_id, image_ids)
         """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
         # use context to avoid redundant API calls
         context = self._api.optimization_context
         context_dataset_id = context.get("dataset_id")
@@ -1596,14 +1602,16 @@ class AnnotationApi(ModuleApi):
 
         id_to_ann = {}
         for batch in batched(image_ids):
-            post_data = {
+            json_data = {
                 ApiField.DATASET_ID: dataset_id,
                 ApiField.IMAGE_IDS: batch,
                 ApiField.WITH_CUSTOM_DATA: with_custom_data,
                 ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                 ApiField.INTEGER_COORDS: False,
             }
-            results = self._api.post("annotations.bulk.info", data=post_data).json()
+            async with semaphore:
+                results = await self._api.post_async("annotations.bulk.info", json=json_data)
+                results = results.json()
             if need_download_alpha_masks is True:
                 additonal_geometries = defaultdict(tuple)
                 for ann_idx, ann_dict in enumerate(results):
@@ -1618,7 +1626,9 @@ class AnnotationApi(ModuleApi):
                 # if there are any AlphaMask geometries, download them separately and update the annotation
                 if len(additonal_geometries) > 0:
                     figure_ids = list(additonal_geometries.keys())
-                    figures = self._api.image.figure.download_geometries_batch(figure_ids)
+                    figures = await self._api.image.figure.download_geometries_batch_async(
+                        figure_ids, semaphore=semaphore
+                    )
                     for figure_id, geometry in zip(figure_ids, figures):
                         ann_idx, label_idx = additonal_geometries[figure_id]
                         results[ann_idx][ApiField.ANNOTATION][AnnotationJsonFields.LABELS][

@@ -40,9 +40,9 @@ from supervisely.io.fs import (
     copy_file,
     copy_file_async,
     dir_empty,
-    file_exists,
     dir_exists,
     ensure_base_path,
+    file_exists,
     get_file_name_with_ext,
     list_dir_recursively,
     list_files,
@@ -4668,7 +4668,7 @@ async def _download_project_items_batch_async(
         imgs_bytes = [None] * len(img_infos)
 
     if only_image_tags is False:
-        ann_infos = await api.annotation.download_batch_async(
+        ann_infos = await api.annotation.download_bulk_async(
             dataset_id,
             img_ids,
             semaphore=semaphore,
