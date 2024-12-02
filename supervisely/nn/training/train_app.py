@@ -447,8 +447,6 @@ class TrainApp:
         # Step 6. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
-        # Step 7. Shutdown app
-        self.app.stop()
 
         # region TRAIN END
 
@@ -1854,6 +1852,7 @@ class TrainApp:
             "--reload_multifile=true",
         ]
         self._tensorboard_process = subprocess.Popen(args)
+        self.app.call_before_shutdown(self.stop_tensorboard)
         print(f"Tensorboard server has been started")
         self.gui.training_logs.tensorboard_button.enable()
 
