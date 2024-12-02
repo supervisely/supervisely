@@ -16,20 +16,28 @@ class TrainValSplitsSelector:
 
         train_val_dataset_ids = {"train": [], "val": []}
         for _, dataset in api.dataset.tree(project_id):
-            if dataset.name == "train":
-                train_val_dataset_ids["train"].append(dataset.id)
-            elif dataset.name == "val":
-                train_val_dataset_ids["val"].append(dataset.id)
+            if dataset.name.lower() == "train" or dataset.name.lower() == "training":
+                if dataset.items_count > 0:
+                    train_val_dataset_ids["train"].append(dataset.id)
+            elif dataset.name.lower() == "val" or dataset.name.lower() == "validation":
+                if dataset.items_count > 0:
+                    train_val_dataset_ids["val"].append(dataset.id)
 
-        # Check duplicate dataset names
+        # Check nested dataset names
         train_count = len(train_val_dataset_ids["train"])
         val_count = len(train_val_dataset_ids["val"])
-        # @TODO: test this feature
-        if train_count == 1 and val_count == 1:
-            self.train_val_splits.set_datasets_splits(["train"], ["val"])
+        if train_count > 0 and val_count > 0:
+            self.train_val_splits.set_datasets_splits(
+                train_val_dataset_ids["train"], train_val_dataset_ids["val"]
+            )
 
-        self.validator_text = Text("")
-        self.validator_text.hide()
+        if train_count > 0 and val_count > 0:
+            self.validator_text = Text("Train and val datasets are detected", status="info")
+            self.validator_text.show()
+        else:
+            self.validator_text = Text("")
+            self.validator_text.hide()
+
         self.button = Button("Select")
         container = Container(
             [

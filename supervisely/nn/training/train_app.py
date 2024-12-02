@@ -170,7 +170,7 @@ class TrainApp:
             try:
                 state = request.state.state
                 app_state = state["app_state"]
-                self.gui.load_from_state(app_state)
+                self.gui.load_from_app_state(app_state)
 
                 self._wrapped_start_training()
 
