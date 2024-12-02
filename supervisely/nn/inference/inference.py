@@ -563,7 +563,7 @@ class Inference:
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
-    
+
     def _load_model_headless(
         self,
         model_files: dict,
@@ -572,7 +572,7 @@ class Inference:
         device: str,
         runtime: str,
         **kwargs,
-        ):
+    ):
         deploy_params = {
             "model_files": model_files,
             "model_source": model_source,
@@ -589,17 +589,13 @@ class Inference:
             self._set_model_meta_from_classes()
 
     def _set_model_meta_custom_model(self, model_info: dict):
-        model_meta_url = model_info.get("model_meta")
-        if model_meta_url is None:
+        model_meta_json = model_info.get("model_meta")
+        if model_meta_json is None:
             return
-        remote_artifacts_dir = model_info["artifacts_dir"]
-        model_meta_url = os.path.join(remote_artifacts_dir, model_meta_url)
-        model_meta_path = self.download(model_meta_url)
-        model_meta = sly_json.load_json_file(model_meta_path)
-        self._model_meta = ProjectMeta.from_json(model_meta)
+        self._model_meta = ProjectMeta.from_json(model_meta_json)
         self._get_confidence_tag_meta()
         self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
-    
+
     def _set_checkpoint_info_custom_model(self, deploy_params: dict):
         model_info = deploy_params.get("model_info", {})
         model_files = deploy_params.get("model_files", {})
@@ -609,7 +605,9 @@ class Inference:
                 checkpoint_name=checkpoint_name,
                 model_name=model_info.get("model_name"),
                 architecture=model_info.get("framework_name"),
-                custom_checkpoint_path=os.path.join(model_info.get("artifacts_dir"), checkpoint_name),
+                custom_checkpoint_path=os.path.join(
+                    model_info.get("artifacts_dir"), checkpoint_name
+                ),
                 model_source=ModelSource.CUSTOM,
             )
 

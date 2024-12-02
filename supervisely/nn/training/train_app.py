@@ -162,6 +162,15 @@ class TrainApp:
         self._server = self.app.get_server()
         self._train_func = None
 
+        # Benchmark parameters
+        if self.is_model_benchmark_enabled:
+            self._benchmark_params = {
+                "model_files": {},
+                "model_source": ModelSource.CUSTOM,
+                "model_info": {},
+                "device": None,
+                "runtime": RuntimeType.PYTORCH,
+            }
         # -------------------------- #
 
         # Train endpoints
@@ -284,6 +293,22 @@ class TrainApp:
         return self.gui.model_selector.get_model_info()
 
     @property
+    def model_meta(self) -> ProjectMeta:
+        """
+        Returns the model metadata.
+
+        :return: Model metadata.
+        :rtype: dict
+        """
+        project_meta_json = self.sly_project.meta.to_json()
+        model_meta = {
+            "classes": [
+                item for item in project_meta_json["classes"] if item["title"] in self.classes
+            ]
+        }
+        return ProjectMeta.from_json(model_meta)
+
+    @property
     def device(self) -> str:
         """
         Returns the selected device for training.
@@ -356,6 +381,19 @@ class TrainApp:
         """
         return self.gui.training_logs.progress_bar_secondary
 
+    @property
+    def is_model_benchmark_enabled(self) -> bool:
+        """
+        Checks if model benchmarking is enabled based on application options and GUI settings.
+
+        :return: True if model benchmarking is enabled, False otherwise.
+        :rtype: bool
+        """
+        return (
+            self._app_options.get("model_benchmark", True)
+            and self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value()
+        )
+
     # Output
     # ----------------------------------------- #
 
@@ -420,14 +458,13 @@ class TrainApp:
         # Step 4. Run Model Benchmark
         mb_eval_report, mb_eval_report_id = None, None
 
-        if self._app_options.get("model_benchmark", True):
-            if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value() is True:
-                try:
-                    mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
-                        self.output_dir, remote_dir, experiment_info, splits_data
-                    )
-                except Exception as e:
-                    logger.error(f"Model benchmark failed: {e}")
+        if self.is_model_benchmark_enabled:
+            try:
+                mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
+                    self.output_dir, remote_dir, experiment_info, splits_data
+                )
+            except Exception as e:
+                logger.error(f"Model benchmark failed: {e}")
 
         # Step 4. Generate and upload additional files
         self._generate_experiment_info(remote_dir, experiment_info, mb_eval_report_id)
@@ -1136,6 +1173,8 @@ class TrainApp:
             config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
             output_config_path = join(self.output_dir, config_name)
             shutil.move(experiment_info["model_files"]["config"], output_config_path)
+            if self.is_model_benchmark_enabled:
+                self._benchmark_params["model_files"]["config"] = output_config_path
 
         # Prepare checkpoints
         checkpoints = experiment_info["checkpoints"]
@@ -1151,12 +1190,16 @@ class TrainApp:
                 "Checkpoints should be a list of paths or a path to directory with checkpoints"
             )
 
+        best_checkpoints_name = experiment_info["best_checkpoint"]
         for checkpoint_path in checkpoint_paths:
             new_checkpoint_path = join(
                 self._output_checkpoints_dir,
                 sly_fs.get_file_name_with_ext(checkpoint_path),
             )
             shutil.move(checkpoint_path, new_checkpoint_path)
+            if self.is_model_benchmark_enabled:
+                if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
+                    self._benchmark_params["model_files"]["checkpoint"] = new_checkpoint_path
 
         # Prepare logs
         if sly_fs.dir_exists(self.log_dir):
@@ -1215,14 +1258,7 @@ class TrainApp:
         local_path = join(self.output_dir, self._model_meta_file)
         remote_path = join(remote_dir, self._model_meta_file)
 
-        project_meta_json = self.sly_project.meta.to_json()
-        model_meta = {
-            "classes": [
-                item for item in project_meta_json["classes"] if item["title"] in self.classes
-            ]
-        }
-
-        sly_json.dump_json_file(model_meta, local_path)
+        sly_json.dump_json_file(self.model_meta.to_json(), local_path)
         self._upload_file_to_team_files(
             local_path,
             remote_path,
@@ -1544,17 +1580,14 @@ class TrainApp:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             logger.info(f"Using device: {device}")
 
-            # Always download checkpoint from tf instead of using local one
-            deploy_params = dict(
-                device=device,
-                runtime=RuntimeType.PYTORCH,
-                model_source=ModelSource.CUSTOM,
-                task_type=task_type,
-                checkpoint_name=best_filename,
-                checkpoint_url=remote_best_checkpoint,
-                config_url=remote_config_path,  # @TODO: Not always needed
-            )
-            m._load_model(deploy_params)
+            self._benchmark_params["device"] = device
+            self._benchmark_params["model_info"]["artifacts_dir"] = remote_artifacts_dir
+            self._benchmark_params["model_info"]["model_name"] = experiment_info["model_name"]
+            self._benchmark_params["model_info"]["framework_name"] = self.framework_name
+            self._benchmark_params["model_info"]["model_meta"] = self.model_meta.to_json()
+            logger.info(f"Deploy parameters: {self._benchmark_params}")
+
+            m._load_model_headless(**self._benchmark_params)
             m.serve()
 
             port = 8000
