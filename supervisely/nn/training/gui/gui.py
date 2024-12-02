@@ -297,7 +297,7 @@ class TrainGUI:
 
         required_keys = {
             "input": ["project_id"],
-            "train_val_splits": ["method"],
+            "train_val_split": ["method"],
             "classes": list,
             "model": ["source"],
             "hyperparameters": (dict, str),  # Allowing dict or str for hyperparameters
