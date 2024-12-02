@@ -2177,7 +2177,7 @@ class Annotation:
 
             if np.any(mask):  # figure may be entirely covered by others
                 g = lbl.geometry
-                new_mask = Bitmap(data=mask)
+                new_mask = Bitmap(data=mask, extra_validation=False)
                 new_lbl = lbl.clone(geometry=new_mask, obj_class=dest_class)
                 new_labels.append(new_lbl)
         new_ann = self.clone(labels=new_labels)
@@ -2366,7 +2366,7 @@ class Annotation:
         new_labels = []
         for obj_class, white_mask in class_mask.items():
             mask = white_mask == 255
-            bitmap = Bitmap(data=mask)
+            bitmap = Bitmap(data=mask, extra_validation=False)
             new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
         return self.clone(labels=new_labels)
 

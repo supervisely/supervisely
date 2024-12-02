@@ -6,17 +6,17 @@ import pandas as pd
 
 from supervisely.annotation.annotation import ProjectMeta
 from supervisely.api.api import Api
+from supervisely.api.module_api import ApiField
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.env import team_id
 from supervisely.io.fs import dir_empty, mkdir
 from supervisely.io.json import load_json_file
-from supervisely.nn.benchmark.evaluation.coco.metric_provider import MetricProvider
+from supervisely.nn.benchmark.utils.detection.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
-
 
 # class ImageComparisonData:
 #     def __init__(
@@ -87,6 +87,14 @@ class EvalResult:
         return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
 
     @property
+    def model_name(self) -> str:
+        if not self.name:
+            return
+        if len(self.name) > 20:
+            return self.name[:9] + "..." + self.name[-6:]
+        return self.name
+
+    @property
     def gt_project_id(self) -> int:
         return self.inference_info.get("gt_project_id")
 
@@ -114,7 +122,13 @@ class EvalResult:
         if self._gt_dataset_infos is None:
             filters = None
             if self.gt_dataset_ids is not None:
-                filters = [{"field": "id", "operator": "in", "value": self.gt_dataset_ids}]
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: self.gt_dataset_ids,
+                    }
+                ]
             self._gt_dataset_infos = self.api.dataset.get_list(
                 self.gt_project_id,
                 filters=filters,

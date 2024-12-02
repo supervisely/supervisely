@@ -139,7 +139,7 @@ class CalibrationScore(BaseVisMetric):
                     x=eval_result.dfsp_down["scores"],
                     y=eval_result.dfsp_down["f1"],
                     mode="lines",
-                    name=f"[{i+1}] {eval_result.name}",
+                    name=f"[{i+1}] {eval_result.model_name}",
                     line=dict(color=eval_result.color),
                     hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>",
                 )
@@ -194,7 +194,7 @@ class CalibrationScore(BaseVisMetric):
                     x=pred_probs,
                     y=true_probs,
                     mode="lines+markers",
-                    name=f"[{i+1}] {eval_result.name}",
+                    name=f"[{i+1}] {eval_result.model_name}",
                     line=dict(color=eval_result.color),
                     hovertemplate=f"{eval_result.name}<br>"
                     + "Confidence Score: %{x:.2f}<br>Fraction of True Positives: %{y:.2f}<extra></extra>",
