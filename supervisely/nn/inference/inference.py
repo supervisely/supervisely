@@ -177,7 +177,13 @@ class Inference:
                 gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
             ):
                 Progress("Deploying model ...", 1)
-                if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    deploy_params = self.get_params_from_gui()
+                    model_files = self._download_model_files(
+                        deploy_params["model_source"], deploy_params["model_files"]
+                    )
+                    self._load_model_headless(model_files, **deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
                     self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
@@ -551,32 +557,37 @@ class Inference:
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
-        if isinstance(self.gui, GUI.ServingGUITemplate):
-            # download model files
-            model_files = self._download_model_files(
-                self.model_source, deploy_params["model_files"]
-            )
-            deploy_params["model_files"] = model_files
-            model_info = deploy_params.get("model_info", {})
-            self._set_model_meta_custom_model(model_info)
-            self._set_checkpoint_info_custom_model(deploy_params)
-
         self.load_model(**deploy_params)
-
-        if isinstance(self.gui, GUI.ServingGUITemplate) and self._model_meta is None:
-            if self._model_meta is None and not self.get_classes():
-                raise ValueError(
-                    "Can't create model meta. Please, set the `self.classes` attribute."
-                )
-            self._set_model_meta_from_classes()
         self._model_served = True
         self._deploy_params = deploy_params
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
+    
+    def _load_model_headless(
+        self,
+        model_files: dict,
+        model_source: str,
+        model_info: dict,
+        device: str,
+        runtime: str,
+        **kwargs,
+        ):
+        deploy_params = {
+            "model_files": model_files,
+            "model_source": model_source,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+            **kwargs,
+        }
+        self._set_model_meta_custom_model(model_info)
+        self._set_checkpoint_info_custom_model(deploy_params)
+        self._load_model(deploy_params)
+        if self._model_meta is None:
+            self._set_model_meta_from_classes()
 
     def _set_model_meta_custom_model(self, model_info: dict):
-        # set model_meta for custom models
         model_meta_url = model_info.get("model_meta")
         if model_meta_url is None:
             return
@@ -714,6 +725,8 @@ class Inference:
 
     def _set_model_meta_from_classes(self):
         classes = self.get_classes()
+        if not classes:
+            raise ValueError("Can't create model meta. Please, set the `self.classes` attribute.")
         shape = self._get_obj_class_shape()
         self._model_meta = ProjectMeta([ObjClass(name, shape) for name in classes])
         self._get_confidence_tag_meta()
