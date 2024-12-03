@@ -44,9 +44,6 @@ class TrainingProcess:
         self.model_benchmark_report_thumbnail = ReportThumbnail()
         self.model_benchmark_report_thumbnail.hide()
 
-        self.model_benchmark_report_text = Text(status="info", text="Creating report on model...")
-        self.model_benchmark_report_text.hide()
-
         self.validator_text = Text("")
         self.validator_text.hide()
         self.start_button = Button("Start")
@@ -67,7 +64,6 @@ class TrainingProcess:
             self.validator_text,
             self.artifacts_thumbnail,
             self.model_benchmark_report_thumbnail,
-            self.model_benchmark_report_text,
         ]
 
         if self.app_options.get("device_selector", False):
