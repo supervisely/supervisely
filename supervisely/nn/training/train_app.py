@@ -1492,7 +1492,7 @@ class TrainApp:
         self.gui.training_process.start_button.loading = False
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
-        self.gui.training_logs.tensorboard_button.disable()
+        # self.gui.training_logs.tensorboard_button.disable()
 
         set_directory(remote_dir)
         self.gui.training_process.artifacts_thumbnail.set(file_info)
@@ -1694,7 +1694,7 @@ class TrainApp:
 
             # 8. UI updates
             benchmark_report_template = self._api.file.get_info_by_path(
-                self._team_id(), remote_dir + "template.vue"
+                self._team_id, remote_dir + "template.vue"
             )
 
             self.gui.training_process.model_benchmark_report_text.hide()
