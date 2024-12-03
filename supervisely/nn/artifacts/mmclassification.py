@@ -1,5 +1,6 @@
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
@@ -14,6 +15,7 @@ class MMClassification(BaseTrainArtifacts):
         self._task_type = "classification"
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/mmclassification/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["classification"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

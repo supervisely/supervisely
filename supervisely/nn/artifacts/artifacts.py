@@ -59,6 +59,7 @@ class BaseTrainArtifacts:
         self._weights_ext: str = None
         self._config_file: str = None
         self._pattern: str = None
+        self._available_task_types: List[str] = []
 
     @property
     def team_id(self) -> int:
@@ -516,3 +517,12 @@ class BaseTrainArtifacts:
         train_infos = self.sort_train_infos(train_infos, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return train_infos
+
+    def get_available_task_types(self) -> List[str]:
+        """
+        Get available task types.
+
+        :return: The list of available task types.
+        :rtype: List[str]
+        """
+        return self._available_task_types
