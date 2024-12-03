@@ -1208,7 +1208,7 @@ class TrainApp:
         # Prepare logs
         if sly_fs.dir_exists(self.log_dir):
             logs_dir = join(self.output_dir, "logs")
-            shutil.move(self.log_dir, logs_dir)
+            shutil.copytree(self.log_dir, logs_dir)
 
     # Generate experiment_info.json and app_state.json
     def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
@@ -1568,7 +1568,9 @@ class TrainApp:
                 remote_config_path = None
 
             logger.info(f"Creating the report for the best model: {best_filename!r}")
-            self.gui.training_process.model_benchmark_report_text.show()
+            self.gui.training_process.validator_text.set(
+                f"Creating evaluation report for the best model: {best_filename!r}", "info"
+            )
             self.progress_bar_main(message="Starting Model Benchmark evaluation", total=1)
             self.progress_bar_main.show()
 
@@ -1697,7 +1699,6 @@ class TrainApp:
                 self._team_id, remote_dir + "template.vue"
             )
 
-            self.gui.training_process.model_benchmark_report_text.hide()
             self.gui.training_process.model_benchmark_report_thumbnail.set(
                 benchmark_report_template
             )
@@ -1713,7 +1714,9 @@ class TrainApp:
             )
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
-            self.gui.training_process.model_benchmark_report_text.hide()
+            self.gui.training_process.validator_text.set(
+                "Finalizing and uploading training artifacts...", "info"
+            )
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
             try:
