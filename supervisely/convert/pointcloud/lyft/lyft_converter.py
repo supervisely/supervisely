@@ -54,10 +54,13 @@ class LyftPointcloudConverter(PointcloudConverter):
         def _filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
 
-        lyft_files = list_files_recursively(self._input_data, filter_fn=_filter_fn)
-
+        lyft_files = list_files_recursively(self._input_data, filter_fn=_filter_fn)        
         if len(lyft_files) == 0:
             return False
+        else:
+            pointcloud = np.fromfile(lyft_files[0], dtype=np.float32)
+            if pointcloud % 5 != 0:
+                return False
 
         self._items = []
         for file_path in lyft_files:
@@ -143,3 +146,6 @@ class LyftPointcloudConverter(PointcloudConverter):
                 progress.close()
 
         logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+
+
+# @ TODO: Implement the episodes, implement annotation conversion
