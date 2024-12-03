@@ -1,7 +1,9 @@
 # coding: utf-8
+import asyncio
 from collections import namedtuple
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, List
+from math import ceil
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 import requests
 
@@ -885,8 +887,77 @@ class ModuleApiBase(_JsonConvertibleModule):
         """
 
         response = await self._api.post_async(method, data)
-        results = response.json().get("entities", [])
-        return [self._convert_json_info(item) for item in results]
+        response_json = response.json()
+        entities = response_json.get("entities", [])
+        # To avoid empty pages when a filter is applied to the data and the `pagesCount` is less than the number calculated based on the items and `per_page` size.
+        # Process `pagesCount` in the main function according to the actual number of pages returned.
+        pages_count = response_json.get("pagesCount", None)
+        return pages_count, [self._convert_json_info(item) for item in entities]
+
+    async def get_list_page_generator_async(
+        self,
+        method: str,
+        data: dict,
+        pages_count: Optional[int] = None,
+        semaphore: Optional[List[asyncio.Semaphore]] = None,
+    ) -> AsyncGenerator[List[Any], None]:
+        """
+        Yields list of images in dataset asynchronously page by page.
+
+        :param method: Method to call for listing items.
+        :type method: str
+        :param data: Data to pass to the API method.
+        :type data: dict
+        :param pages_count: Preferred number of pages to retrieve if used with a `per_page` limit.
+                            Will be automatically adjusted if the `pagesCount` differs from the requested number.
+        :type pages_count: int, optional
+        :param semaphore: Semaphore for limiting the number of simultaneous requests.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param kwargs: Additional arguments.
+        :return: List of images in dataset.
+        :rtype: AsyncGenerator[List[ImageInfo]]
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+                    import asyncio
+
+                    os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                    os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                    api = sly.Api.from_env()
+
+                    method = 'images.list'
+                    data = {
+                        'datasetId': 123456
+                    }
+
+                    loop = sly.utils.get_or_create_event_loop()
+                    images = loop.run_until_complete(api.image.get_list_generator_async(method, data))
+        """
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def sem_task(task):
+            async with semaphore:
+                return await task
+
+        if pages_count is None:
+            pages_count = 999999  # to avoid range lesser than total pages count
+        for page_num in range(1, pages_count + 1):
+            if page_num <= pages_count:
+                data[ApiField.PAGE] = page_num
+                total_pages, items = await sem_task(self.get_list_idx_page_async(method, data))
+
+                # To correct `total_pages` count in case filter is applied
+                if page_num == 1 and total_pages is not None:
+                    pages_count = total_pages
+
+                yield items
+            else:
+                break
 
 
 class ModuleApi(ModuleApiBase):

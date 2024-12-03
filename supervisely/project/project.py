@@ -4416,7 +4416,7 @@ async def _download_project_async(
 ):
     """
     Download image project to the local directory asynchronously.
-    Uses qeueu and semaphore to control the number of parallel downloads.
+    Uses queue and semaphore to control the number of parallel downloads.
     Every image goes through size check to decide if it should be downloaded in bulk or one by one.
     Checked images are split into two lists: small and large. Small images are downloaded in bulk, large images are downloaded one by one.
     As soon as the task is created, it is put into the queue. Workers take tasks from the queue and execute them.
@@ -4483,7 +4483,7 @@ async def _download_project_async(
         force_metadata_for_links = False
         if save_images is False and only_image_tags is True:
             force_metadata_for_links = True
-        all_images = api.image.get_list_page_generator_async(
+        all_images = api.image.get_list_generator_async(
             dataset_id, force_metadata_for_links=force_metadata_for_links, dataset_info=dataset
         )
         small_images = []
@@ -4560,6 +4560,8 @@ async def _download_project_async(
                 )
                 await queue.put(task)
 
+        await queue.join()
+
         all_images = small_images + large_images
 
         if save_image_meta:
@@ -4576,7 +4578,7 @@ async def _download_project_async(
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
-    await queue.join()
+
     for _ in range(num_workers):
         await queue.put(None)
     await asyncio.gather(*workers)

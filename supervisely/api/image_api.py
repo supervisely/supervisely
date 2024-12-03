@@ -4252,7 +4252,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             yield img_id, part.content
 
-    async def get_list_page_generator_async(
+    async def get_list_generator_async(
         self,
         dataset_id: int = None,
         filters: Optional[List[Dict[str, str]]] = None,
@@ -4313,37 +4313,32 @@ class ImageApi(RemoveableBulkModuleApi):
 
         total_pages = ceil(dataset_info.items_count / per_page)
 
+        data = {
+            ApiField.DATASET_ID: dataset_info.id,
+            ApiField.PROJECT_ID: dataset_info.project_id,
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order,
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.FILTER: filters or [],
+            ApiField.PER_PAGE: per_page,
+        }
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
+        if only_labelled:
+            data[ApiField.FILTERS] = [
+                {
+                    "type": "objects_class",
+                    "data": {
+                        "from": 1,
+                        "to": 9999,
+                        "include": True,
+                        "classId": None,
+                    },
+                }
+            ]
+
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        async def sem_task(task):
-            async with semaphore:
-                return await task
-
-        for page_num in range(1, total_pages + 1):
-            data = {
-                ApiField.DATASET_ID: dataset_info.id,
-                ApiField.PROJECT_ID: dataset_info.project_id,
-                ApiField.SORT: sort,
-                ApiField.SORT_ORDER: sort_order,
-                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                ApiField.FILTER: filters or [],
-                ApiField.PER_PAGE: per_page,
-                ApiField.PAGE: page_num,
-            }
-            if fields is not None:
-                data[ApiField.FIELDS] = fields
-            if only_labelled:
-                data[ApiField.FILTERS] = [
-                    {
-                        "type": "objects_class",
-                        "data": {
-                            "from": 1,
-                            "to": 9999,
-                            "include": True,
-                            "classId": None,
-                        },
-                    }
-                ]
-            items = await sem_task(self.get_list_idx_page_async(method, data))
-            yield items
+        async for page in self.get_list_page_generator_async(method, data, total_pages, semaphore):
+            yield page
