@@ -664,6 +664,27 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import asyncio
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                figure_ids = [642155547, 642155548, 642155549]
+                loop = sly.utils.get_or_create_event_loop()
+                geometries = loop.run_until_complete(
+                    api.figure.download_geometries_batch_async(
+                        figure_ids,
+                        progress_cb=tqdm(total=len(figure_ids), desc="Downloading geometries"),
+                        semaphore=asyncio.Semaphore(15),
+                    )
+                )
         """
         geometries = {}
         async for idx, part in self._download_geometries_generator_async(ids, semaphore):

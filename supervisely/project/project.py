@@ -4474,7 +4474,7 @@ async def _download_project_async(
         force_metadata_for_links = False
         if save_images is False and only_image_tags is True:
             force_metadata_for_links = True
-        all_images = api.image.get_list_async(
+        all_images = api.image.get_list_page_generator_async(
             dataset_id, force_metadata_for_links=force_metadata_for_links, dataset_info=dataset
         )
         small_images = []
@@ -4651,7 +4651,7 @@ async def _download_project_items_batch_async(
         img_ids = [img_info.id for img_info in img_infos]
         imgs_bytes = [None] * len(img_ids)
         temp_dict = {}
-        async for img_id, img_bytes in api.image.download_bytes_batch_async(
+        async for img_id, img_bytes in api.image.download_bytes_generator_async(
             dataset_id,
             img_ids,
             semaphore=semaphore,

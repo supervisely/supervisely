@@ -874,6 +874,7 @@ class ModuleApiBase(_JsonConvertibleModule):
     ) -> List[Any]:
         """
         Get the list of items for a given page number.
+        Page number is specified in the data dictionary.
 
         :param method: Method to call for listing items.
         :type method: str

@@ -4166,18 +4166,20 @@ class ImageApi(RemoveableBulkModuleApi):
         results = await asyncio.gather(*tasks)
         return results
 
-    async def download_bytes_batch_async(
+    async def download_bytes_generator_async(
         self,
         dataset_id: int,
         img_ids: List[int],
         semaphore: Optional[asyncio.Semaphore] = None,
         headers: Optional[dict] = None,
-        check_hash: bool = True,
+        check_hash: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "number",
     ) -> AsyncGenerator[Tuple[int, bytes]]:
         """
-        Downloads Image bytes with given ID.
+        Downloads Image bytes with given ID in batch asynchronously.
+        Yields tuple of Image ID and bytes of downloaded image.
+        Uses bulk download API method.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
@@ -4187,7 +4189,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param headers: Headers for request.
         :type headers: dict, optional
-        :param check_hash: If True, checks hash of downloaded bytes.
+        :param check_hash: If True, checks hash of downloaded bytes. Default is False.
         :type check_hash: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
@@ -4195,6 +4197,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: Tuple of Image ID and bytes of downloaded image.
         :rtype: :class:`Tuple[int, bytes]`
+
         :Usage example:
 
          .. code-block:: python
@@ -4244,9 +4247,12 @@ class ImageApi(RemoveableBulkModuleApi):
                         )
             if progress_cb is not None and progress_cb_type == "number":
                 progress_cb(1)
+            elif progress_cb is not None and progress_cb_type == "size":
+                progress_cb(len(part.content))
+
             yield img_id, part.content
 
-    async def get_list_async(
+    async def get_list_page_generator_async(
         self,
         dataset_id: int = None,
         filters: Optional[List[Dict[str, str]]] = None,
@@ -4260,7 +4266,7 @@ class ImageApi(RemoveableBulkModuleApi):
         **kwargs,
     ) -> AsyncGenerator[List[ImageInfo]]:
         """
-        Returns list of images in dataset asynchronously.
+        Yields list of images in dataset asynchronously page by page.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int

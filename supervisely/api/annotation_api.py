@@ -1559,10 +1559,7 @@ class AnnotationApi(ModuleApi):
             image_ids = [121236918, 121236919]
             p = tqdm(desc="Annotations downloaded: ", total=len(image_ids))
 
-            ann_infos = api.annotation.download_batch(dataset_id, image_ids, progress_cb=p)
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 0, "total": 2, "timestamp": "2021-03-16T15:20:06.168Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Annotations downloaded: ", "current": 2, "total": 2, "timestamp": "2021-03-16T15:20:06.510Z", "level": "info"}
+            ann_infos = await api.annotation.download_bulk_async(dataset_id, image_ids, progress_cb=p)
 
             Optimizing the download process by using the context to avoid redundant API calls.:
             # 1. Download the project meta
@@ -1573,7 +1570,7 @@ class AnnotationApi(ModuleApi):
             dataset_id = 254737
             image_ids = [121236918, 121236919]
             with sly.ApiContext(api, dataset_id=dataset_id, project_id=project_id, project_meta=project_meta):
-                ann_infos = api.annotation.download_batch(dataset_id, image_ids)
+                ann_infos = await api.annotation.download_bulk_async(dataset_id, image_ids)
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
