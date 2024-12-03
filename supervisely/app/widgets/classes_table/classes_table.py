@@ -283,7 +283,9 @@ class ClassesTable(Widget):
         StateJson().send_changes()
         self.loading = False
 
-    def read_project_from_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
+    def read_project_from_id(
+        self, project_id: int, dataset_ids: Optional[List[int]] = None
+    ) -> None:
         """Read remote project by id and update table data.
 
         :param project_id: Project id from which classes will be taken.
@@ -480,4 +482,4 @@ class ClassesTable(Widget):
         self._dataset_ids = dataset_ids
         self._update_meta(self._project_meta)
         self.update_data()
-        selected_classes = self.select_classes(selected_classes)
+        self.select_classes(selected_classes)

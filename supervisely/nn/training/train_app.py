@@ -1579,16 +1579,16 @@ class TrainApp:
                 custom_inference_settings=self._inference_settings,
             )
 
-            import torch
+            logger.info(f"Using device: {self.device}")
 
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            logger.info(f"Using device: {device}")
+            self._benchmark_params["device"] = self.device
+            self._benchmark_params["model_info"] = {
+                "artifacts_dir": remote_artifacts_dir,
+                "model_name": experiment_info["model_name"],
+                "framework_name": self.framework_name,
+                "model_meta": self.model_meta.to_json(),
+            }
 
-            self._benchmark_params["device"] = device
-            self._benchmark_params["model_info"]["artifacts_dir"] = remote_artifacts_dir
-            self._benchmark_params["model_info"]["model_name"] = experiment_info["model_name"]
-            self._benchmark_params["model_info"]["framework_name"] = self.framework_name
-            self._benchmark_params["model_info"]["model_meta"] = self.model_meta.to_json()
             logger.info(f"Deploy parameters: {self._benchmark_params}")
 
             m._load_model_headless(**self._benchmark_params)
@@ -1601,10 +1601,11 @@ class TrainApp:
 
             # 1. Init benchmark
             benchmark_dataset_ids = splits_data["val"]["dataset_ids"]
-            benchmark_images_ids = splits_data["val"]["images_ids"]
+            benchmark_images_ids = splits_data["val"]["images_ids"] or []
             train_dataset_ids = splits_data["train"]["dataset_ids"]
-            train_images_ids = splits_data["train"]["images_ids"]
+            train_images_ids = splits_data["train"]["images_ids"] or []
 
+            bm = None
             if task_type == TaskType.OBJECT_DETECTION:
                 eval_params = ObjectDetectionEvaluator.load_yaml_evaluation_params()
                 eval_params = yaml.safe_load(eval_params)
@@ -1647,6 +1648,8 @@ class TrainApp:
                     classes_whitelist=self.classes,
                     evaluation_params=eval_params,
                 )
+            else:
+                raise ValueError(f"Task type: '{task_type}' is not supported for Model Benchmark")
 
             train_info = {
                 "app_session_id": self.task_id,

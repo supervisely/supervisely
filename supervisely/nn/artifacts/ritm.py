@@ -37,7 +37,7 @@ class RITM(BaseTrainArtifacts):
         task_type = "undefined"
         for file_info in self._get_file_infos():
             if file_info.path == info_path:
-                json_data = self._fetch_json_from_url(file_info.full_storage_url)
+                json_data = self._fetch_json_from_path(file_info.path)
                 task_type = json_data.get("segmentationType", "undefined")
                 if task_type is not None:
                     task_type = task_type.lower()

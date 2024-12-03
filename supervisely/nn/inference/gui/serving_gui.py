@@ -85,7 +85,9 @@ class ServingGUI:
 
         self._model_full_info_card.collapse()
         self._additional_ui_content = []
-        self.get_ui = self.__add_content_and_model_info_to_default_ui(self._model_full_info_card)
+        self.get_ui = self.__add_content_and_model_info_to_default_ui(
+            self._model_full_info_card
+        )  # pylint: disable=method-hidden
 
         self.on_change_model_callbacks: List[Callable] = [ServingGUI._hide_info_after_change]
         self.on_serve_callbacks: List[Callable] = []

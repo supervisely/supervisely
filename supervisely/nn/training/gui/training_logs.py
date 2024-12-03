@@ -82,12 +82,6 @@ class TrainingLogs:
     def validate_step(self) -> bool:
         return True
 
-    def get_device(self):
-        if self.app_options.get("device_selector", False):
-            return self.select_device.get_device()
-        else:
-            return "cuda:0"
-
     def toggle_logs(self):
         if self.task_logs.is_hidden():
             self.task_logs.show()

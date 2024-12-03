@@ -100,6 +100,7 @@ class TrainValSplits(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _get_random_content(self):
+        items_count = 0
         if self._project_id is not None:
             items_count = self._project_info.items_count
         elif self._project_fs is not None:
@@ -224,6 +225,7 @@ class TrainValSplits(Widget):
     def get_splits(self) -> Tuple[List[ItemInfo], List[ItemInfo]]:
         split_method = self._content.get_active_tab()
         tmp_project_dir = None
+        train_set, val_set = [], []
         if self._project_fs is None:
             tmp_project_dir = os.path.join(get_data_dir(), rand_str(15))
             self._project_class.download(self._api, self._project_id, tmp_project_dir)
