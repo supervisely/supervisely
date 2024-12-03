@@ -182,7 +182,8 @@ class Inference:
                     model_files = self._download_model_files(
                         deploy_params["model_source"], deploy_params["model_files"]
                     )
-                    self._load_model_headless(model_files, **deploy_params)
+                    deploy_params["model_files"] = model_files
+                    self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
                     self._load_model(deploy_params)
@@ -589,10 +590,21 @@ class Inference:
             self._set_model_meta_from_classes()
 
     def _set_model_meta_custom_model(self, model_info: dict):
-        model_meta_json = model_info.get("model_meta")
-        if model_meta_json is None:
+        model_meta = model_info.get("model_meta")
+        if model_meta is None:
             return
-        self._model_meta = ProjectMeta.from_json(model_meta_json)
+        if isinstance(model_meta, dict):
+            self._model_meta = ProjectMeta.from_json(model_meta)
+        elif isinstance(model_meta, str):
+            remote_artifacts_dir = model_info["artifacts_dir"]
+            model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
+            model_meta_path = self.download(model_meta_url)
+            model_meta = sly_json.load_json_file(model_meta_path)
+            self._model_meta = ProjectMeta.from_json(model_meta)
+        else:
+            raise ValueError(
+                "model_meta should be a dict or a name of '.json' file in experiment artifacts folder in Team Files"
+            )
         self._get_confidence_tag_meta()
         self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
 
@@ -2600,7 +2612,15 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                self._load_model(deploy_params)
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    model_files = self._download_model_files(
+                        deploy_params["model_source"], deploy_params["model_files"]
+                    )
+                    deploy_params["model_files"] = model_files
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
+                    self._load_model(deploy_params)
+
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")
