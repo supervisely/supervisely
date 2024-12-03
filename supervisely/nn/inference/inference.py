@@ -109,6 +109,7 @@ class Inference:
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
+        self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
         self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
         self.classes: List[str] = None

@@ -147,17 +147,6 @@ class ServingGUITemplate(ServingGUI):
         return self._get_selected_row()
 
     @property
-    def model_name(self) -> str:
-        if self.model_source == ModelSource.PRETRAINED:
-            selected_row = self.pretrained_models_table.get_selected_row()
-            model_meta = selected_row.get("meta", {})
-            model_name = model_meta.get("model_name", None)
-        else:
-            selected_row = self.experiment_selector.get_selected_experiment_info()
-            model_name = selected_row.get("model_name", None)
-        return model_name
-
-    @property
     def model_name(self) -> Optional[str]:
         if self.model_source == ModelSource.PRETRAINED:
             model_meta = self.model_info.get("meta", {})
