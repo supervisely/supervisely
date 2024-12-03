@@ -43,7 +43,11 @@ from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
+    InstanceSegmentationEvaluator,
     ObjectDetectionBenchmark,
+    ObjectDetectionEvaluator,
+    SemanticSegmentationBenchmark,
+    SemanticSegmentationEvaluator,
 )
 from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.task_type import TaskType
@@ -1602,6 +1606,8 @@ class TrainApp:
             train_images_ids = splits_data["train"]["images_ids"]
 
             if task_type == TaskType.OBJECT_DETECTION:
+                eval_params = ObjectDetectionEvaluator.load_yaml_evaluation_params()
+                eval_params = yaml.safe_load(eval_params)
                 bm = ObjectDetectionBenchmark(
                     self._api,
                     self.project_info.id,
@@ -1611,8 +1617,11 @@ class TrainApp:
                     progress=self.progress_bar_main,
                     progress_secondary=self.progress_bar_secondary,
                     classes_whitelist=self.classes,
+                    evaluation_params=eval_params,
                 )
             elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                eval_params = InstanceSegmentationEvaluator.load_yaml_evaluation_params()
+                eval_params = yaml.safe_load(eval_params)
                 bm = InstanceSegmentationBenchmark(
                     self._api,
                     self.project_info.id,
@@ -1622,6 +1631,21 @@ class TrainApp:
                     progress=self.progress_bar_main,
                     progress_secondary=self.progress_bar_secondary,
                     classes_whitelist=self.classes,
+                    evaluation_params=eval_params,
+                )
+            elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+                eval_params = SemanticSegmentationEvaluator.load_yaml_evaluation_params()
+                eval_params = yaml.safe_load(eval_params)
+                bm = SemanticSegmentationBenchmark(
+                    self._api,
+                    self.project_info.id,
+                    output_dir=benchmark_dir,
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
+                    progress=self.progress_bar_main,
+                    progress_secondary=self.progress_bar_secondary,
+                    classes_whitelist=self.classes,
+                    evaluation_params=eval_params,
                 )
 
             train_info = {

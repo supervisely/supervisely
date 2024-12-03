@@ -355,7 +355,7 @@ class TrainGUI:
             raise ValueError("app_state['options']['cache_project'] must be a boolean")
 
         # Check train val splits
-        train_val_splits_settings = app_state.get("train_val_splits")
+        train_val_splits_settings = app_state.get("train_val_split")
         if train_val_splits_settings.get("method") == "datasets":
             dataset_ids = []
             for parents, dataset in self._api.dataset.tree(self.project_id):
@@ -423,7 +423,7 @@ class TrainGUI:
 
         options = app_state["options"]
         input_settings = app_state["input"]
-        train_val_splits_settings = app_state["train_val_splits"]
+        train_val_splits_settings = app_state["train_val_split"]
         classes_settings = app_state["classes"]
         model_settings = app_state["model"]
         hyperparameters_settings = app_state["hyperparameters"]
