@@ -1,4 +1,8 @@
 from dataclasses import dataclass
+from typing import List
+
+from supervisely.nn.artifacts.artifacts import TrainInfo
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class ModelSource:
@@ -28,6 +32,7 @@ class CheckpointInfo:
     :param custom_checkpoint_path: Path in Team Files to the weights.
     :param model_source: Source of the model, either "Pretrained models" or "Custom models".
     """
+
     checkpoint_name: str = None
     model_name: str = None
     architecture: str = None

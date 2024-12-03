@@ -119,11 +119,18 @@ class SelectDatasetTree(Widget):
         self._append_to_body = append_to_body
 
         # Extract values from Enum to match the .type property of the ProjectInfo object.
-        self._project_types = (
-            [project_type.value for project_type in allowed_project_types]
-            if allowed_project_types is not None
-            else None
-        )
+
+        if allowed_project_types is not None:
+            if all(allowed_project_types) is isinstance(allowed_project_types, ProjectType):
+                self._project_types = (
+                    [project_type.value for project_type in allowed_project_types]
+                    if allowed_project_types is not None
+                    else None
+                )
+            elif all(allowed_project_types) is isinstance(allowed_project_types, str):
+                self._project_types = allowed_project_types
+            else:
+                self._project_types = None
 
         # Widget components.
         self._select_team = None
