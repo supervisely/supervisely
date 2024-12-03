@@ -1601,9 +1601,9 @@ class TrainApp:
 
             # 1. Init benchmark
             benchmark_dataset_ids = splits_data["val"]["dataset_ids"]
-            benchmark_images_ids = splits_data["val"]["images_ids"] or []
+            benchmark_images_ids = splits_data["val"]["images_ids"]
             train_dataset_ids = splits_data["train"]["dataset_ids"]
-            train_images_ids = splits_data["train"]["images_ids"] or []
+            train_images_ids = splits_data["train"]["images_ids"]
 
             bm = None
             if task_type == TaskType.OBJECT_DETECTION:
@@ -1651,12 +1651,20 @@ class TrainApp:
             else:
                 raise ValueError(f"Task type: '{task_type}' is not supported for Model Benchmark")
 
-            train_info = {
-                "app_session_id": self.task_id,
-                "train_dataset_ids": train_dataset_ids,
-                "train_images_ids": train_images_ids,
-                "images_count": len(train_images_ids),
-            }
+            if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
+                train_info = {
+                    "app_session_id": self.task_id,
+                    "train_dataset_ids": train_dataset_ids,
+                    "train_images_ids": None,
+                    "images_count": len(self._train_split),
+                }
+            else:
+                train_info = {
+                    "app_session_id": self.task_id,
+                    "train_dataset_ids": None,
+                    "train_images_ids": train_images_ids,
+                    "images_count": len(self._train_split),
+                }
             bm.train_info = train_info
 
             # 2. Run inference
