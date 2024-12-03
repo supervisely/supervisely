@@ -195,7 +195,7 @@ class ServingGUI:
             return None
         return classes
 
-    def get_ui(self) -> Widgets.Widget:
+    def get_ui(self) -> Widgets.Widget:  # pylint: disable=method-hidden
         return Widgets.Container([self.serve_model_card])
 
     def add_content_to_default_ui(
