@@ -2031,7 +2031,7 @@ class TrainApp:
         if not experiment_name:
             logger.error("Experiment name is empty")
             raise ValueError("Experiment name is empty")
-        invalid_chars = r"\/\*&^%@$#"
+        invalid_chars = r"\/"
         if any(char in experiment_name for char in invalid_chars):
             logger.error(f"Experiment name contains invalid characters: {invalid_chars}")
             raise ValueError(f"Experiment name contains invalid characters: {invalid_chars}")
