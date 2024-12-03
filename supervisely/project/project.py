@@ -4414,10 +4414,20 @@ async def _download_project_async(
     resume_download: Optional[bool] = False,
     **kwargs,
 ):
+    """
+    Download image project to the local directory asynchronously.
+    Uses qeueu and semaphore to control the number of parallel downloads.
+    Every image goes through size check to decide if it should be downloaded in bulk or one by one.
+    Checked images are split into two lists: small and large. Small images are downloaded in bulk, large images are downloaded one by one.
+    As soon as the task is created, it is put into the queue. Workers take tasks from the queue and execute them.
+
+    """
     # to switch between single and bulk download
     switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
+    # number of workers
+    num_workers = kwargs.get("num_workers", 5)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
@@ -4432,7 +4442,6 @@ async def _download_project_async(
             queue.task_done()
 
     queue = asyncio.Queue()
-    num_workers = 5
     workers = [asyncio.create_task(worker(queue, semaphore)) for _ in range(num_workers)]
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
@@ -4647,6 +4656,11 @@ async def _download_project_items_batch_async(
     only_image_tags: bool,
     progress_cb: Optional[Callable],
 ):
+    """
+    Download images and annotations from Supervisely API and save them to the local filesystem.
+    Uses parameters from the parent function _download_project_async.
+    It is used for batch download of images and annotations with the bulk download API methods.
+    """
     if save_images:
         img_ids = [img_info.id for img_info in img_infos]
         imgs_bytes = [None] * len(img_ids)
