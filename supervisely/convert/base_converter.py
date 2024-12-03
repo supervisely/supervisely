@@ -54,6 +54,7 @@ class AvailablePointcloudConverters:
     LAS = "las/laz"
     PLY = "ply"
     BAG = "rosbag"
+    LYFT = "lyft"
 
 
 class AvailablePointcloudEpisodesConverters:
