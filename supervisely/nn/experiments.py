@@ -98,6 +98,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             response.raise_for_status()
             response_json = response.json()
             export_value = response_json.get("export")
+            logger.warn(response_json.get("export"))
             if not isinstance(export_value, dict):
                 logger.debug(f"Converting 'export' to dict: {export_value}")
                 response_json["export"] = {}
