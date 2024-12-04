@@ -484,6 +484,7 @@ class TrainApp:
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
 
+        self._complete_progress()
         # region TRAIN END
 
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
@@ -1962,6 +1963,8 @@ class TrainApp:
             message = "Error occurred during training initialization. Please check the logs for more details."
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._reset_progress()
+            return
 
         try:
             self.gui.training_process.validator_text.set("Preparing data for training...", "info")
@@ -1972,6 +1975,7 @@ class TrainApp:
             )
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._reset_progress()
             return
 
         try:
@@ -1981,6 +1985,7 @@ class TrainApp:
             message = "Error occurred during training. Please check the logs for more details."
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._reset_progress()
             return
 
         try:
@@ -1996,6 +2001,7 @@ class TrainApp:
             message = "Error occurred during finalizing and uploading training artifacts . Please check the logs for more details."
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._reset_progress()
             return
 
     def _show_error(self, message: str, e=None):
@@ -2039,3 +2045,19 @@ class TrainApp:
             logger.error(f"Experiment name contains invalid characters: {invalid_chars}")
             raise ValueError(f"Experiment name contains invalid characters: {invalid_chars}")
         return True
+
+    def _reset_progress(self):
+        self.progress_bar_main.hide()
+        self.progress_bar_secondary.hide()
+        with self.progress_bar_main(message="Ready for training", total=1) as pbar:
+            pbar.update(1)
+        with self.progress_bar_secondary(message="Ready for training", total=1) as pbar:
+            pbar.update(1)
+
+    def _complete_progress(self):
+        self.progress_bar_main.hide()
+        self.progress_bar_secondary.hide()
+        with self.progress_bar_main(message="Training completed", total=1) as pbar:
+            pbar.update(1)
+        with self.progress_bar_secondary(message="Training completed", total=1) as pbar:
+            pbar.update(1)
