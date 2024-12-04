@@ -513,7 +513,7 @@ class TrainApp:
         # Step 4. [Optional] Convert weights
         if self._onnx_supported or self._tensorrt_supported:
             try:
-                export_paths = self._export_weights(remote_dir, experiment_info)
+                export_paths, experiment_info = self._export_weights(experiment_info)
                 self._set_progress_status("finalizing")
                 self._upload_export_weights(export_paths, remote_dir)
             except Exception as e:
@@ -2151,7 +2151,7 @@ class TrainApp:
             tensorrt_path = self._convert_tensorrt_func()
             export_weights_to_upload.append(tensorrt_path)
             experiment_info["export"][RuntimeType.TENSORRT] = tensorrt_path
-        return export_weights_to_upload
+        return export_weights_to_upload, experiment_info
 
     def _upload_export_weights(self, weight_paths: str, remote_dir: str) -> None:
         with self.progress_bar_main(
