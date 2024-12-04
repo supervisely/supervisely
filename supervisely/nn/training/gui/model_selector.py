@@ -21,6 +21,7 @@ class ModelSelector:
     lock_message = "Select classes to unlock"
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
+        self.display_widgets = []
         self.team_id = sly_env.team_id()  # get from project id
         self.models = models
 
@@ -42,11 +43,12 @@ class ModelSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        container = Container([self.model_source_tabs, self.validator_text, self.button])
+        self.display_widgets.extend([self.model_source_tabs, self.validator_text, self.button])
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             lock_message=self.lock_message,
             collapsable=app_options.get("collapsable", False),
         )

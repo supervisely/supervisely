@@ -1,7 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, Dict, List
 
 import requests
 
@@ -9,7 +10,8 @@ from supervisely import logger
 from supervisely.api.api import Api, ApiField
 
 
-class ExperimentInfo(NamedTuple):
+@dataclass
+class ExperimentInfo:
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
     framework_name: str
@@ -28,6 +30,8 @@ class ExperimentInfo(NamedTuple):
     """List of relative paths to checkpoints"""
     best_checkpoint: str
     """Name of the best checkpoint. Defined by the user in the training app"""
+    export: Dict[str, bool]
+    """Dictionary with exported weights in different formats"""
     app_state: str
     """Path to file with settings that were used in the app"""
     model_meta: str

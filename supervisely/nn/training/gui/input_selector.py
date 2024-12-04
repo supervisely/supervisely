@@ -17,6 +17,7 @@ class InputSelector:
     lock_message = None
 
     def __init__(self, project_info: ProjectInfo, app_options: dict = {}):
+        self.display_widgets = []
         self.project_id = project_info.id
         self.project_info = project_info
 
@@ -32,19 +33,19 @@ class InputSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        container = Container(
-            widgets=[
+        self.display_widgets.extend(
+            [
                 self.project_thumbnail,
                 self.use_cache_checkbox,
                 self.validator_text,
                 self.button,
             ]
         )
-
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             collapsable=app_options.get("collapsable", False),
         )
 

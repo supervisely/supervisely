@@ -17,7 +17,7 @@ from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplits
 from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, RuntimeType
 
 
 class TrainGUI:
@@ -415,13 +415,18 @@ class TrainGUI:
                         "enable": True,
                         "speed_test": True
                     },
-                    "cache_project": True
+                    "cache_project": True,
+                "export": {
+                    "enable": True,
+                    "ONNXRuntime": True,
+                    "TensorRT": True
+                    },
                 }
             }
         """
         app_state = self.validate_app_state(app_state)
 
-        options = app_state["options"]
+        options = app_state.get("options", {})
         input_settings = app_state["input"]
         train_val_splits_settings = app_state["train_val_split"]
         classes_settings = app_state["classes"]
@@ -444,7 +449,7 @@ class TrainGUI:
         :type options: dict
         """
         # Set Input
-        self.input_selector.set_cache(options["cache_project"])
+        self.input_selector.set_cache(options.get("cache_project", True))
         self.input_selector_cb()
         # ----------------------------------------- #
 
@@ -527,13 +532,22 @@ class TrainGUI:
         """
         self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
-        model_benchmark_settings = options["model_benchmark"]
-        self.hyperparameters_selector.set_model_benchmark_checkbox_value(
-            model_benchmark_settings["enable"]
-        )
-        self.hyperparameters_selector.set_speedtest_checkbox_value(
-            model_benchmark_settings["speed_test"]
-        )
+        model_benchmark_settings = options.get("model_benchmark", None)
+        if model_benchmark_settings is not None:
+            self.hyperparameters_selector.set_model_benchmark_checkbox_value(
+                model_benchmark_settings["enable"]
+            )
+            self.hyperparameters_selector.set_speedtest_checkbox_value(
+                model_benchmark_settings["speed_test"]
+            )
+        export_weights_settings = options.get("export", None)
+        if export_weights_settings is not None:
+            self.hyperparameters_selector.set_export_onnx_checkbox_value(
+                export_weights_settings.get(RuntimeType.ONNXRUNTIME, False)
+            )
+            self.hyperparameters_selector.set_export_tensorrt_checkbox_value(
+                export_weights_settings.get(RuntimeType.TENSORRT, False)
+            )
         self.hyperparameters_selector_cb()
 
     # ----------------------------------------- #

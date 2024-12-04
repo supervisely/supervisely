@@ -12,6 +12,7 @@ class TrainingLogs:
     lock_message = "Start training to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
+        self.display_widgets = []
         api = Api.from_env()
         self.app_options = app_options
 
@@ -46,12 +47,7 @@ class TrainingLogs:
         self.validator_text = Text("")
         self.validator_text.hide()
 
-        container_widgets = [
-            self.validator_text,
-            self.tensorboard_button,
-            self.progress_bar_main,
-            self.progress_bar_secondary,
-        ]
+        self.display_widgets.extend([self.validator_text, self.tensorboard_button])
 
         if app_options.get("show_logs_in_gui", False):
             self.logs_button = Button(
@@ -63,14 +59,14 @@ class TrainingLogs:
             self.task_logs = TaskLogs(task_id)
             self.task_logs.hide()
             logs_container = Container([self.logs_button, self.task_logs])
-            container_widgets.insert(2, logs_container)
+            self.display_widgets.extend([logs_container])
 
-        container = Container(container_widgets)
-
+        self.display_widgets.extend([self.progress_bar_main, self.progress_bar_secondary])
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             lock_message=self.lock_message,
         )
         self.card.lock()

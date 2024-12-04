@@ -11,9 +11,10 @@ class ClassesSelector:
     lock_message = "Select training and validation splits to unlock"
 
     def __init__(self, project_id: int, classes: list, app_options: dict = {}):
-        self.classes_table = ClassesTable(project_id=project_id)  # use dataset_ids
+        self.display_widgets = []
+        self.classes_table = ClassesTable(project_id=project_id)
         if len(classes) > 0:
-            self.classes_table.select_classes(classes)  # from app options
+            self.classes_table.select_classes(classes)
         else:
             self.classes_table.select_all()
 
@@ -29,18 +30,14 @@ class ClassesSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        container = Container(
-            [
-                qa_stats_text,
-                self.classes_table,
-                self.validator_text,
-                self.button,
-            ]
+        self.display_widgets.extend(
+            [qa_stats_text, self.classes_table, self.validator_text, self.button]
         )
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             lock_message=self.lock_message,
             collapsable=app_options.get("collapsable", False),
         )

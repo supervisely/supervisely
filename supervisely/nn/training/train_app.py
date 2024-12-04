@@ -109,6 +109,7 @@ class TrainApp:
         self._remote_checkpoints_dir_name = "checkpoints"
         self._experiments_dir_name = "experiments"
         self._default_work_dir_name = "work_dir"
+        self._export_dir_name = "export"
         self._tensorboard_port = 6006
 
         if is_production():
@@ -165,6 +166,13 @@ class TrainApp:
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
         self._train_func = None
+
+        self._onnx_supported = self._app_options.get("export_onnx_supported", False)
+        self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
+        if self._onnx_supported:
+            self._convert_onnx_func = None
+        if self._tensorrt_supported:
+            self._convert_tensorrt_func = None
 
         # Benchmark parameters
         if self.is_model_benchmark_enabled:
@@ -401,7 +409,7 @@ class TrainApp:
     # Output
     # ----------------------------------------- #
 
-    # region TRAIN START
+    # Wrappers
     @property
     def start(self):
         """
@@ -415,6 +423,34 @@ class TrainApp:
             return func
 
         return decorator
+
+    @property
+    def export_onnx(self):
+        """
+        Decorator for the export to ONNX function defined by user.
+        It wraps user-defined export function and prepares and finalizes the training process.
+        """
+
+        def decorator(func):
+            self._convert_onnx_func = func
+            return func
+
+        return decorator
+
+    @property
+    def export_tensorrt(self):
+        """
+        Decorator for the export to TensorRT function defined by user.
+        It wraps user-defined export function and prepares and finalizes the training process.
+        """
+
+        def decorator(func):
+            self._convert_tensorrt_func = func
+            return func
+
+        return decorator
+
+    # ----------------------------------------- #
 
     def _prepare(self) -> None:
         """
@@ -470,14 +506,23 @@ class TrainApp:
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
-        # Step 4. Generate and upload additional files
+        # Step 4. [Optional] Convert weights
+        if self._onnx_supported or self._tensorrt_supported:
+            try:
+                export_paths = self._export_weights(remote_dir, experiment_info)
+                self._set_progress_status("finalizing")
+                self._upload_export_weights(export_paths, remote_dir)
+            except Exception as e:
+                logger.error(f"Export weights failed: {e}")
+
+        # Step 5. Generate and upload additional files
         self._generate_experiment_info(remote_dir, experiment_info, mb_eval_report_id)
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
         self._generate_model_meta(remote_dir, experiment_info)
 
-        # Step 5. Set output widgets
+        # Step 6. Set output widgets
         self._set_training_output(remote_dir, file_info)
 
         # Step 6. Workflow output
@@ -485,7 +530,6 @@ class TrainApp:
             self._workflow_output(remote_dir, file_info, mb_eval_report)
 
         self._set_progress_status("completed")
-        # region TRAIN END
 
     def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
         """
@@ -1298,6 +1342,12 @@ class TrainApp:
             "model_files": experiment_info["model_files"],
             "checkpoints": experiment_info["checkpoints"],
             "best_checkpoint": experiment_info["best_checkpoint"],
+            "export": {
+                RuntimeType.ONNXRUNTIME: experiment_info["export"].get(
+                    RuntimeType.ONNXRUNTIME, None
+                ),
+                RuntimeType.TENSORRT: experiment_info["export"].get(RuntimeType.TENSORRT, None),
+            },
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
             "train_val_split": self._train_val_split_file,
@@ -1498,7 +1548,9 @@ class TrainApp:
         set_directory(remote_dir)
         self.gui.training_process.artifacts_thumbnail.set(file_info)
         self.gui.training_process.artifacts_thumbnail.show()
-        self.gui.training_process.success_message.show()
+        self.gui.training_process.validator_text.set(
+            self.gui.training_process.success_message_text, "success"
+        )
 
     # Model Benchmark
     def _get_eval_results_dir_name(self) -> str:
@@ -1968,7 +2020,7 @@ class TrainApp:
             return
 
         try:
-            self.gui.training_process.validator_text.set("Preparing data for training...", "info")
+            self._set_progress_status("preparing")
             self._prepare()
         except Exception as e:
             message = (
@@ -1980,7 +2032,7 @@ class TrainApp:
             return
 
         try:
-            self.gui.training_process.validator_text.set("Training is in progress...", "info")
+            self._set_progress_status("training")
             if self._app_options.get("train_logger", None) is None:
                 self._set_progress_status("training")
             experiment_info = self._train_func()
@@ -1992,14 +2044,9 @@ class TrainApp:
             return
 
         try:
-            self.gui.training_process.validator_text.set(
-                "Finalizing and uploading training artifacts...", "info"
-            )
+            self._set_progress_status("finalizing")
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
-            self.gui.training_process.validator_text.set(
-                self.gui.training_process.success_message_text, "success"
-            )
         except Exception as e:
             message = "Error occurred during finalizing and uploading training artifacts . Please check the logs for more details."
             self._show_error(message, e)
@@ -2049,14 +2096,20 @@ class TrainApp:
             raise ValueError(f"Experiment name contains invalid characters: {invalid_chars}")
         return True
 
-    def _set_progress_status(self, status: Literal["reset", "completed", "training"]):
+    def _set_progress_status(
+        self, status: Literal["reset", "completed", "training", "finalizing", "preparing"]
+    ):
         message = ""
         if status == "reset":
             message = "Ready for training"
         elif status == "completed":
             message = "Training completed"
         elif status == "training":
-            message = "Training is in progress"
+            message = "Training is in progress..."
+        elif status == "finalizing":
+            message = "Finalizing and uploading training artifacts..."
+        elif status == "preparing":
+            message = "Preparing data for training..."
 
         self.progress_bar_main.hide()
         self.progress_bar_secondary.hide()
@@ -2064,3 +2117,42 @@ class TrainApp:
             pbar.update(1)
         with self.progress_bar_secondary(message=message, total=1) as pbar:
             pbar.update(1)
+
+    def _export_weights(self, experiment_info: dict) -> List[str]:
+        export_weights_to_upload = []
+        if self._convert_onnx_func is not None:
+            self.gui.training_process.validator_text.set(
+                f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
+            )
+            onnx_path = self._convert_onnx_func()
+            export_weights_to_upload.append(onnx_path)
+            experiment_info["export"][RuntimeType.ONNXRUNTIME] = onnx_path
+        if self._convert_tensorrt_func is not None:
+            self.gui.training_process.validator_text.set(
+                f"Converting to {RuntimeType.TENSORRT}", "info"
+            )
+            tensorrt_path = self._convert_tensorrt_func()
+            export_weights_to_upload.append(tensorrt_path)
+            experiment_info["export"][RuntimeType.TENSORRT] = tensorrt_path
+        return export_weights_to_upload
+
+    def _upload_export_weights(self, weight_paths: str, remote_dir: str) -> None:
+        with self.progress_bar_main(
+            message="Uploading export weights",
+            total=len(weight_paths),
+        ) as export_upload_main_pbar:
+            self.progress_bar_main.show()
+            for path in weight_paths:
+                file_name = sly_fs.get_file_name_with_ext(path)
+                file_size = sly_fs.get_file_size(path)
+                with self.progress_bar_secondary(
+                    message=f"Uploading '{file_name}' ",
+                    total=file_size,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as export_upload_secondary_pbar:
+                    destination_path = join(remote_dir, self._export_dir_name, file_name)
+                    self._api.file.upload(
+                        self._team_id, path, destination_path, export_upload_secondary_pbar
+                    )
+                export_upload_main_pbar.update(1)
