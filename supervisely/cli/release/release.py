@@ -1,18 +1,19 @@
+import datetime
 import json
 import os
 import random
 import re
-import string
-import datetime
 import shutil
-import tarfile
-import requests
+import string
 import subprocess
+import tarfile
 from pathlib import Path
+
 import git
+import requests
+from giturlparse import parse
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
-from giturlparse import parse
 
 
 def slug_is_valid(slug):
@@ -90,9 +91,7 @@ def get_instance_version(token, server):
         "x-api-key": token,
         "Content-Type": "application/json",
     }
-    r = requests.post(
-        f'{server.rstrip("/")}/public/api/v3/instance.version', headers=headers
-    )
+    r = requests.post(f'{server.rstrip("/")}/public/api/v3/instance.version', headers=headers)
     if r.status_code == 403:
         raise PermissionError()
     if r.status_code == 404:
@@ -139,6 +138,7 @@ def upload_archive(
     share_app,
 ):
     f = open(archive_path, "rb")
+    archive_name = os.path.basename(archive_path)
     fields = {
         "appKey": appKey,
         "subAppPath": subapp_path,
@@ -147,9 +147,9 @@ def upload_archive(
         "readme": readme,
         "modalTemplate": modal_template,
         "archive": (
-            "arhcive.tar.gz",
+            archive_name,
             f,
-            "application/gzip",
+            "application/gzip" if archive_name.endswith(".tar.gz") else "application/x-tar",
         ),
     }
     if slug:
@@ -166,9 +166,7 @@ def upload_archive(
         unit_scale=True,
         unit_divisor=1024,
     ) as bar:
-        m = MultipartEncoderMonitor(
-            e, lambda monitor: bar.update(monitor.bytes_read - bar.n)
-        )
+        m = MultipartEncoderMonitor(e, lambda monitor: bar.update(monitor.bytes_read - bar.n))
         response = requests.post(
             f"{server_address.rstrip('/')}/public/api/v3/ecosystem.release",
             data=m,
@@ -194,14 +192,20 @@ def archive_application(repo: git.Repo, config, slug):
     app_folder_name = re.sub("[ \/]", "-", app_folder_name)
     app_folder_name = re.sub("[\"'`,\[\]\(\)]", "", app_folder_name)
     working_dir_path = Path(repo.working_dir).absolute()
-    with tarfile.open(archive_folder + "/archive.tar.gz", "w:gz") as tar:
+    if config.get("type", "app") == "client_side_app":
+        archive_path = archive_folder + "/archive.tar"
+        write_mode = "w"
+    else:
+        archive_path = archive_folder + "/archive.tar.gz"
+        write_mode = "w:gz"
+    with tarfile.open(archive_path, write_mode) as tar:
         for path in file_paths:
             if path.is_file():
                 tar.add(
                     path.absolute(),
                     Path(app_folder_name).joinpath(path.relative_to(working_dir_path)),
                 )
-    return archive_folder
+    return archive_path
 
 
 def get_user(server_address, api_token):
@@ -209,9 +213,7 @@ def get_user(server_address, api_token):
         "x-api-key": api_token,
         "Content-Type": "application/json",
     }
-    r = requests.post(
-        f'{server_address.rstrip("/")}/public/api/v3/users.me', headers=headers
-    )
+    r = requests.post(f'{server_address.rstrip("/")}/public/api/v3/users.me', headers=headers)
     if r.status_code == 403:
         raise PermissionError()
     if r.status_code == 404 or r.status_code == 400:
@@ -256,7 +258,7 @@ def release(
 ):
     if created_at is None:
         created_at = get_created_at(repo, release_version)
-    archive_dir = archive_application(repo, config, slug)
+    archive_path = archive_application(repo, config, slug)
     release = {
         "name": release_name,
         "version": release_version,
@@ -265,7 +267,7 @@ def release(
         release["createdAt"] = created_at
     try:
         response = upload_archive(
-            archive_dir + "/archive.tar.gz",
+            archive_path,
             server_address,
             api_token,
             appKey,
