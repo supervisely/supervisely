@@ -126,6 +126,7 @@ class Inference:
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
         self._hardware: str = None
+        self.pretrained_models = self._load_models_json(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
             custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
@@ -154,7 +155,7 @@ class Inference:
                 if self.FRAMEWORK_NAME is None:
                     raise ValueError("FRAMEWORK_NAME is not defined")
                 self._gui = GUI.ServingGUITemplate(
-                    self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS
+                    self.FRAMEWORK_NAME, self.pretrained_models, self.APP_OPTIONS
                 )
                 self._user_layout = self._gui.widgets
                 self._user_layout_card = self._gui.card
@@ -239,6 +240,38 @@ class Inference:
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
+
+    def _load_models_json(self, models: str) -> List[Dict[str, Any]]:
+        """
+        Loads models from the provided file or list of model configurations.
+        """
+        if isinstance(models, str):
+            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
+                models = sly_json.load_json_file(models)
+            else:
+                raise ValueError("File not found or invalid file format.")
+        else:
+            raise ValueError(
+                "Invalid models file. Please provide a valid '.json' file with list of model configurations."
+            )
+
+        if not isinstance(models, list):
+            raise ValueError("models parameters must be a list of dicts")
+        for item in models:
+            if not isinstance(item, dict):
+                raise ValueError(f"Each item in models must be a dict.")
+            model_meta = item.get("meta")
+            if model_meta is None:
+                raise ValueError(
+                    "Model metadata not found. Please update provided models parameter to include key 'meta'."
+                )
+            model_files = model_meta.get("model_files")
+            if model_files is None:
+                raise ValueError(
+                    "Model files not found in model metadata. "
+                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
+                )
+        return models
 
     def get_ui(self) -> Widget:
         if not self._use_gui:
