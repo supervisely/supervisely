@@ -3,7 +3,7 @@ import asyncio
 from collections import namedtuple
 from copy import deepcopy
 from math import ceil
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, List, NamedTuple, Optional, Tuple
 
 import requests
 
@@ -873,7 +873,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         self,
         method: str,
         data: dict,
-    ) -> List[Any]:
+    ) -> Tuple[int, List[NamedTuple]]:
         """
         Get the list of items for a given page number.
         Page number is specified in the data dictionary.
@@ -883,7 +883,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         :param data: Data to pass to the API method.
         :type data: dict
         :return: List of items.
-        :rtype: List[Any]
+        :rtype: Tuple[int, List[NamedTuple]]
         """
 
         response = await self._api.post_async(method, data)
@@ -892,6 +892,8 @@ class ModuleApiBase(_JsonConvertibleModule):
         # To avoid empty pages when a filter is applied to the data and the `pagesCount` is less than the number calculated based on the items and `per_page` size.
         # Process `pagesCount` in the main function according to the actual number of pages returned.
         pages_count = response_json.get("pagesCount", None)
+        if pages_count is None:
+            raise ValueError("Can not determine the number of pages to retrieve.")
         return pages_count, [self._convert_json_info(item) for item in entities]
 
     async def get_list_page_generator_async(
@@ -952,7 +954,7 @@ class ModuleApiBase(_JsonConvertibleModule):
                 total_pages, items = await sem_task(self.get_list_idx_page_async(method, data))
 
                 # To correct `total_pages` count in case filter is applied
-                if page_num == 1 and total_pages is not None:
+                if page_num == 1:
                     pages_count = total_pages
 
                 yield items
