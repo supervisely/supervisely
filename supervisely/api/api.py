@@ -1011,6 +1011,7 @@ class Api:
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> httpx.Response:
         """
         Performs POST request to server with given parameters using httpx.
@@ -1031,6 +1032,8 @@ class Api:
         :type retries: int, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed.
         :type raise_error: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
@@ -1057,6 +1060,7 @@ class Api:
                     json=json,
                     params=params,
                     headers=headers,
+                    timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
@@ -1098,6 +1102,7 @@ class Api:
         params: httpx._types.QueryParamTypes,
         retries: Optional[int] = None,
         use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> httpx.Response:
         """
         Performs GET request to server with given parameters.
@@ -1110,6 +1115,8 @@ class Api:
         :type retries: int, optional
         :param use_public_api: Define if public API should be used. Default is True.
         :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
@@ -1131,7 +1138,12 @@ class Api:
         for retry_idx in range(retries):
             response = None
             try:
-                response = self.httpx_client.get(url, params=request_params, headers=self.headers)
+                response = self.httpx_client.get(
+                    url,
+                    params=request_params,
+                    headers=self.headers,
+                    timeout=timeout,
+                )
                 if response.status_code != httpx.codes.OK:
                     Api._raise_for_status_httpx(response)
                 return response
@@ -1170,7 +1182,7 @@ class Api:
         raise_error: Optional[bool] = False,
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
-        timeout: httpx._types.TimeoutTypes = 15,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> Generator:
         """
         Performs streaming GET or POST request to server with given parameters.
@@ -1325,6 +1337,7 @@ class Api:
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> httpx.Response:
         """
         Performs POST request to server with given parameters using httpx.
@@ -1345,6 +1358,8 @@ class Api:
         :type retries: int, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed.
         :type raise_error: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
@@ -1371,6 +1386,7 @@ class Api:
                     json=json,
                     params=params,
                     headers=headers,
+                    timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
@@ -1417,7 +1433,7 @@ class Api:
         range_end: Optional[int] = None,
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
-        timeout: httpx._types.TimeoutTypes = 15,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> AsyncGenerator:
         """
         Performs asynchronous streaming GET or POST request to server with given parameters.
