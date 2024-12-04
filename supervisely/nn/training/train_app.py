@@ -515,7 +515,7 @@ class TrainApp:
 
         if self.gui.hyperparameters_selector.is_export_required():
             try:
-                export_weights = self._export_weights()
+                export_weights = self._export_weights(experiment_info)
                 self._set_progress_status("finalizing")
                 export_weights = self._upload_export_weights(export_weights, remote_dir)
             except Exception as e:
@@ -2139,7 +2139,7 @@ class TrainApp:
         with self.progress_bar_secondary(message=message, total=1) as pbar:
             pbar.update(1)
 
-    def _export_weights(self) -> List[str]:
+    def _export_weights(self, experiment_info: dict) -> List[str]:
         export_weights = {}
         if (
             self.gui.hyperparameters_selector.get_export_onnx_checkbox_value() is True
@@ -2148,7 +2148,7 @@ class TrainApp:
             self.gui.training_process.validator_text.set(
                 f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
             )
-            onnx_path = self._convert_onnx_func()
+            onnx_path = self._convert_onnx_func(experiment_info)
             export_weights[RuntimeType.ONNXRUNTIME] = onnx_path
 
         if (
@@ -2158,7 +2158,7 @@ class TrainApp:
             self.gui.training_process.validator_text.set(
                 f"Converting to {RuntimeType.TENSORRT}", "info"
             )
-            tensorrt_path = self._convert_tensorrt_func()
+            tensorrt_path = self._convert_tensorrt_func(experiment_info)
             export_weights[RuntimeType.TENSORRT] = tensorrt_path
         return export_weights
 
