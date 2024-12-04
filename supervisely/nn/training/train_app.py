@@ -927,6 +927,7 @@ class TrainApp:
         For Pretrained models:
             - The files that will be downloaded are specified in the `meta` key under `model_files`.
             - All files listed in the `model_files` key will be downloaded by provided link.
+            - If model files are already cached on agent, they will be copied to the model directory without downloading.
             Example of a pretrained model entry:
                 [
                     {
@@ -970,8 +971,6 @@ class TrainApp:
         self.model_files = {}
         model_meta = self.model_info["meta"]
         model_files = model_meta["model_files"]
-
-        logger.info(listdir(self._model_cache_dir))
         cached_models = [
             sly_fs.get_file_name_with_ext(file)
             for file in listdir(self._model_cache_dir)
@@ -1003,7 +1002,7 @@ class TrainApp:
                         if file_name in cached_models:
                             shutil.copy(join(self._model_cache_dir, file_name), file_path)
                             model_download_secondary_pbar.update(file_size)
-                            logger.debug(f"Model file '{file_name}' was found in cache")
+                            logger.info(f"Model file '{file_name}' was found in agent's cache")
                         else:
                             sly_fs.download(
                                 url=file_url,
