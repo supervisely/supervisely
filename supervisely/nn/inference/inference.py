@@ -500,11 +500,14 @@ class Inference:
         """
         local_model_files = {}
         model_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "models")
-        cached_models = [
-            sly_fs.get_file_name_with_ext(file)
-            for file in os.listdir(model_cache_dir)
-            if file.endswith(".pth") or file.endswith(".pt")
-        ]
+        if os.path.exists(model_cache_dir):
+            cached_models = [
+                sly_fs.get_file_name_with_ext(file)
+                for file in os.listdir(model_cache_dir)
+                if file.endswith(".pth") or file.endswith(".pt")
+            ]
+        else:
+            cached_models = []
 
         for file in model_files:
             file_url = model_files[file]

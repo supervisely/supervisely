@@ -9,7 +9,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from os import listdir
-from os.path import basename, expanduser, isdir, isfile, join
+from os.path import basename, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -975,11 +975,15 @@ class TrainApp:
         self.model_files = {}
         model_meta = self.model_info["meta"]
         model_files = model_meta["model_files"]
-        cached_models = [
-            sly_fs.get_file_name_with_ext(file)
-            for file in listdir(self._model_cache_dir)
-            if file.endswith(".pth") or file.endswith(".pt")
-        ]
+
+        if exists(self._model_cache_dir):
+            cached_models = [
+                sly_fs.get_file_name_with_ext(file)
+                for file in listdir(self._model_cache_dir)
+                if file.endswith(".pth") or file.endswith(".pt")
+            ]
+        else:
+            cached_models = []
 
         with self.progress_bar_main(
             message="Downloading model files",
