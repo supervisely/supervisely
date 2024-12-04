@@ -277,9 +277,18 @@ setup(
             "pycocotools",
             "scikit-learn",
             "plotly==5.22.0",
-            "torch==1.13.0",
-            "torchvision==0.14.0",
+            "torch",
+            "torchvision",
         ],
+        "training": [
+            "pycocotools",
+            "scikit-learn",
+            "plotly==5.22.0",
+            "torch",
+            "torchvision",
+            "tensorboardX",
+        ],
+
         # legacy dependencies
         "plugins": [
             "jsonschema>=2.6.0,<3.0.0",
@@ -291,9 +300,6 @@ setup(
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
-        ],
-        "training": [
-            "tensorboardX",
         ],
     },
 )
