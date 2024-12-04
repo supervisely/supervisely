@@ -24,13 +24,13 @@ class ExperimentInfo:
     """Project ID in Supervisely"""
     task_id: int
     """Task ID in Supervisely"""
-    model_files: Dict[str, str]
+    model_files: dict
     """Dictionary with paths to model files that needs to be downloaded for training"""
     checkpoints: List[str]
     """List of relative paths to checkpoints"""
     best_checkpoint: str
     """Name of the best checkpoint. Defined by the user in the training app"""
-    export: Dict[str, str]
+    export: dict
     """Dictionary with exported weights in different formats"""
     app_state: str
     """Path to file with settings that were used in the app"""
@@ -46,7 +46,7 @@ class ExperimentInfo:
     """Date and time when the experiment was started"""
     evaluation_report_id: int
     """ID of the evaluation report"""
-    eval_metrics: Dict[str, Any]
+    eval_metrics: dict
     """Evaluation metrics"""
 
 
