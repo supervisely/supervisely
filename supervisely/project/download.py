@@ -225,12 +225,14 @@ def download_async_or_sync(
     semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ):
-    """ 
-        Download project asynchronously if possible, otherwise download synchronously. 
-        Automatically detects project type.
-        You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
     """
-    project_info = kwargs.pop('project_info', None)
+    Download project asynchronously if possible, otherwise download synchronously.
+    Automatically detects project type.
+    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+
+    In case of error during asynchronous download, the function will switch to synchronous download.
+    """
+    project_info = kwargs.pop("project_info", None)
     if not isinstance(project_info, ProjectInfo) or project_info.id != project_id:
         project_info = api.project.get_info_by_id(project_id)
 
@@ -238,25 +240,34 @@ def download_async_or_sync(
         log_progress = False
 
     project_class = get_project_class(project_info.type)
-    if hasattr(project_class, "download_async"):
-        download_coro = project_class.download_async(
-            api=api,
-            project_id=project_id,
-            dest_dir=dest_dir,
-            semaphore=semaphore,
-            dataset_ids=dataset_ids,
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-            **kwargs,
-        )
-        loop = get_or_create_event_loop()
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-            future.result()
-        else:
-            loop.run_until_complete(download_coro)
 
+    switch_to_sync = False
+    if hasattr(project_class, "download_async"):
+        try:
+            download_coro = project_class.download_async(
+                api=api,
+                project_id=project_id,
+                dest_dir=dest_dir,
+                semaphore=semaphore,
+                dataset_ids=dataset_ids,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+                **kwargs,
+            )
+            loop = get_or_create_event_loop()
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+                future.result()
+            else:
+                loop.run_until_complete(download_coro)
+        except Exception as e:
+            logger.error(f"Failed to download project {project_id} asynchronously: {e}")
+            logger.warning("Switching to synchronous download")
+            switch_to_sync = True
     else:
+        switch_to_sync = True
+
+    if switch_to_sync:
         project_class.download(
             api=api,
             project_id=project_id,
@@ -345,7 +356,7 @@ def _validate_dataset(
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
-        if dataset.name.endswith(dataset_info.name): # TODO: fix it later
+        if dataset.name.endswith(dataset_info.name):  # TODO: fix it later
             diff = set(items_infos_dict.keys()).difference(set(dataset.get_items_names()))
             if diff:
                 logger.debug(
