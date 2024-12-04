@@ -487,6 +487,9 @@ class Inference:
 
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
+    
+    def _checkpoints_cache_dir(self):
+        return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
     def _download_model_files(self, model_source: str, model_files: List[str]) -> dict:
         if model_source == ModelSource.PRETRAINED:
@@ -499,19 +502,10 @@ class Inference:
         Downloads the pretrained model data.
         """
         local_model_files = {}
-        model_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "models")
-
-        cached_models = []
-        if os.path.exists(model_cache_dir):
-            cached_models = [
-                sly_fs.get_file_name_with_ext(file)
-                for file in os.listdir(model_cache_dir)
-                if file.endswith(".pth") or file.endswith(".pt")
-            ]
+        cache_dir = self._checkpoints_cache_dir()
 
         for file in model_files:
             file_url = model_files[file]
-            file_path = os.path.join(self.model_dir, file)
             file_name = sly_fs.get_file_name_with_ext(file_url)
             if file_url.startswith("http"):
                 with urlopen(file_url) as f:
@@ -520,6 +514,15 @@ class Inference:
                     if file_name is None:
                         file_name = file
                     file_path = os.path.join(self.model_dir, file_name)
+                    cached_path = os.path.join(cache_dir, file_name)
+                    if os.path.exists(cached_path):
+                        local_model_files[file] = cached_path
+                        logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
+                        continue
+                    if os.path.exists(file_path):
+                        local_model_files[file] = file_path
+                        logger.debug(f"Model: '{file_name}' was found in model dir")
+                        continue
 
                     with self.gui.download_progress(
                         message=f"Downloading: '{file_name}'",
@@ -528,15 +531,7 @@ class Inference:
                         unit_scale=True,
                     ) as download_pbar:
                         self.gui.download_progress.show()
-
-                        if file_name in cached_models:
-                            shutil.copy(os.path.join(model_cache_dir, file_name), file_path)
-                            download_pbar.update(file_size)
-                            logger.info(f"Model: '{file_name}' was found in agent's cache")
-                        else:
-                            sly_fs.download(
-                                url=file_url, save_path=file_path, progress=download_pbar.update
-                            )
+                        sly_fs.download(url=file_url, save_path=file_path, progress=download_pbar.update)
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
