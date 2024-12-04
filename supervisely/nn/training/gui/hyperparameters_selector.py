@@ -20,11 +20,14 @@ class HyperparametersSelector:
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
         self.display_widgets = []
         self.app_options = app_options
+
+        # GUI Components
         self.editor = Editor(
             hyperparameters, height_lines=50, language_mode="yaml", auto_format=True
         )
         self.display_widgets.extend([self.editor])
 
+        # Optional Model Benchmark
         if app_options.get("model_benchmark", True):
             # Model Benchmark
             self.run_model_benchmark_checkbox = Checkbox(
@@ -44,7 +47,9 @@ class HyperparametersSelector:
             self.display_widgets.extend(
                 [self.model_benchmark_field, self.model_benchmark_learn_more]
             )
+        # -------------------------------- #
 
+        # Optional Export Weights
         export_onnx_supported = app_options.get("export_onnx_supported", False)
         export_tensorrt_supported = app_options.get("export_tensorrt_supported", False)
 
@@ -67,11 +72,14 @@ class HyperparametersSelector:
                 content=runtime_container,
             )
             self.display_widgets.extend([self.export_field])
+        # -------------------------------- #
 
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
         self.display_widgets.extend([self.validator_text, self.button])
+        # -------------------------------- #
+
         self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,

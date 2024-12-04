@@ -30,6 +30,8 @@ class TrainingProcess:
         )
         self.app_options = app_options
 
+        # GUI Components
+        # Optional Select CUDA device
         if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice()
             self.select_cuda_device_field = Field(
@@ -38,6 +40,7 @@ class TrainingProcess:
                 content=self.select_device,
             )
             self.display_widgets.extend([self.select_cuda_device_field])
+        # -------------------------------- #
 
         self.experiment_name_input = Input("Enter experiment name")
         self.experiment_name_field = Field(
@@ -46,15 +49,9 @@ class TrainingProcess:
             content=self.experiment_name_input,
         )
 
-        self.artifacts_thumbnail = FolderThumbnail()
-        self.artifacts_thumbnail.hide()
-
-        self.validator_text = Text("")
-        self.validator_text.hide()
         self.start_button = Button("Start")
         self.stop_button = Button("Stop", button_type="danger")
         self.stop_button.hide()  # @TODO: implement stop and hide stop button until training starts
-
         button_container = Container(
             [self.start_button, self.stop_button, Empty()],
             "horizontal",
@@ -62,6 +59,12 @@ class TrainingProcess:
             fractions=[1, 1, 10],
             gap=1,
         )
+
+        self.validator_text = Text("")
+        self.validator_text.hide()
+
+        self.artifacts_thumbnail = FolderThumbnail()
+        self.artifacts_thumbnail.hide()
 
         self.display_widgets.extend(
             [
@@ -71,11 +74,14 @@ class TrainingProcess:
                 self.artifacts_thumbnail,
             ]
         )
+        # -------------------------------- #
 
+        # Optional Model Benchmark
         if app_options.get("model_benchmark", False):
             self.model_benchmark_report_thumbnail = ReportThumbnail()
             self.model_benchmark_report_thumbnail.hide()
             self.display_widgets.extend([self.model_benchmark_report_thumbnail])
+        # -------------------------------- #
 
         self.container = Container(self.display_widgets)
         self.card = Card(

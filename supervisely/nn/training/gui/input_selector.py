@@ -21,6 +21,7 @@ class InputSelector:
         self.project_id = project_info.id
         self.project_info = project_info
 
+        # GUI Components
         self.project_thumbnail = ProjectThumbnail(self.project_info)
 
         if is_cached(self.project_id):
@@ -41,6 +42,8 @@ class InputSelector:
                 self.button,
             ]
         )
+        # -------------------------------- #
+
         self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
@@ -51,9 +54,7 @@ class InputSelector:
 
     @property
     def widgets_to_disable(self) -> list:
-        return [
-            self.use_cache_checkbox,
-        ]
+        return [self.use_cache_checkbox]
 
     def get_project_id(self) -> int:
         return self.project_id

@@ -25,12 +25,10 @@ class ModelSelector:
         self.team_id = sly_env.team_id()  # get from project id
         self.models = models
 
-        # Pretrained models
+        # GUI Components
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
-
         experiment_infos = get_experiment_infos(api, self.team_id, framework)
         self.experiment_selector = ExperimentSelector(self.team_id, experiment_infos)
-        # Model source tabs
         self.model_source_tabs = RadioTabs(
             titles=[ModelSource.PRETRAINED, ModelSource.CUSTOM],
             descriptions=[
@@ -44,6 +42,8 @@ class ModelSelector:
         self.validator_text.hide()
         self.button = Button("Select")
         self.display_widgets.extend([self.model_source_tabs, self.validator_text, self.button])
+        # -------------------------------- #
+
         self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,

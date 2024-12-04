@@ -16,11 +16,9 @@ class TrainingLogs:
         api = Api.from_env()
         self.app_options = app_options
 
-        self.progress_bar_main = Progress(hide_on_finish=False)
-        self.progress_bar_main.hide()
-
-        self.progress_bar_secondary = Progress(hide_on_finish=False)
-        self.progress_bar_secondary.hide()
+        # GUI Components
+        self.validator_text = Text("")
+        self.validator_text.hide()
 
         if is_production():
             task_id = get_task_id(raise_not_found=False)
@@ -44,11 +42,9 @@ class TrainingLogs:
         )
         self.tensorboard_button.disable()
 
-        self.validator_text = Text("")
-        self.validator_text.hide()
-
         self.display_widgets.extend([self.validator_text, self.tensorboard_button])
 
+        # Optional Show logs button
         if app_options.get("show_logs_in_gui", False):
             self.logs_button = Button(
                 text="Show logs",
@@ -60,8 +56,16 @@ class TrainingLogs:
             self.task_logs.hide()
             logs_container = Container([self.logs_button, self.task_logs])
             self.display_widgets.extend([logs_container])
+        # -------------------------------- #
 
+        # Progress bars
+        self.progress_bar_main = Progress(hide_on_finish=False)
+        self.progress_bar_main.hide()
+        self.progress_bar_secondary = Progress(hide_on_finish=False)
+        self.progress_bar_secondary.hide()
         self.display_widgets.extend([self.progress_bar_main, self.progress_bar_secondary])
+        # -------------------------------- #
+
         self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
