@@ -512,7 +512,8 @@ class TrainApp:
 
         # Step 4. [Optional] Convert weights
         export_weights = {}
-        if self._onnx_supported or self._tensorrt_supported:
+
+        if self.gui.hyperparameters_selector.is_export_required():
             try:
                 export_weights = self._export_weights()
                 self._set_progress_status("finalizing")
@@ -2137,13 +2138,20 @@ class TrainApp:
 
     def _export_weights(self) -> List[str]:
         export_weights = {}
-        if self._convert_onnx_func is not None:
+        if (
+            self.gui.hyperparameters_selector.get_export_onnx_checkbox_value() is True
+            and self._convert_onnx_func is not None
+        ):
             self.gui.training_process.validator_text.set(
                 f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
             )
             onnx_path = self._convert_onnx_func()
             export_weights[RuntimeType.ONNXRUNTIME] = onnx_path
-        if self._convert_tensorrt_func is not None:
+
+        if (
+            self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value() is True
+            and self._convert_tensorrt_func is not None
+        ):
             self.gui.training_process.validator_text.set(
                 f"Converting to {RuntimeType.TENSORRT}", "info"
             )

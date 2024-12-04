@@ -157,5 +157,8 @@ class HyperparametersSelector:
         else:
             self.export_tensorrt_checkbox.uncheck()
 
+    def is_export_required(self) -> bool:
+        return self.get_export_onnx_checkbox_value() or self.get_export_tensorrt_checkbox_value()
+
     def validate_step(self) -> bool:
         return True
