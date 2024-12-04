@@ -3740,7 +3740,8 @@ def _download_project(
                     batch, image_names, batch_imgs_bytes, ann_jsons
                 ):
                     dataset_fs: Dataset
-
+                    # to fix already downloaded images that doesn't have info files
+                    dataset_fs.delete_item(name)
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,

@@ -261,6 +261,8 @@ def download_async_or_sync(
             else:
                 loop.run_until_complete(download_coro)
         except Exception as e:
+            if kwargs.get("resume_download", False) is False:
+                remove_dir(dest_dir)
             logger.error(f"Failed to download project {project_id} asynchronously: {e}")
             logger.warning("Switching to synchronous download")
             switch_to_sync = True
