@@ -281,5 +281,5 @@ def release(
             share_app,
         )
     finally:
-        delete_directory(archive_dir)
+        delete_directory(os.path.dirname(archive_path))
     return response
