@@ -93,6 +93,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         # key metrics
         key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
         self.key_metrics_md = key_metrics.md
+        self.key_metrics_table = key_metrics.table
         self.key_metrics_chart = key_metrics.chart
 
         # explore predictions
@@ -166,6 +167,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (0, self.header),
             (1, self.overview_md),
             (1, self.key_metrics_md),
+            (0, self.key_metrics_table),
             (0, self.key_metrics_chart),
             (1, self.explore_predictions_md),
             (0, self.explore_predictions_gallery),
