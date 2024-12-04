@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
 from typing import Any, Dict, List
@@ -97,7 +97,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             )
             response.raise_for_status()
             response_json = response.json()
-            required_fields = {field for field in ExperimentInfo._fields}
+            required_fields = {field.name for field in fields(ExperimentInfo)}
             if not required_fields.issubset(response_json.keys()):
                 logger.debug(
                     f"Missing required fields in JSON from '{experiment_path}': {required_fields - response_json.keys()}"
