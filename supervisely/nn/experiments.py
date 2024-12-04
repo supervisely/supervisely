@@ -30,7 +30,7 @@ class ExperimentInfo:
     """List of relative paths to checkpoints"""
     best_checkpoint: str
     """Name of the best checkpoint. Defined by the user in the training app"""
-    export: Dict[str, bool]
+    export: Dict[str, str]
     """Dictionary with exported weights in different formats"""
     app_state: str
     """Path to file with settings that were used in the app"""
