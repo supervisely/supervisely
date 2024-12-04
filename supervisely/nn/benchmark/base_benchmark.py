@@ -74,6 +74,7 @@ class BaseBenchmark:
         self.train_info = None
         self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
+        self._eval_results = None
         self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
@@ -86,6 +87,11 @@ class BaseBenchmark:
     @property
     def hardware(self) -> str:
         return self._hardware
+
+    @property
+    def key_metrics(self):
+        eval_results = self.get_eval_result()
+        return eval_results.get_key_metrics()
 
     def run_evaluation(
         self,
@@ -482,8 +488,10 @@ class BaseBenchmark:
                 f"Visualizer class is not defined in {self.__class__.__name__}. "
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
-        eval_result = self.evaluator.get_eval_result()
-        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)  # pylint: disable=not-callable
+        eval_result = self.get_eval_result()
+        vis = self.visualizer_cls(
+            self.api, [eval_result], self.get_layout_results_dir(), self.pbar
+        )  # pylint: disable=not-callable
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
             vis.visualize()
             p.update(1)
@@ -608,3 +616,8 @@ class BaseBenchmark:
             return sum(ds.items_count for ds in self.gt_dataset_infos)
         else:
             return self.gt_project_info.items_count
+
+    def get_eval_result(self):
+        if self._eval_results is None:
+            self._eval_results = self.evaluator.get_eval_result()
+        return self._eval_results
