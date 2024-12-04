@@ -511,16 +511,19 @@ class TrainApp:
                 logger.error(f"Model benchmark failed: {e}")
 
         # Step 4. [Optional] Convert weights
+        export_weights = {}
         if self._onnx_supported or self._tensorrt_supported:
             try:
-                export_paths, experiment_info = self._export_weights(experiment_info)
+                export_weights = self._export_weights()
                 self._set_progress_status("finalizing")
-                self._upload_export_weights(export_paths, remote_dir)
+                export_weights = self._upload_export_weights(export_weights, remote_dir)
             except Exception as e:
                 logger.error(f"Export weights failed: {e}")
 
         # Step 5. Generate and upload additional files
-        self._generate_experiment_info(remote_dir, experiment_info, mb_eval_report_id)
+        self._generate_experiment_info(
+            remote_dir, experiment_info, export_weights, mb_eval_report_id
+        )
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
@@ -1002,7 +1005,7 @@ class TrainApp:
                         if file_name in cached_models:
                             shutil.copy(join(self._model_cache_dir, file_name), file_path)
                             model_download_secondary_pbar.update(file_size)
-                            logger.info(f"Model file '{file_name}' was found in agent's cache")
+                            logger.info(f"Model: '{file_name}' was found in agent's cache")
                         else:
                             sly_fs.download(
                                 url=file_url,
@@ -1334,6 +1337,7 @@ class TrainApp:
         self,
         remote_dir: str,
         experiment_info: Dict,
+        export_weights: Dict,
         evaluation_report_id: Optional[int] = None,
     ) -> None:
         """
@@ -1343,6 +1347,8 @@ class TrainApp:
         :type remote_dir: str
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
+        :param export_weights: Export data.
+        :type export_weights: dict
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
         """
@@ -1358,12 +1364,7 @@ class TrainApp:
             "model_files": experiment_info["model_files"],
             "checkpoints": experiment_info["checkpoints"],
             "best_checkpoint": experiment_info["best_checkpoint"],
-            "export": {
-                RuntimeType.ONNXRUNTIME: experiment_info["export"].get(
-                    RuntimeType.ONNXRUNTIME, None
-                ),
-                RuntimeType.TENSORRT: experiment_info["export"].get(RuntimeType.TENSORRT, None),
-            },
+            "export": export_weights,
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
             "train_val_split": self._train_val_split_file,
@@ -2134,31 +2135,31 @@ class TrainApp:
         with self.progress_bar_secondary(message=message, total=1) as pbar:
             pbar.update(1)
 
-    def _export_weights(self, experiment_info: dict) -> List[str]:
-        export_weights_to_upload = []
+    def _export_weights(self) -> List[str]:
+        export_weights = {}
         if self._convert_onnx_func is not None:
             self.gui.training_process.validator_text.set(
                 f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
             )
             onnx_path = self._convert_onnx_func()
-            export_weights_to_upload.append(onnx_path)
-            experiment_info["export"][RuntimeType.ONNXRUNTIME] = onnx_path
+            export_weights[RuntimeType.ONNXRUNTIME] = onnx_path
         if self._convert_tensorrt_func is not None:
             self.gui.training_process.validator_text.set(
                 f"Converting to {RuntimeType.TENSORRT}", "info"
             )
             tensorrt_path = self._convert_tensorrt_func()
-            export_weights_to_upload.append(tensorrt_path)
-            experiment_info["export"][RuntimeType.TENSORRT] = tensorrt_path
-        return export_weights_to_upload, experiment_info
+            export_weights[RuntimeType.TENSORRT] = tensorrt_path
+        return export_weights
 
-    def _upload_export_weights(self, weight_paths: str, remote_dir: str) -> None:
+    def _upload_export_weights(
+        self, export_weights: Dict[str, str], remote_dir: str
+    ) -> Dict[str, str]:
         with self.progress_bar_main(
             message="Uploading export weights",
-            total=len(weight_paths),
+            total=len(export_weights),
         ) as export_upload_main_pbar:
             self.progress_bar_main.show()
-            for path in weight_paths:
+            for path in export_weights.values():
                 file_name = sly_fs.get_file_name_with_ext(path)
                 file_size = sly_fs.get_file_size(path)
                 with self.progress_bar_secondary(
@@ -2172,3 +2173,9 @@ class TrainApp:
                         self._team_id, path, destination_path, export_upload_secondary_pbar
                     )
                 export_upload_main_pbar.update(1)
+
+        remote_export_weights = {
+            runtime: join(self._export_dir_name, sly_fs.get_file_name_with_ext(path))
+            for runtime, path in export_weights.items()
+        }
+        return remote_export_weights
