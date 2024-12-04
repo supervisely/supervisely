@@ -53,22 +53,24 @@ class HyperparametersSelector:
         export_onnx_supported = app_options.get("export_onnx_supported", False)
         export_tensorrt_supported = app_options.get("export_tensorrt_supported", False)
 
+        onnx_name = "ONNX"
+        tensorrt_name = "TensorRT engine"
         export_runtimes = []
         export_runtime_names = []
         if export_onnx_supported:
-            self.export_onnx_checkbox = Checkbox(content=f"Export to {RuntimeType.ONNXRUNTIME}")
+            self.export_onnx_checkbox = Checkbox(content=f"Export to {onnx_name}")
             export_runtimes.append(self.export_onnx_checkbox)
-            export_runtime_names.append(RuntimeType.ONNXRUNTIME)
+            export_runtime_names.append(onnx_name)
         if export_tensorrt_supported:
-            self.export_tensorrt_checkbox = Checkbox(content=f"Export to {RuntimeType.TENSORRT}")
+            self.export_tensorrt_checkbox = Checkbox(content=f"Export to {tensorrt_name}")
             export_runtimes.append(self.export_tensorrt_checkbox)
-            export_runtime_names.append(RuntimeType.TENSORRT)
+            export_runtime_names.append(tensorrt_name)
         if export_onnx_supported or export_tensorrt_supported:
             export_field_description = ",".join(export_runtime_names)
             runtime_container = Container(export_runtimes)
             self.export_field = Field(
-                title="Export weights",
-                description=f"Export trained model to {export_field_description} format after training.",
+                title="Export model",
+                description=f"Export best checkpoint to the following formats: {export_field_description}.",
                 content=runtime_container,
             )
             self.display_widgets.extend([self.export_field])
