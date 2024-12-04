@@ -9,7 +9,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from os import listdir
-from os.path import basename, isdir, isfile, join
+from os.path import basename, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -140,7 +140,11 @@ class TrainApp:
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
         self.train_dataset_dir = join(self.project_dir, "train")
         self.val_dataset_dir = join(self.project_dir, "val")
+        self._model_cache_dir = join(expanduser("~"), ".cache", "supervisely", "models")
         self.sly_project = None
+        # -------------------------- #
+
+        # Train/Val splits
         self.train_split, self.val_split = None, None
         # -------------------------- #
 
@@ -967,6 +971,13 @@ class TrainApp:
         model_meta = self.model_info["meta"]
         model_files = model_meta["model_files"]
 
+        logger.info(listdir(self._model_cache_dir))
+        cached_models = [
+            sly_fs.get_file_name_with_ext(file)
+            for file in listdir(self._model_cache_dir)
+            if file.endswith(".pth") or file.endswith(".pt")
+        ]
+
         with self.progress_bar_main(
             message="Downloading model files",
             total=len(model_files),
@@ -975,12 +986,13 @@ class TrainApp:
             for file in model_files:
                 file_url = model_files[file]
                 file_path = join(self.model_dir, file)
-
+                file_name = sly_fs.get_file_name_with_ext(file_url)
                 if file_url.startswith("http"):
                     with urlopen(file_url) as f:
                         file_size = f.length
                         file_name = get_filename_from_headers(file_url)
                         file_path = join(self.model_dir, file_name)
+
                     with self.progress_bar_secondary(
                         message=f"Downloading '{file_name}' ",
                         total=file_size,
@@ -988,11 +1000,16 @@ class TrainApp:
                         unit_scale=True,
                     ) as model_download_secondary_pbar:
                         self.progress_bar_secondary.show()
-                        sly_fs.download(
-                            url=file_url,
-                            save_path=file_path,
-                            progress=model_download_secondary_pbar.update,
-                        )
+                        if file_name in cached_models:
+                            shutil.copy(join(self._model_cache_dir, file_name), file_path)
+                            model_download_secondary_pbar.update(file_size)
+                            logger.debug(f"Model file '{file_name}' was found in cache")
+                        else:
+                            sly_fs.download(
+                                url=file_url,
+                                save_path=file_path,
+                                progress=model_download_secondary_pbar.update,
+                            )
                     self.model_files[file] = file_path
                 else:
                     self.model_files[file] = file_url
