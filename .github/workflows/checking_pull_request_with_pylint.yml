@@ -34,6 +34,8 @@ jobs:
             -f context="Import SDK Check" \
             -f description="The import of supervisely failed" \
             -f target_url="${{ github.event.pull_request.html_url }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   pylint:
     runs-on: ubuntu-latest
