@@ -4634,8 +4634,7 @@ async def _download_project_item_async(
         tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
         ann_json = tmp_ann.to_json()
 
-    if dataset_fs.item_exists(img_info.name):
-        dataset_fs.delete_item(img_info.name)
+    dataset_fs.delete_item(img_info.name)
     await dataset_fs.add_item_raw_bytes_async(
         item_name=img_info.name,
         item_raw_bytes=img_bytes if save_images is True else None,
@@ -4709,8 +4708,7 @@ async def _download_project_items_batch_async(
             tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
             ann_jsons.append(tmp_ann.to_json())
     for img_info, ann_json, img_bytes in zip(img_infos, ann_jsons, imgs_bytes):
-        if dataset_fs.item_exists(img_info.name):
-            dataset_fs.delete_item(img_info.name)
+        dataset_fs.delete_item(img_info.name)
         await dataset_fs.add_item_raw_bytes_async(
             item_name=img_info.name,
             item_raw_bytes=img_bytes,
