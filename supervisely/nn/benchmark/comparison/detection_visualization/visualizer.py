@@ -48,10 +48,10 @@ class DetectionComparisonVisualizer:
         self.clickable_label = self._create_clickable_label()
 
         # Speedtest init here for overview
-        speedtest = Speedtest(self.vis_texts, self.comparison.evaluation_results)
+        speedtest = Speedtest(self.vis_texts, self.comparison.eval_results)
 
         # Overview
-        overview = Overview(self.vis_texts, self.comparison.evaluation_results)
+        overview = Overview(self.vis_texts, self.comparison.eval_results)
         self.header = self._create_header()
         self.overviews = self._create_overviews(overview)
         self.overview_md = overview.overview_md
@@ -61,11 +61,11 @@ class DetectionComparisonVisualizer:
         )
         self.overview_chart = overview.chart_widget
 
-        columns_number = len(self.comparison.evaluation_results) + 1  # +1 for GT
+        columns_number = len(self.comparison.eval_results) + 1  # +1 for GT
         self.explore_predictions_modal_gallery = self._create_explore_modal_table(columns_number)
         explore_predictions = ExplorePredictions(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_predictions_modal_gallery,
         )
         self.explore_predictions_md = explore_predictions.difference_predictions_md
@@ -74,7 +74,7 @@ class DetectionComparisonVisualizer:
         # Outcome Counts
         outcome_counts = OutcomeCounts(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_modal_table,
         )
         self.outcome_counts_md = self._create_outcome_counts_md()
@@ -83,7 +83,7 @@ class DetectionComparisonVisualizer:
         self.outcome_counts_comparison = outcome_counts.chart_widget_comparison
 
         # Precision-Recall Curve
-        pr_curve = PrCurve(self.vis_texts, self.comparison.evaluation_results)
+        pr_curve = PrCurve(self.vis_texts, self.comparison.eval_results)
         self.pr_curve_md = pr_curve.markdown_widget
         self.pr_curve_collapsed_widgets = pr_curve.collapsed_widget
         self.pr_curve_table = pr_curve.table_widget
@@ -92,7 +92,7 @@ class DetectionComparisonVisualizer:
         # Average Precision by Class
         avg_prec_by_class = AveragePrecisionByClass(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_modal_table,
         )
         self.avg_prec_by_class_md = avg_prec_by_class.markdown_widget
@@ -101,7 +101,7 @@ class DetectionComparisonVisualizer:
         # Precision, Recall, F1
         precision_recall_f1 = PrecisionRecallF1(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_modal_table,
         )
         self.precision_recall_f1_md = precision_recall_f1.markdown_widget
@@ -118,14 +118,14 @@ class DetectionComparisonVisualizer:
         # TODO: ???
 
         # Localization Accuracy (IoU)
-        loc_acc = LocalizationAccuracyIoU(self.vis_texts, self.comparison.evaluation_results)
+        loc_acc = LocalizationAccuracyIoU(self.vis_texts, self.comparison.eval_results)
         self.loc_acc_header_md = loc_acc.header_md
         self.loc_acc_iou_distribution_md = loc_acc.iou_distribution_md
         self.loc_acc_chart = loc_acc.chart
         self.loc_acc_table = loc_acc.table_widget
 
         # Calibration Score
-        cal_score = CalibrationScore(self.vis_texts, self.comparison.evaluation_results)
+        cal_score = CalibrationScore(self.vis_texts, self.comparison.eval_results)
         self.cal_score_md = cal_score.header_md
         self.cal_score_md_2 = cal_score.header_md_2
         self.cal_score_collapse_tip = cal_score.collapse_tip
@@ -236,7 +236,7 @@ class DetectionComparisonVisualizer:
         me = self.api.user.get_my_info().login
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
         header_main_text = " ∣ ".join(  #  vs. or | or ∣
-            eval_res.name for eval_res in self.comparison.evaluation_results
+            eval_res.name for eval_res in self.comparison.eval_results
         )
         header_text = self.vis_texts.markdown_header.format(header_main_text, me, current_date)
         header = MarkdownWidget("markdown_header", "Header", text=header_text)
@@ -284,7 +284,7 @@ class DetectionComparisonVisualizer:
             "all_predictions_modal_gallery", is_modal=True, columns_number=columns_number
         )
         all_predictions_modal_gallery.set_project_meta(
-            self.comparison.evaluation_results[0].dt_project_meta
+            self.comparison.eval_results[0].dt_project_meta
         )
         return all_predictions_modal_gallery
 
