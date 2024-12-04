@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "6.73.248"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -288,7 +289,6 @@ setup(
             "torchvision",
             "tensorboardX",
         ],
-
         # legacy dependencies
         "plugins": [
             "jsonschema>=2.6.0,<3.0.0",
