@@ -2,6 +2,7 @@ import inspect
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -498,17 +499,25 @@ class Inference:
         Downloads the pretrained model data.
         """
         local_model_files = {}
+        model_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "models")
+        cached_models = [
+            sly_fs.get_file_name_with_ext(file)
+            for file in os.path.listdir(model_cache_dir)
+            if file.endswith(".pth") or file.endswith(".pt")
+        ]
 
         for file in model_files:
             file_url = model_files[file]
             file_path = os.path.join(self.model_dir, file)
+            file_name = sly_fs.get_file_name_with_ext(file_url)
             if file_url.startswith("http"):
                 with urlopen(file_url) as f:
                     file_size = f.length
                     file_name = get_filename_from_headers(file_url)
-                    file_path = os.path.join(self.model_dir, file_name)
                     if file_name is None:
                         file_name = file
+                    file_path = os.path.join(self.model_dir, file_name)
+
                     with self.gui.download_progress(
                         message=f"Downloading: '{file_name}'",
                         total=file_size,
@@ -516,9 +525,15 @@ class Inference:
                         unit_scale=True,
                     ) as download_pbar:
                         self.gui.download_progress.show()
-                        sly_fs.download(
-                            url=file_url, save_path=file_path, progress=download_pbar.update
-                        )
+
+                        if file_name in cached_models:
+                            shutil.copy(os.path.join(model_cache_dir, file_name), file_path)
+                            download_pbar.update(file_size)
+                            logger.info(f"Model: '{file_name}' was found in agent's cache")
+                        else:
+                            sly_fs.download(
+                                url=file_url, save_path=file_path, progress=download_pbar.update
+                            )
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
