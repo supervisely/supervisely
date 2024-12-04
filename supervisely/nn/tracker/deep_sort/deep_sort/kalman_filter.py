@@ -1,7 +1,5 @@
 # vim: expandtab:ts=4:sw=4
 import numpy as np
-import scipy.linalg
-
 
 """
 Table for the 0.95 quantile of the chi-square distribution with N degrees of
@@ -171,6 +169,8 @@ class KalmanFilter(object):
             Returns the measurement-corrected state distribution.
 
         """
+        import scipy.linalg  # pylint: disable=import-error
+
         projected_mean, projected_cov = self.project(mean, covariance)
 
         chol_factor, lower = scipy.linalg.cho_factor(
@@ -215,6 +215,8 @@ class KalmanFilter(object):
             `measurements[i]`.
 
         """
+        import scipy.linalg  # pylint: disable=import-error
+
         mean, covariance = self.project(mean, covariance)
         if only_position:
             mean, covariance = mean[:2], covariance[:2, :2]
