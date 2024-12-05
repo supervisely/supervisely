@@ -7,6 +7,9 @@ from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.calib
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.explore_predicttions import (
     ExplorePredictions,
 )
+from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.iou_eou import (
+    IntersectionErrorOverUnion,
+)
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.localization_accuracy import (
     LocalizationAccuracyIoU,
 )

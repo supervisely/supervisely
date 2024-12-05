@@ -125,13 +125,10 @@ The table helps you in finding samples with specific cases of interest. You can 
 > Click on the row to view the image with **Ground Truth**, **Prediction**, or the **Difference** annotations.
 """
 
-markdown_what_is = """
-"""
+# """
+markdown_iou = """## Intersection & Error Over Union
 
-markdown_experts = """
-"""
-
-markdown_how_to_use = """
+Pie charts below demonstrate performance metrics of each model in terms of Intersection over Union (IoU) and Error over Union (EoU). It is done with the help of Error over Union (EoU) decomposition into boundary, extent, and segment errors over union. These charts help to draw conclusions on the model's strongest and weakest sides.
 """
 
 markdown_outcome_counts = (

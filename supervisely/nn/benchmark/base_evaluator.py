@@ -28,6 +28,14 @@ class BaseEvalResult:
         return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
 
     @property
+    def short_name(self) -> str:
+        if not self.name:
+            return
+        if len(self.name) > 20:
+            return self.name[:9] + "..." + self.name[-7:]
+        return self.name
+
+    @property
     def gt_project_id(self) -> int:
         return self.inference_info.get("gt_project_id")
 

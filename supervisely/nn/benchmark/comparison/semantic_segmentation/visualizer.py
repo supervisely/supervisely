@@ -1,8 +1,9 @@
 import supervisely.nn.benchmark.comparison.semantic_segmentation.text_templates as texts
 from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
+    IntersectionErrorOverUnion,
     Overview,
-    Speedtest
+    Speedtest,
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
@@ -40,6 +41,11 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         )
         self.overview_chart = overview.chart_widget
 
+        # IntersectionErrorOverUnion
+        iou_eou = IntersectionErrorOverUnion(self.vis_texts, self.comparison.eval_results)
+        self.iou_eou_md = iou_eou.md
+        self.iou_eou_chart = iou_eou.chart
+
         # # SpeedTest
         self.speedtest_present = not speedtest.is_empty()
         if self.speedtest_present:
@@ -64,6 +70,9 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             # Explore Predictions
             # (1, self.explore_predictions_md),
             # (0, self.explore_predictions_gallery),
+            # IntersectionErrorOverUnion
+            (1, self.iou_eou_md),
+            (0, self.iou_eou_chart),
         ]
         if self.speedtest_present:
             is_anchors_widgets.extend(
