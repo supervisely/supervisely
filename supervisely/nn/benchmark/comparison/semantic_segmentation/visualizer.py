@@ -2,6 +2,7 @@ import supervisely.nn.benchmark.comparison.semantic_segmentation.text_templates 
 from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
     Overview,
+    Speedtest
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
@@ -25,7 +26,7 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         self.clickable_label = self._create_clickable_label()
 
         # Speedtest init here for overview
-        # speedtest = Speedtest(self.vis_texts, self.comparison.eval_results)
+        speedtest = Speedtest(self.vis_texts, self.comparison.eval_results)
 
         # Overview
         overview = Overview(self.vis_texts, self.comparison.eval_results)
@@ -40,17 +41,16 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         self.overview_chart = overview.chart_widget
 
         # # SpeedTest
-        # self.speedtest_present = False
-        # if not speedtest.is_empty():
-        #     self.speedtest_present = True
-        #     self.speedtest_md_intro = speedtest.md_intro
-        #     self.speedtest_intro_table = speedtest.intro_table
-        #     self.speed_inference_time_md = speedtest.inference_time_md
-        #     self.speed_inference_time_table = speedtest.inference_time_table
-        #     self.speed_fps_md = speedtest.fps_md
-        #     self.speed_fps_table = speedtest.fps_table
-        #     self.speed_batch_inference_md = speedtest.batch_inference_md
-        #     self.speed_chart = speedtest.chart
+        self.speedtest_present = not speedtest.is_empty()
+        if self.speedtest_present:
+            self.speedtest_md_intro = speedtest.md_intro
+            self.speedtest_intro_table = speedtest.intro_table
+            self.speed_inference_time_md = speedtest.inference_time_md
+            self.speed_inference_time_table = speedtest.inference_time_table
+            self.speed_fps_md = speedtest.fps_md
+            self.speed_fps_table = speedtest.fps_table
+            self.speed_batch_inference_md = speedtest.batch_inference_md
+            self.speed_chart = speedtest.chart
 
     def _create_layout(self):
         is_anchors_widgets = [
@@ -65,20 +65,20 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             # (1, self.explore_predictions_md),
             # (0, self.explore_predictions_gallery),
         ]
-        # if self.speedtest_present:
-        #     is_anchors_widgets.extend(
-        #         [
-        #             # SpeedTest
-        #             (1, self.speedtest_md_intro),
-        #             (0, self.speedtest_intro_table),
-        #             (0, self.speed_inference_time_md),
-        #             (0, self.speed_inference_time_table),
-        #             (0, self.speed_fps_md),
-        #             (0, self.speed_fps_table),
-        #             (0, self.speed_batch_inference_md),
-        #             (0, self.speed_chart),
-        #         ]
-        #     )
+        if self.speedtest_present:
+            is_anchors_widgets.extend(
+                [
+                    # SpeedTest
+                    (1, self.speedtest_md_intro),
+                    (0, self.speedtest_intro_table),
+                    (0, self.speed_inference_time_md),
+                    (0, self.speed_inference_time_table),
+                    (0, self.speed_fps_md),
+                    (0, self.speed_fps_table),
+                    (0, self.speed_batch_inference_md),
+                    (0, self.speed_chart),
+                ]
+            )
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:

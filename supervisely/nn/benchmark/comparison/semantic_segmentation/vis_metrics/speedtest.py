@@ -270,7 +270,7 @@ class Speedtest(BaseVisMetrics):
                 go.Scatter(
                     x=list(temp_res["ms"].keys()),
                     y=list(temp_res["ms"].values()),
-                    name=f"[{idx}] {eval_result.model_name} (ms)",
+                    name=f"[{idx}] {eval_result.name} (ms)",
                     line=dict(color=eval_result.color),
                     customdata=list(temp_res["ms_std"].values()),
                     error_y=dict(
@@ -288,7 +288,7 @@ class Speedtest(BaseVisMetrics):
                 go.Scatter(
                     x=list(temp_res["fps"].keys()),
                     y=list(temp_res["fps"].values()),
-                    name=f"[{idx}] {eval_result.model_name} (fps)",
+                    name=f"[{idx}] {eval_result.name} (fps)",
                     line=dict(color=eval_result.color),
                     hovertemplate="Batch Size: %{x}<br>FPS: %{y:.2f}<extra></extra>",  # <br> Standard deviation: %{customdata:.2f}<extra></extra>",
                 ),
