@@ -97,28 +97,23 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             )
             response.raise_for_status()
             response_json = response.json()
-            logger.info(f"Response EXPORT: {response_json.get('export')}")
             required_fields = {field.name for field in fields(ExperimentInfo)}
-            if not required_fields.issubset(response_json.keys()):
-                logger.debug(
-                    f"Missing required fields in JSON from '{experiment_path}': {required_fields - response_json.keys()}"
-                )
+            missing_fields = required_fields - response_json.keys()
+            if missing_fields:
+                logger.debug(f"Missing fields: {missing_fields} in response {response_json}")
                 return None
             return ExperimentInfo(**response_json)
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Failed to fetch train metadata from '{experiment_path}': {e}")
+            logger.debug(f"Request failed for {file_info}: {e}")
         except JSONDecodeError as e:
-            logger.debug(f"Failed to decode JSON from '{experiment_path}': {e}")
+            logger.debug(f"JSON decode failed for {file_info}: {e}")
+        except TypeError as e:
+            logger.error(f"TypeError for {file_info}: {e}")
         return None
 
-    # with ThreadPoolExecutor() as executor:
-    #     experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
-    logger.info("Update 1")
-    experiment_infos = []
-    for file_info in sorted_file_infos:
-        experiment_info = fetch_experiment_data(file_info)
-        if experiment_info is not None:
-            experiment_infos.append(experiment_info)
+    # Error
+    with ThreadPoolExecutor() as executor:
+        experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
