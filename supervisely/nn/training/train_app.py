@@ -996,10 +996,12 @@ class TrainApp:
                         if exists(cached_path):
                             self.model_files[file] = cached_path
                             logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
+                            model_download_main_pbar.update(1)
                             continue
                         if exists(file_path):
                             self.model_files[file] = file_path
                             logger.debug(f"Model: '{file_name}' was found in model dir")
+                            model_download_main_pbar.update(1)
                             continue
 
                         with self.progress_bar_secondary(
