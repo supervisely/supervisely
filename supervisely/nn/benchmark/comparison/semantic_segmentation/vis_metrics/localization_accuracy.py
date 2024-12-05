@@ -88,7 +88,7 @@ class LocalizationAccuracyIoU(BaseVisMetrics):
         bin_width = min([bin_edges[1] - bin_edges[0] for _, bin_edges in hist_data])
 
         for i, (eval_result, (hist, bin_edges)) in enumerate(zip(self.eval_results, hist_data)):
-            name = f"[{i+1}] {eval_result.model_name}"
+            name = f"[{i+1}] {eval_result.name}"
             kde = gaussian_kde(eval_result.mp.ious)
             density = kde(x_range)
 
