@@ -123,6 +123,7 @@ class TrainApp:
         self._team_id = sly_env.team_id()
         self._workspace_id = sly_env.workspace_id()
         self._app_name = sly_env.app_name(raise_not_found=False)
+        self._tensorboard_process = None
 
         # TODO: read files
         self._models = self._load_models(models)
