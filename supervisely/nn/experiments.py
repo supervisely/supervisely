@@ -97,7 +97,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             )
             response.raise_for_status()
             response_json = response.json()
-            logger.info(f"Response EXPORT: {response_json.get("export")}")
+            logger.info(f"Response EXPORT: {response_json.get('export')}")
             required_fields = {field.name for field in fields(ExperimentInfo)}
             if not required_fields.issubset(response_json.keys()):
                 logger.debug(
@@ -113,6 +113,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
 
     # with ThreadPoolExecutor() as executor:
     #     experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
+    logger.info("Update 1")
     experiment_infos = []
     for file_info in sorted_file_infos:
         experiment_info = fetch_experiment_data(file_info)
