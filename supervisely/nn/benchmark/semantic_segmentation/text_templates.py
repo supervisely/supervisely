@@ -72,7 +72,7 @@ The pie chart below demonstrates what the model lacked in order to show the perf
 
 markdown_renormalized_error_ou = """## Renormalized Error Over Union
 
-The pie chart below is dedicated to decomposition of postprocessed variant of error over union which takes into consideration cause and effect relationships between different types of segmentation errors. Error over union decomposition has its own pitfalls. It is important to understand that models which tend to produce segment errors (when entire segments are mispredicted and there is no intersection between ground truth and predicted mask) will face less occasions to produce boundary and extent errors - as a result, boundary and extent error over union values will be underestimated.
+The chart below is dedicated to decomposition of postprocessed variant of error over union which takes into consideration cause and effect relationships between different types of segmentation errors. Error over union decomposition has its own pitfalls. It is important to understand that models which tend to produce segment errors (when entire segments are mispredicted and there is no intersection between ground truth and predicted mask) will face less occasions to produce boundary and extent errors - as a result, boundary and extent error over union values will be underestimated.
 
 In terms of localization, segment error is more fundamental than extent, while extent error is more fundamental than boundary. In order to overcome this problem, renormalized error over union proposes a slightly different calculation method - by removing more fundamental errors from the denominator - read more in our <a href="{}" target="_blank">technical report</a>
 """.format(

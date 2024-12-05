@@ -51,13 +51,14 @@ class IntersectionErrorOverUnion(BaseVisMetrics):
                 row=row,
                 col=col,
             )
-            # can be more than 1 rows
+            
+            text = f"[{idx}] {eval_result.name[:7]}"
+            text += "..." if len(eval_result.name) > 7 else ""
             annotations.append(
                 dict(
-                    text=f"[{idx} {eval_result.name[:7]}]",
+                    text=text,
                     x=sum(fig.get_subplot(row, col).x) / 2,
                     y=sum(fig.get_subplot(row, col).y) / 2,
-                    # font_size=20,
                     showarrow=False,
                     xanchor="center",
                 )
