@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
-docs_url = "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/"
+docs_url = (
+    "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/semantic-segmentation"
+)
 
 definitions = SimpleNamespace(
     true_positives="True Positives (TP): These are correctly detected objects. For a prediction to be counted as a true positive, the predicted bounding box must align with a ground truth bounding box with an Intersection over Union (IoU) of 0.5 or more, and the object must be correctly classified",
@@ -130,6 +132,15 @@ markdown_iou = """## Intersection & Error Over Union
 
 Pie charts below demonstrate performance metrics of each model in terms of Intersection over Union (IoU) and Error over Union (EoU). It is done with the help of Error over Union (EoU) decomposition into boundary, extent, and segment errors over union. These charts help to draw conclusions on the model's strongest and weakest sides.
 """
+
+markdown_renormalized_error_ou = """## Renormalized Error over Union
+
+Charts below are dedicated to the decomposition of the post-processed variant of Error over Union, which takes into consideration cause and effect relationships between different types of segmentation errors. Error over Union decomposition has its own pitfalls. It is important to understand that models which tend to produce segment errors (when entire segments are mispredicted and there is no intersection between ground truth and predicted mask) will face fewer occasions to produce boundary and extent errors - as a result, boundary and extent error over union values will be underestimated.
+
+In terms of localization, segment error is more fundamental than extent, while extent error is more fundamental than boundary. In order to overcome this problem, renormalized error over union proposes a slightly different calculation method - by removing more fundamental errors from the denominator - read more in our <a href="{}" target="_blank">technical report</a>
+""".format(
+    docs_url
+)
 
 markdown_outcome_counts = (
     """## Outcome Counts

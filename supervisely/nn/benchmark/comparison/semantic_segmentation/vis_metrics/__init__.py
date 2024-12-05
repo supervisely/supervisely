@@ -25,6 +25,9 @@ from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.pr_cu
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.precision_recal_f1 import (
     PrecisionRecallF1,
 )
+from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.renormalized_error_ou import (
+    RenormalizedErrorOverUnion,
+)
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.speedtest import (
     Speedtest,
 )

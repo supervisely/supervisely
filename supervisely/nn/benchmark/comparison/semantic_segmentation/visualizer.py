@@ -3,6 +3,7 @@ from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVi
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
     IntersectionErrorOverUnion,
     Overview,
+    RenormalizedErrorOverUnion,
     Speedtest,
 )
 from supervisely.nn.benchmark.visualization.widgets import (
@@ -46,6 +47,11 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         self.iou_eou_md = iou_eou.md
         self.iou_eou_chart = iou_eou.chart
 
+        # RenormalizedErrorOverUnion
+        reou = RenormalizedErrorOverUnion(self.vis_texts, self.comparison.eval_results)
+        self.reou_md = reou.md
+        self.reou_chart = reou.chart
+
         # # SpeedTest
         self.speedtest_present = not speedtest.is_empty()
         if self.speedtest_present:
@@ -73,6 +79,9 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             # IntersectionErrorOverUnion
             (1, self.iou_eou_md),
             (0, self.iou_eou_chart),
+            # RenormalizedErrorOverUnion
+            (1, self.reou_md),
+            (0, self.reou_chart),
         ]
         if self.speedtest_present:
             is_anchors_widgets.extend(
