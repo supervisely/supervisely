@@ -140,7 +140,7 @@ class TrainApp:
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
         self.train_dataset_dir = join(self.project_dir, "train")
         self.val_dataset_dir = join(self.project_dir, "val")
-        self._model_cache_dir = join(expanduser("~"), ".cache", "supervisely", "models")
+        self._model_cache_dir = join(expanduser("~"), ".cache", "supervisely", "checkpoints")
         self.sly_project = None
         # -------------------------- #
 
@@ -976,14 +976,6 @@ class TrainApp:
         model_meta = self.model_info["meta"]
         model_files = model_meta["model_files"]
 
-        cached_models = []
-        if exists(self._model_cache_dir):
-            cached_models = [
-                sly_fs.get_file_name_with_ext(file)
-                for file in listdir(self._model_cache_dir)
-                if file.endswith(".pth") or file.endswith(".pt")
-            ]
-
         with self.progress_bar_main(
             message="Downloading model files",
             total=len(model_files),
@@ -997,26 +989,32 @@ class TrainApp:
                     with urlopen(file_url) as f:
                         file_size = f.length
                         file_name = get_filename_from_headers(file_url)
+                        if file_name is None:
+                            file_name = file
                         file_path = join(self.model_dir, file_name)
+                        cached_path = join(self._model_cache_dir, file_name)
+                        if exists(cached_path):
+                            self.model_files[file] = cached_path
+                            logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
+                            continue
+                        if exists(file_path):
+                            self.model_files[file] = file_path
+                            logger.debug(f"Model: '{file_name}' was found in model dir")
+                            continue
 
-                    with self.progress_bar_secondary(
-                        message=f"Downloading '{file_name}' ",
-                        total=file_size,
-                        unit="bytes",
-                        unit_scale=True,
-                    ) as model_download_secondary_pbar:
-                        self.progress_bar_secondary.show()
-                        if file_name in cached_models:
-                            shutil.copy(join(self._model_cache_dir, file_name), file_path)
-                            model_download_secondary_pbar.update(file_size)
-                            logger.info(f"Model: '{file_name}' was found in agent's cache")
-                        else:
+                        with self.progress_bar_secondary(
+                            message=f"Downloading '{file_name}' ",
+                            total=file_size,
+                            unit="bytes",
+                            unit_scale=True,
+                        ) as model_download_secondary_pbar:
+                            self.progress_bar_secondary.show()
                             sly_fs.download(
                                 url=file_url,
                                 save_path=file_path,
                                 progress=model_download_secondary_pbar.update,
                             )
-                    self.model_files[file] = file_path
+                        self.model_files[file] = file_path
                 else:
                     self.model_files[file] = file_url
                 model_download_main_pbar.update(1)
