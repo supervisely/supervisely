@@ -1,5 +1,5 @@
 __all__ = [
-    "set_train_logger",
+    "setup_train_logger",
     "train_logger"
 ]
 
@@ -9,7 +9,7 @@ from supervisely.nn.training.loggers.tensorboard_logger import TensorboardLogger
 train_logger = BaseTrainLogger()
 
 
-def set_train_logger(name="tensorboard_logger"):
+def setup_train_logger(name="tensorboard_logger"):
     global train_logger
     if name == "tensorboard_logger":
         if tensorboard_installed:

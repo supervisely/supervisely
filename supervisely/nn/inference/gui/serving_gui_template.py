@@ -30,7 +30,7 @@ class ServingGUITemplate(ServingGUI):
     def __init__(
         self,
         framework_name: str,
-        models: list = None,
+        models: Optional[list] = None,
         app_options: Optional[str] = None,
     ):
         if not isinstance(framework_name, str):

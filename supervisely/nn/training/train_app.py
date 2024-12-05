@@ -53,7 +53,7 @@ from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
-from supervisely.nn.training.loggers import set_train_logger, train_logger
+from supervisely.nn.training.loggers import setup_train_logger, train_logger
 from supervisely.nn.utils import ModelSource
 from supervisely.output import set_directory
 from supervisely.project.download import (
@@ -1935,11 +1935,11 @@ class TrainApp:
         """
         selected_logger = self._app_options.get("train_logger", "")
         if selected_logger.lower() == "tensorboard":
-            set_train_logger("tensorboard_logger")
+            setup_train_logger("tensorboard_logger")
             train_logger.set_log_dir(self.log_dir)
             self._init_tensorboard()
         else:
-            set_train_logger("default_logger")
+            setup_train_logger("default_logger")
         self._setup_logger_callbacks()
 
     def _init_tensorboard(self):
