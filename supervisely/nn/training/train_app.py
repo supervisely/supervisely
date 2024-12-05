@@ -492,7 +492,7 @@ class TrainApp:
             raise ValueError(f"{reason}. Failed to upload artifacts")
 
         # Step 2. Preprocess artifacts
-        self._preprocess_artifacts(experiment_info)
+        experiment_info = self._preprocess_artifacts(experiment_info)
 
         # Step3. Postprocess splits
         splits_data = self._postprocess_splits()
@@ -501,10 +501,10 @@ class TrainApp:
         remote_dir, file_info = self._upload_artifacts()
 
         # Step 4. Run Model Benchmark
-        mb_eval_report_id, eval_metrics = None, {}
+        mb_eval_report_file, mb_eval_report_id, eval_metrics = None, None, {}
         if self.is_model_benchmark_enabled:
             try:
-                mb_eval_report_id, eval_metrics = self._run_model_benchmark(
+                mb_eval_report_file, mb_eval_report_id, eval_metrics = self._run_model_benchmark(
                     self.output_dir, remote_dir, experiment_info, splits_data
                 )
             except Exception as e:
@@ -534,7 +534,7 @@ class TrainApp:
 
         # Step 8. Workflow output
         if is_production():
-            self._workflow_output(remote_dir, file_info, mb_eval_report)
+            self._workflow_output(remote_dir, file_info, mb_eval_report_file, mb_eval_report_id)
 
         self._set_progress_status("completed")
 
@@ -1246,6 +1246,7 @@ class TrainApp:
             config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
             output_config_path = join(self.output_dir, config_name)
             shutil.move(experiment_info["model_files"]["config"], output_config_path)
+            experiment_info["model_files"]["config"] = output_config_path
             if self.is_model_benchmark_enabled:
                 self._benchmark_params["model_files"]["config"] = output_config_path
 
@@ -1263,6 +1264,7 @@ class TrainApp:
                 "Checkpoints should be a list of paths or a path to directory with checkpoints"
             )
 
+        new_checkpoint_paths = []
         best_checkpoints_name = experiment_info["best_checkpoint"]
         for checkpoint_path in checkpoint_paths:
             new_checkpoint_path = join(
@@ -1270,14 +1272,17 @@ class TrainApp:
                 sly_fs.get_file_name_with_ext(checkpoint_path),
             )
             shutil.move(checkpoint_path, new_checkpoint_path)
+            new_checkpoint_paths.append(new_checkpoint_path)
             if self.is_model_benchmark_enabled:
                 if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
                     self._benchmark_params["model_files"]["checkpoint"] = new_checkpoint_path
+        experiment_info["checkpoints"] = new_checkpoint_paths
 
         # Prepare logs
         if sly_fs.dir_exists(self.log_dir):
             logs_dir = join(self.output_dir, "logs")
             shutil.copytree(self.log_dir, logs_dir)
+        return experiment_info
 
     # Generate experiment_info.json and app_state.json
     def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
@@ -1611,13 +1616,13 @@ class TrainApp:
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        report_id, eval_metrics = None, {}
+        report_file, report_id, eval_metrics = None, None, {}
         if self._inference_class is None:
             logger.warn(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return report_id, eval_metrics
+            return report_file, report_id, eval_metrics
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1630,7 +1635,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return report_id, eval_metrics
+            return report_file, report_id, eval_metrics
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -1808,8 +1813,8 @@ class TrainApp:
                 if bm.diff_project_info:
                     self._api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
-                return report_id, eval_metrics
-        return report_id, eval_metrics
+                return report_file, report_id, eval_metrics
+        return report_file, report_id, eval_metrics
 
     # ----------------------------------------- #
 
@@ -1855,6 +1860,7 @@ class TrainApp:
         team_files_dir: str,
         file_info: FileInfo,
         model_benchmark_report: Optional[FileInfo] = None,
+        model_benchmark_report_id: Optional[FileInfo] = None,
     ):
         """
         Adds the output data to the workflow.
@@ -1903,7 +1909,7 @@ class TrainApp:
                     icon="assignment",
                     icon_color="#674EA7",
                     icon_bg_color="#CCCCFF",
-                    url=f"/model-benchmark?id={model_benchmark_report.id}",
+                    url=f"/model-benchmark?id={model_benchmark_report_id}",
                     url_title="Open Report",
                 )
 
