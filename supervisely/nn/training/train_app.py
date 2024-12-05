@@ -1273,8 +1273,9 @@ class TrainApp:
             )
             shutil.move(checkpoint_path, new_checkpoint_path)
             new_checkpoint_paths.append(new_checkpoint_path)
-            if self.is_model_benchmark_enabled:
-                if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
+            if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
+                experiment_info["best_checkpoint"] = new_checkpoint_path
+                if self.is_model_benchmark_enabled:
                     self._benchmark_params["model_files"]["checkpoint"] = new_checkpoint_path
         experiment_info["checkpoints"] = new_checkpoint_paths
 
@@ -1376,7 +1377,7 @@ class TrainApp:
             "task_id": self.task_id,
             "model_files": experiment_info["model_files"],
             "checkpoints": experiment_info["checkpoints"],
-            "best_checkpoint": experiment_info["best_checkpoint"],
+            "best_checkpoint": sly_fs.get_file_name_with_ext(experiment_info["best_checkpoint"]),
             "export": export_weights,
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
@@ -2108,7 +2109,7 @@ class TrainApp:
 
         self.gui.training_logs.card.unlock()
         self.gui.stepper.set_active_step(7)
-        self.gui.training_process.validator_text.set("Training is started...", "info")
+        self.gui.training_process.validator_text.set("Training has been started...", "info")
         self.gui.training_process.validator_text.show()
         self.gui.training_process.start_button.loading = True
 
