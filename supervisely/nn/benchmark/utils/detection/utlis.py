@@ -17,9 +17,9 @@ def try_set_conf_auto(session: SessionJSON, conf: float):
 def read_coco_datasets(cocoGt_json, cocoDt_json):
     from pycocotools.coco import COCO  # pylint: disable=import-error
 
-    if isinstance(cocoGt_json, str, Path):
+    if isinstance(cocoGt_json, (str, Path)):
         cocoGt_json = load_json_file(str(cocoGt_json))
-    if isinstance(cocoDt_json, str, Path):
+    if isinstance(cocoDt_json, (str, Path)):
         cocoDt_json = load_json_file(str(cocoDt_json))
     cocoGt = COCO()
     cocoGt.dataset = cocoGt_json
