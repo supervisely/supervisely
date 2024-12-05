@@ -1,10 +1,8 @@
-__all__ = [
-    "setup_train_logger",
-    "train_logger"
-]
-
 from supervisely.nn.training.loggers.base_train_logger import BaseTrainLogger
-from supervisely.nn.training.loggers.tensorboard_logger import TensorboardLogger, tensorboard_installed
+from supervisely.nn.training.loggers.tensorboard_logger import (
+    TensorboardLogger,
+    tensorboard_installed,
+)
 
 train_logger = BaseTrainLogger()
 
