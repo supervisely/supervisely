@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Union
 
 from supervisely import env, logger
@@ -432,7 +433,7 @@ class ExperimentSelector(Widget):
         if len(self._rows) == 0:
             return
         selected_row = self.get_selected_row()
-        selected_row_json = selected_row._experiment_info._asdict()
+        selected_row_json = asdict(selected_row._experiment_info)
         return selected_row_json
 
     def get_selected_checkpoint_path(self) -> str:
