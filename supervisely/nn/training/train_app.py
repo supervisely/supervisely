@@ -53,7 +53,7 @@ from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
-from supervisely.nn.training.loggers.tensorboard_logger import tb_logger
+from supervisely.nn.training.loggers import set_train_logger, train_logger
 from supervisely.nn.utils import ModelSource
 from supervisely.output import set_directory
 from supervisely.project.download import (
@@ -1932,13 +1932,19 @@ class TrainApp:
         """
         Initialize training logger. Set up Tensorboard and callbacks.
         """
-        train_logger = self._app_options.get("train_logger", "")
-        if train_logger.lower() == "tensorboard":
-            tb_logger.set_log_dir(self.log_dir)
-            self._setup_logger_callbacks()
+        selected_logger = self._app_options.get("train_logger", "")
+        if selected_logger.lower() == "tensorboard":
+            set_train_logger("tensorboard_logger")
+            train_logger.set_log_dir(self.log_dir)
             self._init_tensorboard()
+        else:
+            set_train_logger("default_logger")
+        self._setup_logger_callbacks()
 
     def _init_tensorboard(self):
+        if self._tensorboard_process is not None:
+            logger.debug("Tensorboard server is already running")
+            return
         self._register_routes()
         args = [
             "tensorboard",
@@ -2001,10 +2007,7 @@ class TrainApp:
             """
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
-
-            train_logger = self._app_options.get("train_logger", "")
-            if train_logger == "tensorboard":
-                tb_logger.close()
+            train_logger.close()
 
         def start_epoch_callback(total_steps: int):
             """
@@ -2028,13 +2031,13 @@ class TrainApp:
             """
             step_pbar.update(1)
 
-        tb_logger.add_on_train_started_callback(start_training_callback)
-        tb_logger.add_on_train_finish_callback(finish_training_callback)
+        train_logger.add_on_train_started_callback(start_training_callback)
+        train_logger.add_on_train_finish_callback(finish_training_callback)
 
-        tb_logger.add_on_epoch_started_callback(start_epoch_callback)
-        tb_logger.add_on_epoch_finish_callback(finish_epoch_callback)
+        train_logger.add_on_epoch_started_callback(start_epoch_callback)
+        train_logger.add_on_epoch_finish_callback(finish_epoch_callback)
 
-        tb_logger.add_on_step_callback(step_callback)
+        train_logger.add_on_step_finished_callback(step_callback)
 
     # ----------------------------------------- #
     def _wrapped_start_training(self):
