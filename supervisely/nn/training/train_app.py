@@ -1586,7 +1586,7 @@ class TrainApp:
         task_info = self._api.task.get_info_by_id(self.task_id)
         task_dir = f"{self.task_id}_{task_info['meta']['app']['name']}"
         eval_res_dir = f"/model-benchmark/evaluation/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
-        eval_res_dir = self._api.storage.get_free_dir_name(self._team_id(), eval_res_dir)
+        eval_res_dir = self._api.storage.get_free_dir_name(self._team_id, eval_res_dir)
         return eval_res_dir
 
     def _run_model_benchmark(
