@@ -91,7 +91,10 @@ class Inference:
     """Path to file with list of models"""
     APP_OPTIONS: str = None
     """Path to file with app options"""
-    DEFAULT_BATCH_SIZE = 16
+    DEFAULT_BATCH_SIZE: str = 16
+    """Default batch size for inference"""
+    INFERENCE_SETTINGS: str = None
+    """Path to file with custom inference settings"""
 
     def __init__(
         self,
@@ -128,7 +131,10 @@ class Inference:
         self._hardware: str = None
         self.pretrained_models = self._load_models_json(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
-            custom_inference_settings = {}
+            if self.INFERENCE_SETTINGS is not None:
+                custom_inference_settings = self.INFERENCE_SETTINGS
+            else:
+                custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, "r") as f:
@@ -520,7 +526,7 @@ class Inference:
 
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
-    
+
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
@@ -564,7 +570,9 @@ class Inference:
                         unit_scale=True,
                     ) as download_pbar:
                         self.gui.download_progress.show()
-                        sly_fs.download(url=file_url, save_path=file_path, progress=download_pbar.update)
+                        sly_fs.download(
+                            url=file_url, save_path=file_path, progress=download_pbar.update
+                        )
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
@@ -660,13 +668,23 @@ class Inference:
         model_files = deploy_params.get("model_files", {})
         if model_info:
             checkpoint_name = os.path.basename(model_files.get("checkpoint"))
+            checkpoint_file_path = os.path.join(
+                model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
+            )
+            checkpoint_file_info = self.api.file.get_info_by_path(
+                env.team_id(), checkpoint_file_path
+            )
+            if checkpoint_file_info is None:
+                checkpoint_url = None
+            else:
+                checkpoint_url = self.api.file.get_url(checkpoint_file_info.id)
+
             self.checkpoint_info = CheckpointInfo(
                 checkpoint_name=checkpoint_name,
                 model_name=model_info.get("model_name"),
                 architecture=model_info.get("framework_name"),
-                custom_checkpoint_path=os.path.join(
-                    model_info.get("artifacts_dir"), checkpoint_name
-                ),
+                checkpoint_url=checkpoint_url,
+                custom_checkpoint_path=checkpoint_file_path,
                 model_source=ModelSource.CUSTOM,
             )
 

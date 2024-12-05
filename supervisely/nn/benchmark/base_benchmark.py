@@ -75,6 +75,7 @@ class BaseBenchmark:
         self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
         self._eval_results = None
+        self.report_id = None
         self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
@@ -574,6 +575,7 @@ class BaseBenchmark:
     def upload_report_link(self, remote_dir: str):
         template_path = os.path.join(remote_dir, "template.vue")
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
+        self.report_id = vue_template_info.id
 
         report_link = "/model-benchmark?id=" + str(vue_template_info.id)
         local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")

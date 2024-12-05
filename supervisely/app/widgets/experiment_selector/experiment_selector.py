@@ -66,7 +66,9 @@ class ExperimentSelector(Widget):
             self._task_link = self._create_task_link()
             self._config_path = experiment_info.model_files.get("config")
             if self._config_path is not None:
-                self._config_path = os.path.join(experiment_info.artifacts_dir, self._config_path)
+                self._config_path = os.path.join(
+                    experiment_info.artifacts_dir, self._config_path
+                )
 
             # col 2 model
             self._model_name = experiment_info.model_name
@@ -92,7 +94,7 @@ class ExperimentSelector(Widget):
             self._session_link = self._generate_session_link()
 
             # col 6 benchmark report
-            self._benchmark_report = None  # experiment_infos.benchmark_report_path
+            self._benchmark_report_id = experiment_info.evaluation_report_id
 
             # widgets
             self._task_widget = self._create_task_widget()
@@ -192,7 +194,7 @@ class ExperimentSelector(Widget):
             task_widget = Container(
                 [
                     Text(
-                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}'>{self._task_id}</a>",
+                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}' target='_blank'>{self._task_id}</a>",
                         "text",
                     ),
                     Text(
@@ -238,22 +240,31 @@ class ExperimentSelector(Widget):
 
         def _create_session_widget(self) -> Text:
             session_link_widget = Text(
-                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-open-in-new'></i>",
+                f"<a href='{self._session_link}' target='_blank'>Preview</a> <i class='zmdi zmdi-open-in-new'></i>",
                 "text",
             )
             return session_link_widget
 
         def _create_benchmark_widget(self) -> Text:
-            if self._benchmark_report is None:
-                self._benchmark_report = "No benchmark report available"
+            if self._benchmark_report_id is None:
+                self._benchmark_report_id = "No benchmark report available"
                 benchmark_widget = Text(
                     "<span class='field-description text-muted' style='color: #7f858e'>No benchmark report available</span>",
                     "text",
                     font_size=13,
                 )
             else:
+                if is_development():
+                    benchmark_report_link = abs_url(
+                        f"/model-benchmark?id={self._benchmark_report_id}"
+                    )
+                else:
+                    benchmark_report_link = (
+                        f"/model-benchmark?id={self._benchmark_report_id}"
+                    )
+
                 benchmark_widget = Text(
-                    f"<a href='{self._benchmark_report}'>Benchmark Report</a> <i class='zmdi zmdi-chart'></i>",
+                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
                     "text",
                 )
             return benchmark_widget
@@ -365,7 +376,9 @@ class ExperimentSelector(Widget):
         table_rows = defaultdict(list)
         with ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(process_experiment_info, experiment_info): experiment_info
+                executor.submit(
+                    process_experiment_info, experiment_info
+                ): experiment_info
                 for experiment_info in experiment_infos
             }
 
@@ -451,7 +464,8 @@ class ExperimentSelector(Widget):
         model_files = experiment_info.get("model_files", {})
 
         full_model_files = {
-            name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
+            name: os.path.join(artifacts_dir, file)
+            for name, file in model_files.items()
         }
         full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
         return full_model_files

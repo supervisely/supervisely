@@ -32,9 +32,13 @@ class BaseEvalResult:
         return self.inference_info.get("task_type")
 
     @property
-    def name(self) -> str:
-        model_name = self.inference_info.get("model_name", self.directory)
-        return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
+    def name(self) -> Union[str, None]:
+        deploy_params = self.inference_info.get("deploy_params", {})
+        return (
+            deploy_params.get("checkpoint_name")
+            or deploy_params.get("model_name")
+            or self.inference_info.get("model_name")
+        )
 
     @property
     def gt_project_id(self) -> int:

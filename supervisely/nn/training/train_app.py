@@ -501,11 +501,10 @@ class TrainApp:
         remote_dir, file_info = self._upload_artifacts()
 
         # Step 4. Run Model Benchmark
-        mb_eval_report, mb_eval_report_id, eval_metrics = None, None, {}
-
+        mb_eval_report_id, eval_metrics = None, {}
         if self.is_model_benchmark_enabled:
             try:
-                mb_eval_report, mb_eval_report_id, eval_metrics = self._run_model_benchmark(
+                mb_eval_report_id, eval_metrics = self._run_model_benchmark(
                     self.output_dir, remote_dir, experiment_info, splits_data
                 )
             except Exception as e:
@@ -1585,7 +1584,9 @@ class TrainApp:
         """
         task_info = self._api.task.get_info_by_id(self.task_id)
         task_dir = f"{self.task_id}_{task_info['meta']['app']['name']}"
-        eval_res_dir = f"/model-benchmark/evaluation/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
+        eval_res_dir = (
+            f"/model-benchmark/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
+        )
         eval_res_dir = self._api.storage.get_free_dir_name(self._team_id, eval_res_dir)
         return eval_res_dir
 
@@ -1610,13 +1611,13 @@ class TrainApp:
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        report, report_id, eval_metrics = None, None, {}
+        report_id, eval_metrics = None, {}
         if self._inference_class is None:
             logger.warn(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return report, report_id, eval_metrics
+            return report_id, eval_metrics
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1629,7 +1630,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return report, report_id, eval_metrics
+            return report_id, eval_metrics
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -1772,8 +1773,8 @@ class TrainApp:
             # 7. Prepare visualizations, report and upload
             bm.visualize()
             remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-            report = bm.upload_report_link(remote_dir)
-            report_id = report.id
+            report_file = bm.upload_report_link(remote_dir)
+            report_id = bm.report_id
             eval_metrics = bm.key_metrics
 
             # 8. UI updates
@@ -1807,8 +1808,8 @@ class TrainApp:
                 if bm.diff_project_info:
                     self._api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
-                return report, report_id, eval_metrics
-        return report, report_id, eval_metrics
+                return report_id, eval_metrics
+        return report_id, eval_metrics
 
     # ----------------------------------------- #
 
