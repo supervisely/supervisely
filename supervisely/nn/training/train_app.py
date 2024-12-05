@@ -1757,6 +1757,7 @@ class TrainApp:
 
             # 4. Evaluate
             bm._evaluate(gt_project_path, dt_project_path)
+            bm._dump_eval_inference_info(bm._eval_inference_info)
 
             # 5. Upload evaluation results
             eval_res_dir = self._get_eval_results_dir_name()
