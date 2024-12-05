@@ -1904,24 +1904,25 @@ class TrainApp:
                     f"File with checkpoints not found in Team Files. Cannot set workflow output."
                 )
 
-            if model_benchmark_report:
-                mb_relation_settings = WorkflowSettings(
-                    title="Model Benchmark",
-                    icon="assignment",
-                    icon_color="#674EA7",
-                    icon_bg_color="#CCCCFF",
-                    url=f"/model-benchmark?id={model_benchmark_report_id}",
-                    url_title="Open Report",
-                )
+            if self.is_model_benchmark_enabled:
+                if model_benchmark_report:
+                    mb_relation_settings = WorkflowSettings(
+                        title="Model Benchmark",
+                        icon="assignment",
+                        icon_color="#674EA7",
+                        icon_bg_color="#CCCCFF",
+                        url=f"/model-benchmark?id={model_benchmark_report_id}",
+                        url_title="Open Report",
+                    )
 
-                meta = WorkflowMeta(
-                    relation_settings=mb_relation_settings, node_settings=node_settings
-                )
-                self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
-            else:
-                logger.debug(
-                    f"File with model benchmark report not found in Team Files. Cannot set workflow output."
-                )
+                    meta = WorkflowMeta(
+                        relation_settings=mb_relation_settings, node_settings=node_settings
+                    )
+                    self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
+                else:
+                    logger.debug(
+                        f"File with model benchmark report not found in Team Files. Cannot set workflow output."
+                    )
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #
