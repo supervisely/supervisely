@@ -35,9 +35,9 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         self.overviews = self._create_overviews(overview)
         self.overview_md = overview.overview_md
         self.key_metrics_md = self._create_key_metrics()
-        # self.key_metrics_table = overview.get_table_widget(
-        #     latency=speedtest.latency, fps=speedtest.fps
-        # )
+        self.key_metrics_table = overview.get_table_widget(
+            latency=speedtest.latency, fps=speedtest.fps
+        )
         self.overview_chart = overview.chart_widget
 
         # # SpeedTest
@@ -59,7 +59,7 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             (1, self.overview_md),
             (0, self.overviews),
             (1, self.key_metrics_md),
-            # (0, self.key_metrics_table),
+            (0, self.key_metrics_table),
             (0, self.overview_chart),
             # Explore Predictions
             # (1, self.explore_predictions_md),

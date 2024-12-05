@@ -72,7 +72,7 @@ class Overview(BaseVisMetrics):
             checkpoint_name = eval_result.inference_info.get("deploy_params", {}).get(
                 "checkpoint_name", ""
             )
-            model_name = eval_result.inference_info.get("model_name") or "Custom"
+            model_name = eval_result.name or "Custom"
 
             report = eval_result.api.file.get_info_by_path(self.team_id, eval_result.report_path)
             report_link = abs_url(f"/model-benchmark?id={report.id}")
@@ -223,13 +223,8 @@ class Overview(BaseVisMetrics):
                 angularaxis=dict(rotation=90, direction="clockwise"),
             ),
             dragmode=False,
-            # title="Overall Metrics",
-            # width=700,
-            # height=500,
-            # autosize=False,
+            height=500,
             margin=dict(l=25, r=25, t=25, b=25),
-        )
-        fig.update_layout(
             modebar=dict(
                 remove=[
                     "zoom2d",
@@ -241,6 +236,6 @@ class Overview(BaseVisMetrics):
                     "autoScale2d",
                     "resetScale2d",
                 ]
-            )
+            ),
         )
         return fig

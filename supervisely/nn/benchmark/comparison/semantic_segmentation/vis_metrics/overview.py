@@ -25,7 +25,7 @@ class Overview(BaseVisMetrics):
         info = []
         model_names = []
         for eval_result in self.eval_results:
-            model_name = eval_result.inference_info.get("model_name") or "Custom"
+            model_name = eval_result.name or "Custom"
             model_name = model_name.replace("_", "\_")
             model_names.append(model_name)
 
@@ -111,12 +111,11 @@ class Overview(BaseVisMetrics):
             dct = {"row": row, "id": metric, "items": row}
             res["content"].append(dct)
 
-        # TODO: add latency and fps
-        # latency_row = ["Latency (ms)"] + latency
-        # res["content"].append({"row": latency_row, "id": latency_row[0], "items": latency_row})
+        latency_row = ["Latency (ms)"] + latency
+        res["content"].append({"row": latency_row, "id": latency_row[0], "items": latency_row})
 
-        # fps_row = ["FPS"] + fps
-        # res["content"].append({"row": fps_row, "id": fps_row[0], "items": fps_row})
+        fps_row = ["FPS"] + fps
+        res["content"].append({"row": fps_row, "id": fps_row[0], "items": fps_row})
 
         columns_options = [{"disableSort": True} for _ in columns]
 
@@ -200,21 +199,17 @@ class Overview(BaseVisMetrics):
                 )
             )
         fig.update_layout(
+            showlegend=False,
             polar=dict(
                 radialaxis=dict(
-                    range=[0.0, 1.0],
+                    range=[0, 105],
                     ticks="outside",
                 ),
                 angularaxis=dict(rotation=90, direction="clockwise"),
             ),
             dragmode=False,
-            # title="Overall Metrics",
-            # width=700,
-            # height=500,
-            # autosize=False,
+            height=500,
             margin=dict(l=25, r=25, t=25, b=25),
-        )
-        fig.update_layout(
             modebar=dict(
                 remove=[
                     "zoom2d",
@@ -226,6 +221,6 @@ class Overview(BaseVisMetrics):
                     "autoScale2d",
                     "resetScale2d",
                 ]
-            )
+            ),
         )
         return fig
