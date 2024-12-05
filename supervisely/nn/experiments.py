@@ -8,6 +8,7 @@ import requests
 
 from supervisely import logger
 from supervisely.api.api import Api, ApiField
+from supervisely.api.file_api import FileInfo
 
 
 @dataclass
@@ -78,7 +79,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     experiment_infos = []
 
     file_infos = api.file.list(team_id, experiments_folder, recursive=True, return_type="fileinfo")
-    sorted_file_infos = []
+    sorted_experiment_paths = []
     for file_info in file_infos:
         if not file_info.path.endswith(metadata_name):
             continue
@@ -86,13 +87,13 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
         experiment_dir = dirname(file_info.path)
         if experiment_dir.endswith(framework_name):
             experiment_path = join(experiment_dir, metadata_name)
-            sorted_file_infos.append(experiment_path)
+            sorted_experiment_paths.append(experiment_path)
 
-    def fetch_experiment_data(file_info):
+    def fetch_experiment_data(experiment_path: str):
         try:
             response = api.post(
                 "file-storage.download",
-                {ApiField.TEAM_ID: team_id, ApiField.PATH: file_info},
+                {ApiField.TEAM_ID: team_id, ApiField.PATH: experiment_path},
                 stream=True,
             )
             response.raise_for_status()
@@ -100,20 +101,20 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             required_fields = {field.name for field in fields(ExperimentInfo)}
             missing_fields = required_fields - response_json.keys()
             if missing_fields:
-                logger.debug(f"Missing fields: {missing_fields} in response {response_json}")
+                logger.debug(f"Missing fields: {missing_fields} for '{experiment_path}'")
                 return None
             return ExperimentInfo(**response_json)
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Request failed for {file_info}: {e}")
+            logger.debug(f"Request failed for '{experiment_path}': {e}")
         except JSONDecodeError as e:
-            logger.debug(f"JSON decode failed for {file_info}: {e}")
+            logger.debug(f"JSON decode failed for '{experiment_path}': {e}")
         except TypeError as e:
-            logger.error(f"TypeError for {file_info}: {e}")
+            logger.error(f"TypeError for '{experiment_path}': {e}")
         return None
 
     # Error
     with ThreadPoolExecutor() as executor:
-        experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
+        experiment_infos = list(executor.map(fetch_experiment_data, sorted_experiment_paths))
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
