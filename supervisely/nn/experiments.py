@@ -111,8 +111,13 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             logger.debug(f"Failed to decode JSON from '{experiment_path}': {e}")
         return None
 
-    with ThreadPoolExecutor() as executor:
-        experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
+    # with ThreadPoolExecutor() as executor:
+    #     experiment_infos = list(executor.map(fetch_experiment_data, sorted_file_infos))
+    experiment_infos = []
+    for file_info in sorted_file_infos:
+        experiment_info = fetch_experiment_data(file_info)
+        if experiment_info is not None:
+            experiment_infos.append(experiment_info)
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
