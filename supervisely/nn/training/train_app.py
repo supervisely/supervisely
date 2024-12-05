@@ -50,6 +50,7 @@ from supervisely.nn.benchmark import (
     SemanticSegmentationEvaluator,
 )
 from supervisely.nn.inference import RuntimeType, SessionJSON
+from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
 from supervisely.nn.training.loggers.tensorboard_logger import tb_logger
@@ -500,19 +501,18 @@ class TrainApp:
         remote_dir, file_info = self._upload_artifacts()
 
         # Step 4. Run Model Benchmark
-        mb_eval_report, mb_eval_report_id = None, None
+        mb_eval_report, mb_eval_report_id, eval_metrics = None, None, {}
 
         if self.is_model_benchmark_enabled:
             try:
-                mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
+                mb_eval_report, mb_eval_report_id, eval_metrics = self._run_model_benchmark(
                     self.output_dir, remote_dir, experiment_info, splits_data
                 )
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
-        # Step 4. [Optional] Convert weights
+        # Step 5. [Optional] Convert weights
         export_weights = {}
-
         if self.gui.hyperparameters_selector.is_export_required():
             try:
                 export_weights = self._export_weights(experiment_info)
@@ -521,25 +521,27 @@ class TrainApp:
             except Exception as e:
                 logger.error(f"Export weights failed: {e}")
 
-        # Step 5. Generate and upload additional files
+        # Step 6. Generate and upload additional files
         self._generate_experiment_info(
-            remote_dir, experiment_info, export_weights, mb_eval_report_id
+            remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
         )
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
         self._generate_model_meta(remote_dir, experiment_info)
 
-        # Step 6. Set output widgets
+        # Step 7. Set output widgets
         self._set_training_output(remote_dir, file_info)
 
-        # Step 6. Workflow output
+        # Step 8. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_report)
 
         self._set_progress_status("completed")
 
-    def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
+    def register_inference_class(
+        self, inference_class: Inference, inference_settings: dict = {}
+    ) -> None:
         """
         Registers an inference class for the training application to do model benchmarking.
 
@@ -1341,8 +1343,9 @@ class TrainApp:
         self,
         remote_dir: str,
         experiment_info: Dict,
-        export_weights: Dict,
+        eval_metrics: Dict = {},
         evaluation_report_id: Optional[int] = None,
+        export_weights: Dict = {},
     ) -> None:
         """
         Generates and uploads the experiment_info.json file to the output directory.
@@ -1351,10 +1354,12 @@ class TrainApp:
         :type remote_dir: str
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :param export_weights: Export data.
-        :type export_weights: dict
+        :param eval_metrics: Evaluation metrics.
+        :type eval_metrics: dict
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
+        :param export_weights: Export data.
+        :type export_weights: dict
         """
         logger.debug("Updating experiment info")
 
@@ -1376,7 +1381,7 @@ class TrainApp:
             "artifacts_dir": remote_dir,
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "evaluation_report_id": evaluation_report_id,
-            "eval_metrics": {},
+            "eval_metrics": eval_metrics,
         }
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
@@ -1602,16 +1607,16 @@ class TrainApp:
         :type experiment_info: dict
         :param splits_data: Information about the train and val splits.
         :type splits_data: dict
-        :return: Evaluation report and report ID.
+        :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        report, report_id = None, None
+        report, report_id, eval_metrics = None, None, {}
         if self._inference_class is None:
             logger.warn(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return report, report_id
+            return report, report_id, eval_metrics
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1624,7 +1629,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return report, report_id
+            return report, report_id, eval_metrics
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -1650,7 +1655,7 @@ class TrainApp:
             self.progress_bar_main.show()
 
             # 0. Serve trained model
-            m = self._inference_class(
+            m: Inference = self._inference_class(
                 model_dir=self.model_dir,
                 use_gui=False,
                 custom_inference_settings=self._inference_settings,
@@ -1768,6 +1773,7 @@ class TrainApp:
             remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
             report = bm.upload_report_link(remote_dir)
             report_id = report.id
+            eval_metrics = bm.key_metrics
 
             # 8. UI updates
             benchmark_report_template = self._api.file.get_info_by_path(
@@ -1800,8 +1806,8 @@ class TrainApp:
                 if bm.diff_project_info:
                     self._api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
-                return report, report_id
-        return report, report_id
+                return report, report_id, eval_metrics
+        return report, report_id, eval_metrics
 
     # ----------------------------------------- #
 
