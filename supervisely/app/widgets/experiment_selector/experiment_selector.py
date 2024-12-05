@@ -66,9 +66,7 @@ class ExperimentSelector(Widget):
             self._task_link = self._create_task_link()
             self._config_path = experiment_info.model_files.get("config")
             if self._config_path is not None:
-                self._config_path = os.path.join(
-                    experiment_info.artifacts_dir, self._config_path
-                )
+                self._config_path = os.path.join(experiment_info.artifacts_dir, self._config_path)
 
             # col 2 model
             self._model_name = experiment_info.model_name
@@ -247,9 +245,9 @@ class ExperimentSelector(Widget):
 
         def _create_benchmark_widget(self) -> Text:
             if self._benchmark_report_id is None:
-                self._benchmark_report_id = "No benchmark report available"
+                self._benchmark_report_id = "No evaluation report available"
                 benchmark_widget = Text(
-                    "<span class='field-description text-muted' style='color: #7f858e'>No benchmark report available</span>",
+                    "<span class='field-description text-muted' style='color: #7f858e'>No evaluation report available</span>",
                     "text",
                     font_size=13,
                 )
@@ -259,9 +257,7 @@ class ExperimentSelector(Widget):
                         f"/model-benchmark?id={self._benchmark_report_id}"
                     )
                 else:
-                    benchmark_report_link = (
-                        f"/model-benchmark?id={self._benchmark_report_id}"
-                    )
+                    benchmark_report_link = f"/model-benchmark?id={self._benchmark_report_id}"
 
                 benchmark_widget = Text(
                     f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
@@ -376,9 +372,7 @@ class ExperimentSelector(Widget):
         table_rows = defaultdict(list)
         with ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(
-                    process_experiment_info, experiment_info
-                ): experiment_info
+                executor.submit(process_experiment_info, experiment_info): experiment_info
                 for experiment_info in experiment_infos
             }
 
@@ -464,8 +458,7 @@ class ExperimentSelector(Widget):
         model_files = experiment_info.get("model_files", {})
 
         full_model_files = {
-            name: os.path.join(artifacts_dir, file)
-            for name, file in model_files.items()
+            name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
         }
         full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
         return full_model_files
